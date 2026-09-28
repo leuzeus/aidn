@@ -208,11 +208,24 @@ an older successful attempt, until termination is reconciled. No extra wait
 extends the preparation budget and no later callback authorizes a new launch.
 
 The frozen run duration includes preparation plus the unchanged worker duration
-(for example, 60 + 150 seconds). Worker latency and timeout measurement start
-only after preparation and its canonical preflight complete. The smaller timeout
-scenario budget is derived from the cancellation case's worker latency alone.
-Preparation cannot consume or extend the worker budget; the worker deadline
-then remains fixed through its separate before-create and before-resume checks.
+(for example, 60 + 150 seconds). The worker ceiling starts only after preparation
+and its canonical preflight complete, and remains fixed through the separate
+before-create and before-resume checks. Preparation cannot consume or extend it.
+
+The native timeout scenario does not predict one model invocation's latency from
+another. After observing the actual admission-hook descendant, it arms a separate
+three-second monotonic deadline inside the fixed 150-second worker ceiling. Both
+the hook's own deadline and the worker ceiling must retain the required margin.
+The scenario records the arm time and expiry, observes the same descendant again
+before expiry, then requires a real timed-out result, a confirmed empty Job and
+independent absence of the observed process identities. A missing or late hook
+fails the scenario; it never causes an automatic retry.
+
+The internal controller's optional timeoutSignal invokes its existing timeout
+stop path. It can only stop work earlier: the fixed timer remains active, normal
+signal cancellation remains cancelled, and the first stop reason is retained.
+No result is relabeled after execution. The helper protocol, public task request
+and production executor's fixed duration remain unchanged.
 
 The supervisor checks the effective configuration and hooks before creation and
 again before resuming a suspended worker. Responses bind a fresh challenge,

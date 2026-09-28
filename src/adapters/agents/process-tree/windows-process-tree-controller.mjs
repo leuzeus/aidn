@@ -36,11 +36,13 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
       return { available: true, platform: "win32", method: "windows-job-object", ...hashes };
     } catch { return { available: false, reason_code: "PROCESS_HELPER_UNAVAILABLE" }; }
   }
-  async function run(request, { signal, onEvent = async () => {} } = {}) {
+  async function run(request, { signal, timeoutSignal, onEvent = async () => {} } = {}) {
     const { runnerId, executable, executableSha256, args, cwd, env, stdin, jobName,
       maxDurationMs, maxOutputBytes = 16 * 1024 * 1024, maxPendingBytes = 1024 * 1024,
       stopTimeoutMs = 5000 } = request ?? {};
     if (signal?.aborted) return { ...failure("PROCESS_CANCELLED_BEFORE_START"), outcome: "cancelled" };
+    if (timeoutSignal !== undefined && !(timeoutSignal instanceof AbortSignal)) return failure("PROCESS_REQUEST_INVALID");
+    if (timeoutSignal?.aborted) return { ...failure("PROCESS_TIMEOUT_BEFORE_START"), outcome: "timed_out" };
     if (typeof onEvent !== "function" || signal !== undefined && !(signal instanceof AbortSignal)
       || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(runnerId ?? "")
       || jobName !== undefined && !/^Local\\aidn-execution-[a-f0-9]{32}$/u.test(jobName)
@@ -56,6 +58,10 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
       max_output_bytes: maxOutputBytes, stop_timeout_ms: stopTimeoutMs, ...(jobName === undefined ? {} : { job_name: jobName }) });
     if (Buffer.byteLength(payload) > 1024 * 1024) return failure("PROCESS_REQUEST_INVALID");
     const availability = await checkAvailability({ cwd, signal, executable, executableSha256 });
+    if (timeoutSignal?.aborted) {
+      if (signal?.aborted) return { ...failure("PROCESS_CANCELLED_BEFORE_START"), outcome: "cancelled" };
+      return { ...failure("PROCESS_TIMEOUT_BEFORE_START"), outcome: "timed_out" };
+    }
     if (!availability.available) return failure(availability.reason_code);
     // The helper inherits only OS bootstrap variables; worker environment travels in the bounded private pipe.
     const helperEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(SystemRoot|WINDIR|TEMP|TMP)$/iu.test(key)));
@@ -141,17 +147,21 @@ export function createWindowsProcessTreeController({ helperPath, helperSha256, h
     child.stderr.on("data", (chunk) => { stderrBytes += chunk.length; if (stderrBytes > 65536) requestStop("PROCESS_HELPER_DIAGNOSTIC_LIMIT"); });
     child.stdin.on("error", () => { if (!closed && !terminal) requestStop("PROCESS_HELPER_INPUT_FAILED"); });
     const abort = () => requestStop("PROCESS_CANCELLED"); signal?.addEventListener("abort", abort, { once: true });
-    const timeout = setTimeout(() => requestStop("PROCESS_TIMEOUT"), maxDurationMs);
+    const timeoutAbort = () => requestStop("PROCESS_TIMEOUT"); timeoutSignal?.addEventListener("abort", timeoutAbort, { once: true });
+    // An observed timeout can only shorten the fixed request deadline.
+    const timeout = setTimeout(timeoutAbort, maxDurationMs);
     const exit = await new Promise((resolve) => {
       child.once("error", () => { helperError = true; });
       child.once("close", (code, exitSignal) => { closed = true; resolve({ code, signal: exitSignal }); });
       child.stdin.write(`${payload}\n`, () => {});
       if (signal?.aborted) requestStop("PROCESS_CANCELLED");
+      if (timeoutSignal?.aborted) timeoutAbort();
     });
     // Keep the deadline active after helper close: an in-flight callback may
     // otherwise prevent the queued, already received terminal proof being read.
     await queue;
     clearTimeout(timeout); if (stopTimer) clearTimeout(stopTimer); signal?.removeEventListener("abort", abort);
+    timeoutSignal?.removeEventListener("abort", timeoutAbort);
     const result = terminal && !protocolFailed && buffer.length === 0 && !helperError
       && (exit.code === 0 || terminal.outcome === "indeterminate" && exit.code === 2)
       ? { outcome: terminal.outcome, reason_code: terminal.reason_code, termination_state: terminal.termination_state,

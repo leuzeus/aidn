@@ -327,6 +327,12 @@ intent publication, runner observation and event callbacks; a late decision
 cannot authorize a cancelled launch. Confirmation requires an observed
 zero active-process count; loss of observation produces `indeterminate`. Linux
 does not silently substitute PID or process-group termination for this proof.
+A trusted internal caller may supply a separate timeout signal to shorten the
+fixed process ceiling; it cannot extend that ceiling or change cancellation's
+meaning. The first stop cause wins. Native timeout qualification arms this
+shorter deadline after observing the actual hook descendant, rather than
+predicting model latency from a prior invocation. Missing live-descendant or
+termination evidence remains a qualification failure.
 The Codex executor uses resolved executable bytes, structured arguments, explicit
 sandbox/configuration and stdin prompt. It stores bounded transcripts locally,
 awaits serialized callbacks, and never forwards raw Codex JSONL to AIDN stdout.

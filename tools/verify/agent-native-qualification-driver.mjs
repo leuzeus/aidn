@@ -27,6 +27,57 @@ export function nativeQualificationBudgets({preexisting=false,maxDurationMs=1500
   return {preparation_max_duration_ms:preparation,worker_max_duration_ms:maxDurationMs,run_max_duration_ms:preparation+maxDurationMs};
 }
 
+
+// Qualification-only oracle: the fixed worker ceiling remains in the controller.
+// An authentic, live hook arms a shorter real timer; it never predicts LLM latency
+// from another attempt and never turns the cancellation signal into a timeout.
+export function createNativeQualificationTimeout({maxDurationMs=150000,now=()=>performance.now(),setTimer=setTimeout,clearTimer=clearTimeout}={}) {
+  nativeQualificationBudgets({maxDurationMs});
+  requireProof([now,setTimer,clearTimer].every(value=>typeof value==="function"),"QUALIFICATION_TIMEOUT_CLOCK_INVALID");
+  const began=now(),controller=new AbortController();let last=began,timer=null,children=[];
+  requireProof(Number.isFinite(began),"QUALIFICATION_TIMEOUT_CLOCK_INVALID");
+  const state={armed:false,disposed:false,delay_ms:3000,worker_max_duration_ms:maxDurationMs,
+    armed_at_monotonic_ms:null,deadline_monotonic_ms:null,hook_elapsed_ms:null,
+    descendant_observed_at_monotonic_ms:null,expired_at_monotonic_ms:null,clock_error:null};
+  function tick(){const value=now();requireProof(Number.isFinite(value)&&value>=last,"QUALIFICATION_TIMEOUT_CLOCK_INVALID");last=value;return value;}
+  const snapshot=()=>Object.freeze({...state});
+  function expire(){
+    timer=null;if(state.disposed)return;
+    try{const at=tick();if(at<state.deadline_monotonic_ms){timer=setTimer(expire,state.deadline_monotonic_ms-at);return;}
+      state.expired_at_monotonic_ms=at;
+    }catch(error){state.clock_error=error.code;}
+    controller.abort();
+  }
+  return Object.freeze({signal:controller.signal,snapshot,
+    arm({hookReceivedAt,observation}={}) {
+      requireProof(!state.disposed,"QUALIFICATION_TIMEOUT_DISPOSED");requireProof(!state.armed,"QUALIFICATION_TIMEOUT_ALREADY_ARMED");
+      const at=tick(),elapsed=at-hookReceivedAt;
+      // Leave 500ms of the hook's independent 6500ms deadline unused. Slow
+      // process observation fails closed instead of extending either deadline.
+      requireProof(Number.isFinite(hookReceivedAt)&&hookReceivedAt>=began&&elapsed>=0&&elapsed+state.delay_ms<6000,"QUALIFICATION_TIMEOUT_HOOK_WINDOW_MISSED");
+      requireProof(at+state.delay_ms<began+maxDurationMs,"QUALIFICATION_TIMEOUT_WORKER_WINDOW_MISSED");
+      children=(observation?.descendants??[]).filter(row=>Number.isSafeInteger(row.ProcessId)&&row.ProcessId>0
+        && typeof row.Started==="string"&&Number.isFinite(Date.parse(row.Started))&&/^node(?:\.exe)?$/i.test(row.Name??""))
+        .map(row=>({ProcessId:row.ProcessId,Started:row.Started}));
+      requireProof(children.length>0,"QUALIFICATION_NATIVE_HOOK_DESCENDANT_MISSING");
+      Object.assign(state,{armed:true,armed_at_monotonic_ms:at,deadline_monotonic_ms:at+state.delay_ms,hook_elapsed_ms:elapsed});
+      timer=setTimer(expire,state.delay_ms);return snapshot();
+    },
+    confirmDescendant(observation){
+      const at=tick();requireProof(state.armed&&!state.disposed&&!controller.signal.aborted&&at<state.deadline_monotonic_ms,"QUALIFICATION_TIMEOUT_OBSERVATION_LATE");
+      requireProof((observation?.descendants??[]).some(row=>children.some(prior=>prior.ProcessId===row.ProcessId&&prior.Started===row.Started)),"QUALIFICATION_TIMEOUT_DESCENDANT_NOT_LIVE");
+      state.descendant_observed_at_monotonic_ms=at;return snapshot();
+    },
+    assertCompleted(processResult){
+      requireProof(state.armed&&!state.clock_error&&state.expired_at_monotonic_ms!==null&&state.expired_at_monotonic_ms>=state.deadline_monotonic_ms
+        && state.descendant_observed_at_monotonic_ms!==null&&state.descendant_observed_at_monotonic_ms<state.deadline_monotonic_ms
+        && processResult?.outcome==="timed_out"&&processResult.reason_code==="PROCESS_TIMEOUT"&&processResult.termination_state==="confirmed"
+        && processResult.termination_proof?.active_processes===0,"QUALIFICATION_TIMEOUT_PROOF_INVALID");return snapshot();
+    },
+    dispose(){if(timer!==null)clearTimer(timer);timer=null;state.disposed=true;},
+  });
+}
+
 export function physical(value, kind) {
   assertAgentLocalPath(value);
   requireProof(typeof value === "string" && path.isAbsolute(value), "QUALIFICATION_ABSOLUTE_PATH_REQUIRED");
@@ -182,7 +233,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
   const stderrCollector=mode==="acquire"?createAgentNativeRefusalEvidence({codexSha256:runtime.sha256}):null,refusalEvidence=[];
   const controller=m.createWindowsProcessTreeController({helperPath:helper.helper_path,helperSha256:helper.helper_sha256,helperSourceSha256:helper.source_sha256,candidateSha256:manifest.candidate.sha256});
   const client=new pg.Client({connectionString}); await client.connect();
-  let transport=null, decisionLog=null, heartbeat=null, heartbeatWork=Promise.resolve(), heartbeatFailure=null, runner=null, processResult=null, protocol=null, protocolError=null, refs=[], hookObservation=null, staleObservation=null, lastHookObservation=null, hookLatencyMs=null, began=null, timingError=null, nativeResult=null, invalidated=false, launchRequested=false, independentCleanupVerified=mode==="port",stderrCapture=null,storedStderr=null,traceEndedAt=null,stderrOracleError=null;
+  let transport=null, decisionLog=null, heartbeat=null, heartbeatWork=Promise.resolve(), heartbeatFailure=null, runner=null, processResult=null, protocol=null, protocolError=null, refs=[], hookObservation=null, staleObservation=null, lastHookObservation=null, hookLatencyMs=null, began=null, timingError=null, timeoutOracle=null, nativeResult=null, invalidated=false, launchRequested=false, independentCleanupVerified=mode==="port",stderrCapture=null,storedStderr=null,traceEndedAt=null,stderrOracleError=null;
   const observeStderr=bytes=>{
     if(!stderrCollector || stderrOracleError) return;
     try {stderrCollector.push(bytes);} catch(error) {stderrOracleError=error;}
@@ -255,6 +306,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     const preflight=await service.preflight(); writeEvidence(caseRoot,"preflight.json",preflight); requireProof(preflight.ok,"QUALIFICATION_PREFLIGHT_REFUSED",{reason:preflight.reason_code});
     decisionLog=fs.openSync(path.join(caseRoot,"admissions.jsonl"),"wx",0o600);
     transport=await m.startAgentAdmissionTransport({attemptId,requestSha256:requestHash,admit:async(packet,options)=>{
+      const hookReceivedAt=performance.now();
       if(decisions.length>=8) {stop.abort();fail("QUALIFICATION_ADMISSION_LIMIT");}
       const record={sequence:decisions.length+1,observed_at:new Date().toISOString(),packet,tool_event_position:toolEvents.length,stderr_position:stderrCollector?.position() ?? 0,before:{allowed:hash(fs.readFileSync(path.join(root.root,ALLOWED))),forbidden:hash(fs.readFileSync(path.join(root.root,FORBIDDEN)))}};
       decisions.push(record);
@@ -282,16 +334,14 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         writeEvidence(caseRoot,"descendants-active.json",hookObservation);
         if(mode==="cancel") stop.abort();
         else {
-          const remaining=began+maxDurationMs-Date.now();
-          if(remaining<300 || remaining>4000) { timingError="QUALIFICATION_TIMEOUT_ORACLE_WINDOW_MISSED"; stop.abort(); }
-          else {
-            // Observe the same hook subtree immediately before the fixed
-            // controller deadline, while the hook's own 6.5s limit is live.
-            await new Promise(resolve=>setTimeout(resolve,Math.max(0,remaining-1600)));
+          try {
+            const armed=timeoutOracle.arm({hookReceivedAt,observation:hookObservation});
+            writeEvidence(caseRoot,"timeout-armed.json",{attempt_id:attemptId,runner_id:runner.runner_id,...armed});
+            await new Promise(resolve=>setTimeout(resolve,Math.max(0,armed.deadline_monotonic_ms-performance.now()-1600)));
             lastHookObservation=await descendants(runner);
-            if(!lastHookObservation.descendants.some(p=>hookObservation.descendants.some(q=>q.ProcessId===p.ProcessId && q.Started===p.Started))) {timingError="QUALIFICATION_TIMEOUT_DESCENDANT_NOT_LIVE";stop.abort();}
+            timeoutOracle.confirmDescendant(lastHookObservation);
             writeEvidence(caseRoot,"descendants-before-timeout.json",lastHookObservation);
-          }
+          } catch(error) { timingError=error.code??"QUALIFICATION_TIMEOUT_ORACLE_FAILED";stop.abort();throw error; }
         }
         // Retain the authentic hook request outside a PostgreSQL transaction.
         // Server closure aborts this promise after controller death is known.
@@ -319,6 +369,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     }
     requireProof(!heartbeatFailure && !stop.signal.aborted,"QUALIFICATION_HEARTBEAT_FAILED");
     began=Date.now();
+    if(mode==="timeout") timeoutOracle=createNativeQualificationTimeout({maxDurationMs});
     const launchDeadline=performance.now()+maxDurationMs;
     const recheckDirectProfile=async phase=>{
       const remaining=Math.floor(launchDeadline-performance.now());
@@ -340,7 +391,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         const remainingMs=Math.floor(launchDeadline-performance.now());
         requireProof(remainingMs>0,"QUALIFICATION_NATIVE_PROFILE_TASK_DEADLINE");
         launchRequested=true;onLaunch();
-        processResult=await controller.run({runnerId:randomUUID(),executable:runtime.executable,executableSha256:runtime.sha256,args:m.buildCodexTaskArguments(request,{nativeProfilePolicy}),cwd:request.cwd,env,stdin:request.instruction,maxDurationMs:remainingMs,maxOutputBytes:16*1024*1024,maxPendingBytes:1024*1024,stopTimeoutMs:5000},{signal:stop.signal,onEvent:async event=>{
+        processResult=await controller.run({runnerId:randomUUID(),executable:runtime.executable,executableSha256:runtime.sha256,args:m.buildCodexTaskArguments(request,{nativeProfilePolicy}),cwd:request.cwd,env,stdin:request.instruction,maxDurationMs:remainingMs,maxOutputBytes:16*1024*1024,maxPendingBytes:1024*1024,stopTimeoutMs:5000},{signal:stop.signal,timeoutSignal:timeoutOracle?.signal,onEvent:async event=>{
           if(event.type==="prepared") {await observeRunner(request,event);
             await recheckDirectProfile("before_resume");
             const p=await service.preflight();requireProof(p.ok,"QUALIFICATION_SUSPENDED_PREFLIGHT_REFUSED");}
@@ -351,11 +402,13 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         refs=await evidence.finish({process:processResult,protocol,protocol_error:protocolError});
       }
     } finally {
+      timeoutOracle?.dispose();
       clearInterval(heartbeat); heartbeat=null; await heartbeatWork;
       await transport.close(); transport=null; fs.closeSync(decisionLog); decisionLog=null;
     }
     traceEndedAt=new Date().toISOString();
     writeEvidence(caseRoot,"process.json",processResult); writeEvidence(caseRoot,"tool-events.json",toolEvents);
+    if(timeoutOracle) writeEvidence(caseRoot,"timeout-oracle.json",{attempt_id:attemptId,runner_id:runner?.runner_id??null,...timeoutOracle.snapshot()});
     if(processResult?.termination_state==="confirmed") observedProofs.set(attemptId,processResult.termination_proof);
     // Preserve an actual port result independently of qualification acceptance.
     // Unknown termination therefore fences the canonical attempt as well as
@@ -380,6 +433,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       requireProof(!timingError,timingError ?? "QUALIFICATION_TIMEOUT_ORACLE_FAILED");
       requireProof(hookObservation && decisions.length===1,"QUALIFICATION_NATIVE_HOOK_NOT_OBSERVED");
       requireProof(processResult.outcome===(mode==="cancel"?"cancelled":"timed_out"),"QUALIFICATION_STOP_OUTCOME_MISMATCH");
+      if(mode==="timeout") timeoutOracle.assertCompleted(processResult);
       requireProof(hash(fs.readFileSync(path.join(root.root,ALLOWED)))===hash(beforeAllowed),"QUALIFICATION_STOPPED_PATCH_EXECUTED");
     } else {
       requireProof(processResult.outcome==="completed" && protocol?.terminal==="completed","QUALIFICATION_CODEX_DID_NOT_COMPLETE",{reason:processResult.reason_code,protocol_error:protocolError});
@@ -433,7 +487,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       if(entry.git_pointer_sha256) requireProof(hash(fs.readFileSync(physical(path.join(entry.root,".git"),"file")))===entry.git_pointer_sha256,"QUALIFICATION_GIT_POINTER_CHANGED");
     }
     compareInventory(inventory(expected.common_git_dir),expected.common_git_files,"common-git");
-    return {name,status:"PASS",mode,attempt_id:attemptId,request_sha256:requestHash,case_root:caseRoot,budgets,native_profile_preparation:nativeProfilePreparation,hook_latency_ms:hookLatencyMs,process:processResult,protocol,evidence:refs,admission_count:decisions.length,refusal_evidence:refusalEvidence,preservation:"PASS",native_process_cleanup:"CONFIRMED",acceptance:"NOT_PRODUCT_ACCEPTANCE",integration:"NOT_RUN",cleanup:"EVIDENCE_PRESERVED"};
+    return {name,status:"PASS",mode,attempt_id:attemptId,request_sha256:requestHash,case_root:caseRoot,budgets,native_profile_preparation:nativeProfilePreparation,hook_latency_ms:hookLatencyMs,...(timeoutOracle?{timeout_oracle:timeoutOracle.snapshot()}:{}),process:processResult,protocol,evidence:refs,admission_count:decisions.length,refusal_evidence:refusalEvidence,preservation:"PASS",native_process_cleanup:"CONFIRMED",acceptance:"NOT_PRODUCT_ACCEPTANCE",integration:"NOT_RUN",cleanup:"EVIDENCE_PRESERVED"};
   } catch(error) {
     stop.abort();
     const nativeCleanup=processResult?.termination_state==="confirmed" && independentCleanupVerified?"CONFIRMED":!launchRequested || processResult?.termination_state==="not_started"?"NOT_STARTED":"UNCONFIRMED";
@@ -445,7 +499,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       snapshot={status:"PRESERVED",purpose:"DIAGNOSTIC_ONLY",...writeEvidence(caseRoot,"canonical-at-failure.json",bytes)};
     } catch { /* Never call an unavailable archive a successful recovery proof. */ }
     error.nativeQualification={name,native_process_cleanup:nativeCleanup,native_profile_preparation:error.nativeProfilePreparation ?? nativeProfilePreparation,canonical_snapshot:snapshot,attempt_marker:"PRESERVED_IF_CREATED",case_root:caseRoot};
-    writeEvidence(caseRoot,"failure.json",{status:"FAIL",reason:error.code ?? error.message,details:error.details,...error.nativeQualification,process:processResult,native_result:nativeResult,evidence:refs,protocol,admissions:decisions,hook_observation:hookObservation,last_hook_observation:lastHookObservation});
+    writeEvidence(caseRoot,"failure.json",{status:"FAIL",reason:error.code ?? error.message,details:error.details,...error.nativeQualification,process:processResult,native_result:nativeResult,evidence:refs,protocol,admissions:decisions,hook_observation:hookObservation,last_hook_observation:lastHookObservation,timeout_oracle:timeoutOracle?.snapshot()??null});
     throw error;
-  } finally {clearInterval(heartbeat);await heartbeatWork;try{if(transport) await transport.close();}finally{if(decisionLog!==null)fs.closeSync(decisionLog);await client.end();}}
+  } finally {timeoutOracle?.dispose();clearInterval(heartbeat);await heartbeatWork;try{if(transport) await transport.close();}finally{if(decisionLog!==null)fs.closeSync(decisionLog);await client.end();}}
 }

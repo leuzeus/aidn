@@ -226,8 +226,9 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
           await admin.query(`CREATE DATABASE ${dbName}`);
           const url=new URL(connectionString);url.pathname="/"+dbName;
           result.postgres.databases.push(dbName);
-          let duration=150000;
-          if(mode==="timeout") duration=Math.min(150000,Math.max(5000,Math.round(result.checks.find(c=>c.mode==="cancel").hook_latency_ms+3000)));
+          // Every worker has the same fixed ceiling. Timeout qualification arms
+          // its shorter deadline only after observing this attempt's live hook.
+          const duration=150000;
           const prior=mode==="port" ? {...identityRecord,passed:result.checks.length===3 && result.checks.every(c=>c.status==="PASS")} : null;
           const check=await runNativeQualificationCase({name:mode,mode,manifest,helper,modules,connectionString:url.toString(),outputRoot,expected,model,effort,nativeProfilePolicy,verifyNativeProfile,maxDurationMs:duration,qualification:prior,onLaunch:()=>result.native_launch_requests++,onStarted:()=>result.native_processes_started++});
           result.checks.push(check);writeEvidence(outputRoot,`case-${mode}.json`,check);

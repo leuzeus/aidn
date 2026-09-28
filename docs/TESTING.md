@@ -395,8 +395,14 @@ cannot trigger a final observation of a previously successful attempt.
 Synthetic callbacks verify that bootstrap and fresh canonical preflight share
 one 60-second maximum budget, counted separately in the run, before the unchanged
 worker deadline begins. The metadata collector and its warm verification remain
-separate bounded observations. These checks neither copy a real profile's
-historical metadata nor establish native startup performance.
+separate bounded observations. The native qualification fixtures also cover
+controller timeoutSignal behavior through portable doubles, and a post-hook
+monotonic deadline independent of a preceding model's latency. They reject late
+observations, preserve the fixed worker ceiling and distinguish cancellation
+from timeout. The focused controller check is
+`node tools/perf/verify-agent-process-tree-fixtures.mjs --portable`; it is also
+called by the existing native-qualification fixture gate. These checks neither
+copy a real profile's historical metadata nor establish native startup performance.
 It does not execute Codex or qualify the OS sandbox. The explicit Windows helper
 build and `tools/perf/verify-agent-process-tree-fixtures.mjs` separately test native
 process trees. An unavailable native prerequisite is not a fixture PASS.

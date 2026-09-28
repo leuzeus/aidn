@@ -717,6 +717,81 @@ try {
     const before=JSON.stringify(input);assert.equal(qualification.summarizeNativeProcessCleanup(input),expected);assert.equal(JSON.stringify(input),before);
   });
   await check("all pure fixture inputs are unchanged", () => assert.equal(JSON.stringify({ manifest, trust, installation, baseline, markers }), unchangedInputs));
+
+  function timeoutFixture(hookLatency=10000) {
+    let at=0, nextId=0;const timers=new Map();
+    const clock={now:()=>at,setTimer:(callback,delay)=>{const id=++nextId;timers.set(id,{callback,due:at+delay});return id;},clearTimer:id=>timers.delete(id)};
+    const oracle=driver.createNativeQualificationTimeout({maxDurationMs:150000,...clock});
+    const child={ProcessId:17,Started:"2026-01-01T00:00:01.000Z",Name:"node.exe"};
+    const observation={descendants:[child]};
+    function advance(milliseconds) {
+      const until=at+milliseconds;
+      for(;;){const entry=[...timers.entries()].sort((a,b)=>a[1].due-b[1].due)[0];if(!entry||entry[1].due>until)break;
+        at=entry[1].due;timers.delete(entry[0]);entry[1].callback();}
+      at=until;
+    }
+    advance(hookLatency);const hookReceivedAt=at;advance(25);
+    const process={outcome:"timed_out",reason_code:"PROCESS_TIMEOUT",termination_state:"confirmed",termination_proof:{active_processes:0}};
+    return{oracle,observation,hookReceivedAt,process,advance,pending:()=>timers.size,setClock:value=>{at=value;}};
+  }
+  for(const latency of [10000,80000]) await check("native timeout arms on its own live hook after "+latency+"ms",()=>{
+    const x=timeoutFixture(latency),before=JSON.stringify(x.observation);
+    const armed=x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});
+    assert.equal(armed.delay_ms,3000);assert.equal(armed.deadline_monotonic_ms,latency+3025);assert.equal(x.oracle.signal.aborted,false);
+    x.advance(1400);x.oracle.confirmDescendant(x.observation);x.advance(1599);assert.equal(x.oracle.signal.aborted,false);
+    x.advance(1);assert.equal(x.oracle.signal.aborted,true);x.oracle.assertCompleted(x.process);
+    assert.equal(x.oracle.snapshot().expired_at_monotonic_ms,latency+3025);assert.equal(JSON.stringify(x.observation),before);
+    x.oracle.dispose();assert.equal(x.pending(),0);
+  });
+  await check("native timeout cannot reuse or extend an armed deadline",()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});const first=x.oracle.snapshot();
+    rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation}),"QUALIFICATION_TIMEOUT_ALREADY_ARMED");
+    assert.deepEqual(x.oracle.snapshot(),first);x.oracle.dispose();
+  });
+  await check("native timeout refuses a hook too close to its own 6500ms expiry",()=>{
+    const x=timeoutFixture();x.advance(3000);rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation}),"QUALIFICATION_TIMEOUT_HOOK_WINDOW_MISSED");
+    assert.equal(x.pending(),0);x.oracle.dispose();
+  });
+  await check("native timeout cannot extend the fixed worker ceiling",()=>{
+    const x=timeoutFixture(147000);rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation}),"QUALIFICATION_TIMEOUT_WORKER_WINDOW_MISSED");
+    assert.equal(x.pending(),0);x.oracle.dispose();
+  });
+  await check("native timeout refuses an unobserved descendant",()=>{
+    const x=timeoutFixture();rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:{descendants:[]}}),"QUALIFICATION_NATIVE_HOOK_DESCENDANT_MISSING");
+    assert.equal(x.pending(),0);x.oracle.dispose();
+  });
+  for(const field of ["ProcessId","Started"]) await check("native timeout refuses changed descendant "+field,()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});const changed=structuredClone(x.observation);
+    changed.descendants[0][field]=field==="ProcessId"?18:"2026-01-01T00:00:02.000Z";
+    rejects(()=>x.oracle.confirmDescendant(changed),"QUALIFICATION_TIMEOUT_DESCENDANT_NOT_LIVE");x.oracle.dispose();
+  });
+  await check("native timeout refuses observation after the armed deadline",()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});x.advance(3000);
+    rejects(()=>x.oracle.confirmDescendant(x.observation),"QUALIFICATION_TIMEOUT_OBSERVATION_LATE");x.oracle.dispose();
+  });
+  for(const [name,mutate] of [
+    ["cancelled",p=>{p.outcome="cancelled";p.reason_code="PROCESS_CANCELLED";}],
+    ["unconfirmed Job",p=>{p.termination_state="unknown";p.termination_proof=null;}],
+    ["active Job",p=>{p.termination_proof.active_processes=1;}],
+    ["completed",p=>{p.outcome="completed";p.reason_code="PROCESS_EXITED";}],
+  ]) await check("native timeout never accepts "+name,()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});x.oracle.confirmDescendant(x.observation);x.advance(3000);mutate(x.process);
+    rejects(()=>x.oracle.assertCompleted(x.process),"QUALIFICATION_TIMEOUT_PROOF_INVALID");x.oracle.dispose();
+  });
+  await check("native timeout failure without a hook cannot arm a replacement",()=>{
+    const x=timeoutFixture();x.oracle.dispose();x.advance(150000);assert.equal(x.oracle.signal.aborted,false);assert.equal(x.pending(),0);
+    rejects(()=>x.oracle.assertCompleted(x.process),"QUALIFICATION_TIMEOUT_PROOF_INVALID");
+    rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation}),"QUALIFICATION_TIMEOUT_DISPOSED");
+  });
+  await check("native timeout disposal cancels its pending timer",()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});x.oracle.dispose();x.advance(3000);
+    assert.equal(x.oracle.signal.aborted,false);assert.equal(x.pending(),0);rejects(()=>x.oracle.assertCompleted(x.process),"QUALIFICATION_TIMEOUT_PROOF_INVALID");
+  });
+  await check("native timeout refuses a regressed monotone clock",()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});x.setClock(0);
+    rejects(()=>x.oracle.confirmDescendant(x.observation),"QUALIFICATION_TIMEOUT_CLOCK_INVALID");x.oracle.dispose();
+  });
+
   const nativeCases = ["acquire", "cancel", "timeout", "port"].map(mode => ({ mode, status: "PASS", native_process_cleanup: "CONFIRMED" }));
   await check("four native cases still require independent principal sandbox confirmation", () => {
     assert.deepEqual(qualification.nativeQualificationHostConfirmationState(nativeCases), {
@@ -736,6 +811,10 @@ try {
   for (const undo of restore.reverse()) undo();
   syncBuiltinESMExports();
 }
+const processChecks = await (await import("./verify-agent-process-tree-fixtures.mjs")).verifyPortableProcessTreeFixtures();
+assert.ok(processChecks.length > 0 && processChecks.every(check => check.status === "PASS"));
+for (const check of processChecks) process.stdout.write("PASS " + check.name + "\n");
+checks += processChecks.length;
 checks += await (await import("./agent-native-profile-preparation-fixtures.mjs")).runAgentNativeProfilePreparationFixtures();
 const profileChecks = await (await import("./agent-native-profile-observation-fixtures.mjs")).runAgentNativeProfileObservationFixtures();
 assert.ok(Array.isArray(profileChecks) && profileChecks.length > 0 && profileChecks.every(check => check.status === "PASS"));
