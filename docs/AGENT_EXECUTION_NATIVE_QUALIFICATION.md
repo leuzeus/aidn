@@ -463,8 +463,13 @@ V2 is a separate explicit contract, not a relaxation of a v1 proof:
   substitutes `provisioning_performed: false` or a claim that all Windows state
   is unchanged. Configuration sources, hooks, trust and the declared protected
   resources remain frozen.
-- The named validation permissions are supplied as structured native CLI
-  overrides derived from the frozen policy, without editing user configuration.
+- Windows v2 declares the official backend's required `:root` read access.
+  Only scratch is writable; snapshots remain read-only, the supervisor and
+  selected Codex home are explicitly denied, and network is disabled. This is
+  not a claim of global OS-level read isolation or a OneDrive read prohibition.
+  The named permissions are supplied as structured native CLI overrides from
+  the frozen policy, without editing user configuration. Native denial probes
+  must confirm the protected boundaries before availability can be granted.
   V2 launch support permits qualification probes only for the exact reviewed
   client; runtime availability still requires the five native proofs and a
   matching signed `agent-verification-boundary.v2` qualification.

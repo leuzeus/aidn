@@ -108,9 +108,11 @@ export function assertCodexSandboxValidationConfiguration(config) {
     && !equalPath(config.roots.supervisor, config.roots.snapshots) && !equalPath(config.roots.supervisor, config.roots.scratch)
     && !inside(config.roots.snapshots, p.home) && !inside(config.roots.scratch, p.home), "SANDBOX_ROOTS_INVALID");
   const rule = (target, access) => e.filesystem.some(row => equalPath(row.path, target) && row.access === access);
-  requireThat(rule(":root", "deny") && rule(":minimal", "read") && rule(config.roots.snapshots, "read") && rule(config.roots.scratch, "write")
+  // Official elevated Windows setup requires root read; v2 accepts that read
+  // scope while preserving the explicit denies and sole scratch write grant.
+  requireThat(rule(":root", managed(config) ? "read" : "deny") && rule(":minimal", "read") && rule(config.roots.snapshots, "read") && rule(config.roots.scratch, "write")
     && rule(config.roots.supervisor, "deny") && rule(p.home, "deny") && e.filesystem.filter(row => row.access === "write").every(row => equalPath(row.path, config.roots.scratch))
-    && e.filesystem.every(row => row.access === "deny" || [":minimal", config.roots.snapshots, config.roots.scratch].some(allowed => equalPath(row.path, allowed))
+    && e.filesystem.every(row => row.access === "deny" || [":minimal", ...(managed(config) ? [":root"] : []), config.roots.snapshots, config.roots.scratch].some(allowed => equalPath(row.path, allowed))
       || row.access === "read" && absolute(row.path) && !inside(config.roots.supervisor, row.path) && !inside(p.home, row.path)), "SANDBOX_EFFECTIVE_POLICY_REFUSED");
   if (managed(config)) assertCodexSandboxProtectedResources(config.protected_resources, config);
   environment(config.launcher_environment, LAUNCH_NAMES);

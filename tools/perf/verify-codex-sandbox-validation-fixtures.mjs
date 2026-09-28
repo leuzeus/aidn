@@ -41,6 +41,7 @@ function managedFixture() {
   config.contract_version = "codex-sandbox-validation-configuration.v2";
   config.client.sha256 = "8f0554ede25bbc5450921897c468b2e84635aa513c5017457997af0954581f49";
   config.profile.effective_policy.provisioning = "codex-managed";
+  config.profile.effective_policy.filesystem.find(row => row.path === ":root").access = "read";
   config.profile.effective_policy_sha256 = fingerprint(config.profile.effective_policy);
   config.protected_resources = ["configuration", "data", "git", "runtime"].map(category => ({ id: category,
     category, path: path.join(root, "protected", category), kind: category === "configuration" ? "file" : "directory" }));
@@ -184,6 +185,8 @@ await check("v2 supplies the exact permission table through official CLI argumen
   const { config, request } = managedFixture(), launch = build(config, request);
   const table = `permissions={${JSON.stringify(config.profile.id)}={filesystem={${config.profile.effective_policy.filesystem.map(row =>
     `${JSON.stringify(row.path)}=${JSON.stringify(row.access === "deny" ? "none" : row.access)}`).join(",")}},network={enabled=false}}}`;
+  assert(table.includes('":root"="read"')); assert(table.includes(`${JSON.stringify(config.profile.home)}="none"`));
+  assert(table.includes(`${JSON.stringify(config.roots.supervisor)}="none"`));
   assert.equal(launch.args.filter(arg => arg.startsWith("permissions=")).length, 1); assert(launch.args.includes(table));
   assert.equal(launch.args[launch.args.indexOf(table) - 1], "-c"); assert.equal(launch.args[launch.args.indexOf("--permission-profile") + 1], config.profile.id);
   const changed = structuredClone(config); changed.profile.effective_policy.filesystem.push({ path: path.join(root, "tools espace été"), access: "read" });
@@ -192,6 +195,14 @@ await check("v2 supplies the exact permission table through official CLI argumen
   assert(!launch.args.some(arg => /setupStart|full-access|unelevated/.test(arg)));
 });
 for (const [name, change] of [
+  ["root denied", c => { c.profile.effective_policy.filesystem[0].access = "deny"; }],
+  ["root writable", c => { c.profile.effective_policy.filesystem[0].access = "write"; }],
+  ["root missing", c => { c.profile.effective_policy.filesystem.shift(); }],
+  ["snapshot writable", c => { c.profile.effective_policy.filesystem[2].access = "write"; }],
+  ["supervisor readable", c => { c.profile.effective_policy.filesystem[4].access = "read"; }],
+  ["home readable", c => { c.profile.effective_policy.filesystem[5].access = "read"; }],
+  ["additional writable directory", c => { c.profile.effective_policy.filesystem.push({ path: path.join(root, "extra-write"), access: "write" }); }],
+  ["network access", c => { c.profile.effective_policy.network_enabled = true; }],
   ["missing category", c => { c.protected_resources.pop(); }],
   ["duplicate ID", c => { c.protected_resources[1].id = c.protected_resources[0].id; }],
   ["same path", c => { c.protected_resources[1].path = c.protected_resources[0].path; }],
@@ -210,6 +221,13 @@ for (const [name, change] of [
 ]) await check(`v2 refuses ${name} without observation`, () => {
   const { config } = managedFixture(); change(config); config.profile.effective_policy_sha256 = fingerprint(config.profile.effective_policy);
   assert.throws(() => validate(config));
+});
+await check("v1 continues to reject root read and permits no reinterpretation as v2", () => {
+  const { config, request } = fixture();
+  assert(!build(config, request).args.some(arg => arg.startsWith("permissions=")));
+  config.profile.effective_policy.filesystem[0].access = "read";
+  config.profile.effective_policy_sha256 = fingerprint(config.profile.effective_policy);
+  assert.throws(() => validate(config), code("SANDBOX_EFFECTIVE_POLICY_REFUSED"));
 });
 await check("v2 plan binds the entire protected set and retains five independent native cases", () => {
   const { config, request } = managedFixture(), before = fs.readdirSync(root).sort(), plan = managedPlan(config, request);
@@ -259,6 +277,8 @@ for (const [name, change] of [
   ["live descendant", r => { r.process.termination_proof.active_processes = 1; }],
   ["wrong outer Job", r => { r.prepared.parent_job_name = "foreign"; }],
   ["supervisor readable", r => { r.observation.observations.supervisor_read_denied = false; }],
+  ["snapshot canary writable", r => { r.observation.observations.snapshot_write_denied = false; }],
+  ["supervisor canary writable", r => { r.observation.observations.supervisor_write_denied = false; }],
   ["missing after", r => { delete r.after; }],
 ]) await check(`v2 native report shape rejects ${name}`, () => {
   const { config } = managedFixture(), q = managedQualification(config), report = managedReport(config, q, "filesystem"); change(report);

@@ -537,7 +537,10 @@ Configuration, native trust, hooks and the exact declared protected data, Git an
 AIDN runtime resources remain bound to preimages. The v2 validation plan binds
 that resource list and every observation; a changed protected resource refuses
 qualification. Only independently reviewed native evidence establishes readiness,
-not acceptance of the contract or successful official setup.
+not acceptance of the contract or successful official setup. Windows v2 uses
+Codex's required root-read baseline, with writes restricted to scratch, explicit
+deny rules for the supervisor and Codex home, and no network. Native probes must
+verify those denials; application path scopes do not claim global read isolation.
 
 The experimental AIDN managed-setup models, host observers, setup protocol,
 preflight and operator journal are withdrawn from the active implementation.
