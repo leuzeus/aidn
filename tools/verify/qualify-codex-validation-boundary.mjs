@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { assertCodexSandboxValidationConfiguration, buildCodexSandboxValidationInvocation,
-  inspectCodexSandboxValidationConfiguration, assertCodexSandboxValidationLaunchSupported, createCodexValidationStreamParser, assertCodexSandboxProtectedBaseline } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
+  inspectCodexSandboxValidationConfiguration, assertCodexSandboxValidationLaunchSupported, createCodexValidationStreamParser, assertCodexSandboxProtectedBaseline, assertCodexCooperativeConcurrency } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
 import { createWindowsProcessTreeController } from "../../src/adapters/agents/process-tree/windows-process-tree-controller.mjs";
 
 const CASES = ["filesystem", "network", "timeout", "cancel", "callback"];
@@ -28,7 +28,8 @@ async function filePin(file, limit = 262144) {
     return { sha256: hash(Buffer.concat(chunks, bytes)), bytes };
   } finally { await handle.close(); }
 }
-const managed = config => config.contract_version === "codex-sandbox-validation-configuration.v2";
+const cooperative = config => config.contract_version === "codex-sandbox-validation-configuration.v3";
+const managed = config => config.contract_version === "codex-sandbox-validation-configuration.v2" || cooperative(config);
 function baseline(value, config) { if (managed(config)) return assertCodexSandboxProtectedBaseline(value, config); requireThat(value && Object.keys(value).sort().join("|") === [...hostKeys].sort().join("|") && hostKeys.every(key => HASH.test(value[key])), "NATIVE_PROBE_HOST_BASELINE_REQUIRED"); }
 
 // Pure preview. No listener, files, profiles, accounts, ACLs or child processes.
@@ -45,21 +46,29 @@ export function buildCodexValidationQualificationPlan({ configuration, environme
   requireThat(/^[a-f0-9-]{36}$/u.test(challenge) && Number.isSafeInteger(networkPort) && networkPort >= 1024 && networkPort <= 65535, "NATIVE_PROBE_PARAMETERS_INVALID");
   requireThat(typeof evidenceRoot === "string" && path.isAbsolute(evidenceRoot) && inside(configuration.roots.supervisor, evidenceRoot)
     && !inside(configuration.roots.snapshots, evidenceRoot) && !inside(configuration.roots.scratch, evidenceRoot), "NATIVE_PROBE_EVIDENCE_ROOT_INVALID");
+  const sync = Object.fromEntries(["companion_ready", "during_done", "companion_stopped"].map(name => [name, path.join(path.dirname(canaries.scratch_file), `probe-${challenge}-${name}.json`)]));
   const cases = CASES.map(caseId => {
-    const payload = { case_id: caseId, challenge, ...canaries, port: networkPort };
+    const payload = { case_id: caseId, challenge, ...canaries, port: networkPort,
+      ...(cooperative(configuration) ? { assurance_profile: "codex-cooperative.v1", ...(caseId === "filesystem" ? { role: "primary", sync } : {}) } : {}) };
     const invocation = { invocation_id: `probe.${caseId}.${challenge}`, boundary_id: configuration.boundary_id, validation_id: `probe.${caseId}`,
       executable: configuration.runner.executable, executable_sha256: configuration.runner.sha256, argv: [probe.path, JSON.stringify(payload)], cwd,
-      environment_sha256: configuration.environment_sha256, max_duration_ms: 15000, max_output_bytes: 65536 };
+      environment_sha256: configuration.environment_sha256, max_duration_ms: cooperative(configuration) ? 60000 : 15000, max_output_bytes: 65536 };
     const request = { ...invocation, request_sha256: fingerprint(invocation), environment };
     const launch = buildCodexSandboxValidationInvocation(configuration, request);
     if (caseId === "timeout") { const input = JSON.parse(launch.stdin); input.max_duration_ms = 2500; launch.stdin = JSON.stringify(input) + "\n"; }
-    return { case_id: caseId, request, launch_sha256: fingerprint(launch), expected_effects: caseId === "filesystem"
-      ? ["read the snapshot canary", "attempt denied snapshot write", "create the scratch canary", "attempt denied supervisor canary read and write"]
+    let companion;
+    if (cooperative(configuration) && caseId === "filesystem") {
+      const invocation2 = { ...invocation, invocation_id: `probe.companion.${challenge}`, argv: [probe.path, JSON.stringify({ ...payload, role: "companion" })] };
+      const request2 = { ...invocation2, request_sha256: fingerprint(invocation2), environment };
+      companion = { request: request2, launch_sha256: fingerprint(buildCodexSandboxValidationInvocation(configuration, request2)), sync };
+    }
+    return { case_id: caseId, request, launch_sha256: fingerprint(launch), ...(companion ? { companion } : {}), expected_effects: caseId === "filesystem"
+      ? cooperative(configuration) ? ["start two official Codex sandbox processes in distinct Jobs", "create three exact scratch rendezvous files", "test denied snapshot and supervisor writes during and after the companion", "create the scratch canary", "observe both Jobs empty; read isolation is not guaranteed"] : ["read the snapshot canary", "attempt denied snapshot write", "create the scratch canary", "attempt denied supervisor canary read and write"]
       : caseId === "network" ? ["open one local canary listener with a positive control", "attempt a sandboxed connection to that listener", "close the listener"]
       : ["create a bounded Node descendant", `stop through ${caseId}`, "observe zero active processes in the exact containing Job"] };
   });
-  const plan = { contract_version: managed(configuration) ? "codex-validation-native-plan.v2" : "codex-validation-native-plan.v1", configuration_sha256: fingerprint(configuration), probe, cwd, canaries,
-    network_port: networkPort, challenge, host_baseline: hostBaseline, evidence_root: evidenceRoot, cases,
+  const plan = { contract_version: cooperative(configuration) ? "codex-validation-native-plan.v3" : managed(configuration) ? "codex-validation-native-plan.v2" : "codex-validation-native-plan.v1", configuration_sha256: fingerprint(configuration), probe, cwd, canaries,
+    network_port: networkPort, challenge, ...(cooperative(configuration) ? { assurance_profile: "codex-cooperative.v1", read_isolation: "not_guaranteed", max_duration_ms: 60000 } : {}), host_baseline: hostBaseline, evidence_root: evidenceRoot, cases,
     ...(managed(configuration) ? { sandbox_maintenance: "codex-managed", protected_resources: structuredClone(configuration.protected_resources),
       prohibited_effects: ["protected resource changes", "configuration or trust changes", "AIDN sandbox setup or repair", "fallback execution"] }
       : { prohibited_effects: ["sandbox setup", "account changes", "ACL changes", "firewall changes", "profile changes", "trust injection", "fallback execution"] }) };
@@ -108,6 +117,22 @@ export function createCodexValidationProbeStderr() {
     },
   };
 }
+// The framed controller retains cumulative child stdout. Consume each complete
+// JSONL observation once, including when transport chunks split or join lines.
+export function createCodexValidationObservationReader() {
+  let consumed = 0;
+  return stdout => {
+    requireThat(Buffer.isBuffer(stdout) && stdout.length >= consumed && stdout.length <= 65536, "NATIVE_PROBE_OBSERVATION_INVALID");
+    const values = [];
+    for (;;) {
+      const end = stdout.indexOf(10, consumed); if (end < 0) break;
+      const line = stdout.subarray(consumed, end); consumed = end + 1;
+      requireThat(line.length > 0, "NATIVE_PROBE_OBSERVATION_INVALID");
+      values.push(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(line)));
+    }
+    return values;
+  };
+}
 export function assertCodexValidationProbeTermination(process, member, jobName) {
   requireThat(process?.termination_state === "confirmed" && process.termination_proof?.job_name === jobName
     && process.termination_proof.active_processes === 0, "NATIVE_PROBE_TERMINATION_UNCONFIRMED");
@@ -122,6 +147,7 @@ export function assertCodexValidationProbeTermination(process, member, jobName) 
 // review material: independent review must still authenticate provenance and
 // decide whether to sign a separate native qualification under the plan key.
 export async function executeCodexValidationQualificationCase({ configuration, plan, caseId, execute = false, expectPlan, observeHost, signal } = {}) {
+  const began = performance.now();
   const { plan_sha256: expected, ...body } = plan ?? {};
   requireThat(execute === true && expected === expectPlan && fingerprint(body) === expected, "NATIVE_PROBE_EXACT_APPROVAL_REQUIRED");
   requireThat(plan.configuration_sha256 === fingerprint(configuration), "NATIVE_PROBE_CONFIGURATION_CHANGED");
@@ -131,6 +157,10 @@ export async function executeCodexValidationQualificationCase({ configuration, p
   const rebuilt = buildCodexValidationQualificationPlan({ configuration, environment: selected.request.environment, probe: plan.probe, cwd: plan.cwd,
     canaries: plan.canaries, networkPort: plan.network_port, challenge: plan.challenge, hostBaseline: plan.host_baseline, evidenceRoot: plan.evidence_root });
   requireThat(rebuilt.plan_sha256 === expected, "NATIVE_PROBE_PLAN_CHANGED");
+  if (selected.companion) for (const file of Object.values(selected.companion.sync)) {
+    try { await fs.lstat(file); throw Object.assign(new Error(), { code: "NATIVE_PROBE_SYNC_ALREADY_EXISTS" }); }
+    catch (cause) { if (cause.code !== "ENOENT") throw cause; }
+  }
   const source = await filePin(SOURCE), copied = await filePin(plan.probe.path);
   requireThat(source.sha256 === plan.probe.sha256 && copied.sha256 === source.sha256 && copied.bytes === source.bytes, "NATIVE_PROBE_SOURCE_CHANGED");
   const before = await observe(observeHost, { caseId, phase: "before", expected: plan.host_baseline, signal, configuration });
@@ -145,14 +175,20 @@ export async function executeCodexValidationQualificationCase({ configuration, p
   const evidenceStat = await fs.lstat(plan.evidence_root);
   requireThat(evidenceStat.isDirectory() && !evidenceStat.isSymbolicLink()
     && (await fs.realpath(plan.evidence_root)).toLowerCase() === path.resolve(plan.evidence_root).toLowerCase(), "NATIVE_PROBE_EVIDENCE_ROOT_INVALID");
+  requireThat(!cooperative(configuration) || performance.now() - began < 45000, "NATIVE_PROBE_BUDGET_EXPIRED");
   await fs.writeFile(path.join(plan.evidence_root, `${caseId}.intent.json`), JSON.stringify({ plan_sha256: expected, case_id: caseId, request_sha256: selected.request.request_sha256, observed_at: new Date().toISOString() }) + "\n", { flag: "wx" });
   const stop = new AbortController(), abort = () => stop.abort(signal.reason); signal?.addEventListener("abort", abort, { once: true }); if (signal?.aborted) abort();
-  const controller = createWindowsProcessTreeController(configuration.controller), stream = createCodexValidationStreamParser(selected.request), stderr = createCodexValidationProbeStderr();
-  const launch = buildCodexSandboxValidationInvocation(configuration, selected.request); let network, processResult, diagnostic = null, observation = null, after = null, childTerminal = null;
+  // Request stop at 50 seconds including preparation; reserve ten seconds for
+  // Job termination and final observations inside the reviewed 60-second budget.
+  const budgetTimer = cooperative(configuration) ? setTimeout(() => stop.abort(), Math.max(1, 50000 - (performance.now() - began))) : null;
+  const controller = createWindowsProcessTreeController(configuration.controller), stream = createCodexValidationStreamParser(selected.request), stderr = createCodexValidationProbeStderr(), observations = createCodexValidationObservationReader();
+  const launch = buildCodexSandboxValidationInvocation(configuration, selected.request); let network, processResult, diagnostic = null, observation = null, after = null, childTerminal = null, concurrency = null, companionPromise = null;
+  let processLaunchedAt = null, childPreparedAt = null, processSettledAt = null;
   try {
     if (caseId === "network") network = await listener(plan.network_port, plan.challenge);
     if (caseId === "timeout") { const input = JSON.parse(launch.stdin); input.max_duration_ms = 2500; launch.stdin = JSON.stringify(input) + "\n"; }
     requireThat(fingerprint(launch) === selected.launch_sha256, "NATIVE_PROBE_LAUNCH_CHANGED");
+    processLaunchedAt = performance.now();
     processResult = await controller.run(launch, { signal: stop.signal, async onEvent(event) {
       if (event.type === "prepared") {
         await inspectCodexSandboxValidationConfiguration(configuration, { cwd: plan.cwd, signal: stop.signal });
@@ -160,13 +196,47 @@ export async function executeCodexValidationQualificationCase({ configuration, p
       }
       if (event.type === "stderr") { stderr.consume(event.bytes); return; }
       if (event.type !== "stdout") return; stream.consume(event.bytes);
-      const output = stream.output().stdout.toString("utf8"); if (!output.endsWith("\n")) return;
-      observation = JSON.parse(output);
-      requireThat(observation.challenge === plan.challenge && observation.case_id === caseId && observation.contract_version === "codex-validation-native-observation.v1"
+      if (childPreparedAt === null && stream.observation()) childPreparedAt = performance.now();
+      for (const decoded of observations(stream.output().stdout)) {
+      observation = decoded;
+      requireThat(observation.challenge === plan.challenge && observation.case_id === caseId && observation.contract_version === (cooperative(configuration) ? "codex-validation-native-observation.v2" : "codex-validation-native-observation.v1")
         && observation.environment_sha256 === configuration.environment_sha256, "NATIVE_PROBE_OBSERVATION_MISMATCH");
+      if (selected.companion && observation.phase === "primary_ready") {
+        requireThat(!companionPromise && observation.pid === stream.observation()?.pid, "NATIVE_PROBE_COMPANION_ALREADY_STARTED");
+        const companionStream = createCodexValidationStreamParser(selected.companion.request), companionStderr = createCodexValidationProbeStderr();
+        const companionLaunch = buildCodexSandboxValidationInvocation(configuration, selected.companion.request);
+        requireThat(fingerprint(companionLaunch) === selected.companion.launch_sha256, "NATIVE_PROBE_LAUNCH_CHANGED");
+        concurrency = { process: null, prepared: null, child_terminal: null, observation: null, diagnostic: null, stderr: null };
+        companionPromise = (async () => {
+          try {
+            concurrency.process = await controller.run(companionLaunch, { signal: stop.signal, async onEvent(companionEvent) {
+              if (companionEvent.type === "prepared") {
+                await inspectCodexSandboxValidationConfiguration(configuration, { cwd: plan.cwd, signal: stop.signal });
+                await observe(observeHost, { caseId, phase: "before_resume", expected: plan.host_baseline, signal: stop.signal, configuration });
+              }
+              if (companionEvent.type === "stderr") companionStderr.consume(companionEvent.bytes);
+              if (companionEvent.type === "stdout") companionStream.consume(companionEvent.bytes);
+            } });
+            concurrency.prepared = companionStream.observation();
+            assertCodexValidationProbeTermination(concurrency.process, concurrency.prepared, companionLaunch.jobName);
+            const finished = companionStream.finish(); concurrency.child_terminal = finished.terminal;
+            concurrency.observation = JSON.parse(finished.stdout.toString("utf8"));
+            requireThat(concurrency.child_terminal.outcome === "completed" && concurrency.process.outcome === "completed"
+              && concurrency.observation.phase === "companion_completed" && concurrency.observation.challenge === plan.challenge
+              && concurrency.observation.pid === concurrency.prepared.pid && concurrency.observation.observations?.primary_pid === decoded.pid,
+            "NATIVE_PROBE_COMPANION_FAILED");
+            await fs.writeFile(selected.companion.sync.companion_stopped, JSON.stringify({ challenge: plan.challenge,
+              companion_pid: concurrency.prepared.pid, termination_state: "confirmed" }) + "\n", { flag: "wx" });
+          } catch (cause) { concurrency.diagnostic = cause.code ?? cause.message; stop.abort(); }
+          finally { concurrency.prepared ??= companionStream.observation(); concurrency.stderr = companionStderr.snapshot(concurrency.process); }
+        })();
+        continue;
+      }
       if (["timeout", "cancel", "callback"].includes(caseId)) requireThat(Number.isSafeInteger(observation.observations?.descendant_pid) && observation.observations.descendant_pid > 0, "NATIVE_PROBE_DESCENDANT_MISSING");
       if (caseId === "cancel") stop.abort(); if (caseId === "callback") throw new Error("NATIVE_PROBE_EXPECTED_CALLBACK_FAILURE");
-    } });
+      }
+    } }).finally(() => { processSettledAt = performance.now(); });
+    if (companionPromise) await companionPromise;
     assertCodexValidationProbeTermination(processResult, stream.observation(), launch.jobName);
     requireThat(observation, "NATIVE_PROBE_OBSERVATION_MISSING");
     if (["filesystem", "network", "timeout"].includes(caseId)) { childTerminal = stream.finish().terminal;
@@ -174,24 +244,32 @@ export async function executeCodexValidationQualificationCase({ configuration, p
     if (caseId === "cancel") requireThat(processResult.reason_code === "PROCESS_CANCELLED", "NATIVE_PROBE_OUTCOME_MISMATCH");
     if (caseId === "callback") requireThat(processResult.reason_code === "PROCESS_CALLBACK_FAILED", "NATIVE_PROBE_OUTCOME_MISMATCH");
     if (caseId === "filesystem") requireThat(observation.observations.snapshot_sha256 === snapshot.sha256 && observation.observations.snapshot_write_denied === true
-      && observation.observations.supervisor_read_denied === true && observation.observations.supervisor_write_denied === true
+      && (cooperative(configuration) || observation.observations.supervisor_read_denied === true) && observation.observations.supervisor_write_denied === true
       && observation.observations.scratch_sha256 === hash(plan.challenge), "NATIVE_PROBE_BOUNDARY_FAILED");
+    if (selected.companion) assertCodexCooperativeConcurrency({ concurrency, observation, process: processResult }, configuration);
     if (caseId === "network") requireThat(["denied", "timed_out"].includes(observation.observations.network) && network.observation().sandbox_connections === 0, "NATIVE_PROBE_NETWORK_FAILED");
     requireThat(fingerprint(await filePin(plan.canaries.snapshot_file)) === fingerprint(snapshot)
       && fingerprint(await filePin(plan.canaries.supervisor_file)) === fingerprint(supervisor), "NATIVE_PROBE_CANARY_CHANGED");
     await inspectCodexSandboxValidationConfiguration(configuration, { cwd: plan.cwd, signal });
     after = await observe(observeHost, { caseId, phase: "after", expected: plan.host_baseline, signal, configuration });
-  } catch (cause) { diagnostic = cause.code ?? cause.message; }
+  } catch (cause) { diagnostic = cause.code ?? cause.message; stop.abort(); }
   finally {
+    if (companionPromise) { if (diagnostic) stop.abort(); await companionPromise; }
+    if (budgetTimer) clearTimeout(budgetTimer);
     if (network) await network.close(); signal?.removeEventListener("abort", abort);
-    if (!after && processResult?.termination_state === "confirmed") {
+    if (!after && processResult?.termination_state === "confirmed" && (!concurrency || concurrency.process?.termination_state === "confirmed")) {
       try { after = await observe(observeHost, { caseId, phase: "after", expected: plan.host_baseline, signal, configuration }); }
       catch (cause) { diagnostic ??= cause.code ?? cause.message; }
     }
   }
+  if (cooperative(configuration) && performance.now() - began > 60000) diagnostic ??= "NATIVE_PROBE_BUDGET_EXPIRED";
   const report = { status: diagnostic ? "FAIL" : "READY_FOR_INDEPENDENT_REVIEW", case_id: caseId, plan_sha256: expected,
     configuration_sha256: plan.configuration_sha256,
     ...(managed(configuration) ? { sandbox_maintenance: "codex-managed", protected_resources_sha256: fingerprint(configuration.protected_resources) } : {}),
+    ...(cooperative(configuration) ? { assurance_profile: "codex-cooperative.v1", read_isolation: "not_guaranteed", concurrency, elapsed_ms: Math.ceil(performance.now() - began),
+      timings: { preflight_ms: processLaunchedAt === null ? null : Math.ceil(processLaunchedAt - began),
+        child_startup_ms: childPreparedAt === null ? null : Math.ceil(childPreparedAt - processLaunchedAt),
+        probe_ms: childPreparedAt === null || processSettledAt === null ? null : Math.ceil(processSettledAt - childPreparedAt) } } : {}),
     source, before, after, observation, prepared: stream.observation(), child_terminal: childTerminal, process: processResult ?? null,
     network: network?.observation() ?? null, diagnostic, stderr: stderr.snapshot(processResult), native_availability: false,
     retention: "Preserve canaries, outputs and failed evidence. This helper never signs a qualification or cleans resources." };

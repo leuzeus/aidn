@@ -175,7 +175,16 @@ process termination evidence, Git integration and validation of the exact SHA.
 It does not configure Windows security resources or run automatic sandbox repair.
 See the [responsibility boundary](docs/ADR/ADR-0014-bounded-agent-orchestration.md#codex-execution-and-aidn-governance-boundary).
 
-The reviewed Windows client is unavailable for the validation boundary. V1
+Plan v2 explicitly selects `assurance_profile: codex-cooperative.v1` to retain
+this workflow with the standard Codex read boundary. Reading the profile and
+supervisor is not isolated; secrets on disk are not promised inaccessible.
+The separate v3 validation boundary still requires restricted writes, network
+denial for sandboxed commands, confirmed termination and exact-SHA validation.
+Previews expose these limits and qualification status. This composition remains
+unavailable until its own native campaign passes; selecting it never upgrades
+a strict plan or reuses strict evidence.
+
+The reviewed Windows client is unavailable for the strict validation boundary. V1
 returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` because Codex refreshes native
 provisioning. V2 returns `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`: another Codex
 launch can remove its supervisor/profile read denials while validation is active.

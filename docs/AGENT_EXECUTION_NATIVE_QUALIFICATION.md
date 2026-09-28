@@ -485,7 +485,65 @@ campaign remains unexecuted until the exact composition passes these checks.
 Portable checks and Job/trampoline fixtures may still pass; they do not close
 that confinement requirement or establish merge/release readiness.
 
+## Cooperative qualification (plan v2 / boundary v3)
+
+`agent-execution-plan.v2` selects `assurance_profile: codex-cooperative.v1`.
+Its validation configuration is `codex-sandbox-validation-configuration.v3`
+and its qualification is `agent-verification-boundary.v3`; both explicitly
+declare `read_isolation: not_guaranteed`. Strict plans and evidence remain
+separate. The worker continues to use the independently versioned
+`codex-native-profile-policy.v2` with its existing home and Codex-managed
+maintenance consent. No new profile, history copy or setup path is introduced.
+
+This mode assumes cooperative agents. Reads of the profile, supervisor and
+on-disk secrets are not isolated. AIDN's environment allowlist still excludes
+PostgreSQL credentials. Named-resource preimages establish observed
+preservation, not absence of reads or resistance to a hostile worker. OneDrive
+remains excluded from AIDN tasks and resources without changing its permissions.
+
+Worker commands use official `codex exec --sandbox workspace-write`. Validation
+commands use official `codex sandbox` with root/snapshot reads and scratch-only
+writes, without profile/supervisor read denials. Network access is disabled for
+sandboxed commands; native model service traffic and the supervisor admission
+transport are distinct. Retain the existing restrictions on integrations,
+approval escalation and nested agents. The supervisor, not Codex exit zero,
+decides acceptance after scope inspection, integration and exact-SHA checks.
+
+After portable fixtures and an independent review, freeze one source commit and
+package and the explicitly selected operational client. Store new evidence
+outside the package. Reuse pinned helpers only when their source and binary
+hashes match. Do not relabel old reports or run a newer client automatically.
+The existing qualification helper accepts an exact approved probe plan to
+collect first evidence; it neither signs its own qualification nor relaxes
+production admission. Its five cases remain filesystem, network, timeout,
+cancel and callback, with at most 60 seconds per cooperative case plus bounded
+controller shutdown. Report preparation, observed child startup and actual
+probe execution separately.
+
+The filesystem case must witness a second native launch while checking write
+denials on the snapshot and supervisor, then check again after that launch has
+stopped. Both process identities and confirmed Job termination belong to the
+evidence. Reading the supervisor is an observation, not a required denial.
+Any forbidden write, unexpected named-resource change, network access or
+unknown termination still fails qualification. A failed case stops the campaign
+and retains its resources; there is no automatic repair or retry.
+
+After these cases pass, run the existing real-worker admission campaign with
+fresh candidate bindings, then the neutral three-task campaign using three
+independently prepared `verify-only` worktrees and disposable PostgreSQL.
+Concurrency is two, each task has at most five minutes and the run at most
+fifteen minutes. Two workers must actually overlap; the dependent task must
+start from the integrated predecessor SHA. Integration, validation, audit,
+reconciliation and controlled cleanup retain their original proof requirements.
+Publish fixture, PostgreSQL, Windows process/sandbox and real-Codex results
+separately. Cooperative native availability remains unqualified until these
+reports agree; portable PASS never supplies missing native evidence.
+
 ## Reviewed Windows client incompatibility
+
+The following finding applies to the strict validation contracts v1/v2. Their
+refusal is retained. It does not qualify or prohibit the separate cooperative
+contract below, whose retained guarantees need new native evidence.
 
 Source review at Codex commit
 [0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807](https://github.com/openai/codex/commit/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807)

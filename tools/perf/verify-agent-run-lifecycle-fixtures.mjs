@@ -7,6 +7,7 @@ import path from "node:path";
 import { previewNativeAgentCleanup, applyNativeAgentCleanup } from "../../src/application/runtime/agent-run-cleanup-service.mjs";
 import { parseAgentRunArguments, buildAgentRunActionPreview, createAgentRunLifecycle, projectAgentRunStatus } from "../../src/application/runtime/agent-run-lifecycle-service.mjs";
 import { fingerprintAgentExecutionValue, normalizeAgentExecutionPlan } from "../../src/core/agents/agent-execution-contracts.mjs";
+import { describeAgentRunAssurance, assertAgentRunAssuranceBinding } from "../../src/application/runtime/agent-run-assurance-policy.mjs";
 
 const source = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agent-execution/contracts/complete-chain.json", import.meta.url)));
 const checks = [];
@@ -78,6 +79,46 @@ await check("stable action hashing and no input mutation", () => {
   const c = context(), before = structuredClone(c);
   const a = buildAgentRunActionPreview(args(), c), b = buildAgentRunActionPreview(args(), structuredClone(c));
   assert.equal(a.action_sha256, b.action_sha256); assert.deepEqual(c, before);
+});
+function cooperativeContext() {
+  const c = context(), plan = { ...c.plan, contract_version: "agent-execution-plan.v2", assurance_profile: "codex-cooperative.v1" };
+  delete plan.plan_sha256;
+  c.plan = normalizeAgentExecutionPlan(plan);
+  c.preconditions.native = describeAgentRunAssurance(c.plan);
+  return c;
+}
+await check("cooperative preview declares limitations without running or claiming qualification", async () => {
+  const c = cooperativeContext(), before = structuredClone(c), h = harness(c), out = await h.lifecycle.invoke(args());
+  assert.deepEqual(h.calls.map(x => x[0]), ["read"]); assert.equal(out.written, false);
+  assert.equal(out.action.preconditions.native.assurance_profile, "codex-cooperative.v1");
+  assert.equal(out.action.preconditions.native.read_isolation, "not_guaranteed");
+  assert.equal(out.action.preconditions.native.qualification_status, "not_checked");
+  assert.ok(out.action.preconditions.native.limitations.includes("on_disk_secrets_not_isolated"));
+  assert.deepEqual(c, before);
+});
+await check("cooperative guarantee and qualification changes invalidate the exact action", () => {
+  const c = cooperativeContext(), original = buildAgentRunActionPreview(args(), c).action_sha256;
+  c.preconditions.native.qualification_status = "unavailable";
+  assert.notEqual(buildAgentRunActionPreview(args(), c).action_sha256, original);
+  c.preconditions.native = describeAgentRunAssurance(c.plan);
+  c.preconditions.native.limitations = [];
+  assert.notEqual(buildAgentRunActionPreview(args(), c).action_sha256, original);
+});
+await check("strict and cooperative boundary evidence cannot cross plan profiles", () => {
+  const strict = context().plan, cooperative = cooperativeContext().plan;
+  const configuration = { contract_version: "codex-sandbox-validation-configuration.v3", assurance_profile: "codex-cooperative.v1", read_isolation: "not_guaranteed" };
+  const qualification = { ...configuration, contract_version: "agent-verification-boundary.v3" };
+  assert.equal(assertAgentRunAssuranceBinding(cooperative, configuration, qualification), true);
+  assert.throws(() => assertAgentRunAssuranceBinding(strict, configuration, qualification), { code: "AGENT_RUN_ASSURANCE_PROFILE_MISMATCH" });
+  for (const version of ["v1", "v2"]) {
+    const priorConfiguration = { contract_version: `codex-sandbox-validation-configuration.${version}` };
+    const priorQualification = { contract_version: `agent-verification-boundary.${version}` };
+    assert.equal(assertAgentRunAssuranceBinding(strict, priorConfiguration, priorQualification), true);
+    assert.throws(() => assertAgentRunAssuranceBinding(cooperative, priorConfiguration, qualification), { code: "AGENT_RUN_ASSURANCE_PROFILE_MISMATCH" });
+    assert.throws(() => assertAgentRunAssuranceBinding(cooperative, configuration, priorQualification), { code: "AGENT_RUN_ASSURANCE_PROFILE_MISMATCH" });
+  }
+  assert.throws(() => assertAgentRunAssuranceBinding(cooperative, configuration, { ...qualification, read_isolation: "guaranteed" }), { code: "AGENT_RUN_ASSURANCE_PROFILE_MISMATCH" });
+  assert.deepEqual(describeAgentRunAssurance(strict), {});
 });
 for (const [name, mutate] of [
   ["canonical state changes action", c => c.preconditions.canonical_snapshot_sha256 = "b".repeat(64)],

@@ -11,6 +11,7 @@ import { createAgentExecutionScheduler, assertUnclaimedAgentRun } from "./agent-
 import { inventoryRuntime } from "../install/global-runtime-store.mjs";
 import { readAgentRunReference, readAgentRunFile, agentRunPhysicalPath, assertAgentRunSecretScope } from "./agent-run-configuration-service.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
+import { describeAgentRunAssurance, assertAgentRunAssuranceBinding } from "./agent-run-assurance-policy.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const ensure = (condition, code) => { if (!condition) fail(code); };
@@ -45,6 +46,8 @@ function loadMaterials(context, { execution = false, recoveryOnly = false } = {}
     && equalPath(boundaryConfiguration.roots.scratch, path.join(config.resources_root, "scratch"))
     && equalPath(boundaryConfiguration.profile.home, config.native.runtime.codexHome), "AGENT_RUN_BOUNDARY_ROOTS_CHANGED");
   const boundaryQualification = readAgentRunReference(config.verification.boundary.qualification).value;
+  assertAgentRunAssuranceBinding(plan, boundaryConfiguration, boundaryQualification);
+  if (plan.contract_version === "agent-execution-plan.v2") ensure(profile.policy.contract_version === "codex-native-profile-policy.v2", "AGENT_RUN_COOPERATIVE_PROFILE_REQUIRED");
   if (execution && !recoveryOnly) {
     assertAgentRunSecretScope(config.resources_root, config.verification.private_key.path);
   }
@@ -166,7 +169,7 @@ function makeAssembly({ context, connectionString, verifyActivation }, options =
 
 export async function inspectNativeAgentRun(input) {
   const { args, context } = input, config = context.configuration, plan = context.plan;
-  const blockers = [], resources = [], material = {};
+  const blockers = [], resources = [], material = describeAgentRunAssurance(plan);
   try {
     const recoveryOnly = args.command === "agent-run-cleanup" || Boolean(context.snapshot?.cancel_request);
     const assembled = makeAssembly(input, { recoveryOnly });
@@ -176,6 +179,7 @@ export async function inspectNativeAgentRun(input) {
       material.executor = available; if (!available.available) blockers.push(available.reason_code);
       const boundaryStatus = await boundary.checkAvailability({ signal: AbortSignal.timeout(10000) });
       material.validation = boundaryStatus; if (!boundaryStatus.available) blockers.push(boundaryStatus.reason_code);
+      if (plan.contract_version === "agent-execution-plan.v2") material.qualification_status = available.available && boundaryStatus.available ? "qualified" : "unavailable";
     }
     const head = await git.inspectIntegration({ phase: "head" });
     material.integration_head = head;

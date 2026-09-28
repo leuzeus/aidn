@@ -309,6 +309,17 @@ with signed qualification data. They also test version separation, exact consent
 native proof requirements and changed-resource refusal; none establishes native
 availability.
 Official setup and native trust review remain separate evidence.
+The cooperative plan v2 and validation boundary v3 are tested independently:
+v1 plan fingerprints stay stable, strict/cooperative evidence cannot mix,
+profile/limit/qualification changes invalidate the exact action, and selecting
+the new profile alone never claims native availability. The same portable
+lifecycle suite covers the preview declaration and version binding. Boundary
+fixtures and the five native cases retain write, network and termination
+requirements; read isolation is explicitly not guaranteed. The native
+filesystem case also observes write restrictions during a second launch and
+after its confirmed stop, within one 60-second cooperative probe budget.
+Changing to this profile requires new exact-package native evidence; old
+strict reports are not reclassified.
 The final three-task/two-simultaneous-Codex campaign remains unexecuted until the
 exact compatible composition has its own evidence.
 

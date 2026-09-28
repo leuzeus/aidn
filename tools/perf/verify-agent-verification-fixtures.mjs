@@ -32,6 +32,38 @@ await check("explicit fixture boundary never advertises native qualification", (
   assert.deepEqual(await f.create().checkAvailability({ plan: f.plan }), { status: "available", evidence_class: "fixture", native: false });
   assert.equal((await f.create({ evidenceClass: "native" }).checkAvailability({ plan: f.plan })).status, "unavailable");
 }));
+await check("injected cooperative qualification retains exact-SHA checks and rejects missing write protection", () => fixture({}, async f => {
+  const plan = normalizeAgentExecutionPlan({ ...raw(f.plan), contract_version: "agent-execution-plan.v2", assurance_profile: "codex-cooperative.v1" });
+  const strict = f.boundary.getDescriptor().qualification.payload;
+  const qualification = { ...strict, contract_version: "agent-verification-boundary.v3", boundary_id: "codex-sandbox-validation", evidence_class: "native",
+    assurance_profile: "codex-cooperative.v1", read_isolation: "not_guaranteed", sandbox_maintenance: "codex-managed",
+    protected_resources_preserved: true, protected_resources_sha256: "a".repeat(64), supervisor_write_protected: true, concurrent_write_protection: true };
+  delete qualification.supervisor_resources_inaccessible;
+  let probes = 0;
+  // This is a signed, injected consumer double. It supplies no OS/native evidence.
+  const boundaryFor = payload => ({ ...f.boundary, getDescriptor: () => ({ boundary_id: payload.boundary_id, qualification: signed(payload, f.privateKey) }),
+    checkAvailability: async () => { probes++; return { available: true, native: true }; },
+    run: async (...args) => ({ ...await f.boundary.run(...args), boundary_id: payload.boundary_id }) });
+  const producer = f.create({ evidenceClass: "native", boundary: boundaryFor(qualification) });
+  assert.equal((await producer.checkAvailability({ plan })).status, "available");
+  const validation = await producer.validateTask({ ...f.taskInput, plan });
+  assert.equal(validation.status, "passed"); assert.equal(validation.tested_sha, f.candidateSha); assert.equal(f.calls, 1);
+  const input = { ...f.verificationInput({ validation }, "task"), plan, run: { ...f.run, plan_sha256: plan.plan_sha256 } };
+  const proof = await producer.evidenceVerifier.verify(input);
+  assert.equal(proof.snapshots[0].candidate_sha, f.candidateSha);
+  const changed = forgedDocument(f, { validation }, validation.checks[0].evidence, payload => {
+    const q = payload.boundary_qualification.payload; delete q.supervisor_write_protected; payload.boundary_qualification = signed(q, f.privateKey);
+  });
+  await assert.rejects(producer.evidenceVerifier.verify({ ...input, document: changed, subject_sha256: fingerprint(changed) }), /BOUNDARY_UNAVAILABLE/);
+  for (const field of ["supervisor_write_protected", "concurrent_write_protection", "snapshot_read_only", "network_disabled", "descendant_termination"]) {
+    const missing = { ...qualification }; delete missing[field];
+    assert.equal((await f.create({ evidenceClass: "native", boundary: boundaryFor(missing) }).checkAvailability({ plan })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
+  }
+  const before = probes;
+  assert.equal((await producer.checkAvailability({ plan: f.plan })).reason_code, "VERIFICATION_ASSURANCE_PROFILE_MISMATCH");
+  assert.equal((await f.create({ boundary: boundaryFor(strict) }).checkAvailability({ plan })).reason_code, "VERIFICATION_ASSURANCE_PROFILE_MISMATCH");
+  assert.equal(probes, before); assert.equal(f.calls, 1);
+}));
 await check("legacy plan, absent key, changed pin and changed environment are unavailable", () => fixture({}, async f => {
   const legacy = raw(f.plan); delete legacy.verification;
   assert.equal((await f.create().checkAvailability({ plan: normalizeAgentExecutionPlan(legacy) })).status, "unavailable");

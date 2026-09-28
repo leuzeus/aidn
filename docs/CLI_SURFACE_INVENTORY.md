@@ -141,6 +141,14 @@ finalization; `--verify` retains its read-only verification behavior.
 
 The five `agent-run*` commands are opt-in supervision candidates. They use
 `tools/runtime/agent-run-cli.mjs` and one schema per command under `cli-output`.
+
+The explicit plan v2 profile `codex-cooperative.v1` preserves the same commands
+and mutation flags. Its preview adds the assurance profile, required guarantees,
+read-isolation limitations and qualification status to
+`action.preconditions.native`, all covered by `action_sha256`. `not_checked`
+is a declaration only; `qualified` requires the exact native worker and
+validation evidence. V1 plans retain their historical shape and semantics.
+Cancellation and status do not run a native qualification probe.
 Each output is one JSON document; raw Codex events remain local evidence. Existing
 workflow adapters and sequential commands retain their contracts.
 

@@ -10,12 +10,24 @@ import { assertCodexSandboxValidationConfiguration as validate, fingerprintCodex
   buildCodexSandboxValidationInvocation as build, createCodexValidationStreamParser as parser, getCodexSandboxValidationLaunchSupport,
   createCodexSandboxValidationBoundary, createCodexSandboxValidationJournal, inspectCodexSandboxValidationBinaryPins,
   assertCodexSandboxProtectedBaseline, assertCodexSandboxValidationQualificationPayload, assertCodexSandboxNativeCase } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
-import { assertAgentVerificationQualificationVersion } from "../../src/adapters/runtime/local-agent-verification.mjs";
+import { runCodexValidationNativeProbe } from "../verify/codex-validation-native-probe.mjs";
+import { assertAgentVerificationQualificationVersion, assertAgentVerificationAssuranceBinding } from "../../src/adapters/runtime/local-agent-verification.mjs";
 import { buildCodexValidationQualificationPlan, executeCodexValidationQualificationCase,
-  createCodexValidationProbeStderr, assertCodexValidationProbeTermination } from "../verify/qualify-codex-validation-boundary.mjs";
+  createCodexValidationProbeStderr, assertCodexValidationProbeTermination, createCodexValidationObservationReader } from "../verify/qualify-codex-validation-boundary.mjs";
 
 const checks = [], H = "a".repeat(64);
 async function check(name, fn) { try { await fn(); checks.push({ name, status: "PASS" }); } catch (error) { checks.push({ name, status: "FAIL", detail: String(error.stack ?? error).slice(0, 2000) }); } }
+await check("native observation reader handles fragmented, coalesced and repeated cumulative output", () => {
+  const ready = { phase: "primary_ready", value: "é" }, final = { phase: "primary_completed" };
+  const first = Buffer.from(JSON.stringify(ready) + "\n"), both = Buffer.concat([first, Buffer.from(JSON.stringify(final) + "\n")]);
+  const read = createCodexValidationObservationReader();
+  assert.deepEqual(read(first.subarray(0, first.indexOf(Buffer.from("é")) + 1)), []);
+  assert.deepEqual(read(first), [ready]); assert.deepEqual(read(first), []);
+  assert.deepEqual(read(both.subarray(0, both.length - 1)), []); assert.deepEqual(read(both), [final]); assert.deepEqual(read(both), []);
+  assert.deepEqual(createCodexValidationObservationReader()(both), [ready, final]);
+  assert.throws(() => createCodexValidationObservationReader()(Buffer.from("{bad}\n")));
+  assert.throws(() => createCodexValidationObservationReader()(Buffer.alloc(65537)), /OBSERVATION_INVALID/);
+});
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-sandbox-contract-")), token = "owned-fixture";
 fs.writeFileSync(path.join(root, "owner"), token, { flag: "wx" });
 function fixture() {
@@ -46,6 +58,37 @@ function managedFixture() {
   config.protected_resources = ["configuration", "data", "git", "runtime"].map(category => ({ id: category,
     category, path: path.join(root, "protected", category), kind: category === "configuration" ? "file" : "directory" }));
   return value;
+}
+function cooperativeFixture() {
+  const value = managedFixture(), c = value.config;
+  c.contract_version = "codex-sandbox-validation-configuration.v3";
+  c.assurance_profile = "codex-cooperative.v1"; c.read_isolation = "not_guaranteed";
+  c.profile.effective_policy.filesystem = c.profile.effective_policy.filesystem.filter(row => row.access !== "deny");
+  c.profile.effective_policy_sha256 = fingerprint(c.profile.effective_policy); return value;
+}
+function cooperativeQualification(config) {
+  const q = managedQualification(config); q.contract_version = "agent-verification-boundary.v3";
+  delete q.supervisor_resources_inaccessible;
+  return { ...q, assurance_profile: "codex-cooperative.v1", read_isolation: "not_guaranteed", supervisor_write_protected: true, concurrent_write_protection: true };
+}
+function cooperativeReport(config, q, caseId) {
+  const r = managedReport(config, q, caseId);
+  Object.assign(r, { assurance_profile: "codex-cooperative.v1", read_isolation: "not_guaranteed", elapsed_ms: 3000, concurrency: null });
+  Object.assign(r.observation, { contract_version: "codex-validation-native-observation.v2", pid: r.prepared.pid, challenge: "fixture.challenge" });
+  if (caseId === "filesystem") {
+    const identity = { runner_id: "fixture.companion", pid: 81, started_at: "2026-01-01T00:00:01Z", job_name: "Local\\companion" };
+    const process = structuredClone(r.process); Object.assign(process, { outcome: "completed" });
+    Object.assign(process.runner, identity); Object.assign(process.termination_proof, identity);
+    r.concurrency = { diagnostic: null, process,
+      prepared: { ...r.prepared, ...identity, parent_job_name: identity.job_name },
+      child_terminal: { ...identity, active_processes: 0, termination_state: "confirmed", outcome: "completed" },
+      observation: { contract_version: "codex-validation-native-observation.v2", case_id: "filesystem", phase: "companion_completed",
+        challenge: r.observation.challenge, pid: 81, environment_sha256: config.environment_sha256, observations: { primary_pid: r.observation.pid } } };
+    Object.assign(r.observation.observations, { supervisor_read_denied: false,
+      during: { companion_pid: 81, snapshot_write_denied: true, supervisor_write_denied: true, snapshot_sha256: H },
+      after: { companion_pid: 81, companion_stopped: true, snapshot_write_denied: true, supervisor_write_denied: true, snapshot_sha256: H } });
+  }
+  return r;
 }
 function protectedBaseline(config) { return { protected_resources_sha256: fingerprint(config.protected_resources),
   observations: config.protected_resources.map(row => ({ resource_id: row.id, sha256: H })) }; }
@@ -312,6 +355,108 @@ await check("generic verifier refuses malformed or downgraded v2 declarations", 
   assert.throws(() => assertAgentVerificationQualificationVersion(mutate(q, next => { next.boundary_id = "another-boundary"; })));
 });
 
+
+
+await check("v3 is explicit cooperative candidate support, never unsigned runtime qualification", async () => {
+  const { config, request } = cooperativeFixture(), before = structuredClone(config), names = fs.readdirSync(root).sort();
+  assert.equal(validate(config), true); const support = getCodexSandboxValidationLaunchSupport(config);
+  assert.equal(support.available, true); assert.equal(support.native, false); assert.equal(support.reason_code, "SANDBOX_NATIVE_QUALIFICATION_REQUIRED");
+  const { publicKey } = generateKeyPairSync("ed25519"), boundary = createCodexSandboxValidationBoundary({ configuration: config, publicKey, evidenceRoot: root });
+  assert.equal((await boundary.checkAvailability()).available, false); await assert.rejects(boundary.run(request));
+  const launch = build(config, request), table = launch.args.find(arg => arg.startsWith("permissions="));
+  assert(table.includes('":root"="read"')); assert(!table.includes('="none"')); assert(table.includes('network={enabled=false}'));
+  assert.deepEqual(config, before); assert.deepEqual(fs.readdirSync(root).sort(), names);
+  config.client.sha256 = H; assert.equal(getCodexSandboxValidationLaunchSupport(config).available, false);
+});
+for (const [name, change] of [
+  ["implicit assurance", c => { delete c.assurance_profile; }], ["claimed read isolation", c => { c.read_isolation = "guaranteed"; }],
+  ["profile deny", c => { c.profile.effective_policy.filesystem.push({ path: c.profile.home, access: "deny" }); }],
+  ["supervisor deny", c => { c.profile.effective_policy.filesystem.push({ path: c.roots.supervisor, access: "deny" }); }],
+  ["snapshot write", c => { c.profile.effective_policy.filesystem.find(row => row.path === c.roots.snapshots).access = "write"; }],
+  ["second write root", c => { c.profile.effective_policy.filesystem.push({ path: path.join(root, "another-write"), access: "write" }); }],
+  ["network", c => { c.profile.effective_policy.network_enabled = true; }],
+]) await check(`v3 rejects ${name}`, () => {
+  const { config } = cooperativeFixture(); change(config); config.profile.effective_policy_sha256 = fingerprint(config.profile.effective_policy); assert.throws(() => validate(config));
+});
+await check("v3 plan freezes two distinct official launches and a global sixty-second ceiling", () => {
+  const { config, request } = cooperativeFixture(), plan = managedPlan(config, request);
+  assert.equal(plan.contract_version, "codex-validation-native-plan.v3"); assert.equal(plan.assurance_profile, "codex-cooperative.v1");
+  assert.equal(plan.read_isolation, "not_guaranteed"); assert.equal(plan.max_duration_ms, 60000); assert.equal(plan.cases.length, 5);
+  const main = plan.cases.find(row => row.case_id === "filesystem"), companion = main.companion;
+  assert(companion); assert.notEqual(companion.request.invocation_id, main.request.invocation_id);
+  assert.notEqual(build(config, companion.request).jobName, build(config, main.request).jobName);
+  assert.ok(plan.cases.every(row => row.request.max_duration_ms === 60000)); assert.equal(companion.request.max_duration_ms, 60000);
+  assert(Object.values(companion.sync).every(file => path.dirname(file) === path.dirname(plan.canaries.scratch_file)));
+  assert.equal(fingerprint(build(config, companion.request)), companion.launch_sha256);
+  assert.equal(JSON.parse(companion.request.argv[1]).role, "companion");
+  assert.equal(JSON.parse(main.request.argv[1]).role, "primary");
+  assert.equal(plan.cases.filter(row => row.companion).length, 1);
+});
+await check("v3 evidence permits supervisor read but requires concurrent write and stop proofs", () => {
+  const { config } = cooperativeFixture(), q = cooperativeQualification(config);
+  assert.deepEqual(assertCodexSandboxValidationQualificationPayload(q, config), q);
+  assert.equal(assertAgentVerificationQualificationVersion(q), true);
+  for (const caseId of ["filesystem", "network", "timeout", "cancel", "callback"])
+    assert.equal(assertCodexSandboxNativeCase(cooperativeReport(config, q, caseId), q, config), caseId);
+});
+for (const [name, change] of [
+  ["strict read claim", q => { q.supervisor_resources_inaccessible = true; }],
+  ["missing write protection", q => { q.supervisor_write_protected = false; }],
+  ["missing concurrent proof", q => { q.concurrent_write_protection = false; }],
+  ["foreign assurance", q => { q.assurance_profile = "strict"; }],
+  ["network enabled", q => { q.network_disabled = false; }],
+  ["unknown process stop", q => { q.descendant_termination = false; }],
+]) await check(`v3 qualification refuses ${name}`, () => {
+  const { config } = cooperativeFixture(), q = cooperativeQualification(config); change(q); assert.throws(() => assertCodexSandboxValidationQualificationPayload(q, config));
+});
+for (const [name, change] of [
+  ["no companion", r => { r.concurrency = null; }], ["companion alive", r => { r.concurrency.process.termination_proof.active_processes = 1; }],
+  ["companion unconfirmed", r => { r.concurrency.process.termination_state = "unknown"; }],
+  ["same job", r => { r.concurrency.process.termination_proof.job_name = r.process.termination_proof.job_name; }],
+  ["wrong companion pid", r => { r.observation.observations.during.companion_pid = 99; }],
+  ["wrong primary pid", r => { r.concurrency.observation.observations.primary_pid = 99; }],
+  ["write allowed during", r => { r.observation.observations.during.supervisor_write_denied = false; }],
+  ["write allowed after", r => { r.observation.observations.after.snapshot_write_denied = false; }],
+  ["no after stop", r => { r.observation.observations.after.companion_stopped = false; }],
+  ["over sixty seconds", r => { r.elapsed_ms = 60001; }],
+  ["changed named resource", r => { r.after.material.observations[0].sha256 = "b".repeat(64); }],
+]) await check(`v3 report refuses ${name}`, () => {
+  const { config } = cooperativeFixture(), q = cooperativeQualification(config), report = cooperativeReport(config, q, "filesystem"); change(report);
+  assert.throws(() => assertCodexSandboxNativeCase(report, q, config));
+});
+await check("consumer binds cooperative assurance to plan v2 and refuses every cross-mode mix", () => {
+  const { config } = cooperativeFixture(), q = cooperativeQualification(config), strict = managedQualification(managedFixture().config);
+  const plan = { contract_version: "agent-execution-plan.v2", assurance_profile: "codex-cooperative.v1" };
+  assert.equal(assertAgentVerificationAssuranceBinding(plan, q), true);
+  assert.throws(() => assertAgentVerificationAssuranceBinding({ contract_version: "agent-execution-plan.v1" }, q), code("VERIFICATION_ASSURANCE_PROFILE_MISMATCH"));
+  assert.throws(() => assertAgentVerificationAssuranceBinding(plan, strict), code("VERIFICATION_ASSURANCE_PROFILE_MISMATCH"));
+  assert.throws(() => assertAgentVerificationAssuranceBinding({ ...plan, assurance_profile: "strict" }, q));
+  assert.equal(assertAgentVerificationAssuranceBinding({ contract_version: "agent-execution-plan.v1" }, strict), true);
+});
+await check("cooperative canary handshake is testable in memory and checks writes during then after", async () => {
+  const { config, request } = cooperativeFixture(), selected = managedPlan(config, request).cases.find(row => row.case_id === "filesystem");
+  const primary = JSON.parse(selected.request.argv[1]), companion = JSON.parse(selected.companion.request.argv[1]);
+  const files = new Map([[primary.snapshot_file, Buffer.from("original snapshot canary")], [primary.supervisor_file, Buffer.from("original supervisor canary")]]);
+  const writes = []; const filesystem = {
+    readFileSync(file) { if (!files.has(file)) throw Object.assign(new Error(), { code: "ENOENT" }); return Buffer.from(files.get(file)); },
+    writeFileSync(file, bytes, options) { assert.equal(path.dirname(file), path.dirname(primary.scratch_file));
+      if (options?.flag === "wx" && files.has(file)) throw Object.assign(new Error(), { code: "EEXIST" }); files.set(file, Buffer.from(bytes)); },
+    openSync(file, mode) { assert.equal(mode, "r+"); writes.push(file); throw Object.assign(new Error(), { code: "EACCES" }); },
+  };
+  let second, completed; const primaryOutputs = [];
+  const result = await runCodexValidationNativeProbe(primary, { filesystem, pid: 701, environment: {}, output(text) {
+    const record = JSON.parse(text); primaryOutputs.push(record);
+    if (record.phase === "primary_ready") second = runCodexValidationNativeProbe(companion, { filesystem, pid: 702, environment: {}, output(value) {
+      completed = JSON.parse(value);
+      filesystem.writeFileSync(primary.sync.companion_stopped, JSON.stringify({ challenge: primary.challenge, companion_pid: 702, termination_state: "confirmed" }) + "\n", { flag: "wx" });
+    } });
+  } });
+  await second; assert.equal(completed.observations.primary_pid, 701); assert.equal(result.phase, "primary_completed");
+  assert.equal(result.observations.supervisor_read_denied, false); assert.equal(result.observations.during.companion_pid, 702);
+  assert.equal(result.observations.after.companion_stopped, true); assert.equal(writes.length, 4);
+  assert.deepEqual(primaryOutputs.map(row => row.phase), ["primary_ready", "primary_completed"]);
+  assert.equal(result.observations.during.snapshot_sha256, result.observations.after.snapshot_sha256);
+});
 
 await check("native failure retains bounded stderr and full controller evidence", () => {
   const capture = createCodexValidationProbeStderr(), content = Buffer.from("Codex: invalid permission profile Ã©\n");
