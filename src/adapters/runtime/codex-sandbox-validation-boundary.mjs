@@ -129,15 +129,20 @@ export function fingerprintCodexSandboxValidationConfiguration(config) { assertC
 // declared effective_policy is NOT an observation of the merged named profile.
 // Therefore neither local markers nor signed declarative qualifications permit
 // this client to run under AIDN's no-setup/no-ACL-change contract. Unknown clients
-// have no fallback. V2 explicitly accepts Codex-owned maintenance but only makes
-// this reviewed executable eligible for qualification, never natively available.
+// have no fallback. V2 accepts Codex-owned maintenance, but source review also
+// establishes that refresh reconciles deny-read ACLs for the shared sandbox
+// group, not a per-process identity (setup_provisioning.rs:622-628,896-930;
+// deny_read_state.rs:38-65). Another launch can remove those deny entries.
+// Point-in-time canaries or signed evidence cannot establish stable protection
+// of the profile and supervisor across concurrent launches. V2 therefore also
+// refuses this client, before observers, intent writes or process creation.
 // https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/identity.rs#L238
 export function getCodexSandboxValidationLaunchSupport(config) {
   assertCodexSandboxValidationConfiguration(config);
   const reviewed = config.client.sha256 === REVIEWED_CLIENT.executable_sha256;
-  const eligible = managed(config) && reviewed;
-  return { available: eligible, native: false,
-    reason_code: eligible ? "SANDBOX_NATIVE_QUALIFICATION_REQUIRED" : reviewed ? "SANDBOX_EXISTING_ONLY_UNSUPPORTED" : "SANDBOX_CLIENT_UNQUALIFIED",
+  return { available: false, native: false,
+    reason_code: !reviewed ? "SANDBOX_CLIENT_UNQUALIFIED" : managed(config)
+      ? "SANDBOX_SHARED_DENY_READ_UNSUPPORTED" : "SANDBOX_EXISTING_ONLY_UNSUPPORTED",
     reviewed_client: reviewed ? { ...REVIEWED_CLIENT } : null };
 }
 export function assertCodexSandboxValidationLaunchSupported(config) {

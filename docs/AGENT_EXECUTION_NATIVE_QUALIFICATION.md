@@ -475,14 +475,42 @@ V2 is a separate explicit contract, not a relaxation of a v1 proof:
   The named permissions are supplied as structured native CLI overrides from
   the frozen policy, without editing user configuration. Native denial probes
   must confirm the protected boundaries before availability can be granted.
-  V2 launch support permits qualification probes only for the exact reviewed
-  client; runtime availability still requires the five native proofs and a
-  matching signed `agent-verification-boundary.v2` qualification.
+  The reviewed client currently fails this boundary before launch with
+  `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`. A signed
+  `agent-verification-boundary.v2` report cannot override that incompatibility.
+  A future compatible composition still needs all five native proofs.
 
 An unavailable or failed native composition stays unavailable. The final lot 7
 campaign remains unexecuted until the exact composition passes these checks.
 Portable checks and Job/trampoline fixtures may still pass; they do not close
 that confinement requirement or establish merge/release readiness.
+
+## Reviewed Windows client incompatibility
+
+Source review at Codex commit
+[0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807](https://github.com/openai/codex/commit/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807)
+identifies a separate v2 blocker. The elevated path calls an ordinary refresh,
+including with valid existing credentials. The refresh skips account provisioning
+but still reconciles persistent deny-read ACLs for the common sandbox group.
+The registry is keyed by Codex home and group SID, without an active-process
+lease. Another launch in the same home with no deny paths can remove the
+validation's denials while its process still runs. See the
+[refresh call](https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/identity.rs#L269-L280),
+[shared-group reconciliation](https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs#L896-L930)
+and [removal of previous denials](https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/deny_read_state.rs#L38-L65).
+
+For this client, v2 is refused before observation, intent writes or process
+creation with `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`. One-time canary success
+and signed evidence cannot make this shared state into a per-process guarantee.
+AIDN introduces no global lock, ACL repair, alternate profile or fallback to
+circumvent the refusal. Extending a startup timeout does not fix this property.
+
+The local root-read attempt ended at its 15-second process limit without the
+probe handshake. Its containing Job reached zero active processes and the named
+protected files were unchanged. This is failed native evidence, not a successful
+confinement test. The source finding above is independent of the timeout; it does
+not establish which startup operation consumed those 15 seconds. No later native
+case or final concurrent-worker campaign was executed for that candidate.
 
 ## Use Codex setup; qualify AIDN separately
 

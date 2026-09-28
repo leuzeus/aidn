@@ -175,11 +175,13 @@ process termination evidence, Git integration and validation of the exact SHA.
 It does not configure Windows security resources or run automatic sandbox repair.
 See the [responsibility boundary](docs/ADR/ADR-0014-bounded-agent-orchestration.md#codex-execution-and-aidn-governance-boundary).
 
-The current Windows validation backend reports
-`SANDBOX_EXISTING_ONLY_UNSUPPORTED`: the inspected Codex sandbox path refreshes
-native provisioning even with existing state. That conflicts with this
-candidate's no-provisioning boundary. Native end-to-end qualification is therefore
-UNAVAILABLE; source and fixture checks do not establish delivery readiness.
+The reviewed Windows client is unavailable for the validation boundary. V1
+returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` because Codex refreshes native
+provisioning. V2 returns `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`: another Codex
+launch can remove its supervisor/profile read denials while validation is active.
+A successful setup or signed canary report cannot override this incompatibility.
+Native end-to-end qualification remains UNAVAILABLE; source and fixture checks
+do not establish delivery readiness.
 
 Runtime state modes:
 

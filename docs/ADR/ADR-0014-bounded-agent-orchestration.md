@@ -542,6 +542,16 @@ Codex's required root-read baseline, with writes restricted to scratch, explicit
 deny rules for the supervisor and Codex home, and no network. Native probes must
 verify those denials; application path scopes do not claim global read isolation.
 
+The reviewed Windows client cannot satisfy this validation boundary even under
+v2. Its ordinary elevated refresh reconciles persistent deny-read ACLs for the
+shared sandbox group, keyed by Codex home. A concurrent launch using the same
+home can revoke an active validation's denials. AIDN cannot serialize other
+Codex clients or establish process isolation by observing five canaries once.
+It therefore returns `SANDBOX_SHARED_DENY_READ_UNSUPPORTED` before effects for
+this exact client, even when signed qualification data is supplied. This is a
+backend incompatibility, not permission to add an AIDN ACL manager or weaken the
+supervisor/profile boundary. See the [source evidence](../AGENT_EXECUTION_NATIVE_QUALIFICATION.md#reviewed-windows-client-incompatibility).
+
 The experimental AIDN managed-setup models, host observers, setup protocol,
 preflight and operator journal are withdrawn from the active implementation.
 Their history remains in Git. The V1 does not reproduce Windows provisioning,

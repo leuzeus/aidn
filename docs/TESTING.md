@@ -302,8 +302,12 @@ native prerequisites are UNAVAILABLE, never a fixture PASS. The current Windows
 validation v1 backend returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any
 native process because its existing-state path refreshes provisioning. V2
 explicitly declares Codex-managed maintenance and binds protected resource
-preimages. Fixtures test version separation, exact consent, native proof
-requirements and changed-resource refusal; none establishes native availability.
+preimages, but the reviewed client returns `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`
+because its read denials can be removed by a concurrent native launch. Fixtures
+verify this refusal before observers, evidence writes or processes, including
+with signed qualification data. They also test version separation, exact consent,
+native proof requirements and changed-resource refusal; none establishes native
+availability.
 Official setup and native trust review remain separate evidence.
 The final three-task/two-simultaneous-Codex campaign remains unexecuted until the
 exact compatible composition has its own evidence.

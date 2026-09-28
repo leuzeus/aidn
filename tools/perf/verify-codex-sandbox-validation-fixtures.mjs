@@ -170,16 +170,36 @@ await check("pre-cancelled invocation never requires executable or config files"
   const result = await boundary.run(request, { signal: stop.signal }); assert.equal(result.termination_state, "not_started"); assert.equal(result.reason_code, "SANDBOX_CANCELLED");
 });
 
-await check("v2 explicitly delegates maintenance but never grants native availability", async () => {
+await check("v2 refuses reviewed shared deny-read semantics without any native availability", async () => {
   const { config, request } = managedFixture(), before = structuredClone(config), names = fs.readdirSync(root).sort();
   assert.equal(validate(config), true);
-  assert.deepEqual(getCodexSandboxValidationLaunchSupport(config), { available: true, native: false,
-    reason_code: "SANDBOX_NATIVE_QUALIFICATION_REQUIRED", reviewed_client: { version: "0.158.0-alpha.2.1",
+  assert.deepEqual(getCodexSandboxValidationLaunchSupport(config), { available: false, native: false,
+    reason_code: "SANDBOX_SHARED_DENY_READ_UNSUPPORTED", reviewed_client: { version: "0.158.0-alpha.2.1",
       executable_sha256: config.client.sha256, source_commit: "0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807" } });
   const { publicKey } = generateKeyPairSync("ed25519"), boundary = createCodexSandboxValidationBoundary({ configuration: config, publicKey, evidenceRoot: root });
-  assert.equal((await boundary.checkAvailability()).available, false); await assert.rejects(boundary.run(request));
+  assert.deepEqual(await boundary.checkAvailability(), { available: false, native: false, reason_code: "SANDBOX_SHARED_DENY_READ_UNSUPPORTED" });
+  await assert.rejects(boundary.run(request), code("SANDBOX_SHARED_DENY_READ_UNSUPPORTED"));
   assert.deepEqual(config, before); assert.deepEqual(fs.readdirSync(root).sort(), names);
   config.client.sha256 = H; assert.equal(getCodexSandboxValidationLaunchSupport(config).available, false);
+  assert.equal(getCodexSandboxValidationLaunchSupport(config).reason_code, "SANDBOX_CLIENT_UNQUALIFIED");
+});
+await check("signed positive v2 qualification cannot override shared deny-read refusal", async () => {
+  const { config, request } = managedFixture(), names = fs.readdirSync(root).sort(), { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const payload = managedQualification(config);
+  const canonical = value => Array.isArray(value) ? `[${value.map(canonical).join(",")}]` : value && typeof value === "object"
+    ? `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",")}}` : JSON.stringify(value);
+  const qualification = { payload, signature: sign(null, Buffer.from(canonical(payload)), privateKey).toString("base64") };
+  const boundary = createCodexSandboxValidationBoundary({ configuration: config, qualification, publicKey, evidenceRoot: root });
+  assert.deepEqual(await boundary.checkAvailability(), { available: false, native: false, reason_code: "SANDBOX_SHARED_DENY_READ_UNSUPPORTED" });
+  await assert.rejects(boundary.run(request), code("SANDBOX_SHARED_DENY_READ_UNSUPPORTED"));
+  assert.deepEqual(await boundary.inspectOperations(), { operations: [], uncertain_read: null });
+  assert.deepEqual(fs.readdirSync(root).sort(), names);
+});
+await check("exact v2 native probe approval refuses before observations, material reads or intent", async () => {
+  const { config, request } = managedFixture(), plan = managedPlan(config, request), names = fs.readdirSync(root).sort(); let observed = 0;
+  await assert.rejects(executeCodexValidationQualificationCase({ configuration: config, plan, caseId: "network", execute: true,
+    expectPlan: plan.plan_sha256, observeHost: () => { observed++; throw new Error("observer must not run"); } }), code("SANDBOX_SHARED_DENY_READ_UNSUPPORTED"));
+  assert.equal(observed, 0); assert.deepEqual(fs.readdirSync(root).sort(), names);
 });
 await check("v2 supplies the exact permission table through official CLI arguments", () => {
   const { config, request } = managedFixture(), launch = build(config, request);
