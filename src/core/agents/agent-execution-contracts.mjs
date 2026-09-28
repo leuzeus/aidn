@@ -26,6 +26,13 @@ const SCHEMAS = freeze({ descriptor, availability, plan, run, task, attempt, del
   supervisor, "integration-intent": integrationIntent, "integration-prepared": integrationPrepared, "integration-applied": integrationApplied, "run-validation": runValidation });
 const PLAN_SCHEMAS = freeze({ "agent-execution-plan.v1": plan, "agent-execution-plan.v2": cooperativePlan,
   "agent-execution-plan.v3": networkUnassuredPlan });
+// Runtime scope keys are a separate namespace: retain historical internal IDs,
+// and accept the exact bounded composite produced by the runtime resolver.
+const RUNTIME_SCOPE = new RegExp(plan.properties.canonical.properties.runtime_scope_id.pattern);
+const CANONICAL_RUNTIME_SCOPE = /^runtime:project=([A-Za-z0-9][A-Za-z0-9._:-]{0,127}):workspace=([A-Za-z0-9][A-Za-z0-9._:-]{0,127}):profile=([A-Za-z0-9][A-Za-z0-9._:-]{0,127})$/;
+export function isAgentExecutionRuntimeScopeId(value) {
+  return typeof value === "string" && value.length <= 512 && RUNTIME_SCOPE.test(value);
+}
 const TASK_FIELDS = ["task_id", "objective", "scope", "depends_on", "acceptance_criteria", "max_duration_ms"];
 const DEVICE = /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i;
 const issue = (code, path = "$", detail) => ({ code, path, ...(detail ? { detail } : {}) });
@@ -267,6 +274,12 @@ function validateContract(kind, value, checkFingerprint) {
   const issues = [];
   if (["descriptor", "availability"].includes(kind) && value.executor_id === "codex") issues.push(issue("LEGACY_EXECUTOR_ID", "$.executor_id"));
   if (value.execution?.executor_id === "codex") issues.push(issue("LEGACY_EXECUTOR_ID", "$.execution.executor_id"));
+  if (["plan", "run"].includes(kind)) {
+    const scope = CANONICAL_RUNTIME_SCOPE.exec(value.canonical.runtime_scope_id);
+    if (scope && (scope[1] !== value.canonical.project_id || scope[2] !== value.canonical.workspace_id)) {
+      issues.push(issue("RUNTIME_SCOPE_IDENTITY_MISMATCH", "$.canonical.runtime_scope_id"));
+    }
+  }
   if (kind === "plan") issues.push(...planIssues(value, checkFingerprint));
   if (kind === "run") {
     if (new Set(value.task_ids).size !== value.task_ids.length) issues.push(issue("DUPLICATE_TASK", "$.task_ids"));

@@ -63,8 +63,8 @@
         "runtime_scope_id": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          "maxLength": 512,
+          "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9._:-]{0,127}|runtime:project=[A-Za-z0-9][A-Za-z0-9._:-]{0,127}:workspace=[A-Za-z0-9][A-Za-z0-9._:-]{0,127}:profile=[A-Za-z0-9][A-Za-z0-9._:-]{0,127})$"
         },
         "session_id": {
           "type": "string",

@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { createPublicAgentRunLifecycle } from "../../src/application/runtime/agent-run-public-composition.mjs";
+import { parseAgentRunArguments } from "../../src/application/runtime/agent-run-lifecycle-service.mjs";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +38,7 @@ const lifecycleChecks=new Set([
   "cooperative plan v2 survives JSONB reservation reread and claim without DDL",
   "cooperative plan v3 survives JSONB reservation reread and claim without DDL",
   "unknown cooperative assurance is rejected before PostgreSQL writes",
+  "canonical resolver scope survives reservation and fences every canonical writer",
   "public CLI status and planned cancellation use real PostgreSQL without native preparation",
   "cleanup rechecks Git after external observations before authority or durable results",
   "real PostgreSQL and Git scheduler overlap two children and integrate dependent output",
@@ -469,6 +473,28 @@ async function runSuite({ connectionString, version, root }) {
       await shared.healthcheck();
       assert.equal(await dataSnapshot(), before); assert.equal(await ddlCount(), ddl);
     });
+    await check("canonical resolver scope survives reservation and fences every canonical writer", async () => {
+      let projectContext;
+      const context = await seed({ reserve: false, transform: plan => {
+        projectContext = resolveRuntimeProjectContext({ targetRoot: root, projectId: plan.canonical.project_id, workspaceId: plan.canonical.workspace_id, env: {} });
+        plan.canonical.runtime_scope_id = projectContext.runtime_scope_id;
+      } });
+      const c = context.plan.canonical, ddl = await ddlCount();
+      const digest = await store.readCanonicalDigest({ scopeKey: projectContext.runtime_scope_id });
+      assert.equal(digest.scope_key, projectContext.runtime_scope_id);
+      assert.equal((await store.previewRunReservation(context.reservation)).reservation_available, true);
+      await store.reserveRun(context.reservation);
+      assert.equal((await store.getRun({ runId: context.runId })).plan.canonical.runtime_scope_id, projectContext.runtime_scope_id);
+      const claimed = await claim(context); assert.equal(claimed.attempt.run_id, context.runId);
+      assert.equal(await ddlCount(), ddl);
+      const before = await dataSnapshot();
+      await reject(executePostgresArtifactCommand(client, [projectContext.runtime_scope_id], "upsert", { artifact: { path: "BACKLOG.md", content: "forbidden" } }), "ARTIFACT_EXECUTION_SCOPE_RESERVED");
+      const bulk = createPostgresRuntimeArtifactStore({ connectionString, targetRoot: root, runtimeProjectContext: projectContext });
+      await reject(bulk.writeIndexProjection({ payload: { generated_at: new Date().toISOString(), artifacts: [], cycles: [], sessions: [], file_map: [], tags: [], artifact_tags: [] } }), "ARTIFACT_EXECUTION_SCOPE_RESERVED");
+      const publication = await shared.upsertPlanningState({ projectId: c.project_id, workspaceId: c.workspace_id, planningKey: context.planningKey, expectedRevision: 7 });
+      assert.equal(publication.ok, false); assert.match(JSON.stringify(publication), /SHARED_EXECUTION_SCOPE_RESERVED/);
+      assert.equal(await dataSnapshot(), before);
+    });
     await check("reservation preview is read only and refuses occupied or revoked canonical context",async()=>{
       const context=await seed({reserve:false}), before=await dataSnapshot(), ddl=await ddlCount();
       const preview=await context.store.previewRunReservation(context.reservation);
@@ -495,6 +521,7 @@ async function runSuite({ connectionString, version, root }) {
           private_key:reference("private.pem"),boundary:{configuration:reference("boundary.json"),qualification:reference("boundary-proof.json")}}};
       const context=await seed({runIdOverride:configuration.run_id,transform:plan=>{
         configuration.planning_key=`planning.${plan.canonical.project_id.slice("project.".length)}`;
+        plan.canonical.runtime_scope_id=resolveRuntimeProjectContext({targetRoot:target,projectId:plan.canonical.project_id,workspaceId:plan.canonical.workspace_id,env:{}}).runtime_scope_id;
         plan.supervision={configuration_sha256:fingerprintAgentExecutionValue(configuration)};
       }});
       const config=buildNextAidnProjectConfig({},{store:"dual-sqlite",stateMode:"dual"},{});
@@ -515,6 +542,22 @@ async function runSuite({ connectionString, version, root }) {
         return value;
       };
       const before=await dataSnapshot(), ddl=await ddlCount(), local=tree();
+      const divergentPlan = structuredClone(context.plan); delete divergentPlan.plan_sha256;
+      divergentPlan.canonical.runtime_scope_id = "scope.foreign-alias";
+      const divergentPath = path.join(root, "public-run-wrong-scope.json"); fs.writeFileSync(divergentPath, JSON.stringify(normalizeAgentExecutionPlan(divergentPlan)));
+      // This target intentionally has no native installation. Exercise the real
+      // public composition to isolate scope refusal from the CLI activation gate;
+      // historical status/cancel below still run through the actual CLI.
+      const previousConnection = process.env.AIDN_TEST_PG_URL;
+      try {
+        process.env.AIDN_TEST_PG_URL = connectionString;
+        const refusal = await createPublicAgentRunLifecycle().invoke(parseAgentRunArguments("agent-run", ["--target", target,
+          "--configuration", configPath, "--plan", divergentPath, "--json"]));
+        assert.equal(refusal.written, false); assert.deepEqual(refusal.errors, ["AGENT_RUN_RUNTIME_SCOPE_MISMATCH"]);
+      } finally {
+        if (previousConnection === undefined) delete process.env.AIDN_TEST_PG_URL; else process.env.AIDN_TEST_PG_URL = previousConnection;
+      }
+      assert.equal(await dataSnapshot(), before); assert.equal(await ddlCount(), ddl); assert.equal(tree(), local);
       const status=invoke("agent-run-status"), preview=invoke("agent-run-cancel");
       assert.equal(status.status.execution_status,"planned");assert.equal(status.written,false);assert.equal(preview.can_apply,true,JSON.stringify(preview));
       assert.equal(preview.written,false);assert.equal(preview.action.preconditions.activation.active,false);

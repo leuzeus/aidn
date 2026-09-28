@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   assertAgentExecutionContract, fingerprintAgentExecutionValue, fingerprintTaskContract,
   normalizeAgentExecutionPlan, validateAgentExecutionBindings, isExactExecutionPath, validateAgentRunValidationBindings,
-  validateAgentIntegrationIntentBindings, isAbsoluteExecutionCwd,
+  validateAgentIntegrationIntentBindings, isAbsoluteExecutionCwd, isAgentExecutionRuntimeScopeId,
 } from "../../core/agents/agent-execution-contracts.mjs";
 import {
   AGENT_EXECUTION_LEASE_MS, AGENT_EXECUTION_TABLES, assertAgentRunLifecycleStore,
@@ -191,7 +191,7 @@ export function createPostgresAgentExecutionStore({
   }
 
   async function digest(client, scopeKey) {
-    requireId(scopeKey);
+    if (!isAgentExecutionRuntimeScopeId(scopeKey)) throw failure("IDENTITY_INVALID");
     const index = await client.query("SELECT key FROM aidn_runtime.index_meta WHERE scope_key=$1 LIMIT 1", [scopeKey]);
     if (!index.rows.length) throw failure("CANONICAL_SCOPE_MISSING");
     const found = await client.query("SELECT path,sha256 FROM aidn_runtime.artifacts WHERE scope_key=$1 ORDER BY path", [scopeKey]);

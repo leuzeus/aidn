@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { assertAgentRunRuntimeScope } from "../../src/application/runtime/agent-run-public-composition.mjs";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import assert from "node:assert/strict";
 import os from "node:os";
 import { createHash, generateKeyPairSync, sign, verify } from "node:crypto";
@@ -50,6 +52,21 @@ function harness(select = context()) {
   });
   return { calls, state, runtime, lifecycle };
 }
+await check("public scope binding accepts the resolver key and refuses aliases without mutating its context", () => {
+  const plan = structuredClone(source.plan), projectContext = resolveRuntimeProjectContext({ targetRoot: process.cwd(), env: {}, workspace: {
+    project_id: plan.canonical.project_id, workspace_id: plan.canonical.workspace_id, worktree_id: "worktree.fixture",
+    project_id_source: "explicit", workspace_id_source: "explicit", worktree_id_source: "fixture",
+  } });
+  const before = structuredClone(projectContext);
+  assert.throws(() => assertAgentRunRuntimeScope(plan, projectContext), { code: "AGENT_RUN_RUNTIME_SCOPE_MISMATCH" });
+  plan.canonical.runtime_scope_id = projectContext.runtime_scope_id;
+  assertAgentRunRuntimeScope(plan, projectContext);
+  for (const scope of ["legacy.scope", projectContext.runtime_scope_id + ":other", projectContext.runtime_scope_id.replace("profile=default", "profile=other")]) {
+    assert.throws(() => assertAgentRunRuntimeScope({ ...plan, canonical: { ...plan.canonical, runtime_scope_id: scope } }, projectContext), { code: "AGENT_RUN_RUNTIME_SCOPE_MISMATCH" });
+  }
+  assert.deepEqual(projectContext, before);
+});
+
 await check("preview and JSON do not create runtime or write", async () => {
   const h = harness(), result = await h.lifecycle.invoke(args());
   assert.equal(result.written, false); assert.equal(result.effect_class, "preview");

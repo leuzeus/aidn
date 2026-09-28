@@ -13,6 +13,13 @@ separate qualification of the exact composition. Lot 7 exposes explicit public
 that refuses application without the required exact evidence. Coverage remains
 `supervision_candidate`; the final parallel Codex campaign is a separate proof.
 
+Canonical supervision reservations use the exact runtime scope emitted by the
+existing workspace/runtime context resolver. Internal contracts also retain
+historical short scope IDs, without promoting them to aliases at the public
+entry point. Canonical reads and writers share this key, so reservations fence
+the same data that ordinary runtime operations can mutate. This is an identity
+compatibility correction, not a new scope authority or PostgreSQL migration.
+
 ## Date
 
 2026-09-26

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
   assertAgentExecutionContract,
+  isAgentExecutionRuntimeScopeId,
   fingerprintAgentExecutionPlan,
   fingerprintAgentExecutionValue,
   fingerprintTaskContract,
@@ -82,6 +84,56 @@ function cooperativePlan(version = 2) {
   value.assurance_profile = `codex-cooperative.v${version - 1}`;
   return value;
 }
+function resolvedScope(canonical, runtimeProfile = "default") {
+  return resolveRuntimeProjectContext({ targetRoot: process.cwd(), runtimeProfile, env: {}, workspace: {
+    project_id: canonical.project_id, workspace_id: canonical.workspace_id, worktree_id: "worktree.fixture",
+    project_id_source: "explicit", workspace_id_source: "explicit", worktree_id_source: "fixture",
+  } }).runtime_scope_id;
+}
+for (const version of [1, 2, 3]) await check(`plan v${version} accepts the actual canonical runtime scope without changing legacy fingerprints`, () => {
+  const value = version === 1 ? copy(fixture.plan) : cooperativePlan(version); delete value.plan_sha256;
+  value.canonical.runtime_scope_id = resolvedScope(value.canonical);
+  const before = JSON.stringify(value), normalized = normalizeAgentExecutionPlan(value);
+  assert.equal(normalized.canonical.runtime_scope_id, value.canonical.runtime_scope_id);
+  assert.equal(JSON.stringify(value), before);
+  const run = { ...copy(fixture.run), canonical: copy(value.canonical), plan_sha256: normalized.plan_sha256 };
+  assert.deepEqual(validateAgentExecutionContract("run", run), { ok: true, issues: [] });
+  const changed = copy(value); changed.canonical.runtime_scope_id = resolvedScope(changed.canonical, "other");
+  assert.notEqual(fingerprintAgentExecutionPlan(changed), normalized.plan_sha256);
+  assert.equal(normalizeAgentExecutionPlan(fixture.plan).plan_sha256, fixture.expected.plan_sha256);
+});
+
+await check("runtime scope namespace is bounded and does not widen ordinary identities", () => {
+  const base = copy(fixture.plan); delete base.plan_sha256;
+  const long = "a".repeat(128);
+  const value = copy(base); value.canonical.project_id = long; value.canonical.workspace_id = long;
+  value.canonical.runtime_scope_id = resolvedScope(value.canonical, long);
+  assert.equal(isAgentExecutionRuntimeScopeId(value.canonical.runtime_scope_id), true);
+  assertAgentExecutionContract("plan", value);
+  const malformed = [null, {}, true, "", "legacy=scope", "legacy".repeat(22),
+    "runtime:project=p:workspace=w:profile=", "runtime:workspace=w:project=p:profile=default",
+    "runtime:project=p:workspace=w:profile=default:extra=x", "runtime:project=p:workspace=w:profile=bad/path",
+    "runtime:project=p:workspace=w:profile=bad space", "runtime:project=p:workspace=w:profile=" + "a".repeat(129),
+    resolvedScope(base.canonical) + "\n", " " + resolvedScope(base.canonical)];
+  for (const scope of malformed) {
+    assert.equal(isAgentExecutionRuntimeScopeId(scope), false, JSON.stringify(scope));
+    const changed = copy(base); changed.canonical.runtime_scope_id = scope;
+    expectIssue(validateAgentExecutionContract("plan", changed), "SCHEMA_INVALID");
+  }
+  for (const field of ["project_id", "workspace_id", "session_id", "cycle_id"]) {
+    const changed = copy(base); changed.canonical[field] = "ordinary=invalid";
+    expectIssue(validateAgentExecutionContract("plan", changed), "SCHEMA_INVALID");
+  }
+  assert.equal(isAgentExecutionRuntimeScopeId(base.canonical.runtime_scope_id), true);
+});
+for (const kind of ["plan", "run"]) await check(kind + " rejects a composite scope naming another project or workspace", () => {
+  for (const field of ["project_id", "workspace_id"]) {
+    const value = copy(fixture[kind]); if (kind === "plan") delete value.plan_sha256;
+    value.canonical.runtime_scope_id = resolvedScope({ ...value.canonical, [field]: "foreign" });
+    expectIssue(validateAgentExecutionContract(kind, value), "RUNTIME_SCOPE_IDENTITY_MISMATCH");
+  }
+});
+
 const schemaCases = [
   ...kinds.map(kind => ({ kind, file: `${kind}.v1.schema.json`, value: fixture[kind] })),
   { kind: "plan", file: "plan.v2.schema.json", value: cooperativePlan() },

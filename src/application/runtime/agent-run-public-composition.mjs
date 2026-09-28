@@ -2,6 +2,7 @@ import path from "node:path";
 import { createAgentRunLifecycle } from "./agent-run-lifecycle-service.mjs";
 import { readAgentRunConfiguration, readAgentRunFile, agentRunPhysicalPath } from "./agent-run-configuration-service.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
+import { resolveRuntimeProjectContext } from "./runtime-project-context-service.mjs";
 import { resolveEffectiveRuntimePersistence } from "./runtime-persistence-service.mjs";
 import { resolvePostgresRuntimePersistenceConnection } from "./postgres-runtime-persistence-contract-service.mjs";
 import { resolvePostgresSharedCoordinationConnection } from "./postgres-shared-coordination-contract-service.mjs";
@@ -12,6 +13,12 @@ import { describeAgentRunAssurance } from "./agent-run-assurance-policy.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const key = value => process.platform === "win32" ? value.toLowerCase() : value;
+// Public runs use the same canonical key as ordinary runtime readers/writers.
+// A historical internal ID is not a public alias for this resolved scope.
+export function assertAgentRunRuntimeScope(plan, projectContext) {
+  if (typeof projectContext?.runtime_scope_id !== "string"
+    || plan.canonical.runtime_scope_id !== projectContext.runtime_scope_id) fail("AGENT_RUN_RUNTIME_SCOPE_MISMATCH");
+}
 export function verifyAgentRunActivation(targetRoot, expected) {
   const current = readActivation({ targetRoot });
   return current.active === true && current.state === "active"
@@ -70,6 +77,7 @@ export function createPublicAgentRunLifecycle() {
     const plan = normalizeAgentExecutionPlan(args.command === "agent-run" ? readAgentRunFile(path.resolve(args.plan)).value : snapshot.plan);
     if (plan.supervision?.configuration_sha256 !== selected.configuration_sha256) fail("AGENT_RUN_CONFIGURATION_CHANGED");
     if (plan.canonical.project_id !== workspace.project_id || plan.canonical.workspace_id !== workspace.workspace_id) fail("AGENT_RUN_WORKSPACE_MISMATCH");
+    assertAgentRunRuntimeScope(plan, resolveRuntimeProjectContext({ targetRoot, workspace }));
     const blockers = [];
     let read = null;
     try { read = await store.readCanonicalDigest({ scopeKey: plan.canonical.runtime_scope_id }); }

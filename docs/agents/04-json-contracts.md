@@ -115,6 +115,16 @@ false`. Earlier versions still require network denial. The preview exposes the
 new limitation in its action hash. Native write, process and exact-SHA proofs
 remain required; network diagnostics are separate from v4 qualification.
 
+Internal plan/run runtime scope keys accept the bounded canonical form
+`runtime:project=<project_id>:workspace=<workspace_id>:profile=<profile>` produced
+by the runtime context resolver, separately from historical internal IDs. The
+embedded project/workspace must match the canonical reference. No other ID
+syntax or existing plan fingerprint changes. The public supervisor requires
+exact equality with the resolved runtime scope before reading its canonical
+digest; a legacy short ID is not an alias for that context. PostgreSQL reads,
+reservations and ordinary canonical writers use that same key and reservation
+fence, without schema migration or implicit context adoption.
+
 ## Activation Refusals
 
 Activation refusals use `activation-refusal.v1`, registered as an alternative for
