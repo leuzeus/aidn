@@ -84,7 +84,7 @@ Both profiles reject unsupported validation keywords. Positive and adversarial
 payloads, semantic checks and executor doubles are covered by the dedicated
 `runtime-agent-execution-contracts` gate.
 
-The sixteen schemas cover descriptor, availability, plan, run, delegated task,
+The seventeen schemas cover sixteen kinds: descriptor, availability, plan, run, delegated task,
 attempt, delegation, request, event, result, acceptance, supervisor, prepared
 and applied integration, the pre-Git integration intent, and final run validation. Their pure validity does not
 prove a working executor, live lease, Git reference or native admission. Task
@@ -98,6 +98,15 @@ intent binds the accepted source, expected parent, workspace, commit identity an
 original creator before Git preparation. The prepared record retains its actual
 producer and references the intent hash. These are model bindings, not live leases.
 Contract validity and runtime availability remain separate evidence.
+
+Plan v2 adds the required `assurance_profile: codex-cooperative.v1`. Plan v1
+keeps its original closed shape and fingerprint; normalization does not promote
+it to v2. The selected profile participates in the plan hash. Run, task and
+attempt contracts retain their existing version and bind to that hash. The
+cooperative validation configuration/qualification are v3 and explicitly state
+`read_isolation: not_guaranteed`; strict and cooperative evidence cannot mix.
+Public preview preconditions expose these limitations without claiming native
+availability. The PostgreSQL JSONB plan retains the exact version and profile.
 
 ## Activation Refusals
 

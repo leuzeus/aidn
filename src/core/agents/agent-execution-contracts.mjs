@@ -4,6 +4,7 @@ import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import descriptor from "../contracts/agent-execution/descriptor.v1.schema.json" with { type: "json" };
 import availability from "../contracts/agent-execution/availability.v1.schema.json" with { type: "json" };
 import plan from "../contracts/agent-execution/plan.v1.schema.json" with { type: "json" };
+import cooperativePlan from "../contracts/agent-execution/plan.v2.schema.json" with { type: "json" };
 import run from "../contracts/agent-execution/run.v1.schema.json" with { type: "json" };
 import task from "../contracts/agent-execution/task.v1.schema.json" with { type: "json" };
 import attempt from "../contracts/agent-execution/attempt.v1.schema.json" with { type: "json" };
@@ -22,6 +23,7 @@ import runValidation from "../contracts/agent-execution/run-validation.v1.schema
 // Validating an ownership reference never proves that its lease exists or is live.
 const SCHEMAS = freeze({ descriptor, availability, plan, run, task, attempt, delegation, request, event, result, acceptance,
   supervisor, "integration-intent": integrationIntent, "integration-prepared": integrationPrepared, "integration-applied": integrationApplied, "run-validation": runValidation });
+const PLAN_SCHEMAS = freeze({ "agent-execution-plan.v1": plan, "agent-execution-plan.v2": cooperativePlan });
 const TASK_FIELDS = ["task_id", "objective", "scope", "depends_on", "acceptance_criteria", "max_duration_ms"];
 const DEVICE = /^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i;
 const issue = (code, path = "$", detail) => ({ code, path, ...(detail ? { detail } : {}) });
@@ -253,7 +255,12 @@ function validateContract(kind, value, checkFingerprint) {
   if (!Object.hasOwn(SCHEMAS, kind)) return report([issue("UNKNOWN_CONTRACT", "$", String(kind))]);
   const inputIssues = jsonIssues(value);
   if (inputIssues.length) return report(inputIssues);
-  const structural = validateJsonSchema(value, SCHEMAS[kind], "$", { contractKind: "agent-execution" });
+  // Dispatch only after pure JSON inspection: selecting a version must never
+  // invoke a getter. Unknown versions still fail the historical closed schema;
+  // neither normalization nor validation converts an existing plan to v2.
+  const schema = kind === "plan" && typeof value?.contract_version === "string" && Object.hasOwn(PLAN_SCHEMAS, value.contract_version)
+    ? PLAN_SCHEMAS[value.contract_version] : SCHEMAS[kind];
+  const structural = validateJsonSchema(value, schema, "$", { contractKind: "agent-execution" });
   if (structural.length) return report(structural.map((detail) => issue("SCHEMA_INVALID", "$", detail)));
   const issues = [];
   if (["descriptor", "availability"].includes(kind) && value.executor_id === "codex") issues.push(issue("LEGACY_EXECUTOR_ID", "$.executor_id"));

@@ -30,6 +30,48 @@ acceptance contracts before process or persistence implementations are added.
 
 ## Decision
 
+### Cooperative Codex execution (2026-09-28 amendment)
+
+`agent-execution-plan.v2` explicitly selects
+`assurance_profile: codex-cooperative.v1`. V1 plans retain their original
+semantics and fingerprints; no reader upgrades a plan implicitly. The executor
+remains `codex-cli-task`, the supervisor remains AIDN, and PostgreSQL retains
+the same run/task/attempt authority. JSONB plan storage needs no new migration.
+
+The cooperative plan uses `codex-sandbox-validation-configuration.v3` and
+`agent-verification-boundary.v3`, both declaring `read_isolation: not_guaranteed`.
+They cannot satisfy a strict v1/v2 plan, or consume its qualification. The
+worker's separate `codex-native-profile-policy.v2` remains the explicit
+Codex-managed maintenance policy; its version is not a validation guarantee.
+
+This revises the former read-isolation objective, which remains unachieved.
+Workers and validation commands may read the profile and supervisor. AIDN does
+not transmit PostgreSQL credentials in worker environments, but does not claim
+that secrets on disk are inaccessible. Signatures and named-resource preimages
+provide attribution and observed preservation, not protection from a hostile
+worker that can read the signing material. This is a cooperative workflow.
+
+The retained requirements are bounded writes, an immutable validation snapshot,
+scratch-only validation writes, disabled sandboxed-command network access,
+confirmed descendant termination, delegated admission and exact-SHA acceptance.
+The official Codex sandbox enforces native permissions; AIDN neither installs
+it nor repairs Windows permissions. Worker calls use `codex exec`; validations
+use `codex sandbox` with explicit permissions. No App Server, desktop agent
+transport, additional native home or alternate setup subsystem is introduced.
+
+Public previews expose the selected profile, required guarantees, limitations
+and observed qualification status in `action.preconditions.native`. These facts
+are part of the exact action hash. A declared profile is never a qualification.
+The existing bounded qualification helper can collect first evidence under an
+explicit exact-plan approval; production admission still requires independent
+native reports, matching package/client/helper/hooks/policy pins and confirmed
+process termination. Evidence stays outside the candidate package.
+
+Strict modes keep their existing refusal. Cooperative availability is qualified
+separately, including write restrictions during another launch, real hooks and
+two overlapping workers followed by a dependent task. Until this campaign passes,
+coverage remains `supervision_candidate` and the revised point 5 remains open.
+
 ### Boundaries and identities
 
 V1 has one supervisor host, at most one mutating run for a canonical scope, and
@@ -63,7 +105,7 @@ supervision authority without claiming that workers are available.
 ### Frozen execution contract
 
 Internal versioned schemas live under `src/core/contracts/agent-execution/`.
-The sixteen kinds are descriptor, availability, plan, run, task, attempt,
+The sixteen kinds (seventeen schemas, including both plan versions) are descriptor, availability, plan, run, task, attempt,
 delegation, request, event, result, acceptance, supervisor, integration-prepared,
 integration-applied, integration-intent and run-validation.
 `src/core/agents/agent-execution-contracts.mjs` owns pure semantic checks and
