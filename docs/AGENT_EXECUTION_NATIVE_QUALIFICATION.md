@@ -114,7 +114,12 @@ only that the concrete review materials and disposable worktrees are ready.
 
 An isolated configuration home is not an OS sandbox boundary on Windows. When
 another home would contend with an existing provisioned backend, preparation can
-select that existing home explicitly:
+select the currently operational home explicitly. Historical setup markers in
+another home do not prove compatible credentials: the reviewed Windows client
+uses shared local accounts with credentials stored per home, and a failed logon
+can trigger a password rotation that invalidates the other home's credentials.
+Use the operational profile, not an old test home's apparent readiness:
+
 
 ~~~text
 node tools/verify/prepare-agent-native-qualification.mjs --output-root <new-absolute-directory> --codex-binary <absolute-native-executable> --native-profile-mode preexisting --codex-home <existing-absolute-home>
