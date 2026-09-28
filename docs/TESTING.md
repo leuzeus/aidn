@@ -274,6 +274,10 @@ on dev, main and release:
 
 They check preview purity, explicit action fingerprints, stale state,
 cancellation, read-only status, prepared-root adoption and completed-run cleanup.
+PEM public keys loaded through the native material reader reach the real evidence
+verifier as validated key objects. The file-backed regression rejects invalid
+signatures and incomplete evidence without granting qualification; read-only
+material loading does not open the private signing key.
 Disposable Git tests retain source commits and all local bytes before removal,
 reject relocation as evidence of deletion, recover an already removed owned
 worktree, and preserve unknown controlled-process termination. The injected

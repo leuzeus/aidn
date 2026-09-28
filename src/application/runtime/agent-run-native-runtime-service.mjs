@@ -58,7 +58,9 @@ export function readNativeAgentRunMaterials(context, { execution = false, recove
     const secret = createPrivateKey(privateKey), derived = createPublicKey(secret);
     ensure(secret.asymmetricKeyType === "ed25519" && derived.export({ type: "spki", format: "der" }).equals(publicObject.export({ type: "spki", format: "der" })), "AGENT_RUN_PROOF_AUTHORITY_CHANGED");
   }
-  return { preparedManifest, profile, publicKey, privateKey, boundaryConfiguration, boundaryQualification,
+  // Consumers distinguish DER buffers from PEM strings. Reuse the validated key
+  // object so pinned PEM file bytes are not reinterpreted as DER.
+  return { preparedManifest, profile, publicKey: publicObject, privateKey, boundaryConfiguration, boundaryQualification,
     auditPolicy: readAgentRunReference(config.verification.audit_policy).value };
 }
 function makeAssembly({ context, connectionString, verifyActivation }, options = {}) {

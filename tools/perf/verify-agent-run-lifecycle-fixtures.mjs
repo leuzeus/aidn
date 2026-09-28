@@ -7,6 +7,7 @@ import os from "node:os";
 import { createHash, generateKeyPairSync, sign, verify } from "node:crypto";
 import { readNativeAgentRunMaterials } from "../../src/application/runtime/agent-run-native-runtime-service.mjs";
 import { assertAgentRunSecretScope, readAgentRunFile } from "../../src/application/runtime/agent-run-configuration-service.mjs";
+import { createAgentValidationEvidenceVerifier } from "../../src/adapters/runtime/local-agent-verification.mjs";
 import path from "node:path";
 import { previewNativeAgentCleanup, applyNativeAgentCleanup } from "../../src/application/runtime/agent-run-cleanup-service.mjs";
 import { parseAgentRunArguments, buildAgentRunActionPreview, createAgentRunLifecycle, projectAgentRunStatus } from "../../src/application/runtime/agent-run-lifecycle-service.mjs";
@@ -303,7 +304,7 @@ function cleanupHarness(root) {
 }
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-lifecycle-cleanup-"));
 try {
-  await check("native material reader binds the signed payload and retains the exact envelope", () => {
+  await check("native PEM material reaches the verifier without reading a private key or granting trust", async () => {
     const {publicKey,privateKey}=generateKeyPairSync("ed25519");
     const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
     const canonical=value=>value&&typeof value==="object" ? `{${Object.keys(value).sort().map(key=>JSON.stringify(key)+":"+canonical(value[key])).join(",")}}` : JSON.stringify(value);
@@ -316,7 +317,11 @@ try {
     const publicReference=material(publicKey.export({format:"pem",type:"spki"}),true);
     const authorityHash=sha(publicKey.export({format:"der",type:"spki"}));
     for(const version of [2,3]){
-      const plan={...cooperativeContext(version).plan,verification:{proof_authority_sha256:authorityHash}};
+      const rawPlan=structuredClone(cooperativeContext(version).plan);delete rawPlan.plan_sha256;
+      rawPlan.verification={runner:{id:"node",executable_sha256:"a".repeat(64)},environment_sha256:"b".repeat(64),
+        control_files:[{path:"checks/verify.mjs",sha256:"c".repeat(64),git_mode:"100644"}],
+        audit_policy_sha256:"d".repeat(64),proof_authority_sha256:authorityHash,limits:{max_duration_ms:1000,max_output_bytes:1024}};
+      const plan=normalizeAgentExecutionPlan(rawPlan);
       const declaration={assurance_profile:plan.assurance_profile,read_isolation:"not_guaranteed",
         ...(version===3?{network_isolation:"not_guaranteed"}:{})};
       const boundary={contract_version:`codex-sandbox-validation-configuration.v${version+1}`,...declaration,
@@ -326,13 +331,25 @@ try {
       const signedBytes=Buffer.from(canonical(payload)),envelope={payload,signature:sign(null,signedBytes,privateKey).toString("base64")};
       const configuration={resources_root:fixtureRoot,prepared_manifest:material({fixture:true}),
         native:{profile:{manifest:material({fixture:true}),policy:material({contract_version:"codex-native-profile-policy.v2"})},runtime:{codexHome:boundary.profile.home}},
-        verification:{public_key:publicReference,boundary:{configuration:material(boundary),qualification:material(envelope)},audit_policy:material({fixture:true})}};
+        verification:{public_key:publicReference,private_key:{path:path.join(fixtureRoot,"private-key-not-created.pem"),sha256:"0".repeat(64)},
+          boundary:{configuration:material(boundary),qualification:material(envelope)},audit_policy:material({fixture:true})}};
       const context={plan,configuration},before=structuredClone(context);
       // Recovery uses the production file reader while avoiding candidate inventory
       // and private-key access. It still performs the same payload/profile binding.
       const loaded=readNativeAgentRunMaterials(context,{recoveryOnly:true});
       assert.deepEqual(loaded.boundaryQualification,envelope);assert.deepEqual(loaded.boundaryConfiguration,boundary);
-      assert.equal(verify(null,signedBytes,publicKey,Buffer.from(loaded.boundaryQualification.signature,"base64")),true);
+      assert.equal(verify(null,signedBytes,loaded.publicKey,Buffer.from(loaded.boundaryQualification.signature,"base64")),true);
+      const consume=async selected=>{
+        const verifier=createAgentValidationEvidenceVerifier({resourcesRoot:fixtureRoot,publicKey:selected.publicKey});
+        const proof=configuration.verification.boundary.qualification;
+        const document={validation:{checks:[{evidence:{ref:path.basename(proof.path),sha256:proof.sha256,bytes:fs.statSync(proof.path).size}}]}};
+        return verifier.verify({phase:"task",plan,document,subject_sha256:fingerprintAgentExecutionValue(document)});
+      };
+      // The signature is valid, but this boundary declaration is not validation
+      // evidence. Reaching its binding refusal exercises the real key consumer.
+      await assert.rejects(()=>consume(loaded),{code:"VERIFICATION_BINDING_INVALID"});
+      assert.equal(loaded.publicKey.type,"public");
+      assert.equal(fs.existsSync(configuration.verification.private_key.path),false);
       assert.equal(loaded.privateKey,null);assert.equal(Object.hasOwn(loaded,"available"),false);assert.deepEqual(context,before);
       configuration.verification.boundary.qualification=material(payload);
       assert.throws(()=>readNativeAgentRunMaterials(context,{recoveryOnly:true}),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
@@ -340,7 +357,9 @@ try {
       assert.throws(()=>readNativeAgentRunMaterials(context,{recoveryOnly:true}),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
       configuration.verification.boundary.qualification=material({...envelope,signature:Buffer.alloc(64).toString("base64")});
       const untrusted=readNativeAgentRunMaterials(context,{recoveryOnly:true});
-      assert.equal(verify(null,signedBytes,publicKey,Buffer.from(untrusted.boundaryQualification.signature,"base64")),false);
+      assert.equal(verify(null,signedBytes,untrusted.publicKey,Buffer.from(untrusted.boundaryQualification.signature,"base64")),false);
+      await assert.rejects(()=>consume(untrusted),{code:"VERIFICATION_SIGNATURE_INVALID"});
+      assert.equal(untrusted.privateKey,null);
       assert.equal(Object.hasOwn(untrusted,"available"),false,"material loading cannot confer cryptographic trust");
     }
   });
