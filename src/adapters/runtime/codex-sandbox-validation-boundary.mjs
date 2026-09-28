@@ -3,9 +3,13 @@ import path from "node:path";
 import { createHash, createPublicKey, verify } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
+import { assertAgentLocalPath } from "../../core/agents/agent-local-path-policy.mjs";
 import { createWindowsProcessTreeController } from "../agents/process-tree/windows-process-tree-controller.mjs";
 
 const VERSION = "codex-sandbox-validation-configuration.v1";
+const MANAGED_VERSION = "codex-sandbox-validation-configuration.v2";
+const managed = config => config?.contract_version === MANAGED_VERSION;
+const PROTECTED_CATEGORIES = ["configuration", "data", "git", "runtime"];
 const ID = "codex-sandbox-validation";
 const REVIEWED_CLIENT = Object.freeze({
   version: "0.158.0-alpha.2.1",
@@ -44,12 +48,41 @@ function records(values) {
       || row.present === true && exact(row, ["path", "present", "sha256", "bytes"]) && HASH.test(row.sha256) && Number.isSafeInteger(row.bytes) && row.bytes >= 0 && row.bytes <= 8 * 1024 * 1024));
 }
 
+// Pure descriptors: the native observer must cover exactly these named resources.
+// Their identity and bounded recursive observation recipe belong to the reviewed
+// observation evidence; this contract never scans a profile or grants access.
+export function assertCodexSandboxProtectedResources(resources, config) {
+  requireThat(Array.isArray(resources) && resources.length >= 4 && resources.length <= 256
+    && resources.every(row => exact(row, ["id", "category", "path", "kind"]) && IDENTIFIER.test(row.id)
+      && PROTECTED_CATEGORIES.includes(row.category) && absolute(row.path) && ["file", "directory"].includes(row.kind)
+      && row.path !== path.parse(row.path).root && (row.category !== "configuration" || row.kind === "file"))
+    && new Set(resources.map(row => row.id)).size === resources.length
+    && PROTECTED_CATEGORIES.every(category => resources.some(row => row.category === category)), "SANDBOX_PROTECTED_RESOURCES_INVALID");
+  for (const row of resources) {
+    assertAgentLocalPath(row.path);
+    requireThat(![config.roots.scratch, config.roots.snapshots].some(root => inside(root, row.path) || inside(row.path, root))
+      && !(row.kind === "directory" && inside(row.path, config.profile.home)), "SANDBOX_PROTECTED_RESOURCES_OVERLAP");
+  }
+  requireThat(resources.every((row, index) => resources.every((other, otherIndex) => index === otherIndex
+    || !inside(row.path, other.path) && !inside(other.path, row.path))), "SANDBOX_PROTECTED_RESOURCES_OVERLAP");
+  return true;
+}
+export function assertCodexSandboxProtectedBaseline(value, config) {
+  assertCodexSandboxProtectedResources(config.protected_resources, config);
+  requireThat(exact(value, ["protected_resources_sha256", "observations"])
+    && value.protected_resources_sha256 === fingerprint(config.protected_resources)
+    && Array.isArray(value.observations) && value.observations.length === config.protected_resources.length
+    && value.observations.every((row, index) => exact(row, ["resource_id", "sha256"])
+      && row.resource_id === config.protected_resources[index].id && HASH.test(row.sha256)), "SANDBOX_PROTECTED_BASELINE_INVALID");
+  return true;
+}
+
 // This is a local pinned configuration, not a profile installer or an assertion
 // that a named profile enforces its declared permissions on the current host.
 export function assertCodexSandboxValidationConfiguration(config) {
   fingerprint(config);
-  requireThat(exact(config, ["contract_version", "boundary_id", "platform", "architecture", "engine_sha256", "verification_policy_sha256", "environment_sha256", "client", "controller", "trampoline", "runner", "profile", "roots", "launcher_environment"])
-    && config.contract_version === VERSION && config.boundary_id === ID && config.platform === "win32" && config.architecture === "x64"
+  requireThat(exact(config, ["contract_version", "boundary_id", "platform", "architecture", "engine_sha256", "verification_policy_sha256", "environment_sha256", "client", "controller", "trampoline", "runner", "profile", "roots", "launcher_environment", ...(managed(config) ? ["protected_resources"] : [])])
+    && [VERSION, MANAGED_VERSION].includes(config.contract_version) && config.boundary_id === ID && config.platform === "win32" && config.architecture === "x64"
     && [config.engine_sha256, config.verification_policy_sha256, config.environment_sha256].every(value => HASH.test(value))
     && filePin(config.client) && filePin(config.runner), "SANDBOX_CONFIGURATION_INVALID");
   requireThat(exact(config.controller, ["helperPath", "helperSha256", "helperSourceSha256", "candidateSha256"])
@@ -66,7 +99,7 @@ export function assertCodexSandboxValidationConfiguration(config) {
     && p.environment_override_names.every(name => /^[A-Za-z_][A-Za-z0-9_]{0,255}$/u.test(name) && !LAUNCH_NAMES.includes(name.toUpperCase())), "SANDBOX_ENVIRONMENT_REFUSED");
   const e = p.effective_policy;
   requireThat(exact(e, ["windows_sandbox", "provisioning", "network_enabled", "filesystem"])
-    && e.windows_sandbox === "elevated" && e.provisioning === "existing-only" && e.network_enabled === false
+    && e.windows_sandbox === "elevated" && e.provisioning === (managed(config) ? "codex-managed" : "existing-only") && e.network_enabled === false
     && Array.isArray(e.filesystem) && e.filesystem.length <= 256 && e.filesystem.length >= 4
     && e.filesystem.every(row => exact(row, ["path", "access"]) && (absolute(row.path) || [":root", ":minimal", ":tmpdir", ":slash_tmp"].includes(row.path)) && ["read", "write", "deny"].includes(row.access))
     && new Set(e.filesystem.map(row => row.path.toLowerCase())).size === e.filesystem.length, "SANDBOX_EFFECTIVE_POLICY_REFUSED");
@@ -79,6 +112,7 @@ export function assertCodexSandboxValidationConfiguration(config) {
     && rule(config.roots.supervisor, "deny") && rule(p.home, "deny") && e.filesystem.filter(row => row.access === "write").every(row => equalPath(row.path, config.roots.scratch))
     && e.filesystem.every(row => row.access === "deny" || [":minimal", config.roots.snapshots, config.roots.scratch].some(allowed => equalPath(row.path, allowed))
       || row.access === "read" && absolute(row.path) && !inside(config.roots.supervisor, row.path) && !inside(p.home, row.path)), "SANDBOX_EFFECTIVE_POLICY_REFUSED");
+  if (managed(config)) assertCodexSandboxProtectedResources(config.protected_resources, config);
   environment(config.launcher_environment, LAUNCH_NAMES);
   requireThat(envValue(config.launcher_environment, "CODEX_HOME") === p.home && envValue(config.launcher_environment, "TEMP") === config.roots.scratch
     && envValue(config.launcher_environment, "TMP") === config.roots.scratch && absolute(envValue(config.launcher_environment, "SYSTEMROOT")), "SANDBOX_ENVIRONMENT_REFUSED");
@@ -93,13 +127,15 @@ export function fingerprintCodexSandboxValidationConfiguration(config) { assertC
 // declared effective_policy is NOT an observation of the merged named profile.
 // Therefore neither local markers nor signed declarative qualifications permit
 // this client to run under AIDN's no-setup/no-ACL-change contract. Unknown clients
-// have no fallback. A supported implementation needs a separately reviewed path.
+// have no fallback. V2 explicitly accepts Codex-owned maintenance but only makes
+// this reviewed executable eligible for qualification, never natively available.
 // https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/identity.rs#L238
 export function getCodexSandboxValidationLaunchSupport(config) {
   assertCodexSandboxValidationConfiguration(config);
   const reviewed = config.client.sha256 === REVIEWED_CLIENT.executable_sha256;
-  return { available: false, native: false,
-    reason_code: reviewed ? "SANDBOX_EXISTING_ONLY_UNSUPPORTED" : "SANDBOX_CLIENT_UNQUALIFIED",
+  const eligible = managed(config) && reviewed;
+  return { available: eligible, native: false,
+    reason_code: eligible ? "SANDBOX_NATIVE_QUALIFICATION_REQUIRED" : reviewed ? "SANDBOX_EXISTING_ONLY_UNSUPPORTED" : "SANDBOX_CLIENT_UNQUALIFIED",
     reviewed_client: reviewed ? { ...REVIEWED_CLIENT } : null };
 }
 export function assertCodexSandboxValidationLaunchSupported(config) {
@@ -141,16 +177,32 @@ function checkQualification(envelope, config, key) {
   requireThat(exact(envelope, ["payload", "signature"]) && typeof envelope.signature === "string" && /^[A-Za-z0-9+/]{86}==$/u.test(envelope.signature), "SANDBOX_QUALIFICATION_REQUIRED");
   requireThat(verify(null, Buffer.from(canonical(envelope.payload)), key, Buffer.from(envelope.signature, "base64")), "SANDBOX_QUALIFICATION_SIGNATURE");
   const q = envelope.payload;
-  requireThat(q.contract_version === "agent-verification-boundary.v1" && q.boundary_id === ID && q.evidence_class === "native"
+  assertCodexSandboxValidationQualificationPayload(q, config);
+  return q;
+}
+export function assertCodexSandboxValidationQualificationPayload(q, config) {
+  assertCodexSandboxValidationConfiguration(config);
+  requireThat(q?.contract_version === (managed(config) ? "agent-verification-boundary.v2" : "agent-verification-boundary.v1") && q.boundary_id === ID && q.evidence_class === "native"
     && q.platform === config.platform && q.configuration_sha256 === fingerprint(config) && q.engine_sha256 === config.engine_sha256
     && q.policy_sha256 === config.verification_policy_sha256 && q.executable_sha256 === config.runner.sha256 && q.environment_sha256 === config.environment_sha256
     && q.snapshot_read_only === true && q.supervisor_resources_inaccessible === true && q.network_disabled === true && q.descendant_termination === true
-    && q.child_environment_observed === true && q.host_preserved === true && q.provisioning_performed === false
+    && q.child_environment_observed === true && (managed(config)
+      ? q.sandbox_maintenance === "codex-managed" && q.protected_resources_preserved === true
+        && q.protected_resources_sha256 === fingerprint(config.protected_resources)
+        && !Object.hasOwn(q, "host_preserved") && !Object.hasOwn(q, "provisioning_performed")
+      : q.host_preserved === true && q.provisioning_performed === false)
     && HASH.test(q.qualification_plan_sha256) && Array.isArray(q.evidence) && q.evidence.length === 5, "SANDBOX_QUALIFICATION_MISMATCH");
   return q;
 }
 
-function nativeCase(report, qualification, config) {
+export function assertCodexSandboxNativeCase(report, qualification, config) {
+  assertCodexSandboxValidationQualificationPayload(qualification, config);
+  if (managed(config)) {
+    assertCodexSandboxProtectedBaseline(report?.before?.material, config);
+    assertCodexSandboxProtectedBaseline(report?.after?.material, config);
+    requireThat(report?.sandbox_maintenance === "codex-managed"
+      && report.protected_resources_sha256 === fingerprint(config.protected_resources), "SANDBOX_NATIVE_EVIDENCE_INVALID");
+  }
   const cases = ["filesystem", "network", "timeout", "cancel", "callback"], proof = report?.process?.termination_proof, member = report?.prepared;
   requireThat(report?.status === "READY_FOR_INDEPENDENT_REVIEW" && cases.includes(report.case_id) && report.native_availability === false
     && report.plan_sha256 === qualification.qualification_plan_sha256 && report.configuration_sha256 === fingerprint(config)
@@ -180,7 +232,9 @@ function nativeCase(report, qualification, config) {
 }
 
 // Structured argv only. No permission-profile fallback, unmanaged sandbox state,
-// inherited child environment, profile write or sandbox setup is permitted here.
+// inherited child environment or profile authority writes are permitted here.
+// V2 delegates only the official client's internal sandbox maintenance to Codex;
+// this builder adds no setup RPC, helper invocation or repair fallback.
 export function buildCodexSandboxValidationInvocation(config, request) {
   assertCodexSandboxValidationConfiguration(config);
   const { environment: env, request_sha256: requestHash, ...invocation } = request ?? {};
@@ -196,6 +250,12 @@ export function buildCodexSandboxValidationInvocation(config, request) {
   const settings = ['windows.sandbox="elevated"', 'approval_policy="never"', 'shell_environment_policy.inherit="all"', 'shell_environment_policy.ignore_default_excludes=true',
     `shell_environment_policy.set={${config.profile.environment_override_names.map(name => `${JSON.stringify(name)}=""`).join(",")}}`,
     `shell_environment_policy.filters={${Object.keys(config.launcher_environment).map(name => `${JSON.stringify(name)}="include"`).join(",")}}`];
+  if (managed(config)) {
+    // The selected named permission table is supplied explicitly: it does not
+    // depend on a preinstalled profile and never writes user configuration.
+    const filesystem = config.profile.effective_policy.filesystem.map(row => `${JSON.stringify(row.path)}=${JSON.stringify(row.access === "deny" ? "none" : row.access)}`).join(",");
+    settings.push(`permissions={${JSON.stringify(config.profile.id)}={filesystem={${filesystem}},network={enabled=false}}}`);
+  }
   const args = ["sandbox", "--permission-profile", config.profile.id, "--cd", invocation.cwd, ...settings.flatMap(value => ["-c", value]), "--", config.trampoline.executable];
   const jobName = `Local\\aidn-execution-${fingerprint({ invocation_id: invocation.invocation_id, request_sha256: requestHash }).slice(0, 32)}`;
   const stdin = canonical({ protocol: "aidn-validation-trampoline.v1", runner_id: invocation.invocation_id, request_sha256: requestHash, parent_job_name: jobName,
@@ -338,10 +398,14 @@ export async function inspectCodexSandboxValidationConfiguration(config, { cwd, 
   assertCodexSandboxValidationConfiguration(config);
   requireThat(process.platform === config.platform && process.arch === config.architecture, "SANDBOX_PLATFORM_UNQUALIFIED");
   await inspectCodexSandboxValidationBinaryPins(config, { signal });
+  if (managed(config)) for (const resource of config.protected_resources) await physical(resource.path, resource.kind === "directory");
   for (const root of Object.values(config.roots)) await physical(root, true);
   const home = await physical(config.profile.home, true);
   requireThat(fingerprint({ physical_path: await fs.realpath(config.profile.home), device: home.dev, inode: home.ino, birthtime_ms: home.birthtimeMs }) === config.profile.home_identity_sha256, "SANDBOX_HOME_CHANGED");
-  await verifyRecords(config.profile.config_layers, signal); await verifyRecords(config.profile.provisioning_files, signal);
+  await verifyRecords(config.profile.config_layers, signal);
+  // V1 pins setup preimages. V2 treats them as historical observations; mutable
+  // Codex provisioning state is never a replacement for protected data or trust.
+  if (!managed(config)) await verifyRecords(config.profile.provisioning_files, signal);
   if (cwd) {
     await physical(cwd, true); requireThat(inside(config.roots.snapshots, cwd), "SANDBOX_SNAPSHOT_INVALID");
     const required = new Set([path.join(config.profile.home, "config.toml")]); let cursor = cwd;
@@ -378,7 +442,7 @@ export function createCodexSandboxValidationBoundary({ configuration, qualificat
         && positive(reference.bytes, 8 * 1024 * 1024), "SANDBOX_EVIDENCE_INVALID");
       const observed = await readFile(path.join(evidenceRoot, reference.ref), 8 * 1024 * 1024, signal, true);
       requireThat(observed.sha256 === reference.sha256 && observed.bytes === reference.bytes, "SANDBOX_EVIDENCE_CHANGED");
-      qualifiedCases.push(nativeCase(JSON.parse(observed.content), q, config));
+      qualifiedCases.push(assertCodexSandboxNativeCase(JSON.parse(observed.content), q, config));
     }
     requireThat(qualifiedCases.sort().join("|") === "callback|cancel|filesystem|network|timeout", "SANDBOX_NATIVE_EVIDENCE_INCOMPLETE");
     return { available: true, native: true, configuration_sha256: fingerprint(config) };

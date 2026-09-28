@@ -141,7 +141,8 @@ The following strict observation still has its own ten-second budget. Bootstrap
 does not grant trust, admission or qualification, and cannot replace that fresh
 observation. It never retries a failed preparation automatically.
 
-Before execution, a local codex-native-profile-policy.v1 document binds the home
+Before execution, an explicitly selected local codex-native-profile-policy.v1
+or codex-native-profile-policy.v2 document binds the home
 identity, client hash, elevated backend, configuration-source and effective-setting
 hashes, integration identifiers, reviewed hooks, separate attempt-state directory
 and allowed shared native effects. Only its fingerprint enters the versioned
@@ -432,7 +433,8 @@ they are not required Linux CI invocations. The current production path selects
 Windows preexisting-profile mode only. Unqualified OS/profile/helper/boundary
 compositions report UNAVAILABLE and cannot fall back to ordinary subprocesses,
 copied trust or a different sandbox. Existing profile setup is a precondition,
-never an implicit lifecycle effect.
+never an AIDN setup or repair fallback. Explicit v2 selection separately declares
+the official client's sandbox maintenance during execution.
 
 Validation-boundary file inspection streams the selected Codex client up to
 512 MiB, matching the worker client bound. Runner, trampoline, controller source
@@ -440,15 +442,35 @@ and helper pins retain their 256 MiB limit. Reads use at most 64 KiB chunks and
 verify the complete SHA-256 plus unchanged file identity and size; increasing the
 client bound does not authorize a client or establish native availability.
 
-The validation backend currently fails that prerequisite. The inspected official
-source for Codex `0.158.0-alpha.2.1` invokes an elevated setup refresh on the
-`codex sandbox` path even when sandbox state exists. Its current implementation
-therefore returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process,
-including qualification probes. A positive local attestation cannot override
-that refusal. The final lot 7 native campaign is UNAVAILABLE until the selected
-official client/backend satisfies the existing-only contract and the exact
-composition is independently qualified. An external setup completion does not
-remove that incompatibility.
+The inspected official source for Codex `0.158.0-alpha.2.1` invokes an elevated
+setup refresh on the `codex sandbox` path even when sandbox state exists. V1
+therefore retains `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process.
+Neither setup completion nor a local attestation overrides that refusal.
+
+V2 is a separate explicit contract, not a relaxation of a v1 proof:
+
+- Select `codex-native-profile-policy.v2` and `backend.provisioning: codex-managed`
+  for a worker. Obtain the v2 effect digest through
+  `readCodexNativeProfileSharedEffects(home, "codex-native-profile-policy.v2")`.
+  Consent includes `approved`, `state_root`, that `shared_effects_sha256` and
+  `sandbox_maintenance: codex-managed`. A v1 consent is rejected.
+- Select `codex-sandbox-validation-configuration.v2` for validation. Its exact
+  protected resource list covers configuration, data, Git and runtime, with
+  physical paths and file/directory kinds. The qualification plan fingerprints
+  this list and its complete ordered preimages. OneDrive remains excluded.
+- Codex owns maintenance of its sandbox accounts, permissions and network rules.
+  Setup markers are observations, not immutable v2 authorities. AIDN never
+  substitutes `provisioning_performed: false` or a claim that all Windows state
+  is unchanged. Configuration sources, hooks, trust and the declared protected
+  resources remain frozen.
+- The named validation permissions are supplied as structured native CLI
+  overrides derived from the frozen policy, without editing user configuration.
+  V2 launch support permits qualification probes only for the exact reviewed
+  client; runtime availability still requires the five native proofs and a
+  matching signed `agent-verification-boundary.v2` qualification.
+
+An unavailable or failed native composition stays unavailable. The final lot 7
+campaign remains unexecuted until the exact composition passes these checks.
 Portable checks and Job/trampoline fixtures may still pass; they do not close
 that confinement requirement or establish merge/release readiness.
 
@@ -478,10 +500,10 @@ Follow these steps without introducing a new preparation subsystem:
 2. Prepare the exact candidate package and dedicated worktrees outside OneDrive
    using the procedure above. Each worktree retains its own `verify-only`
    installation and native review.
-3. Check availability and native prerequisites. Stop on
-   `SANDBOX_EXISTING_ONLY_UNSUPPORTED`; do not call setup, switch sandbox or
-   retry with weaker arguments. Official setup success cannot override this
-   client's known incompatibility with the current validation contract.
+3. Freeze the selected contract and check native prerequisites. V1 remains
+   refused for the reviewed client. An explicit v2 plan declares Codex-managed
+   maintenance and binds the protected resource observations; never switch
+   versions or sandboxes after failure. AIDN performs no automatic setup or repair.
 4. Run the distinct native confinement and worker probes: authorized edit,
    forbidden edit, observed hooks, timeout/cancellation, descendant termination
    and preservation of unrelated worktrees, Git and runtime state.
@@ -495,9 +517,9 @@ are different evidence. None proves the next step automatically. Codex's
 worker's descendants stopped before accepting cleanup or relaunch. The actual
 supervised worker continues to use `codex-cli-task`, not a new App Server backend.
 
-The current native validation path remains blocked as described above. The
-final lot 7 campaign is **UNAVAILABLE / not executed** for this candidate; this
-boundary correction is not a native qualification or merge-readiness claim.
+The final lot 7 campaign is **UNAVAILABLE / not executed** for this candidate
+until the distinct native evidence is retained and reviewed. The v2 contract
+correction alone is not a native qualification or merge-readiness claim.
 
 ## OneDrive exclusion in AIDN
 

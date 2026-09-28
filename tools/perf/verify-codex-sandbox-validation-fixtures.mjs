@@ -8,7 +8,9 @@ import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { assertCodexSandboxValidationConfiguration as validate, fingerprintCodexSandboxValidationConfiguration,
   buildCodexSandboxValidationInvocation as build, createCodexValidationStreamParser as parser, getCodexSandboxValidationLaunchSupport,
-  createCodexSandboxValidationBoundary, createCodexSandboxValidationJournal, inspectCodexSandboxValidationBinaryPins } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
+  createCodexSandboxValidationBoundary, createCodexSandboxValidationJournal, inspectCodexSandboxValidationBinaryPins,
+  assertCodexSandboxProtectedBaseline, assertCodexSandboxValidationQualificationPayload, assertCodexSandboxNativeCase } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
+import { assertAgentVerificationQualificationVersion } from "../../src/adapters/runtime/local-agent-verification.mjs";
 import { buildCodexValidationQualificationPlan, executeCodexValidationQualificationCase } from "../verify/qualify-codex-validation-boundary.mjs";
 
 const checks = [], H = "a".repeat(64);
@@ -32,6 +34,52 @@ function fixture() {
     executable_sha256: H, argv: ["check espace été.mjs"], cwd: path.join(roots.snapshots, "snapshot espace été"), environment_sha256: fingerprint(env), max_duration_ms: 30000, max_output_bytes: 1024 };
   return { config, request: { ...invocation, request_sha256: fingerprint(invocation), environment: env } };
 }
+
+function managedFixture() {
+  const value = fixture(), config = value.config;
+  config.contract_version = "codex-sandbox-validation-configuration.v2";
+  config.client.sha256 = "8f0554ede25bbc5450921897c468b2e84635aa513c5017457997af0954581f49";
+  config.profile.effective_policy.provisioning = "codex-managed";
+  config.profile.effective_policy_sha256 = fingerprint(config.profile.effective_policy);
+  config.protected_resources = ["configuration", "data", "git", "runtime"].map(category => ({ id: category,
+    category, path: path.join(root, "protected", category), kind: category === "configuration" ? "file" : "directory" }));
+  return value;
+}
+function protectedBaseline(config) { return { protected_resources_sha256: fingerprint(config.protected_resources),
+  observations: config.protected_resources.map(row => ({ resource_id: row.id, sha256: H })) }; }
+function managedQualification(config) { return { contract_version: "agent-verification-boundary.v2", boundary_id: config.boundary_id,
+  evidence_class: "native", platform: "win32", configuration_sha256: fingerprint(config), engine_sha256: config.engine_sha256,
+  policy_sha256: config.verification_policy_sha256, executable_sha256: config.runner.sha256, environment_sha256: config.environment_sha256,
+  snapshot_read_only: true, supervisor_resources_inaccessible: true, network_disabled: true, descendant_termination: true,
+  child_environment_observed: true, sandbox_maintenance: "codex-managed", protected_resources_preserved: true,
+  protected_resources_sha256: fingerprint(config.protected_resources), qualification_plan_sha256: H,
+  evidence: ["filesystem", "network", "timeout", "cancel", "callback"].map(name => ({ ref: `${name}.json`, sha256: H, bytes: 1 })) }; }
+function managedReport(config, q, caseId) {
+  const identity = { runner_id: "fixture.native", pid: 71, started_at: "2026-01-01T00:00:00Z", job_name: "Local\\fixture" };
+  const proof = { ...identity, method: "windows-job-object", active_processes: 0, helper_sha256: config.controller.helperSha256,
+    source_sha256: config.controller.helperSourceSha256, candidate_sha256: config.controller.candidateSha256 };
+  return { status: "READY_FOR_INDEPENDENT_REVIEW", case_id: caseId, native_availability: false,
+    plan_sha256: q.qualification_plan_sha256, configuration_sha256: fingerprint(config), diagnostic: null,
+    sandbox_maintenance: "codex-managed", protected_resources_sha256: fingerprint(config.protected_resources),
+    before: { phase: "before", case_id: caseId, material: protectedBaseline(config) },
+    after: { phase: "after", case_id: caseId, material: protectedBaseline(config) },
+    process: { termination_state: "confirmed", termination_proof: proof, runner: { ...identity, executable_sha256: config.client.sha256 },
+      reason_code: caseId === "cancel" ? "PROCESS_CANCELLED" : "PROCESS_CALLBACK_FAILED" },
+    prepared: { ...identity, parent_job_member: true, parent_job_name: identity.job_name,
+      environment_sha256: config.environment_sha256, executable_sha256: config.runner.sha256 },
+    child_terminal: { ...identity, active_processes: 0, termination_state: "confirmed", outcome: caseId === "timeout" ? "timed_out" : "completed" },
+    observation: { case_id: caseId, environment_sha256: config.environment_sha256, observations: {
+      snapshot_write_denied: true, supervisor_read_denied: true, supervisor_write_denied: true, snapshot_sha256: H, scratch_sha256: H,
+      network: "denied", descendant_pid: 72 } }, network: { positive_control: true, sandbox_connections: 0 } };
+}
+function managedPlan(config, request, hostBaseline = protectedBaseline(config)) {
+  return buildCodexValidationQualificationPlan({ configuration: config, environment: request.environment,
+    probe: { path: path.join(request.cwd, "probe.mjs"), sha256: H }, cwd: request.cwd,
+    canaries: { snapshot_file: path.join(request.cwd, "canary"), scratch_file: path.join(config.roots.scratch, "canary"),
+      supervisor_file: path.join(config.roots.supervisor, "canary") }, networkPort: 34567,
+    challenge: "11111111-1111-4111-8111-111111111111", hostBaseline, evidenceRoot: path.join(config.roots.supervisor, "evidence") });
+}
+
 const mutate = (input, fn) => { const next = structuredClone(input); fn(next); return next; };
 const code = expected => error => error.code === expected;
 const frame = (request, sequence, type, rest) => Buffer.from(JSON.stringify({ protocol: "aidn-validation-trampoline.v1", runner_id: request.invocation_id, request_sha256: request.request_sha256, sequence, type, ...rest }) + "\n");
@@ -119,6 +167,110 @@ await check("pre-cancelled invocation never requires executable or config files"
   const boundary = createCodexSandboxValidationBoundary({ configuration: config, publicKey, evidenceRoot: root });
   const result = await boundary.run(request, { signal: stop.signal }); assert.equal(result.termination_state, "not_started"); assert.equal(result.reason_code, "SANDBOX_CANCELLED");
 });
+
+await check("v2 explicitly delegates maintenance but never grants native availability", async () => {
+  const { config, request } = managedFixture(), before = structuredClone(config), names = fs.readdirSync(root).sort();
+  assert.equal(validate(config), true);
+  assert.deepEqual(getCodexSandboxValidationLaunchSupport(config), { available: true, native: false,
+    reason_code: "SANDBOX_NATIVE_QUALIFICATION_REQUIRED", reviewed_client: { version: "0.158.0-alpha.2.1",
+      executable_sha256: config.client.sha256, source_commit: "0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807" } });
+  const { publicKey } = generateKeyPairSync("ed25519"), boundary = createCodexSandboxValidationBoundary({ configuration: config, publicKey, evidenceRoot: root });
+  assert.equal((await boundary.checkAvailability()).available, false); await assert.rejects(boundary.run(request));
+  assert.deepEqual(config, before); assert.deepEqual(fs.readdirSync(root).sort(), names);
+  config.client.sha256 = H; assert.equal(getCodexSandboxValidationLaunchSupport(config).available, false);
+});
+await check("v2 supplies the exact permission table through official CLI arguments", () => {
+  const { config, request } = managedFixture(), launch = build(config, request);
+  const table = `permissions={${JSON.stringify(config.profile.id)}={filesystem={${config.profile.effective_policy.filesystem.map(row =>
+    `${JSON.stringify(row.path)}=${JSON.stringify(row.access === "deny" ? "none" : row.access)}`).join(",")}},network={enabled=false}}}`;
+  assert.equal(launch.args.filter(arg => arg.startsWith("permissions=")).length, 1); assert(launch.args.includes(table));
+  assert.equal(launch.args[launch.args.indexOf(table) - 1], "-c"); assert.equal(launch.args[launch.args.indexOf("--permission-profile") + 1], config.profile.id);
+  const changed = structuredClone(config); changed.profile.effective_policy.filesystem.push({ path: path.join(root, "tools espace été"), access: "read" });
+  changed.profile.effective_policy_sha256 = fingerprint(changed.profile.effective_policy);
+  assert.notEqual(fingerprint(build(changed, request)), fingerprint(launch));
+  assert(!launch.args.some(arg => /setupStart|full-access|unelevated/.test(arg)));
+});
+for (const [name, change] of [
+  ["missing category", c => { c.protected_resources.pop(); }],
+  ["duplicate ID", c => { c.protected_resources[1].id = c.protected_resources[0].id; }],
+  ["same path", c => { c.protected_resources[1].path = c.protected_resources[0].path; }],
+  ["nested path", c => { c.protected_resources[1].path = path.join(c.protected_resources[2].path, "child"); }],
+  ["scratch child", c => { c.protected_resources[1].path = path.join(c.roots.scratch, "data"); }],
+  ["snapshot root", c => { c.protected_resources[1].path = c.roots.snapshots; }],
+  ["ancestor of scratch", c => { c.protected_resources[1].path = root; }],
+  ["profile enumeration", c => { c.protected_resources[1].path = c.profile.home; }],
+  ["configuration directory", c => { c.protected_resources[0].kind = "directory"; }],
+  ["relative path", c => { c.protected_resources[1].path = "relative/data"; }],
+  ["OneDrive", c => { c.protected_resources[1].path = path.join(root, "OneDrive", "data"); }],
+  ["short alias", c => { c.protected_resources[1].path = path.join(root, "ALIAS~1"); }],
+  ["unknown field", c => { c.protected_resources[1].optional = true; }],
+  ["v1 permission under v2", c => { c.profile.effective_policy.provisioning = "existing-only"; }],
+  ["v2 permission under v1", c => { c.contract_version = "codex-sandbox-validation-configuration.v1"; delete c.protected_resources; }],
+]) await check(`v2 refuses ${name} without observation`, () => {
+  const { config } = managedFixture(); change(config); config.profile.effective_policy_sha256 = fingerprint(config.profile.effective_policy);
+  assert.throws(() => validate(config));
+});
+await check("v2 plan binds the entire protected set and retains five independent native cases", () => {
+  const { config, request } = managedFixture(), before = fs.readdirSync(root).sort(), plan = managedPlan(config, request);
+  assert.equal(plan.contract_version, "codex-validation-native-plan.v2"); assert.equal(plan.sandbox_maintenance, "codex-managed");
+  assert.deepEqual(plan.protected_resources, config.protected_resources); assert.equal(plan.cases.length, 5);
+  assert(!plan.prohibited_effects.includes("ACL changes")); assert(plan.prohibited_effects.includes("protected resource changes"));
+  for (const field of ["path", "id", "kind"]) {
+    const next = structuredClone(config);
+    next.protected_resources[1][field] = field === "path" ? path.join(root, "another-data") : field === "kind" ? "file" : "changed-data";
+    assert.notEqual(managedPlan(next, request).plan_sha256, plan.plan_sha256);
+  }
+  const changed = protectedBaseline(config); changed.observations[1].sha256 = "b".repeat(64);
+  assert.notEqual(managedPlan(config, request, changed).plan_sha256, plan.plan_sha256);
+  assert.deepEqual(fs.readdirSync(root).sort(), before);
+});
+for (const [name, change] of [
+  ["empty", b => { b.observations = []; }], ["omitted", b => { b.observations.pop(); }],
+  ["wrong set", b => { b.protected_resources_sha256 = H; }], ["foreign ID", b => { b.observations[0].resource_id = "foreign"; }],
+  ["reordered", b => { b.observations.reverse(); }], ["unmeasured", b => { delete b.observations[0].sha256; }],
+  ["Windows catch-all", b => { b.accounts_sha256 = H; }],
+]) await check(`v2 refuses ${name} protected baseline`, () => {
+  const { config } = managedFixture(), value = protectedBaseline(config); change(value);
+  assert.throws(() => assertCodexSandboxProtectedBaseline(value, config));
+});
+await check("v2 pure qualification shape retains protections without claiming global Windows immutability", () => {
+  const { config } = managedFixture(), q = managedQualification(config);
+  assert.equal(assertAgentVerificationQualificationVersion(q), true);
+  assert.deepEqual(assertCodexSandboxValidationQualificationPayload(q, config), q);
+  for (const caseId of ["filesystem", "network", "timeout", "cancel", "callback"])
+    assert.equal(assertCodexSandboxNativeCase(managedReport(config, q, caseId), q, config), caseId);
+});
+for (const [name, change] of [
+  ["legacy proof", q => { q.contract_version = "agent-verification-boundary.v1"; }],
+  ["maintenance missing", q => { delete q.sandbox_maintenance; }], ["no protected preservation", q => { q.protected_resources_preserved = false; }],
+  ["foreign protected set", q => { q.protected_resources_sha256 = H; }], ["global host claim", q => { q.host_preserved = true; }],
+  ["provisioning absent claim", q => { q.provisioning_performed = false; }], ["writable snapshot", q => { q.snapshot_read_only = false; }],
+  ["readable secrets", q => { q.supervisor_resources_inaccessible = false; }], ["network enabled", q => { q.network_disabled = false; }],
+  ["unknown descendants", q => { q.descendant_termination = false; }], ["missing fifth proof", q => { q.evidence.pop(); }],
+  ["another configuration", q => { q.configuration_sha256 = H; }],
+]) await check(`v2 qualification rejects ${name}`, () => {
+  const { config } = managedFixture(), q = managedQualification(config); change(q);
+  assert.throws(() => assertCodexSandboxValidationQualificationPayload(q, config));
+});
+for (const [name, change] of [
+  ["changed protected bytes", r => { r.after.material.observations[1].sha256 = "b".repeat(64); }],
+  ["another protected set", r => { r.before.material.protected_resources_sha256 = H; }],
+  ["live descendant", r => { r.process.termination_proof.active_processes = 1; }],
+  ["wrong outer Job", r => { r.prepared.parent_job_name = "foreign"; }],
+  ["supervisor readable", r => { r.observation.observations.supervisor_read_denied = false; }],
+  ["missing after", r => { delete r.after; }],
+]) await check(`v2 native report shape rejects ${name}`, () => {
+  const { config } = managedFixture(), q = managedQualification(config), report = managedReport(config, q, "filesystem"); change(report);
+  assert.throws(() => assertCodexSandboxNativeCase(report, q, config));
+});
+await check("generic verifier refuses malformed or downgraded v2 declarations", () => {
+  const { config } = managedFixture(), q = managedQualification(config);
+  for (const field of ["sandbox_maintenance", "protected_resources_preserved", "protected_resources_sha256"])
+    assert.throws(() => assertAgentVerificationQualificationVersion(mutate(q, next => { delete next[field]; })));
+  assert.throws(() => assertAgentVerificationQualificationVersion(mutate(q, next => { next.evidence_class = "fixture"; })));
+  assert.throws(() => assertAgentVerificationQualificationVersion(mutate(q, next => { next.boundary_id = "another-boundary"; })));
+});
+
 // Sparse fixture bytes are never retained in memory. NTFS needs its explicit
 // per-file sparse flag; this does not configure any host or sandbox resource.
 const binaryRoot = path.join(root, "binary-pins");

@@ -299,9 +299,12 @@ The separate Windows metadata process check
 `node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
 and exact-package end-to-end campaign remain outside this portable gate. Missing
 native prerequisites are UNAVAILABLE, never a fixture PASS. The current Windows
-validation backend returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native
-process because its existing-state path refreshes provisioning. A successful
-official setup or native trust review cannot override that incompatibility.
+validation v1 backend returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any
+native process because its existing-state path refreshes provisioning. V2
+explicitly declares Codex-managed maintenance and binds protected resource
+preimages. Fixtures test version separation, exact consent, native proof
+requirements and changed-resource refusal; none establishes native availability.
+Official setup and native trust review remain separate evidence.
 The final three-task/two-simultaneous-Codex campaign remains unexecuted until the
 exact compatible composition has its own evidence.
 

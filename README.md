@@ -162,9 +162,10 @@ evidence for the package, client, helper, profile and validation boundary.
 The initial Windows preexisting-profile composition admits at most four
 individually prepared and reviewed worker roots. That capacity is distinct from
 the plan's concurrency limit of one to four. Missing native prerequisites refuse
-execution; fixture success does not qualify real Codex parallelism. Supervision
-requires PostgreSQL, while existing sequential commands retain optional
-PostgreSQL. See [command details](docs/CLI_SURFACE_INVENTORY.md) and
+execution; fixture success does not qualify real Codex parallelism. The explicit v2 native contract declares Codex-managed sandbox maintenance;
+AIDN performs no setup or repair and still requires protected-resource and native
+execution evidence. Supervision requires PostgreSQL, while existing sequential
+commands retain optional PostgreSQL. See [command details](docs/CLI_SURFACE_INVENTORY.md) and
 [native preparation and qualification](docs/AGENT_EXECUTION_NATIVE_QUALIFICATION.md).
 
 Codex supplies task execution, authentication, native trust and the Windows

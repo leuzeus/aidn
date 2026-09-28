@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
 import { assertCodexNativeProfilePolicy, assertCodexNativeProfileBinding, fingerprintCodexNativeProfilePolicy,
   resolveCodexNativeProfileStatePaths, buildCodexNativeProfileArguments, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES,
-  assertCodexNativeProfileEnvironmentOverrideNames } from "../../adapters/agents/codex-native-profile-policy.mjs";
+  assertCodexNativeProfileEnvironmentOverrideNames, codexNativeProfilePreservationEvidence } from "../../adapters/agents/codex-native-profile-policy.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const requireProof = (condition, code) => { if (!condition) fail(code); };
@@ -29,6 +29,17 @@ export const CODEX_NATIVE_PROFILE_SHARED_EFFECTS = Object.freeze({
     "no setup, login, configuration write or approval RPC"]),
   evidence_limit: "File preimages and readiness do not establish unchanged Windows accounts, ACLs or firewall state.",
 });
+
+export const CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2 = Object.freeze({
+  contract_version: "codex-native-profile-shared-effects.v2",
+  allowed_effects: Object.freeze([...CODEX_NATIVE_PROFILE_SHARED_EFFECTS.allowed_effects,
+    "official Codex maintenance of its internal Windows sandbox resources"]),
+  protected_effects: Object.freeze(["configuration, hook trust and rule files remain unchanged",
+    "AIDN calls no setup, login, configuration write or approval RPC"]),
+  evidence_limit: "Protected-resource observations do not establish unchanged Windows accounts, ACLs or firewall state.",
+});
+const codexManaged = policy => policy.contract_version === "codex-native-profile-policy.v2";
+const profileProtocol = policy => codexManaged(policy) ? 2 : 1;
 
 function physical(file, kind, optional = false) {
   requireProof(typeof file === "string" && path.isAbsolute(file) && path.normalize(file) === file, "PROFILE_ABSOLUTE_PATH_REQUIRED");
@@ -86,16 +97,24 @@ function protectedSnapshot(manifest, home, environment) {
   return [...files].sort().map(file => fileRecord(file));
 }
 
-function setupSnapshot(home) { return SETUP_FILES.map(relative => ({ relative, ...fileRecord(path.join(home, relative), false) })); }
-function sharedEffects(setup) { return { ...CODEX_NATIVE_PROFILE_SHARED_EFFECTS, immutable_setup_sha256: fingerprint(setup) }; }
+function setupSnapshot(home, optional = false) { return SETUP_FILES.map(relative => ({ relative, ...fileRecord(path.join(home, relative), optional) })); }
+function sharedEffects(setup, policyVersion) { return policyVersion === "codex-native-profile-policy.v2"
+  ? { ...CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2 }
+  : { ...CODEX_NATIVE_PROFILE_SHARED_EFFECTS, immutable_setup_sha256: fingerprint(setup) }; }
 
-export function readCodexNativeProfileSharedEffects(home) {
-  return sharedEffects(setupSnapshot(home));
+export function readCodexNativeProfileSharedEffects(home, policyVersion = "codex-native-profile-policy.v1") {
+  requireProof(["codex-native-profile-policy.v1", "codex-native-profile-policy.v2"].includes(policyVersion), "CODEX_NATIVE_PROFILE_POLICY_INVALID");
+  return sharedEffects(policyVersion === "codex-native-profile-policy.v2" ? null : setupSnapshot(home), policyVersion);
 }
 
 function checkedConsent(consent, policy, proposal = false) {
   requireProof(object(consent) && consent.approved === true && consent.state_root === policy.effects.state_root
-    && (proposal ? consent.metadata_only === true : consent.shared_effects_sha256 === policy.effects.shared_effects_sha256), "PROFILE_EXPLICIT_CONSENT_REQUIRED");
+    && (proposal ? consent.metadata_only === true : consent.shared_effects_sha256 === policy.effects.shared_effects_sha256)
+    && (codexManaged(policy) ? consent.sandbox_maintenance === "codex-managed"
+      && Object.keys(consent).sort().join("|") === ["approved", "state_root", "sandbox_maintenance",
+        proposal ? "metadata_only" : "shared_effects_sha256"].sort().join("|")
+      && (proposal || policy.effects.shared_effects_sha256 === fingerprint(CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2))
+      : !Object.hasOwn(consent, "sandbox_maintenance")), "PROFILE_EXPLICIT_CONSENT_REQUIRED");
 }
 
 function environmentFor(home, stateRoot, host) {
@@ -261,7 +280,7 @@ function prepareObservation({ manifest, policy, request, consent, proposal }, ho
   const state = resolveCodexNativeProfileStatePaths(policy, request), env = environmentFor(policy.home.physical_path, state.root, host);
   requireProof(manifest.roots.every(root => !inside(root.root, policy.effects.state_root) && !inside(policy.effects.state_root, root.root)), "PROFILE_STATE_ROOT_UNSAFE");
   for (const directory of [state.root, state.logs, state.sqlite]) physical(directory, "directory", true);
-  const setup = setupSnapshot(policy.home.physical_path), effects = sharedEffects(setup);
+  const setup = setupSnapshot(policy.home.physical_path, codexManaged(policy)), effects = sharedEffects(setup, policy.contract_version);
   if (!proposal) requireProof(fingerprint(effects) === policy.effects.shared_effects_sha256, "PROFILE_SETUP_STATE_CHANGED");
   const sources = protectedSnapshot(manifest, policy.home.physical_path, env);
   for (const root of manifest.roots) {
@@ -281,16 +300,17 @@ export function createCodexNativeProfileObserver({ collect = collectCodexNativeP
     try { metadata = await collect({ executable: manifest.codex.binary_path, args: buildCodexNativeProfileObservationArguments(policy, request), cwd: request.cwd, env: before.env, roots: workerRoots(manifest), signal }, { timeoutMs }); }
     catch (error) { failure = error; }
     const after = prepareObservation({ manifest, policy, request, consent, proposal }, host);
-    requireProof(same(before.home, after.home) && same(before.sources, after.sources) && same(before.setup, after.setup), "PROFILE_PRESERVATION_FAILED");
+    requireProof(same(before.home, after.home) && same(before.sources, after.sources)
+      && (codexManaged(policy) || same(before.setup, after.setup)), "PROFILE_PRESERVATION_FAILED");
     if (failure) throw failure;
     if (signal?.aborted) throw Object.assign(new Error("PROFILE_METADATA_CANCELLED"), { code: "PROFILE_METADATA_CANCELLED", process: metadata.process });
     const evidence = validateCodexNativeProfileMetadata({ metadata, manifest, policy, request, sourceFiles: before.sources });
     if (!proposal) requireProof(evidence.sources_sha256 === policy.configuration.sources_sha256
       && evidence.effective_settings_sha256 === policy.configuration.effective_settings_sha256 && evidence.hooks_sha256 === policy.hooks_sha256, "PROFILE_POLICY_OBSERVATION_CHANGED");
-    return { protocol_version: 1, status: proposal ? "proposal_observed" : "verified", ...evidence,
+    return { protocol_version: profileProtocol(policy), status: proposal ? "proposal_observed" : "verified", ...evidence,
       home_identity_sha256: fingerprint(before.home), client_sha256: policy.client_sha256,
       shared_effects_sha256: fingerprint(before.effects), shared_effects: before.effects, sources: before.sources,
-      setup_sha256: fingerprint(before.setup), process: metadata.process, preservation: "PASS", provisioning_performed: false, environment_restricted: true };
+      setup_sha256: fingerprint(before.setup), process: metadata.process, preservation: "PASS", ...codexNativeProfilePreservationEvidence(policy), environment_restricted: true };
   };
 }
 
@@ -302,11 +322,11 @@ export function assertCodexNativeProfileBootstrap(result, { policy, request, roo
   requireProof(Number.isInteger(rootCount) && rootCount >= 1 && rootCount <= 4, "PROFILE_WORKER_ROOTS_REQUIRED");
   assertCodexNativeProfileBinding(policy, request);
   const state = resolveCodexNativeProfileStatePaths(policy, request);
-  const expected = { protocol_version: 1, status: "bootstrap_completed", authorization: "NOT_GRANTED", native_execution: "NOT_RUN",
+  const expected = { protocol_version: profileProtocol(policy), status: "bootstrap_completed", authorization: "NOT_GRANTED", native_execution: "NOT_RUN",
     attempt_id: request.attempt_id, request_sha256: fingerprint(request), policy_sha256: fingerprintCodexNativeProfilePolicy(policy), state_root: state.root,
     preservation: "PASS", home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
     sources_sha256: policy.configuration.sources_sha256, effective_settings_sha256: policy.configuration.effective_settings_sha256,
-    hooks_sha256: policy.hooks_sha256, shared_effects_sha256: policy.effects.shared_effects_sha256, provisioning_performed: false, environment_restricted: true };
+    hooks_sha256: policy.hooks_sha256, shared_effects_sha256: policy.effects.shared_effects_sha256, ...codexNativeProfilePreservationEvidence(policy), environment_restricted: true };
   const { tree_termination: tree, ...parentProcess } = object(result?.process) ? result.process : {};
   if (tree !== undefined) requireProof(object(tree) && Object.keys(tree).sort().join(",") === "bridge_sha256,candidate_inventory_sha256,collector_sha256,proof,request_sha256,runner,termination_state"
     && tree.termination_state === "confirmed" && tree.proof?.method === "windows-job-object" && tree.proof.active_processes === 0
@@ -330,12 +350,16 @@ export function createCodexNativeProfileVerifier({ manifest, policy, outputRoot,
     if (signal?.aborted) throw Object.assign(new Error("PROFILE_METADATA_CANCELLED"), { code: "PROFILE_METADATA_CANCELLED", process: observation?.process });
     requireProof(observation.status === "verified" && observation.process?.closed === true && observation.process?.pid_absent === true
       && observation.process.budget_ms === timeoutMs
-      && observation.preservation === "PASS" && observation.provisioning_performed === false
+      && observation.preservation === "PASS"
+      && (observation.protocol_version === undefined && !codexManaged(policy) || observation.protocol_version === profileProtocol(policy))
+      && Object.entries(codexNativeProfilePreservationEvidence(policy)).every(([key, value]) => observation[key] === value)
+      && (codexManaged(policy) ? !Object.hasOwn(observation, "provisioning_performed")
+        : !Object.hasOwn(observation, "sandbox_maintenance") && !Object.hasOwn(observation, "protected_resources_preserved"))
       && observation.home_identity_sha256 === policy.home.identity_sha256 && observation.client_sha256 === policy.client_sha256
       && observation.sources_sha256 === policy.configuration.sources_sha256 && observation.effective_settings_sha256 === policy.configuration.effective_settings_sha256
       && observation.hooks_sha256 === policy.hooks_sha256 && observation.shared_effects_sha256 === policy.effects.shared_effects_sha256
       && observation.integrations_disabled === true && observation.environment_restricted === true && observation.unexpected_hooks === 0, "PROFILE_OBSERVATION_INCOMPLETE");
-    if (initial) requireProof(initial.sources_sha256 === observation.sources_sha256 && initial.setup_sha256 === observation.setup_sha256, "PROFILE_PRESERVATION_FAILED");
+    if (initial) requireProof(initial.sources_sha256 === observation.sources_sha256 && (codexManaged(policy) || initial.setup_sha256 === observation.setup_sha256), "PROFILE_PRESERVATION_FAILED");
     if (!metadataBootstrap) {
       initial ??= observation;
       lastRequest = structuredClone(request);
@@ -352,31 +376,31 @@ export function createCodexNativeProfileVerifier({ manifest, policy, outputRoot,
   const verifier = async (request, { signal, phase, challenge } = {}) => {
     requireProof(["before_create", "before_resume"].includes(phase) && typeof challenge === "string" && /^[a-f0-9-]{36}$/.test(challenge), "PROFILE_VERIFICATION_CONTEXT_INVALID");
     await observe(request, signal);
-    return { protocol_version: 1, ok: true, phase, challenge, policy_sha256: fingerprintCodexNativeProfilePolicy(policy), attempt_id: request.attempt_id,
+    return { protocol_version: profileProtocol(policy), ok: true, phase, challenge, policy_sha256: fingerprintCodexNativeProfilePolicy(policy), attempt_id: request.attempt_id,
       request_sha256: fingerprint(request), home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
       backend: policy.backend.sandbox, sources_sha256: policy.configuration.sources_sha256, effective_settings_sha256: policy.configuration.effective_settings_sha256,
       hooks_sha256: policy.hooks_sha256, shared_effects_sha256: policy.effects.shared_effects_sha256,
-      unexpected_hooks: 0, integrations_disabled: true, environment_restricted: true, provisioning_performed: false };
+      unexpected_hooks: 0, integrations_disabled: true, environment_restricted: true, ...codexNativeProfilePreservationEvidence(policy) };
   };
   verifier.bootstrap = async (request, { signal, timeoutMs = 60000 } = {}) => {
     requireProof(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 60000, "PROFILE_METADATA_TIMEOUT_INVALID");
     const observation = await observe(request, signal, { metadataBootstrap: true, timeoutMs });
-    const result = { protocol_version: 1, status: "bootstrap_completed", authorization: "NOT_GRANTED", native_execution: "NOT_RUN",
+    const result = { protocol_version: profileProtocol(policy), status: "bootstrap_completed", authorization: "NOT_GRANTED", native_execution: "NOT_RUN",
       attempt_id: request.attempt_id, request_sha256: fingerprint(request), policy_sha256: fingerprintCodexNativeProfilePolicy(policy),
       state_root: resolveCodexNativeProfileStatePaths(policy, request).root, budget_ms: timeoutMs, process: observation.process,
       preservation: "PASS", home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
       sources_sha256: observation.sources_sha256, effective_settings_sha256: observation.effective_settings_sha256,
       hooks_sha256: observation.hooks_sha256, setup_sha256: observation.setup_sha256, shared_effects_sha256: observation.shared_effects_sha256,
-      provisioning_performed: false, environment_restricted: true };
+      ...codexNativeProfilePreservationEvidence(policy), environment_restricted: true };
     assertCodexNativeProfileBootstrap(result, { policy, request, rootCount: workerRoots(manifest).length });
     return result;
   };
   verifier.finalize = async ({ signal, request = lastRequest } = {}) => {
     requireProof(initial && request, "PROFILE_INITIAL_OBSERVATION_REQUIRED");
     const observation = await observe(request, signal);
-    return { ok: true, preservation: "PASS", provisioning_performed: false, sources_sha256: observation.sources_sha256,
+    return { ok: true, preservation: "PASS", ...codexNativeProfilePreservationEvidence(policy), sources_sha256: observation.sources_sha256,
       setup_sha256: observation.setup_sha256, shared_effects_sha256: observation.shared_effects_sha256, process: observation.process,
-      evidence_limit: CODEX_NATIVE_PROFILE_SHARED_EFFECTS.evidence_limit };
+      evidence_limit: (codexManaged(policy) ? CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2 : CODEX_NATIVE_PROFILE_SHARED_EFFECTS).evidence_limit };
   };
   return verifier;
 }
@@ -399,7 +423,8 @@ export async function inspectCodexNativeProfileProposal({ manifest, policyTempla
     try { raw = await collect({ executable: manifest.codex.binary_path, args: buildCodexNativeProfileObservationArguments(candidate, bound), cwd: bound.cwd, env: before.env, roots: workerRoots(manifest), signal }, { timeoutMs }); }
     catch (error) { failure = error; }
     const after = prepareObservation({ manifest, policy: candidate, request: bound, consent, proposal: true }, host);
-    requireProof(same(before.home, after.home) && same(before.sources, after.sources) && same(before.setup, after.setup), "PROFILE_PRESERVATION_FAILED");
+    requireProof(same(before.home, after.home) && same(before.sources, after.sources)
+      && (codexManaged(candidate) || same(before.setup, after.setup)), "PROFILE_PRESERVATION_FAILED");
     if (failure) throw failure;
     if (signal?.aborted) throw Object.assign(new Error("PROFILE_METADATA_CANCELLED"), { code: "PROFILE_METADATA_CANCELLED", process: raw.process });
     requireProof(same(raw.process, { closed: true, pid_absent: true, exit_code: 0, signal: null, response_count: workerRoots(manifest).length + 3, budget_ms: timeoutMs }), "PROFILE_METADATA_INCOMPLETE");

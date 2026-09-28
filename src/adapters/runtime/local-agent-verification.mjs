@@ -29,6 +29,18 @@ function verdict(protocol, processResult, validationId) {
     && (processResult.outcome === undefined || processResult.outcome === "completed") ? protocol.status : "failed";
 }
 
+// V2 changes only the provenance of sandbox maintenance, not verification's
+// snapshot/network/secret/process guarantees checked by each consumer below.
+export function assertAgentVerificationQualificationVersion(qualification) {
+  requireThat(qualification?.contract_version === "agent-verification-boundary.v1"
+    || qualification?.contract_version === "agent-verification-boundary.v2"
+      && qualification.boundary_id === "codex-sandbox-validation" && qualification.evidence_class === "native"
+      && qualification.sandbox_maintenance === "codex-managed" && qualification.protected_resources_preserved === true
+      && /^[a-f0-9]{64}$/u.test(qualification.protected_resources_sha256 ?? "")
+      && !Object.hasOwn(qualification, "host_preserved") && !Object.hasOwn(qualification, "provisioning_performed"), "VERIFICATION_BOUNDARY_UNAVAILABLE");
+  return true;
+}
+
 function publicMaterial(value) {
   if (!value) fail("VERIFICATION_PUBLIC_KEY_MISSING");
   const key = value.type === "public" ? value : createPublicKey(Buffer.isBuffer(value) ? { key: value, format: "der", type: "spki" } : value);
@@ -223,7 +235,7 @@ export function createLocalAgentVerification({ resourcesRoot, scratchRoot, runId
         requireThat(live?.available === true && (evidenceClass !== "native" || live.native === true), "VERIFICATION_BOUNDARY_UNAVAILABLE");
       }
       const descriptor = clone(boundary.getDescriptor()); qualification = openSigned(descriptor.qualification, authority);
-      requireThat(qualification.contract_version === "agent-verification-boundary.v1" && qualification.boundary_id === descriptor.boundary_id
+      requireThat(assertAgentVerificationQualificationVersion(qualification) && qualification.boundary_id === descriptor.boundary_id
         && qualification.platform === process.platform && qualification.evidence_class === evidenceClass
         && qualification.engine_sha256 === plan.execution.engine.sha256
         && qualification.policy_sha256 === fingerprint(policy) && qualification.executable_sha256 === executable.sha256
@@ -427,7 +439,7 @@ async function verifyPayload(envelope, authority, root, plan, evidenceClass, sig
   for (const reference of payload.output_refs) { total += reference.bytes; requireThat(total <= policy.limits.max_output_bytes, "VERIFICATION_OUTPUT_LIMIT"); await readReference(root, reference, policy.limits.max_output_bytes, signal); }
   if (binding.phase !== "audit") {
     const qualification = openSigned(payload.boundary_qualification, authority);
-    requireThat(qualification.contract_version === "agent-verification-boundary.v1" && qualification.evidence_class === evidenceClass
+    requireThat(assertAgentVerificationQualificationVersion(qualification) && qualification.evidence_class === evidenceClass
       && qualification.platform === process.platform && qualification.policy_sha256 === binding.policy_sha256 && qualification.executable_sha256 === policy.runner.executable_sha256
       && qualification.engine_sha256 === plan.execution.engine.sha256
       && qualification.environment_sha256 === policy.environment_sha256 && qualification.snapshot_read_only === true && qualification.network_disabled === true

@@ -9,19 +9,24 @@ import * as profile from "../../src/adapters/agents/codex-native-profile-policy.
 import { normalizeCodexNativeProfileConfiguration, validateCodexNativeProfileMetadata,
   createCodexNativeProfileVerifier, collectCodexNativeProfileMetadata,
   buildCodexNativeProfileObservationArguments, assertCodexNativeProfileBootstrap,
-  createCodexNativeProfileObserver, CODEX_NATIVE_PROFILE_SHARED_EFFECTS,
+  createCodexNativeProfileObserver, CODEX_NATIVE_PROFILE_SHARED_EFFECTS, CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2,
+  readCodexNativeProfileSharedEffects,
   discoverCodexNativeProfileMetadata, discoverCodexNativeProfileEnvironmentOverrideNames } from "../verify/agent-native-profile-observation.mjs";
 import { assertNativeQualificationProfileReview } from "../verify/qualify-agent-native-worker.mjs";
 import { verifyNativeQualificationProfile } from "../verify/agent-native-qualification-driver.mjs";
 
 const clone = structuredClone;
 const H = letter => letter.repeat(64);
-function fixture() {
+function fixture({ managed = false } = {}) {
   const base = path.join(os.tmpdir(), "aidn-profile-observation-pure"), home = path.join(base, "home"), stateRoot = path.join(base, "state");
   const policy = { contract_version: "codex-native-profile-policy.v1", mode: "preexisting", home: { physical_path: home, identity_sha256: H("a") },
     client_sha256: H("b"), backend: { platform: "win32", architecture: "x64", sandbox: "elevated", provisioning: "existing-only" },
     configuration: { sources_sha256: H("c"), effective_settings_sha256: H("d"), mcp_server_ids: ["one.with space"], plugin_ids: ["synthetic@local"], app_ids: ["app1"], environment_override_names: ["SYNTHETIC_EXTRA"] },
     hooks_sha256: H("e"), effects: { state_root: stateRoot, shared_effects_sha256: H("f") } };
+  if (managed) {
+    policy.contract_version = "codex-native-profile-policy.v2"; policy.backend.provisioning = "codex-managed";
+    policy.effects.shared_effects_sha256 = fingerprint(CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2);
+  }
   const definition = JSON.stringify({ hooks: { PreToolUse: [{ matcher: ".*", hooks: [{ type: "command", command: "synthetic-before", timeout: 600 }] }],
     SessionStart: [{ matcher: ".*", hooks: [{ type: "command", command: "synthetic-start", timeout: 600 }] }] } });
   const manifest = { codex_home: home, codex: { binary_path: path.join(base, "client.exe"), sha256: policy.client_sha256 },
@@ -51,10 +56,11 @@ function fixture() {
   const result = validateCodexNativeProfileMetadata({ metadata, manifest, policy, request, sourceFiles });
   policy.configuration.sources_sha256 = result.sources_sha256; policy.configuration.effective_settings_sha256 = result.effective_settings_sha256; policy.hooks_sha256 = result.hooks_sha256;
   request.execution.native_profile.policy_sha256 = profile.fingerprintCodexNativeProfilePolicy(policy);
-  const consent = { approved: true, shared_effects_sha256: policy.effects.shared_effects_sha256, state_root: policy.effects.state_root };
+  const consent = { approved: true, shared_effects_sha256: policy.effects.shared_effects_sha256, state_root: policy.effects.state_root,
+    ...(managed ? { sandbox_maintenance: "codex-managed" } : {}) };
   const review = { native_profile: { mode: "preexisting", policy_sha256: profile.fingerprintCodexNativeProfilePolicy(policy), consent } };
-  const observation = { status: "verified", ...result, home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
-    shared_effects_sha256: policy.effects.shared_effects_sha256, setup_sha256: H("1"), process: metadata.process, preservation: "PASS", provisioning_performed: false, environment_restricted: true };
+  const observation = { protocol_version: managed ? 2 : 1, status: "verified", ...result, home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
+    shared_effects_sha256: policy.effects.shared_effects_sha256, setup_sha256: H("1"), process: metadata.process, preservation: "PASS", ...profile.codexNativeProfilePreservationEvidence(policy), environment_restricted: true };
   return { policy, request, manifest, config, metadata, sourceFiles, consent, review, observation };
 }
 
@@ -185,7 +191,71 @@ export async function runAgentNativeProfileObservationFixtures() {
     ["different hook timeout", x => { x.metadata.hooks.data[0].hooks[0].timeoutSec = 1; }, "PROFILE_HOOK_DEFINITION_CHANGED"],
     ["different hook command", x => { x.metadata.hooks.data[0].hooks[0].command = "other"; }, "PROFILE_HOOK_DEFINITION_CHANGED"],
   ];
-  for (const [name, mutate, expected] of mutations) await check(name, () => { const value = fixture(); mutate(value); assert.throws(() => validate(value), code(expected)); });
+  for (const managed of [false, true]) for (const [name, mutate, expected] of mutations) await check((managed ? "v2: " : "") + name, () => {
+    const value = fixture({ managed }); mutate(value); assert.throws(() => validate(value), code(expected));
+  });
+  await check("v2 effect policy is explicit and excludes immutable setup assertions without profile IO", () => {
+    const effects = readCodexNativeProfileSharedEffects(undefined, "codex-native-profile-policy.v2");
+    assert.deepEqual(effects, CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2);
+    assert.notEqual(fingerprint(effects), fingerprint(CODEX_NATIVE_PROFILE_SHARED_EFFECTS));
+    assert.equal(Object.hasOwn(effects, "immutable_setup_sha256"), false);
+    assert.match(effects.evidence_limit, /do not establish unchanged Windows/u);
+    assert.throws(() => readCodexNativeProfileSharedEffects(undefined, "unknown"), code("CODEX_NATIVE_PROFILE_POLICY_INVALID"));
+  });
+  await check("v2 requires explicit maintenance consent and its exact effect hash before observation", () => {
+    const x = fixture({ managed: true }); assert.deepEqual(assertNativeQualificationProfileReview(x).consent, x.consent);
+    for (const mutate of [
+      value => { delete value.consent.sandbox_maintenance; },
+      value => { value.consent.sandbox_maintenance = "existing-only"; },
+      value => { value.consent.extra = true; },
+      value => { value.policy.effects.shared_effects_sha256 = H("f"); value.consent.shared_effects_sha256 = H("f");
+        value.review.native_profile.policy_sha256 = profile.fingerprintCodexNativeProfilePolicy(value.policy); },
+    ]) {
+      const value = fixture({ managed: true }); mutate(value); let calls = 0;
+      assert.throws(() => createCodexNativeProfileVerifier({ ...value, observer: async () => { calls++; } }), code("PROFILE_EXPLICIT_CONSENT_REQUIRED"));
+      assert.throws(() => assertNativeQualificationProfileReview(value), code("QUALIFICATION_NATIVE_PROFILE_EFFECT_CONSENT_REQUIRED")); assert.equal(calls, 0);
+    }
+    const legacy = fixture(); legacy.consent.sandbox_maintenance = "codex-managed";
+    assert.throws(() => createCodexNativeProfileVerifier(legacy), code("PROFILE_EXPLICIT_CONSENT_REQUIRED"));
+  });
+  await check("v2 metadata proposal rejects old consent without accessing the profile or collector", async () => {
+    const x = fixture({ managed: true }); let calls = 0;
+    await assert.rejects(discoverCodexNativeProfileMetadata({ ...x, policyTemplate: x.policy,
+      consent: { approved: true, metadata_only: true, state_root: x.policy.effects.state_root }, collect: async () => { calls++; } }),
+    code("PROFILE_EXPLICIT_CONSENT_REQUIRED")); assert.equal(calls, 0);
+  });
+  await check("v2 internal sandbox files may change while protected observations and bootstrap remain exact", async () => {
+    const x = fixture({ managed: true }); let count = 0;
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async options => ({
+      ...clone(x.observation), setup_sha256: H(String(++count)), process: { ...x.observation.process, budget_ms: options.timeoutMs },
+    }) });
+    const bootstrap = await verifier.bootstrap(x.request);
+    assert.equal(bootstrap.protocol_version, 2); assert.equal(bootstrap.authorization, "NOT_GRANTED");
+    assert.equal(bootstrap.sandbox_maintenance, "codex-managed"); assert.equal(bootstrap.protected_resources_preserved, true);
+    assert.equal(Object.hasOwn(bootstrap, "provisioning_performed"), false);
+    const context = { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" };
+    const decision = await verifier(x.request, context);
+    assert.equal(profile.assertCodexNativeProfileVerification(decision, { ...context, policy: x.policy, request: x.request }), true);
+    const final = await verifier.finalize({}); assert.equal(final.setup_sha256, H("3"));
+    assert.equal(final.protected_resources_preserved, true); assert.equal(Object.hasOwn(final, "provisioning_performed"), false);
+    assert.match(final.evidence_limit, /do not establish unchanged Windows/u);
+  });
+  await check("v1 still rejects changed internal sandbox files between observations", async () => {
+    const x = fixture(); let count = 0;
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async () => ({ ...clone(x.observation), setup_sha256: H(String(++count)) }) });
+    await verifier(x.request, { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" });
+    await assert.rejects(verifier.finalize({}), code("PROFILE_PRESERVATION_FAILED"));
+  });
+  for (const mutate of [
+    value => { value.protocol_version = 1; }, value => { value.provisioning_performed = false; },
+    value => { value.protected_resources_preserved = false; }, value => { value.sources_sha256 = H("0"); },
+    value => { value.hooks_sha256 = H("0"); }, value => { value.environment_restricted = false; },
+  ]) await check("v2 refuses legacy or changed protected evidence", async () => {
+    const x = fixture({ managed: true }); mutate(x.observation);
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async () => x.observation });
+    await assert.rejects(verifier(x.request, { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" }), code("PROFILE_OBSERVATION_INCOMPLETE"));
+  });
+
   await check("review accepts legacy with no profile", () => assert.equal(assertNativeQualificationProfileReview({ manifest: {}, review: {} }), null));
   await check("review requires bound shared-effect consent", () => {
     const x = fixture(); assert.deepEqual(assertNativeQualificationProfileReview(x).consent, x.consent); delete x.review.native_profile.consent;

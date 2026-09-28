@@ -237,21 +237,22 @@ try {
   const review = refresh.assertAgentNativeRefreshReview, plan = refresh.assertAgentNativeRefreshPlan;
   const preserve = refresh.assertAgentNativeRefreshPreservation, gitMarkers = refresh.assertAgentNativeRefreshGitMarkers;
   const rejects = (fn, code) => assert.throws(fn, { code });
-  const bootstrapFixture=()=>{
+  const bootstrapFixture=(managed=false)=>{
     const policy={contract_version:"codex-native-profile-policy.v1",mode:"preexisting",
       home:{physical_path:path.join(root,"selected-profile"),identity_sha256:sha("a")},client_sha256:sha("b"),
       backend:{platform:"win32",architecture:"x64",sandbox:"elevated",provisioning:"existing-only"},
       configuration:{sources_sha256:sha("c"),effective_settings_sha256:sha("d"),mcp_server_ids:[],plugin_ids:[],app_ids:[],environment_override_names:[]},
       hooks_sha256:sha("e"),effects:{state_root:path.join(root,"attempt-state"),shared_effects_sha256:sha("f")}};
+    if(managed) { policy.contract_version="codex-native-profile-policy.v2"; policy.backend.provisioning="codex-managed"; }
     const request={attempt_id:"attempt.bootstrap",cwd:path.join(root,"worker-a"),execution:{native_profile:{mode:"preexisting",policy_sha256:profilePolicy.fingerprintCodexNativeProfilePolicy(policy)}}};
-    const observation={protocol_version:1,status:"bootstrap_completed",authorization:"NOT_GRANTED",native_execution:"NOT_RUN",
+    const observation={protocol_version:managed?2:1,status:"bootstrap_completed",authorization:"NOT_GRANTED",native_execution:"NOT_RUN",
       attempt_id:request.attempt_id,request_sha256:fingerprint(request),policy_sha256:profilePolicy.fingerprintCodexNativeProfilePolicy(policy),
       state_root:profilePolicy.resolveCodexNativeProfileStatePaths(policy,request).root,budget_ms:60000,
       process:{closed:true,pid_absent:true,exit_code:0,signal:null,response_count:5,budget_ms:60000},preservation:"PASS",
       home_identity_sha256:policy.home.identity_sha256,client_sha256:policy.client_sha256,
       sources_sha256:policy.configuration.sources_sha256,effective_settings_sha256:policy.configuration.effective_settings_sha256,
       hooks_sha256:policy.hooks_sha256,setup_sha256:sha("1"),shared_effects_sha256:policy.effects.shared_effects_sha256,
-      provisioning_performed:false,environment_restricted:true};
+      ...profilePolicy.codexNativeProfilePreservationEvidence(policy),environment_restricted:true};
     const calls=[],verify=()=>assert.fail("bootstrap cannot replace fresh challenge verification");
     verify.bootstrap=async(received,{timeoutMs,signal})=>{calls.push("bootstrap");assert.deepEqual(received,request);assert.equal(signal.aborted,false);
       return {...structuredClone(observation),budget_ms:timeoutMs,process:{...observation.process,budget_ms:timeoutMs}};};
@@ -269,6 +270,18 @@ try {
     const result=await driver.bootstrapNativeQualificationProfile(x.options);
     assert.deepEqual(x.calls,["bootstrap","preflight"]);assert.deepEqual(result,{observation:x.observation,admission:{ok:true}});
     assert.equal(JSON.stringify({policy:x.policy,request:x.request}),before);
+  });
+  await check("explicit v2 bootstrap still requires exact native identity and fresh canonical admission",async()=>{
+    const x=bootstrapFixture(true), result=await driver.bootstrapNativeQualificationProfile(x.options);
+    assert.deepEqual(x.calls,["bootstrap","preflight"]); assert.equal(result.observation.protocol_version,2);
+    assert.equal(result.observation.sandbox_maintenance,"codex-managed"); assert.equal(result.observation.protected_resources_preserved,true);
+    assert.equal(Object.hasOwn(result.observation,"provisioning_performed"),false);
+    for(const mutate of [value=>{value.protocol_version=1;},value=>{value.provisioning_performed=false;},
+      value=>{value.protected_resources_preserved=false;},value=>{value.client_sha256=sha("0");}]) {
+      const invalid=bootstrapFixture(true); mutate(invalid.observation);
+      await assert.rejects(()=>driver.bootstrapNativeQualificationProfile(invalid.options),{code:"PROFILE_BOOTSTRAP_REFUSED"});
+      assert.deepEqual(invalid.calls,["bootstrap"]);
+    }
   });
   for(const [name,mutate] of [
     ["foreign attempt",v=>{v.attempt_id="attempt.other";}],

@@ -525,10 +525,19 @@ adds no App Server task backend or automatic setup/repair fallback.
 Preparation is bounded to the plan: configure the sandbox with Codex outside the
 run, prepare the exact AIDN candidate and dedicated worktrees with `verify-only`,
 review native trust, then check availability and run the native probes. An
-incompatible sandbox is refused before launch. The current
-`SANDBOX_EXISTING_ONLY_UNSUPPORTED` refusal remains effective: a completed
-official setup does not change the inspected client's refresh behavior or make
-it compatible with the existing-only validation contract.
+incompatible sandbox is refused before launch. The v1 `existing-only` contract
+still returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` for the reviewed client.
+
+The explicit v2 profile and validation contracts select `codex-managed`:
+Codex may maintain its own sandbox resources during native execution, including
+accounts, ACLs and network rules. AIDN calls no setup or repair API and does not
+claim those Windows resources remain globally unchanged. This selection requires
+its own effect-bound consent and never upgrades a v1 policy or proof implicitly.
+Configuration, native trust, hooks and the exact declared protected data, Git and
+AIDN runtime resources remain bound to preimages. The v2 validation plan binds
+that resource list and every observation; a changed protected resource refuses
+qualification. Only independently reviewed native evidence establishes readiness,
+not acceptance of the contract or successful official setup.
 
 The experimental AIDN managed-setup models, host observers, setup protocol,
 preflight and operator journal are withdrawn from the active implementation.

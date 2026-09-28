@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { assertCodexSandboxValidationConfiguration, buildCodexSandboxValidationInvocation,
-  inspectCodexSandboxValidationConfiguration, assertCodexSandboxValidationLaunchSupported, createCodexValidationStreamParser } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
+  inspectCodexSandboxValidationConfiguration, assertCodexSandboxValidationLaunchSupported, createCodexValidationStreamParser, assertCodexSandboxProtectedBaseline } from "../../src/adapters/runtime/codex-sandbox-validation-boundary.mjs";
 import { createWindowsProcessTreeController } from "../../src/adapters/agents/process-tree/windows-process-tree-controller.mjs";
 
 const CASES = ["filesystem", "network", "timeout", "cancel", "callback"];
@@ -28,13 +28,14 @@ async function filePin(file, limit = 262144) {
     return { sha256: hash(Buffer.concat(chunks, bytes)), bytes };
   } finally { await handle.close(); }
 }
-function baseline(value) { requireThat(value && Object.keys(value).sort().join("|") === [...hostKeys].sort().join("|") && hostKeys.every(key => HASH.test(value[key])), "NATIVE_PROBE_HOST_BASELINE_REQUIRED"); }
+const managed = config => config.contract_version === "codex-sandbox-validation-configuration.v2";
+function baseline(value, config) { if (managed(config)) return assertCodexSandboxProtectedBaseline(value, config); requireThat(value && Object.keys(value).sort().join("|") === [...hostKeys].sort().join("|") && hostKeys.every(key => HASH.test(value[key])), "NATIVE_PROBE_HOST_BASELINE_REQUIRED"); }
 
 // Pure preview. No listener, files, profiles, accounts, ACLs or child processes.
 // Each case needs a separate exact approval when run; the tool never signs a
 // qualification and never reports runtime availability itself.
 export function buildCodexValidationQualificationPlan({ configuration, environment, probe, cwd, canaries, networkPort, challenge, hostBaseline, evidenceRoot }) {
-  assertCodexSandboxValidationConfiguration(configuration); baseline(hostBaseline);
+  assertCodexSandboxValidationConfiguration(configuration); baseline(hostBaseline, configuration);
   requireThat(probe && path.isAbsolute(probe.path) && HASH.test(probe.sha256) && inside(configuration.roots.snapshots, probe.path)
     && path.isAbsolute(cwd) && inside(configuration.roots.snapshots, cwd), "NATIVE_PROBE_SNAPSHOT_INVALID");
   requireThat(canaries && Object.keys(canaries).sort().join("|") === "scratch_file|snapshot_file|supervisor_file"
@@ -57,20 +58,23 @@ export function buildCodexValidationQualificationPlan({ configuration, environme
       : caseId === "network" ? ["open one local canary listener with a positive control", "attempt a sandboxed connection to that listener", "close the listener"]
       : ["create a bounded Node descendant", `stop through ${caseId}`, "observe zero active processes in the exact containing Job"] };
   });
-  const plan = { contract_version: "codex-validation-native-plan.v1", configuration_sha256: fingerprint(configuration), probe, cwd, canaries,
+  const plan = { contract_version: managed(configuration) ? "codex-validation-native-plan.v2" : "codex-validation-native-plan.v1", configuration_sha256: fingerprint(configuration), probe, cwd, canaries,
     network_port: networkPort, challenge, host_baseline: hostBaseline, evidence_root: evidenceRoot, cases,
-    prohibited_effects: ["sandbox setup", "account changes", "ACL changes", "firewall changes", "profile changes", "trust injection", "fallback execution"] };
+    ...(managed(configuration) ? { sandbox_maintenance: "codex-managed", protected_resources: structuredClone(configuration.protected_resources),
+      prohibited_effects: ["protected resource changes", "configuration or trust changes", "AIDN sandbox setup or repair", "fallback execution"] }
+      : { prohibited_effects: ["sandbox setup", "account changes", "ACL changes", "firewall changes", "profile changes", "trust injection", "fallback execution"] }) };
   return { ...plan, plan_sha256: fingerprint(plan) };
 }
-async function observe(observer, { caseId, phase, expected, signal }) {
+async function observe(observer, { caseId, phase, expected, signal, configuration }) {
   requireThat(typeof observer === "function", "NATIVE_PROBE_HOST_OBSERVER_REQUIRED"); const challenge = randomUUID(), began = performance.now(); let timer;
   try {
-    const result = await Promise.race([Promise.resolve().then(() => observer({ caseId, phase, challenge, signal })), new Promise((_, reject) => {
+    const result = await Promise.race([Promise.resolve().then(() => observer({ caseId, phase, challenge, signal, ...(managed(configuration) ? { protected_resources: structuredClone(configuration.protected_resources),
+      protected_resources_sha256: fingerprint(configuration.protected_resources) } : {}) })), new Promise((_, reject) => {
       timer = setTimeout(() => reject(Object.assign(new Error("NATIVE_PROBE_HOST_OBSERVER_TIMEOUT"), { code: "NATIVE_PROBE_HOST_OBSERVER_TIMEOUT" })), 4500);
     })]);
     requireThat(!signal?.aborted && performance.now() - began < 4500 && result?.challenge === challenge && result.phase === phase && result.case_id === caseId
       && Number.isFinite(Date.parse(result.observed_at)) && Math.abs(Date.now() - Date.parse(result.observed_at)) <= 5000, "NATIVE_PROBE_HOST_OBSERVATION_INVALID");
-    baseline(result.material); requireThat(fingerprint(result.material) === fingerprint(expected), "NATIVE_PROBE_HOST_CHANGED"); return result;
+    baseline(result.material, configuration); requireThat(fingerprint(result.material) === fingerprint(expected), "NATIVE_PROBE_HOST_CHANGED"); return result;
   } finally { clearTimeout(timer); }
 }
 async function listener(port, challenge) {
@@ -102,7 +106,7 @@ export async function executeCodexValidationQualificationCase({ configuration, p
   requireThat(rebuilt.plan_sha256 === expected, "NATIVE_PROBE_PLAN_CHANGED");
   const source = await filePin(SOURCE), copied = await filePin(plan.probe.path);
   requireThat(source.sha256 === plan.probe.sha256 && copied.sha256 === source.sha256 && copied.bytes === source.bytes, "NATIVE_PROBE_SOURCE_CHANGED");
-  const before = await observe(observeHost, { caseId, phase: "before", expected: plan.host_baseline, signal });
+  const before = await observe(observeHost, { caseId, phase: "before", expected: plan.host_baseline, signal, configuration });
   await inspectCodexSandboxValidationConfiguration(configuration, { cwd: plan.cwd, signal });
   const snapshot = await filePin(plan.canaries.snapshot_file), supervisor = await filePin(plan.canaries.supervisor_file);
   requireThat(snapshot.bytes >= 36 && supervisor.bytes >= 36, "NATIVE_PROBE_CANARY_TOO_SMALL");
@@ -125,7 +129,7 @@ export async function executeCodexValidationQualificationCase({ configuration, p
     processResult = await controller.run(launch, { signal: stop.signal, async onEvent(event) {
       if (event.type === "prepared") {
         await inspectCodexSandboxValidationConfiguration(configuration, { cwd: plan.cwd, signal: stop.signal });
-        await observe(observeHost, { caseId, phase: "before_resume", expected: plan.host_baseline, signal: stop.signal });
+        await observe(observeHost, { caseId, phase: "before_resume", expected: plan.host_baseline, signal: stop.signal, configuration });
       }
       if (event.type !== "stdout") return; stream.consume(event.bytes);
       const output = stream.output().stdout.toString("utf8"); if (!output.endsWith("\n")) return;
@@ -149,17 +153,19 @@ export async function executeCodexValidationQualificationCase({ configuration, p
     requireThat(fingerprint(await filePin(plan.canaries.snapshot_file)) === fingerprint(snapshot)
       && fingerprint(await filePin(plan.canaries.supervisor_file)) === fingerprint(supervisor), "NATIVE_PROBE_CANARY_CHANGED");
     await inspectCodexSandboxValidationConfiguration(configuration, { cwd: plan.cwd, signal });
-    after = await observe(observeHost, { caseId, phase: "after", expected: plan.host_baseline, signal });
+    after = await observe(observeHost, { caseId, phase: "after", expected: plan.host_baseline, signal, configuration });
   } catch (cause) { diagnostic = cause.code ?? cause.message; }
   finally {
     if (network) await network.close(); signal?.removeEventListener("abort", abort);
     if (!after && processResult?.termination_state === "confirmed") {
-      try { after = await observe(observeHost, { caseId, phase: "after", expected: plan.host_baseline, signal }); }
+      try { after = await observe(observeHost, { caseId, phase: "after", expected: plan.host_baseline, signal, configuration }); }
       catch (cause) { diagnostic ??= cause.code ?? cause.message; }
     }
   }
   const report = { status: diagnostic ? "FAIL" : "READY_FOR_INDEPENDENT_REVIEW", case_id: caseId, plan_sha256: expected,
-    configuration_sha256: plan.configuration_sha256, source, before, after, observation, prepared: stream.observation(), child_terminal: childTerminal, process: processResult ?? null,
+    configuration_sha256: plan.configuration_sha256,
+    ...(managed(configuration) ? { sandbox_maintenance: "codex-managed", protected_resources_sha256: fingerprint(configuration.protected_resources) } : {}),
+    source, before, after, observation, prepared: stream.observation(), child_terminal: childTerminal, process: processResult ?? null,
     network: network?.observation() ?? null, diagnostic, native_availability: false,
     retention: "Preserve canaries, outputs and failed evidence. This helper never signs a qualification or cleans resources." };
   await fs.writeFile(path.join(plan.evidence_root, `${caseId}.result.json`), JSON.stringify(report) + "\n", { flag: "wx" }); return report;

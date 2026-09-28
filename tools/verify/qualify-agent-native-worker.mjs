@@ -9,7 +9,7 @@ import { withEphemeralPostgres } from "../perf/agent-execution-postgres-test-lib
 import { assertAgentNativeRefreshReview, assertAgentNativeQualificationRefreshContinuity, readAgentNativeRefreshLineage } from "./refresh-agent-native-candidate.mjs";
 import { nativeQualificationHomeIdentity } from "./prepare-agent-native-qualification.mjs";
 import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
-import { fingerprintCodexNativeProfilePolicy } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
+import { fingerprintCodexNativeProfilePolicy, codexNativeProfilePreservationEvidence } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
 import { hash, json, fail, requireProof, physical, inventory, compareInventory, writeEvidence, loadCandidate, runNativeQualificationCase, nativeQualificationBudgets } from "./agent-native-qualification-driver.mjs";
 import { readCodexNativeProfileSharedEffects } from "./agent-native-profile-observation.mjs";
 
@@ -52,10 +52,11 @@ export function assertNativeQualificationProfileReview({manifest,review,policy}=
   const approved=review?.native_profile;
   requireProof(exactKeys(approved,["mode","policy_sha256","consent"]) && approved.mode==="preexisting"
     && approved.policy_sha256===policySha256,"QUALIFICATION_NATIVE_PROFILE_REVIEW_REQUIRED");
-  const consent=approved.consent;
-  requireProof(exactKeys(consent,["approved","shared_effects_sha256","state_root"]) && consent.approved===true
+  const consent=approved.consent, managed=policy.contract_version==="codex-native-profile-policy.v2";
+  requireProof(exactKeys(consent,["approved","shared_effects_sha256","state_root",...(managed?["sandbox_maintenance"]:[])]) && consent.approved===true
     && consent.shared_effects_sha256===policy.effects.shared_effects_sha256
-    && consent.state_root===policy.effects.state_root,"QUALIFICATION_NATIVE_PROFILE_EFFECT_CONSENT_REQUIRED");
+    && consent.state_root===policy.effects.state_root && (!managed || consent.sandbox_maintenance==="codex-managed"
+      && policy.effects.shared_effects_sha256===fingerprintAgentExecutionValue(readCodexNativeProfileSharedEffects(undefined,policy.contract_version))),"QUALIFICATION_NATIVE_PROFILE_EFFECT_CONSENT_REQUIRED");
   return {policy_sha256:policySha256,consent:structuredClone(consent)};
 }
 
@@ -94,7 +95,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
   const profileReview=assertNativeQualificationProfileReview({manifest,review,policy:nativeProfilePolicy});
   if(profileReview) {
     requireProof(fingerprintAgentExecutionValue(nativeQualificationHomeIdentity(manifest.codex_home))===manifest.native_profile.home_identity_sha256,"QUALIFICATION_NATIVE_PROFILE_HOME_CHANGED");
-    requireProof(fingerprintAgentExecutionValue(readCodexNativeProfileSharedEffects(manifest.codex_home))===nativeProfilePolicy.effects.shared_effects_sha256,"QUALIFICATION_NATIVE_PROFILE_EFFECTS_CHANGED");
+    requireProof(fingerprintAgentExecutionValue(readCodexNativeProfileSharedEffects(manifest.codex_home,nativeProfilePolicy.contract_version))===nativeProfilePolicy.effects.shared_effects_sha256,"QUALIFICATION_NATIVE_PROFILE_EFFECTS_CHANGED");
     physical(nativeProfilePolicy.effects.state_root);
     for(const protectedRoot of [SOURCE,manifest.codex_home,manifest.candidate.packageRoot,...manifest.roots.map(root=>root.root)]) {
       requireProof(outside(protectedRoot,nativeProfilePolicy.effects.state_root) && outside(nativeProfilePolicy.effects.state_root,protectedRoot),"QUALIFICATION_NATIVE_PROFILE_EFFECT_ROOT_OVERLAP");
@@ -169,7 +170,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
   const result={ok:true,status:write?"running":"preview",written:write,...identityRecord,output_root:outputRoot,native_launch_requests:0,native_processes_started:0,checks:[],qualification:"NOT_RUN",native_process_cleanup:"NOT_STARTED",integration:"NOT_RUN",cleanup:"NOT_STARTED",
     ...(profileReview?{native_profile_observation:{status:"NOT_RUN"},native_profile_preparation:{status:"NOT_RUN",...nativeQualificationBudgets({preexisting:true})}}:{}),
     effects:["Create one ephemeral PostgreSQL cluster with four distinct scenario databases","Acquire native proof using reviewed candidate controller and arguments","Verify allowed, forbidden, mixed and stale native apply_patch requests","Observe a native hook descendant before cancellation and timeout","Use the full AgentTaskExecutor port only after initial native proofs pass","Preserve logs, per-attempt markers and authorized file changes; remove only owned PostgreSQL cluster",
-      ...(profileReview?["Prepare native metadata for each exact attempt within 60 seconds including fresh canonical admission; this budget precedes and does not extend the worker execution deadline","Allow native SQLite backfill to copy historical titles, first messages and previews into the reviewed local attempt-state directory; preserve failed state without automatic retry, SQLite disabling or metadata alteration","Observe the explicitly selected existing native profile before create, before resume and after workers; no setup, trust change or credential copy","Allow only the native profile effects bound by the reviewed current shared-effects digest and state root"]:[])]};
+      ...(profileReview?["Prepare native metadata for each exact attempt within 60 seconds including fresh canonical admission; this budget precedes and does not extend the worker execution deadline","Allow native SQLite backfill to copy historical titles, first messages and previews into the reviewed local attempt-state directory; preserve failed state without automatic retry, SQLite disabling or metadata alteration","Observe the explicitly selected existing native profile before create, before resume and after workers; AIDN calls no setup, makes no trust change or credential copy","Allow only the native profile effects bound by the reviewed current shared-effects digest and state root"]:[])]};
   if(!write) return result;
   fs.mkdirSync(outputRoot);
   writeEvidence(outputRoot,"owner.json",{qualification_id:manifest.preparation_id,created_at:new Date().toISOString(),pid:process.pid});
@@ -189,7 +190,10 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
         writeEvidence(outputRoot,"native-profile-final-not-run.json",observation);
         return;
       }
-      requireProof(observation?.ok===true && observation.preservation==="PASS" && observation.provisioning_performed===false,"QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_REQUIRED");
+      requireProof(observation?.ok===true && observation.preservation==="PASS"
+        && Object.entries(codexNativeProfilePreservationEvidence(nativeProfilePolicy)).every(([key,value])=>observation[key]===value)
+        && (nativeProfilePolicy.contract_version==="codex-native-profile-policy.v2" ? !Object.hasOwn(observation,"provisioning_performed")
+          : !Object.hasOwn(observation,"sandbox_maintenance") && !Object.hasOwn(observation,"protected_resources_preserved")),"QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_REQUIRED");
       result.native_profile_observation=observation;
       writeEvidence(outputRoot,"native-profile-final.json",observation);
     } catch(error) {
