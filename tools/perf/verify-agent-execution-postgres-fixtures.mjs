@@ -34,6 +34,7 @@ if(selectedArguments.length && (selectedArguments.length!==1 || selectedArgument
 const focused=selectedArguments.length===1, skipped=[];
 const lifecycleChecks=new Set([
   "missing schema is unavailable without implicit DDL",
+  "canonical bulk projection handles optional legacy snapshots transactionally",
   "two-process migration applies v3 through v6 once and preserves v2 data",
   "cooperative plan v2 survives JSONB reservation reread and claim without DDL",
   "cooperative plan v3 survives JSONB reservation reread and claim without DDL",
@@ -350,8 +351,46 @@ async function runSuite({ connectionString, version, root }) {
       await reject(store.getRun({ runId: "absent" }), "AGENT_EXECUTION_SCHEMA_NOT_READY");
       assert.equal((await client.query("SELECT to_regnamespace('aidn_shared') AS ns")).rows[0].ns, null);
     });
+    await check("canonical bulk projection handles optional legacy snapshots transactionally", async () => {
+      assert.equal((await client.query("SELECT to_regnamespace('aidn_runtime') AS ns")).rows[0].ns, null);
+      const context = resolveRuntimeProjectContext({ targetRoot: root, projectId: "projection.fixture", workspaceId: "main", env: {} });
+      assert.notEqual(context.runtime_scope_id, context.legacy_scope_key);
+      const bulk = createPostgresRuntimeArtifactStore({ connectionString, targetRoot: root, runtimeProjectContext: context });
+      const at = "2026-01-01T00:00:00.000Z", content = "# Canonical projection fixture\n";
+      const payload = { schema_version: 2, generated_at: at, target_root: root, audit_root: "docs/audit",
+        cycles: [{ cycle_id: "C001", session_id: "S001", state: "IMPLEMENTING", branch_name: "codex/fixture", updated_at: at }],
+        sessions: [{ session_id: "S001", state: "active", source_confidence: 1, source_mode: "explicit", updated_at: at }],
+        artifacts: [{ path: "BACKLOG.md", kind: "backlog", content_format: "utf8", content, sha256: sha(content),
+          size_bytes: Buffer.byteLength(content), mtime_ns: "0", session_id: "S001", cycle_id: "C001", updated_at: at }] };
+      await bulk.writeIndexProjection({ payload });
+      assert.equal((await client.query("SELECT to_regclass('aidn_runtime.runtime_snapshots') AS relation")).rows[0].relation, null);
+      const snapshot = await bulk.loadSnapshot({ includePayload: true, includeRuntimeHeads: true });
+      assert.equal(snapshot.exists, true); assert.equal(snapshot.scope_key, context.runtime_scope_id);
+      assert.equal(snapshot.payload.artifacts[0].content, content);
+      assert.equal(snapshot.payload.sessions[0].source_mode, "explicit");
+      assert.equal(snapshot.payload.cycles[0].state, "IMPLEMENTING");
+      assert.equal((await client.query("SELECT count(*)::int AS count FROM aidn_runtime.artifacts WHERE scope_key=$1", [context.legacy_scope_key])).rows[0].count, 0);
+      const legacySql = fs.readFileSync(new URL("./sql/runtime-artifacts-postgres.sql", import.meta.url), "utf8")
+        .match(/CREATE TABLE IF NOT EXISTS aidn_runtime\.runtime_snapshots \([\s\S]*?\n\);/)[0];
+      await client.query(legacySql);
+      try {
+        const scopes = [context.runtime_scope_id, context.legacy_scope_key, "retained.foreign"];
+        for (const scope of scopes) await client.query("INSERT INTO aidn_runtime.runtime_snapshots(scope_key,project_root_ref,payload_json,payload_digest) VALUES($1,$1,'{}'::jsonb,$2)", [scope, sha(scope)]);
+        const foreign = (await client.query("SELECT * FROM aidn_runtime.runtime_snapshots WHERE scope_key='retained.foreign'")).rows;
+        await bulk.writeIndexProjection({ payload });
+        assert.deepEqual((await client.query("SELECT * FROM aidn_runtime.runtime_snapshots")).rows, foreign);
+        const before = (await client.query("SELECT * FROM aidn_runtime.artifacts WHERE scope_key=$1", [context.runtime_scope_id])).rows;
+        await client.query("ALTER TABLE aidn_runtime.runtime_snapshots RENAME COLUMN scope_key TO incompatible_scope");
+        const changed = structuredClone(payload); changed.artifacts[0].content = "must roll back";
+        changed.artifacts[0].sha256 = sha(changed.artifacts[0].content); changed.artifacts[0].size_bytes = Buffer.byteLength(changed.artifacts[0].content);
+        await reject(bulk.writeIndexProjection({ payload: changed }), "42703");
+        assert.deepEqual((await client.query("SELECT * FROM aidn_runtime.artifacts WHERE scope_key=$1", [context.runtime_scope_id])).rows, before);
+        await client.query("ALTER TABLE aidn_runtime.runtime_snapshots RENAME COLUMN incompatible_scope TO scope_key");
+        assert.deepEqual((await client.query("SELECT * FROM aidn_runtime.runtime_snapshots")).rows, foreign);
+      } finally { await client.query("DROP TABLE aidn_runtime.runtime_snapshots"); }
+    });
     await client.query(fs.readFileSync(getPostgresRuntimeRelationalSchemaFile(), "utf8"));
-    await client.query("INSERT INTO aidn_runtime.schema_migrations(schema_name,schema_version) VALUES('aidn_runtime',3)");
+    await client.query("INSERT INTO aidn_runtime.schema_migrations(schema_name,schema_version) VALUES('aidn_runtime',3) ON CONFLICT (schema_name,schema_version) DO NOTHING");
     await client.query(fs.readFileSync(getPostgresSharedCoordinationSchemaFile(), "utf8"));
     await client.query("INSERT INTO aidn_shared.schema_migrations(schema_name,schema_version) VALUES('aidn_shared',2)");
     assert.equal((await shared.registerWorkspace({ projectId: "sentinel.project", workspaceId: "sentinel.workspace" })).ok, true);

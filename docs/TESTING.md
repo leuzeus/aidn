@@ -424,7 +424,10 @@ acquire a PostgreSQL prerequisite. No system service or existing database is mod
 The suite uses separate Node processes and an IPC start barrier for concurrent
 migration, reservations and claims. It checks stale ownership, lease expiry,
 durable launch intent, immutable event replay, canonical planning/artifact
-consistency, reservation-aware writers and explicit reconciliation. The
+consistency, reservation-aware writers and explicit reconciliation. Fresh relational
+bulk writes also run without a legacy snapshot table; an existing legacy table
+is purged only for the affected scopes, and a malformed legacy table must roll
+back the canonical write. The
 fixtures also cover schema 4 supervisor generations, durable deadlines,
 acceptance and prepared/applied journals. Concurrent ownership checks use
 separate processes. Focused transaction cases inject Git observations; the
