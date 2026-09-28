@@ -94,7 +94,7 @@ export function createPublicAgentRunLifecycle() {
     if (args.command === "agent-run-cancel" && ["completed", "failed", "cancelled"].includes(snapshot.run.lifecycle_status)) blockers.push("AGENT_RUN_TERMINAL");
     if (args.command === "agent-run-cancel" && snapshot.cancel_request) blockers.push("AGENT_RUN_CANCELLATION_ALREADY_REQUESTED");
     if (args.command === "agent-run-cleanup" && snapshot.run.lifecycle_status !== "completed") blockers.push("AGENT_RUN_CLEANUP_RETAINS_UNSUCCESSFUL_RUN");
-    if (plan.contract_version === "agent-execution-plan.v2") preconditions.native = describeAgentRunAssurance(plan);
+    if (["agent-execution-plan.v2", "agent-execution-plan.v3"].includes(plan.contract_version)) preconditions.native = describeAgentRunAssurance(plan);
     const context = { plan, configuration, snapshot, preconditions,
       targetIdentity: { target_root: targetRoot, worktree_id: workspace.worktree_id,
         project_id: workspace.project_id, workspace_id: workspace.workspace_id, git_common_dir: workspace.git_common_dir },

@@ -184,6 +184,13 @@ Previews expose these limits and qualification status. This composition remains
 unavailable until its own native campaign passes; selecting it never upgrades
 a strict plan or reuses strict evidence.
 
+Plan v3 selects the separate `codex-cooperative.v2` profile. Its v4 validation
+boundary also declares network isolation **not guaranteed**, while still
+requesting disabled networking from Codex. This explicit delivery exception
+does not change older profiles or turn failed network evidence into a PASS.
+Write restrictions, confirmed termination, real hooks and the complete parallel
+campaign remain required before activation. Preview includes both limitations.
+
 The reviewed Windows client is unavailable for the strict validation boundary. V1
 returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` because Codex refreshes native
 provisioning. V2 returns `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`: another Codex

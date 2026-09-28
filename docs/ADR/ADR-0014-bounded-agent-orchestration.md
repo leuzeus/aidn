@@ -72,6 +72,33 @@ separately, including write restrictions during another launch, real hooks and
 two overlapping workers followed by a dependent task. Until this campaign passes,
 coverage remains `supervision_candidate` and the revised point 5 remains open.
 
+### Cooperative network limitation (2026-09-28 amendment)
+
+`agent-execution-plan.v3` explicitly selects `codex-cooperative.v2` with
+`codex-sandbox-validation-configuration.v4` and `agent-verification-boundary.v4`.
+Both boundary documents declare `read_isolation: not_guaranteed` and
+`network_isolation: not_guaranteed`; the qualification requires
+`network_disabled: false`. This means network denial is not attested. It does
+not assert that every destination is reachable. Earlier plans, profiles and
+their fingerprints keep their meaning; there is no automatic downgrade.
+
+The selected Windows composition allowed a connection to a loopback canary
+despite an explicit disabled-network policy. This observation does not prove
+Internet access. The failed report remains failed and retained. For this new
+profile only, network denial is no longer a delivery or activation criterion.
+Codex still receives the disabled-network request; AIDN does not reconfigure
+Windows filters, add a proxy or replace the official sandbox.
+
+Qualification requires four native cases: filesystem, timeout, cancel and
+callback. An explicitly requested network diagnostic remains separate, may
+report FAIL and never supplies qualification evidence. Concurrent write
+protection, preservation of named resources, confirmed process termination,
+actual admission hooks, exact-SHA validation and the complete parallel campaign
+remain required. Preview includes the network limitation in its action hash.
+The new profile cannot consume old reports or satisfy an older profile. Its
+availability remains conditional on the other native evidence, not on this
+documentary exception alone.
+
 ### Boundaries and identities
 
 V1 has one supervisor host, at most one mutating run for a canonical scope, and
@@ -105,7 +132,7 @@ supervision authority without claiming that workers are available.
 ### Frozen execution contract
 
 Internal versioned schemas live under `src/core/contracts/agent-execution/`.
-The sixteen kinds (seventeen schemas, including both plan versions) are descriptor, availability, plan, run, task, attempt,
+The sixteen kinds (eighteen schemas, including three plan versions) are descriptor, availability, plan, run, task, attempt,
 delegation, request, event, result, acceptance, supervisor, integration-prepared,
 integration-applied, integration-intent and run-validation.
 `src/core/agents/agent-execution-contracts.mjs` owns pure semantic checks and
@@ -442,8 +469,10 @@ criterion remains unavailable. Observed preservation does not prove OS confineme
 the concrete runner also requires an explicitly qualified execution boundary,
 with no raw process fallback. Fixture boundaries and signatures only qualify the
 protocol. Its attestation binds the OS, candidate engine, runner, environment and
-policy, and requires read-only snapshot access, inaccessible supervisor resources,
-disabled network and confirmed descendant termination. The verifier inherits no
+policy, and requires read-only snapshot access and confirmed descendant termination.
+Strict profiles also require inaccessible supervisor resources; network denial
+remains required except in the explicit `codex-cooperative.v2` profile above.
+The verifier inherits no
 environment; its closed variable allowlist permits only OS, locale and explicit
 scratch settings. Each check returns one JSON document containing exactly
 `contract_version: agent-verification-check.v1`, `validation_id` and `status`;
@@ -502,9 +531,10 @@ Git fixtures retain their separate, weaker process evidence and cannot qualify
 the public native path.
 
 Verification snapshots live in a dedicated subtree of run resources. The
-validation boundary must prevent access to sibling supervisor evidence, signing
-keys and PostgreSQL credentials, deny network access, and preserve the exact
-snapshot. Its executable, trampoline, process controller and policy require
+strict validation boundary must prevent access to sibling supervisor evidence,
+signing keys and PostgreSQL credentials and deny network access. The cooperative
+amendments above explicitly revise those guarantees; every profile preserves
+the exact snapshot. Its executable, trampoline, process controller and policy require
 independent native qualification; no caller-provided availability flag supplies
 that proof.
 The inspected Windows Codex elevated sandbox path refreshes native setup even

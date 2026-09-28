@@ -539,11 +539,40 @@ Publish fixture, PostgreSQL, Windows process/sandbox and real-Codex results
 separately. Cooperative native availability remains unqualified until these
 reports agree; portable PASS never supplies missing native evidence.
 
+## Cooperative network limitation (plan v3 / boundary v4)
+
+An explicit `agent-execution-plan.v3` selects `codex-cooperative.v2`.
+Its configuration `codex-sandbox-validation-configuration.v4` and qualification
+`agent-verification-boundary.v4` declare both `read_isolation` and
+`network_isolation` as `not_guaranteed`. Qualification requires
+`network_disabled: false`, meaning denial is not attested. Earlier plans and
+the v3 boundary above keep their original network-denial requirement.
+
+The selected Windows composition reached a loopback canary despite
+`network.enabled=false`. Its failed report is preserved; it does not establish
+Internet access. This new profile removes only network denial from delivery
+and activation criteria. Official Codex invocations still request disabled
+networking. AIDN adds no firewall repair, proxy, setup or new native home.
+
+The v4 probe plan selects four required `cases`: filesystem, timeout, cancel and
+callback. Its separate `diagnostic_cases` contains network and runs only when
+explicitly selected. That diagnostic retains its actual PASS or FAIL and is
+never accepted as qualification evidence. The four required reports must bind
+to the v4 profile, candidate, policy, process identities and named resources;
+old reports cannot be relabeled. A failed required case still stops the campaign.
+
+Concurrent write protection, scratch-only validation writes, immutable snapshots,
+confirmed descendant termination, real admission hooks, exact-SHA acceptance,
+the three-task parallel campaign, reconciliation and controlled cleanup are
+unchanged requirements. A missing proof keeps this composition unavailable.
+Previews expose the network limitation and include it in the action fingerprint.
+Do not advertise network isolation or full qualification from this exception.
+
 ## Reviewed Windows client incompatibility
 
 The following finding applies to the strict validation contracts v1/v2. Their
 refusal is retained. It does not qualify or prohibit the separate cooperative
-contract below, whose retained guarantees need new native evidence.
+contracts above, whose retained guarantees need new native evidence.
 
 Source review at Codex commit
 [0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807](https://github.com/openai/codex/commit/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807)

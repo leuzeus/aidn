@@ -29,31 +29,38 @@ function verdict(protocol, processResult, validationId) {
     && (processResult.outcome === undefined || processResult.outcome === "completed") ? protocol.status : "failed";
 }
 
-// V2 changes sandbox maintenance provenance. V3 explicitly abandons read
-// isolation while retaining snapshot/write/network/process checks below.
+// V2 changes sandbox maintenance provenance. V3 abandons read isolation; V4
+// also abandons network isolation. Snapshot/write/process checks remain required.
 export function assertAgentVerificationQualificationVersion(qualification) {
   requireThat(qualification?.contract_version === "agent-verification-boundary.v1"
-    || ["agent-verification-boundary.v2", "agent-verification-boundary.v3"].includes(qualification?.contract_version)
+    || ["agent-verification-boundary.v2", "agent-verification-boundary.v3", "agent-verification-boundary.v4"].includes(qualification?.contract_version)
       && qualification.boundary_id === "codex-sandbox-validation" && qualification.evidence_class === "native"
       && qualification.sandbox_maintenance === "codex-managed" && qualification.protected_resources_preserved === true
       && /^[a-f0-9]{64}$/u.test(qualification.protected_resources_sha256 ?? "")
       && !Object.hasOwn(qualification, "host_preserved") && !Object.hasOwn(qualification, "provisioning_performed"), "VERIFICATION_BOUNDARY_UNAVAILABLE");
-  if (qualification.contract_version === "agent-verification-boundary.v3") requireThat(
-    qualification.assurance_profile === "codex-cooperative.v1" && qualification.read_isolation === "not_guaranteed"
+  const unrestrictedNetwork = qualification.contract_version === "agent-verification-boundary.v4";
+  if (qualification.contract_version === "agent-verification-boundary.v3" || unrestrictedNetwork) requireThat(
+    qualification.assurance_profile === (unrestrictedNetwork ? "codex-cooperative.v2" : "codex-cooperative.v1") && qualification.read_isolation === "not_guaranteed"
     && qualification.supervisor_write_protected === true && qualification.concurrent_write_protection === true
     && !Object.hasOwn(qualification, "supervisor_resources_inaccessible"), "VERIFICATION_BOUNDARY_UNAVAILABLE");
+  if (unrestrictedNetwork) requireThat(qualification.network_isolation === "not_guaranteed" && qualification.network_disabled === false, "VERIFICATION_BOUNDARY_UNAVAILABLE");
   return true;
 }
 export function assertAgentVerificationAssuranceBinding(plan, qualification) {
   assertAgentVerificationQualificationVersion(qualification);
   const cooperative = qualification.contract_version === "agent-verification-boundary.v3";
-  requireThat(cooperative ? plan?.contract_version === "agent-execution-plan.v2" && plan.assurance_profile === "codex-cooperative.v1"
+  const unrestrictedNetwork = qualification.contract_version === "agent-verification-boundary.v4";
+  requireThat(unrestrictedNetwork ? plan?.contract_version === "agent-execution-plan.v3" && plan.assurance_profile === "codex-cooperative.v2"
+    : cooperative ? plan?.contract_version === "agent-execution-plan.v2" && plan.assurance_profile === "codex-cooperative.v1"
     : plan?.contract_version === "agent-execution-plan.v1" && !Object.hasOwn(plan, "assurance_profile"), "VERIFICATION_ASSURANCE_PROFILE_MISMATCH");
   return true;
 }
-const readAssurance = qualification => qualification.contract_version === "agent-verification-boundary.v3"
+const readAssurance = qualification => ["agent-verification-boundary.v3", "agent-verification-boundary.v4"].includes(qualification.contract_version)
   ? qualification.supervisor_write_protected === true && qualification.read_isolation === "not_guaranteed"
   : qualification.supervisor_resources_inaccessible === true;
+const networkAssurance = qualification => qualification.contract_version === "agent-verification-boundary.v4"
+  ? qualification.network_isolation === "not_guaranteed" && qualification.network_disabled === false
+  : qualification.network_disabled === true;
 
 function publicMaterial(value) {
   if (!value) fail("VERIFICATION_PUBLIC_KEY_MISSING");
@@ -254,7 +261,7 @@ export function createLocalAgentVerification({ resourcesRoot, scratchRoot, runId
         && qualification.platform === process.platform && qualification.evidence_class === evidenceClass
         && qualification.engine_sha256 === plan.execution.engine.sha256
         && qualification.policy_sha256 === fingerprint(policy) && qualification.executable_sha256 === executable.sha256
-        && qualification.environment_sha256 === policy.environment_sha256 && qualification.snapshot_read_only === true && qualification.network_disabled === true
+        && qualification.environment_sha256 === policy.environment_sha256 && qualification.snapshot_read_only === true && networkAssurance(qualification)
         && readAssurance(qualification) && qualification.descendant_termination === true, "VERIFICATION_BOUNDARY_UNAVAILABLE");
       requireThat(Array.isArray(qualification.evidence) && qualification.evidence.length > 0, "VERIFICATION_BOUNDARY_UNAVAILABLE");
       for (const proof of qualification.evidence) await readReference(resourcesRoot, proof, MAX_DOCUMENT, signal);
@@ -458,7 +465,7 @@ async function verifyPayload(envelope, authority, root, plan, evidenceClass, sig
     requireThat(assertAgentVerificationQualificationVersion(qualification) && qualification.evidence_class === evidenceClass
       && qualification.platform === process.platform && qualification.policy_sha256 === binding.policy_sha256 && qualification.executable_sha256 === policy.runner.executable_sha256
       && qualification.engine_sha256 === plan.execution.engine.sha256
-      && qualification.environment_sha256 === policy.environment_sha256 && qualification.snapshot_read_only === true && qualification.network_disabled === true
+      && qualification.environment_sha256 === policy.environment_sha256 && qualification.snapshot_read_only === true && networkAssurance(qualification)
       && readAssurance(qualification) && qualification.descendant_termination === true, "VERIFICATION_BOUNDARY_UNAVAILABLE");
     requireThat(Array.isArray(qualification.evidence) && qualification.evidence.length > 0, "VERIFICATION_BOUNDARY_UNAVAILABLE");
     for (const reference of qualification.evidence) await readReference(root, reference, MAX_DOCUMENT, signal);

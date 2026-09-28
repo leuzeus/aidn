@@ -16,10 +16,13 @@ export async function runCodexValidationNativeProbe(input, { filesystem = fsNati
   pid = process.pid, environment = process.env } = {}) {
 const fs = filesystem;
 if (!/^[a-f0-9-]{36}$/u.test(input.challenge ?? "") || !["filesystem", "network", "timeout", "cancel", "callback"].includes(input.case_id)) throw new Error("PROBE_INPUT_INVALID");
-const cooperative = input.assurance_profile === "codex-cooperative.v1";
-if (input.assurance_profile !== undefined && !cooperative) throw new Error("PROBE_ASSURANCE_INVALID");
-const result = { contract_version: cooperative ? "codex-validation-native-observation.v2" : "codex-validation-native-observation.v1", challenge: input.challenge, case_id: input.case_id,
-  pid, environment_sha256: hash(Buffer.from(canonical(environment))), observations: {} };
+const networkUnguaranteed = input.assurance_profile === "codex-cooperative.v2";
+const cooperative = input.assurance_profile === "codex-cooperative.v1" || networkUnguaranteed;
+if (input.assurance_profile !== undefined && !cooperative || networkUnguaranteed
+  && (input.read_isolation !== "not_guaranteed" || input.network_isolation !== "not_guaranteed")) throw new Error("PROBE_ASSURANCE_INVALID");
+const result = { contract_version: networkUnguaranteed ? "codex-validation-native-observation.v3" : cooperative ? "codex-validation-native-observation.v2" : "codex-validation-native-observation.v1", challenge: input.challenge, case_id: input.case_id,
+  pid, environment_sha256: hash(Buffer.from(canonical(environment))), observations: {},
+  ...(networkUnguaranteed ? { assurance_profile: input.assurance_profile, read_isolation: "not_guaranteed", network_isolation: "not_guaranteed" } : {}) };
 if (input.case_id === "filesystem") {
   for (const file of [input.snapshot_file, input.scratch_file, input.supervisor_file]) if (!path.isAbsolute(file)) throw new Error("PROBE_PATH_INVALID");
   const writes = () => ({ snapshot_sha256: hash(fs.readFileSync(input.snapshot_file)), snapshot_write_denied: refused(() => {

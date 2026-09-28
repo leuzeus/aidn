@@ -320,6 +320,13 @@ filesystem case also observes write restrictions during a second launch and
 after its confirmed stop, within one 60-second cooperative probe budget.
 Changing to this profile requires new exact-package native evidence; old
 strict reports are not reclassified.
+Plan v3/profile `codex-cooperative.v2` and boundary v4 separately declare network
+isolation not guaranteed. Their portable fixtures reject mixed profiles, false
+network-denial attestations and missing write/process proofs. The four required
+native cases are filesystem, timeout, cancel and callback; a separately selected
+network diagnostic preserves its actual outcome and is never qualification
+evidence. Codex still receives a disabled-network request. Existing v1/v2 plans
+and v1/v2/v3 boundary evidence retain their original requirements and hashes.
 The final three-task/two-simultaneous-Codex campaign remains unexecuted until the
 exact compatible composition has its own evidence.
 

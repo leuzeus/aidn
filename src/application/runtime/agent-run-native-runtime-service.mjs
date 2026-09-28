@@ -47,7 +47,7 @@ function loadMaterials(context, { execution = false, recoveryOnly = false } = {}
     && equalPath(boundaryConfiguration.profile.home, config.native.runtime.codexHome), "AGENT_RUN_BOUNDARY_ROOTS_CHANGED");
   const boundaryQualification = readAgentRunReference(config.verification.boundary.qualification).value;
   assertAgentRunAssuranceBinding(plan, boundaryConfiguration, boundaryQualification);
-  if (plan.contract_version === "agent-execution-plan.v2") ensure(profile.policy.contract_version === "codex-native-profile-policy.v2", "AGENT_RUN_COOPERATIVE_PROFILE_REQUIRED");
+  if (["agent-execution-plan.v2", "agent-execution-plan.v3"].includes(plan.contract_version)) ensure(profile.policy.contract_version === "codex-native-profile-policy.v2", "AGENT_RUN_COOPERATIVE_PROFILE_REQUIRED");
   if (execution && !recoveryOnly) {
     assertAgentRunSecretScope(config.resources_root, config.verification.private_key.path);
   }
@@ -179,7 +179,7 @@ export async function inspectNativeAgentRun(input) {
       material.executor = available; if (!available.available) blockers.push(available.reason_code);
       const boundaryStatus = await boundary.checkAvailability({ signal: AbortSignal.timeout(10000) });
       material.validation = boundaryStatus; if (!boundaryStatus.available) blockers.push(boundaryStatus.reason_code);
-      if (plan.contract_version === "agent-execution-plan.v2") material.qualification_status = available.available && boundaryStatus.available ? "qualified" : "unavailable";
+      if (["agent-execution-plan.v2", "agent-execution-plan.v3"].includes(plan.contract_version)) material.qualification_status = available.available && boundaryStatus.available ? "qualified" : "unavailable";
     }
     const head = await git.inspectIntegration({ phase: "head" });
     material.integration_head = head;

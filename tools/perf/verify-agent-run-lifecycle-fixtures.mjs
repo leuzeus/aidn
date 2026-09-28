@@ -80,8 +80,8 @@ await check("stable action hashing and no input mutation", () => {
   const a = buildAgentRunActionPreview(args(), c), b = buildAgentRunActionPreview(args(), structuredClone(c));
   assert.equal(a.action_sha256, b.action_sha256); assert.deepEqual(c, before);
 });
-function cooperativeContext() {
-  const c = context(), plan = { ...c.plan, contract_version: "agent-execution-plan.v2", assurance_profile: "codex-cooperative.v1" };
+function cooperativeContext(version = 2) {
+  const c = context(), plan = { ...c.plan, contract_version: `agent-execution-plan.v${version}`, assurance_profile: `codex-cooperative.v${version - 1}` };
   delete plan.plan_sha256;
   c.plan = normalizeAgentExecutionPlan(plan);
   c.preconditions.native = describeAgentRunAssurance(c.plan);
@@ -119,6 +119,58 @@ await check("strict and cooperative boundary evidence cannot cross plan profiles
   }
   assert.throws(() => assertAgentRunAssuranceBinding(cooperative, configuration, { ...qualification, read_isolation: "guaranteed" }), { code: "AGENT_RUN_ASSURANCE_PROFILE_MISMATCH" });
   assert.deepEqual(describeAgentRunAssurance(strict), {});
+});
+await check("network-unassured preview declares its limit without granting execution", async () => {
+  const c=cooperativeContext(3),before=structuredClone(c),h=harness(c),out=await h.lifecycle.invoke(args());
+  const native=out.action.preconditions.native;
+  assert.deepEqual(h.calls.map(row=>row[0]),["read"]);assert.equal(out.written,false);
+  assert.equal(native.assurance_profile,"codex-cooperative.v2");
+  assert.equal(native.read_isolation,"not_guaranteed");assert.equal(native.network_isolation,"not_guaranteed");
+  assert.equal(native.qualification_status,"not_checked");
+  assert.ok(native.limitations.includes("network_isolation_not_guaranteed"));
+  assert.equal(native.required_guarantees.includes("sandboxed_command_network_disabled"),false);
+  const historical=describeAgentRunAssurance(cooperativeContext().plan);
+  assert.deepEqual(native.required_guarantees,historical.required_guarantees.filter(value=>value!=="sandboxed_command_network_disabled"));
+  assert.deepEqual(native.limitations,[...historical.limitations,"network_isolation_not_guaranteed"]);
+  assert.equal(Object.hasOwn(historical,"network_isolation"),false);
+  assert.equal(historical.required_guarantees.includes("sandboxed_command_network_disabled"),true);
+  assert.deepEqual(c,before);
+});
+await check("network assurance labels and profile changes invalidate a previously approved action", async () => {
+  const c=cooperativeContext(3),original=buildAgentRunActionPreview(args(),c).action_sha256;
+  for(const mutate of [native=>{native.network_isolation="guaranteed";},native=>{native.limitations.pop();},native=>{native.qualification_status="unavailable";}]){
+    const changed=structuredClone(c);mutate(changed.preconditions.native);
+    assert.notEqual(buildAgentRunActionPreview(args(),changed).action_sha256,original);
+  }
+  const prior=buildAgentRunActionPreview(args(),cooperativeContext()).action_sha256,h=harness(c);
+  assert.notEqual(original,prior);
+  const out=await h.lifecycle.invoke(args("agent-run",["--execute","--expect-plan",prior,"--sync-relay"]));
+  assert.deepEqual(out.errors,["AGENT_RUN_PREVIEW_CHANGED"]);assert.deepEqual(h.calls.map(row=>row[0]),["read"]);
+});
+await check("strict and both cooperative profiles bind only their exact boundary versions", () => {
+  const plans=[context().plan,cooperativeContext().plan,cooperativeContext(3).plan];
+  const configurations=[1,2,3,4].map(version=>({contract_version:`codex-sandbox-validation-configuration.v${version}`,
+    ...(version>=3?{assurance_profile:`codex-cooperative.v${version-2}`,read_isolation:"not_guaranteed"}:{}),
+    ...(version===4?{network_isolation:"not_guaranteed"}:{})}));
+  const qualifications=configurations.map((config,index)=>({...config,contract_version:`agent-verification-boundary.v${index+1}`,network_disabled:index!==3}));
+  for(const [p,plan] of plans.entries())for(const [c,configuration] of configurations.entries())for(const [q,qualification] of qualifications.entries()){
+    const expected=c===q&&(p===0?c<2:c===p+1),before=JSON.stringify([plan,configuration,qualification]);
+    if(expected)assert.equal(assertAgentRunAssuranceBinding(plan,configuration,qualification),true);
+    else assert.throws(()=>assertAgentRunAssuranceBinding(plan,configuration,qualification),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
+    assert.equal(JSON.stringify([plan,configuration,qualification]),before);
+  }
+  const current=plans[2],config=configurations[3],qualification=qualifications[3];
+  for(const value of [true,null,0,"false",undefined]){
+    const changed={...qualification,network_disabled:value};if(value===undefined)delete changed.network_disabled;
+    assert.throws(()=>assertAgentRunAssuranceBinding(current,config,changed),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
+  }
+  for(const field of ["network_isolation","read_isolation","assurance_profile"]){
+    const changedConfig={...config},changedQualification={...qualification};delete changedConfig[field];delete changedQualification[field];
+    assert.throws(()=>assertAgentRunAssuranceBinding(current,changedConfig,qualification),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
+    assert.throws(()=>assertAgentRunAssuranceBinding(current,config,changedQualification),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
+  }
+  assert.throws(()=>describeAgentRunAssurance({...current,assurance_profile:"codex-cooperative.v1"}),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
+  assert.throws(()=>assertAgentRunAssuranceBinding(plans[0],{contract_version:"unknown"},{contract_version:"unknown"}),{code:"AGENT_RUN_ASSURANCE_PROFILE_MISMATCH"});
 });
 for (const [name, mutate] of [
   ["canonical state changes action", c => c.preconditions.canonical_snapshot_sha256 = "b".repeat(64)],

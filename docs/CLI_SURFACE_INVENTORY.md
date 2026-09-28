@@ -149,6 +149,11 @@ read-isolation limitations and qualification status to
 is a declaration only; `qualified` requires the exact native worker and
 validation evidence. V1 plans retain their historical shape and semantics.
 Cancellation and status do not run a native qualification probe.
+Plan v3/profile `codex-cooperative.v2` additionally declares
+`network_isolation: not_guaranteed`, removes network denial from its required
+guarantees and binds only to boundary configuration/qualification v4. The
+limitation participates in the action hash. Existing profiles and flags retain
+their semantics; there is no implicit profile replacement or availability grant.
 Each output is one JSON document; raw Codex events remain local evidence. Existing
 workflow adapters and sequential commands retain their contracts.
 

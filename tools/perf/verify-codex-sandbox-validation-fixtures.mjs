@@ -90,6 +90,23 @@ function cooperativeReport(config, q, caseId) {
   }
   return r;
 }
+function networkCooperativeFixture() {
+  const value = cooperativeFixture(); Object.assign(value.config, { contract_version: "codex-sandbox-validation-configuration.v4",
+    assurance_profile: "codex-cooperative.v2", network_isolation: "not_guaranteed" }); return value;
+}
+function networkCooperativeQualification(config) {
+  const value = cooperativeQualification(config); Object.assign(value, { contract_version: "agent-verification-boundary.v4",
+    assurance_profile: "codex-cooperative.v2", network_isolation: "not_guaranteed", network_disabled: false });
+  value.evidence = value.evidence.filter(row => row.ref !== "network.json"); return value;
+}
+function networkCooperativeReport(config, qualification, caseId) {
+  const value = cooperativeReport(config, qualification, caseId), markers = { assurance_profile: "codex-cooperative.v2",
+    read_isolation: "not_guaranteed", network_isolation: "not_guaranteed" };
+  Object.assign(value, markers, { evidence_role: caseId === "network" ? "diagnostic" : "qualification" });
+  for (const observation of [value.observation, value.concurrency?.observation].filter(Boolean))
+    Object.assign(observation, markers, { contract_version: "codex-validation-native-observation.v3" });
+  return value;
+}
 function protectedBaseline(config) { return { protected_resources_sha256: fingerprint(config.protected_resources),
   observations: config.protected_resources.map(row => ({ resource_id: row.id, sha256: H })) }; }
 function managedQualification(config) { return { contract_version: "agent-verification-boundary.v2", boundary_id: config.boundary_id,
@@ -424,6 +441,78 @@ for (const [name, change] of [
   const { config } = cooperativeFixture(), q = cooperativeQualification(config), report = cooperativeReport(config, q, "filesystem"); change(report);
   assert.throws(() => assertCodexSandboxNativeCase(report, q, config));
 });
+await check("v4 declares unguaranteed network while still requesting the official disabled policy", async () => {
+  const { config, request } = networkCooperativeFixture(), before = structuredClone(config), names = fs.readdirSync(root).sort();
+  assert.equal(validate(config), true); assert.equal(getCodexSandboxValidationLaunchSupport(config).native, false);
+  assert(build(config, request).args.find(arg => arg.startsWith("permissions=")).includes("network={enabled=false}"));
+  const { publicKey } = generateKeyPairSync("ed25519");
+  const boundary = createCodexSandboxValidationBoundary({ configuration: config, publicKey, evidenceRoot: root });
+  assert.equal((await boundary.checkAvailability()).available, false); await assert.rejects(boundary.run(request));
+  assert.deepEqual(config, before); assert.deepEqual(fs.readdirSync(root).sort(), names);
+});
+for (const [name, change] of [
+  ["old profile", c => { c.assurance_profile = "codex-cooperative.v1"; }],
+  ["missing network marker", c => { delete c.network_isolation; }],
+  ["claimed isolation", c => { c.network_isolation = "guaranteed"; }],
+  ["enabled network request", c => { c.profile.effective_policy.network_enabled = true; }],
+]) await check(`v4 configuration refuses ${name}`, () => {
+  const { config } = networkCooperativeFixture(); change(config); config.profile.effective_policy_sha256 = fingerprint(config.profile.effective_policy);
+  assert.throws(() => validate(config));
+});
+await check("v4 plan separates four required native cases from its optional network diagnostic", () => {
+  const { config, request } = networkCooperativeFixture(), plan = managedPlan(config, request);
+  assert.equal(plan.contract_version, "codex-validation-native-plan.v4"); assert.equal(plan.assurance_profile, "codex-cooperative.v2");
+  assert.equal(plan.network_isolation, "not_guaranteed"); assert.equal(plan.max_duration_ms, 60000);
+  assert.deepEqual(plan.cases.map(row => row.case_id), ["filesystem", "timeout", "cancel", "callback"]);
+  assert(plan.cases.every(row => row.evidence_role === "qualification"));
+  assert.deepEqual(plan.diagnostic_cases.map(row => row.case_id), ["network"]); assert.equal(plan.diagnostic_cases[0].evidence_role, "diagnostic");
+  for (const row of [...plan.cases, ...plan.diagnostic_cases]) {
+    const payload = JSON.parse(row.request.argv[1]); assert.equal(payload.assurance_profile, "codex-cooperative.v2");
+    assert.equal(payload.network_isolation, "not_guaranteed"); assert.equal(row.request.max_duration_ms, 60000);
+  }
+  const main = plan.cases[0]; assert(main.companion); assert.notEqual(build(config, main.request).jobName, build(config, main.companion.request).jobName);
+});
+await check("v4 requires four write/process proofs and never claims enforced network isolation", () => {
+  const { config } = networkCooperativeFixture(), q = networkCooperativeQualification(config);
+  assert.equal(assertCodexSandboxValidationQualificationPayload(q, config), q);
+  for (const caseId of ["filesystem", "timeout", "cancel", "callback"])
+    assert.equal(assertCodexSandboxNativeCase(networkCooperativeReport(config, q, caseId), q, config), caseId);
+  for (const status of ["FAIL", "READY_FOR_INDEPENDENT_REVIEW"]) {
+    const report = networkCooperativeReport(config, q, "network"); report.status = status;
+    assert.throws(() => assertCodexSandboxNativeCase(report, q, config), code("SANDBOX_NATIVE_EVIDENCE_INVALID"));
+  }
+});
+for (const [name, change] of [
+  ["network denial claim", q => { q.network_disabled = true; }], ["missing explicit false", q => { delete q.network_disabled; }],
+  ["missing isolation marker", q => { delete q.network_isolation; }], ["old profile", q => { q.assurance_profile = "codex-cooperative.v1"; }],
+  ["fifth network proof", q => { q.evidence.push({ ref: "network.json", sha256: H, bytes: 1 }); }],
+  ["missing write protection", q => { q.supervisor_write_protected = false; }],
+  ["missing process stop", q => { q.descendant_termination = false; }],
+]) await check(`v4 qualification refuses ${name}`, () => {
+  const { config } = networkCooperativeFixture(), q = networkCooperativeQualification(config); change(q);
+  assert.throws(() => assertCodexSandboxValidationQualificationPayload(q, config));
+});
+for (const [name, change] of [
+  ["v3 observation", r => { r.observation.contract_version = "codex-validation-native-observation.v2"; }],
+  ["old observation profile", r => { r.observation.assurance_profile = "codex-cooperative.v1"; }],
+  ["missing report network marker", r => { delete r.network_isolation; }],
+  ["diagnostic evidence", r => { r.evidence_role = "diagnostic"; }],
+  ["v3 companion observation", r => { r.concurrency.observation.contract_version = "codex-validation-native-observation.v2"; }],
+  ["write allowed during", r => { r.observation.observations.during.supervisor_write_denied = false; }],
+  ["write allowed after", r => { r.observation.observations.after.snapshot_write_denied = false; }],
+  ["live companion", r => { r.concurrency.process.termination_proof.active_processes = 1; }],
+  ["changed protected resource", r => { r.after.material.observations[0].sha256 = "b".repeat(64); }],
+]) await check(`v4 report refuses ${name}`, () => {
+  const { config } = networkCooperativeFixture(), q = networkCooperativeQualification(config), report = networkCooperativeReport(config, q, "filesystem"); change(report);
+  assert.throws(() => assertCodexSandboxNativeCase(report, q, config));
+});
+await check("v3 and v4 qualifications cannot exchange network assurance even when other pins match", () => {
+  const older = cooperativeFixture().config, newer = networkCooperativeFixture().config;
+  const q3 = cooperativeQualification(older), q4 = networkCooperativeQualification(newer);
+  assert.throws(() => assertCodexSandboxValidationQualificationPayload({ ...q3, network_disabled: false }, older));
+  assert.throws(() => assertCodexSandboxValidationQualificationPayload({ ...q4, configuration_sha256: fingerprint(older) }, older));
+  assert.throws(() => assertCodexSandboxValidationQualificationPayload({ ...q3, configuration_sha256: fingerprint(newer) }, newer));
+});
 await check("consumer binds cooperative assurance to plan v2 and refuses every cross-mode mix", () => {
   const { config } = cooperativeFixture(), q = cooperativeQualification(config), strict = managedQualification(managedFixture().config);
   const plan = { contract_version: "agent-execution-plan.v2", assurance_profile: "codex-cooperative.v1" };
@@ -433,8 +522,8 @@ await check("consumer binds cooperative assurance to plan v2 and refuses every c
   assert.throws(() => assertAgentVerificationAssuranceBinding({ ...plan, assurance_profile: "strict" }, q));
   assert.equal(assertAgentVerificationAssuranceBinding({ contract_version: "agent-execution-plan.v1" }, strict), true);
 });
-await check("cooperative canary handshake is testable in memory and checks writes during then after", async () => {
-  const { config, request } = cooperativeFixture(), selected = managedPlan(config, request).cases.find(row => row.case_id === "filesystem");
+for (const [version, make] of [["v3", cooperativeFixture], ["v4", networkCooperativeFixture]]) await check(`${version} cooperative canary handshake checks writes during then after in memory`, async () => {
+  const { config, request } = make(), selected = managedPlan(config, request).cases.find(row => row.case_id === "filesystem");
   const primary = JSON.parse(selected.request.argv[1]), companion = JSON.parse(selected.companion.request.argv[1]);
   const files = new Map([[primary.snapshot_file, Buffer.from("original snapshot canary")], [primary.supervisor_file, Buffer.from("original supervisor canary")]]);
   const writes = []; const filesystem = {
@@ -456,6 +545,10 @@ await check("cooperative canary handshake is testable in memory and checks write
   assert.equal(result.observations.after.companion_stopped, true); assert.equal(writes.length, 4);
   assert.deepEqual(primaryOutputs.map(row => row.phase), ["primary_ready", "primary_completed"]);
   assert.equal(result.observations.during.snapshot_sha256, result.observations.after.snapshot_sha256);
+  if (version === "v4") for (const observation of [...primaryOutputs, completed]) {
+    assert.equal(observation.contract_version, "codex-validation-native-observation.v3"); assert.equal(observation.assurance_profile, "codex-cooperative.v2");
+    assert.equal(observation.read_isolation, "not_guaranteed"); assert.equal(observation.network_isolation, "not_guaranteed");
+  }
 });
 
 await check("native failure retains bounded stderr and full controller evidence", () => {

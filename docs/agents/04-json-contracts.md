@@ -84,7 +84,7 @@ Both profiles reject unsupported validation keywords. Positive and adversarial
 payloads, semantic checks and executor doubles are covered by the dedicated
 `runtime-agent-execution-contracts` gate.
 
-The seventeen schemas cover sixteen kinds: descriptor, availability, plan, run, delegated task,
+The eighteen schemas cover sixteen kinds: descriptor, availability, plan, run, delegated task,
 attempt, delegation, request, event, result, acceptance, supervisor, prepared
 and applied integration, the pre-Git integration intent, and final run validation. Their pure validity does not
 prove a working executor, live lease, Git reference or native admission. Task
@@ -107,6 +107,13 @@ cooperative validation configuration/qualification are v3 and explicitly state
 `read_isolation: not_guaranteed`; strict and cooperative evidence cannot mix.
 Public preview preconditions expose these limitations without claiming native
 availability. The PostgreSQL JSONB plan retains the exact version and profile.
+
+Plan v3 separately selects `codex-cooperative.v2` and boundary configuration and
+qualification v4. These declare `read_isolation: not_guaranteed` and
+`network_isolation: not_guaranteed`; qualification requires `network_disabled:
+false`. Earlier versions still require network denial. The preview exposes the
+new limitation in its action hash. Native write, process and exact-SHA proofs
+remain required; network diagnostics are separate from v4 qualification.
 
 ## Activation Refusals
 

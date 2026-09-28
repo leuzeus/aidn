@@ -32,12 +32,16 @@ await check("explicit fixture boundary never advertises native qualification", (
   assert.deepEqual(await f.create().checkAvailability({ plan: f.plan }), { status: "available", evidence_class: "fixture", native: false });
   assert.equal((await f.create({ evidenceClass: "native" }).checkAvailability({ plan: f.plan })).status, "unavailable");
 }));
-await check("injected cooperative qualification retains exact-SHA checks and rejects missing write protection", () => fixture({}, async f => {
-  const plan = normalizeAgentExecutionPlan({ ...raw(f.plan), contract_version: "agent-execution-plan.v2", assurance_profile: "codex-cooperative.v1" });
+for (const [boundaryVersion, planVersion, profile, networkDisabled] of [
+  ["agent-verification-boundary.v3", "agent-execution-plan.v2", "codex-cooperative.v1", true],
+  ["agent-verification-boundary.v4", "agent-execution-plan.v3", "codex-cooperative.v2", false],
+]) await check(`${boundaryVersion} retains exact-SHA checks and its explicit assurance claims`, () => fixture({}, async f => {
+  const plan = normalizeAgentExecutionPlan({ ...raw(f.plan), contract_version: planVersion, assurance_profile: profile });
   const strict = f.boundary.getDescriptor().qualification.payload;
-  const qualification = { ...strict, contract_version: "agent-verification-boundary.v3", boundary_id: "codex-sandbox-validation", evidence_class: "native",
-    assurance_profile: "codex-cooperative.v1", read_isolation: "not_guaranteed", sandbox_maintenance: "codex-managed",
-    protected_resources_preserved: true, protected_resources_sha256: "a".repeat(64), supervisor_write_protected: true, concurrent_write_protection: true };
+  const qualification = { ...strict, contract_version: boundaryVersion, boundary_id: "codex-sandbox-validation", evidence_class: "native",
+    assurance_profile: profile, read_isolation: "not_guaranteed", sandbox_maintenance: "codex-managed", network_disabled: networkDisabled,
+    protected_resources_preserved: true, protected_resources_sha256: "a".repeat(64), supervisor_write_protected: true, concurrent_write_protection: true,
+    ...(!networkDisabled ? { network_isolation: "not_guaranteed" } : {}) };
   delete qualification.supervisor_resources_inaccessible;
   let probes = 0;
   // This is a signed, injected consumer double. It supplies no OS/native evidence.
@@ -51,18 +55,59 @@ await check("injected cooperative qualification retains exact-SHA checks and rej
   const input = { ...f.verificationInput({ validation }, "task"), plan, run: { ...f.run, plan_sha256: plan.plan_sha256 } };
   const proof = await producer.evidenceVerifier.verify(input);
   assert.equal(proof.snapshots[0].candidate_sha, f.candidateSha);
-  const changed = forgedDocument(f, { validation }, validation.checks[0].evidence, payload => {
-    const q = payload.boundary_qualification.payload; delete q.supervisor_write_protected; payload.boundary_qualification = signed(q, f.privateKey);
-  });
-  await assert.rejects(producer.evidenceVerifier.verify({ ...input, document: changed, subject_sha256: fingerprint(changed) }), /BOUNDARY_UNAVAILABLE/);
-  for (const field of ["supervisor_write_protected", "concurrent_write_protection", "snapshot_read_only", "network_disabled", "descendant_termination"]) {
+  const fields = ["supervisor_write_protected", "concurrent_write_protection", "snapshot_read_only", "network_disabled", "descendant_termination",
+    ...(!networkDisabled ? ["network_isolation"] : [])];
+  for (const field of fields) {
     const missing = { ...qualification }; delete missing[field];
     assert.equal((await f.create({ evidenceClass: "native", boundary: boundaryFor(missing) }).checkAvailability({ plan })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
+    const changed = forgedDocument(f, { validation }, validation.checks[0].evidence, payload => {
+      const q = payload.boundary_qualification.payload; delete q[field]; payload.boundary_qualification = signed(q, f.privateKey);
+    });
+    await assert.rejects(producer.evidenceVerifier.verify({ ...input, document: changed, subject_sha256: fingerprint(changed) }), /BOUNDARY_UNAVAILABLE/);
   }
+  for (const [field, value] of [["network_disabled", !networkDisabled], ...(!networkDisabled ? [["network_isolation", "guaranteed"]] : [])]) {
+    const changed = forgedDocument(f, { validation }, validation.checks[0].evidence, payload => {
+      const q = payload.boundary_qualification.payload; q[field] = value; payload.boundary_qualification = signed(q, f.privateKey);
+    });
+    assert.equal((await f.create({ evidenceClass: "native", boundary: boundaryFor({ ...qualification, [field]: value }) }).checkAvailability({ plan })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
+    await assert.rejects(producer.evidenceVerifier.verify({ ...input, document: changed, subject_sha256: fingerprint(changed) }), /BOUNDARY_UNAVAILABLE/);
+  }
+  const changedPlan = raw(plan); changedPlan.execution.engine.sha256 = "9".repeat(64);
+  assert.equal((await producer.checkAvailability({ plan: normalizeAgentExecutionPlan(changedPlan) })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
   const before = probes;
   assert.equal((await producer.checkAvailability({ plan: f.plan })).reason_code, "VERIFICATION_ASSURANCE_PROFILE_MISMATCH");
   assert.equal((await f.create({ boundary: boundaryFor(strict) }).checkAvailability({ plan })).reason_code, "VERIFICATION_ASSURANCE_PROFILE_MISMATCH");
   assert.equal(probes, before); assert.equal(f.calls, 1);
+}));
+await check("qualification versions bind only their selected plan and preserve legacy network denial", () => fixture({}, async f => {
+  const plans = [f.plan, normalizeAgentExecutionPlan({ ...raw(f.plan), contract_version: "agent-execution-plan.v2", assurance_profile: "codex-cooperative.v1" }),
+    normalizeAgentExecutionPlan({ ...raw(f.plan), contract_version: "agent-execution-plan.v3", assurance_profile: "codex-cooperative.v2" })];
+  const strict = f.boundary.getDescriptor().qualification.payload;
+  const managed = { ...strict, contract_version: "agent-verification-boundary.v2", boundary_id: "codex-sandbox-validation", evidence_class: "native",
+    sandbox_maintenance: "codex-managed", protected_resources_preserved: true, protected_resources_sha256: "a".repeat(64) };
+  const cooperative = { ...managed, contract_version: "agent-verification-boundary.v3", assurance_profile: "codex-cooperative.v1",
+    read_isolation: "not_guaranteed", supervisor_write_protected: true, concurrent_write_protection: true };
+  delete cooperative.supervisor_resources_inaccessible;
+  const unrestricted = { ...cooperative, contract_version: "agent-verification-boundary.v4", assurance_profile: "codex-cooperative.v2",
+    network_isolation: "not_guaranteed", network_disabled: false };
+  let probes = 0;
+  const boundaryFor = payload => ({ ...f.boundary, getDescriptor: () => ({ boundary_id: payload.boundary_id, qualification: signed(payload, f.privateKey) }),
+    checkAvailability: async () => { probes++; return { available: true, native: true }; } });
+  for (const [qualification, expectedPlan] of [[strict, 0], [managed, 0], [cooperative, 1], [unrestricted, 2]]) {
+    const producer = f.create({ evidenceClass: qualification.evidence_class, boundary: boundaryFor(qualification) });
+    for (const [index, plan] of plans.entries()) {
+      const before = probes, availability = await producer.checkAvailability({ plan });
+      if (index === expectedPlan) assert.equal(availability.status, "available");
+      else { assert.equal(availability.reason_code, "VERIFICATION_ASSURANCE_PROFILE_MISMATCH"); assert.equal(probes, before); }
+    }
+    if (qualification !== unrestricted) for (const value of [false, undefined]) {
+      const invalid = { ...qualification, network_disabled: value, network_isolation: "not_guaranteed" };
+      if (value === undefined) delete invalid.network_disabled;
+      assert.equal((await f.create({ evidenceClass: qualification.evidence_class, boundary: boundaryFor(invalid) })
+        .checkAvailability({ plan: plans[expectedPlan] })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
+    }
+  }
+  assert.equal(f.calls, 0); assert.equal(fs.existsSync(path.join(f.resourcesRoot, "verification", "intents")), false);
 }));
 await check("legacy plan, absent key, changed pin and changed environment are unavailable", () => fixture({}, async f => {
   const legacy = raw(f.plan); delete legacy.verification;

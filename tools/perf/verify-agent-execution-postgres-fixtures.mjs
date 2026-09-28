@@ -33,6 +33,7 @@ const lifecycleChecks=new Set([
   "missing schema is unavailable without implicit DDL",
   "two-process migration applies v3 through v6 once and preserves v2 data",
   "cooperative plan v2 survives JSONB reservation reread and claim without DDL",
+  "cooperative plan v3 survives JSONB reservation reread and claim without DDL",
   "unknown cooperative assurance is rejected before PostgreSQL writes",
   "public CLI status and planned cancellation use real PostgreSQL without native preparation",
   "cleanup rechecks Git after external observations before authority or durable results",
@@ -365,10 +366,10 @@ async function runSuite({ connectionString, version, root }) {
       assert.equal(await ddlCount(), before);
       assert.equal((await store.checkReadiness()).ready, true);
     });
-    await check("cooperative plan v2 survives JSONB reservation reread and claim without DDL", async () => {
+    for (const version of [2,3]) await check(`cooperative plan v${version} survives JSONB reservation reread and claim without DDL`, async () => {
       const context=await seed({reserve:false,transform:plan=>{
-        plan.contract_version="agent-execution-plan.v2";
-        plan.assurance_profile="codex-cooperative.v1";
+        plan.contract_version=`agent-execution-plan.v${version}`;
+        plan.assurance_profile=`codex-cooperative.v${version-1}`;
       }});
       const before=JSON.stringify(context.reservation), ddl=await ddlCount();
       const reserved=await context.store.reserveRun(context.reservation);
@@ -376,8 +377,8 @@ async function runSuite({ connectionString, version, root }) {
       const persisted=(await client.query("SELECT plan_json,plan_sha256,pg_typeof(plan_json)::text AS storage_type FROM aidn_shared.execution_runs WHERE run_id=$1",[context.runId])).rows[0];
       assert.equal(persisted.storage_type,"jsonb");
       assert.deepEqual(persisted.plan_json,context.plan);
-      assert.equal(persisted.plan_json.contract_version,"agent-execution-plan.v2");
-      assert.equal(persisted.plan_json.assurance_profile,"codex-cooperative.v1");
+      assert.equal(persisted.plan_json.contract_version,`agent-execution-plan.v${version}`);
+      assert.equal(persisted.plan_json.assurance_profile,`codex-cooperative.v${version-1}`);
       assert.equal(persisted.plan_sha256,context.plan.plan_sha256);
       assert.equal(normalizeAgentExecutionPlan(persisted.plan_json).plan_sha256,persisted.plan_sha256);
       const legacy=structuredClone(persisted.plan_json);
@@ -400,20 +401,22 @@ async function runSuite({ connectionString, version, root }) {
       assert.equal(await ddlCount(),ddl);
     });
     await check("unknown cooperative assurance is rejected before PostgreSQL writes", async () => {
-      let activationChecks=0;
-      const context=await seed({reserve:false,options:{verifyActivation:()=>{activationChecks++;return true;}},transform:plan=>{
-        plan.contract_version="agent-execution-plan.v2";
-        plan.assurance_profile="codex-cooperative.v1";
-      }});
-      const invalid=structuredClone(context.reservation);
-      invalid.plan.assurance_profile="codex-cooperative.unknown";
-      const inputBefore=JSON.stringify(invalid), dataBefore=await dataSnapshot(), ddl=await ddlCount();
-      await reject(context.store.reserveRun(invalid),"AGENT_EXECUTION_CONTRACT_INVALID");
-      assert.equal(await dataSnapshot(),dataBefore);
-      assert.equal(await ddlCount(),ddl);
-      assert.equal(await context.store.getRun({runId:context.runId}),null);
-      assert.equal(activationChecks,0);
-      assert.equal(JSON.stringify(invalid),inputBefore);
+      for (const version of [2,3]) {
+        let activationChecks=0;
+        const context=await seed({reserve:false,options:{verifyActivation:()=>{activationChecks++;return true;}},transform:plan=>{
+          plan.contract_version=`agent-execution-plan.v${version}`;
+          plan.assurance_profile=`codex-cooperative.v${version-1}`;
+        }});
+        const invalid=structuredClone(context.reservation);
+        invalid.plan.assurance_profile="codex-cooperative.unknown";
+        const inputBefore=JSON.stringify(invalid), dataBefore=await dataSnapshot(), ddl=await ddlCount();
+        await reject(context.store.reserveRun(invalid),"AGENT_EXECUTION_CONTRACT_INVALID");
+        assert.equal(await dataSnapshot(),dataBefore);
+        assert.equal(await ddlCount(),ddl);
+        assert.equal(await context.store.getRun({runId:context.runId}),null);
+        assert.equal(activationChecks,0);
+        assert.equal(JSON.stringify(invalid),inputBefore);
+      }
     });
     for (const legacyVersion of [3,4,5]) await check(`v${legacyVersion} upgrade preserves existing run task result and immutable evidence`, async () => {
       // This additional database belongs to this same private disposable cluster.
