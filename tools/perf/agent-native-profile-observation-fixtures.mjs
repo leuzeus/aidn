@@ -400,6 +400,86 @@ export async function runAgentNativeProfileObservationFixtures() {
     await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1) }, { timeoutMs: 60001, spawnProcess() { calls++; } }), code("PROFILE_METADATA_TIMEOUT_INVALID"));
     assert.equal(calls, 0);
   });
+  for (const phase of ["before_config", "after_responses"]) {
+    for (const params of [{}, { authMode: null, planType: null },
+      { authMode: "chatgpt", planType: "pro", private: "synthetic-private-account" }]) {
+      await check("account update notification is opaque at " + phase + " " + JSON.stringify(params), async () => {
+        const notification = { method: "account/updated", params };
+        const reply = request => ({ id: request.id, result: { marker: "metadata", method: request.method } });
+        const before = request => phase === "before_config" && request.id === 2;
+        const transport = doubleTransport({
+          alter: request => before(request) ? notification : reply(request),
+          append: request => before(request) ? [reply(request)] : phase === "after_responses"
+            && request.method === "windowsSandbox/readiness" ? [notification] : [],
+        });
+        let result;
+        await assert.doesNotReject(async () => {
+          result = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport);
+        }, "valid account/updated must not abort metadata at " + phase);
+        assert.equal(result.process.response_count, 5); assert.equal(result.process.budget_ms, 10000);
+        assert.equal(result.process.closed, true); assert.equal(result.process.pid_absent, true);
+        assert.deepEqual(transport.writes.map(row => row.method),
+          ["initialize", "initialized", "config/read", "config/read", "hooks/list", "windowsSandbox/readiness"]);
+        assert.equal(result.configs[0].marker, "metadata");
+        for (const value of ["authMode", "planType", "synthetic-private-account", "account/updated"]) {
+          assert(!JSON.stringify(result).includes(value)); assert(!JSON.stringify(transport.writes).includes(value));
+        }
+      });
+    }
+  }
+  for (const params of [undefined, null, [], "synthetic-private-param", 42]) {
+    await check("account update refuses nonobject params " + JSON.stringify(params), async () => {
+      const transport = doubleTransport({
+        alter: request => request.id === 2 ? { method: "account/updated", params } : { id: request.id, result: {} },
+        append: request => request.id === 2 ? [{ id: request.id, result: {} }] : [],
+      });
+      const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+      assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+      assert.deepEqual(error.details?.metadata_rpc, { version: 1, kind: "notification", method_type: "string",
+        method: "account/updated", method_sha256: null, id_type: "absent", phase: "awaiting_response",
+        expected_method: "config/read", request_index: 2 });
+      assert.equal(error.process.closed, true); assert.equal(error.process.pid_absent, true);
+      assert.equal(error.process.response_count, 1);
+      assert.deepEqual(transport.writes.map(row => row.method), ["initialize", "initialized", "config/read"]);
+      assert(!JSON.stringify(error.details).includes("synthetic-private"));
+    });
+  }
+  for (const id of [null, "synthetic-private-id", 23]) {
+    await check("account update with server id is refused " + String(id), async () => {
+      const transport = doubleTransport({
+        alter: request => request.id === 2 ? { id, method: "account/updated", params: { private: "synthetic-private-param" } }
+          : { id: request.id, result: {} },
+        append: request => request.id === 2 ? [{ id: request.id, result: {} }, { method: "account/updated", params: {} }] : [],
+      });
+      const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+      assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+      assert.deepEqual(error.details?.metadata_rpc, { version: 1, kind: "server_request", method_type: "string",
+        method: "account/updated", method_sha256: null, id_type: id === null ? "null" : typeof id,
+        phase: "awaiting_response", expected_method: "config/read", request_index: 2 });
+      assert.equal(error.process.closed, true); assert.equal(error.process.pid_absent, true);
+      assert.equal(error.process.response_count, 1);
+      assert.deepEqual(transport.writes.map(row => row.method), ["initialize", "initialized", "config/read"]);
+      assert(!JSON.stringify(error.details).includes("synthetic-private"));
+    });
+  }
+  for (const method of ["account/chatgptAuthTokens/refresh", "unknown/account-update"]) {
+    await check("account update does not admit another method " + method, async () => {
+      const message = { method, params: { private: "synthetic-private-param" },
+        ...(method === "account/chatgptAuthTokens/refresh" ? { id: "synthetic-private-id" } : {}) };
+      const transport = doubleTransport({
+        alter: request => request.id === 2 ? message : { id: request.id, result: {} },
+        append: request => request.id === 2 ? [{ id: request.id, result: {} }, { method: "account/updated", params: {} }] : [],
+      });
+      const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+      assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+      assert.equal(error.details.metadata_rpc.method, method.startsWith("unknown/") ? null : method);
+      if (method.startsWith("unknown/")) assert.equal(error.details.metadata_rpc.method_sha256, createHash("sha256").update(method).digest("hex"));
+      assert.equal(error.process.closed, true); assert.equal(error.process.pid_absent, true);
+      assert.equal(error.process.response_count, 1);
+      assert.deepEqual(transport.writes.map(row => row.method), ["initialize", "initialized", "config/read"]);
+      assert(!JSON.stringify(error.details).includes("synthetic-private"));
+    });
+  }
   await check("first unexpected RPC stops all protocol writes in the same chunk", async () => {
     const transport = doubleTransport({ alter: () => ({ id: "synthetic-private-id", method: "item/tool/call", params: { secret: "synthetic-private-param" } }),
       append: request => [{ id: request.id, result: { secret: "synthetic-private-result" } }, { method: "thread/started" }] });

@@ -178,7 +178,10 @@ export async function collectCodexNativeProfileMetadata(input,
         let message; try { message = JSON.parse(line); } catch { stop("PROFILE_METADATA_PROTOCOL_INVALID"); return; }
         if (!object(message)) { stop("PROFILE_METADATA_PROTOCOL_INVALID"); return; }
         if (message.method) {
-          if (message.id !== undefined || !["configWarning", "remoteControl/status/changed"].includes(message.method)) {
+          // Account updates are informational; their values carry no AIDN authority.
+          const ignoredNotification = ["configWarning", "remoteControl/status/changed"].includes(message.method)
+            || (message.method === "account/updated" && object(message.params));
+          if (Object.hasOwn(message, "id") || !ignoredNotification) {
             metadataRpc ??= createCodexMetadataRpcDiagnostic({ message,
               phase: index < calls.length ? "awaiting_response" : "after_responses",
               expectedMethod: index < calls.length ? calls[index].method : "complete", requestIndex: Math.min(index + 1, calls.length) });

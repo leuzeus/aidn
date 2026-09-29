@@ -164,6 +164,14 @@ condition is still checked. Configuration warnings are not successful validation
 Isolated profiles retain strict parsing. This choice follows the explicit bound
 mode; a failed launch never retries with relaxed arguments.
 
+During metadata observation, `account/updated` is an informational notification
+when it has no id and its params value is an object (including an empty object).
+The observer ignores its values without retaining them or granting authority;
+this envelope check is not full payload validation. Expected responses,
+preservation checks, byte limits, deadlines and process closure remain required.
+Requests with an id and all other unexpected methods remain refused. A retained
+method-only diagnostic cannot establish the contents of an earlier payload.
+
 Codex may emit a nonterminal `item.completed` error diagnostic after
 `thread.started` but before `turn.started`, including for ignored historical
 settings. The bounded JSONL reader accepts only the well-formed diagnostic in

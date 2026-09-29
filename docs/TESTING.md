@@ -401,6 +401,10 @@ process evidence through callback error normalization and finalization, separate
 from worker cleanup; an unresolved metadata callback blocks another observation.
 Only the validated, bounded RPC diagnostic survives in those failure details;
 raw payloads and unrelated error details are discarded.
+Observation fixtures accept opaque `account/updated` notifications with object
+parameters and no id before a response or after all responses, without retaining
+parameters or changing requests, deadlines or closure checks. Malformed envelopes,
+server requests and other unexpected methods remain refused without later writes.
 Synthetic callbacks verify that bootstrap and fresh canonical preflight share
 one 60-second maximum budget, counted separately in the run, before the unchanged
 worker deadline begins. The metadata collector and its warm verification remain
