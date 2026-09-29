@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import os from "node:os";
+import { createHash } from "node:crypto";
+import { createCodexMetadataRpcDiagnostic, sanitizeCodexMetadataRpcDiagnostic } from "../../src/adapters/agents/codex-metadata-rpc-diagnostic.mjs";
 import { EventEmitter } from "node:events";
 import { PassThrough, Writable } from "node:stream";
 import { pathToFileURL } from "node:url";
@@ -64,8 +66,8 @@ function fixture({ managed = false } = {}) {
   return { policy, request, manifest, config, metadata, sourceFiles, consent, review, observation };
 }
 
-function doubleTransport({ alter, silent = false, leaveAlive = false, chunked = false } = {}) {
-  const calls = []; let alive = false;
+function doubleTransport({ alter, append = () => [], silent = false, leaveAlive = false, chunked = false } = {}) {
+  const calls = [], writes = []; let alive = false;
   const spawnProcess = () => {
     alive = true; const child = new EventEmitter(); child.pid = 12345; child.stdout = new PassThrough(); child.stderr = new PassThrough();
     const close = () => { if (leaveAlive) return; alive = false; child.emit("close", 0, null); };
@@ -74,13 +76,15 @@ function doubleTransport({ alter, silent = false, leaveAlive = false, chunked = 
       const message = JSON.parse(chunk.toString()); calls.push(message);
       if (message.id && !silent) queueMicrotask(() => {
         const reply = alter ? alter(message) : { id: message.id, result: { marker: "été", method: message.method } };
-        const bytes = Buffer.from(JSON.stringify(reply) + "\r\n");
+        const bytes = Buffer.from([reply, ...append(message)].map(row => JSON.stringify(row) + "\r\n").join(""));
         if (chunked) for (const byte of bytes) child.stdout.write(Buffer.from([byte])); else child.stdout.write(bytes);
       }); callback();
     }, final(callback) { callback(); queueMicrotask(close); } });
+    const write = child.stdin.write.bind(child.stdin);
+    child.stdin.write = (chunk, ...args) => { writes.push(JSON.parse(chunk.toString())); return write(chunk, ...args); };
     return child;
   };
-  return { spawnProcess, isAlive: () => alive, calls };
+  return { spawnProcess, isAlive: () => alive, calls, writes };
 }
 
 export async function runAgentNativeProfileObservationFixtures() {
@@ -395,6 +399,68 @@ export async function runAgentNativeProfileObservationFixtures() {
     let calls = 0;
     await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1) }, { timeoutMs: 60001, spawnProcess() { calls++; } }), code("PROFILE_METADATA_TIMEOUT_INVALID"));
     assert.equal(calls, 0);
+  });
+  await check("first unexpected RPC stops all protocol writes in the same chunk", async () => {
+    const transport = doubleTransport({ alter: () => ({ id: "synthetic-private-id", method: "item/tool/call", params: { secret: "synthetic-private-param" } }),
+      append: request => [{ id: request.id, result: { secret: "synthetic-private-result" } }, { method: "thread/started" }] });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+    assert.deepEqual(transport.writes.map(row => row.method), ["initialize"]);
+    assert.deepEqual(error.details?.metadata_rpc, { version: 1, kind: "server_request", method_type: "string", method: "item/tool/call",
+      method_sha256: null, id_type: "string", phase: "awaiting_response", expected_method: "initialize", request_index: 1 });
+    assert.equal(error.process.closed, true); assert.equal(error.process.pid_absent, true);
+    assert(!JSON.stringify(error.details).includes("synthetic-private"));
+  });
+  await check("unknown RPC diagnostic hashes only its method and never retains payload or id", async () => {
+    const method = "unknown/synthetic-private-method", transport = doubleTransport({ alter: () => ({ method, id: { secret: "synthetic-private-id" },
+      params: { secret: "synthetic-private-param" }, result: "synthetic-private-result" }) });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+    const diagnostic = error.details?.metadata_rpc;
+    assert(diagnostic); assert.equal(diagnostic.method, null); assert.equal(diagnostic.method_type, "string");
+    assert.equal(diagnostic.method_sha256, createHash("sha256").update(method).digest("hex")); assert.equal(diagnostic.id_type, "object");
+    assert(!JSON.stringify(diagnostic).includes("synthetic-private")); assert(Buffer.byteLength(JSON.stringify(diagnostic)) < 1024);
+  });
+  await check("RPC after the final response retains a complete phase without dispatch", async () => {
+    const transport = doubleTransport({ append: request => request.method === "windowsSandbox/readiness"
+      ? [{ method: "thread/started", params: { secret: "synthetic-private-param" } }] : [] });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+    assert.deepEqual(error.details?.metadata_rpc, { version: 1, kind: "notification", method_type: "string", method: "thread/started",
+      method_sha256: null, id_type: "absent", phase: "after_responses", expected_method: "complete", request_index: 5 });
+    assert.equal(error.process.response_count, 5);
+    assert.deepEqual(transport.writes.map(row => row.method), ["initialize", "initialized", "config/read", "config/read", "hooks/list", "windowsSandbox/readiness"]);
+  });
+  await check("RPC diagnostics reject raw fields and accessors without hiding the refusal", () => {
+    const value = createCodexMetadataRpcDiagnostic({ message: { id: null, method: "configWarning" },
+      expectedMethod: "initialize", requestIndex: 1, phase: "awaiting_response" });
+    assert.equal(value.kind, "server_request"); assert.equal(value.id_type, "null");
+    assert.deepEqual(sanitizeCodexMetadataRpcDiagnostic(value), value);
+    for (const invalid of [{ ...value, params: "synthetic-private-param" }, { ...value, id: "synthetic-private-id" },
+      { ...value, method: "synthetic-private-method" }, { ...value, request_index: 8 },
+      { ...value, phase: "after_responses" }, { ...value, method_sha256: H("a") }]) {
+      assert.equal(sanitizeCodexMetadataRpcDiagnostic(invalid), null);
+    }
+    let accessed = false;
+    const accessor = { ...value }; Object.defineProperty(accessor, "method", { enumerable: true, get() { accessed = true; throw Error("must not read"); } });
+    assert.equal(sanitizeCodexMetadataRpcDiagnostic(accessor), null); assert.equal(accessed, false);
+    const malformed = createCodexMetadataRpcDiagnostic({ message: { method: { private: "synthetic-private-method" } },
+      expectedMethod: "hooks/list", requestIndex: 4, phase: "awaiting_response" });
+    assert.equal(malformed.method_type, "object"); assert.equal(malformed.method, null); assert.equal(malformed.method_sha256, null);
+    assert(!JSON.stringify(malformed).includes("synthetic-private"));
+  });
+  await check("known notification name with null server id remains refused", async () => {
+    const transport = doubleTransport({ alter: () => ({ id: null, method: "configWarning", params: {} }) });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC"); assert.equal(error.details.metadata_rpc.id_type, "null");
+    assert.equal(error.details.metadata_rpc.kind, "server_request"); assert.deepEqual(transport.writes.map(row => row.method), ["initialize"]);
+  });
+  await check("unknown termination remains primary while the first RPC diagnostic survives", async () => {
+    const transport = doubleTransport({ leaveAlive: true, alter: () => ({ method: "thread/started", params: {} }) });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_TERMINATION_UNCONFIRMED");
+    assert.equal(error.process.closed, false); assert.equal(error.process.pid_absent, false);
+    assert.equal(error.details.metadata_rpc.method, "thread/started");
   });
   await check("server request cannot trigger a command", async () => {
     const transport = doubleTransport({ alter: () => ({ id: "server-1", method: "command/exec", params: {} }) }), x = fixture();

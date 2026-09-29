@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
+import { createCodexMetadataRpcDiagnostic } from "../../adapters/agents/codex-metadata-rpc-diagnostic.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
 import { assertCodexNativeProfilePolicy, assertCodexNativeProfileBinding, fingerprintCodexNativeProfilePolicy,
   resolveCodexNativeProfileStatePaths, buildCodexNativeProfileArguments, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES,
@@ -149,6 +150,7 @@ export async function collectCodexNativeProfileMetadata(input,
     { method: "hooks/list", params: { cwds: roots.map(root => root.root) } }, { method: "windowsSandbox/readiness", params: null }];
   let child, closed = false, exitCode = null, exitSignal = null, failed = null, index = 0, bytes = 0, stderrBytes = 0, tail = "", buffer = "";
   const responses = [], decoder = new TextDecoder("utf-8", { fatal: true });
+  let metadataRpc = null;
   await new Promise(resolve => {
     let done = false, exitTimer, forceTimer;
     const finish = () => { if (done) return; done = true; clearTimeout(timer); clearTimeout(exitTimer); clearTimeout(forceTimer); signal?.removeEventListener("abort", abort); resolve(); };
@@ -175,7 +177,15 @@ export async function collectCodexNativeProfileMetadata(input,
         const line = buffer.slice(0, newline).replace(/\r$/, ""); buffer = buffer.slice(newline + 1);
         let message; try { message = JSON.parse(line); } catch { stop("PROFILE_METADATA_PROTOCOL_INVALID"); return; }
         if (!object(message)) { stop("PROFILE_METADATA_PROTOCOL_INVALID"); return; }
-        if (message.method) { if (message.id !== undefined || !["configWarning", "remoteControl/status/changed"].includes(message.method)) stop("PROFILE_METADATA_UNEXPECTED_RPC"); continue; }
+        if (message.method) {
+          if (message.id !== undefined || !["configWarning", "remoteControl/status/changed"].includes(message.method)) {
+            metadataRpc ??= createCodexMetadataRpcDiagnostic({ message,
+              phase: index < calls.length ? "awaiting_response" : "after_responses",
+              expectedMethod: index < calls.length ? calls[index].method : "complete", requestIndex: Math.min(index + 1, calls.length) });
+            stop("PROFILE_METADATA_UNEXPECTED_RPC"); return;
+          }
+          continue;
+        }
         if (message.id !== index + 1 || message.error || !Object.hasOwn(message, "result")) { stop("PROFILE_METADATA_RPC_REFUSED"); return; }
         responses.push(message.result); index++;
         if (index === 1) child.stdin.write(JSON.stringify({ method: "initialized", params: {} }) + "\n");
@@ -186,11 +196,12 @@ export async function collectCodexNativeProfileMetadata(input,
   });
   const absent = Number.isSafeInteger(child?.pid) && !isAlive(child.pid);
   const processEvidence = { closed, pid_absent: absent, exit_code: exitCode, signal: exitSignal, response_count: responses.length, budget_ms: timeoutMs };
-  if (!closed || !absent) { const error = Object.assign(new Error("PROFILE_METADATA_TERMINATION_UNCONFIRMED"), { code: "PROFILE_METADATA_TERMINATION_UNCONFIRMED", process: processEvidence }); throw error; }
+  const details = metadataRpc ? { details: { metadata_rpc: metadataRpc } } : {};
+  if (!closed || !absent) { const error = Object.assign(new Error("PROFILE_METADATA_TERMINATION_UNCONFIRMED"), { code: "PROFILE_METADATA_TERMINATION_UNCONFIRMED", process: processEvidence, ...details }); throw error; }
   try { buffer += decoder.decode(); } catch { failed ??= "PROFILE_METADATA_PROTOCOL_INVALID"; }
   if (performance.now() >= deadline) failed ??= "PROFILE_METADATA_TIMEOUT";
   if (failed || exitCode !== 0 || exitSignal !== null || responses.length !== calls.length || buffer.trim()) {
-    const code = failed ?? "PROFILE_METADATA_INCOMPLETE"; throw Object.assign(new Error(code), { code, process: processEvidence });
+    const code = failed ?? "PROFILE_METADATA_INCOMPLETE"; throw Object.assign(new Error(code), { code, process: processEvidence, ...details });
   }
   return { configs: responses.slice(1, 1 + roots.length), hooks: responses.at(-2), readiness: responses.at(-1),
     process: processEvidence };

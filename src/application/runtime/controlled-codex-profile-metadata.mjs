@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
+import { sanitizeCodexMetadataRpcDiagnostic } from "../../adapters/agents/codex-metadata-rpc-diagnostic.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
 
 const BRIDGE = "src/adapters/agents/process-tree/codex-profile-metadata-bridge.mjs";
@@ -11,7 +12,8 @@ const HASH = /^[a-f0-9]{64}$/u, OUTPUT_LIMIT = 2 * 1024 * 1024 + 65536;
 const ENVIRONMENT = new Set(["SYSTEMROOT", "WINDIR", "COMSPEC", "PATH", "PATHEXT", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA", "CODEX_HOME", "TEMP", "TMP"]);
 const object = value => value && typeof value === "object" && !Array.isArray(value);
 const exact = (value, names) => object(value) && Object.keys(value).sort().join("|") === [...names].sort().join("|");
-const fail = (code, process) => { throw Object.assign(new Error(code), { code, ...(process ? { process } : {}) }); };
+const fail = (code, process, diagnostic) => { throw Object.assign(new Error(code), { code, ...(process ? { process } : {}),
+  ...(diagnostic ? { details: { metadata_rpc: diagnostic } } : {}) }); };
 const ensure = (ok, code) => { if (!ok) fail(code); };
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const samePath = (a, b) => process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -191,7 +193,8 @@ export function createControlledCodexProfileMetadata({ controller, nodeRuntime, 
         && typeof envelope.ok === "boolean", "PROFILE_TREE_PROTOCOL_INVALID");
       const parent = parentEvidence(envelope.ok ? envelope.result?.process : envelope.error?.process, bridgeBudget);
       const process = { ...parent, tree_termination: termination };
-      if (!envelope.ok) fail(/^[A-Z][A-Z0-9_]{0,100}$/u.test(envelope.error?.code ?? "") ? envelope.error.code : "PROFILE_TREE_BRIDGE_FAILED", process);
+      if (!envelope.ok) fail(/^[A-Z][A-Z0-9_]{0,100}$/u.test(envelope.error?.code ?? "") ? envelope.error.code : "PROFILE_TREE_BRIDGE_FAILED", process,
+        sanitizeCodexMetadataRpcDiagnostic(envelope.error?.details?.metadata_rpc));
       ensure(observed.outcome === "completed" && observed.exit_code === 0 && parent.closed && parent.pid_absent
         && parent.exit_code === 0 && parent.signal === null && parent.response_count === frozen.roots.length + 3,
       "PROFILE_TREE_EXECUTION_FAILED");

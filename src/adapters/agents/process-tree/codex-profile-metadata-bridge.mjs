@@ -1,7 +1,14 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { sanitizeCodexMetadataRpcDiagnostic } from "../codex-metadata-rpc-diagnostic.mjs";
 import { collectCodexNativeProfileMetadata } from "../../../application/runtime/codex-native-profile-observation-service.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../../core/agents/agent-execution-contracts.mjs";
+
+function bridgeError(cause) {
+  const code = /^[A-Z][A-Z0-9_]{0,100}$/u.test(cause.code ?? "") ? cause.code : "PROFILE_TREE_BRIDGE_FAILED";
+  const diagnostic = sanitizeCodexMetadataRpcDiagnostic(cause.details?.metadata_rpc);
+  return { code, process: cause.process ?? null, ...(diagnostic ? { details: { metadata_rpc: diagnostic } } : {}) };
+}
 
 // Executed only as a pinned Node child already assigned to the supervisor Job.
 // Import and validation have no effects. Raw metadata remains bounded pipe data;
@@ -25,8 +32,7 @@ export async function runCodexProfileMetadataBridge(document, { collect = collec
     if (Buffer.byteLength(JSON.stringify(output)) > 2 * 1024 * 1024 + 32768) throw Object.assign(new Error(), { code: "PROFILE_TREE_OUTPUT_LIMIT", process: result.process });
     return output;
   } catch (cause) {
-    const code = /^[A-Z][A-Z0-9_]{0,100}$/u.test(cause.code ?? "") ? cause.code : "PROFILE_TREE_BRIDGE_FAILED";
-    return { ...identity, ok: false, error: { code, process: cause.process ?? null } };
+    return { ...identity, ok: false, error: bridgeError(cause) };
   }
 }
 
@@ -39,8 +45,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const output = await runCodexProfileMetadataBridge(document);
     process.stdout.write(JSON.stringify(output) + "\n"); if (!output.ok) process.exitCode = 1;
   } catch (cause) {
-    const code = /^[A-Z][A-Z0-9_]{0,100}$/u.test(cause.code ?? "") ? cause.code : "PROFILE_TREE_BRIDGE_FAILED";
     process.stdout.write(JSON.stringify({ protocol: "aidn-controlled-profile-metadata.v1", invocation_id: null, request_sha256: null,
-      ok: false, error: { code, process: cause.process ?? null } }) + "\n"); process.exitCode = 1;
+      ok: false, error: bridgeError(cause) }) + "\n"); process.exitCode = 1;
   }
 }

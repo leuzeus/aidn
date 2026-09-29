@@ -24,7 +24,7 @@ try {
   const candidateRoot = path.join(root, "candidate espace Ã©tÃ©"), cwd = path.join(root, "workspace"); fs.mkdirSync(candidateRoot); fs.mkdirSync(cwd);
   // Minimal exact candidate fixture contains real production modules and schemas.
   const selected = [BRIDGE, "src/application/runtime/controlled-codex-profile-metadata.mjs", "src/application/runtime/codex-native-profile-observation-service.mjs",
-    "src/adapters/agents/codex-native-profile-policy.mjs", "src/core/agents/codex-startup-arguments.mjs", "src/core/agents/agent-execution-contracts.mjs", "src/core/agents/agent-local-path-policy.mjs", "src/core/contracts/json-schema-validator.mjs",
+    "src/adapters/agents/codex-native-profile-policy.mjs", "src/adapters/agents/codex-metadata-rpc-diagnostic.mjs", "src/core/agents/codex-startup-arguments.mjs", "src/core/agents/agent-execution-contracts.mjs", "src/core/agents/agent-local-path-policy.mjs", "src/core/contracts/json-schema-validator.mjs",
     ...fs.readdirSync(path.join(source, "src/core/contracts/agent-execution")).filter(name => name.endsWith(".json")).map(name => `src/core/contracts/agent-execution/${name}`)];
   for (const relative of selected) { const target = path.join(candidateRoot, relative); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(path.join(source, relative), target); }
   const candidateInventory = Object.fromEntries(selected.map(name => [name, hash(fs.readFileSync(path.join(candidateRoot, name)))]));
@@ -184,6 +184,43 @@ lines.on('close',()=>process.exit(0));`);
     const result = await runCodexProfileMetadataBridge({ ...body, request_sha256: fingerprint(body) }, { collect: async (request, options) => {
       calls++; assert.equal(Object.hasOwn(request, "metadataProfile"), false); assert.equal(options.timeoutMs, 10000); return metadataResult(); } });
     assert.equal(result.ok, true); assert.equal(calls, 1); assert.equal(result.protocol, body.protocol);
+  });
+  const rpcDiagnostic = { version: 1, kind: "notification", method_type: "string", method: "thread/started",
+    method_sha256: null, id_type: "absent", phase: "awaiting_response", expected_method: "initialize", request_index: 1 };
+  for (const invalid of [false, true]) await check("bridge and parent retain only a valid RPC diagnostic, invalid=" + invalid, async () => {
+    let envelope;
+    const collect = createControlledCodexProfileMetadata({ ...base, controller: { checkAvailability: controller.checkAvailability,
+      async run(request, options) {
+        envelope = await runCodexProfileMetadataBridge(JSON.parse(request.stdin), { collect: async () => {
+          throw Object.assign(new Error("synthetic-private-error"), { code: "PROFILE_METADATA_UNEXPECTED_RPC",
+            process: { ...metadataResult().process, exit_code: 1, response_count: 0 },
+            details: { unrelated: "synthetic-private-details", metadata_rpc: invalid ? { ...rpcDiagnostic, params: "synthetic-private-param" } : rpcDiagnostic } });
+        } });
+        assert.equal(JSON.stringify(envelope).includes("synthetic-private"), false);
+        if (invalid) assert.equal(Object.hasOwn(envelope.error, "details"), false);
+        else assert.deepEqual(envelope.error.details, { metadata_rpc: rpcDiagnostic });
+        // Exercise the parent sanitizer independently from the already sanitized bridge.
+        if (invalid) envelope.error.details = { metadata_rpc: { ...rpcDiagnostic, id: "synthetic-private-id" } };
+        await options.onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(envelope)) });
+        return completed(request, value => ({ ...value, outcome: "failed", reason_code: "PROCESS_EXITED", exit_code: 1 }));
+      } } });
+    const error = await collect(input()).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC"); assert.equal(error.process.tree_termination.termination_state, "confirmed");
+    if (invalid) assert.equal(Object.hasOwn(error, "details"), false);
+    else assert.deepEqual(error.details, { metadata_rpc: rpcDiagnostic });
+    assert.equal(JSON.stringify(error).includes("synthetic-private"), false);
+  });
+  for (const reason of ["PROCESS_TIMEOUT", "PROCESS_CANCELLED"]) await check("RPC diagnostic never overrides " + reason, async () => {
+    const collect = createControlledCodexProfileMetadata({ ...base, controller: { checkAvailability: controller.checkAvailability,
+      async run(request, options) {
+        const envelope = metadataEnvelope(request, metadataResult());
+        delete envelope.result; envelope.ok = false;
+        envelope.error = { code: "PROFILE_METADATA_UNEXPECTED_RPC", process: metadataResult().process, details: { metadata_rpc: rpcDiagnostic } };
+        await options.onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(envelope)) });
+        return completed(request, value => ({ ...value, outcome: "failed", reason_code: reason }));
+      } } });
+    await assert.rejects(collect(input()), error => error.code === (reason === "PROCESS_TIMEOUT" ? "PROFILE_TREE_TIMEOUT" : "PROFILE_TREE_CANCELLED")
+      && error.process.tree_termination.termination_state === "confirmed");
   });
   for (const invalid of [null, "unknown", "managed-setup.v1", "managed-setup.v2"]) await check("bridge refuses explicit metadata profile before collection " + String(invalid), async () => {
     const { signal, ...plain } = input(); plain.metadataProfile = invalid;

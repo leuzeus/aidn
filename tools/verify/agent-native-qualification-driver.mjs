@@ -11,6 +11,7 @@ import pg from "pg";
 import { createAgentNativeRefusalEvidence, assertAgentNativeRefusalEvidence } from "./agent-native-refusal-evidence.mjs";
 import { assertCodexNativeProfileBootstrap } from "./agent-native-profile-observation.mjs";
 import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
+import { sanitizeCodexMetadataRpcDiagnostic } from "../../src/adapters/agents/codex-metadata-rpc-diagnostic.mjs";
 
 export const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 export const json = value => JSON.stringify(value, null, 2) + "\n";
@@ -25,11 +26,12 @@ export const NATIVE_PROFILE_PREPARATION_MAX_MS = 60000;
 // These are local diagnostic records, never worker termination or admission proofs.
 export function nativeQualificationProfileFailure(error,{phase,...binding}={}) {
   const process=structuredClone(error?.process ?? null),tree=process?.tree_termination;
+  const metadataRpc=sanitizeCodexMetadataRpcDiagnostic(error?.details?.metadata_rpc);
   const confirmed=process?.closed===true && process?.pid_absent===true
     && (tree===undefined || tree?.termination_state==="confirmed"
       && tree.proof?.method==="windows-job-object" && tree.proof.active_processes===0);
   return {phase,...binding,reason:/^[A-Z][A-Z0-9_]{0,100}$/.test(error?.code ?? "")?error.code:"QUALIFICATION_NATIVE_PROFILE_OBSERVATION_FAILED",
-    process_cleanup:confirmed?"CONFIRMED":"UNCONFIRMED",process};
+    process_cleanup:confirmed?"CONFIRMED":"UNCONFIRMED",process,...(metadataRpc?{details:{metadata_rpc:metadataRpc}}:{})};
 }
 export function createNativeQualificationProfileFailureTracker(verify) {
   let retained=null,pending=null;

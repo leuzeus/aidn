@@ -96,6 +96,7 @@ const importPaths = new Set([
   "src/application/runtime/codex-native-profile-observation-service.mjs",
   "src/application/runtime/codex-native-profile-bootstrap-service.mjs",
   "src/adapters/agents/codex-native-profile-policy.mjs",
+  "src/adapters/agents/codex-metadata-rpc-diagnostic.mjs",
   "src/core/agents/codex-startup-arguments.mjs",
   "src/core/agents/agent-execution-contracts.mjs", "src/core/agents/agent-local-path-policy.mjs",
   "src/core/contracts/json-schema-validator.mjs",
@@ -377,10 +378,15 @@ try {
   });
   await check("port callback keeps metadata proof before executor replaces the error",async()=>{
     const x=bootstrapFixture(),proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:1,budget_ms:10000};
-    const tracker=driver.createNativeQualificationProfileFailureTracker(async()=>{throw Object.assign(new Error("metadata"),{code:"PROFILE_METADATA_INCOMPLETE",process:proof});});
+    const metadataRpc={version:1,kind:"server_request",method_type:"string",method:"item/tool/call",method_sha256:null,id_type:"string",expected_method:"initialize",request_index:1,phase:"awaiting_response"};
+    const tracker=driver.createNativeQualificationProfileFailureTracker(async()=>{throw Object.assign(new Error("metadata"),{code:"PROFILE_METADATA_UNEXPECTED_RPC",process:proof,
+      details:{metadata_rpc:metadataRpc,params:"RAW_METADATA_MUST_NOT_BE_RETAINED",other:"discard"}});});
     const port=async()=>{try{await tracker.verify(x.request,{phase:"before_resume"});}catch{throw Object.assign(new Error("normalized"),{code:"CODEX_NATIVE_PROFILE_VERIFICATION_FAILED"});}};
     await assert.rejects(port,{code:"CODEX_NATIVE_PROFILE_VERIFICATION_FAILED"});
-    assert.equal(tracker.failure().reason,"PROFILE_METADATA_INCOMPLETE");assert.deepEqual(tracker.failure().process,proof);
+    assert.equal(tracker.failure().reason,"PROFILE_METADATA_UNEXPECTED_RPC");assert.deepEqual(tracker.failure().process,proof);
+    assert.deepEqual(tracker.failure().details,{metadata_rpc:metadataRpc});
+    assert.equal(JSON.stringify(tracker.failure()).includes("RAW_METADATA_MUST_NOT_BE_RETAINED"),false);
+    metadataRpc.request_index=2;assert.equal(tracker.failure().details.metadata_rpc.request_index,1);
   });
   await check("pending metadata is retained unknown without waiting or accepting a late proof",async()=>{
     const x=bootstrapFixture();let rejectPending,calls=0;
@@ -401,11 +407,27 @@ try {
   });
   await check("final metadata failure keeps its process evidence and original error",async()=>{
     const proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:2,budget_ms:10000};
-    const original=Object.assign(new Error("final metadata"),{code:"PROFILE_METADATA_INCOMPLETE",process:proof});
+    const metadataRpc={version:1,kind:"server_request",method_type:"string",method:"item/tool/call",method_sha256:null,id_type:"string",expected_method:"initialize",request_index:1,phase:"awaiting_response"};
+    const original=Object.assign(new Error("final metadata"),{code:"PROFILE_METADATA_UNEXPECTED_RPC",process:proof,
+      details:{metadata_rpc:metadataRpc,raw:"RAW_METADATA_MUST_NOT_BE_RETAINED"}});
     const error=await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{throw original;}},
       preparation:{process_cleanup:"CONFIRMED"}}).catch(error=>error);
     assert.equal(error,original);assert.deepEqual(error.nativeProfileFinalization,
-      {phase:"finalize",reason:"PROFILE_METADATA_INCOMPLETE",process_cleanup:"CONFIRMED",process:proof});
+      {phase:"finalize",reason:"PROFILE_METADATA_UNEXPECTED_RPC",process_cleanup:"CONFIRMED",process:proof,details:{metadata_rpc:metadataRpc}});
+    assert.equal(JSON.stringify(error.nativeProfileFinalization).includes("RAW_METADATA_MUST_NOT_BE_RETAINED"),false);
+  });
+
+  for(const [name,metadataRpc] of [
+    ["missing",undefined],["null",null],["raw text","RAW_METADATA_MUST_NOT_BE_RETAINED"],
+    ["incomplete",{method:"item/tool/call"}],
+    ["extra raw fields",{version:1,kind:"server_request",method_type:"string",method:"item/tool/call",method_sha256:null,id_type:"string",expected_method:"initialize",request_index:1,phase:"awaiting_response",params:"RAW_METADATA_MUST_NOT_BE_RETAINED"}],
+    ["unknown raw method",{version:1,kind:"server_request",method_type:"string",method:"RAW_METADATA_MUST_NOT_BE_RETAINED",method_sha256:null,id_type:"string",expected_method:"initialize",request_index:1,phase:"awaiting_response"}],
+  ]) await check("qualification failure discards invalid RPC details: "+name,()=>{
+    const record=driver.nativeQualificationProfileFailure({code:"PROFILE_METADATA_UNEXPECTED_RPC",
+      details:{metadata_rpc:metadataRpc,raw:"RAW_METADATA_MUST_NOT_BE_RETAINED"}},{phase:"before_resume"});
+    assert.equal(Object.hasOwn(record,"details"),false);
+    assert.equal(JSON.stringify(record).includes("RAW_METADATA_MUST_NOT_BE_RETAINED"),false);
+    assert.equal(record.process_cleanup,"UNCONFIRMED");
   });
   await check("native review accepts both worktrees with the shared coordinator source", () => assert.equal(review(manifest, trust), true));
   await check("refresh requires a complete explicit preexisting-profile identity", () => {

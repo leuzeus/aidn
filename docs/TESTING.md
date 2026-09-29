@@ -399,6 +399,8 @@ cannot trigger a final observation of a previously successful attempt.
 Failed before-create, before-resume and port metadata callbacks retain their own
 process evidence through callback error normalization and finalization, separately
 from worker cleanup; an unresolved metadata callback blocks another observation.
+Only the validated, bounded RPC diagnostic survives in those failure details;
+raw payloads and unrelated error details are discarded.
 Synthetic callbacks verify that bootstrap and fresh canonical preflight share
 one 60-second maximum budget, counted separately in the run, before the unchanged
 worker deadline begins. The metadata collector and its warm verification remain
