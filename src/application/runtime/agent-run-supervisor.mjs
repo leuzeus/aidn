@@ -55,7 +55,7 @@ export function createAgentExecutionScheduler({
     const stop = new AbortController(), active = new Map(), heartbeats = new Set(), instances = new WeakSet();
     let snapshot = null, supervisor = null, plan = null, graph = null, fatal = null, cancelled = false, durableCancellation = false, timedOut = false, coordinationLost = false;
     let deadline = Infinity, deadlineTimer = null;
-    let acceptanceTail = Promise.resolve();
+    let acceptanceTail = Promise.resolve(), coordinationTail = Promise.resolve();
     const abort = () => { cancelled = true; stop.abort(error("RUN_CANCELLED")); };
     if (signal) { signal.addEventListener("abort", abort, { once: true }); if (signal.aborted) abort(); }
     function halt(cause) { fatal ??= cause instanceof Error ? cause : error(String(cause)); stop.abort(fatal); }
@@ -93,8 +93,22 @@ export function createAgentExecutionScheduler({
     }
     async function coordinate(name, args) {
       if (fatal) throw fatal;
-      try { return await bounded(() => store[name](args), coordinationTimeoutMs, "COORDINATION_TIMEOUT"); }
-      catch (cause) { coordinationLost = true; halt(cause); throw cause; }
+      const enqueuedAt = clock.now(); let started = false;
+      // A single supervisor must not contend with its own transactions on the
+      // canonical fence. Queue time consumes the existing coordination budget.
+      const queued = coordinationTail.then(() => {
+        if (fatal) throw fatal;
+        requireThat(clock.now() - enqueuedAt < coordinationTimeoutMs, "COORDINATION_TIMEOUT");
+        started = true; return store[name](args);
+      });
+      const pending = bounded(() => queued, coordinationTimeoutMs, "COORDINATION_TIMEOUT");
+      // Include the post-await deadline check before releasing the next call.
+      coordinationTail = pending.catch(cause => {
+        // A call skipped because of an existing local failure lost no authority.
+        if (started || cause.code === "COORDINATION_TIMEOUT") coordinationLost = true;
+        halt(cause);
+      });
+      return pending;
     }
     const integrationService = createAgentTaskIntegrationService({
       git: { ...git,
@@ -482,6 +496,12 @@ export function createAgentExecutionScheduler({
       halt(cause);
       try { await bounded(() => Promise.all(active.values()), shutdownTimeoutMs, "WORKER_SHUTDOWN_UNCONFIRMED"); } catch { /* retained attempts require independent reconciliation */ }
       let durableStateKnown = false;
+      try {
+        await bounded(async () => {
+          await Promise.all([...heartbeats].map(close => close()));
+          await coordinationTail;
+        }, coordinationTimeoutMs, "COORDINATION_DRAIN_UNCONFIRMED");
+      } catch { coordinationLost = true; }
       // A local failure must fence its acquired generation in PostgreSQL so
       // verified recovery need not wait for lease expiry. This request grants
       // no termination proof. After coordination/ownership loss, even this

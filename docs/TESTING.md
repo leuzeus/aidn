@@ -354,7 +354,9 @@ validation bindings without claiming that it observed Git or a live lease.
 
 Scheduler fixtures also overlap completed workers against a single-invocation
 validator. They verify serial acceptance with concurrent workers, and no queued
-validation after cancellation or the first validation failure.
+validation after cancellation or the first validation failure. Coordination calls
+from one supervisor also serialize while workers overlap. Queued calls keep the
+original coordination deadline and cannot start after a predecessor times out.
 Verification fixtures carry real child output through the native boundary's
 structured-clone handoff. Strings, Buffers and Uint8Array views retain their
 exact bytes in signed logs, including offset views and binary stderr. Other

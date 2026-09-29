@@ -131,6 +131,65 @@ await check("coordination failure stops launches and preserves uncertain attempt
   const result = await f.create().run(f.options); assert.equal(result.status, "recovery_required");
   assert.equal(f.state.attempts.length, 1); assert.ok(!f.operations.includes("claim:b"));
 }));
+await check("coordination transactions serialize while two workers remain concurrent", async () => fixture({ concurrency: 2 }, async f => {
+  let pending = 0, peak = 0; const store = { ...f.store };
+  for (const [name, operation] of Object.entries(store)) {
+    if (typeof operation !== "function" || ["getRun", "checkReadiness", "readCanonicalDigest"].includes(name)) continue;
+    store[name] = async (...args) => {
+      pending++; peak = Math.max(peak, pending);
+      try { await delay(12); return await operation(...args); } finally { pending--; }
+    };
+  }
+  const result = await f.create({ store }).run(f.options);
+  assert.equal(result.status, "completed", result.reason_code); assert.equal(peak, 1); assert.equal(f.maxLive, 2);
+}));
+await check("queued coordination never starts after its predecessor times out", async () => fixture({ tasks: [task("a")] }, async f => {
+  let release, intentCalls = 0, before;
+  const original = f.store.recordLaunchIntent;
+  const store = { ...f.store, admitDelegatedRequest: () => new Promise(resolve => { release = resolve; }),
+    recordLaunchIntent: async input => { intentCalls++; return original(input); } };
+  const prepareAttempt = async input => {
+    before = intentCalls;
+    await Promise.all([input.callbacks.admitDelegatedRequest({ evaluate: async () => ({ outcome: "allow" }) }), input.callbacks.recordLaunchIntent()]);
+    return f.callbacks.prepareAttempt(input);
+  };
+  const result = await f.create({ store, prepareAttempt, coordinationTimeoutMs: 30 }).run(f.options);
+  assert.equal(result.status, "recovery_required"); assert.equal(result.reason_code, "COORDINATION_TIMEOUT");
+  release({ admitted: true }); await delay(15);
+  assert.equal(intentCalls, before); assert.ok(!f.operations.some(item => item.startsWith("executor:")));
+}));
+await check("late coordination completion cannot release a newer queued call before its deadline check", async () => {
+  let now = 0; const clock = { now: () => now, setTimeout, clearTimeout };
+  await fixture({ tasks: [task("a")], clock }, async f => {
+    let release, intents = 0, before; const original = f.store.recordLaunchIntent;
+    const store = { ...f.store, admitDelegatedRequest: () => new Promise(resolve => { release = resolve; }),
+      recordLaunchIntent: async input => { intents++; return original(input); } };
+    const prepareAttempt = async input => {
+      before = intents;
+      const first = input.callbacks.admitDelegatedRequest({ evaluate: async () => ({ outcome: "allow" }) });
+      while (!release) await Promise.resolve();
+      now = 25; const second = input.callbacks.recordLaunchIntent();
+      now = 40; release({ admitted: true }); await Promise.all([first, second]);
+      return f.callbacks.prepareAttempt(input);
+    };
+    const result = await f.create({ store, prepareAttempt, coordinationTimeoutMs: 30 }).run(f.options);
+    assert.equal(result.reason_code, "COORDINATION_TIMEOUT"); assert.equal(intents, before);
+  });
+});
+await check("local failure drains an in-flight supervisor heartbeat before recovery mutation", async () => {
+  let renewing = false;
+  const clock = { now: () => performance.now(), setTimeout: (fn, ms) => setTimeout(fn, ms === 10000 ? 1 : ms), clearTimeout };
+  await fixture({ tasks: [task("a")], clock }, async f => {
+    const originalRenew = f.store.renewSupervisor, originalInvalidate = f.store.invalidateRun;
+    const store = { ...f.store, renewSupervisor: async input => {
+      renewing = true; try { await delay(20); return await originalRenew(input); } finally { renewing = false; }
+    }, invalidateRun: async input => { assert.equal(renewing, false); return originalInvalidate(input); } };
+    const prepareAttempt = async () => { while (!renewing) await delay(1); throw Object.assign(new Error("FIXTURE_LOCAL_FAILURE"), { code: "FIXTURE_LOCAL_FAILURE" }); };
+    const result = await f.create({ store, prepareAttempt, coordinationTimeoutMs: 1000 }).run(f.options);
+    assert.equal(result.status, "recovery_required"); assert.equal(result.reason_code, "FIXTURE_LOCAL_FAILURE");
+    assert.equal(result.durable_state_known, true); assert.equal(renewing, false);
+  });
+});
 await check("a hung coordination call is bounded and creates no child", async () => fixture({}, async f => {
   f.store.getRun = async () => new Promise(() => {});
   const result = await f.create({ coordinationTimeoutMs: 5 }).run(f.options);
