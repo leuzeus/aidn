@@ -250,6 +250,12 @@ await check("status separates process, acceptance and validation", () => {
   const out = projectAgentRunStatus({ run: source.run, attempts: [{ attempt: source.attempt, result: { outcome: "completed", termination_state: "confirmed", process: { exit_code: 0 } } }], acceptances: [] });
   assert.equal(out.attempts[0].exit_code, 0); assert.equal(out.attempts[0].acceptance, null); assert.equal(out.validation.status, "not_requested");
 });
+await check("reconciled never-started status does not invent a result or acceptance", () => {
+  const out = projectAgentRunStatus({ run: source.run, attempts: [{ attempt: { ...source.attempt, lifecycle_status: "cancelled" },
+    result: null, reconciliation: { fixture: true }, reconciliation_termination_state: "not_started" }], acceptances: [] });
+  assert.equal(out.attempts[0].termination_state, "not_started"); assert.equal(out.attempts[0].outcome, null);
+  assert.equal(out.attempts[0].exit_code, null); assert.equal(out.attempts[0].acceptance, null);
+});
 await check("planned cancellation uses generation zero", async () => {
   const c = context(); c.snapshot = { run: { ...source.run, plan_sha256: c.plan.plan_sha256 }, supervision: { control_revision: 0, current: null } };
   const h = harness(c), p = buildAgentRunActionPreview(args("agent-run-cancel"), c);

@@ -124,7 +124,11 @@ workflows still need no PostgreSQL.
 
 Lot 7 adds shared schema 6 for durable cancellation requests and cleanup
 operations/resources. Migration stays explicit. Cancellation is a request to
-stop, never proof of termination. Cleanup admits completed runs only, with
+stop, never proof of termination. Recovery may retain a verified `not_started`
+receipt when no worker runner exists. It preserves the original proof and typed
+reconciliation without inventing a result or Job termination; metadata process
+closure remains independently required. Conflicting or incomplete receipts fail
+closed. Cleanup admits completed runs only, with
 stopped supervisor/attempt/Git trees, integrated commits and retained resource
 preimages. A new cleaner generation needs proof that its predecessor stopped.
 Removal recovery observes the original directory and worktree metadata absent;

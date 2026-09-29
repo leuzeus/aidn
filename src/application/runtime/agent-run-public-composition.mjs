@@ -42,6 +42,7 @@ function materialSnapshot(snapshot) {
       result_sha256: row.result ? fingerprintAgentExecutionValue(row.result) : null,
       termination_sha256: row.termination ? fingerprintAgentExecutionValue(row.termination) : null,
       reconciliation_sha256: row.reconciliation ? fingerprintAgentExecutionValue(row.reconciliation) : null,
+      reconciliation_termination_state: row.reconciliation_termination_state ?? null,
     })),
     acceptances: snapshot.acceptances.map(row => row.acceptance_sha256),
     integration_intents: (snapshot.integration_intents ?? []).map(row => ({ intent_sha256: row.intent_sha256, status: row.status })),

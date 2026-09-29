@@ -454,7 +454,10 @@ acquire a PostgreSQL prerequisite. No system service or existing database is mod
 
 The suite uses separate Node processes and an IPC start barrier for concurrent
 migration, reservations and claims. It checks stale ownership, lease expiry,
-durable launch intent, immutable event replay, canonical planning/artifact
+durable launch intent, typed never-started reconciliation without a synthetic
+result (including reconnect, conflicting state and observed-runner refusal;
+`--reconciliation` selects this regression and its schema prerequisite, reporting other cases skipped),
+immutable event replay, canonical planning/artifact
 consistency, reservation-aware writers and explicit reconciliation. Fresh relational
 bulk writes also run without a legacy snapshot table; an existing legacy table
 is purged only for the affected scopes, and a malformed legacy table must roll

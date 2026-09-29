@@ -97,11 +97,17 @@ function json(row, field) {
   catch { throw failure("STORED_CONTRACT_INVALID"); }
 }
 function attemptView(row) {
+  const reconciliation = json(row, "reconciliation_json");
+  const notStarted = typeof reconciliation?.contract_version === "string" && reconciliation.contract_version.startsWith("agent-attempt-reconciliation.");
+  if (notStarted && (reconciliation.contract_version !== "agent-attempt-reconciliation.v1"
+    || reconciliation.termination_state !== "not_started" || Object.keys(reconciliation).sort().join(",") !== "contract_version,proof,termination_state"
+    || !reconciliation.proof || typeof reconciliation.proof !== "object" || Array.isArray(reconciliation.proof))) throw failure("RECONCILIATION_INVALID");
   return {
     attempt: json(row, "attempt_json"), delegation: json(row, "delegation_json"),
     request: json(row, "request_json"), runner: json(row, "runner_json"),
     result: json(row, "result_json"), termination: json(row, "termination_json"),
-    reconciliation: json(row, "reconciliation_json"), lease_until: row.lease_until,
+    reconciliation: notStarted ? reconciliation.proof : reconciliation,
+    reconciliation_termination_state: reconciliation ? (notStarted ? "not_started" : "confirmed") : null, lease_until: row.lease_until,
     preparation: json(row,"preparation_json"), dependency_binding: json(row,"dependency_binding_json"),
   };
 }
@@ -1327,22 +1333,25 @@ export function createPostgresAgentExecutionStore({
         return { run: json(run,"run_json"), reason };
       });
     },
-    async reconcileAttempt({ attemptId, proof, supervisor = null }) {
+    async reconcileAttempt({ attemptId, proof, terminationState = "confirmed", supervisor = null }) {
+      if (!["confirmed", "not_started"].includes(terminationState)) throw failure("TERMINATION_STATE_INVALID");
+      const retained = terminationState === "not_started"
+        ? { contract_version: "agent-attempt-reconciliation.v1", termination_state: terminationState, proof: boundedJson(proof) } : boundedJson(proof);
       return transaction(async client => {
         const { run, row } = await lockedAttempt(client, attemptId);
         await supervisorGuard(client,run,supervisor,{deadline:false});
         if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
         const attempt = json(row,"attempt_json");
         if (row.reconciliation_json) {
-          if (!same(json(row,"reconciliation_json"),boundedJson(proof))) throw failure("RECONCILIATION_CONFLICT");
+          if (!same(json(row,"reconciliation_json"),retained)) throw failure("RECONCILIATION_CONFLICT");
           return { ...attemptView(row), idempotent: true };
         }
         if (!ACTIVE.has(attempt.lifecycle_status) && attempt.lifecycle_status !== "recovery_required") throw failure("RECONCILIATION_NOT_REQUIRED");
-        const verified = await termination(row,proof,"confirmed");
+        await termination(row,terminationState === "not_started" ? retained.proof : retained,terminationState);
         const ended = { ...attempt, lifecycle_status: "cancelled" };
         const reconciled = await client.query(`UPDATE aidn_shared.execution_attempts SET
           attempt_json=$2::jsonb,reconciliation_json=$3::jsonb,generation=generation+1,
-          lease_until=clock_timestamp(),updated_at=clock_timestamp() WHERE attempt_id=$1 RETURNING *`, [attemptId,JSON.stringify(ended),JSON.stringify(verified)]);
+          lease_until=clock_timestamp(),updated_at=clock_timestamp() WHERE attempt_id=$1 RETURNING *`, [attemptId,JSON.stringify(ended),JSON.stringify(retained)]);
         const unresolved = await client.query("SELECT attempt_id FROM aidn_shared.execution_attempts WHERE run_id=$1 AND attempt_json->>'lifecycle_status'='recovery_required' LIMIT 1", [run.run_id]);
         if (!unresolved.rows.length && run.supervision_mode !== "supervised") {
           // Reconciliation proves process death only. Revoked or changed context

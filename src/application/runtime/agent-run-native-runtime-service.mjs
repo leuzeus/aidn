@@ -23,6 +23,20 @@ function absentProcess(runner) {
   if (!runner || runner.host_id !== os.hostname() || !Number.isSafeInteger(runner.pid) || runner.pid <= 0) return false;
   try { process.kill(runner.pid, 0); return false; } catch (cause) { return cause.code === "ESRCH"; }
 }
+// The original proof stays intact; a never-created worker is not a dead Job.
+export function inspectNativeAttemptStop(attempts, view, { durableOnly = false } = {}) {
+  let proof = view.termination ?? view.reconciliation;
+  let state = view.reconciliation ? (view.reconciliation_termination_state ?? "confirmed") : (view.result?.termination_state ?? "confirmed");
+  const verify = () => ["confirmed", "not_started"].includes(state) && proof && attempts.verifyTermination(view.attempt, proof,
+    { runner: view.runner, request: view.request, termination_state: state });
+  if (!verify()) {
+    ensure(!durableOnly, "AGENT_RUN_WORKER_STOP_UNCONFIRMED");
+    if (view.runner) { proof = attempts.inspectTermination({ attemptId: view.attempt.attempt_id }).process?.termination_proof; state = "confirmed"; }
+    else { proof = attempts.inspectNotStarted({ attemptId: view.attempt.attempt_id }).proof; state = "not_started"; }
+    ensure(verify(), "AGENT_RUN_WORKER_STOP_UNCONFIRMED");
+  }
+  return { attempt_id: view.attempt.attempt_id, proof, termination_state: state };
+}
 function currentRunner() {
   return { host_id: os.hostname(), runner_id: randomUUID(), pid: process.pid,
     started_at: new Date(Date.now() - process.uptime() * 1000).toISOString() };
@@ -85,9 +99,7 @@ function makeAssembly({ context, connectionString, verifyActivation }, options =
   }
   function workerStopped(view) {
     try { profileStopped(view); } catch { return false; }
-    const proof = view.termination ?? view.reconciliation;
-    return Boolean(proof && attempts.verifyTermination(view.attempt, proof, {
-      runner: view.runner, request: view.request, termination_state: view.result?.termination_state ?? "confirmed" }));
+    try { inspectNativeAttemptStop(attempts, view, { durableOnly: true }); return true; } catch { return false; }
   }
   function gitStopped(record) {
     const proof = record.closed?.termination_proof;
@@ -122,13 +134,8 @@ function makeAssembly({ context, connectionString, verifyActivation }, options =
     const attemptFacts = [], profileFacts = [];
     for (const view of snapshot.attempts) {
       profileFacts.push(profileStopped(view));
-      if (workerStopped(view)) { attemptFacts.push({ attempt_id: view.attempt.attempt_id, proof: view.termination ?? view.reconciliation }); continue; }
-      try {
-        const observed = attempts.inspectTermination({ attemptId: view.attempt.attempt_id });
-        const proof = observed.process?.termination_proof;
-        ensure(proof && attempts.verifyTermination(view.attempt, proof, { runner: view.runner, request: view.request, termination_state: "confirmed" }), "AGENT_RUN_WORKER_STOP_UNCONFIRMED");
-        attemptFacts.push({ attempt_id: view.attempt.attempt_id, proof });
-      } catch { fail("AGENT_RUN_WORKER_STOP_UNCONFIRMED"); }
+      try { attemptFacts.push(inspectNativeAttemptStop(attempts, view)); }
+      catch { fail("AGENT_RUN_WORKER_STOP_UNCONFIRMED"); }
     }
     ensure(absentProcess(runner), "AGENT_RUN_SUPERVISOR_STILL_ACTIVE");
     ensure(!operations.uncertain_read && operations.operations.every(gitStopped), "AGENT_RUN_GIT_STOP_UNCONFIRMED");
@@ -228,7 +235,7 @@ export async function createNativeAgentRunRuntime(input) {
       return { supervisorProof: proof, attempts: proof.attempts.filter(row => {
         const view = fresh.attempts.find(value => value.attempt.attempt_id === row.attempt_id);
         return ["running", "launch_intended", "recovery_required"].includes(view.attempt.lifecycle_status);
-      }).map(row => ({ attemptId: row.attempt_id, proof: row.proof })) };
+      }).map(row => ({ attemptId: row.attempt_id, proof: row.proof, terminationState: row.termination_state })) };
     },
     async cleanup(options) {
       const { applyNativeAgentCleanup } = await import("./agent-run-cleanup-service.mjs");

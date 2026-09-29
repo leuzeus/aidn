@@ -221,6 +221,18 @@ export function createCodexAgentAttemptService({ candidate, runtime, helper, met
       const record = JSON.parse(fileHash(path.join(resourcesRoot, `native-termination-${hash(attemptId)}.json`)).bytes.toString("utf8"));
       requireProof(record.attempt_id === attemptId, "AGENT_NATIVE_TERMINATION_CHANGED"); return record;
     },
+    inspectNotStarted({ attemptId }) {
+      const record = JSON.parse(fileHash(path.join(resourcesRoot, `native-not-started-${hash(attemptId)}.json`)).bytes.toString("utf8"));
+      assertAgentExecutionContract("result", record.result);
+      requireProof(!fs.existsSync(path.join(resourcesRoot, `native-termination-${hash(attemptId)}.json`))
+        && record.result.attempt_id === attemptId && record.result.termination_state === "not_started"
+        && record.proof?.method === "codex-not-started" && record.proof.attempt_id === attemptId
+        && typeof record.proof.native_create_requested === "boolean"
+        && (record.proof.native_create_requested
+          ? record.process?.termination_state === "not_started" && !record.process.runner
+          : record.process === null), "AGENT_NATIVE_TERMINATION_CHANGED");
+      return record;
+    },
     inspectPreparationTermination({ attemptId }) {
       const root = path.join(resourcesRoot, `native-attempt-${hash(attemptId)}`);
       const read = name => {
@@ -333,10 +345,11 @@ export function createCodexAgentAttemptService({ candidate, runtime, helper, met
     verifyTermination(attempt, proof, context) {
       try {
         if (context?.termination_state === "not_started") {
-          const record = JSON.parse(fileHash(path.join(resourcesRoot, `native-not-started-${hash(attempt.attempt_id)}.json`)).bytes.toString("utf8"));
-          return !context.runner && record.result.termination_state === "not_started" && same(record.proof, proof)
-            && proof.request_sha256 === fingerprint(context.request) && proof.attempt_id === attempt.attempt_id
-            && (!proof.native_create_requested || record.process?.termination_state === "not_started" && !record.process.runner);
+          const record = service.inspectNotStarted({ attemptId: attempt.attempt_id });
+          return !context.runner && same(record.proof, proof)
+            && proof.request_sha256 === fingerprint(context.request) && record.result.request_sha256 === proof.request_sha256
+            && ["run_id", "task_id", "attempt_id", "plan_sha256", "task_contract_sha256", "input_sha", "delegation_id", "ownership"]
+              .every(field => same(record.result[field], context.request[field]));
         }
         const request = context?.request ?? attempts.get(attempt.attempt_id)?.request;
         const observed = request ? evidenceFor(request) : JSON.parse(fileHash(path.join(resourcesRoot, `native-termination-${hash(attempt.attempt_id)}.json`)).bytes.toString("utf8"));

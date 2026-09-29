@@ -74,7 +74,7 @@ export function projectAgentRunStatus(snapshot) {
       task_id: row.attempt.task_id, attempt_id: row.attempt.attempt_id, ordinal: row.attempt.ordinal,
       input_sha: row.attempt.input_sha, status: row.attempt.lifecycle_status,
       outcome: row.result?.outcome ?? null, exit_code: row.result?.process?.exit_code ?? null,
-      termination_state: row.result?.termination_state ?? null,
+      termination_state: row.reconciliation_termination_state ?? row.result?.termination_state ?? null,
       acceptance: snapshot.acceptances?.find(item => item.acceptance.attempt_id === row.attempt.attempt_id)?.acceptance.decision ?? null,
       evidence: copy(row.result?.evidence ?? []),
     })),

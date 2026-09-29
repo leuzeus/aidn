@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { inspectNativeAttemptStop } from "../../src/application/runtime/agent-run-native-runtime-service.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -66,6 +67,34 @@ try {
     assert.equal(service.verifyTermination(attempt, proof, { ...context, request: { ...request, input_sha: "2".repeat(40) } }), false);
     assert.equal(service.verifyTermination(attempt, { ...proof, active_processes: 1 }, context), false);
     assert.equal(createCodexAgentAttemptService({ ...config, runtime: { sha256: "f".repeat(64) } }).verifyTermination(attempt, proof, context), false);
+  });
+  await test("never-started receipt survives memory loss without a synthetic worker termination", () => {
+    const chain = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agent-execution/contracts/complete-chain.json", import.meta.url)));
+    const { request, attempt } = chain, service = createCodexAgentAttemptService(config);
+    const proof = { method: "codex-not-started", attempt_id: attempt.attempt_id, request_sha256: fingerprint(request), native_create_requested: false };
+    const result = { ...chain.result, outcome: "cancelled", reason_code: "CODEX_CANCELLED", termination_state: "not_started", request_sha256: fingerprint(request), process: { exit_code: null, signal: null } };
+    const record = { result, proof, process: null }, file = path.join(root, `native-not-started-${hash(attempt.attempt_id)}.json`);
+    const persist = value => fs.writeFileSync(file, JSON.stringify(value));
+    const view = { attempt, request, runner: null, result: null, termination: null, reconciliation: null };
+    const context = { request, runner: null, termination_state: "not_started" };
+    assert.throws(() => inspectNativeAttemptStop(service, view));
+    persist(record);
+    assert.deepEqual(inspectNativeAttemptStop(service, view), { attempt_id: attempt.attempt_id, proof, termination_state: "not_started" });
+    assert.throws(() => inspectNativeAttemptStop(service, view, { durableOnly: true }));
+    assert.equal(service.verifyTermination(attempt, proof, { ...context, runner: { pid: 123 } }), false);
+    assert.equal(service.verifyTermination(attempt, proof, { ...context, termination_state: "confirmed" }), false);
+    const reconciled = { ...view, reconciliation: proof, reconciliation_termination_state: "not_started" };
+    assert.equal(inspectNativeAttemptStop(service, reconciled, { durableOnly: true }).termination_state, "not_started");
+    for (const changed of [
+      { ...record, proof: { ...proof, native_create_requested: null } },
+      { ...record, proof: { ...proof, method: "unknown" } },
+      { ...record, result: { ...result, task_id: "foreign" } },
+      { ...record, result: { ...result, request_sha256: "f".repeat(64) } },
+      { ...record, process: { termination_state: "confirmed", runner: { pid: 123 } } },
+    ]) { persist(changed); assert.equal(service.verifyTermination(attempt, changed.proof, context), false); }
+    persist(record);
+    const contradictory = path.join(root, `native-termination-${hash(attempt.attempt_id)}.json`);
+    fs.writeFileSync(contradictory, "{}"); assert.equal(service.verifyTermination(attempt, proof, context), false);
   });
   await test("metadata preparation replay preserves unknown cleanup and refuses missing or foreign proof", () => {
     const attemptId = "attempt.bootstrap", requestSha = "1".repeat(64), directory = path.join(root, `native-attempt-${hash(attemptId)}`);

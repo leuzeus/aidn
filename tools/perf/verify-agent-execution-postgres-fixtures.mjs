@@ -30,10 +30,12 @@ const children = new Set();
 const clusterRoots = new Set();
 const checks = [];
 const selectedArguments=process.argv.slice(2);
-if(selectedArguments.length && (selectedArguments.length!==1 || selectedArguments[0]!=="--lifecycle-fences"))throw new Error("POSTGRES_FIXTURE_OPTION_INVALID");
+if(selectedArguments.length && (selectedArguments.length!==1 || !["--lifecycle-fences", "--reconciliation"].includes(selectedArguments[0])))throw new Error("POSTGRES_FIXTURE_OPTION_INVALID");
+const reconciliationOnly = selectedArguments[0] === "--reconciliation";
 const focused=selectedArguments.length===1, skipped=[];
 const lifecycleChecks=new Set([
   "missing schema is unavailable without implicit DDL",
+  "never-started reconciliation preserves its type, proof and absent result across reconnect",
   "canonical bulk projection handles optional legacy snapshots transactionally",
   "two-process migration applies v3 through v6 once and preserves v2 data",
   "cooperative plan v2 survives JSONB reservation reread and claim without DDL",
@@ -61,7 +63,7 @@ const id = prefix => `${prefix}.${++serial}`;
 const sha = text => createHash("sha256").update(text).digest("hex");
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const check = async (name, operation) => {
-  if(focused && !lifecycleChecks.has(name)){skipped.push(name);return;}
+  if(focused && (reconciliationOnly ? !["two-process migration applies v3 through v6 once and preserves v2 data", "never-started reconciliation preserves its type, proof and absent result across reconnect"].includes(name) : !lifecycleChecks.has(name))){skipped.push(name);return;}
   currentCheck = name;
   await operation();
   checks.push(name);
@@ -795,6 +797,33 @@ async function runSuite({ connectionString, version, root }) {
       assert.equal((await store.getRun({ runId: context.runId })).attempts.length, 1);
       await reject(claim(context, "beta"), "AGENT_EXECUTION_CONCURRENCY_LIMIT");
       await reject(claim(context, "join"), "AGENT_EXECUTION_DEPENDENCY_PROOF_REQUIRED");
+    });
+    await check("never-started reconciliation preserves its type, proof and absent result across reconnect", async () => {
+      const verifyTermination = (_attempt, proof, context) => proof?.fixtureConfirmed === true && context.termination_state === "not_started" && context.runner === null;
+      const context = await seed({ options: { verifyTermination } }), claimed = await claim(context), request = requestFor(context, claimed);
+      await context.store.recordLaunchIntent({ ...owned(claimed), request });
+      const args = { attemptId: claimed.attempt.attempt_id, proof: { fixtureConfirmed: true }, terminationState: "not_started" };
+      await reject(context.store.reconcileAttempt({ ...args, terminationState: "unknown" }), "AGENT_EXECUTION_TERMINATION_STATE_INVALID");
+      await reject(context.store.reconcileAttempt({ ...args, proof: { fixtureConfirmed: false } }), "AGENT_EXECUTION_TERMINATION_UNCONFIRMED");
+      const reconciled = await context.store.reconcileAttempt(args);
+      assert.equal(reconciled.attempt.lifecycle_status, "cancelled"); assert.equal(reconciled.result, null);
+      assert.equal(reconciled.reconciliation_termination_state, "not_started"); assert.deepEqual(reconciled.reconciliation, args.proof);
+      const fresh = createPostgresAgentExecutionStore({ ...storeOptions, verifyTermination });
+      assert.equal((await fresh.reconcileAttempt(args)).idempotent, true);
+      await reject(fresh.reconcileAttempt({ ...args, terminationState: "confirmed" }), "AGENT_EXECUTION_RECONCILIATION_CONFLICT");
+      const snapshot = await fresh.getRun({ runId: context.runId });
+      assert.equal(snapshot.attempts[0].reconciliation_termination_state, "not_started"); assert.equal(snapshot.reservation_active, true);
+      const legacyContext = await seed(), legacyAttempt = await claim(legacyContext);
+      const legacyProof = { contract_version: "termination-proof.v1", fixtureConfirmed: true };
+      await legacyContext.store.reconcileAttempt({ attemptId: legacyAttempt.attempt.attempt_id, proof: legacyProof });
+      const legacy = (await createPostgresAgentExecutionStore(storeOptions).getRun({ runId: legacyContext.runId })).attempts[0];
+      assert.deepEqual(legacy.reconciliation, legacyProof); assert.equal(legacy.reconciliation_termination_state, "confirmed");
+      await client.query("UPDATE aidn_shared.execution_attempts SET reconciliation_json=$2::jsonb WHERE attempt_id=$1", [legacyAttempt.attempt.attempt_id,
+        JSON.stringify({ contract_version: "agent-attempt-reconciliation.v9", termination_state: "not_started", proof: legacyProof })]);
+      await reject(legacyContext.store.getRun({ runId: legacyContext.runId }), "AGENT_EXECUTION_RECONCILIATION_INVALID");
+      const observed = await claim(context, "beta"); await context.store.recordLaunchIntent({ ...owned(observed), request: requestFor(context, observed) });
+      await context.store.observeRunner({ ...owned(observed), runner: runner() });
+      await reject(fresh.reconcileAttempt({ ...args, attemptId: observed.attempt.attempt_id }), "AGENT_EXECUTION_TERMINATION_CONTRADICTION");
     });
     await check("launch intent survives reconnect and runner observation requires it", async () => {
       const context = await seed(), claimed = await claim(context), args = owned(claimed);
@@ -1553,7 +1582,7 @@ try {
     assert.ok(participantPid); assert.equal(children.size,0); assert.equal(fs.existsSync(injectedRoot),false);
   });
   process.stdout.write(JSON.stringify({ ok:true, backend:"ephemeral-postgres", version:result.version, checks:checks.length,
-    qualification:focused ? "partial" : "full",selection:focused ? "lifecycle-fences" : "all",skipped:skipped.length,
+    qualification:focused ? "partial" : "full",selection:reconciliationOnly ? "reconciliation" : focused ? "lifecycle-fences" : "all",skipped:skipped.length,
     cleanup:"PASS", codex_native:"SKIP", os_confinement:"SKIP", verifier_authority:"injected-supervisor-doubles",
     validation_evidence:focused ? "injected-double-for-cleanup" : "real-ed25519-with-fixture-process-boundary" })+"\n");
 } catch (error) {
