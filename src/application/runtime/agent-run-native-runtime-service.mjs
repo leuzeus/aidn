@@ -31,8 +31,16 @@ export function inspectNativeAttemptStop(attempts, view, { durableOnly = false }
     { runner: view.runner, request: view.request, termination_state: state });
   if (!verify()) {
     ensure(!durableOnly, "AGENT_RUN_WORKER_STOP_UNCONFIRMED");
-    if (view.runner) { proof = attempts.inspectTermination({ attemptId: view.attempt.attempt_id }).process?.termination_proof; state = "confirmed"; }
-    else { proof = attempts.inspectNotStarted({ attemptId: view.attempt.attempt_id }).proof; state = "not_started"; }
+    try {
+      const observed = attempts.inspectTermination({ attemptId: view.attempt.attempt_id });
+      if (!view.runner && observed.process?.termination_state === "not_started") {
+        proof = attempts.inspectNotStarted({ attemptId: view.attempt.attempt_id }).proof; state = "not_started";
+      } else { proof = observed.process?.termination_proof; state = "confirmed"; }
+    }
+    catch (cause) {
+      ensure(!view.runner && cause.code === "ENOENT", "AGENT_RUN_WORKER_STOP_UNCONFIRMED");
+      proof = attempts.inspectNotStarted({ attemptId: view.attempt.attempt_id }).proof; state = "not_started";
+    }
     ensure(verify(), "AGENT_RUN_WORKER_STOP_UNCONFIRMED");
   }
   return { attempt_id: view.attempt.attempt_id, proof, termination_state: state };

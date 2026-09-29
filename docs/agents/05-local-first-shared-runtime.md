@@ -128,7 +128,9 @@ stop, never proof of termination. Recovery may retain a verified `not_started`
 receipt when no worker runner exists. It preserves the original proof and typed
 reconciliation without inventing a result or Job termination; metadata process
 closure remains independently required. Conflicting or incomplete receipts fail
-closed. Cleanup admits completed runs only, with
+closed. If runner persistence was interrupted after creation, recovery verifies
+the closed local process receipt against the exact request, candidate, helper and
+runner identity; any conflicting persisted runner is refused. Cleanup admits completed runs only, with
 stopped supervisor/attempt/Git trees, integrated commits and retained resource
 preimages. A new cleaner generation needs proof that its predecessor stopped.
 Removal recovery observes the original directory and worktree metadata absent;

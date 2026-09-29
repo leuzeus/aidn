@@ -60,10 +60,24 @@ try {
     const proof = { method: "windows-job-object", active_processes: 0, runner_id: "runner.fixture", pid: 9876, started_at: "2026-09-27T00:00:00Z", job_name: "Local\\aidn-execution-" + "0".repeat(32),
       candidate_sha256: config.candidate.sha256, helper_sha256: config.helper.helper_sha256, source_sha256: config.helper.source_sha256 };
     const record = { attempt_id: attempt.attempt_id, request_sha256: fingerprint(request), process: { termination_state: "confirmed", termination_proof: proof,
-      runner: { executable_sha256: config.runtime.sha256 } } };
+      runner: { runner_id: proof.runner_id, pid: proof.pid, started_at: proof.started_at, executable_sha256: config.runtime.sha256 } } };
     fs.writeFileSync(path.join(root, `native-termination-${hash(attempt.attempt_id)}.json`), JSON.stringify(record));
     const context = { request, termination_state: "confirmed", runner: { runner_id: proof.runner_id, pid: proof.pid, started_at: new Date(proof.started_at).toISOString() } };
     const service = createCodexAgentAttemptService(config); assert.equal(service.verifyTermination(attempt, proof, context), true);
+    assert.equal(service.verifyTermination(attempt, proof, { ...context, runner: null }), true);
+    assert.equal(inspectNativeAttemptStop(service, { attempt, request, runner: null, result: null }).termination_state, "confirmed");
+    assert.equal(service.verifyTermination(attempt, proof, { ...context, runner: { ...context.runner, pid: 123 } }), false);
+    const file = path.join(root, `native-termination-${hash(attempt.attempt_id)}.json`);
+    fs.writeFileSync(file, JSON.stringify({ ...record, process: { ...record.process, runner: { ...record.process.runner, pid: 123 } } }));
+    assert.equal(service.verifyTermination(attempt, proof, { ...context, runner: null }), false);
+    for (const field of ["pid", "runner_id"]) {
+      const incomplete = structuredClone(record); delete incomplete.process.runner[field]; delete incomplete.process.termination_proof[field];
+      fs.writeFileSync(file, JSON.stringify(incomplete));
+      assert.equal(service.verifyTermination(attempt, incomplete.process.termination_proof, { ...context, runner: null }), false);
+    }
+    const undated = structuredClone(record); undated.process.runner.started_at = null; undated.process.termination_proof.started_at = null;
+    fs.writeFileSync(file, JSON.stringify(undated)); assert.equal(service.verifyTermination(attempt, undated.process.termination_proof, { ...context, runner: null }), false);
+    fs.writeFileSync(file, JSON.stringify(record));
     assert.equal(service.verifyTermination(attempt, proof, { ...context, request: { ...request, input_sha: "2".repeat(40) } }), false);
     assert.equal(service.verifyTermination(attempt, { ...proof, active_processes: 1 }, context), false);
     assert.equal(createCodexAgentAttemptService({ ...config, runtime: { sha256: "f".repeat(64) } }).verifyTermination(attempt, proof, context), false);
@@ -95,6 +109,10 @@ try {
     persist(record);
     const contradictory = path.join(root, `native-termination-${hash(attempt.attempt_id)}.json`);
     fs.writeFileSync(contradictory, "{}"); assert.equal(service.verifyTermination(attempt, proof, context), false);
+    const notCreated = { ...record, proof: { ...proof, native_create_requested: true }, process: { termination_state: "not_started", runner: null } };
+    persist(notCreated); fs.writeFileSync(contradictory, JSON.stringify({ attempt_id: attempt.attempt_id, request_sha256: fingerprint(request), process: notCreated.process }));
+    assert.equal(service.verifyTermination(attempt, notCreated.proof, context), true);
+    assert.equal(inspectNativeAttemptStop(service, view).termination_state, "not_started");
   });
   await test("metadata preparation replay preserves unknown cleanup and refuses missing or foreign proof", () => {
     const attemptId = "attempt.bootstrap", requestSha = "1".repeat(64), directory = path.join(root, `native-attempt-${hash(attemptId)}`);

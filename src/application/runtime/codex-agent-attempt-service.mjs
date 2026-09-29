@@ -146,6 +146,7 @@ export function createCodexAgentAttemptService({ candidate, runtime, helper, met
   };
   function evidenceFor(request) {
     const file = path.join(resourcesRoot, `native-termination-${hash(request.attempt_id)}.json`);
+    requireProof(!fs.existsSync(path.join(resourcesRoot, `native-not-started-${hash(request.attempt_id)}.json`)), "AGENT_NATIVE_TERMINATION_CHANGED");
     return JSON.parse(fileHash(file).bytes.toString("utf8"));
   }
   function inspect({ plan, request } = {}) {
@@ -224,7 +225,12 @@ export function createCodexAgentAttemptService({ candidate, runtime, helper, met
     inspectNotStarted({ attemptId }) {
       const record = JSON.parse(fileHash(path.join(resourcesRoot, `native-not-started-${hash(attemptId)}.json`)).bytes.toString("utf8"));
       assertAgentExecutionContract("result", record.result);
-      requireProof(!fs.existsSync(path.join(resourcesRoot, `native-termination-${hash(attemptId)}.json`))
+      const terminalFile = path.join(resourcesRoot, `native-termination-${hash(attemptId)}.json`);
+      const terminalPresent = fs.existsSync(terminalFile);
+      const terminal = terminalPresent ? JSON.parse(fileHash(terminalFile).bytes.toString("utf8")) : null;
+      requireProof((record.proof?.native_create_requested === true
+          ? terminal?.attempt_id === attemptId && terminal.request_sha256 === record.proof.request_sha256 && same(terminal.process, record.process)
+          : !terminalPresent)
         && record.result.attempt_id === attemptId && record.result.termination_state === "not_started"
         && record.proof?.method === "codex-not-started" && record.proof.attempt_id === attemptId
         && typeof record.proof.native_create_requested === "boolean"
@@ -354,9 +360,13 @@ export function createCodexAgentAttemptService({ candidate, runtime, helper, met
         const request = context?.request ?? attempts.get(attempt.attempt_id)?.request;
         const observed = request ? evidenceFor(request) : JSON.parse(fileHash(path.join(resourcesRoot, `native-termination-${hash(attempt.attempt_id)}.json`)).bytes.toString("utf8"));
         return request && observed.request_sha256 === fingerprint(request) && observed.attempt_id === attempt.attempt_id && observed.process.termination_state === "confirmed" && same(observed.process.termination_proof, proof)
+          && proof.method === "windows-job-object" && Number.isSafeInteger(proof.pid) && proof.pid > 0 && typeof proof.started_at === "string"
+          && typeof proof.runner_id === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(proof.runner_id)
           && proof.active_processes === 0 && proof.candidate_sha256 === frozen.candidate.sha256 && proof.helper_sha256 === frozen.helper.helper_sha256
           && proof.source_sha256 === frozen.helper.source_sha256 && observed.process.runner?.executable_sha256 === frozen.runtime.sha256
-          && context?.runner?.runner_id === proof.runner_id && context.runner.pid === proof.pid && context.runner.started_at === new Date(proof.started_at).toISOString();
+          && [observed.process.runner, ...(context?.runner ? [context.runner] : [])].every(runner => runner
+            && runner.runner_id === proof.runner_id && runner.pid === proof.pid
+            && typeof runner.started_at === "string" && new Date(runner.started_at).toISOString() === new Date(proof.started_at).toISOString());
       } catch { return false; }
     },
     async close() { closed = true; for (const state of attempts.values()) if (state.execution) await state.execution.close(); },
