@@ -115,6 +115,10 @@ Stopped results enter capture, commit, validation and acceptance serially becaus
 they share one validation boundary. Worker execution remains concurrent. Queued
 results recheck run cancellation and deadline before effects; a failed acceptance
 stops the queue without starting another validation.
+Verification accepts textual output and byte views, including Uint8Array values
+produced by the native boundary's structured clone. It checks the combined byte
+limit before copying each view into retained logs and signing the verdict;
+non-byte containers remain refused.
 PostgreSQL remains the exclusive shared authority and existing sequential
 workflows still need no PostgreSQL.
 

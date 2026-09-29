@@ -26,7 +26,8 @@ function forgedDocument(f, document, reference, mutate) {
 await check("scheduler validates its canonical planned task through the real local verifier", () => fixture({}, async f => {
   const scheduler = createSchedulerFixture({ plan: f.plan, runId: f.run.run_id });
   try {
-    const producer = f.create();
+    const producer = f.create({ boundary: { ...f.boundary,
+      run: async (...args) => structuredClone(await f.boundary.run(...args)) } });
     const result = await scheduler.create({
       // The scheduler/store/Git doubles supply a known real fixture commit;
       // snapshot extraction, checks, signatures and strict task comparison are real.
@@ -69,7 +70,7 @@ for (const [boundaryVersion, planVersion, profile, networkDisabled] of [
   // This is a signed, injected consumer double. It supplies no OS/native evidence.
   const boundaryFor = payload => ({ ...f.boundary, getDescriptor: () => ({ boundary_id: payload.boundary_id, qualification: signed(payload, f.privateKey) }),
     checkAvailability: async () => { probes++; return { available: true, native: true }; },
-    run: async (...args) => ({ ...await f.boundary.run(...args), boundary_id: payload.boundary_id }) });
+    run: async (...args) => ({ ...structuredClone(await f.boundary.run(...args)), boundary_id: payload.boundary_id }) });
   const producer = f.create({ evidenceClass: "native", boundary: boundaryFor(qualification) });
   assert.equal((await producer.checkAvailability({ plan })).status, "available");
   const validation = await producer.validateTask({ ...f.taskInput, plan });
@@ -326,6 +327,53 @@ await check("unconfirmed termination preserves intent and refuses another child"
   assert.equal(stopRequests, 1);
   await assert.rejects(f.create().validateTask(f.taskInput), /RECONCILIATION_REQUIRED/); assert.equal(f.calls, 1);
 }));
+for (const transport of ["structured clone", "offset byte view"]) await check(transport + " preserves exact stdout and binary stderr through signed verification", () => fixture({
+  script: "process.stdout.write(JSON.stringify({contract_version:'agent-verification-check.v1',validation_id:'contents',status:'passed'})+'\\n');process.stderr.write(Buffer.from([0,255,128,65]));",
+}, async f => {
+  let expected;
+  const boundary = { ...f.boundary, run: async (...args) => {
+    const result = await f.boundary.run(...args);
+    expected = { stdout: Buffer.from(result.stdout), stderr: Buffer.from(result.stderr) };
+    const copy = structuredClone(result);
+    for (const channel of ["stdout", "stderr"]) {
+      assert.equal(Buffer.isBuffer(copy[channel]), false);
+      assert.ok(copy[channel] instanceof Uint8Array);
+      if (transport === "offset byte view") {
+        const padded = Buffer.concat([Buffer.from("prefix"), expected[channel], Buffer.from("suffix")]);
+        copy[channel] = new Uint8Array(padded.buffer, padded.byteOffset + 6, expected[channel].length);
+      }
+    }
+    return copy;
+  } };
+  const producer = f.create({ boundary }), validation = await producer.validateTask(f.taskInput);
+  assert.equal(validation.status, "passed"); assert.equal(validation.tested_sha, f.candidateSha);
+  await producer.evidenceVerifier.verify(f.verificationInput({ validation }, "task"));
+  const payload = JSON.parse(fs.readFileSync(path.join(f.resourcesRoot, validation.checks[0].evidence.ref))).payload;
+  for (const channel of ["stdout", "stderr"]) {
+    const reference = payload.checks[0][channel];
+    assert.deepEqual(fs.readFileSync(path.join(f.resourcesRoot, reference.ref)), expected[channel]);
+    assert.equal(reference.bytes, expected[channel].length); assert.equal(reference.sha256, digest(expected[channel]));
+  }
+  assert.equal(f.calls, 1);
+}));
+await check("non-byte output containers remain refused for both channels", async () => {
+  for (const invalid of [{}, [], new ArrayBuffer(1), new DataView(new ArrayBuffer(1)), new Uint16Array(1), new Uint8ClampedArray(1)]) {
+    for (const channel of ["stdout", "stderr"]) await fixture({}, async f => {
+      const boundary = { ...f.boundary, run: async (...args) => ({ ...await f.boundary.run(...args), [channel]: invalid }) };
+      await assert.rejects(f.create({ boundary }).validateTask(f.taskInput), /VERIFICATION_OUTPUT_INVALID/);
+      assert.equal(fs.existsSync(path.join(f.resourcesRoot, "verification", "results")), false);
+    });
+  }
+});
+await check("oversized byte views are refused before copying or signing", async () => {
+  for (const channel of ["stdout", "stderr"]) await fixture({ outputLimit: 1024 }, async f => {
+    const boundary = { ...f.boundary, run: async (...args) => ({ ...await f.boundary.run(...args), [channel]: new Uint8Array(1025) }) };
+    await assert.rejects(f.create({ boundary }).validateTask(f.taskInput), /VERIFICATION_OUTPUT_LIMIT/);
+    assert.equal(fs.existsSync(path.join(f.resourcesRoot, "verification", "logs")), false);
+    assert.equal(fs.existsSync(path.join(f.resourcesRoot, "verification", "results")), false);
+  });
+});
+
 await check("oversized process output is refused before copying or signing a verdict", () => fixture({ script: "process.stdout.write('x'.repeat(100000));", outputLimit: 1024 }, async f => {
   await assert.rejects(f.create().validateTask(f.taskInput), /OUTPUT_LIMIT/); assert.equal(f.calls, 1);
 }));

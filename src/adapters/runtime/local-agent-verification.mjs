@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash, createPublicKey, createPrivateKey, randomUUID, sign, verify } from "node:crypto";
 import { performance } from "node:perf_hooks";
+import { isUint8Array } from "node:util/types";
 import { assertAgentExecutionContract, fingerprintAgentExecutionValue as fingerprint, isExactExecutionPath, taskValidationIds } from "../../core/agents/agent-execution-contracts.mjs";
 
 const VERSION = "agent-verification-evidence.v1";
@@ -395,7 +396,7 @@ export function createLocalAgentVerification({ resourcesRoot, scratchRoot, runId
           throw cause;
         }
         const rawStdout = result.stdout ?? "", rawStderr = result.stderr ?? "";
-        requireThat([rawStdout, rawStderr].every(value => typeof value === "string" || Buffer.isBuffer(value)), "VERIFICATION_OUTPUT_INVALID");
+        requireThat([rawStdout, rawStderr].every(value => typeof value === "string" || isUint8Array(value)), "VERIFICATION_OUTPUT_INVALID");
         const receivedBytes = Buffer.byteLength(rawStdout) + Buffer.byteLength(rawStderr);
         requireThat(receivedBytes <= policy.limits.max_output_bytes - outputBytes, "VERIFICATION_OUTPUT_LIMIT");
         const stdout = Buffer.from(rawStdout), stderr = Buffer.from(rawStderr); outputBytes += receivedBytes;
