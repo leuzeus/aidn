@@ -10,6 +10,7 @@ import { pathToFileURL } from "node:url";
 import pg from "pg";
 import { createAgentNativeRefusalEvidence, assertAgentNativeRefusalEvidence } from "./agent-native-refusal-evidence.mjs";
 import { assertCodexNativeProfileBootstrap } from "./agent-native-profile-observation.mjs";
+import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
 
 export const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 export const json = value => JSON.stringify(value, null, 2) + "\n";
@@ -20,6 +21,35 @@ const execute = promisify(execFile);
 const MARKER = ".codex/aidn-agent-attempt.json";
 const ALLOWED = "src/allowed.txt", FORBIDDEN = "protected/sentinel.txt";
 export const NATIVE_PROFILE_PREPARATION_MAX_MS = 60000;
+
+// These are local diagnostic records, never worker termination or admission proofs.
+export function nativeQualificationProfileFailure(error,{phase,...binding}={}) {
+  const process=structuredClone(error?.process ?? null),tree=process?.tree_termination;
+  const confirmed=process?.closed===true && process?.pid_absent===true
+    && (tree===undefined || tree?.termination_state==="confirmed"
+      && tree.proof?.method==="windows-job-object" && tree.proof.active_processes===0);
+  return {phase,...binding,reason:/^[A-Z][A-Z0-9_]{0,100}$/.test(error?.code ?? "")?error.code:"QUALIFICATION_NATIVE_PROFILE_OBSERVATION_FAILED",
+    process_cleanup:confirmed?"CONFIRMED":"UNCONFIRMED",process};
+}
+export function createNativeQualificationProfileFailureTracker(verify) {
+  let retained=null,pending=null;
+  return {
+    async verify(request,options) {
+      requireProof(!pending && retained?.process_cleanup!=="UNCONFIRMED","QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED");
+      const binding={phase:options.phase,attempt_id:request.attempt_id,request_sha256:fingerprintAgentExecutionValue(request)};
+      pending=binding;
+      try { return await verify(request,options); }
+      catch(error) { retained ??= nativeQualificationProfileFailure(error,binding);throw error; }
+      finally { pending=null; }
+    },
+    failure() {
+      // A controller timeout can finish before its metadata callback settles.
+      // Freeze that unknown state now; a late callback cannot rewrite a terminal.
+      if(pending && !retained) retained=nativeQualificationProfileFailure({code:"QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED"},pending);
+      return structuredClone(retained);
+    },
+  };
+}
 
 export function nativeQualificationBudgets({preexisting=false,maxDurationMs=150000}={}) {
   requireProof(Number.isSafeInteger(maxDurationMs) && maxDurationMs>0 && maxDurationMs<=150000,"QUALIFICATION_TASK_BUDGET_INVALID");
@@ -222,6 +252,8 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
   requireProof(!preexisting || typeof verifyNativeProfile==="function","QUALIFICATION_NATIVE_PROFILE_OBSERVER_REQUIRED");
   requireProof(!preexisting || typeof verifyNativeProfile.bootstrap==="function","QUALIFICATION_NATIVE_PROFILE_BOOTSTRAP_REQUIRED");
   const budgets=nativeQualificationBudgets({preexisting,maxDurationMs});
+  const profileFailures=preexisting?createNativeQualificationProfileFailureTracker(verifyNativeProfile):null;
+  const verifyProfile=profileFailures?.verify ?? verifyNativeProfile;
   // B retains its tracked input throughout stopping cases. The final port
   // therefore starts from the declared SHA without resetting A's proven edit.
   const root=manifest.roots.find(r=>r.role===(mode==="acquire" ? "worker-a" : "worker-b"));
@@ -374,7 +406,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     const recheckDirectProfile=async phase=>{
       const remaining=Math.floor(launchDeadline-performance.now());
       requireProof(remaining>0,"QUALIFICATION_NATIVE_PROFILE_TASK_DEADLINE");
-      await verifyNativeQualificationProfile({modules:m,policy:nativeProfilePolicy,runtime,request,verify:verifyNativeProfile,phase,signal:stop.signal,timeoutMs:Math.min(10000,remaining)});
+      await verifyNativeQualificationProfile({modules:m,policy:nativeProfilePolicy,runtime,request,verify:verifyProfile,phase,signal:stop.signal,timeoutMs:Math.min(10000,remaining)});
     };
     try {
       if(mode==="port") {
@@ -382,7 +414,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         const executor=m.createCodexCliTaskExecutor({runtime,controller:{...controller,run:async(input,options)=>{launchRequested=true;onLaunch();processResult=await controller.run(input,{...options,onEvent:async event=>{if(event.type==="resumed")onStarted();await options.onEvent(event);}});return processResult;}},
           qualify:async({runtime:asked,cwd})=>({qualified:qualification.passed===true && equal(asked,runtime) && cwd===root.root && qualification.candidate_sha256===manifest.candidate.sha256 && qualification.codex_sha256===manifest.codex.sha256 && qualification.helper_sha256===helper.helper_sha256 && qualification.platform===process.platform && qualification.architecture===process.arch}),
           prepare:async()=>({request_sha256:requestHash,env}),recordLaunchIntent:async()=>store.recordLaunchIntent({...owned(),request}),observeRunner,
-          admissionTimeoutMs:10000,verifyNativeProfile,admitLaunch:async(_request,{signal})=>service.preflight({signal}),
+          admissionTimeoutMs:10000,verifyNativeProfile:verifyProfile,admitLaunch:async(_request,{signal})=>service.preflight({signal}),
           openEvidence:async()=>{const evidence=await evidenceStore.open(request);return {append:async(stream,bytes)=>{await evidence.append(stream,bytes);if(stream==="stdout")observeOutput(bytes);else if(stream==="stderr")observeStderr(bytes);},finish:async(value)=>{protocol=value.protocol;refs=await evidence.finish(value);return refs;}};}});
         nativeResult=await executor.runTask(request,{signal:stop.signal,onEvent:async event=>{await store.appendEvent({...owned(),event});}});
       } else {
@@ -490,6 +522,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     return {name,status:"PASS",mode,attempt_id:attemptId,request_sha256:requestHash,case_root:caseRoot,budgets,native_profile_preparation:nativeProfilePreparation,hook_latency_ms:hookLatencyMs,...(timeoutOracle?{timeout_oracle:timeoutOracle.snapshot()}:{}),process:processResult,protocol,evidence:refs,admission_count:decisions.length,refusal_evidence:refusalEvidence,preservation:"PASS",native_process_cleanup:"CONFIRMED",acceptance:"NOT_PRODUCT_ACCEPTANCE",integration:"NOT_RUN",cleanup:"EVIDENCE_PRESERVED"};
   } catch(error) {
     stop.abort();
+    const profileVerificationFailure=profileFailures?.failure() ?? null;
     const nativeCleanup=processResult?.termination_state==="confirmed" && independentCleanupVerified?"CONFIRMED":!launchRequested || processResult?.termination_state==="not_started"?"NOT_STARTED":"UNCONFIRMED";
     let snapshot={status:"UNAVAILABLE",purpose:"DIAGNOSTIC_ONLY"};
     try {
@@ -498,7 +531,8 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       const bytes=json(diagnostic);requireProof(Buffer.byteLength(bytes)<=4*1024*1024,"QUALIFICATION_DIAGNOSTIC_SNAPSHOT_LIMIT");
       snapshot={status:"PRESERVED",purpose:"DIAGNOSTIC_ONLY",...writeEvidence(caseRoot,"canonical-at-failure.json",bytes)};
     } catch { /* Never call an unavailable archive a successful recovery proof. */ }
-    error.nativeQualification={name,native_process_cleanup:nativeCleanup,native_profile_preparation:error.nativeProfilePreparation ?? nativeProfilePreparation,canonical_snapshot:snapshot,attempt_marker:"PRESERVED_IF_CREATED",case_root:caseRoot};
+    error.nativeQualification={name,native_process_cleanup:nativeCleanup,native_profile_preparation:error.nativeProfilePreparation ?? nativeProfilePreparation,
+      native_profile_verification_failure:profileVerificationFailure,canonical_snapshot:snapshot,attempt_marker:"PRESERVED_IF_CREATED",case_root:caseRoot};
     writeEvidence(caseRoot,"failure.json",{status:"FAIL",reason:error.code ?? error.message,details:error.details,...error.nativeQualification,process:processResult,native_result:nativeResult,evidence:refs,protocol,admissions:decisions,hook_observation:hookObservation,last_hook_observation:lastHookObservation,timeout_oracle:timeoutOracle?.snapshot()??null});
     throw error;
   } finally {timeoutOracle?.dispose();clearInterval(heartbeat);await heartbeatWork;try{if(transport) await transport.close();}finally{if(decisionLog!==null)fs.closeSync(decisionLog);await client.end();}}

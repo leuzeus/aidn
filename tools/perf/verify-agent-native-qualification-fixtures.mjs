@@ -346,6 +346,67 @@ try {
     assert.equal(error.code,"PROFILE_METADATA_INCOMPLETE");assert.equal(error.nativeProfilePreparation.process_cleanup,"CONFIRMED");assert.deepEqual(error.nativeProfilePreparation.process,proof);
     let finalized=0;await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{finalized++;return {ok:true};}},preparation:error.nativeProfilePreparation});assert.equal(finalized,1);
   });
+
+  for(const [name,process] of [
+    ["missing",null],
+    ["parent still present",{closed:true,pid_absent:false,exit_code:1,signal:null,response_count:1,budget_ms:10000}],
+    ["tree unknown",{closed:true,pid_absent:true,exit_code:1,signal:null,response_count:1,budget_ms:10000,tree_termination:{termination_state:"unknown",proof:null}}],
+  ]) await check("unknown metadata blocks finalization despite a completed bootstrap: "+name,async()=>{
+    let finalized=0;
+    const failure={phase:"before_create",attempt_id:"attempt.failed",request_sha256:sha("a"),reason:"PROFILE_METADATA_INCOMPLETE",process_cleanup:"UNCONFIRMED",process};
+    const result=await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{finalized++;return {ok:true};}},
+      preparation:{status:"COMPLETED",process_cleanup:"CONFIRMED"},verificationFailure:failure});
+    assert.equal(finalized,0);assert.equal(result.reason,"QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED");
+    assert.deepEqual(result.native_profile_verification_failure,failure);
+  });
+  for(const phase of ["before_create","before_resume"]) await check("failed metadata proof survives callback normalization at "+phase,async()=>{
+    const x=bootstrapFixture(),proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:2,budget_ms:10000};
+    const original=Object.assign(new Error("metadata failed"),{code:"PROFILE_METADATA_INCOMPLETE",process:proof});
+    const tracker=driver.createNativeQualificationProfileFailureTracker(async()=>{throw original;});
+    let normalized;
+    try { await driver.verifyNativeQualificationProfile({...x.options,verify:tracker.verify,phase}); }
+    catch { normalized={reason_code:"PROCESS_CALLBACK_FAILED",termination_state:"confirmed"}; }
+    const failure=tracker.failure();
+    assert.equal(normalized.reason_code,"PROCESS_CALLBACK_FAILED");
+    assert.deepEqual(failure,{phase,attempt_id:x.request.attempt_id,request_sha256:fingerprint(x.request),
+      reason:"PROFILE_METADATA_INCOMPLETE",process_cleanup:"CONFIRMED",process:proof});
+    const terminal=JSON.parse(JSON.stringify({native_process_cleanup:"NOT_STARTED",process:null,native_profile_verification_failure:failure}));
+    assert.equal(terminal.process,null);assert.equal(terminal.native_process_cleanup,"NOT_STARTED");
+    assert.deepEqual(terminal.native_profile_verification_failure.process,proof);
+    proof.closed=false;assert.equal(tracker.failure().process.closed,true);
+  });
+  await check("port callback keeps metadata proof before executor replaces the error",async()=>{
+    const x=bootstrapFixture(),proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:1,budget_ms:10000};
+    const tracker=driver.createNativeQualificationProfileFailureTracker(async()=>{throw Object.assign(new Error("metadata"),{code:"PROFILE_METADATA_INCOMPLETE",process:proof});});
+    const port=async()=>{try{await tracker.verify(x.request,{phase:"before_resume"});}catch{throw Object.assign(new Error("normalized"),{code:"CODEX_NATIVE_PROFILE_VERIFICATION_FAILED"});}};
+    await assert.rejects(port,{code:"CODEX_NATIVE_PROFILE_VERIFICATION_FAILED"});
+    assert.equal(tracker.failure().reason,"PROFILE_METADATA_INCOMPLETE");assert.deepEqual(tracker.failure().process,proof);
+  });
+  await check("pending metadata is retained unknown without waiting or accepting a late proof",async()=>{
+    const x=bootstrapFixture();let rejectPending,calls=0;
+    const tracker=driver.createNativeQualificationProfileFailureTracker(()=>{calls++;return new Promise((_,reject)=>{rejectPending=reject;});});
+    const pending=tracker.verify(x.request,{phase:"before_create"}).catch(error=>error);
+    const frozen=tracker.failure();assert.equal(frozen.process_cleanup,"UNCONFIRMED");assert.equal(frozen.process,null);
+    rejectPending(Object.assign(new Error("late"),{code:"PROFILE_METADATA_INCOMPLETE",process:{closed:true,pid_absent:true}}));
+    await pending;assert.deepEqual(tracker.failure(),frozen);
+    await assert.rejects(()=>tracker.verify(x.request,{phase:"before_resume"}),{code:"QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED"});
+    assert.equal(calls,1);
+  });
+  await check("metadata Job proof is preserved without replacing worker proof or inventing closure",async()=>{
+    const x=bootstrapFixture(),proof={closed:false,pid_absent:false,exit_code:null,signal:null,response_count:0,budget_ms:10000,
+      tree_termination:{termination_state:"confirmed",proof:{method:"windows-job-object",active_processes:0}}};
+    const tracker=driver.createNativeQualificationProfileFailureTracker(async()=>{throw Object.assign(new Error("metadata"),{code:"PROFILE_TREE_CALLBACK_FAILED",process:proof});});
+    await assert.rejects(()=>tracker.verify(x.request,{phase:"before_resume"}),{code:"PROFILE_TREE_CALLBACK_FAILED"});
+    assert.deepEqual(tracker.failure().process,proof);assert.equal(tracker.failure().process_cleanup,"UNCONFIRMED");
+  });
+  await check("final metadata failure keeps its process evidence and original error",async()=>{
+    const proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:2,budget_ms:10000};
+    const original=Object.assign(new Error("final metadata"),{code:"PROFILE_METADATA_INCOMPLETE",process:proof});
+    const error=await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{throw original;}},
+      preparation:{process_cleanup:"CONFIRMED"}}).catch(error=>error);
+    assert.equal(error,original);assert.deepEqual(error.nativeProfileFinalization,
+      {phase:"finalize",reason:"PROFILE_METADATA_INCOMPLETE",process_cleanup:"CONFIRMED",process:proof});
+  });
   await check("native review accepts both worktrees with the shared coordinator source", () => assert.equal(review(manifest, trust), true));
   await check("refresh requires a complete explicit preexisting-profile identity", () => {
     const value = structuredClone(manifest); value.native_profile = { mode: "preexisting" };

@@ -396,6 +396,9 @@ check also covers consented metadata preparation, request/policy/attempt and
 termination bindings, no-launch failures, cancellation and late decisions.
 An observer that ignores cancellation leaves metadata cleanup unconfirmed and
 cannot trigger a final observation of a previously successful attempt.
+Failed before-create, before-resume and port metadata callbacks retain their own
+process evidence through callback error normalization and finalization, separately
+from worker cleanup; an unresolved metadata callback blocks another observation.
 Synthetic callbacks verify that bootstrap and fresh canonical preflight share
 one 60-second maximum budget, counted separately in the run, before the unchanged
 worker deadline begins. The metadata collector and its warm verification remain

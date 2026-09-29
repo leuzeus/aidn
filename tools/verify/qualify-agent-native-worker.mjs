@@ -10,7 +10,7 @@ import { assertAgentNativeRefreshReview, assertAgentNativeQualificationRefreshCo
 import { nativeQualificationHomeIdentity } from "./prepare-agent-native-qualification.mjs";
 import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { fingerprintCodexNativeProfilePolicy, codexNativeProfilePreservationEvidence } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
-import { hash, json, fail, requireProof, physical, inventory, compareInventory, writeEvidence, loadCandidate, runNativeQualificationCase, nativeQualificationBudgets } from "./agent-native-qualification-driver.mjs";
+import { hash, json, fail, requireProof, physical, inventory, compareInventory, writeEvidence, loadCandidate, runNativeQualificationCase, nativeQualificationBudgets, nativeQualificationProfileFailure } from "./agent-native-qualification-driver.mjs";
 import { readCodexNativeProfileSharedEffects } from "./agent-native-profile-observation.mjs";
 
 const SOURCE=path.resolve(import.meta.dirname,"../..");
@@ -62,11 +62,14 @@ export function assertNativeQualificationProfileReview({manifest,review,policy}=
 
 // Never observe an older successful request while the current metadata process
 // has indeterminate termination. The worker's cleanup status is independent.
-export async function finalizeNativeQualificationProfile({verify,preparation,signal}={}) {
+export async function finalizeNativeQualificationProfile({verify,preparation,verificationFailure,signal}={}) {
+  if(verificationFailure?.process_cleanup==="UNCONFIRMED") return {ok:false,status:"UNCONFIRMED",
+    reason:"QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED",native_profile_verification_failure:structuredClone(verificationFailure)};
   if(preparation?.process_cleanup==="UNCONFIRMED") return {ok:false,status:"UNCONFIRMED",
     reason:"QUALIFICATION_NATIVE_PROFILE_PREPARATION_TERMINATION_UNCONFIRMED",native_profile_preparation:preparation};
   requireProof(typeof verify?.finalize==="function","QUALIFICATION_NATIVE_PROFILE_OBSERVER_REQUIRED");
-  return verify.finalize({signal});
+  try { return await verify.finalize({signal}); }
+  catch(error) { error.nativeProfileFinalization=nativeQualificationProfileFailure(error,{phase:"finalize"});throw error; }
 }
 
 // A later non-started scenario cannot erase the death proofs of earlier
@@ -184,8 +187,8 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
     if(!verifyNativeProfile || profileFinalized) return;
     profileFinalized=true;
     try {
-      const observation=await finalizeNativeQualificationProfile({verify:verifyNativeProfile,preparation:result.native_profile_preparation,signal:AbortSignal.timeout(15000)});
-      if(observation?.reason==="QUALIFICATION_NATIVE_PROFILE_PREPARATION_TERMINATION_UNCONFIRMED") {
+      const observation=await finalizeNativeQualificationProfile({verify:verifyNativeProfile,preparation:result.native_profile_preparation,verificationFailure:result.native_profile_verification_failure,signal:AbortSignal.timeout(15000)});
+      if(["QUALIFICATION_NATIVE_PROFILE_PREPARATION_TERMINATION_UNCONFIRMED","QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED"].includes(observation?.reason)) {
         result.native_profile_observation=observation;
         writeEvidence(outputRoot,"native-profile-final-not-run.json",observation);
         return;
@@ -197,7 +200,8 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
       result.native_profile_observation=observation;
       writeEvidence(outputRoot,"native-profile-final.json",observation);
     } catch(error) {
-      result.native_profile_observation={ok:false,status:"UNCONFIRMED",reason:error.code ?? "QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_FAILED"};
+      result.native_profile_observation={ok:false,status:"UNCONFIRMED",reason:error.code ?? "QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_FAILED",
+        ...(error.nativeProfileFinalization ?? {})};
       writeEvidence(outputRoot,"native-profile-final-failure.json",result.native_profile_observation);
       throw error;
     }
@@ -254,6 +258,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
     });
   } catch(error) {
     if(profileReview && error.nativeQualification?.native_profile_preparation) result.native_profile_preparation={...error.nativeQualification.native_profile_preparation,completed_attempts:result.checks.length};
+    if(profileReview && error.nativeQualification?.native_profile_verification_failure) result.native_profile_verification_failure=error.nativeQualification.native_profile_verification_failure;
     try {await finalizeProfile();} catch(profileError) {error.profileObservationError=profileError.code ?? "QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_FAILED";}
     primaryError=error;result.ok=false;result.status="failed";result.qualification=error.code==="QUALIFICATION_CLIENT_REFUSAL_UNAVAILABLE"?"UNAVAILABLE":"FAIL";result.reason=error.code ?? error.message;result.details=error.details;
     result.failed_case=error.nativeQualification ?? null;
