@@ -192,6 +192,98 @@ try {
     assert.throws(() => fsPromises.readFile(startupSource), /Forbidden native fixture effect/);
     assert.deepEqual(effects, ["fs.readFileSync:read", "fs.promises.readFile:read"]); effects.length = 0;
   });
+
+  function activationVerifierFixture(read) {
+    const source={roots:manifest.roots,candidate:{packageRoot:"fixture-package"}};
+    const valid=entry=>({active:true,state:"active",identity:{authority_id:"authority-fixture",root_id:entry.worktree_id},
+      authorization:{revision:1},receipt:{package:{root:"fixture-package"}},errors:[]});
+    const calls=[];
+    const verifier=driver.createNativeQualificationActivationVerifier({manifest:source,readActivation:({targetRoot})=>{
+      const entry=source.roots.find(value=>value.root===targetRoot);calls.push(entry.role);
+      return read?read(valid(entry),entry):valid(entry);
+    }});
+    return {verifier,calls,expected:{authority_id:"authority-fixture",revision:1}};
+  }
+  await check("activation verifier keeps successful boolean and every root read",()=>{
+    const x=activationVerifierFixture();assert.equal(x.verifier.verify(x.expected),true);
+    assert.deepEqual(x.calls,roles);assert.equal(x.verifier.failure(),null);
+  });
+  const activationPredicates=["active","state","authority","revision","package","root"];
+  for(const [index,mutate] of [
+    value=>{value.active=false;},value=>{value.state="revoked";},
+    value=>{value.identity.authority_id="foreign";},value=>{value.authorization.revision=2;},
+    value=>{value.receipt.package.root="foreign";},value=>{value.identity.root_id="foreign";},
+  ].entries()) await check("activation refusal retains evaluated predicates: "+activationPredicates[index],()=>{
+    const x=activationVerifierFixture((value,entry)=>{if(entry.role==="worker-a")mutate(value);return value;});
+    assert.equal(x.verifier.verify(x.expected),false);assert.deepEqual(x.calls,["coordinator","worker-a"]);
+    const failure=x.verifier.failure();
+    assert.deepEqual(failure,{role:"worker-a",exception:false,
+      predicates:Object.fromEntries(activationPredicates.slice(0,index+1).map((name,offset)=>[name,offset<index])),
+      code:null,code_sha256:null});
+    assert.ok(Buffer.byteLength(JSON.stringify(failure))<=1024);
+  });
+  await check("activation short circuit never reads a later predicate or root",()=>{
+    const x=activationVerifierFixture(value=>{
+      value.active=false;Object.defineProperty(value,"state",{get(){throw Error("must not read");}});return value;
+    });
+    assert.equal(x.verifier.verify(x.expected),false);assert.deepEqual(x.calls,["coordinator"]);
+    assert.deepEqual(x.verifier.failure().predicates,{active:false});
+  });
+  await check("activation exception is rethrown unchanged with safe code only",()=>{
+    const error=Object.assign(new Error("PRIVATE MESSAGE"),{code:"EACCES",path:"PRIVATE PATH",stack:"PRIVATE STACK"});
+    const x=activationVerifierFixture(()=>{throw error;});
+    assert.throws(()=>x.verifier.verify(x.expected),value=>value===error);
+    assert.deepEqual(x.verifier.failure(),{role:"coordinator",exception:true,predicates:{},code:"EACCES",code_sha256:null});
+  });
+  await check("activation retains only the first refusal through later checks and consumer mutation",()=>{
+    let first=true;const x=activationVerifierFixture(value=>{if(first){first=false;value.active=false;value.errors=["ACTIVATION_ASSET_CHANGED: PRIVATE PATH"];}else value.state="revoked";return value;});
+    assert.equal(x.verifier.verify(x.expected),false);const original=x.verifier.failure();
+    x.verifier.failure().predicates.active=true;
+    assert.equal(x.verifier.verify(x.expected),false);
+    assert.deepEqual(x.verifier.failure(),original);
+    assert.equal(original.code,"ACTIVATION_ASSET_CHANGED");assert.equal(original.code_sha256,null);
+  });
+  await check("activation diagnostics drop free fields and bound unknown code and role",()=>{
+    const unknown="ACTIVATION_FUTURE_CODE",raw="PRIVATE "+ "x".repeat(4000);
+    const source={roots:[{role:raw,root:"fixture-root",worktree_id:raw}],candidate:{packageRoot:raw}};
+    const verifier=driver.createNativeQualificationActivationVerifier({manifest:source,readActivation:()=>({
+      active:false,state:raw,errors:[unknown+": "+raw,"EACCES"],message:raw,details:{uri:raw},stack:raw,
+    })});
+    assert.equal(verifier.verify({authority_id:raw,revision:1}),false);
+    const diagnostic=verifier.failure();
+    assert.deepEqual(diagnostic,{role:"unknown",exception:false,predicates:{active:false},code:null,code_sha256:driver.hash(unknown)});
+    assert.ok(Buffer.byteLength(JSON.stringify(diagnostic))<=1024);
+    assert.equal(JSON.stringify(diagnostic).includes("PRIVATE"),false);
+  });
+  await check("activation predicate exceptions retain only completed evaluations",()=>{
+    const error=Object.assign(new Error("PRIVATE"),{code:"ACTIVATION_FUTURE_CODE"});
+    const x=activationVerifierFixture(value=>{Object.defineProperty(value.authorization,"revision",{get(){throw error;}});return value;});
+    assert.throws(()=>x.verifier.verify(x.expected),value=>value===error);
+    assert.deepEqual(x.verifier.failure(),{role:"coordinator",exception:true,
+      predicates:{active:true,state:true,authority:true},code:null,code_sha256:driver.hash(error.code)});
+  });
+  await check("activation unknown exception codes stay bounded without retaining arbitrary fields",()=>{
+    const code="PRIVATE-CODE-"+"x".repeat(8192),error=Object.assign(new Error("PRIVATE"),{code,details:{uri:"PRIVATE"}});
+    const x=activationVerifierFixture(()=>{throw error;});
+    assert.throws(()=>x.verifier.verify(x.expected),value=>value===error);
+    const diagnostic=x.verifier.failure();assert.equal(diagnostic.code,null);
+    assert.equal(diagnostic.code_sha256,driver.hash(code));
+    assert.ok(Buffer.byteLength(JSON.stringify(diagnostic))<=1024);
+    assert.equal(JSON.stringify(diagnostic).includes("PRIVATE"),false);
+  });
+  await check("activation errors without a typed prefix retain no message digest",()=>{
+    const x=activationVerifierFixture(value=>{value.active=false;value.errors=["PRIVATE_MESSAGE"];return value;});
+    assert.equal(x.verifier.verify(x.expected),false);
+    assert.equal(x.verifier.failure().code,null);assert.equal(x.verifier.failure().code_sha256,null);
+  });
+  await check("activation diagnostic extraction never replaces a refusal or exception",()=>{
+    const x=activationVerifierFixture(value=>{value.active=false;Object.defineProperty(value,"errors",{get(){throw Error("PRIVATE");}});return value;});
+    assert.equal(x.verifier.verify(x.expected),false);assert.equal(x.verifier.failure().code,null);
+    const error=Object.defineProperty(new Error("PRIVATE"),"code",{get(){throw Error("PRIVATE CODE");}});
+    const y=activationVerifierFixture(()=>{throw error;});
+    assert.throws(()=>y.verifier.verify(y.expected),value=>value===error);assert.equal(y.verifier.failure().code,null);
+  });
+
   await check("qualification path helpers refuse cloud roots before filesystem observation", async () => {
     for (const name of ["OneDrive", "oNeDrIvE - Fixture", "OneDrive. ", "ONEDRI~1"]) {
       const cloud = path.join(root, name, "unobserved");

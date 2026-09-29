@@ -401,6 +401,10 @@ process evidence through callback error normalization and finalization, separate
 from worker cleanup; an unresolved metadata callback blocks another observation.
 Only the validated, bounded RPC diagnostic survives in those failure details;
 raw payloads and unrelated error details are discarded.
+Activation fixtures preserve the original six short-circuited predicates and
+boolean/exception behavior while retaining only the first local refusal, with a
+role, evaluated booleans and a safe code or code digest in less than 1 KiB.
+Messages, paths and other free fields never enter that diagnostic.
 Observation fixtures accept opaque `account/updated` notifications with object
 parameters and no id before a response or after all responses, without retaining
 parameters or changing requests, deadlines or closure checks. Malformed envelopes,

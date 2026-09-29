@@ -329,8 +329,13 @@ preserve the required evidence; it must target only the explicitly owned fixture
 
 The qualifier preserves a bounded diagnostic snapshot before removing its owned
 ephemeral PostgreSQL cluster. This snapshot is not operational authority and
-cannot restore or resume an attempt. A failed run's marker and evidence remain
-intact. Any subsequent qualification uses fresh database and attempt identities.
+cannot restore or resume an attempt. The first refused activation check also
+retains a local diagnostic below 1 KiB: the root role, evaluated boolean
+predicates, and a known code or unknown-code digest. Unevaluated predicates are
+absent; messages, paths and asset contents are not retained. This evidence does
+not retry or relax activation and does not establish an earlier unrecorded cause.
+A failed run's marker and evidence remain intact. Any subsequent qualification
+uses fresh database and attempt identities.
 Removing an owned marker requires preserving its exact bytes and a reviewed
 reconciliation record: confirmed process termination, independent absence of
 the observed runner and descendants, and unchanged roots and Git metadata apart

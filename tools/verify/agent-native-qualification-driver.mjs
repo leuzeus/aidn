@@ -53,6 +53,62 @@ export function createNativeQualificationProfileFailureTracker(verify) {
   };
 }
 
+const ACTIVATION_DIAGNOSTIC_CODES=new Set([
+  "ACTIVATION_UNSAFE_PATH","ACTIVATION_UNSAFE_DIRECTORY","ACTIVATION_UNSAFE_FILE",
+  "ACTIVATION_INVALID_ASSET_PATH","ACTIVATION_RECORD_TOO_LARGE","ACTIVATION_INVALID_JSON",
+  "ACTIVATION_INVALID_RECORD","ACTIVATION_INVALID_RECORD_INTEGRITY","ACTIVATION_GIT_RESOLUTION_FAILED",
+  "ACTIVATION_GIT_ROOT_MISMATCH","ACTIVATION_WORKTREE_BACKLINK_MISMATCH","ACTIVATION_INVALID_AUTHORITY",
+  "ACTIVATION_INVALID_HOOKS","ACTIVATION_REQUIRED_SKILL_MISSING","ACTIVATION_REQUIRED_ASSET_MISSING",
+  "ACTIVATION_ASSET_MISSING","ACTIVATION_ASSET_CHANGED","ACTIVATION_AGENTS_CHANGED",
+  "ACTIVATION_INVALID_HOOK_RECEIPT","ACTIVATION_HOOK_CHANGED","ACTIVATION_REQUIRED_HOOK_MISSING",
+  "ACTIVATION_INVALID_RECEIPT","ACTIVATION_INVALID_RECEIPT_ASSET","ACTIVATION_INVALID_RECEIPT_ASSET_KIND",
+  "ACTIVATION_INVALID_INSTALLATION_RECEIPT","ACTIVATION_RECEIPT_AUTHORITY_MISMATCH",
+  "ACTIVATION_INVALID_PACKAGE_BINDING","ACTIVATION_PACKAGE_CHANGED","ACTIVATION_COMPLETION_MISSING",
+  "ACTIVATION_INSTALLATION_INCOMPLETE","ACTIVATION_INVALID_TRANSACTION_OPERATION",
+  "ACTIVATION_GLOBAL_MIGRATION_PENDING","ACTIVATION_INSTALLATION_PENDING","ACTIVATION_AUTHORITY_MISSING",
+  "ACTIVATION_READ_FAILED","EACCES","EPERM","ENOENT","ENOTDIR","EISDIR","EIO","EBUSY","EMFILE","ENFILE","ETIMEDOUT",
+]);
+// Qualification-local evidence only. Fixed keys, role/code vocabulary and one
+// optional digest bound this projection below 1 KiB; no authority is derived.
+export function createNativeQualificationActivationVerifier({manifest,readActivation}) {
+  let retained=null;
+  function retain(entry,predicates,exception,readCode) {
+    if(retained) return;
+    retained={role:"unknown",exception,predicates:{...predicates},code:null,code_sha256:null};
+    try {const role=entry.role;if(["coordinator","worker-a","worker-b"].includes(role))retained.role=role;} catch {}
+    try {
+      const raw=readCode();
+      // readActivation.errors contains messages: inspect only a leading code,
+      // never hash or retain its free-form suffix. Exceptions expose code only.
+      const code=typeof raw==="string" ? exception?raw:/^(ACTIVATION_[A-Z0-9_]{1,89})(?=:|$)/.exec(raw)?.[1] : null;
+      if(typeof code==="string") {
+        if(ACTIVATION_DIAGNOSTIC_CODES.has(code)) retained.code=code;
+        else retained.code_sha256=hash(code);
+      }
+    } catch { /* Diagnostic extraction cannot change refusal or the thrown error. */ }
+  }
+  return {
+    verify(expectedActivation) {
+      return manifest.roots.every(entry=>{
+        const predicates={};
+        try {
+          const a=readActivation({targetRoot:entry.root});
+          // Keep the original six predicates and short circuit. Missing keys
+          // mean unevaluated, not a fabricated false or another root's result.
+          const accepted=(predicates.active=a.active===true) && (predicates.state=a.state==="active")
+            && (predicates.authority=a.identity.authority_id===expectedActivation.authority_id)
+            && (predicates.revision=a.authorization.revision===expectedActivation.revision)
+            && (predicates.package=a.receipt?.package?.root===manifest.candidate.packageRoot)
+            && (predicates.root=a.identity.root_id===entry.worktree_id);
+          if(!accepted) retain(entry,predicates,false,()=>a.errors?.[0]);
+          return accepted;
+        } catch(error) {retain(entry,predicates,true,()=>error?.code);throw error;}
+      });
+    },
+    failure(){return structuredClone(retained);},
+  };
+}
+
 export function nativeQualificationBudgets({preexisting=false,maxDurationMs=150000}={}) {
   requireProof(Number.isSafeInteger(maxDurationMs) && maxDurationMs>0 && maxDurationMs<=150000,"QUALIFICATION_TASK_BUDGET_INVALID");
   const preparation=preexisting?NATIVE_PROFILE_PREPARATION_MAX_MS:0;
@@ -290,10 +346,9 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       ...(preexisting?{native_profile:{mode:"preexisting",policy_sha256:m.fingerprintCodexNativeProfilePolicy(nativeProfilePolicy)}}:{})},limits:{concurrency:1,max_duration_ms:budgets.run_max_duration_ms},
     tasks:[{task_id:"native",objective:`Native qualification ${name}`,scope,depends_on:[],acceptance_criteria:["Only the exact admitted edit occurs; process death and preservation are observed."],max_duration_ms:maxDurationMs}],
     validations:[{validation_id:"native-evidence",argv:["node","qualify-agent-native-worker.mjs"]}],audit:{read_only:true,criteria:["Preserve every undelegated file and every Git metadata byte."]}});
+  const activationVerifier=createNativeQualificationActivationVerifier({manifest,readActivation:m.readActivation});
   const store=m.createPostgresAgentExecutionStore({connectionString,
-    verifyActivation(expectedActivation) {
-      return manifest.roots.every(entry=>{const a=m.readActivation({targetRoot:entry.root});return a.active===true && a.state==="active" && a.identity.authority_id===expectedActivation.authority_id && a.authorization.revision===expectedActivation.revision && a.receipt?.package?.root===manifest.candidate.packageRoot && a.identity.root_id===entry.worktree_id;});
-    },
+    verifyActivation:activationVerifier.verify,
     verifyTermination(attempt,proof,context) {
       const actual=observedProofs.get(attempt.attempt_id);
       return context.termination_state==="confirmed" && actual && equal(actual,proof) && proof.active_processes===0 && proof.candidate_sha256===manifest.candidate.sha256 && proof.helper_sha256===helper.helper_sha256 && context.runner?.runner_id===proof.runner_id && context.runner?.pid===proof.pid && context.runner?.started_at===new Date(proof.started_at).toISOString();
@@ -534,7 +589,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       snapshot={status:"PRESERVED",purpose:"DIAGNOSTIC_ONLY",...writeEvidence(caseRoot,"canonical-at-failure.json",bytes)};
     } catch { /* Never call an unavailable archive a successful recovery proof. */ }
     error.nativeQualification={name,native_process_cleanup:nativeCleanup,native_profile_preparation:error.nativeProfilePreparation ?? nativeProfilePreparation,
-      native_profile_verification_failure:profileVerificationFailure,canonical_snapshot:snapshot,attempt_marker:"PRESERVED_IF_CREATED",case_root:caseRoot};
+      native_profile_verification_failure:profileVerificationFailure,activation_verification_failure:activationVerifier.failure(),canonical_snapshot:snapshot,attempt_marker:"PRESERVED_IF_CREATED",case_root:caseRoot};
     writeEvidence(caseRoot,"failure.json",{status:"FAIL",reason:error.code ?? error.message,details:error.details,...error.nativeQualification,process:processResult,native_result:nativeResult,evidence:refs,protocol,admissions:decisions,hook_observation:hookObservation,last_hook_observation:lastHookObservation,timeout_oracle:timeoutOracle?.snapshot()??null});
     throw error;
   } finally {timeoutOracle?.dispose();clearInterval(heartbeat);await heartbeatWork;try{if(transport) await transport.close();}finally{if(decisionLog!==null)fs.closeSync(decisionLog);await client.end();}}
