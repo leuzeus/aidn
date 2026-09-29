@@ -352,6 +352,10 @@ requires every plan check and every audit criterion on the exact integrated SHA.
 The pure contract gate checks the supervisor, integration journals and final
 validation bindings without claiming that it observed Git or a live lease.
 
+Scheduler fixtures also overlap completed workers against a single-invocation
+validator. They verify serial acceptance with concurrent workers, and no queued
+validation after cancellation or the first validation failure.
+
 For exact-commit verification, run
 `npm run perf:verify-agent-verification-fixtures`. Its required runtime gate
 `runtime-agent-verification` checks frozen controls, runner/environment pins,

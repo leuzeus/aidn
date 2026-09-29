@@ -55,6 +55,7 @@ export function createAgentExecutionScheduler({
     const stop = new AbortController(), active = new Map(), heartbeats = new Set(), instances = new WeakSet();
     let snapshot = null, supervisor = null, plan = null, graph = null, fatal = null, cancelled = false, durableCancellation = false, timedOut = false, coordinationLost = false;
     let deadline = Infinity, deadlineTimer = null;
+    let acceptanceTail = Promise.resolve();
     const abort = () => { cancelled = true; stop.abort(error("RUN_CANCELLED")); };
     if (signal) { signal.addEventListener("abort", abort, { once: true }); if (signal.aborted) abort(); }
     function halt(cause) { fatal ??= cause instanceof Error ? cause : error(String(cause)); stop.abort(fatal); }
@@ -179,7 +180,14 @@ export function createAgentExecutionScheduler({
       requireThat(STOPPED.has(document.bootstrap?.termination_state), "PREPARATION_STOP_UNCONFIRMED");
       return document;
     }
-    async function acceptResult(view, prepared) {
+    function acceptResult(view, prepared) {
+      // Workers stay concurrent; their stopped results share one validation boundary.
+      const pending = acceptanceTail.then(() => { alive(); return acceptStoppedResult(view, prepared); });
+      // Stop the queue before releasing another result after a failure or cancellation.
+      acceptanceTail = pending.catch(halt);
+      return pending;
+    }
+    async function acceptStoppedResult(view, prepared) {
       if (view.result.outcome !== "completed") return;
       requireThat(STOPPED.has(view.result.termination_state) && view.termination, "WORKER_STOP_UNCONFIRMED");
       const task = snapshot.tasks.find(item => item.task_id === view.attempt.task_id);

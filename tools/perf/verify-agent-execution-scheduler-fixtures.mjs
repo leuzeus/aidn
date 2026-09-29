@@ -57,6 +57,42 @@ await check("bounded concurrency, exact input SHA and deterministic acceptance/i
   assert.ok(f.operations.indexOf("integration-applied:b") < f.operations.indexOf("claim:c"));
   assert.equal(f.state.final_validation.validation.integrated_sha, f.state.integration_head.sha);
 }));
+await check("parallel workers serialize their shared validation boundary", async () => fixture({}, async f => {
+  let live = 0, maximum = 0; const calls = [];
+  const result = await f.create({ validateTask: async context => {
+    calls.push(context.task.task_id); live++; maximum = Math.max(maximum, live);
+    try {
+      assert.equal(live, 1, "shared boundary received overlapping invocations");
+      await delay(40); return await f.callbacks.validateTask(context);
+    } finally { live--; }
+  } }).run(f.options);
+  assert.equal(result.status, "completed", result.reason_code); assert.equal(f.maxLive, 2);
+  assert.equal(maximum, 1); assert.deepEqual(calls, ["a", "b", "c"]);
+  assert.equal(f.state.final_validation.validation.integrated_sha, f.state.integration_head.sha);
+}));
+await check("cancelled acceptance queue never starts another validation", async () => fixture({}, async f => {
+  const abort = new AbortController(); const calls = [];
+  const result = await f.create({ validateTask: async context => {
+    calls.push(context.task.task_id);
+    await delay(40); abort.abort(); await delay(5);
+    return f.callbacks.validateTask(context);
+  } }).run({ ...f.options, signal: abort.signal });
+  await delay(30);
+  assert.equal(result.status, "recovery_required"); assert.equal(result.reason_code, "TASK_VALIDATION_INTERRUPTED"); assert.equal(f.maxLive, 2);
+  assert.deepEqual(calls, ["a"]); assert.equal(f.state.acceptances.length, 0);
+  assert.equal(f.state.attempts.length, 2); assert.equal(f.state.integrations.length, 0);
+}));
+await check("first validation failure stops queued acceptance without hiding its cause", async () => fixture({}, async f => {
+  const calls = [];
+  const result = await f.create({ validateTask: async context => {
+    calls.push(context.task.task_id); await delay(40);
+    throw Object.assign(new Error("FIRST_VALIDATION_REFUSED"), { code: "FIRST_VALIDATION_REFUSED" });
+  } }).run(f.options);
+  await delay(30);
+  assert.equal(result.status, "recovery_required"); assert.equal(result.reason_code, "FIRST_VALIDATION_REFUSED");
+  assert.deepEqual(calls, ["a"]); assert.equal(f.state.acceptances.length, 0);
+  assert.equal(f.state.attempts.length, 2); assert.equal(f.state.integrations.length, 0);
+}));
 await check("concurrency one serializes child execution", async () => fixture({ concurrency: 1 }, async f => {
   const result = await f.create().run(f.options); assert.equal(result.status, "completed", result.reason_code); assert.equal(f.maxLive, 1);
 }));

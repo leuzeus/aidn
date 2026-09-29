@@ -111,6 +111,10 @@ controls and the proof authority. Before capturing a completed worker result,
 the supervisor verifies the full plan/run/task/attempt/delegation/request/result
 binding. Validation receives the exact task specification from the frozen plan;
 the enriched delegated-task record remains the acceptance authority.
+Stopped results enter capture, commit, validation and acceptance serially because
+they share one validation boundary. Worker execution remains concurrent. Queued
+results recheck run cancellation and deadline before effects; a failed acceptance
+stops the queue without starting another validation.
 PostgreSQL remains the exclusive shared authority and existing sequential
 workflows still need no PostgreSQL.
 
