@@ -183,10 +183,13 @@ export function createAgentExecutionScheduler({
       if (view.result.outcome !== "completed") return;
       requireThat(STOPPED.has(view.result.termination_state) && view.termination, "WORKER_STOP_UNCONFIRMED");
       const task = snapshot.tasks.find(item => item.task_id === view.attempt.task_id);
+      requireThat(validateAgentExecutionBindings({ plan, run: snapshot.run, task, attempt: view.attempt,
+        delegation: view.delegation, request: view.request, result: view.result }).ok, "SUPERVISOR_RESULT_BINDING_INVALID");
+      const plannedTask = plan.tasks.find(item => item.task_id === task.task_id);
       const capture = await git.captureTaskChanges({ binding: prepared.binding, termination: view.termination, baseline: prepared.baseline, scope: task.scope });
       alive();
       const committed = await git.createTaskCommit({ capture, expectedCaptureSha256: capture.capture_sha256, commitIdentity });
-      const validation = await withinRun(() => validateTask({ runId, resultSha256: fingerprintAgentExecutionValue(view.result), plan: copy(plan), task: copy(task), validationIds: taskValidationIds(plan, task), candidateSha: committed.source_sha, binding: copy(prepared.binding), signal: stop.signal }), "TASK_VALIDATION_INTERRUPTED");
+      const validation = await withinRun(() => validateTask({ runId, resultSha256: fingerprintAgentExecutionValue(view.result), plan: copy(plan), task: copy(plannedTask), validationIds: taskValidationIds(plan, plannedTask), candidateSha: committed.source_sha, binding: copy(prepared.binding), signal: stop.signal }), "TASK_VALIDATION_INTERRUPTED");
       alive();
       const acceptance = {
         contract_version: "agent-task-acceptance.v1", run_id: runId, task_id: task.task_id,

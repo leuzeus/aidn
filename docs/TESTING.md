@@ -368,6 +368,12 @@ verification snapshots are eligible only through authenticated observations
 already accepted by PostgreSQL. Test cleanup removes only the disposable corpus;
 it does not authorize deleting failed or preexisting user resources.
 
+The scheduler-to-verifier regression passes a PostgreSQL-shaped delegated task
+through supervision and the real local verification adapter. It checks that the
+validator receives the exact planned task, while changed task content, selected
+validation IDs or task hash refuse before capture, commit or validation effects.
+Its store/executor/Git scheduling doubles remain fixture evidence, not native proof.
+
 For the candidate Codex task executor and delegated admission, run
 `npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
 bounded JSONL, explicit configuration, serialized callbacks, termination outcomes,

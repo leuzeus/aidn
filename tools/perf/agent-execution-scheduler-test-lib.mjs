@@ -15,7 +15,7 @@ export const fixtureEvidence = { ref: "evidence/supervision.json", sha256: sha("
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 export const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks = null, verification = null, failure = {}, clock, barrier = realGit, runId = "run.fixture" } = {}) {
+export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks = null, verification = null, plan: suppliedPlan = null, failure = {}, clock, barrier = realGit, runId = "run.fixture" } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-scheduler-")), token = randomUUID();
   fs.writeFileSync(path.join(root, "owner"), token, { flag: "wx" });
   const repositoryRoot = path.join(root, "repository"), resourcesRoot = path.join(root, "resources");
@@ -47,7 +47,8 @@ export function createSchedulerFixture({ realGit = false, concurrency = 2, tasks
   rawPlan.validations = [{ validation_id: "contents", argv: ["fixture", "contents"] }];
   rawPlan.audit = { read_only: true, criteria: ["Changes remain in delegated scope"] };
   if (verification) rawPlan.verification = clone(verification);
-  const plan = normalizeAgentExecutionPlan(rawPlan);
+  const plan = normalizeAgentExecutionPlan(suppliedPlan ?? rawPlan);
+  baseSha = plan.base.sha;
   const state = {
     plan, run: { ...clone(chain.run), run_id: runId, canonical: clone(plan.canonical), plan_id: plan.plan_id, plan_sha256: plan.plan_sha256,
       task_ids: plan.tasks.map(task => task.task_id), lifecycle_status: "planned" },

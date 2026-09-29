@@ -5,6 +5,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { createVerificationFixture, canonical, digest, signed } from "./agent-verification-test-lib.mjs";
 import { createAgentValidationEvidenceVerifier } from "../../src/adapters/runtime/local-agent-verification.mjs";
 import { fingerprintAgentExecutionValue as fingerprint, normalizeAgentExecutionPlan } from "../../src/core/agents/agent-execution-contracts.mjs";
+import { createSchedulerFixture } from "./agent-execution-scheduler-test-lib.mjs";
 
 const checks = [];
 async function check(name, body) { try { await body(); checks.push({ name, status: "PASS" }); } catch (cause) { checks.push({ name, status: "FAIL", detail: String(cause.stack ?? cause).slice(0, 2400) }); } }
@@ -21,6 +22,27 @@ function forgedDocument(f, document, reference, mutate) {
     : Array.isArray(value) ? value.map(replace) : Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, replace(entry)])) : value;
   return replace(document);
 }
+
+await check("scheduler validates its canonical planned task through the real local verifier", () => fixture({}, async f => {
+  const scheduler = createSchedulerFixture({ plan: f.plan, runId: f.run.run_id });
+  try {
+    const producer = f.create();
+    const result = await scheduler.create({
+      // The scheduler/store/Git doubles supply a known real fixture commit;
+      // snapshot extraction, checks, signatures and strict task comparison are real.
+      git: { ...scheduler.git, createTaskCommit: async () => ({ source_sha: f.candidateSha, parent_sha: f.baseSha }) },
+      validateTask: input => producer.validateTask(input),
+      store: { ...scheduler.store, recordAcceptance: async input => {
+        await scheduler.store.recordAcceptance(input);
+        throw Object.assign(new Error("fixture stops after task acceptance"), { code: "FIXTURE_ACCEPTANCE_RECORDED" });
+      } },
+    }).run(scheduler.options);
+    assert.equal(result.reason_code, "FIXTURE_ACCEPTANCE_RECORDED");
+    assert.equal(f.calls, 1);
+    assert.equal(scheduler.state.acceptances[0].acceptance.decision, "accepted");
+    assert.equal(scheduler.state.acceptances[0].acceptance.validation.tested_sha, f.candidateSha);
+  } finally { scheduler.cleanup(); }
+}));
 
 await check("construction and failed availability do not write or launch", () => fixture({}, async f => {
   const before = fs.readdirSync(f.resourcesRoot).sort();

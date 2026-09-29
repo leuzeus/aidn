@@ -311,12 +311,35 @@ if (!process.argv.includes("--synthetic-only")) await check("real Git resumes an
   assert.deepEqual(f.state.integration_intents[0].intent,expected);
   assert.equal(f.state.integrations[0].prepared.prepared_by.generation,2);
 }));
+for (const [field, value] of [["objective", "Changed after execution"], ["validation_ids", ["foreign"]], ["task_contract_sha256", "0".repeat(64)]]) {
+  await check(`recovered completed-task ${field} refuses before capture, commit or validation`, async () => fixture({ tasks: [task("a")] }, async f => {
+    const interrupted = await f.create({ validateTask: async () => { throw new Error("fixture interruption"); } }).run(f.options);
+    assert.equal(interrupted.status, "recovery_required");
+    f.state.tasks[0][field] = value;
+    let effects = 0;
+    const result = await f.create({
+      git: { ...f.git,
+        captureTaskChanges: async input => { effects++; return f.git.captureTaskChanges(input); },
+        createTaskCommit: async input => { effects++; return f.git.createTaskCommit(input); },
+      },
+      validateTask: async input => { effects++; return f.callbacks.validateTask(input); },
+    }).resume({ ...f.options, reconciliation: proof });
+    assert.equal(result.status, "recovery_required");
+    assert.equal(result.reason_code, "SUPERVISOR_RESULT_BINDING_INVALID");
+    assert.equal(effects, 0);
+    assert.equal(f.state.acceptances.length, 0);
+    assert.equal(f.state.integrations.length, 0);
+  }));
+}
+
 await check("validation callbacks receive immutable run and result identities",async()=>fixture({tasks:[task("a")]},async f=>{
   const seen=[];
   const options=Object.fromEntries(["validateTask","validateRun","auditRun"].map(name=>[name,async args=>{seen.push({name,args:structuredClone({...args,signal:undefined})});return f.callbacks[name](args);} ]));
   const result=await f.create(options).run(f.options);assert.equal(result.status,"completed",result.reason_code);
   assert.deepEqual(seen.map(item=>item.args.runId),[f.options.runId,f.options.runId,f.options.runId]);
   assert.match(seen[0].args.resultSha256,/^[a-f0-9]{64}$/);
+  assert.deepEqual(seen[0].args.task, f.plan.tasks[0]);
+  assert.deepEqual(seen[0].args.validationIds, ["contents"]);
   assert.equal(seen[1].args.integrationSequence,1);assert.equal(seen[2].args.integrationSequence,1);
 }));
 await check("already applied recovery records fact without another Git CAS",async()=>fixture({tasks:[task("a")],failure:{afterCas:true}},async f=>{

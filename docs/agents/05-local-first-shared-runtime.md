@@ -107,8 +107,12 @@ separate required proofs. There is no automatic purge.
 Lot 6 adds explicit shared schema 5 integration intentions and authenticated
 verification observations. The intention precedes Git effects; local prepared
 results are adopted only after reconciliation. The frozen plan pins verification
-controls and the proof authority; PostgreSQL remains the exclusive shared
-authority and existing sequential workflows still need no PostgreSQL.
+controls and the proof authority. Before capturing a completed worker result,
+the supervisor verifies the full plan/run/task/attempt/delegation/request/result
+binding. Validation receives the exact task specification from the frozen plan;
+the enriched delegated-task record remains the acceptance authority.
+PostgreSQL remains the exclusive shared authority and existing sequential
+workflows still need no PostgreSQL.
 
 Lot 7 adds shared schema 6 for durable cancellation requests and cleanup
 operations/resources. Migration stays explicit. Cancellation is a request to
