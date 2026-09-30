@@ -135,7 +135,15 @@ closed. If runner persistence was interrupted after creation, recovery verifies
 the closed local process receipt against the exact request, candidate, helper and
 runner identity; any conflicting persisted runner is refused. Cleanup admits completed runs only, with
 stopped supervisor/attempt/Git trees, integrated commits and retained resource
-preimages. A new cleaner generation needs proof that its predecessor stopped.
+preimages. Full Git observations are captured during retention preparation. Cleanup
+transactions freshly compare physical identities, bytes, modes, directory entries
+and both worktree registration backlinks against that retained preimage, without
+repeating the Git subprocess inventory. Retained HEAD/tree/index fields are not
+new Git observations; the integration head keeps its separate current fence.
+Scans observe cancellation, and the existing inspection/coordination deadlines
+remain unchanged. Only the locked transaction snapshot may be shared between
+resource inspections; filesystem observations are never cached.
+A new cleaner generation needs proof that its predecessor stopped.
 Removal recovery observes the original directory and worktree metadata absent;
 a relocated worktree cannot be reported as removed. Owned verification snapshots
 must bind to persisted authenticated validation observations. Archives and source

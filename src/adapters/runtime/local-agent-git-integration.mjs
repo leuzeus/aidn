@@ -39,10 +39,14 @@ function fileState(file) {
   return { sha256: hash(bytes), bytes: bytes.length, executable: Boolean(before.mode & 0o111) };
 }
 
-async function snapshot(root, limits) {
+function checkCleanupSignal(signal) { if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED"); }
+
+async function snapshot(root, limits, signal) {
   const files = {}, dirs = [], aliases = new Set(); let bytes = 0;
   async function walk(directory, prefix) {
+    checkCleanupSignal(signal);
     for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : 1)) {
+      checkCleanupSignal(signal);
       if (!prefix && entry.name === ".git") continue;
       const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
       requireProof(isExactExecutionPath(relative), "AGENT_GIT_UNSAFE_ENTRY_PATH");
@@ -55,7 +59,7 @@ async function snapshot(root, limits) {
       await new Promise(resolve => setImmediate(resolve));
     }
   }
-  await walk(root, ""); return { files, dirs };
+  await walk(root, ""); checkCleanupSignal(signal); return { files, dirs };
 }
 
 function protectedPath(relative) {
@@ -257,12 +261,12 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
     if (!allowFailure) requireProof(!result.error && result.status === 0 && !result.signal, "AGENT_GIT_COMMAND_FAILED");
     return allowFailure ? result : buffer ? result.stdout : result.stdout.trimEnd();
   }
-  async function repository() {
-    const root = safePath(repoPath), common = safePath(await git(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]));
-    const objectFormat = await git(root, ["rev-parse", "--show-object-format"]);
+  async function repository(signal) {
+    const root = safePath(repoPath), common = safePath(await git(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"], { signal }));
+    const objectFormat = await git(root, ["rev-parse", "--show-object-format"], { signal });
     requireProof(["sha1", "sha256"].includes(objectFormat), "AGENT_GIT_OBJECT_FORMAT_UNSUPPORTED");
     // Reject external conversion/merge programs, even when inherited by includes.
-    const config = await git(root, ["config", "--null", "--list"]);
+    const config = await git(root, ["config", "--null", "--list"], { signal });
     for (const line of config.split("\0")) {
       const at = line.indexOf("\n"), name = line.slice(0, at), value = line.slice(at + 1);
       requireProof(!value || !/^(?:filter\..+\.(?:clean|smudge|process)|merge\..+\.driver)$/i.test(name), "AGENT_GIT_EXTERNAL_DRIVER_UNSUPPORTED");
@@ -358,6 +362,103 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
       controls, worktree_git: worktreeGit, root_mode: stat.mode, directory_modes: directoryModes,
       index_entries: indexed, tree_entries: treeFiles, blobs, modes, ...files };
   }
+  function cleanupPathFile(file, base, prefix = "") {
+    const physical = safePath(file);
+    requireProof(fs.lstatSync(physical).size <= maxBytes, "AGENT_GIT_CAPTURE_LIMIT");
+    const before = fileState(physical);
+    const text = fs.readFileSync(physical, "utf8");
+    requireProof(same(before, fileState(physical)) && text.startsWith(prefix), "AGENT_GIT_CLEANUP_REGISTRATION_CHANGED");
+    const value = text.slice(prefix.length).replace(/\r?\n$/, "");
+    requireProof(value && !/[\r\n\0]/.test(value), "AGENT_GIT_CLEANUP_REGISTRATION_CHANGED");
+    return path.resolve(base, value);
+  }
+  function cleanupGitDirectory(root) {
+    const pointer = safePath(path.join(root, ".git")), stat = fs.lstatSync(pointer);
+    return stat.isDirectory() ? pointer : safePath(cleanupPathFile(pointer, root, "gitdir: "));
+  }
+  function cleanupCommonDirectory(gitDir) {
+    const pointer = path.join(gitDir, "commondir");
+    return fs.existsSync(pointer) ? safePath(cleanupPathFile(pointer, gitDir)) : gitDir;
+  }
+  function cleanupRepository(state) {
+    const root = safePath(repoPath), common = cleanupCommonDirectory(cleanupGitDirectory(root));
+    requireProof(sha(state.head_sha), "AGENT_GIT_RETENTION_CHANGED");
+    // Format and Git-derived fields remain retained observations. Their control
+    // bytes are checked afresh; the integration head has its own current fence.
+    const identity = { common_dir: common, object_format: state.head_sha.length === 40 ? "sha1" : "sha256" };
+    const config = path.join(common, "config");
+    requireProof(state.controls?.[config] && same(fileState(safePath(config)), state.controls[config]), "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+    return { root, ...identity, repository_identity_sha256: fingerprint(identity) };
+  }
+  async function cleanupRegistrations(identity, signal) {
+    const roots = [], metadataRoot = path.join(identity.common_dir, "worktrees"), aliases = new Set();
+    // Include the primary worktree when the coordinator is itself linked.
+    if (key(path.basename(identity.common_dir)) === ".git") roots.push(path.dirname(identity.common_dir));
+    const entries = fs.existsSync(metadataRoot) ? fs.readdirSync(safePath(metadataRoot), { withFileTypes: true }) : [];
+    requireProof(entries.length <= 1000, "AGENT_GIT_CLEANUP_INSPECTION_LIMIT");
+    for (const entry of entries) {
+      checkCleanupSignal(signal);
+      const folded = entry.name.toLowerCase();
+      requireProof(!aliases.has(folded) && entry.isDirectory() && !entry.isSymbolicLink(), "AGENT_GIT_CLEANUP_REGISTRATION_CHANGED"); aliases.add(folded);
+      const gitDir = safePath(path.join(metadataRoot, entry.name));
+      const pointer = cleanupPathFile(path.join(gitDir, "gitdir"), gitDir), root = path.dirname(pointer);
+      requireProof(key(path.basename(pointer)) === ".git" && key(cleanupCommonDirectory(gitDir)) === key(identity.common_dir), "AGENT_GIT_CLEANUP_REGISTRATION_CHANGED");
+      if (fs.existsSync(root)) requireProof(key(cleanupGitDirectory(safePath(root))) === key(gitDir), "AGENT_GIT_CLEANUP_REGISTRATION_CHANGED");
+      requireProof(!roots.some(value => key(value) === key(root)), "AGENT_GIT_CLEANUP_REGISTRATION_CHANGED");
+      roots.push(root); await new Promise(resolve => setImmediate(resolve));
+    }
+    if (!roots.some(root => key(root) === key(identity.root))) roots.push(identity.root);
+    checkCleanupSignal(signal); return roots;
+  }
+  function cleanupHead(gitDir, identity, signal) {
+    const read = file => {
+      checkCleanupSignal(signal); const physical = safePath(file);
+      requireProof(fs.lstatSync(physical).size <= maxBytes, "AGENT_GIT_CAPTURE_LIMIT");
+      const before = fileState(physical);
+      requireProof(before.bytes <= maxBytes, "AGENT_GIT_CAPTURE_LIMIT");
+      const bytes = fs.readFileSync(physical);
+      requireProof(hash(bytes) === before.sha256 && same(before, fileState(physical)), "AGENT_GIT_CAPTURE_RACE");
+      return bytes.toString("utf8");
+    };
+    let value = read(path.join(gitDir, "HEAD")).replace(/\r?\n$/, "");
+    for (let depth = 0; depth < 16; depth++) {
+      checkCleanupSignal(signal);
+      if (sha(value)) return value;
+      requireProof(value.startsWith("ref: refs/heads/"), "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+      const ref = value.slice(5);
+      requireProof(isExactExecutionPath(ref), "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+      const loose = path.join(identity.common_dir, ref);
+      if (fs.existsSync(loose)) value = read(loose).replace(/\r?\n$/, "");
+      else {
+        const packed = path.join(identity.common_dir, "packed-refs");
+        requireProof(fs.existsSync(packed), "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+        const matches = read(packed).split(/\r?\n/).filter(line => line.slice(line.indexOf(" ") + 1) === ref);
+        requireProof(matches.length === 1, "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED"); value = matches[0].split(" ")[0];
+      }
+    }
+    fail("AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+  }
+  async function inspectCleanupPreimage(resource, value, identity, signal) {
+    const physical = safePath(resource.cwd), gitDir = cleanupGitDirectory(physical);
+    requireProof(key(gitDir) === key(safePath(value.git_dir)) && inside(identity.common_dir, gitDir)
+      && key(cleanupCommonDirectory(gitDir)) === key(identity.common_dir), "AGENT_GIT_CLEANUP_REGISTRATION_CHANGED");
+    const controls = {};
+    for (const file of [path.join(physical, ".git"), path.join(gitDir, "HEAD"), path.join(gitDir, "index"), path.join(identity.common_dir, "config")]) {
+      checkCleanupSignal(signal); controls[file] = fileState(safePath(file));
+    }
+    requireProof(cleanupHead(gitDir, identity, signal) === value.state.head_sha, "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+    const files = await snapshot(physical, limits, signal), worktreeGit = await snapshot(gitDir, limits, signal);
+    const stat = fs.lstatSync(physical), modes = {}, directoryModes = {};
+    for (const name of Object.keys(files.files)) { checkCleanupSignal(signal); modes[name] = fs.lstatSync(path.join(physical, name)).mode; await new Promise(resolve => setImmediate(resolve)); }
+    for (const name of files.dirs) { checkCleanupSignal(signal); directoryModes[name] = fs.lstatSync(path.join(physical, name)).mode; await new Promise(resolve => setImmediate(resolve)); }
+    const current = { cwd: physical, physical_identity: { device: stat.dev, inode: stat.ino, birthtime_ms: stat.birthtimeMs },
+      controls, worktree_git: worktreeGit, root_mode: stat.mode, directory_modes: directoryModes, modes, ...files };
+    const retained = Object.fromEntries(Object.keys(current).map(name => [name, value.state[name]]));
+    requireProof(same(current, retained), "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+    // No Git command, cached filesystem observation or synthetic HEAD/tree read
+    // is used inside the cleanup transaction.
+    checkCleanupSignal(signal);
+  }
   function checkIntent(intent, intentSha256) {
     assertAgentExecutionContract("integration-intent", intent);
     requireProof(fingerprint(intent) === intentSha256 && intent.ref === integrationRef
@@ -432,9 +533,11 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
       requireProof(["before", "after"].includes(phase) && resource && id(resource.resource_id)
         && resource.retention?.ref === `retention-${hash(resource.resource_id)}.json`, "AGENT_GIT_CLEANUP_RESOURCE_INVALID");
       if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
-      const identity = await repository(), saved = readEvidence(resource.retention.ref);
+      await assertOperationsAvailable();
+      checkCleanupSignal(signal);
+      const saved = readEvidence(resource.retention.ref);
       requireProof(same(saved.evidence, resource.retention), "AGENT_GIT_RETENTION_CHANGED");
-      const value = saved.value;
+      const value = saved.value, identity = cleanupRepository(value.state);
       requireProof(["attempt_worktree", "integration_worktree", "verification_worktree"].includes(resource.kind), "AGENT_GIT_CLEANUP_RESOURCE_INVALID");
       if (resource.kind === "verification_worktree") {
         const descriptor = value.snapshot_descriptor;
@@ -454,14 +557,18 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
         await new Promise(resolve => setImmediate(resolve));
       }
       requireProof(inside(identity.common_dir, value.git_dir) && Object.hasOwn(value.state.controls, path.join(value.git_dir, "index")), "AGENT_GIT_RETENTION_CHANGED");
-      const registrations = (await git(identity.root, ["worktree", "list", "--porcelain", "-z"])).split("\0").filter(line => line.startsWith("worktree ")).map(line => path.resolve(line.slice(9)));
+      const registrations = await cleanupRegistrations(identity, signal);
       requireProof(registrations.length <= 1000, "AGENT_GIT_CLEANUP_INSPECTION_LIMIT");
       const registered = registrations.some(root => key(root) === key(path.resolve(resource.cwd)));
       const exists = fs.existsSync(resource.cwd);
-      if (phase === "before") requireProof(exists && registered && same(await verificationState(resource.cwd), value.state), "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+      if (phase === "before") {
+        requireProof(exists && registered, "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+        await inspectCleanupPreimage(resource, value, identity, signal);
+      }
       else {
         requireProof(!exists && !registered && !fs.existsSync(value.git_dir), "AGENT_GIT_CLEANUP_NOT_REMOVED");
         for (const otherRoot of registrations) {
+          checkCleanupSignal(signal);
           const stat = fs.statSync(otherRoot, { throwIfNoEntry: false });
           requireProof(!stat || stat.dev !== value.state.physical_identity.device || stat.ino !== value.state.physical_identity.inode
             || stat.birthtimeMs !== value.state.physical_identity.birthtime_ms, "AGENT_GIT_CLEANUP_WORKTREE_RELOCATED");
@@ -485,7 +592,7 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
         && same(authority.ownership, ownership) && Number.isSafeInteger(authority.control_revision), "AGENT_GIT_CLEANUP_AUTHORITY_CHANGED");
       await port.inspectCleanup(resource, options);
       if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
-      const identity = await repository();
+      const identity = await repository(signal);
       if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
       await inspectCleanupHead(identity, cleanup, signal);
       if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");

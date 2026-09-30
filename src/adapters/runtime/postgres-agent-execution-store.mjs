@@ -573,13 +573,13 @@ export function createPostgresAgentExecutionStore({
       cleanupHeadFences.get(client).set(run.run_id,{head:copy(head),supervisor:copy(supervisor)});
     }
   }
-  async function cleanupInspection(client,run,cleanup,resource,phase) {
+  async function cleanupInspection(client,run,cleanup,resource,phase,lockedSnapshot=null) {
     if (typeof inspectCleanup!=="function") throw failure("CLEANUP_INSPECTOR_REQUIRED");
     let observed;
     try {
-      const state=await snapshot(client,run);
+      const state=lockedSnapshot ?? await snapshot(client,run);
       observed=boundedJson(await boundedVerification(signal=>inspectCleanup(copy(resource),{
-        phase,run:json(run,"run_json"),snapshot:state,cleanup:copy(cleanup),signal,
+        phase,run:json(run,"run_json"),snapshot:copy(state),cleanup:copy(cleanup),signal,
       }),"CLEANUP_INSPECTION_TIMED_OUT"));
     } catch(error) { if(knownFailures.has(error))throw error;throw failure("CLEANUP_INSPECTION_FAILED"); }
     if (!exactKeys(observed,"resource_id,cwd,preimage_sha256,repository_identity_sha256,retention,exists,registered,clean,retained,processes_stopped,links_safe")
@@ -701,7 +701,8 @@ export function createPostgresAgentExecutionStore({
           if(json(previous,"runner_json").host_id!==runner.host_id)throw failure("CLEANUP_HOST_MISMATCH");
         } else {
           if(expectedPreviousGeneration!==null)throw failure("CLEANUP_PREDECESSOR_MISMATCH");
-          for(const resource of cleanup.resources)await cleanupInspection(client,run,cleanup,resource,"before");
+          const lockedSnapshot=await snapshot(client,run);
+          for(const resource of cleanup.resources)await cleanupInspection(client,run,cleanup,resource,"before",lockedSnapshot);
         }
         const generation=Number(previous?.generation ?? 0)+1;
         if(!Number.isSafeInteger(generation))throw failure("GENERATION_LIMIT");

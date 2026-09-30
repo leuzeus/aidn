@@ -18,6 +18,10 @@ const git = (cwd, args) => {
     env: { ...env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" }, encoding: "utf8", timeout: 10000, windowsHide: true });
   assert.equal(output.status, 0, output.stderr); return output.stdout.trim();
 };
+const overwriteFixtureFile = (file, bytes) => {
+  const fd = fs.openSync(file, "r+");
+  try { fs.ftruncateSync(fd, 0); fs.writeFileSync(fd, bytes); } finally { fs.closeSync(fd); }
+};
 const make = (extra = {}) => createLocalAgentGitIntegration({ repositoryRoot: repo, resourcesRoot: resources, integrationRef: ref,
   verifyTermination: async () => ({ confirmed: true }), verifyCleanupTermination: async () => ({ confirmed: true }), ...extra });
 try {
@@ -71,7 +75,7 @@ try {
         if (args[0] === "worktree" && args[1] === "add") {
           const branch = args[3], worker = args[4], gitDir = path.join(common, "worktrees", path.basename(worker));
           fs.mkdirSync(worker); fs.mkdirSync(gitDir, { recursive: true }); branches.set(worker, branch);
-          fs.writeFileSync(path.join(worker, ".git"), `gitdir: ${gitDir}\n`); fs.writeFileSync(path.join(gitDir, "HEAD"), `ref: refs/heads/${branch}\n`); fs.writeFileSync(path.join(gitDir, "index"), "fixture-index");
+          fs.writeFileSync(path.join(worker, ".git"), `gitdir: ${gitDir}\n`); fs.writeFileSync(path.join(gitDir, "HEAD"), `ref: refs/heads/${branch}\n`); fs.writeFileSync(path.join(gitDir, "index"), "fixture-index"); fs.writeFileSync(path.join(gitDir, "gitdir"), path.join(worker, ".git") + "\n"); fs.writeFileSync(path.join(gitDir, "commondir"), path.relative(gitDir, common) + "\n"); const branchRef = path.join(common, "refs", "heads", branch); fs.mkdirSync(path.dirname(branchRef), { recursive: true }); fs.writeFileSync(branchRef, base + "\n");
         } else if (args[0] === "worktree" && args[1] === "list") output = [...branches.keys()].map(worker => `worktree ${worker}\0`).join("");
         else if (args[0] === "worktree" && args[1] === "remove") { removals++; throw new Error("fixture deletion must not occur"); }
         else if (args.includes("--git-common-dir")) output = common;
@@ -198,6 +202,52 @@ try {
     assert(retained.retained.some(item => item.path === ".aidn/receipt-fixture.json"));
     assert(retained.retained.some(item => item.area === "gitdir" && item.path === "index"));
   });
+  await check("cleanup inspections use fresh filesystem fences without Git subprocesses", async () => {
+    let calls = 0;
+    const inspector = make({ spawnProcess: () => { calls++; throw Error("unexpected cleanup Git subprocess"); } });
+    assert((await inspector.inspectCleanup(resource)).registered); assert.equal(calls, 0);
+    const retained = JSON.parse(fs.readFileSync(path.join(resources, resource.retention.ref), "utf8"));
+    const files = [path.join(resource.cwd, "a.txt"), path.join(retained.git_dir, "index"), path.join(retained.git_dir, "HEAD"), path.join(repo, ".git", "config")];
+    for (const file of files) {
+      const original = fs.readFileSync(file);
+      try { fs.appendFileSync(file, "changed"); await assert.rejects(inspector.inspectCleanup(resource), /AGENT_GIT_CLEANUP_PREIMAGE_CHANGED/); }
+      finally { fs.writeFileSync(file, original); }
+    }
+    const workerRef = "refs/heads/" + rows[0].workspace.branch;
+    try { git(repo, ["update-ref", workerRef, integrated]); await assert.rejects(inspector.inspectCleanup(resource), /AGENT_GIT_CLEANUP_PREIMAGE_CHANGED/); }
+    finally { git(repo, ["update-ref", workerRef, retained.state.head_sha]); }
+    git(repo, ["pack-refs", "--all"]); assert((await inspector.inspectCleanup(resource)).registered);
+    const extra = path.join(resource.cwd, "unexpected.txt");
+    try { fs.writeFileSync(extra, "new"); await assert.rejects(inspector.inspectCleanup(resource), /AGENT_GIT_CLEANUP_PREIMAGE_CHANGED/); }
+    finally { fs.unlinkSync(extra); }
+    assert.equal(calls, 0);
+  });
+  await check("cleanup validates both backlinks and common directory", async () => {
+    const retained = JSON.parse(fs.readFileSync(path.join(resources, resource.retention.ref), "utf8"));
+    const inspector = make({ spawnProcess: () => { throw Error("unexpected Git subprocess"); } });
+    assert((await inspector.inspectCleanup(resource)).registered);
+    for (const file of [path.join(resource.cwd, ".git"), path.join(retained.git_dir, "gitdir"), path.join(retained.git_dir, "commondir")]) {
+      const original = fs.readFileSync(file);
+      try { overwriteFixtureFile(file, "invalid\n"); await assert.rejects(inspector.inspectCleanup(resource), /AGENT_GIT_|ENOENT/); }
+      finally { overwriteFixtureFile(file, original); }
+    }
+  });
+  await check("cleanup supports an independently bound linked coordinator", async () => {
+    const coordinator = path.join(temp, "linked coordinator"), linkedResources = path.join(temp, "linked resources");
+    git(repo, ["worktree", "add", "--detach", coordinator, base]);
+    const options = { repositoryRoot: coordinator, resourcesRoot: linkedResources };
+    const linked = make(options), prepared = await linked.prepareUnassignedWorkspace({ preparationId: "preparation.linked", taskId: "linked", taskContractSha256: "a".repeat(64), baseSha: base });
+    const retained = await linked.prepareCleanupRetention({ resourceId: "resource.linked", kind: "attempt_worktree", cwd: prepared.workspace.cwd, attemptId: "attempt.linked" });
+    const inspector = make({ ...options, spawnProcess: () => { throw Error("unexpected Git subprocess"); } });
+    assert((await inspector.inspectCleanup(retained)).registered);
+  });
+  await check("cleanup cancellation stops scanning without starting a Git process", async () => {
+    const controller = new AbortController(); let calls = 0;
+    const inspector = make({ spawnProcess: () => { calls++; throw Error("unexpected Git subprocess"); } });
+    setImmediate(() => controller.abort());
+    await assert.rejects(inspector.inspectCleanup(resource, { signal: controller.signal }), /AGENT_GIT_CLEANUP_CANCELLED/);
+    assert.equal(calls, 0); assert(fs.existsSync(resource.cwd));
+  });
   await check("cleanup refuses altered retained blobs and unconfirmed termination", async () => {
     const retained = JSON.parse(fs.readFileSync(path.join(resources, resource.retention.ref), "utf8")), file = path.join(resources, retained.retained[0].ref), original = fs.readFileSync(file);
     try { fs.appendFileSync(file, "x"); await assert.rejects(port.inspectCleanup(resource), /AGENT_GIT_RETENTION_CHANGED/); }
@@ -237,6 +287,10 @@ try {
     const moved = cwd + "-relocated"; git(repo, ["worktree", "move", cwd, moved]);
     await assert.rejects(port.inspectCleanup(movedResource, { phase: "after" }), /AGENT_GIT_CLEANUP_NOT_REMOVED/);
     assert(fs.existsSync(moved));
+    const oldGitDir = git(moved, ["rev-parse", "--absolute-git-dir"]), nextGitDir = oldGitDir + "-relocated";
+    fs.renameSync(oldGitDir, nextGitDir);
+    overwriteFixtureFile(path.join(moved, ".git"), "gitdir: " + nextGitDir + "\n");
+    await assert.rejects(port.inspectCleanup(movedResource, { phase: "after" }), /AGENT_GIT_CLEANUP_WORKTREE_RELOCATED/);
   });
   await check("controlled Git journals bound fixture termination and filters inherited secrets", async () => {
     const controlledResources = path.join(temp, "controlled resources"), controlledRef = "refs/heads/codex/controlled-fixture";

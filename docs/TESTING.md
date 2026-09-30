@@ -371,6 +371,12 @@ it does not establish native read/write denial or authorize sandbox setup.
 Git recovery fixtures separately cover intent-before-effect, adoption of exact
 local preparation, missing/partial resources and preserved conflicts. PostgreSQL
 fixtures cover additive schema 5, immutable intent and authenticated observations.
+Workspace cleanup fixtures reject fresh content, index, HEAD, config and backlink
+changes without spawning Git inspection processes. They also cover linked
+coordinators, cancellation during scanning, and relocation with renamed worktree
+metadata. These checks retain the full Git preparation and current integration
+head checks; retained Git fields are not reported as fresh observations.
+
 Schema 6 adds cancellation and cleanup ownership. The PostgreSQL suite tests
 generations, retention evidence, stopped predecessors, immutable cleanup results
 and the window between actual Git removal and result publication. Its owned

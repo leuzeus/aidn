@@ -441,7 +441,8 @@ unconfirmed and the collector refuses subsequent calls. After a confirmed
 empty Job, a callback refusal retains its first bounded integrity or deadline
 code; controller timeout,
 cancellation and unknown termination retain their own precedence.
-This new bridge has not received native qualification for the lot 7 candidate.
+Native qualification of this bridge must be retained for the exact candidate
+and helper composition before public agent-run execution is admitted.
 
 Prepare a new catalogue for the campaign before reserving the run. It needs one
 distinct pristine worker root per attempt, including the dependent task; do not
@@ -466,8 +467,8 @@ trampoline change requires new native evidence. Earlier lot 4 results qualify
 only their original bytes. The final lot 7 campaign must run two actual Codex
 workers concurrently, integrate their independent scopes, run a dependent task
 on that integrated SHA, validate and audit it, and demonstrate preservation and
-owned cleanup. This campaign has not been executed for the current lot 7
-candidate. Portable fixture PASS, native metadata readiness and human approval
+owned cleanup. Retain the campaign evidence with its exact candidate and
+composition bindings. Portable fixture PASS, native metadata readiness and human approval
 remain distinct from that final result.
 
 Windows process and validation confinement probes are separate explicit tools;
