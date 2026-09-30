@@ -48,6 +48,41 @@ try {
     assert((await make(options).inspectGitOperations()).operations.find(row => row.operation_id === chosen.operation_id).recovery_required);
     await assert.rejects(make(options).inspectIntegration({}, { phase: "head" }), /AGENT_GIT_RECOVERY_REQUIRED/); assert.equal(count, 4);
   });
+  await check("large operation journals remain bounded and freshly detect a late missing termination", async () => {
+    const repositoryRoot = path.join(temp, "journal-repo"), sourceRoot = path.join(temp, "journal-resources");
+    const source = await make({ repositoryRoot, resourcesRoot: sourceRoot }).inspectGitOperations();
+    const template = source.operations.find(row => !row.recovery_required), resourcesRoot = path.join(temp, "large-journal");
+    const directory = path.join(resourcesRoot, "git-operations"); fs.mkdirSync(directory, { recursive: true });
+    for (let index = 0; index < 1600; index++) {
+      const operationId = randomUUID(), intent = { ...template.intent, operation_id: operationId }, digest = fingerprint(intent);
+      const records = { intent, observed: { ...template.observed, operation_id: operationId, runner_id: operationId, intent_sha256: digest },
+        closed: { ...template.closed, operation_id: operationId, intent_sha256: digest,
+          termination_proof: { ...template.closed.termination_proof, runner_id: operationId } } };
+      for (const [suffix, record] of Object.entries(records)) fs.writeFileSync(path.join(directory, operationId + "." + suffix + ".json"), JSON.stringify(record));
+    }
+    const port = make({ repositoryRoot, resourcesRoot, requireConfirmedGitTermination: true,
+      runGitProcess: async () => { throw Error("journal inspection must not launch a process"); } });
+    const first = await port.inspectGitOperations(); assert.equal(first.operations.length, 1600);
+    assert(first.operations.every(row => !row.recovery_required));
+    const last = first.operations.at(-1).operation_id, closedPath = path.join(directory, last + ".closed.json");
+    const closed = fs.readFileSync(closedPath); fs.unlinkSync(closedPath);
+    const second = await port.inspectGitOperations();
+    assert.deepEqual(second.operations.filter(row => row.recovery_required).map(row => row.operation_id), [last]);
+    fs.writeFileSync(closedPath, closed);
+    const originalImmediate = globalThis.setImmediate, originalNow = performance.now; let yields = 0, expired = false;
+    try {
+      performance.now = () => originalNow.call(performance) + (expired ? 4501 : 0);
+      globalThis.setImmediate = (callback, ...args) => originalImmediate(() => { if (++yields === 200) expired = true; callback(...args); });
+      await assert.rejects(port.inspectGitOperations(), /AGENT_GIT_OPERATION_INSPECTION_LIMIT/);
+      assert.equal(yields, 200);
+    } finally { globalThis.setImmediate = originalImmediate; performance.now = originalNow; }
+    const intentPath = path.join(directory, last + ".intent.json"), intent = fs.readFileSync(intentPath);
+    fs.writeFileSync(intentPath, Buffer.alloc(65537, 32));
+    await assert.rejects(port.inspectGitOperations(), /AGENT_GIT_OPERATION_LIMIT/);
+    fs.writeFileSync(intentPath, intent);
+    fs.linkSync(intentPath, path.join(resourcesRoot, "aliased-intent"));
+    await assert.rejects(port.inspectGitOperations(), /AGENT_GIT_UNSAFE_FILE/);
+  });
   await check("prepared catalog refuses aliased roots, branches and worktree identities before effects", () => {
     const row = (taskId, suffix) => ({ task_id: taskId, task_contract_sha256: "a".repeat(64), workspace: { cwd: path.join(temp, `catalog-${suffix}`),
       branch: `codex/${suffix}`, worktree_id: `root.${suffix}`, input_sha: "1".repeat(40) }, preparation: { state: {}, preimage_sha256: fingerprint({}) } });

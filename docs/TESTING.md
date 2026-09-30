@@ -283,6 +283,10 @@ reject relocation as evidence of deletion, recover an already removed owned
 worktree, and preserve unknown controlled-process termination. The injected
 process controller is a double, even when its child is real Git.
 
+The workspace fixture also inspects a 1,600-operation retained journal within
+the existing bound, then detects a newly missing termination record. Oversized
+and multiply linked journal records remain rejected before admission.
+
 Native-attempt fixtures check pinned files, immutable preparation/termination
 receipts, unavailable prerequisites and constructor purity. Sandbox-validation
 fixtures check closed configuration, framed protocol and boundary contracts.

@@ -148,3 +148,8 @@ Removal recovery observes the original directory and worktree metadata absent;
 a relocated worktree cannot be reported as removed. Owned verification snapshots
 must bind to persisted authenticated validation observations. Archives and source
 commit references survive cleanup; failed runs and conflicts are retained.
+
+Operation-journal inspection reads each record once, checking its physical path,
+size and stable file identity before parsing those same bytes. Full inspection
+remains fresh across calls and keeps the 4.5-second bound, including for large
+retained journals; missing termination records continue to block recovery.

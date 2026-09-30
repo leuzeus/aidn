@@ -109,12 +109,29 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
   }
   async function readOperations({ pendingOnly = false } = {}) {
     if (!fs.existsSync(operationDirectory)) return [];
-    const names = fs.readdirSync(safePath(operationDirectory));
+    const directory = safePath(operationDirectory), directoryBefore = fs.lstatSync(directory);
+    requireProof(directoryBefore.isDirectory(), "AGENT_GIT_PATH_REDIRECT");
+    const checkDirectory = () => {
+      requireProof(safePath(operationDirectory) === directory, "AGENT_GIT_PATH_REDIRECT");
+      const after = fs.lstatSync(directory);
+      requireProof(after.isDirectory() && directoryBefore.ino === after.ino && directoryBefore.dev === after.dev
+        && directoryBefore.birthtimeMs === after.birthtimeMs, "AGENT_GIT_CAPTURE_RACE");
+    };
+    const names = fs.readdirSync(directory);
     requireProof(names.length <= 100000, "AGENT_GIT_OPERATION_LIMIT");
     const end = performance.now() + 4500, records = [];
     for (const name of names.filter(name => name.endsWith(".intent.json") && (!pendingOnly || !settledOperations.has(name.slice(0, -".intent.json".length)))).sort()) {
       const operationId = name.slice(0, -".intent.json".length);
-      const read = suffix => { const file = operationFile(operationId, suffix); if (!fs.existsSync(file)) return null; requireProof(fs.lstatSync(file).size <= 65536, "AGENT_GIT_OPERATION_LIMIT"); fileState(file); return JSON.parse(fs.readFileSync(safePath(file), "utf8")); };
+      const read = suffix => {
+        const file = operationFile(operationId, suffix); if (!fs.existsSync(file)) return null;
+        const target = path.join(directory, path.basename(file)), before = fs.lstatSync(target);
+        requireProof(before.isFile() && !before.isSymbolicLink() && before.nlink === 1, "AGENT_GIT_UNSAFE_FILE");
+        requireProof(before.size <= 65536, "AGENT_GIT_OPERATION_LIMIT");
+        const bytes = fs.readFileSync(target), after = fs.lstatSync(target);
+        requireProof(before.ino === after.ino && before.dev === after.dev && before.size === after.size
+          && before.mtimeMs === after.mtimeMs && before.mode === after.mode && after.nlink === 1, "AGENT_GIT_CAPTURE_RACE");
+        return JSON.parse(bytes.toString("utf8"));
+      };
       const intent = read("intent"), observed = read("observed"), closed = read("closed"), reconciliation = read("reconciled");
       requireProof(intent.operation_id === operationId && intent.repository_root === repoPath && intent.ref === integrationRef, "AGENT_GIT_OPERATION_CHANGED");
       const digest = fingerprint(intent);
@@ -127,8 +144,13 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
       if (!recoveryRequired) settledOperations.add(operationId);
       records.push({ operation_id: operationId, intent_sha256: digest, intent, observed, closed, reconciliation, recovery_required: recoveryRequired });
       requireProof(performance.now() < end, "AGENT_GIT_OPERATION_INSPECTION_LIMIT");
-      if (records.length % 8 === 0) await new Promise(resolve => setImmediate(resolve));
+      if (records.length % 8 === 0) {
+        checkDirectory(); await new Promise(resolve => setImmediate(resolve)); checkDirectory();
+        requireProof(performance.now() < end, "AGENT_GIT_OPERATION_INSPECTION_LIMIT");
+      }
     }
+    checkDirectory();
+    requireProof(performance.now() < end, "AGENT_GIT_OPERATION_INSPECTION_LIMIT");
     return records;
   }
   async function assertOperationsAvailable() {
