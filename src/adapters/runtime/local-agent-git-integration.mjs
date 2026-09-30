@@ -69,7 +69,7 @@ function protectedPath(relative) {
 
 /** Bound to one repository and one dedicated integration ref. No command runs at construction. */
 export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, integrationRef,
-  verifyTermination, verifyMoves, verifyGitTermination, verifyCleanupTermination, preparedWorkspaces = null, gitExecutable = "git", spawnProcess = spawn,
+  verifyTermination, verifyMoves, verifyGitTermination, verifyCleanupTermination, verifyCleanupBatchTermination, preparedWorkspaces = null, gitExecutable = "git", spawnProcess = spawn,
   runGitProcess = null, requireConfirmedGitTermination = false, journalReadOperations = false,
   verificationSnapshotsRoot = null,
   commandTimeoutMs = 10000, stopGraceMs = 1000, maxEntries = 20000, maxBytes = 128 * 1024 * 1024 } = {}) {
@@ -502,6 +502,62 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
     const observed = await git(identity.root, ["rev-parse", "--verify", "--end-of-options", `${integrationRef}^{commit}`], { allowFailure: true, signal });
     requireProof(!observed.error && observed.status === 0 && observed.stdout.trim() === cleanup.integrated_sha, "AGENT_GIT_CLEANUP_HEAD_CHANGED");
   }
+  async function inspectCleanupResource(resource, { phase = "before", run, snapshot: runSnapshot, cleanup, signal } = {}, verifyStopped = true) {
+    requireProof(["before", "after"].includes(phase) && resource && id(resource.resource_id)
+      && resource.retention?.ref === `retention-${hash(resource.resource_id)}.json`, "AGENT_GIT_CLEANUP_RESOURCE_INVALID");
+    if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
+    if (verifyStopped) await assertOperationsAvailable();
+    checkCleanupSignal(signal);
+    const saved = readEvidence(resource.retention.ref);
+    requireProof(same(saved.evidence, resource.retention), "AGENT_GIT_RETENTION_CHANGED");
+    const value = saved.value, identity = cleanupRepository(value.state);
+    requireProof(["attempt_worktree", "integration_worktree", "verification_worktree"].includes(resource.kind), "AGENT_GIT_CLEANUP_RESOURCE_INVALID");
+    if (resource.kind === "verification_worktree") {
+      const descriptor = value.snapshot_descriptor;
+      requireProof(descriptor && fingerprint(descriptor) === resource.snapshot_sha256 && value.snapshot_sha256 === resource.snapshot_sha256
+        && descriptor.cwd === resource.cwd && descriptor.cwd === path.join(snapshotPath, `verification-${hash(descriptor.snapshot_id)}`)
+        && (!run || run.run_id === descriptor.run_id)
+        && same(readEvidence(`verification-${hash(descriptor.snapshot_id)}.snapshot.json`).value, descriptor), "AGENT_GIT_SNAPSHOT_BINDING_INVALID");
+    }
+    requireProof(["resource_id", "kind", "cwd", "attempt_id", "integration_id", "preimage_sha256"].every(name => same(value[name], resource[name]))
+      && value.repository_identity_sha256 === identity.repository_identity_sha256 && fingerprint(value.state) === resource.preimage_sha256
+      && inside(resourcePath, resource.cwd), "AGENT_GIT_RETENTION_CHANGED");
+    for (const item of value.retained) {
+      if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
+      requireProof(item.ref === `retained-blobs/${item.sha256}` && /^[a-f0-9]{64}$/.test(item.sha256), "AGENT_GIT_RETENTION_CHANGED");
+      const actual = fileState(safePath(path.join(resourcePath, item.ref)));
+      requireProof(actual.sha256 === item.sha256 && actual.bytes === item.bytes, "AGENT_GIT_RETENTION_CHANGED");
+      await new Promise(resolve => setImmediate(resolve));
+    }
+    requireProof(inside(identity.common_dir, value.git_dir) && Object.hasOwn(value.state.controls, path.join(value.git_dir, "index")), "AGENT_GIT_RETENTION_CHANGED");
+    const registrations = await cleanupRegistrations(identity, signal);
+    requireProof(registrations.length <= 1000, "AGENT_GIT_CLEANUP_INSPECTION_LIMIT");
+    const registered = registrations.some(root => key(root) === key(path.resolve(resource.cwd)));
+    const exists = fs.existsSync(resource.cwd);
+    if (phase === "before") {
+      requireProof(exists && registered, "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
+      await inspectCleanupPreimage(resource, value, identity, signal);
+    }
+    else {
+      requireProof(!exists && !registered && !fs.existsSync(value.git_dir), "AGENT_GIT_CLEANUP_NOT_REMOVED");
+      for (const otherRoot of registrations) {
+        checkCleanupSignal(signal);
+        const stat = fs.statSync(otherRoot, { throwIfNoEntry: false });
+        requireProof(!stat || stat.dev !== value.state.physical_identity.device || stat.ino !== value.state.physical_identity.inode
+          || stat.birthtimeMs !== value.state.physical_identity.birthtime_ms, "AGENT_GIT_CLEANUP_WORKTREE_RELOCATED");
+      }
+      if (cleanup) await inspectCleanupHead(identity, cleanup, signal);
+    }
+    if (verifyStopped) {
+      requireProof(typeof verifyCleanupTermination === "function", "AGENT_GIT_CLEANUP_STOP_REQUIRED");
+      const stopped = await verifyCleanupTermination({ resource: structuredClone(resource), run, snapshot: runSnapshot, cleanup, binding: value.binding, termination: value.termination });
+      requireProof(stopped?.confirmed === true, "AGENT_GIT_TERMINATION_UNCONFIRMED");
+    }
+    if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
+    return { resource_id: resource.resource_id, cwd: resource.cwd, preimage_sha256: resource.preimage_sha256,
+      repository_identity_sha256: identity.repository_identity_sha256, retention: resource.retention,
+      exists, registered, clean: true, retained: true, processes_stopped: verifyStopped, links_safe: true };
+  }
   const port = {
     async previewCleanupRetention({ resourceId, kind, cwd, attemptId = null, integrationId = null, binding = null, termination = null, verificationSnapshot = null }) {
       requireProof(id(resourceId) && ["attempt_worktree", "integration_worktree", "verification_worktree"].includes(kind)
@@ -551,59 +607,18 @@ export function createLocalAgentGitIntegration({ repositoryRoot, resourcesRoot, 
       requireProof(same(retention, resource.retention), "AGENT_GIT_RETENTION_CHANGED");
       return resource;
     },
-    async inspectCleanup(resource, { phase = "before", run, snapshot: runSnapshot, cleanup, signal } = {}) {
-      requireProof(["before", "after"].includes(phase) && resource && id(resource.resource_id)
-        && resource.retention?.ref === `retention-${hash(resource.resource_id)}.json`, "AGENT_GIT_CLEANUP_RESOURCE_INVALID");
-      if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
-      await assertOperationsAvailable();
-      checkCleanupSignal(signal);
-      const saved = readEvidence(resource.retention.ref);
-      requireProof(same(saved.evidence, resource.retention), "AGENT_GIT_RETENTION_CHANGED");
-      const value = saved.value, identity = cleanupRepository(value.state);
-      requireProof(["attempt_worktree", "integration_worktree", "verification_worktree"].includes(resource.kind), "AGENT_GIT_CLEANUP_RESOURCE_INVALID");
-      if (resource.kind === "verification_worktree") {
-        const descriptor = value.snapshot_descriptor;
-        requireProof(descriptor && fingerprint(descriptor) === resource.snapshot_sha256 && value.snapshot_sha256 === resource.snapshot_sha256
-          && descriptor.cwd === resource.cwd && descriptor.cwd === path.join(snapshotPath, `verification-${hash(descriptor.snapshot_id)}`)
-          && (!run || run.run_id === descriptor.run_id)
-          && same(readEvidence(`verification-${hash(descriptor.snapshot_id)}.snapshot.json`).value, descriptor), "AGENT_GIT_SNAPSHOT_BINDING_INVALID");
-      }
-      requireProof(["resource_id", "kind", "cwd", "attempt_id", "integration_id", "preimage_sha256"].every(name => same(value[name], resource[name]))
-        && value.repository_identity_sha256 === identity.repository_identity_sha256 && fingerprint(value.state) === resource.preimage_sha256
-        && inside(resourcePath, resource.cwd), "AGENT_GIT_RETENTION_CHANGED");
-      for (const item of value.retained) {
-        if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
-        requireProof(item.ref === `retained-blobs/${item.sha256}` && /^[a-f0-9]{64}$/.test(item.sha256), "AGENT_GIT_RETENTION_CHANGED");
-        const actual = fileState(safePath(path.join(resourcePath, item.ref)));
-        requireProof(actual.sha256 === item.sha256 && actual.bytes === item.bytes, "AGENT_GIT_RETENTION_CHANGED");
-        await new Promise(resolve => setImmediate(resolve));
-      }
-      requireProof(inside(identity.common_dir, value.git_dir) && Object.hasOwn(value.state.controls, path.join(value.git_dir, "index")), "AGENT_GIT_RETENTION_CHANGED");
-      const registrations = await cleanupRegistrations(identity, signal);
-      requireProof(registrations.length <= 1000, "AGENT_GIT_CLEANUP_INSPECTION_LIMIT");
-      const registered = registrations.some(root => key(root) === key(path.resolve(resource.cwd)));
-      const exists = fs.existsSync(resource.cwd);
-      if (phase === "before") {
-        requireProof(exists && registered, "AGENT_GIT_CLEANUP_PREIMAGE_CHANGED");
-        await inspectCleanupPreimage(resource, value, identity, signal);
-      }
-      else {
-        requireProof(!exists && !registered && !fs.existsSync(value.git_dir), "AGENT_GIT_CLEANUP_NOT_REMOVED");
-        for (const otherRoot of registrations) {
-          checkCleanupSignal(signal);
-          const stat = fs.statSync(otherRoot, { throwIfNoEntry: false });
-          requireProof(!stat || stat.dev !== value.state.physical_identity.device || stat.ino !== value.state.physical_identity.inode
-            || stat.birthtimeMs !== value.state.physical_identity.birthtime_ms, "AGENT_GIT_CLEANUP_WORKTREE_RELOCATED");
-        }
-        if (cleanup) await inspectCleanupHead(identity, cleanup, signal);
-      }
-      requireProof(typeof verifyCleanupTermination === "function", "AGENT_GIT_CLEANUP_STOP_REQUIRED");
-      const stopped = await verifyCleanupTermination({ resource: structuredClone(resource), run, snapshot: runSnapshot, cleanup, binding: value.binding, termination: value.termination });
+    async inspectCleanup(resource, options = {}) { return inspectCleanupResource(resource, options); },
+    async inspectCleanupBatch(resources, options = {}) {
+      requireProof(typeof verifyCleanupBatchTermination === "function", "AGENT_GIT_CLEANUP_STOP_REQUIRED");
+      requireProof(Array.isArray(resources) && resources.length > 0 && resources.length <= 64 && same(resources, options.cleanup?.resources)
+        && new Set(resources.map(row => row.resource_id)).size === resources.length, "AGENT_GIT_CLEANUP_RESOURCE_INVALID");
+      const observations = [];
+      for (const resource of resources) observations.push(await inspectCleanupResource(resource, options, false));
+      checkCleanupSignal(options.signal);
+      const stopped = await verifyCleanupBatchTermination({ ...options, resources: structuredClone(resources) });
       requireProof(stopped?.confirmed === true, "AGENT_GIT_TERMINATION_UNCONFIRMED");
-      if (signal?.aborted) fail("AGENT_GIT_CLEANUP_CANCELLED");
-      return { resource_id: resource.resource_id, cwd: resource.cwd, preimage_sha256: resource.preimage_sha256,
-        repository_identity_sha256: identity.repository_identity_sha256, retention: resource.retention,
-        exists, registered, clean: true, retained: true, processes_stopped: true, links_safe: true };
+      checkCleanupSignal(options.signal);
+      return observations.map(value => ({ ...value, processes_stopped: true }));
     },
     async removeOwnedWorktree({ resource, cleanup, ownership, verifyAuthority, run, snapshot: runSnapshot, signal }) {
       requireProof(cleanup && typeof verifyAuthority === "function" && ownership, "AGENT_GIT_CLEANUP_AUTHORITY_REQUIRED");

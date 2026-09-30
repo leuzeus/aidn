@@ -115,6 +115,14 @@ function makeAssembly({ context, connectionString, verifyActivation }, options =
       && proof?.active_processes === 0 && proof.helper_sha256 === config.native.helper.helper_sha256
       && proof.source_sha256 === config.native.helper.source_sha256 && proof.candidate_sha256 === plan.execution.engine.sha256;
   }
+  async function verifyResourceStop({ snapshot: supplied }) {
+    const snapshot = supplied ?? await getSnapshot(), operations = await git.inspectGitOperations();
+    const validations = await boundary.inspectOperations();
+    let supervisorStopped = snapshot.supervision.current?.status === "stopped" && Boolean(snapshot.supervision.current.termination);
+    if (!supervisorStopped && snapshot.supervision.current) { try { await stopFacts(snapshot, snapshot.supervision.current.runner); supervisorStopped = true; } catch { /* Read-only proof unavailable. */ } }
+    return { confirmed: supervisorStopped && snapshot.attempts.every(workerStopped) && !operations.uncertain_read && operations.operations.every(gitStopped)
+      && !validations.uncertain_read && validations.operations.every(row => row.recovery_required === false) };
+  }
   const git = createLocalAgentGitIntegration({
     repositoryRoot: config.target_root, resourcesRoot: config.resources_root, integrationRef: config.integration_ref,
     gitExecutable: config.git.executable, preparedWorkspaces: selected.preparedManifest,
@@ -125,14 +133,8 @@ function makeAssembly({ context, connectionString, verifyActivation }, options =
       const snapshot = await getSnapshot(), view = snapshot.attempts.find(row => row.attempt.attempt_id === binding.attempt_id);
       return { confirmed: Boolean(view && same(view.termination ?? view.reconciliation, termination) && workerStopped(view)), attempt_id: binding.attempt_id };
     },
-    async verifyCleanupTermination({ snapshot: supplied }) {
-      const snapshot = supplied ?? await getSnapshot(), operations = await git.inspectGitOperations();
-      const validations = await boundary.inspectOperations();
-      let supervisorStopped = snapshot.supervision.current?.status === "stopped" && Boolean(snapshot.supervision.current.termination);
-      if (!supervisorStopped && snapshot.supervision.current) { try { await stopFacts(snapshot, snapshot.supervision.current.runner); supervisorStopped = true; } catch { /* Read-only proof unavailable. */ } }
-      return { confirmed: supervisorStopped && snapshot.attempts.every(workerStopped) && !operations.uncertain_read && operations.operations.every(gitStopped)
-        && !validations.uncertain_read && validations.operations.every(row => row.recovery_required === false) };
-    },
+    verifyCleanupTermination: verifyResourceStop,
+    verifyCleanupBatchTermination: verifyResourceStop,
   });
   async function stopFacts(snapshot, runner) {
     const operations = await git.inspectGitOperations();
@@ -177,7 +179,8 @@ function makeAssembly({ context, connectionString, verifyActivation }, options =
   store = createPostgresAgentExecutionStore({ connectionString, verifyActivation, verifyTermination: attempts.verifyTermination,
     verifySupervisorTermination: verifyStop, verifyCleanupTermination: async (...args) => { const value = await verifyStop(...args); return { ...value, cleaner_stopped: value.supervisor_stopped }; },
     inspectIntegration: (entry, options) => git.inspectIntegration(entry, options),
-    inspectCleanup: (resource, options) => git.inspectCleanup(resource, options), validationEvidenceVerifier: evidenceVerifier });
+    inspectCleanup: (resource, options) => git.inspectCleanup(resource, options),
+    inspectCleanupBatch: (resources, options) => git.inspectCleanupBatch(resources, options), validationEvidenceVerifier: evidenceVerifier });
   boundary = createCodexSandboxValidationBoundary({ configuration: selected.boundaryConfiguration,
     qualification: selected.boundaryQualification, publicKey: selected.publicKey, evidenceRoot: config.resources_root });
   const verification = createLocalAgentVerification({ resourcesRoot: config.resources_root, scratchRoot: path.join(config.resources_root, "scratch"),

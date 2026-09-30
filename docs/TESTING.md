@@ -286,6 +286,9 @@ process controller is a double, even when its child is real Git.
 The workspace fixture also inspects a 1,600-operation retained journal within
 the existing bound, then detects a newly missing termination record. Oversized
 and multiply linked journal records remain rejected before admission.
+Cleanup batch fixtures reject a missing global stop, late resource drift, partial
+or foreign results and batch timeout. A PostgreSQL connection-error fixture
+proves that no cleanup commits after losing its connection.
 
 Native-attempt fixtures check pinned files, immutable preparation/termination
 receipts, unavailable prerequisites and constructor purity. Sandbox-validation

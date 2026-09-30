@@ -117,10 +117,11 @@ function attemptView(row) {
 export function createPostgresAgentExecutionStore({
   connectionString, clientFactory = null, moduleLoader = null,
   verifyActivation = null, verifyTermination = null, verifySupervisorTermination = null, inspectIntegration = null,
-  validationEvidenceVerifier = null, inspectCleanup = null, verifyCleanupTermination = null,
+  validationEvidenceVerifier = null, inspectCleanup = null, inspectCleanupBatch = null, verifyCleanupTermination = null,
 } = {}) {
   async function withClient(operation) {
-    let client;
+    let client, originalQuery, connectionError;
+    const onError = error => { connectionError ??= mapError(error); };
     try {
       if (typeof connectionString !== "string" || !connectionString) throw failure("CONFIGURATION_REQUIRED");
       if (typeof clientFactory === "function") client = await clientFactory({ connectionString });
@@ -131,10 +132,24 @@ export function createPostgresAgentExecutionStore({
         client = new Client({ connectionString, connectionTimeoutMillis: 5000, query_timeout: 10000 });
       }
       if (!client || typeof client.query !== "function") throw failure("DRIVER_UNAVAILABLE");
+      if (typeof client.on === "function") client.on("error", onError);
+      originalQuery = client.query;
+      client.query = async (...args) => {
+        if (connectionError) throw connectionError;
+        const result = await originalQuery.apply(client, args);
+        if (connectionError) throw connectionError;
+        return result;
+      };
       if (typeof client.connect === "function") await client.connect();
-      return await operation(client);
+      const result = await operation(client);
+      if (connectionError) throw connectionError;
+      return result;
     } catch (error) { throw mapError(error); }
-    finally { if (typeof client?.end === "function") { try { await client.end(); } catch { /* Never replace the transaction's outcome. */ } } }
+    finally {
+      if (typeof client?.end === "function") { try { await client.end(); } catch { /* Never replace the transaction's outcome. */ } }
+      if (originalQuery) client.query = originalQuery;
+      if (typeof client?.removeListener === "function") client.removeListener("error", onError);
+    }
   }
 
   async function readiness(client) {
@@ -190,7 +205,8 @@ export function createPostgresAgentExecutionStore({
       } catch (error) {
         // Expiry and revocation fence ownership durably even though the caller's
         // requested mutation is refused. Ordinary validation errors roll back.
-        await client.query(committedFailures.has(error) ? "COMMIT" : "ROLLBACK");
+        if (committedFailures.has(error)) await client.query("COMMIT");
+        else { try { await client.query("ROLLBACK"); } catch { /* Preserve the first failure when the connection is already lost. */ } }
         throw error;
       } finally { transactionFences.delete(client); cleanupFences.delete(client); cleanupHeadFences.delete(client); }
     });
@@ -582,6 +598,9 @@ export function createPostgresAgentExecutionStore({
         phase,run:json(run,"run_json"),snapshot:copy(state),cleanup:copy(cleanup),signal,
       }),"CLEANUP_INSPECTION_TIMED_OUT"));
     } catch(error) { if(knownFailures.has(error))throw error;throw failure("CLEANUP_INSPECTION_FAILED"); }
+    return validateCleanupObservation(observed,resource,cleanup,phase);
+  }
+  function validateCleanupObservation(observed,resource,cleanup,phase) {
     if (!exactKeys(observed,"resource_id,cwd,preimage_sha256,repository_identity_sha256,retention,exists,registered,clean,retained,processes_stopped,links_safe")
       || ["resource_id","cwd","preimage_sha256"].some(key=>observed[key]!==resource[key])
       || observed.repository_identity_sha256!==cleanup.repository_identity_sha256 || !same(observed.retention,resource.retention)
@@ -702,7 +721,17 @@ export function createPostgresAgentExecutionStore({
         } else {
           if(expectedPreviousGeneration!==null)throw failure("CLEANUP_PREDECESSOR_MISMATCH");
           const lockedSnapshot=await snapshot(client,run);
-          for(const resource of cleanup.resources)await cleanupInspection(client,run,cleanup,resource,"before",lockedSnapshot);
+          if(typeof inspectCleanupBatch === "function") {
+            let observed;
+            try {
+              observed=boundedJson(await boundedVerification(signal=>inspectCleanupBatch(copy(cleanup.resources),{
+                phase:"before",run:json(run,"run_json"),snapshot:copy(lockedSnapshot),cleanup:copy(cleanup),signal,
+              }),"CLEANUP_INSPECTION_TIMED_OUT"));
+            } catch(error) { if(knownFailures.has(error))throw error;throw failure("CLEANUP_INSPECTION_FAILED"); }
+            if(!Array.isArray(observed) || observed.length!==cleanup.resources.length
+              || new Set(observed.map(value=>value?.resource_id)).size!==observed.length)throw failure("CLEANUP_INSPECTION_INVALID");
+            observed.forEach((value,index)=>validateCleanupObservation(value,cleanup.resources[index],cleanup,"before"));
+          } else for(const resource of cleanup.resources)await cleanupInspection(client,run,cleanup,resource,"before",lockedSnapshot);
         }
         const generation=Number(previous?.generation ?? 0)+1;
         if(!Number.isSafeInteger(generation))throw failure("GENERATION_LIMIT");

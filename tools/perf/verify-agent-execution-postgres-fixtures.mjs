@@ -43,6 +43,8 @@ const lifecycleChecks=new Set([
   "unknown cooperative assurance is rejected before PostgreSQL writes",
   "canonical resolver scope survives reservation and fences every canonical writer",
   "public CLI status and planned cancellation use real PostgreSQL without native preparation",
+  "cleanup batch admits only a complete exact bounded observation",
+  "cleanup connection error refuses commit and retains the first failure",
   "cleanup rechecks Git after external observations before authority or durable results",
   "real PostgreSQL and Git scheduler overlap two children and integrate dependent output",
   "real PostgreSQL cleanup reconciles removed Git worktrees and preserves retained bytes and refs",
@@ -691,6 +693,36 @@ async function runSuite({ connectionString, version, root }) {
       const cancelled=await seed();await supervise(cancelled);await cancelled.store.finishRun({runId:cancelled.runId,supervisor:cancelled.supervisor,outcome:"cancelled"});
       await reject(context.store.beginCleanup({...cleanupArgs(context),runId:cancelled.runId,expectedControlRevision:(await store.getRun({runId:cancelled.runId})).supervision.control_revision,
         cleanup:{...context.cleanup,run_id:cancelled.runId,plan_sha256:cancelled.plan.plan_sha256}}),"AGENT_EXECUTION_CLEANUP_RUN_NOT_COMPLETED");
+    });
+    await check("cleanup batch admits only a complete exact bounded observation",async()=>{
+      const context=await completedCleanupContext();let mode="short", calls=0, aborted=false;
+      const selected=createPostgresAgentExecutionStore({...storeOptions,...cleanupOptions,inspectCleanupBatch:async(resources,options)=>{
+        calls++;const rows=resources.map(resource=>cleanupOptions.inspectCleanup(resource,options));
+        if(mode==="short")return [];
+        if(mode==="duplicate")return [rows[0],rows[0]];
+        if(mode==="foreign")return [{...rows[0],resource_id:"foreign"}];
+        if(mode==="stop")return [{...rows[0],processes_stopped:false}];
+        if(mode==="timeout")return new Promise(resolve=>options.signal.addEventListener("abort",()=>{aborted=true;resolve(rows);},{once:true}));
+        return rows;
+      }});
+      for(mode of ["short","duplicate","foreign","stop","timeout"]){
+        await reject(selected.beginCleanup(cleanupArgs(context)),mode==="timeout" ? "AGENT_EXECUTION_CLEANUP_INSPECTION_TIMED_OUT" : "AGENT_EXECUTION_CLEANUP_INSPECTION_INVALID");
+        assert.equal((await context.store.getRun({runId:context.runId})).cleanup,null);
+      }
+      assert(aborted);mode="valid";
+      assert.equal((await selected.beginCleanup(cleanupArgs(context))).cleanup.resources.length,1);assert.equal(calls,6);
+    });
+    await check("cleanup connection error refuses commit and retains the first failure",async()=>{
+      const context=await completedCleanupContext();let activeClient,commits=0;
+      const selected=createPostgresAgentExecutionStore({...storeOptions,...cleanupOptions,clientFactory:config=>{
+        activeClient=new pg.Client(config);const query=activeClient.query;
+        activeClient.query=function(...args){if(args[0]==="COMMIT")commits++;return query.apply(this,args);};return activeClient;
+      },inspectCleanupBatch:async(resources,options)=>{
+        activeClient.emit("error",new Error("injected idle connection failure"));
+        return resources.map(resource=>cleanupOptions.inspectCleanup(resource,options));
+      }});
+      await reject(selected.beginCleanup(cleanupArgs(context)),"AGENT_EXECUTION_BACKEND_UNAVAILABLE");
+      assert.equal(commits,0);assert.equal((await context.store.getRun({runId:context.runId})).cleanup,null);
     });
     await check("cleanup rechecks Git after external observations before authority or durable results",async()=>{
       for(const stage of ["begin","authority","result"]){

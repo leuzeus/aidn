@@ -237,6 +237,24 @@ try {
     assert(retained.retained.some(item => item.path === ".aidn/receipt-fixture.json"));
     assert(retained.retained.some(item => item.area === "gitdir" && item.path === "index"));
   });
+  await check("cleanup batch verifies one fresh global stop and rejects late resource drift", async () => {
+    const second = await port.prepareCleanupRetention({ resourceId: "resource.batch", kind: "attempt_worktree", cwd: rows[1].workspace.cwd, attemptId: "attempt.b" });
+    const selected = [resource, second], cleanup = { resources: selected }; let calls = 0, confirmed = true;
+    const inspector = make({ spawnProcess: () => { throw Error("unexpected cleanup subprocess"); },
+      verifyCleanupTermination: () => { throw Error("batch must use its global stop verifier"); },
+      verifyCleanupBatchTermination: async () => { calls++; return { confirmed }; } });
+    const first = await inspector.inspectCleanupBatch(selected, { cleanup });
+    assert.equal(first.length, 2); assert(first.every(value => value.processes_stopped)); assert.equal(calls, 1);
+    confirmed = false; await assert.rejects(inspector.inspectCleanupBatch(selected, { cleanup }), /AGENT_GIT_TERMINATION_UNCONFIRMED/); assert.equal(calls, 2);
+    confirmed = true; const file = path.join(second.cwd, "a.txt"), bytes = fs.readFileSync(file);
+    try { setImmediate(() => fs.appendFileSync(file, "late drift")); await assert.rejects(inspector.inspectCleanupBatch(selected, { cleanup }), /AGENT_GIT_CLEANUP_PREIMAGE_CHANGED/); }
+    finally { fs.writeFileSync(file, bytes); }
+    assert.equal(calls, 2);
+    const stop = new AbortController(); stop.abort();
+    await assert.rejects(inspector.inspectCleanupBatch(selected, { cleanup, signal: stop.signal }), /AGENT_GIT_CLEANUP_CANCELLED/);
+    await assert.rejects(inspector.inspectCleanupBatch([resource, resource], { cleanup: { resources: [resource, resource] } }), /AGENT_GIT_CLEANUP_RESOURCE_INVALID/);
+    await assert.rejects(make().inspectCleanupBatch(selected, { cleanup }), /AGENT_GIT_CLEANUP_STOP_REQUIRED/);
+  });
   await check("cleanup inspections use fresh filesystem fences without Git subprocesses", async () => {
     let calls = 0;
     const inspector = make({ spawnProcess: () => { calls++; throw Error("unexpected cleanup Git subprocess"); } });

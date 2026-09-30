@@ -6,7 +6,7 @@ export const AGENT_GIT_INTEGRATION_METHODS = Object.freeze([
 // Local recovery never becomes an implicit admission or cleanup operation.
 export const AGENT_GIT_RECOVERY_METHODS = Object.freeze(["inspectGitOperations", "reconcileGitOperation",
   "allocateIntegrationWorkspace", "inspectLocalIntegration", "prepareVerificationSnapshot", "inspectVerificationSnapshot",
-  "prepareUnassignedWorkspace", "sealPreparedAttemptWorkspace", "inspectPreparedAttemptWorkspace", "inspectCleanup", "previewCleanupRetention", "prepareCleanupRetention", "removeOwnedWorktree", "reconcileOwnedWorktreeRemoval"]);
+  "prepareUnassignedWorkspace", "sealPreparedAttemptWorkspace", "inspectPreparedAttemptWorkspace", "inspectCleanup", "inspectCleanupBatch", "previewCleanupRetention", "prepareCleanupRetention", "removeOwnedWorktree", "reconcileOwnedWorktreeRemoval"]);
 export function assertAgentGitIntegration(port) {
   if (!port || AGENT_GIT_INTEGRATION_METHODS.some(name => typeof port[name] !== "function")) {
     throw new TypeError("AgentGitIntegration requires the complete run-owned Git port");

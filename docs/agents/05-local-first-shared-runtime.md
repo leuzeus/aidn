@@ -153,3 +153,11 @@ Operation-journal inspection reads each record once, checking its physical path,
 size and stable file identity before parsing those same bytes. Full inspection
 remains fresh across calls and keeps the 4.5-second bound, including for large
 retained journals; missing termination records continue to block recovery.
+
+Cleanup admission may inspect the complete resource batch under one canonical
+lock. Every filesystem observation stays fresh; one supervisor-owned global
+termination check follows them and covers workers, Git and validation processes.
+The whole batch keeps the 4.5-second callback bound; partial, duplicate or foreign
+results are refused. The scalar inspector remains available for individual
+removal fences. PostgreSQL connection errors prevent commit and remain typed;
+a failed rollback cannot replace the original failure.
