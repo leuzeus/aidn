@@ -61,8 +61,20 @@ function assertRepairSummaryStable(before, after, prefix) {
   }
 }
 
+function assertReadinessPass(result, prefix) {
+  const detail = {
+    summary: result.summary?.status ?? "missing",
+    operational: result.operational?.status ?? "missing",
+    failed_checks: (result.operational?.checks ?? []).filter((check) => check.pass !== true).slice(0, 10).map((check) => check.id),
+    likely_file_bound: (result.source_scan?.likely_file_bound ?? []).slice(0, 10).map((entry) => entry.path),
+    manual_review: (result.source_scan?.manual_review ?? []).slice(0, 10).map((entry) => entry.path),
+  };
+  assert(result.summary?.status === "pass", `${prefix} readiness should pass: ${JSON.stringify(detail)}`);
+}
+
 function main() {
   let tempRoot = "";
+  let passed = false;
   try {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-db-first-"));
     const env = {
@@ -125,7 +137,7 @@ function main() {
     assert(sqliteRuntimeState.shared_state_backend?.coordination_backend_kind === "sqlite-file", "sqlite-file runtime-state should expose sqlite-file coordination backend");
     assert(sqliteRuntimeState.digest?.current_state_source === "sqlite", "sqlite-file runtime-state should resolve CURRENT-STATE from SQLite");
     assert(sqliteRuntimeState.digest?.cycle_status_source === "sqlite", "sqlite-file runtime-state should resolve cycle status from SQLite");
-    assert(sqliteReadiness.summary?.status === "pass", "sqlite-file readiness should pass");
+    assertReadinessPass(sqliteReadiness, "sqlite-file");
     assert(sqliteReadiness.operational?.sqlite_index?.projection_scope === "shared-runtime-root", "sqlite-file readiness should expose shared-runtime-root");
     assert(sqliteReadiness.operational?.sqlite_index?.coordination_backend_kind === "sqlite-file", "sqlite-file readiness should expose sqlite-file coordination backend");
     assert(sqliteReadiness.operational?.resolutions?.handoff_packet?.source === "sqlite", "sqlite-file readiness should resolve HANDOFF-PACKET from SQLite");
@@ -181,7 +193,7 @@ function main() {
     assert(postgresRuntimeState.shared_state_backend?.coordination_backend_kind === "postgres", "postgres runtime-state should expose postgres coordination backend");
     assert(postgresRuntimeState.digest?.current_state_source === "sqlite", "postgres runtime-state should resolve CURRENT-STATE from SQLite");
     assert(postgresRuntimeState.digest?.cycle_status_source === "sqlite", "postgres runtime-state should resolve cycle status from SQLite");
-    assert(postgresReadiness.summary?.status === "pass", "postgres readiness should pass");
+    assertReadinessPass(postgresReadiness, "postgres");
     assert(postgresReadiness.operational?.sqlite_index?.projection_scope === "local-compat", "postgres readiness should expose local-compat projection");
     assert(postgresReadiness.operational?.sqlite_index?.coordination_backend_kind === "postgres", "postgres readiness should expose postgres coordination backend");
     assert(postgresReadiness.operational?.resolutions?.session_artifact?.source === "sqlite", "postgres readiness should resolve session artifacts from SQLite");
@@ -190,18 +202,21 @@ function main() {
     assert(postgresDbStatus.runtime_backend_diagnostic?.projection_scope === "local-compat", "postgres db-status should expose stable backend diagnostic projection scope");
     assertRepairSummaryStable(postgresRepairBefore, postgresRepairAfter, "postgres");
 
-    console.log("PASS");
+    passed = true;
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
+      const resolved = fs.realpathSync(tempRoot);
+      assert(path.dirname(resolved) === fs.realpathSync(os.tmpdir()) && path.basename(resolved).startsWith("aidn-shared-db-first-"), "fixture cleanup target must remain its owned temporary directory");
       const cleanup = removePathWithRetry(tempRoot);
       if (!cleanup.ok) {
         throw cleanup.error;
       }
     }
   }
+  if (passed) console.log("PASS");
 }
 
 main();

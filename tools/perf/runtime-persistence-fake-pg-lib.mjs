@@ -90,6 +90,8 @@ export function createRuntimePersistenceFakePgClientFactory({
   initialSchemaMigrations = [1],
   initialSnapshots = [],
   initialHeads = [],
+  executionSchema = false,
+  executionReservations = [],
 } = {}) {
   const knownTables = [
     "schema_migrations",
@@ -123,6 +125,8 @@ export function createRuntimePersistenceFakePgClientFactory({
     relationalRows: Object.fromEntries(knownTables.map((tableName) => [tableName, []])),
     queryLog: [],
     sequence: 0,
+    executionSchema,
+    executionReservations: clone(executionReservations),
   };
 
   function nextTimestamp() {
@@ -192,6 +196,20 @@ export function createRuntimePersistenceFakePgClientFactory({
           });
           if (!sql || sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") {
             return { rows: [] };
+          }
+          if (sql === "LOCK TABLE aidn_runtime.artifacts IN SHARE ROW EXCLUSIVE MODE") {
+            requireTable('artifacts');
+            return { rows: [] };
+          }
+          if (sql === "SELECT to_regclass('aidn_runtime.runtime_snapshots') AS runtime_snapshots") {
+            return { rows: [{ runtime_snapshots: state.tablesPresent.has("runtime_snapshots") ? "aidn_runtime.runtime_snapshots" : null }] };
+          }
+          if (sql === "SELECT to_regclass('aidn_shared.execution_runs') AS execution_runs") {
+            return { rows: [{ execution_runs: state.executionSchema ? 'aidn_shared.execution_runs' : null }] };
+          }
+          if (sql === 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))') return { rows: [] };
+          if (sql === 'SELECT run_id FROM aidn_shared.execution_runs WHERE runtime_scope_id=$1 AND reservation_active=true') {
+            return { rows: state.executionReservations.filter(row => row.runtime_scope_id === values[0] && row.reservation_active === true).map(row => ({ run_id: row.run_id })) };
           }
           if (sql.includes("CREATE SCHEMA IF NOT EXISTS aidn_runtime")
             || sql.includes("CREATE TABLE IF NOT EXISTS aidn_runtime.")) {

@@ -14,6 +14,7 @@ import {
 } from "../ci/fetch-branch-policy-sources.mjs";
 import { runGovernanceRouteFixtureSuite } from "./verify-governance-route-fixtures.mjs";
 import { validateContextResiliencePolicy } from "./context-resilience-policy.mjs";
+import { resolvePostgresTestRuntime, preparePostgresTestRuntime } from "../ci/resolve-postgres-test-runtime.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const catalogPath = path.join(repoRoot, "package", "catalogs", "gates.v1.json");
@@ -418,13 +419,25 @@ function evaluateGovernanceAdmissionExecutable(source) {
   const runnerIndex = gateSteps.indexOf(runnerStep);
   if (!installStep
     || String(installStep.run ?? "").trim()
-      !== "npm ci --include=dev --ignore-scripts --no-audit --no-fund"
+      !== "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund"
     || installStep.if
-      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' }}"
+      !== "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}"
+    || hasOwn(installStep, "continue-on-error")
     || installIndex < 0
     || runnerIndex < 0
     || installIndex >= runnerIndex) {
     sourceIssues.push("dependency-bearing admission families must install locked dev dependencies first");
+  }
+  const postgresStep = namedStep(gates, "Resolve Ephemeral PostgreSQL Runtime");
+  const postgresIndex = gateSteps.indexOf(postgresStep);
+  if (!postgresStep
+    || postgresStep.if !== "${{ matrix.family == 'runtime' }}"
+    || String(postgresStep.run ?? "").trim() !== "node tools/ci/resolve-postgres-test-runtime.mjs"
+    || hasOwn(postgresStep, "continue-on-error")
+    || hasOwn(postgresStep, "env")
+    || hasOwn(runnerStep?.env, "PG_BIN_DIR")
+    || postgresIndex <= installIndex || postgresIndex >= runnerIndex) {
+    sourceIssues.push("runtime admission requires blocking PostgreSQL driver and binary preflight after locked install");
   }
   if (!runnerStep
     || String(runnerStep.run ?? "").trim() !== admissionRunnerCommand
@@ -505,7 +518,7 @@ for (const [proof, passed] of Object.entries(fetchHelperBehavior)) {
   }
 }
 const missingGateDependencyInstallMutation = admissionText.replace(
-  /      - name: Install Locked Gate Dependencies[\s\S]*?        run: npm ci --include=dev --ignore-scripts --no-audit --no-fund\r?\n/,
+  /      - name: Install Locked Gate Dependencies[\s\S]*?        run: npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund\r?\n/,
   "",
 );
 const missingBranchSourceFetchMutation = admissionText.replace(
@@ -536,7 +549,7 @@ const dispatchContainmentMissingMutation = admissionText.replace(
   "          AIDN_BRANCH_POLICY_CONTAINS_REF: origin/${{ github.head_ref }}",
 );
 const codexDependenciesMissingMutation = admissionText.replace(
-  "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' }}",
+  "${{ matrix.family == 'cleanliness' || matrix.family == 'release' || matrix.family == 'codex' || matrix.family == 'runtime' }}",
   "${{ matrix.family == 'cleanliness' || matrix.family == 'release' }}",
 );
 const admissionFetchContinueOnErrorMutation = mutateNamedStepProperty(
@@ -680,7 +693,175 @@ const liveSmokeOrderMutation = liveSmokeText
     "npm run perf:verify-postgres-shared-coordination-live-smoke",
   );
 
+function agentExecutionPolicyProbe(mutate) {
+  const candidate = { catalog: clone(catalog), packageJson: clone(packageJson), workflowModels };
+  mutate(candidate);
+  return validateGateAndWorkflowPolicy(candidate);
+}
+
+const postgresRuntimeProbes = {};
+const testBinDir = path.resolve("fixture-postgres-bin");
+const binaryCalls = [];
+const binaryChecks = [];
+const simulatedRuntime = {
+  env: {},
+  platform: "linux",
+  run(command, args) {
+    binaryCalls.push([command, args]);
+    return command === "pg_config" ? `${testBinDir}\n` : `${path.basename(command)} (PostgreSQL) 17.11\n`;
+  },
+  verifyBinary(file) { binaryChecks.push(file); },
+};
+postgresRuntimeProbes.resolves_existing_runtime = resolvePostgresTestRuntime(simulatedRuntime).bin_dir === testBinDir
+  && JSON.stringify(binaryChecks) === JSON.stringify(["initdb", "pg_ctl", "postgres"].map((name) => path.join(testBinDir, name)))
+  && binaryCalls.length === 4 && JSON.stringify(binaryCalls[0]) === JSON.stringify(["pg_config", ["--bindir"]]);
+for (const [name, override] of Object.entries({
+  missing_pg_config_fails: { run() { throw new Error("unavailable"); } },
+  relative_directory_fails: { env: { PG_BIN_DIR: "relative/bin" } },
+  empty_directory_fails: { env: { PG_BIN_DIR: "" } },
+  environment_injection_fails: { env: { PG_BIN_DIR: `${testBinDir}\nOTHER=value` } },
+  missing_binary_fails: { verifyBinary() { throw new Error("missing"); } },
+  unexecutable_binary_fails: { env: { PG_BIN_DIR: testBinDir }, run() { throw new Error("failed"); } },
+  incorrect_binary_fails: { env: { PG_BIN_DIR: testBinDir }, run() { return "unexpected executable"; } },
+})) {
+  try {
+    resolvePostgresTestRuntime({ ...simulatedRuntime, ...override });
+    postgresRuntimeProbes[name] = false;
+  } catch {
+    postgresRuntimeProbes[name] = true;
+  }
+}
+const environmentWrites = [];
+const preparation = {
+  env: { GITHUB_ENV: path.resolve("fixture-github-env") },
+  importDriver: async () => ({ Client: class {} }),
+  resolve: () => ({ bin_dir: testBinDir }),
+  appendEnvironment(file, text) { environmentWrites.push([file, text]); },
+};
+await preparePostgresTestRuntime(preparation);
+postgresRuntimeProbes.exports_verified_runtime_only = JSON.stringify(environmentWrites)
+  === JSON.stringify([[preparation.env.GITHUB_ENV, `PG_BIN_DIR=${testBinDir}\n`]]);
+for (const [name, override] of Object.entries({
+  missing_driver_fails: { importDriver: async () => { throw new Error("missing pg"); } },
+  malformed_driver_fails: { importDriver: async () => ({}) },
+  missing_environment_fails: { env: {} },
+  missing_runtime_fails: { resolve() { throw new Error("missing runtime"); } },
+})) {
+  try {
+    await preparePostgresTestRuntime({ ...preparation, ...override });
+    postgresRuntimeProbes[name] = false;
+  } catch {
+    postgresRuntimeProbes[name] = environmentWrites.length === 1;
+  }
+}
+for (const [probe, passed] of Object.entries(postgresRuntimeProbes)) {
+  if (!passed) issues.push(`PostgreSQL runtime prerequisite proof failed: ${probe}`);
+}
+
+const persistenceNegativeProbes = {};
+for (const [id, script] of [
+  ["runtime-agent-execution-postgres", "perf:verify-agent-execution-postgres"],
+  ["runtime-agent-worker-fixtures", "perf:verify-agent-worker-fixtures"],
+  ["runtime-agent-execution-scheduler", "perf:verify-agent-execution-scheduler-fixtures"],
+  ["runtime-agent-verification", "perf:verify-agent-verification-fixtures"],
+  ["runtime-agent-git-integration", "perf:verify-agent-git-integration-fixtures"],
+  ["runtime-shared-coordination-concurrency", "perf:verify-shared-coordination-concurrency-gate"],
+]) {
+  const mutations = {
+    removal: ({ catalog: candidate }) => { candidate.gates = candidate.gates.filter((gate) => gate.id !== id); },
+    optional: ({ catalog: candidate }) => { candidate.gates.find((gate) => gate.id === id).obligation.dev = "optional"; },
+    skip_condition: ({ catalog: candidate }) => { candidate.gates.find((gate) => gate.id === id).condition = "codex-cli-available"; },
+    manual_only: ({ catalog: candidate }) => { candidate.gates.find((gate) => gate.id === id).execution_scope = "manual-only"; },
+    duplicate: ({ catalog: candidate }) => { candidate.gates.push({ ...candidate.gates.find((gate) => gate.id === id), id: `${id}-duplicate`, allow_script_reuse: true }); },
+    substituted_command: ({ packageJson: candidate }) => { candidate.scripts[script] = "node --version"; },
+    lifecycle: ({ packageJson: candidate }) => { candidate.scripts[`pre${script}`] = "node --version"; },
+    nested_duplicate: ({ catalog: candidate, packageJson: pkg }) => {
+      pkg.scripts["fixture:persistence-leaf"] = `npm --silent run ${script}`;
+      pkg.scripts["fixture:persistence-alias"] = "npm run fixture:persistence-leaf";
+      candidate.gates.push({ ...candidate.gates.find((gate) => gate.id === id), id: `${id}-alias`, script: "fixture:persistence-alias" });
+    },
+    copied_duplicate: ({ catalog: candidate, packageJson: pkg }) => {
+      pkg.scripts["fixture:persistence-copy"] = pkg.scripts[script];
+      candidate.gates.push({ ...candidate.gates.find((gate) => gate.id === id), id: `${id}-copy`, script: "fixture:persistence-copy" });
+    },
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    persistenceNegativeProbes[`${id}_${name}_rejected`] = agentExecutionPolicyProbe(mutate).length > 0;
+  }
+}
+const postgresPreflightBlock = "      - name: Resolve Ephemeral PostgreSQL Runtime\n"
+  + "        if: ${{ matrix.family == 'runtime' }}\n"
+  + "        run: node tools/ci/resolve-postgres-test-runtime.mjs\n";
+for (const [name, candidate] of Object.entries({
+  missing_preflight: admissionText.replace(postgresPreflightBlock, ""),
+  disabled_preflight: admissionText.replace(postgresPreflightBlock, postgresPreflightBlock.replace("${{ matrix.family == 'runtime' }}", "${{ false }}")),
+  nonblocking_preflight: mutateNamedStepProperty(admissionText, "Resolve Ephemeral PostgreSQL Runtime", "continue-on-error", "true"),
+  bypassed_preflight: admissionText.replace("run: node tools/ci/resolve-postgres-test-runtime.mjs", "run: node tools/ci/resolve-postgres-test-runtime.mjs || true"),
+  preflight_before_install: admissionText.replace(postgresPreflightBlock, "").replace("      - name: Install Locked Gate Dependencies", `${postgresPreflightBlock}\n      - name: Install Locked Gate Dependencies`),
+  missing_runtime_dependencies: admissionText.replace(" || matrix.family == 'runtime' }}", " }}"),
+  omitted_optional_driver: admissionText.replace("--include=dev --include=optional", "--include=dev --omit=optional"),
+  nonblocking_install: mutateNamedStepProperty(admissionText, "Install Locked Gate Dependencies", "continue-on-error", "true"),
+})) {
+  persistenceNegativeProbes[`postgres_${name}_rejected`] = evaluateGovernanceAdmissionExecutable(candidate).length > 0;
+}
+
 const negativeProbes = {
+  agent_run_lifecycle_required: (() => {
+    const candidate = clone(catalog);
+    candidate.gates = candidate.gates.filter(gate => gate.id !== "runtime-agent-run-lifecycle");
+    return candidateRejected({ candidateCatalog: candidate });
+  })(),
+  agent_run_lifecycle_obligations: ["dev", "main", "release"].every(context => {
+    const candidate = clone(catalog);
+    candidate.gates.find(gate => gate.id === "runtime-agent-run-lifecycle").obligation[context] = "optional";
+    return candidateRejected({ candidateCatalog: candidate });
+  }),
+  agent_run_lifecycle_invocation_omission: (() => {
+    const commands = packageJson.scripts["perf:verify-agent-run-lifecycle-fixtures"].split(" && ");
+    return commands.length === 7
+      && commands.includes("node tools/perf/verify-codex-sandbox-validation-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-codex-startup-arguments-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-agent-local-path-policy-fixtures.mjs")
+      && new Set(commands).size === commands.length
+      && commands.every((_, index) => {
+        const candidate = clone(packageJson);
+        candidate.scripts["perf:verify-agent-run-lifecycle-fixtures"] = commands.filter((_, position) => position !== index).join(" && ");
+        return candidateRejected({ candidatePackageJson: candidate });
+      });
+  })(),
+  agent_run_lifecycle_invocation_duplication: (() => {
+    const commands = packageJson.scripts["perf:verify-agent-run-lifecycle-fixtures"].split(" && ");
+    return commands.every(command => {
+      const candidate = clone(packageJson);
+      candidate.scripts["perf:verify-agent-run-lifecycle-fixtures"] = [...commands, command].join(" && ");
+      return candidateRejected({ candidatePackageJson: candidate });
+    });
+  })(),
+  agent_run_lifecycle_catalog_duplication: (() => {
+    const candidate = clone(catalog);
+    candidate.gates.push({ ...candidate.gates.find(gate => gate.id === "runtime-agent-run-lifecycle"), id: "fixture-agent-run-copy", allow_script_reuse: true });
+    return candidateRejected({ candidateCatalog: candidate });
+  })(),
+  ...persistenceNegativeProbes,
+  agent_execution_gate_removal_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates = candidate.gates.filter((gate) => gate.id !== "runtime-agent-execution-contracts");
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: required invariant gate missing")),
+  agent_execution_gate_weakening_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates.find((gate) => gate.id === "runtime-agent-execution-contracts").obligation.dev = "optional";
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable dev obligation")),
+  agent_execution_gate_duplicate_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates.push({ ...candidate.gates.find((gate) => gate.id === "runtime-agent-execution-contracts"), id: "duplicate-task-contracts", allow_script_reuse: true });
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: script must be selected exactly once")),
+  agent_execution_gate_condition_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates.find((gate) => gate.id === "runtime-agent-execution-contracts").condition = "codex-cli-available";
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable condition")),
+  agent_execution_gate_manual_only_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
+    candidate.gates.find((gate) => gate.id === "runtime-agent-execution-contracts").execution_scope = "manual-only";
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable runtime admission placement")),
+  agent_execution_gate_command_substitution_rejected: agentExecutionPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts["perf:verify-agent-execution-contracts"] = "node --version";
+  }).some((issue) => issue.includes("runtime-agent-execution-contracts: immutable fixture command")),
   ...contextNegativeProbes,
   governance_route_resolver_required:
     evaluateGovernanceAdmissionExecutable(missingAdmissionResolverMutation).length > 0,
@@ -832,6 +1013,7 @@ const output = {
     manual_dispatch: true,
   },
   negative_probes: negativeProbes,
+  postgres_runtime_prerequisite_probes: postgresRuntimeProbes,
   context_resilience_positive_probes: contextPositiveProbes,
   issues,
 };

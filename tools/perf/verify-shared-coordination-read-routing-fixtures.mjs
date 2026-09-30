@@ -17,6 +17,7 @@ import { suggestCoordinatorArbitration } from "../runtime/coordinator-suggest-ar
 import { projectSharedCoordinationStatus } from "../runtime/shared-coordination-status.mjs";
 import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-create-admit-use-case.mjs";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -255,12 +256,14 @@ async function main() {
   try {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-read-routing-"));
     const targetRoot = path.join(tempRoot, "repo");
-    fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), targetRoot, { recursive: true });
+    const sourceRoot = path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready");
+    fs.cpSync(sourceRoot, targetRoot, { recursive: true, filter: source => isActivationFixtureSource(sourceRoot, source) });
     installCurrentStateBacklogPointer(targetRoot);
     fs.rmSync(path.join(targetRoot, "docs", "audit", "backlog", "BL-S101-session-planning.md"), { force: true });
     initGitRepo(targetRoot, {
       workingBranch: "S101-alpha",
     });
+    prepareActivationFixture(targetRoot);
 
     const fake = createFakeResolution();
 

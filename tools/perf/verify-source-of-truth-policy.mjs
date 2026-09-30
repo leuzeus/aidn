@@ -52,6 +52,9 @@ function main() {
     "coordination_records",
     "agent_roster",
     "cli_output_contracts",
+    "execution_run",
+    "delegated_task",
+    "execution_attempt",
   ];
   const matrixIssues = [];
   for (const policy of policies) {
@@ -65,6 +68,31 @@ function main() {
   for (const concept of expectedConcepts) {
     if (!getSourceOfTruthPolicy(concept)) {
       matrixIssues.push(`missing expected concept: ${concept}`);
+    }
+  }
+  for (const concept of ["execution_run", "delegated_task", "execution_attempt"]) {
+    for (const mode of modes) {
+      const policy = getSourceOfTruthPolicy(concept, mode);
+      if (policy?.coverage_kind !== "supervision_candidate" || policy?.authority_backend !== "postgres") {
+        matrixIssues.push(`${concept}: ${mode} must expose candidate supervision with PostgreSQL authority`);
+      }
+      if (!policy?.shared_runtime.includes({ execution_run: "execution_runs", delegated_task: "execution_tasks", execution_attempt: "execution_attempts" }[concept])) {
+        matrixIssues.push(`${concept}: ${mode} persistence contract must map to its port table`);
+      }
+      if (policy?.postgresql !== "optional" || policy?.shared_sync !== "opt-in") {
+        matrixIssues.push(`${concept}: existing optional PostgreSQL and explicit synchronization must remain intact`);
+      }
+      if (!policy?.source_of_truth.includes("explicit qualified composition required")
+        || !policy?.notes.includes("conditional native prototype") || !policy?.notes.includes("matching native qualification")
+        || policy?.projection !== "read-only runtime agent-run* JSON status and action previews" || policy?.projection_is_canonical !== false) {
+        matrixIssues.push(`${concept}: ${mode} must require explicit qualification for the conditional public prototype`);
+      }
+      if (!policy?.retention.includes("no automatic purge") || !policy?.notes.includes("No files, SQLite or in-memory authority fallback, inferred runtime instances")) {
+        matrixIssues.push(`${concept}: candidate retention and instance boundary must be explicit`);
+      }
+      if (concept==="execution_run" && ["execution_cancel_requests","execution_cleanup_operations","execution_cleanup_resources"].some(table=>!policy.shared_runtime.includes(table))) {
+        matrixIssues.push(`${concept}: cancellation and cleanup tables must remain covered by the run`);
+      }
     }
   }
   const output = {

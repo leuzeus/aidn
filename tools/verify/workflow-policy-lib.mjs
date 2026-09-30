@@ -3,7 +3,7 @@ import path from "node:path";
 import { parseDocument } from "yaml";
 import { validateContextResiliencePolicy } from "./context-resilience-policy.mjs";
 
-const LOCKED_GATE_INSTALL_COMMAND = "npm ci --include=dev --ignore-scripts --no-audit --no-fund";
+const LOCKED_GATE_INSTALL_COMMAND = "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund";
 const DEPENDENCY_BEARING_GATE_COMMANDS = new Set([
   "verify:cleanliness",
   "verify:release",
@@ -21,6 +21,14 @@ const REQUIRED_OBLIGATIONS = Object.freeze({
   "docs-references": ["dev", "main", "release"],
   "codex-pack-topology": ["dev", "main", "release"],
   "runtime-db-runtime-cli": ["dev", "main", "release"],
+  "runtime-agent-execution-contracts": ["dev", "main", "release"],
+  "runtime-agent-execution-postgres": ["dev", "main", "release"],
+  "runtime-agent-worker-fixtures": ["dev", "main", "release"],
+  "runtime-agent-execution-scheduler": ["dev", "main", "release"],
+  "runtime-agent-verification": ["dev", "main", "release"],
+  "runtime-agent-git-integration": ["dev", "main", "release"],
+  "runtime-agent-run-lifecycle": ["dev", "main", "release"],
+  "runtime-shared-coordination-concurrency": ["dev", "main", "release"],
   "security-tracked-sensitivity": ["dev", "main", "release"],
   "release-version": ["dev", "main", "release"],
   "release-reproducibility": ["dev", "main", "release"],
@@ -35,6 +43,14 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
   "contracts-json": "perf:verify-cli-output-contracts",
   "effects-policy": "perf:verify-cli-effect-policy",
   "runtime-db-runtime-cli": "perf:verify-db-runtime-cli",
+  "runtime-agent-execution-contracts": "perf:verify-agent-execution-contracts",
+  "runtime-agent-execution-postgres": "perf:verify-agent-execution-postgres",
+  "runtime-agent-worker-fixtures": "perf:verify-agent-worker-fixtures",
+  "runtime-agent-execution-scheduler": "perf:verify-agent-execution-scheduler-fixtures",
+  "runtime-agent-verification": "perf:verify-agent-verification-fixtures",
+  "runtime-agent-git-integration": "perf:verify-agent-git-integration-fixtures",
+  "runtime-agent-run-lifecycle": "perf:verify-agent-run-lifecycle-fixtures",
+  "runtime-shared-coordination-concurrency": "perf:verify-shared-coordination-concurrency-gate",
   "codex-pack-topology": "perf:verify-pack-topology",
   "security-tracked-sensitivity": "perf:verify-tracked-sensitivity",
   "release-version": "perf:verify-release-version",
@@ -47,10 +63,50 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
 });
 
 const REQUIRED_GATE_CONDITIONS = Object.freeze({
+  "runtime-agent-execution-contracts": "always",
+  "runtime-agent-execution-postgres": "always",
+  "runtime-agent-worker-fixtures": "always",
+  "runtime-agent-execution-scheduler": "always",
+  "runtime-agent-verification": "always",
+  "runtime-agent-git-integration": "always",
+  "runtime-agent-run-lifecycle": "always",
+  "runtime-shared-coordination-concurrency": "always",
   "release-reproducibility": "git-clean-commit",
   "cleanliness-gate-runner-fixtures": "git-repository",
   "cleanliness-worktree": "git-repository",
 });
+
+const GOVERNED_RUNTIME_COMMANDS = Object.freeze({
+  "runtime-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
+  "runtime-agent-execution-postgres": "node tools/perf/verify-agent-execution-postgres-fixtures.mjs",
+  "runtime-agent-worker-fixtures": "node tools/perf/verify-codex-task-executor-fixtures.mjs && node tools/perf/verify-delegated-agent-admission-fixtures.mjs && node tools/perf/verify-agent-native-qualification-fixtures.mjs",
+  "runtime-agent-execution-scheduler": "node tools/perf/verify-agent-execution-scheduler-fixtures.mjs",
+  "runtime-agent-verification": "node tools/perf/verify-agent-verification-fixtures.mjs",
+  "runtime-agent-git-integration": "node tools/perf/verify-agent-git-integration-fixtures.mjs",
+  "runtime-agent-run-lifecycle": "node tools/perf/verify-agent-run-lifecycle-fixtures.mjs && node tools/perf/verify-agent-run-workspace-fixtures.mjs && node tools/perf/verify-codex-agent-attempt-fixtures.mjs && node tools/perf/verify-codex-sandbox-validation-fixtures.mjs && node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs && node tools/perf/verify-codex-startup-arguments-fixtures.mjs && node tools/perf/verify-agent-local-path-policy-fixtures.mjs",
+  "runtime-shared-coordination-concurrency": [
+    "node tools/perf/verify-shared-coordination-concurrency-fixtures.mjs",
+    "node tools/perf/verify-shared-coordination-worktree-concurrency-fixtures.mjs",
+    "node tools/perf/verify-shared-coordination-multi-project-fixtures.mjs",
+    "node tools/perf/verify-shared-coordination-contention-fixtures.mjs",
+  ].join(" && "),
+});
+
+function referencesRuntimeCoverage(scripts, name, protectedScript, commands, visited = new Set()) {
+  if (name === protectedScript) return true;
+  if (visited.has(name)) return false;
+  visited.add(name);
+  const body = String(scripts[name] ?? "");
+  if (commands.some((command) => body.includes(command.slice("node ".length)))) return true;
+  if ((body.match(/[\w:.-]+/gu) ?? []).includes(protectedScript)) return true;
+  const references = [...body.matchAll(
+    /\bnpm(?:\.cmd)?(?:\s+--?[\w-]+(?:=[\w.-]+)?)*\s+run(?:-script)?(?:\s+--?[\w-]+(?:=[\w.-]+)?)*\s+([\w][\w:.-]*)/gu,
+  )].map((match) => match[1]);
+  const lifecycle = [`pre${name}`, `post${name}`].filter((reference) => Object.hasOwn(scripts, reference));
+  return [...references, ...lifecycle].some((reference) => (
+    referencesRuntimeCoverage(scripts, reference, protectedScript, commands, visited)
+  ));
+}
 
 const REQUIRED_WORKFLOW_POLICY = Object.freeze({
   ".github/workflows/governance-admission.yml": {
@@ -365,6 +421,29 @@ export function validateGateAndWorkflowPolicy({
     }
   }
 
+  for (const [gateId, command] of Object.entries(GOVERNED_RUNTIME_COMMANDS)) {
+    const gate = gateById.get(gateId);
+    const script = REQUIRED_GATE_SCRIPTS[gateId];
+    const scripts = packageJson?.scripts ?? {};
+    if (gate && (gate.family !== "runtime"
+      || gate.job !== "governance-admission/gates"
+      || ![undefined, "admission"].includes(gate.execution_scope))) {
+      issues.push(`${gateId}: immutable runtime admission placement`);
+    }
+    if (gates.filter((candidate) => candidate.script === script).length !== 1) {
+      issues.push(`${gateId}: script must be selected exactly once`);
+    }
+    if (scripts[script] !== command || scripts[`pre${script}`] != null || scripts[`post${script}`] != null) {
+      issues.push(`${gateId}: immutable fixture command`);
+    }
+    for (const candidate of gates) {
+      if (candidate.id === gateId && candidate.script === script) continue;
+      if (referencesRuntimeCoverage(scripts, candidate.script, script, command.split(" && "))) {
+        issues.push(`${gateId}: coverage must not repeat through another gate`);
+      }
+    }
+  }
+
   const inventory = Array.isArray(catalog?.workflow_inventory)
     ? catalog.workflow_inventory
     : [];
@@ -458,6 +537,12 @@ export function validateGateAndWorkflowPolicy({
             `${model.path}/${jobName}: ${dependencyBearingCommand} must follow `
             + `locked dev dependency installation`,
           );
+        }
+        if (dependencyBearingCommand === "verify:release") {
+          const postgresIndex = steps.findIndex((candidate) => candidate.run === "node tools/ci/resolve-postgres-test-runtime.mjs");
+          if (postgresIndex <= installIndex || postgresIndex >= stepIndex) {
+            issues.push(`${model.path}/${jobName}: verify:release requires PostgreSQL preflight after locked dependencies`);
+          }
         }
       }
     }

@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { resolveEffectiveRuntimePersistence } from '../../src/application/runtime/runtime-persistence-service.mjs';
 import { executePostgresArtifactCommand, validateArtifactPath } from '../../src/adapters/runtime/postgres-artifact-command-lib.mjs';
+import { createPostgresRuntimeArtifactStore } from '../../src/adapters/runtime/postgres-runtime-artifact-store.mjs';
+import { createRuntimePersistenceFakePgClientFactory } from './runtime-persistence-fake-pg-lib.mjs';
 
 export async function verifyProjectArtifactCommands() {
   let count = 0;
@@ -14,13 +16,15 @@ export async function verifyProjectArtifactCommands() {
   assert.equal(resolveEffectiveRuntimePersistence({ backend: 'postgres', configData: configured }).connectionRef, 'env:PROJECT_DB');
   assert.equal(resolveEffectiveRuntimePersistence({ backend: 'postgres', configData: configured, connectionRef: 'env:EXPLICIT_DB' }).connectionRef, 'env:EXPLICIT_DB');
   assert.equal(resolveEffectiveRuntimePersistence({ backend: 'sqlite', configData: configured }).connectionRef, null); count += 3;
-  function fake({ version = 3, scopes = ['scope'], failTable = '', headPath = '' } = {}) {
+  function fake({ version = 3, scopes = ['scope'], failTable = '', headPath = '', executionSchema = false, reservations = [] } = {}) {
     const queries = [];
     return { queries, async query(sql, values = []) {
       queries.push({ sql, values });
       assert.doesNotMatch(sql, /CREATE |ALTER |DROP |DELETE /i);
       if (failTable && sql.startsWith(`INSERT INTO aidn_runtime.${failTable} `)) throw new Error('injected late failure');
       if (sql.startsWith('SELECT MAX(schema_version)')) return { rows: [{ version }] };
+      if (sql.includes("to_regclass('aidn_shared.execution_runs')")) return { rows: [{ execution_runs: executionSchema ? 'aidn_shared.execution_runs' : null }] };
+      if (sql.startsWith('SELECT run_id FROM aidn_shared.execution_runs')) return { rows: reservations.filter(row => row.runtime_scope_id === values[0] && row.reservation_active).map(row => ({ run_id: row.run_id })) };
       if (sql.startsWith('SELECT DISTINCT scope_key')) return { rows: scopes.map(scope_key => ({ scope_key })) };
       if (sql.includes('COALESCE(MAX(artifact_id)')) return { rows: [{ id: '8' }] };
       if (sql.startsWith('SELECT artifact_path')) return { rows: headPath ? [{ artifact_path: headPath }] : [] };
@@ -42,6 +46,7 @@ export async function verifyProjectArtifactCommands() {
     path: 'sessions/S001-test.md', kind: 'session', content: 'mode: THINKING\nsession_branch: codex/test\n',
   } });
   assert.equal(client.queries.at(-1).sql, 'COMMIT');
+  assert(!client.queries.some(q => q.sql.includes('pg_advisory_xact_lock')), 'absent supervision schema must not take a new scope lock'); count++;
   assert(client.queries.some(q => q.sql.startsWith('INSERT INTO aidn_runtime.sessions')));
   assert(!client.queries.some(q => q.sql.includes('private') || q.sql.includes('codex/test'))); count++;
   for (const options of [{ failTable: 'artifact_blobs' }, { headPath: 'docs/audit/CURRENT-STATE.md' }]) {
@@ -76,6 +81,55 @@ export async function verifyProjectArtifactCommands() {
   assert.equal(await executePostgresArtifactCommand(absent, ['scope', 'legacy'], 'get', { path: 'notes/legacy-only.md' }), null);
   assert.equal(absent.queries.filter(q => q.sql.includes('v_materializable_artifacts')).length, 1,
     'missing canonical artifact must not fall back to a legacy artifact'); count++;
+  for (const lifecycle_status of ['running', 'recovery_required']) {
+    const fenced = fake({ scopes: ['legacy', 'scope'], executionSchema: true, reservations: [
+      { run_id: 'run-1', runtime_scope_id: 'scope', reservation_active: true, lifecycle_status, lease_expires_at: '2000-01-01T00:00:00Z' },
+    ] });
+    await assert.rejects(executePostgresArtifactCommand(fenced, ['scope', 'legacy'], 'upsert', { artifact: { path: 'CURRENT-STATE.md', content: 'mode: THINKING' } }), /ARTIFACT_EXECUTION_SCOPE_RESERVED/);
+    assert.equal(fenced.queries.at(-1).sql, 'ROLLBACK');
+    assert(!fenced.queries.some(q => q.sql.startsWith('INSERT')));
+    const tableLock = fenced.queries.findIndex(q => q.sql.startsWith('LOCK TABLE'));
+    const scopeLock = fenced.queries.findIndex(q => q.sql.includes('pg_advisory_xact_lock'));
+    assert(tableLock >= 0 && scopeLock > tableLock);
+    assert.deepEqual(fenced.queries.find(q => q.sql.startsWith('SELECT run_id')).values, ['scope']); count++;
+  }
+  for (const action of ['get', 'list']) {
+    const reservedReader = fake({ executionSchema: true, reservations: [{ runtime_scope_id: 'scope', reservation_active: true }] });
+    await executePostgresArtifactCommand(reservedReader, ['scope'], action, { path: 'CURRENT-STATE.md' });
+    assert(!reservedReader.queries.some(q => q.sql.includes('execution_runs') || q.sql.includes('LOCK TABLE'))); count++;
+  }
+  const legacyReservation = [{ run_id: 'run-legacy', runtime_scope_id: 'legacy', reservation_active: true }];
+  const canonicalWins = fake({ scopes: ['legacy', 'scope'], executionSchema: true, reservations: legacyReservation });
+  await executePostgresArtifactCommand(canonicalWins, ['scope', 'legacy'], 'upsert', { artifact: { path: 'notes/test.md', content: 'canonical' } });
+  assert.deepEqual(canonicalWins.queries.find(q => q.sql.startsWith('SELECT run_id')).values, ['scope']);
+  assert.equal(canonicalWins.queries.at(-1).sql, 'COMMIT'); count++;
+  const legacyWins = fake({ scopes: ['legacy'], executionSchema: true, reservations: legacyReservation });
+  await assert.rejects(executePostgresArtifactCommand(legacyWins, ['scope', 'legacy'], 'upsert', { artifact: { path: 'notes/test.md', content: 'legacy' } }), /ARTIFACT_EXECUTION_SCOPE_RESERVED/);
+  assert.deepEqual(legacyWins.queries.find(q => q.sql.startsWith('SELECT run_id')).values, ['legacy']);
+  assert(!legacyWins.queries.some(q => q.sql.startsWith('INSERT'))); count++;
+  const released = fake({ executionSchema: true, reservations: [{ runtime_scope_id: 'scope', reservation_active: false }] });
+  await executePostgresArtifactCommand(released, ['scope'], 'upsert', { artifact: { path: 'notes/test.md', content: 'released' } });
+  assert.equal(released.queries.at(-1).sql, 'COMMIT'); count++;
+
+  // Bulk canonical imports fence every scope they mutate, including the old
+  // snapshot alias. These mocks prove query order, not PostgreSQL concurrency.
+  const bulkFake = createRuntimePersistenceFakePgClientFactory({ executionSchema: true });
+  const bulk = createPostgresRuntimeArtifactStore({ targetRoot: os.tmpdir(), connectionString: 'postgres://fixture:fixture@localhost/fixture', clientFactory: bulkFake.factory,
+    runtimeProjectContext: { runtime_scope_id: 'scope', legacy_scope_key: 'legacy' } });
+  const payload = { schema_version: 2, generated_at: '2030-01-01T00:00:00Z', cycles: [], sessions: [], artifacts: [] };
+  await bulk.writeIndexProjection({ payload });
+  for (const reservedScope of ['scope', 'legacy']) {
+    bulkFake.state.queryLog.length = 0;
+    bulkFake.state.executionReservations = [{ run_id: 'run-bulk', runtime_scope_id: reservedScope, reservation_active: true }];
+    const before = JSON.stringify(bulkFake.state.relationalRows);
+    await assert.rejects(bulk.writeIndexProjection({ payload }), /ARTIFACT_EXECUTION_SCOPE_RESERVED/);
+    assert.equal(JSON.stringify(bulkFake.state.relationalRows), before);
+    assert(!bulkFake.state.queryLog.some(q => q.sql.startsWith('DELETE')));
+    assert.equal(bulkFake.state.queryLog.at(-1).sql, 'ROLLBACK');
+    const tableLock = bulkFake.state.queryLog.findIndex(q => q.sql.startsWith('LOCK TABLE'));
+    const scopeLock = bulkFake.state.queryLog.findIndex(q => q.sql.includes('pg_advisory_xact_lock'));
+    assert(tableLock >= 0 && scopeLock > tableLock); count++;
+  }
   const target = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-artifact-preview-'));
   try {
     const child = spawnSync(process.execPath, [fileURLToPath(new URL('../runtime/artifact-store.mjs', import.meta.url)),

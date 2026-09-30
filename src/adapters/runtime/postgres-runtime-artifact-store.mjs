@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { createRequire } from "node:module";
 import { assertRuntimeArtifactStore } from "../../core/ports/runtime-artifact-store-port.mjs";
 import { executePostgresArtifactCommand } from './postgres-artifact-command-lib.mjs';
+import { guardCanonicalMutation } from './agent-execution-fence.mjs';
 import {
   payloadDigest,
   stablePayloadProjection,
@@ -194,20 +195,14 @@ async function replaceRelationalProjectionRows(client, scopeKey, rowsByTable) {
 }
 
 async function purgeLegacySnapshotRow(client, scopeKey) {
-  try {
-    await client.query(
-      `
-      DELETE FROM aidn_runtime.runtime_snapshots
-      WHERE scope_key = $1
-      `,
-      [scopeKey],
-    );
-  } catch (error) {
-    const classification = classifyPostgresRuntimePersistenceError(error);
-    if (classification.category !== "schema") {
-      throw error;
-    }
-  }
+  // Fresh relational installations have no legacy snapshot table. A caught
+  // undefined-table error would still abort the surrounding transaction.
+  const relation = await client.query("SELECT to_regclass('aidn_runtime.runtime_snapshots') AS runtime_snapshots");
+  if (relation.rows[0]?.runtime_snapshots == null) return;
+  await client.query(
+    `DELETE FROM aidn_runtime.runtime_snapshots WHERE scope_key = $1`,
+    [scopeKey],
+  );
 }
 
 async function readRelationalSnapshotForScope(client, scopeKey, {
@@ -538,6 +533,13 @@ export function createPostgresRuntimeArtifactStore({
     await withClient(runtime, async (client) => {
       await client.query("BEGIN");
       try {
+        await client.query('LOCK TABLE aidn_runtime.artifacts IN SHARE ROW EXCLUSIVE MODE');
+        // Bulk replacement and legacy cleanup must consult the same reservation
+        // as selective writes, before deleting any row. Stable ordering also
+        // covers the legacy snapshot scope this operation actually purges.
+        for (const candidateScopeKey of scopeCandidates.slice().sort()) {
+          await guardCanonicalMutation(client, candidateScopeKey);
+        }
         await replaceRelationalProjectionRows(client, scopeKey, relationalRows);
         for (const candidateScopeKey of scopeCandidates) {
           await purgeLegacySnapshotRow(client, candidateScopeKey);

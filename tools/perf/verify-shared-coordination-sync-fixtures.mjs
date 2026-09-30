@@ -179,6 +179,7 @@ async function main() {
 
     const handoff = await projectHandoffPacket({
       targetRoot,
+      syncRelay: true,
       sharedCoordination: fake.resolution,
     });
     assert(handoff.shared_coordination_sync.ok === true, "handoff should sync shared relay");

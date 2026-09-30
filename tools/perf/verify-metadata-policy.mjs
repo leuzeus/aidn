@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 import {
+  evaluateMetadataPolicy,
   getMetadataPolicy,
   listMetadataPolicies,
   validateMetadataPolicies,
 } from "../../src/core/metadata/metadata-policy.mjs";
 import { listCriticalMarkdownContracts } from "../../src/lib/workflow/markdown-contract-registry-lib.mjs";
+import runSchema from "../../src/core/contracts/agent-execution/run.v1.schema.json" with { type: "json" };
+import taskSchema from "../../src/core/contracts/agent-execution/task.v1.schema.json" with { type: "json" };
+import attemptSchema from "../../src/core/contracts/agent-execution/attempt.v1.schema.json" with { type: "json" };
 
 const CRITICAL_ARTIFACT_TYPES = Object.freeze([
   "current_state",
@@ -65,6 +69,45 @@ function main() {
     }
     if (!Array.isArray(contract.governed_metadata_fields) || contract.governed_metadata_fields.length === 0) {
       issues.push(`${contract.artifact_type}: contract does not expose governed metadata fields`);
+    }
+  }
+
+  for (const concept of ["execution_run", "delegated_task", "execution_attempt"]) {
+    const policy = getMetadataPolicy(concept);
+    if (policy?.coverage_kind !== "supervision_candidate" || policy?.authority_backend !== "postgres"
+      || policy?.source_of_truth_concept !== concept) {
+      issues.push(`${concept}: conditional supervision metadata must close over its PostgreSQL authority policy`);
+      continue;
+    }
+    if(!policy.notes.includes("conditional native prototype") || !policy.notes.includes("no automatic purge")) {
+      issues.push(`${concept}: conditional native availability and retained evidence must be explicit`);
+    }
+    const schema = { execution_run: runSchema, delegated_task: taskSchema, execution_attempt: attemptSchema }[concept];
+    for (const fieldName of policy.required_fields) {
+      if (!schema.required.includes(fieldName)) {
+        issues.push(`${concept}: required metadata field ${fieldName} must be required by its internal schema`);
+      }
+    }
+    if (schema.properties.lifecycle_status) {
+      const policyStates = policy.lifecycle.split(/\s*->\s*|\|/);
+      const schemaStates = schema.properties.lifecycle_status.enum;
+      if (JSON.stringify([...policyStates].sort()) !== JSON.stringify([...schemaStates].sort())) {
+        issues.push(`${concept}: lifecycle policy must match the internal schema's states`);
+      }
+    }
+    for (const fieldName of ["contract_version", "run_id", "plan_sha256"]) {
+      if (!policy.required_fields.includes(fieldName)) {
+        issues.push(`${concept}: missing immutable identity field ${fieldName}`);
+      }
+    }
+    const subject = Object.fromEntries(policy.required_fields.map((field) => [field, "fixture-value"]));
+    subject.depends_on = [];
+    if (evaluateMetadataPolicy(concept, subject).metadata_status !== "complete") {
+      issues.push(`${concept}: complete identity metadata must not require fabricated nonempty dependencies`);
+    }
+    delete subject.run_id;
+    if (evaluateMetadataPolicy(concept, subject).metadata_status !== "missing") {
+      issues.push(`${concept}: missing run identity must not be legacy tolerated`);
     }
   }
 

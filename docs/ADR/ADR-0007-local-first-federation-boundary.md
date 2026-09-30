@@ -57,6 +57,25 @@ Stable federation contract:
 - PostgreSQL connection material must be referenced through `env:*` or equivalent indirection, never embedded in tracked files
 - public JSON status and diagnostic outputs must recursively redact resolved PostgreSQL connection strings
 
+## Bounded supervision extension (2026-09-26)
+
+ADR-0014 defines a future single-host supervised path whose run, delegated-task
+and attempt metadata require PostgreSQL. This conditional requirement does not
+change optional PostgreSQL for existing workflows. After Lot 2's `model_only`
+contracts, Lot 3 adds `persistence_only` authority through the separate
+`AgentExecutionStore` port and shared schema 3 tables `execution_runs`,
+`execution_tasks`, `execution_attempts` and `execution_events`. Reservation
+requires canonical runtime and supervision to share one PostgreSQL database
+transaction; file-authoritative state and separate databases are refused.
+No alternate supervision store is provided. Transcripts and worktrees stay
+local, with only bounded references, sizes and hashes in shared results and no
+automatic purge. No existing checkout-bound artifact is relocated by this
+extension. Lot 4 adds candidate native execution and delegated admission with
+separate qualification. Lot 5 adds an internal scheduler, supervisor generation,
+acceptance and integration records in shared schema 4. Lot 6 adds schema 5
+intentions before Git effects and authenticated verification observations; the public supervisor
+remains unavailable. These records stay attached to the same three concepts.
+
 ## Options Compared
 
 | Option | Result |

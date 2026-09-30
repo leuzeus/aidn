@@ -144,6 +144,61 @@ CLI effect semantics:
 - Public command effect classes live in `src/core/cli/effect-policy.mjs` and are verified with `npm run perf:verify-cli-effect-policy` plus `npm run perf:verify-cli-no-implicit-write`.
 - Public JSON output contracts live under `src/core/contracts/cli-output/` and are verified with `npm run perf:verify-cli-output-contracts`.
 
+Bounded supervised runs use a separate opt-in command family:
+`aidn runtime agent-run`, `agent-run-status`, `agent-run-resume`,
+`agent-run-cancel` and `agent-run-cleanup`. Every command selects a pinned local
+`--configuration`; launch also selects `--plan`, while the other commands select
+`--run`. Preview performs no reservation, heartbeat, worktree creation, migration
+or native Codex observation. Launch, resume and cancellation require
+`--execute --expect-plan <action_sha256> --sync-relay`; cleanup requires
+`--write --expect-plan <action_sha256> --sync-relay`. Status is read-only.
+
+Supervised workspaces and task paths under OneDrive are refused by AIDN.
+This application exclusion does not modify OneDrive permissions or establish
+a Windows read prohibition.
+
+This remains a supervision candidate: applying a run requires matching native
+evidence for the package, client, helper, profile and validation boundary.
+The initial Windows preexisting-profile composition admits at most four
+individually prepared and reviewed worker roots. That capacity is distinct from
+the plan's concurrency limit of one to four. Missing native prerequisites refuse
+execution; fixture success does not qualify real Codex parallelism. The explicit v2 native contract declares Codex-managed sandbox maintenance;
+AIDN performs no setup or repair and still requires protected-resource and native
+execution evidence. Supervision requires PostgreSQL, while existing sequential
+commands retain optional PostgreSQL. See [command details](docs/CLI_SURFACE_INVENTORY.md) and
+[native preparation and qualification](docs/AGENT_EXECUTION_NATIVE_QUALIFICATION.md).
+
+Codex supplies task execution, authentication, native trust and the Windows
+sandbox. Configure or repair that sandbox through Codex's official tools before
+using AIDN. AIDN owns delegated admission, PostgreSQL claims/leases, scheduling,
+process termination evidence, Git integration and validation of the exact SHA.
+It does not configure Windows security resources or run automatic sandbox repair.
+See the [responsibility boundary](docs/ADR/ADR-0014-bounded-agent-orchestration.md#codex-execution-and-aidn-governance-boundary).
+
+Plan v2 explicitly selects `assurance_profile: codex-cooperative.v1` to retain
+this workflow with the standard Codex read boundary. Reading the profile and
+supervisor is not isolated; secrets on disk are not promised inaccessible.
+The separate v3 validation boundary still requires restricted writes, network
+denial for sandboxed commands, confirmed termination and exact-SHA validation.
+Previews expose these limits and qualification status. This composition remains
+unavailable until its own native campaign passes; selecting it never upgrades
+a strict plan or reuses strict evidence.
+
+Plan v3 selects the separate `codex-cooperative.v2` profile. Its v4 validation
+boundary also declares network isolation **not guaranteed**, while still
+requesting disabled networking from Codex. This explicit delivery exception
+does not change older profiles or turn failed network evidence into a PASS.
+Write restrictions, confirmed termination, real hooks and the complete parallel
+campaign remain required before activation. Preview includes both limitations.
+
+The reviewed Windows client is unavailable for the strict validation boundary. V1
+returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` because Codex refreshes native
+provisioning. V2 returns `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`: another Codex
+launch can remove its supervisor/profile read denials while validation is active.
+A successful setup or signed canary report cannot override this incompatibility.
+Native end-to-end qualification remains UNAVAILABLE; source and fixture checks
+do not establish delivery readiness.
+
 Runtime state modes:
 
 | Mode | Canonical source | Local projections | Shared runtime |
@@ -261,7 +316,7 @@ For Windows setup including optional PostgreSQL preparation, follow
 [per-project Windows setup](docs/WINDOWS_PROJECT_SETUP.md) is historical 0.9.x guidance.
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.10.14` source also executes dispatched agent commands in their target
+The `v0.11.0` source also executes dispatched agent commands in their target
 worktree, including Windows paths with spaces and accents. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -343,7 +398,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.10.14` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.11.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

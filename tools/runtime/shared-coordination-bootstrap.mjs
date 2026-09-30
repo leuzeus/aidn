@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { resolveSharedCoordinationStore, summarizeSharedCoordinationResolution, syncSharedWorkspaceRegistration } from "../../src/application/runtime/shared-coordination-store-service.mjs";
+import { bootstrapSharedCoordinationSchema, resolveSharedCoordinationStore, summarizeSharedCoordinationResolution, syncSharedWorkspaceRegistration } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 
 function normalizeScalar(value) {
@@ -71,9 +71,10 @@ export async function bootstrapSharedCoordination({
     workspace,
     ...sharedCoordinationOptions,
   });
-  const registration = await syncSharedWorkspaceRegistration(resolution, {
-    workspace,
-  });
+  const readiness = await bootstrapSharedCoordinationSchema(resolution);
+  const registration = readiness.ok
+    ? { ...await syncSharedWorkspaceRegistration(resolution, { workspace }), readiness }
+    : { ...readiness, readiness, registration: null, backend: summarizeSharedCoordinationResolution(resolution) };
   const result = {
     target_root: absoluteTargetRoot,
     ok: registration.ok === true,

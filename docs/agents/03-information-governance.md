@@ -56,6 +56,9 @@ Do not introduce a new information concept until you have checked:
 | incident | governed | Incidents carry lifecycle and ownership rules. |
 | coordination_record | governed | Coordination records are a first-class governed family. |
 | coordination_summary | governed | Coordination summary is a governed projection. |
+| execution_run | governed, `supervision_candidate` | Frozen plan, canonical reservation, supervisor generations, original deadline and final validation; PostgreSQL authority, public commands unavailable. |
+| delegated_task | governed, `supervision_candidate` | Run-local task identity, exact file operations, acceptance contract and ordered integration; no synthetic session. |
+| execution_attempt | governed, `supervision_candidate` | One attempt owns its delegation, preparation, lease, result and acceptance references; execution, acceptance, integration and cleanup remain distinct. |
 | baseline | local-first artifact family | Governed as local-first and checkout-bound unless explicitly projected. |
 | snapshot | local-first artifact family | Governed as local-first and checkout-bound unless explicitly projected. |
 | gate_result | excluded | CI telemetry, not governed product state. |
@@ -68,3 +71,22 @@ Do not introduce a new information concept until you have checked:
 If a concept already has a parent surface or an orthogonal telemetry layer, do not promote it without an explicit policy update and an ADR check.
 
 Keep the source-of-truth policy, metadata policy, and governance diagnostics in sync with the information model.
+
+ADR-0014 introduces internal contracts, transactional persistence and an injected
+supervisor candidate. `supervision_candidate` marks complete policy coverage
+without advertising public supervised commands or native qualification. Policy
+completeness does not establish observed run, task or attempt instances. Evidence
+targets include the internal contracts, `agent-execution-store-port.mjs`, the
+PostgreSQL adapter, the v3/v4 SQL migrations and the supervisor and Git services.
+Supervisor generations, acceptance, integration and final validation remain
+records of these three concepts; they do not create independent authorities.
+PostgreSQL is optional globally, but exclusive for supervised execution;
+there is no SQLite, file or in-memory authority fallback. Local transcripts
+remain local with bounded hash/size references in shared results and no automatic
+purge in V1.
+
+Reservation requires canonical runtime and shared planning in the same
+PostgreSQL database transaction, with a positive planning revision; the first
+historical planning write remains revision zero. Activation and termination
+fixture doubles validate persistence decisions only. They do not qualify a
+native executor, delegated admission or process-tree confinement.

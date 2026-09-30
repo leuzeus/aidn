@@ -84,6 +84,36 @@ Maturité: `1` initial, `2` répétable, `3` défini, `4` géré, `5` optimisé.
 | CoordinationRecord | Historique de coordination agent/runtime. | `.aidn/runtime/context/*` ou shared coordination opt-in. | `record_id`, `actor`, `action`, `scope`, `status` | appended -> summarized -> archived |
 | ReferenceData | Vocabulaires stables: states, roles, modes, severities. | `src/core/*` et docs de contrats. | `code`, `label`, `version`, `status` | active -> deprecated |
 
+### Extension de supervision bornée (2026-09-26)
+
+ADR-0014 ajoute trois concepts gouvernés : contrats `model_only` au lot 2,
+puis persistance transactionnelle `persistence_only` au lot 3. L'exécution
+supervisée reste indisponible. Les policies
+exécutables de source de vérité et de métadonnées complètent la table historique
+ci-dessus sans inventer d'instances runtime.
+
+| Concept | Portée et relation | Autorité et rétention |
+|---|---|---|
+| `execution_run` | Une tâche canonique admissible, son contexte coordinateur et un plan figé. | PostgreSQL exclusif, table `execution_runs`; conserver plan et preuves sans purge automatique. |
+| `delegated_task` | Identité locale au run, fichiers exacts/opérations, dépendances et critères d'acceptation. | Plan parent figé dans `execution_tasks`; aucune session artificielle ni substitution de l'identité canonique. |
+| `execution_attempt` | Une tentative ordonnée; délégation, ownership et résultat liés au même run/task/attempt. | PostgreSQL, tables `execution_attempts` et `execution_events`; sorties volumineuses locales, références/taille/empreinte dans les résultats partagés. |
+
+La tâche canonique est référencée par projet, workspace, scope runtime, session,
+cycle, plan logique, sélecteur exact, empreinte du contenu, révision du planning
+et activation. Les états d'exécution, validation, intégration et nettoyage sont
+distincts. PostgreSQL reste optionnel pour les parcours historiques; la
+persistance de supervision n'a aucun repli SQLite, fichiers ou mémoire. Le port
+`AgentExecutionStore` exige le runtime canonique et la coordination partagée dans
+la même base PostgreSQL pour réserver leur contexte en une transaction. Une
+révision de planning positive est requise sans modification implicite de la
+révision initiale historique, qui reste zéro. Le schéma partagé passe de 2 à 3
+par migration explicite verrouillée; la readiness est en lecture seule et un
+schéma v2 intact reste lisible pour sauvegarde. Les écritures partagées exigent v3.
+Les doubles injectés de vérification d'activation et de terminaison des tests ne
+qualifient ni l'admission native ni l'arrêt des processus. Aucun exécuteur ou
+ordonnanceur n'est livré au lot 3. Les contrats
+internes `agent-execution` ne deviennent pas des sorties CLI publiques.
+
 ### Policy Metadata Canonique
 
 Les métadonnées obligatoires sont maintenant matérialisées dans `src/core/metadata/metadata-policy.mjs`.

@@ -122,7 +122,7 @@ function evaluateSharedCoordinationHealthReadiness(health) {
   return {
     ok: true,
     status: "ready",
-    reason: "shared coordination backend bootstrapped and healthy",
+    reason: "shared coordination backend is healthy",
   };
 }
 
@@ -232,18 +232,7 @@ export async function ensureSharedCoordinationReady(resolution) {
     };
   }
 
-  const bootstrap = await resolution.store.bootstrap();
-  if (bootstrap.ok !== true) {
-    return {
-      attempted: true,
-      ok: false,
-      status: "bootstrap-failed",
-      reason: normalizeScalar(bootstrap.error?.message) || "bootstrap failed",
-      bootstrap,
-      health: null,
-    };
-  }
-
+  const bootstrap = null;
   const health = await resolution.store.healthcheck();
   if (health.ok !== true) {
     return {
@@ -275,6 +264,48 @@ export async function ensureSharedCoordinationReady(resolution) {
     reason: healthReadiness.reason,
     bootstrap,
     health,
+  };
+}
+
+// Explicit administration only. Normal readiness, reads and writes never invoke DDL.
+export async function bootstrapSharedCoordinationSchema(resolution) {
+  if (!resolution?.store) return ensureSharedCoordinationReady(resolution);
+  const bootstrap = await resolution.store.bootstrap();
+  if (bootstrap.ok !== true) {
+    return {
+      attempted: true, ok: false, status: "bootstrap-failed",
+      reason: normalizeScalar(bootstrap.error?.message) || "bootstrap failed",
+      bootstrap, health: null,
+    };
+  }
+  return { ...await ensureSharedCoordinationReady(resolution), bootstrap };
+}
+
+async function readSharedCoordinationReadiness(resolution) {
+  let readiness = await ensureSharedCoordinationReady(resolution);
+  const health = readiness.health;
+  const legacyTables = ["schema_migrations", "project_registry", "workspace_registry", "worktree_registry", "planning_states", "handoff_relays", "coordination_records"];
+  // Additive supervision tables are unnecessary for existing coordination reads,
+  // including the rollback snapshot taken before an explicit upgrade.
+  const compatibleV2 = health?.ok === true
+    && health.schema_status === "version-behind"
+    && [2,3,4,5].includes(health.latest_applied_schema_version)
+    && health.expected_schema_version === 6
+    && health.legacy_workspace_rows === 0
+    && legacyTables.every(table => health.tables_present?.includes(table))
+    && Array.isArray(health.tables_missing)
+    && health.tables_missing.every(table => ["execution_runs", "execution_tasks", "execution_attempts", "execution_events", "execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations", "execution_integration_intents", "execution_cancel_requests", "execution_cleanup_operations", "execution_cleanup_resources"].includes(table));
+  if (compatibleV2) {
+    readiness = { ...readiness, ok: true, status: "ready-read-only", reason: "intact historical shared coordination supports historical reads; writes require explicit migration" };
+  }
+  return {
+    attempted: readiness.attempted,
+    ok: readiness.ok,
+    status: readiness.status,
+    reason: readiness.reason,
+    readiness,
+    registration: null,
+    backend: summarizeSharedCoordinationResolution(resolution),
   };
 }
 
@@ -375,6 +406,7 @@ export async function syncSharedPlanningState(resolution, {
   backlogFile = "",
   backlogSha256 = "",
   planningKey = "",
+  expectedRevision = null,
 } = {}) {
   const effectiveWorkspace = workspace ?? resolution?.workspace ?? null;
   const governance = deriveSharedCoordinationArtifactWriteGovernance({
@@ -411,6 +443,7 @@ export async function syncSharedPlanningState(resolution, {
     projectId: effectiveWorkspace?.project_id,
     workspaceId: effectiveWorkspace?.workspace_id,
     planningKey: normalizeScalar(planningKey) || `session:${normalizeScalar(payload?.session_id) || "none"}`,
+    expectedRevision,
     sessionId: payload?.session_id,
     backlogArtifactRef: backlogFile,
     backlogArtifactSha256: backlogSha256,
@@ -658,9 +691,7 @@ export async function readSharedPlanningState(resolution, {
     };
   }
 
-  const registration = await syncSharedWorkspaceRegistration(resolution, {
-    workspace: effectiveWorkspace,
-  });
+  const registration = await readSharedCoordinationReadiness(resolution);
   if (!registration.ok) {
     return {
       attempted: registration.attempted,
@@ -725,9 +756,7 @@ export async function readLatestSharedHandoffRelay(resolution, {
     };
   }
 
-  const registration = await syncSharedWorkspaceRegistration(resolution, {
-    workspace: effectiveWorkspace,
-  });
+  const registration = await readSharedCoordinationReadiness(resolution);
   if (!registration.ok) {
     return {
       attempted: registration.attempted,
@@ -795,9 +824,7 @@ export async function readSharedCoordinationRecords(resolution, {
     };
   }
 
-  const registration = await syncSharedWorkspaceRegistration(resolution, {
-    workspace: effectiveWorkspace,
-  });
+  const registration = await readSharedCoordinationReadiness(resolution);
   if (!registration.ok) {
     return {
       attempted: registration.attempted,

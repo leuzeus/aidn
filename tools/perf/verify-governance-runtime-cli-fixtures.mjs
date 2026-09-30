@@ -56,6 +56,21 @@ function main() {
     assert(runtimeDiagnostics.registry?.observed_artifacts_included === true, "runtime governance diagnostics should include observed artifact inspection");
     assert(perfDiagnostics.registry?.observed_artifacts_included === false, "perf completeness should stay registry-only");
     assert(Array.isArray(runtimeDiagnostics.issues), "runtime governance diagnostics should expose issues");
+    for (const conceptId of ["execution_run", "delegated_task", "execution_attempt"]) {
+      const concept = runtimeDiagnostics.concepts.find((item) => item.concept === conceptId);
+      assert(concept?.status === "complete", `${conceptId} must have complete policy coverage`);
+      assert(concept?.coverage_kind === "supervision_candidate", `${conceptId} must retain conditional supervision coverage`);
+      assert(/conditional native prototype/i.test(concept?.coverage_note ?? "")
+        && /matching native qualification are required/i.test(concept.coverage_note)
+        && /No runtime instances or operational availability are inferred/i.test(concept.coverage_note), `${conceptId} must distinguish public command coverage from native qualification`);
+      assert(concept?.cli_contract === "runtime-agent-run.v1.schema.json" && concept.cli_contract_status === "covered"
+        && concept.required.includes("cli_contract"), `${conceptId} must retain its required public CLI contract`);
+      assert(!runtimeDiagnostics.observed_artifacts.some((item) => item.concept === conceptId), `${conceptId} must not fabricate observed instances`);
+    }
+    const supervisionSurfaces = runtimeDiagnostics.runtime_surfaces.filter((item) => item.id.startsWith("runtime-agent-run"));
+    const expectedSurfaces = ["runtime-agent-run", "runtime-agent-run-status", "runtime-agent-run-resume", "runtime-agent-run-cancel", "runtime-agent-run-cleanup"];
+    assert(supervisionSurfaces.length === expectedSurfaces.length
+      && expectedSurfaces.every(id => supervisionSurfaces.filter(item => item.id === id).length === 1), "supervision candidate coverage must expose the five public lifecycle surfaces exactly once");
 
     console.log("PASS");
   } catch (error) {

@@ -95,9 +95,17 @@ try {
   assert.deepEqual(Object.keys(config), ["hooks"], "distributed native hooks root must use only supported fields");
   const matcher=new RegExp(config.hooks.PreToolUse[0].matcher);
   for(const name of ["apply_patch","Edit","Write"])assert(matcher.test(name));
-  for(const name of ["Bash","exec_command","write_stdin","mcp__aidn__admit"])assert.equal(matcher.test(name),false);
+  for(const name of ["Bash","exec_command","write_stdin","mcp__aidn__admit"])assert.equal(matcher.test(name),true);
   assert.deepEqual(runHook(client,"PreToolUse",{tool_name:"Bash",tool_input:{command:"git status"}}),{});
-  record("verified-patch-aliases-only-no-shell-interception-claim");
+  record("historical-patch-only-decision-with-delegated-tool-interception");
+  const delegatedMarker=path.join(client,".codex/aidn-agent-attempt.json");
+  fs.writeFileSync(delegatedMarker,JSON.stringify({protocol_version:1,attempt_id:"fixture.attempt",request_sha256:"a".repeat(64)}));
+  for(const tool_name of ["apply_patch","Bash","exec_command","mcp__aidn__admit"]){
+    assert.equal(runHook(client,"PreToolUse",{tool_name,tool_input:{command:"git status"}}).hookSpecificOutput.permissionDecision,"deny");
+  }
+  assert.match(runHook(client,"SessionStart").hookSpecificOutput.additionalContext,/delegated task/);
+  fs.unlinkSync(delegatedMarker);
+  record("delegated-marker-without-transport-fails-closed-including-shell");
   const shell = process.platform === "win32" ? "powershell.exe" : "/bin/sh";
   const command = process.platform === "win32" ? config.hooks.SessionStart[0].hooks[0].commandWindows : config.hooks.SessionStart[0].hooks[0].command;
   const shellArgs = process.platform === "win32" ? ["-NoProfile","-NonInteractive","-Command",command] : ["-c",command];

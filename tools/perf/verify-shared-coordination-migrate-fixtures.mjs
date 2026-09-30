@@ -33,7 +33,8 @@ function runCli(args, env = {}) {
 function createFakeResolution() {
   const state = {
     schemaStatus: "ready",
-    latestSchemaVersion: 2,
+    latestSchemaVersion: 5,
+    bootstraps: 0,
   };
   return {
     enabled: true,
@@ -51,7 +52,7 @@ function createFakeResolution() {
     contract: {
       scope: "shared-coordination-only",
       schema_name: "aidn_shared",
-      schema_version: 2,
+      schema_version: 6,
       schema_file: path.resolve(process.cwd(), "tools/perf/sql/shared-coordination-postgres.sql"),
       driver: {
         package_name: "pg",
@@ -59,12 +60,13 @@ function createFakeResolution() {
     },
     store: {
       async bootstrap() {
+        state.bootstraps += 1;
         state.schemaStatus = "ready";
-        state.latestSchemaVersion = 2;
+        state.latestSchemaVersion = 5;
         return {
           ok: true,
           schema_name: "aidn_shared",
-          schema_version: 2,
+          schema_version: 6,
         };
       },
       async healthcheck() {
@@ -73,7 +75,7 @@ function createFakeResolution() {
           database_name: "aidn_test",
           schema_name: "aidn_shared",
           current_schema_name: "public",
-          expected_schema_version: 2,
+          expected_schema_version: 6,
           applied_schema_versions: state.latestSchemaVersion > 0 ? [state.latestSchemaVersion] : [],
           latest_applied_schema_version: state.latestSchemaVersion,
           tables_present: [
@@ -160,7 +162,7 @@ async function main() {
 
     const upgradeResolution = createFakeResolution();
     upgradeResolution.state.schemaStatus = "version-behind";
-    upgradeResolution.state.latestSchemaVersion = 0;
+    upgradeResolution.state.latestSchemaVersion = 2;
     const dryRun = await migrateSharedCoordination({
       targetRoot,
       write: false,
@@ -172,6 +174,7 @@ async function main() {
     assert(dryRun.migration_plan?.action === "upgrade", "dry-run should report an upgrade migration plan");
     assert(dryRun.rollback_hint?.restore_command?.includes("shared-coordination-restore"), "dry-run should expose the planned rollback command");
     assert(dryRun.migration_diagnostic?.rollback_planned === true, "dry-run should expose rollback planning in the migration diagnostic");
+    assert(upgradeResolution.state.bootstraps === 0, "dry-run must never invoke admin bootstrap");
 
     const writeResult = await migrateSharedCoordination({
       targetRoot,
@@ -184,6 +187,15 @@ async function main() {
     assert(writeResult.rollback_snapshot?.output_file?.endsWith("upgrade-rollback.json"), "upgrade migrate should write a rollback snapshot");
     assert(writeResult.rollback_hint?.restore_command?.includes("upgrade-rollback.json"), "upgrade migrate should expose the rollback restore command");
     assert(writeResult.migration_diagnostic?.migration_status === "ready", "write migrate should expose a ready migration diagnostic");
+
+    const refusedBackup = createFakeResolution();
+    refusedBackup.state.schemaStatus = "version-behind";
+    refusedBackup.state.latestSchemaVersion = 2;
+    refusedBackup.store.getLatestHandoffRelay = async () => ({ ok: false, error: { message: "injected read failure" } });
+    const refusedMigration = await migrateSharedCoordination({ targetRoot, rollbackOut: ".aidn/runtime/refused-rollback.json", sharedCoordination: refusedBackup });
+    assert(!refusedMigration.ok && refusedMigration.shared_coordination_migration.status === "rollback-snapshot-failed", "migration must stop when required backup fails");
+    assert(refusedBackup.state.bootstraps === 0, "failed backup must not be followed by a schema mutation");
+    assert(!fs.existsSync(path.join(targetRoot, ".aidn/runtime/refused-rollback.json")), "failed backup must not export an empty success snapshot");
 
     console.log("PASS");
   } catch (error) {

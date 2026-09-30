@@ -70,6 +70,29 @@ journals retain references and phases without passwords, freeze the initial plan
 and block global switching until the interrupted bootstrap is resumed. They do
 not authorize database rollback or installing a project-local engine.
 
+## Future supervised execution (2026-09-26)
+
+ADR-0014 requires the frozen execution configuration to identify the exact
+candidate engine, model and effort, without silent substitution. Future worker
+worktrees must be prepared against that candidate with their own activation and
+installation evidence. A task ownership lease is not a generation lease: it
+cannot authorize a global switch or replace this ADR's operation/update mutex.
+Lot 2 supplied `model_only` contracts. Lot 3 adds `persistence_only` PostgreSQL
+task ownership leases and durable attempt metadata; it does not install engines,
+change project bindings or qualify native execution. These 60-second task leases
+and their future 10-second heartbeats are distinct from the global generation
+lease. Injected activation/termination fixture verifiers cannot establish engine
+preparation, native authorization or OS process confinement. No executor or
+scheduler is available in this increment.
+
+Lot 5 adds an internal scheduler candidate and a separate PostgreSQL supervisor
+generation lease. Both task and supervisor leases retain the 60-second lifetime
+and 10-second renewal cadence; neither replaces a global engine-generation
+lease. Preparation, native bootstrap, worker execution and validation consume
+the original database-timed run budget. Resume cannot reset that budget, switch
+the frozen engine or replace model and effort. Installation and native admission
+remain explicitly injected prerequisites; no global update is implied by a run.
+
 ## Migration ownership
 
 An exact cleanup inventory classifies managed, modified, missing and unmanaged
@@ -109,3 +132,9 @@ when no explicit home is supplied. Generated operational commands and Codex asse
 must use the same verified package and integration revision. Repair remains an
 explicit project operation with ownership checks and an exact plan; global update
 does not regenerate project views or silently migrate their durable adapter.
+
+Lot 6 verification selects and pins its runner executable and proof authority
+before the run plan is frozen. It neither upgrades the installed global engine
+nor reuses its generation lease as a task or verification lease. Missing keys,
+dependencies or qualified execution boundaries remain explicit unavailability;
+no global setup, implicit key replacement or raw process fallback is performed.

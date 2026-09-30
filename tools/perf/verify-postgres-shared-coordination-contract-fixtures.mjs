@@ -4,6 +4,7 @@ import {
   POSTGRES_SHARED_COORDINATION_DRIVER,
   getPostgresSharedCoordinationContract,
   getPostgresSharedCoordinationSchemaFile,
+  getPostgresSharedCoordinationMigrationFiles,
   resolvePostgresSharedCoordinationConnection,
 } from "../../src/application/runtime/postgres-shared-coordination-contract-service.mjs";
 
@@ -39,7 +40,29 @@ function main() {
       assert(schemaSql.includes(`aidn_shared.${tableName}`), `expected schema to declare ${tableName}`);
     }
 
-    assert(contract.schema_version === 2, "expected shared coordination schema version 2");
+    assert(contract.schema_version === 6, "expected shared coordination schema version 6");
+    const migrations = getPostgresSharedCoordinationMigrationFiles();
+    assert(JSON.stringify(migrations.map(item => item.version)) === "[2,3,4,5,6]", "expected ordered explicit additive migrations");
+    const supervisionSql = fs.readFileSync(migrations[1].file, "utf8");
+    for (const tableName of ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"]) {
+      assert(tableNames.has(tableName), `expected supervision contract table ${tableName}`);
+      assert(supervisionSql.includes(`aidn_shared.${tableName}`), `expected v3 to declare ${tableName}`);
+    }
+    const schedulerSql = fs.readFileSync(migrations[2].file, "utf8");
+    for (const tableName of ["execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations"]) {
+      assert(tableNames.has(tableName), `expected supervised contract table ${tableName}`);
+      assert(schedulerSql.includes(`CREATE TABLE aidn_shared.${tableName}`), `expected v4 to declare ${tableName}`);
+    }
+    assert(schedulerSql.includes("DEFAULT 'legacy'"), "expected existing runs to remain historical");
+    assert(schedulerSql.includes("run_deadline_at TIMESTAMPTZ"), "expected durable database deadline");
+    const consolidationSql=fs.readFileSync(migrations[3].file,"utf8");
+    assert(tableNames.has("execution_integration_intents") && consolidationSql.includes("CREATE TABLE aidn_shared.execution_integration_intents"), "expected durable intention before Git effects");
+    assert(consolidationSql.includes("evidence_verification_sha256") && !consolidationSql.includes("DROP "), "expected additive authenticated evidence without rewriting history");
+    const lifecycleSql=fs.readFileSync(migrations[4].file,"utf8");
+    for(const table of ["execution_cancel_requests","execution_cleanup_operations","execution_cleanup_resources"]){
+      assert(tableNames.has(table) && lifecycleSql.includes(`CREATE TABLE aidn_shared.${table}`),"expected explicit lifecycle authority table");
+    }
+    assert(!lifecycleSql.includes("DROP ") && !lifecycleSql.includes("DELETE "),"lifecycle migration never purges existing evidence");
 
     for (const operation of ["registerWorkspace", "registerWorktreeHeartbeat", "upsertPlanningState", "appendHandoffRelay", "appendCoordinationRecord", "healthcheck"]) {
       assert(contract.operations.includes(operation), `expected operation ${operation}`);

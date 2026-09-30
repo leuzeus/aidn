@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-agent-run.v1",
+  "title": "aidn runtime agent-run --json",
+  "x-aidn-command": "aidn runtime agent-run --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "command",
+    "effect_class",
+    "dry_run",
+    "written",
+    "shared_coordination_sync",
+    "run_id",
+    "plan_sha256",
+    "action_sha256",
+    "can_apply",
+    "status",
+    "action",
+    "errors",
+    "warnings"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "runtime-agent-run.v1"
+    },
+    "command": {
+      "const": "aidn runtime agent-run"
+    },
+    "effect_class": {
+      "enum": [
+        "read-only",
+        "preview",
+        "executor",
+        "mutating"
+      ]
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "written": {
+      "type": "boolean"
+    },
+    "shared_coordination_sync": {
+      "type": "boolean"
+    },
+    "run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "plan_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "action_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "can_apply": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "action": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

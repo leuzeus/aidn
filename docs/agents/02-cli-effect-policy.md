@@ -31,6 +31,11 @@ The classification keeps automation from confusing output format with write perm
   default; schema application requires `--write`, while `--json` remains
   formatting-only.
 - Shared runtime synchronization requires explicit intent such as `--sync-relay`.
+- The `agent-run*` lifecycle is preview-only except read-only status. Launch,
+  resume and cancellation require `--execute --expect-plan --sync-relay`;
+  cleanup requires `--write --expect-plan --sync-relay`. The expected digest is
+  the complete observed action, including material preconditions. Preview never
+  creates preparation resources, reserves a run or observes native Codex state.
 - Every public stable command must have an effect class.
 - A command whose effect depends on an option carries a machine-readable
   invocation rule. Options do not inherit a command-level class as a shortcut.

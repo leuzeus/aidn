@@ -90,6 +90,14 @@ function commandPolicy({
 }
 
 const CLI_EFFECT_POLICIES = freezeDeep([
+  ...["agent-run", "agent-run-status", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].map(name => commandPolicy({
+    id: "runtime-" + name, command: "aidn runtime " + name + " --json", surfaceDefault: true, stability: "experimental",
+    effectClass: name === "agent-run-status" ? "read-only" : "preview", surfaceDefaultEffect: name === "agent-run-status" ? "read-only" : "preview",
+    effectVariants: name === "agent-run-status" ? [] : [{ whenArgs: [name === "agent-run-cleanup" ? "--write" : "--execute"], effectClass: name === "agent-run-cleanup" ? "mutating" : "executor" }],
+    jsonContract: "runtime-" + name + ".v1.schema.json", safeArgs: ["runtime", name, "--json"], allowNonZero: true,
+    notes: "Bounded supervised lifecycle. Preview and JSON do not write; effects require exact --expect-plan and --sync-relay. PostgreSQL required only for this opt-in path.",
+  })),
+
   ...["setup", "update", "rollback", "doctor", "project add", "project migrate", "project list", "project remove"].map(name => commandPolicy({
     id: `global-${name.replaceAll(" ", "-")}`, command: `aidn ${name}`, surfaceDefault: true,
     effectClass: name === "setup" ? "executor" : ["doctor", "project list"].includes(name) ? "read-only" : "preview",

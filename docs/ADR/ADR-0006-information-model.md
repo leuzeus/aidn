@@ -60,6 +60,29 @@ runtime state. Public diagnostics expose hashes and conflicts, not pre-image
 contents. Recovery compares current content before writing and preserves
 transaction history after uninstall. See ADR-0011 for the integration boundary.
 
+## Bounded supervision extension (2026-09-26)
+
+ADR-0014 adds `execution_run`, `delegated_task` and `execution_attempt` with
+`model_only` coverage in Lot 2 and `persistence_only` coverage in Lot 3.
+`AgentExecutionStore` and its PostgreSQL adapter persist the frozen run/task
+descriptors, attempt ownership, delegation, results and immutable events in
+shared schema 3. Lot 5 extends their coverage to `supervision_candidate` and
+shared schema 4: supervisor generations and final validation belong to the run,
+integration belongs to the delegated task, and preparation and acceptance belong
+to the attempt. Lot 6 adds schema 5 integration intentions to the delegated task
+and authenticated verification observations to acceptance and final validation.
+The plan pins verification controls and its proof authority; bulky signed proofs
+remain local with immutable references. The internal scheduler requires explicitly injected dependencies;
+public supervised commands remain unavailable. The run preserves
+canonical session/cycle/task context without creating synthetic sessions;
+reservation requires canonical runtime and shared planning in the same database
+transaction. There is no SQLite, file or in-memory authority fallback.
+Local bulky evidence is retained by reference, size and hash; no V1 automatic
+purge is permitted. Diagnostics do not infer observed instances from policy
+completeness. The schemas remain in the internal `agent-execution` namespace,
+outside the public CLI output registry. Native activation and termination
+qualification remain separate from persistence fixture evidence.
+
 ## Options Compared
 
 | Option | Result |

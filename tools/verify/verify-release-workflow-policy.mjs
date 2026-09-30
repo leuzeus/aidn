@@ -150,6 +150,22 @@ function evaluateWorkflow(candidate) {
     "release publication verify:release step",
     issues,
   );
+  const installStep = namedStep(publishJob, "Install Locked Gate Dependencies");
+  const postgresStep = namedStep(publishJob, "Resolve Ephemeral PostgreSQL Runtime");
+  if (!installStep || !exactRun(installStep, "npm ci --include=dev --include=optional --ignore-scripts --no-audit --no-fund")) {
+    issues.push("release verification requires locked dev and optional PostgreSQL dependencies");
+  }
+  if (!postgresStep || !exactRun(postgresStep, "node tools/ci/resolve-postgres-test-runtime.mjs")) {
+    issues.push("release verification requires the canonical PostgreSQL preflight");
+  }
+  requireBlockingStep(installStep, "release locked dependency installation", issues);
+  requireBlockingStep(postgresStep, "release PostgreSQL preflight", issues);
+  const steps = publishJob?.steps ?? [];
+  if (steps.indexOf(postgresStep) <= steps.indexOf(installStep)
+    || steps.indexOf(postgresStep) >= steps.indexOf(publicationVerificationStep)
+    || hasOwn(postgresStep, "env") || hasOwn(publicationVerificationStep?.env, "PG_BIN_DIR")) {
+    issues.push("release PostgreSQL preflight must follow installation and provide the verified runtime to verification");
+  }
   const buildStep = namedStep(publishJob, "Build Exact Main Commit");
   if (!buildStep
     || !exactRun(
@@ -410,6 +426,12 @@ function candidateRejected(candidate) {
 }
 
 const negativeProbes = {
+  postgres_dependency_omission_rejected: evaluateWorkflow(workflow.replace("--include=dev --include=optional", "--include=dev --omit=optional")).length > 0,
+  postgres_preflight_omission_rejected: evaluateWorkflow(workflow.replace("node tools/ci/resolve-postgres-test-runtime.mjs", "node --version")).length > 0,
+  postgres_preflight_disabled_rejected: evaluateWorkflow(mutateNamedStepProperty(workflow, "Resolve Ephemeral PostgreSQL Runtime", "if", "false")).length > 0,
+  postgres_preflight_nonblocking_rejected: evaluateWorkflow(mutateNamedStepProperty(workflow, "Resolve Ephemeral PostgreSQL Runtime", "continue-on-error", "true")).length > 0,
+  postgres_preflight_bypass_rejected: evaluateWorkflow(workflow.replace("node tools/ci/resolve-postgres-test-runtime.mjs", "node tools/ci/resolve-postgres-test-runtime.mjs || true")).length > 0,
+  postgres_preflight_order_rejected: evaluateWorkflow(workflow.replace("      - name: Resolve Ephemeral PostgreSQL Runtime\n        run: node tools/ci/resolve-postgres-test-runtime.mjs\n", "").replace("      - name: Install Locked Gate Dependencies", "      - name: Resolve Ephemeral PostgreSQL Runtime\n        run: node tools/ci/resolve-postgres-test-runtime.mjs\n\n      - name: Install Locked Gate Dependencies")).length > 0,
   dormant_publication_helper_rejected: candidateRejected(workflow.replace(
     `        run: ${publicationProofCommand}`,
     "        run: |\n"

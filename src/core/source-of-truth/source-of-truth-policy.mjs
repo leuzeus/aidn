@@ -202,8 +202,35 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     scope: "opt-in coordination, planning and handoff records for one workspace",
     retention: "retain shared records under the configured shared coordination policy",
     migration: "use explicit shared coordination backup, migrate or restore commands",
-    replacement: "immutable records are superseded by later records, never overwritten implicitly",
+    replacement: "legacy shared rows may be upserted and do not establish immutable attempt evidence; execution_events have a separate append-only contract",
     evidence_targets: ["src/core/ports/shared-coordination-store-port.mjs"],
+  },
+  execution_run: {
+    owner: "supervising coordinator",
+    lifecycle: "planned -> running -> completed|failed|cancelled|recovery_required",
+    scope: "one admitted canonical task and frozen plan on one supervisor host; at most one mutating run per canonical scope",
+    retention: "retain run identity, frozen plan, cancellation request, cleanup generations and exact resource outcomes with acceptance evidence; archives, transcripts and Git refs remain retained; no automatic purge in V1",
+    migration: "explicit additive shared PostgreSQL schema 2 to 3 to 4 to 5 to 6 migrations; readiness and normal writes never apply DDL",
+    replacement: "a changed plan requires a new run identity and fingerprint; never overwrite prior run evidence",
+    evidence_targets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution", "src/core/ports/agent-execution-store-port.mjs", "src/adapters/runtime/postgres-agent-execution-store.mjs", "tools/perf/sql/shared-coordination-postgres-v3.sql", "tools/perf/sql/shared-coordination-postgres-v4.sql", "tools/perf/sql/shared-coordination-postgres-v5.sql", "tools/perf/sql/shared-coordination-postgres-v6.sql", "src/application/runtime/agent-run-lifecycle-service.mjs", "src/application/runtime/agent-run-cleanup-service.mjs", "src/core/contracts/cli-output/runtime-agent-run.v1.schema.json", "src/adapters/runtime/local-agent-verification.mjs", "src/application/runtime/agent-run-supervisor.mjs", "src/application/runtime/agent-task-integration-service.mjs", "docs/ADR/ADR-0014-bounded-agent-orchestration.md"],
+  },
+  delegated_task: {
+    owner: "supervising coordinator",
+    lifecycle: "pending -> ready -> running -> accepted|failed|blocked|cancelled",
+    scope: "one task identity within a run, bounded by exact file operations and the existing canonical session, cycle and task",
+    retention: "retain dependencies, scope and acceptance contract with the parent run; no automatic purge in V1",
+    migration: "explicit additive shared PostgreSQL schema 2 to 3 to 4 to 5 to 6 migrations; no synthetic sessions or local fallback task store",
+    replacement: "scope or objective changes require a new frozen plan; delegated identifiers never replace canonical task identity",
+    evidence_targets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution", "src/core/ports/agent-execution-store-port.mjs", "src/adapters/runtime/postgres-agent-execution-store.mjs", "tools/perf/sql/shared-coordination-postgres-v3.sql", "tools/perf/sql/shared-coordination-postgres-v4.sql", "tools/perf/sql/shared-coordination-postgres-v5.sql", "tools/perf/sql/shared-coordination-postgres-v6.sql", "src/application/runtime/agent-run-lifecycle-service.mjs", "src/application/runtime/agent-run-cleanup-service.mjs", "src/core/contracts/cli-output/runtime-agent-run.v1.schema.json", "src/adapters/runtime/local-agent-verification.mjs", "src/application/runtime/agent-run-supervisor.mjs", "src/application/runtime/agent-task-integration-service.mjs", "docs/ADR/ADR-0014-bounded-agent-orchestration.md"],
+  },
+  execution_attempt: {
+    owner: "supervising coordinator; executor owns process observations only",
+    lifecycle: "launch_intended -> running -> completed|failed|cancelled|timed_out|recovery_required",
+    scope: "one ordinal attempt for one delegated task; delegation, ownership and terminal result bind to that attempt",
+    retention: "retain attempt evidence and local transcripts; no automatic purge in V1; shared results contain references, byte counts and hashes only",
+    migration: "explicit additive shared PostgreSQL schema 2 to 3 to 4 to 5 to 6 migrations; local evidence files are never ownership authority",
+    replacement: "new attempt identity after explicit reconciliation; late or ownership-stale results cannot replace accepted evidence",
+    evidence_targets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/ports/agent-task-executor-port.mjs", "src/core/contracts/agent-execution", "src/core/ports/agent-execution-store-port.mjs", "src/adapters/runtime/postgres-agent-execution-store.mjs", "tools/perf/sql/shared-coordination-postgres-v3.sql", "tools/perf/sql/shared-coordination-postgres-v4.sql", "tools/perf/sql/shared-coordination-postgres-v5.sql", "tools/perf/sql/shared-coordination-postgres-v6.sql", "src/application/runtime/agent-run-lifecycle-service.mjs", "src/application/runtime/agent-run-cleanup-service.mjs", "src/core/contracts/cli-output/runtime-agent-run.v1.schema.json", "src/adapters/runtime/local-agent-verification.mjs", "src/application/runtime/agent-run-supervisor.mjs", "src/application/runtime/agent-task-integration-service.mjs"],
   },
   agent_roster: {
     owner: "agent roster maintainer",
@@ -233,6 +260,8 @@ function policy({
   dbOnly,
   projection = "none",
   sharedRuntime = "not_shared",
+  coverageKind = null,
+  authorityBackend = null,
   notes = "",
 }) {
   const normalizedConcept = normalizeKey(concept);
@@ -267,11 +296,25 @@ function policy({
     postgresql: "optional",
     shared_sync: "opt-in",
     shared_runtime: sharedRuntime,
+    ...(coverageKind ? { coverage_kind: coverageKind } : {}),
+    ...(authorityBackend ? { authority_backend: authorityBackend } : {}),
     notes,
   });
 }
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
+  ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
+    concept,
+    label: { execution_run: "Bounded execution run", delegated_task: "Delegated task", execution_attempt: "Execution attempt" }[concept],
+    files: "PostgreSQL supervised execution authority; canonical runtime must share the same transaction; explicit qualified composition required",
+    dual: "PostgreSQL supervised execution authority; canonical runtime must share the same transaction; explicit qualified composition required",
+    dbOnly: "PostgreSQL supervised execution authority; canonical runtime must share the same transaction; explicit qualified composition required",
+    projection: "read-only runtime agent-run* JSON status and action previews",
+    sharedRuntime: { execution_run: "execution_runs, execution_supervisors, execution_run_validations, execution_cancel_requests, execution_cleanup_operations and execution_cleanup_resources", delegated_task: "execution_tasks, execution_integration_intents and execution_integrations", execution_attempt: "execution_attempts, execution_events and execution_acceptances" }[concept],
+    coverageKind: "supervision_candidate",
+    authorityBackend: "postgres",
+    notes: "Bounded scheduler, durable supervisor generations, pre-Git intent, authenticated acceptance and Git integration. Public agent-run, agent-run-status, agent-run-resume, agent-run-cancel and agent-run-cleanup are a conditional native prototype, unavailable without explicit configuration and matching native qualification. PostgreSQL remains optional for existing workflows and exclusive for supervision in the same transaction as canonical runtime. Cancellation and cleanup journals belong to execution_run, not independent information concepts. Codex supplies and configures its sandbox outside the AIDN lifecycle. AIDN retains run authority and native qualification evidence, not host setup journals or Windows administration. Missing or incompatible native prerequisites refuse execution without repair or fallback. Cleanup requires a completed run, proven termination, retained exact resources and integrated commits; failed resources and evidence remain retained. No files, SQLite or in-memory authority fallback, inferred runtime instances, implicit writes or automatic purge. Expiration requires reconciliation of the supervisor, descendants and Git operations before transfer. Fixture verifiers do not establish native qualification.",
+  })),
   policy({
     concept: "project_activation",
     label: "Project workflow activation",
@@ -525,6 +568,8 @@ export function getSourceOfTruthPolicy(concept, stateMode = null) {
     postgresql: item.postgresql,
     shared_sync: item.shared_sync,
     shared_runtime: item.shared_runtime,
+    ...(item.coverage_kind ? { coverage_kind: item.coverage_kind } : {}),
+    ...(item.authority_backend ? { authority_backend: item.authority_backend } : {}),
     notes: item.notes,
   };
 }

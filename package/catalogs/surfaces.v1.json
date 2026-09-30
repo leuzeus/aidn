@@ -3393,6 +3393,321 @@
       "migration": ""
     },
     {
+      "id": "command:aidn runtime agent-run",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn runtime agent-run",
+      "implementation": "tools/runtime/agent-run-cli.mjs",
+      "effects": {
+        "surface": "aidn runtime agent-run",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "runtime-agent-run/variant-1",
+            "when_args": [
+              "--execute"
+            ],
+            "unless_args": [],
+            "effect_class": "executor",
+            "policy": "runtime-agent-run/variant-1"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/agent-run-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn runtime agent-run-cancel",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn runtime agent-run-cancel",
+      "implementation": "tools/runtime/agent-run-cli.mjs",
+      "effects": {
+        "surface": "aidn runtime agent-run-cancel",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "runtime-agent-run-cancel/variant-1",
+            "when_args": [
+              "--execute"
+            ],
+            "unless_args": [],
+            "effect_class": "executor",
+            "policy": "runtime-agent-run-cancel/variant-1"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/agent-run-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn runtime agent-run-cleanup",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn runtime agent-run-cleanup",
+      "implementation": "tools/runtime/agent-run-cli.mjs",
+      "effects": {
+        "surface": "aidn runtime agent-run-cleanup",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "runtime-agent-run-cleanup/variant-1",
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "runtime-agent-run-cleanup/variant-1"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/agent-run-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn runtime agent-run-resume",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn runtime agent-run-resume",
+      "implementation": "tools/runtime/agent-run-cli.mjs",
+      "effects": {
+        "surface": "aidn runtime agent-run-resume",
+        "default": "preview",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": [
+          {
+            "id": "runtime-agent-run-resume/variant-1",
+            "when_args": [
+              "--execute"
+            ],
+            "unless_args": [],
+            "effect_class": "executor",
+            "policy": "runtime-agent-run-resume/variant-1"
+          }
+        ]
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/agent-run-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "command:aidn runtime agent-run-status",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn runtime agent-run-status",
+      "implementation": "tools/runtime/agent-run-cli.mjs",
+      "effects": {
+        "surface": "aidn runtime agent-run-status",
+        "default": "read-only",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": []
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/agent-run-cli.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "command:aidn runtime artifact-fetch",
       "kind": "command",
       "status": "active",
@@ -6909,6 +7224,111 @@
       "source": "src/core/contracts/cli-output/project-config-write.v1.schema.json",
       "entrypoint": "aidn project config --init-defaults --write --json",
       "implementation": "src/core/contracts/cli-output/project-config-write.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:runtime-agent-run-cancel.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/runtime-agent-run-cancel.v1.schema.json",
+      "entrypoint": "aidn runtime agent-run-cancel --json",
+      "implementation": "src/core/contracts/cli-output/runtime-agent-run-cancel.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:runtime-agent-run-cleanup.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/runtime-agent-run-cleanup.v1.schema.json",
+      "entrypoint": "aidn runtime agent-run-cleanup --json",
+      "implementation": "src/core/contracts/cli-output/runtime-agent-run-cleanup.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:runtime-agent-run-resume.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/runtime-agent-run-resume.v1.schema.json",
+      "entrypoint": "aidn runtime agent-run-resume --json",
+      "implementation": "src/core/contracts/cli-output/runtime-agent-run-resume.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:runtime-agent-run-status.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/runtime-agent-run-status.v1.schema.json",
+      "entrypoint": "aidn runtime agent-run-status --json",
+      "implementation": "src/core/contracts/cli-output/runtime-agent-run-status.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:runtime-agent-run.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/runtime-agent-run.v1.schema.json",
+      "entrypoint": "aidn runtime agent-run --json",
+      "implementation": "src/core/contracts/cli-output/runtime-agent-run.v1.schema.json",
       "effects": "machine-readable public output",
       "consumer": "automation and contract fixtures",
       "docs": "docs/agents/04-json-contracts.md",

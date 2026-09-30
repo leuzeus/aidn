@@ -377,6 +377,78 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "runtime-agent-execution-contracts",
+      "family": "runtime",
+      "script": "perf:verify-agent-execution-contracts",
+      "job": "governance-admission/gates",
+      "surfaces": ["pure agent execution contracts", "plan, attempt and supervisor binding", "integration and final validation contracts", "executor port conformance"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
+      "id": "runtime-agent-execution-postgres",
+      "family": "runtime",
+      "script": "perf:verify-agent-execution-postgres",
+      "job": "governance-admission/gates",
+      "surfaces": ["ephemeral PostgreSQL migrations", "transactional claims and leases", "canonical write reservations", "multiprocess ownership and recovery"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
+      "id": "runtime-agent-worker-fixtures",
+      "family": "runtime",
+      "script": "perf:verify-agent-worker-fixtures",
+      "job": "governance-admission/gates",
+      "surfaces": ["bounded Codex protocol and executor doubles", "authenticated delegated admission", "worker credential separation"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
+      "id": "runtime-agent-execution-scheduler",
+      "family": "runtime",
+      "script": "perf:verify-agent-execution-scheduler-fixtures",
+      "job": "governance-admission/gates",
+      "surfaces": ["bounded parallel scheduling", "durable preparation and recovery", "deterministic dependency integration"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
+      "id": "runtime-agent-verification",
+      "family": "runtime",
+      "script": "perf:verify-agent-verification-fixtures",
+      "job": "governance-admission/gates",
+      "surfaces": ["exact commit validation", "sealed verification controls", "authenticated supervisor evidence"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
+      "id": "runtime-agent-git-integration",
+      "family": "runtime",
+      "script": "perf:verify-agent-git-integration-fixtures",
+      "job": "governance-admission/gates",
+      "surfaces": ["exact scoped change capture", "private index task commits", "prepared/applied Git reference recovery"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
+      "id": "runtime-agent-run-lifecycle",
+      "family": "runtime",
+      "script": "perf:verify-agent-run-lifecycle-fixtures",
+      "job": "governance-admission/gates",
+      "surfaces": ["explicit supervised lifecycle", "prepared workspace adoption and owned cleanup", "pinned native composition and validation boundary contracts", "managed sandbox preparation, operation adequacy and effect inventory contracts"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
+      "id": "runtime-shared-coordination-concurrency",
+      "family": "runtime",
+      "script": "perf:verify-shared-coordination-concurrency-gate",
+      "job": "governance-admission/gates",
+      "surfaces": ["shared coordination concurrency fixtures", "worktree isolation", "project isolation", "planning contention"],
+      "condition": "always",
+      "obligation": {"dev": "required", "main": "required", "release": "required"}
+    },
+    {
       "id": "runtime-db-runtime-cli",
       "family": "runtime",
       "script": "perf:verify-db-runtime-cli",

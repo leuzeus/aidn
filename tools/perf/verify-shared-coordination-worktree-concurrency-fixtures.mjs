@@ -57,6 +57,8 @@ async function main() {
     runGit(mainRoot, ["commit", "-m", "initial"]);
     runGit(mainRoot, ["worktree", "add", linkedRoot, "-b", "feature/shared-coordination"]);
 
+    if (process.argv.includes("--inject-failure-after-setup")) throw new Error("FIXTURE_INJECTED_FAILURE");
+
     const locator = {
       enabled: true,
       workspaceId: "workspace-worktree-concurrent",
@@ -258,7 +260,7 @@ async function main() {
     console.log("PASS");
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     if (tempRoot && fs.existsSync(tempRoot)) {
       removePathWithRetry(tempRoot);

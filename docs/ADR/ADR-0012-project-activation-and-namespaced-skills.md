@@ -64,6 +64,35 @@ never requests schema migration, adoption or import. The `adopt` policy retains
 explicit installation effects; neither policy grants workflow activation by
 reading configuration.
 
+## Future delegated admission (2026-09-26)
+
+ADR-0014 models bounded worker delegation without implementing an admission
+exception. A future delegation must bind run, task, attempt, exact physical root,
+branch, Git input, activation revision, frozen plan and live lease. Each worktree
+requires independent verified preparation with the candidate engine and
+`verify-only` persistence. A copied receipt cannot qualify and revocation cannot
+be undone by delegation. Session, cycle, planning, installation and authorization
+mutations remain outside worker authority, including through notes or parking-lot
+paths. A future authenticated local admission transport must expose bounded
+admission requests only, with no writer credentials delivered to workers.
+Activation, native trust and observed hook enforcement remain separate evidence.
+
+Lot 3 persists delegation and activation references under `persistence_only`
+coverage; it introduces no native admission exception. The PostgreSQL store
+requires supervisor-owned `verifyActivation` and `verifyTermination` dependencies
+for the operations that consume those proofs. This lot exercises them with
+fixture doubles and supplies no qualified native implementation. A successful
+persistence test is neither activation, native trust, hook enforcement nor proof
+that a process tree stopped. Those proofs remain prerequisites of the future
+worker capability.
+
+Lot 5's injected scheduler does not replace those native prerequisites. Its
+preparation callback must return evidence for the exact attempt before a worker
+can launch; durable preparation references cannot substitute for current native
+admission. On resume the scheduler verifies the recorded preparation instead of
+silently installing or reauthorizing a worktree. A supervisor generation grants
+no additional file, control-plane or native trust permission.
+
 ## Consequences and validation
 
 2026-09-24: activation remains a prerequisite, not patch authorization. Each
@@ -93,3 +122,10 @@ to the absence of a prior receipt remains supported. The host migration recovery
 binding survives project rollback, including older installation history; only
 explicit `--restore-global-skills` releases that binding after restoring the
 unchanged host configuration post-image.
+
+Lot 6 separates validation from delegated editing. Its exact-commit snapshot and
+proof authority do not confer native hook trust or widen the worker scope. A
+qualified verification boundary must keep supervisor proofs and secrets
+inaccessible and the snapshot read-only. Missing platform evidence makes that
+concrete runner unavailable; successful fixture signatures cannot substitute for
+activation, hook or sandbox qualification.

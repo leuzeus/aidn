@@ -50,9 +50,12 @@ Do not rename those fields in place without a version bump and fixture update.
 
 The executable contract verifier validates every schema keyword used by this
 registry, recursively. The supported validation vocabulary is `type`,
-`required`, `properties`, `const`, `enum`, `items`, and
-`additionalProperties`; schema annotations remain descriptive. Adding another
-validation keyword requires implementing it in the deterministic validator and
+`required`, `properties`, `const`, `enum`, `items`, `additionalProperties`,
+`minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `format`, `minItems`,
+`maxItems`, `minProperties`, `maxProperties`, `oneOf`, `anyOf`, and `allOf`;
+the supported formats are `date-time`, `uri`, and `email`. Schema annotations
+remain descriptive. Adding another validation keyword requires implementing it
+in the deterministic validator and
 adding a rejecting fixture before that keyword can appear in a public schema.
 
 Contract coverage is closed in both directions:
@@ -69,6 +72,60 @@ Contract coverage is closed in both directions:
 ## Change Rule
 
 If the payload shape changes, update the schema, the fixture coverage, and the relevant gate in the same change set.
+
+## Internal Agent Execution Contracts
+
+ADR-0014 defines internal schemas under `src/core/contracts/agent-execution/`.
+They use the explicit `agent-execution` validator profile and
+`aidn://contracts/agent-execution/` identifiers. The default `cli-output` profile
+and public command registry remain unchanged. Internal schemas are not CLI
+commands and must not acquire fake `x-aidn-command` entries or public output cases.
+Both profiles reject unsupported validation keywords. Positive and adversarial
+payloads, semantic checks and executor doubles are covered by the dedicated
+`runtime-agent-execution-contracts` gate.
+
+The eighteen schemas cover sixteen kinds: descriptor, availability, plan, run, delegated task,
+attempt, delegation, request, event, result, acceptance, supervisor, prepared
+and applied integration, the pre-Git integration intent, and final run validation. Their pure validity does not
+prove a working executor, live lease, Git reference or native admission. Task
+validation selection is optional for v1 compatibility; final run validation
+always covers the complete plan and audit on the exact integrated SHA.
+An optional frozen verification configuration preserves historical v1 fingerprints.
+It pins the executable, environment, exact regular control files, audit policy,
+verification limits and SHA-256 of an explicitly selected Ed25519 public key in
+SPKI DER form. Delegated operations cannot touch control files. An integration
+intent binds the accepted source, expected parent, workspace, commit identity and
+original creator before Git preparation. The prepared record retains its actual
+producer and references the intent hash. These are model bindings, not live leases.
+Contract validity and runtime availability remain separate evidence.
+
+Plan v2 adds the required `assurance_profile: codex-cooperative.v1`. Plan v1
+keeps its original closed shape and fingerprint; normalization does not promote
+it to v2. The selected profile participates in the plan hash. Run, task and
+attempt contracts retain their existing version and bind to that hash. The
+cooperative validation configuration/qualification are v3 and explicitly state
+`read_isolation: not_guaranteed`; strict and cooperative evidence cannot mix.
+Public preview preconditions expose these limitations without claiming native
+availability. The PostgreSQL JSONB plan retains the exact version and profile.
+
+Plan v3 separately selects `codex-cooperative.v2` and boundary configuration and
+qualification v4. These declare `read_isolation: not_guaranteed` and
+`network_isolation: not_guaranteed`; qualification requires `network_disabled:
+false`. Earlier versions still require network denial. The preview exposes the
+new limitation in its action hash. Native write, process and exact-SHA proofs
+remain required; network diagnostics are separate from v4 qualification.
+
+Internal plan/run runtime scope keys accept the bounded canonical form
+`runtime:project=<project_id>:workspace=<workspace_id>:profile=<profile>` produced
+by the runtime context resolver, separately from historical internal IDs. The
+embedded project/workspace must match the canonical reference. No other ID
+syntax or existing plan fingerprint changes. The public supervisor requires
+exact equality with the resolved runtime scope before reading its canonical
+digest; a legacy short ID is not an alias for that context. PostgreSQL reads,
+reservations and ordinary canonical writers use that same key and reservation
+fence, without schema migration or implicit context adoption.
+
+## Activation Refusals
 
 Activation refusals use `activation-refusal.v1`, registered as an alternative for
 the same command rather than changing its logical effect class. Required

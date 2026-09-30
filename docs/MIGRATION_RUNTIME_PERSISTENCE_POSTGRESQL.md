@@ -19,6 +19,7 @@ Current PostgreSQL meaning:
 - absolute-path `scope_key` values are legacy migration aliases, not durable project identity
 - canonical runtime reads and writes use the relational runtime schema in `aidn_runtime`
 - `runtime_snapshots` is not canonical storage and is only used by admin compatibility flows when migrating older PostgreSQL installs
+- canonical bulk writes check whether that optional table exists before purging the affected canonical and legacy scopes; other database errors abort the write without losing its transactional boundary
 - `runtime persistence status` now exposes the selected backend structure, the SQLite compatibility structure, the PostgreSQL target structure, and the migration/adoption plan separately
 - relational projection preserves artifact `mtime_ns` as an exact string-safe nanosecond value so source and target payload digests stay aligned
 - `runtime persistence-status --json` exposes `project_context` with `project_id`, `workspace_id`, `worktree_id`, `runtime_scope_id`, `identity_source`, and the legacy scope alias

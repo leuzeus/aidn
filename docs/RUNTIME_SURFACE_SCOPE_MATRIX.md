@@ -72,6 +72,46 @@ This overlay names the logical owner of key information concepts. It complements
 | Agent roster | `docs/audit/AGENT-ROSTER.md` | same checkout-bound file | runtime/configured agent registry, materialized on demand | health and selection summaries |
 | CLI output contracts | package `src/core/contracts/cli-output/*.schema.json` | same package contract | same package contract | generated docs future |
 
+## Supervision Persistence Boundary
+
+ADR-0014 adds internal `execution_run`, `delegated_task` and `execution_attempt`
+contracts. Lot 5 extends AgentExecutionStore to shared schema 4 and
+`supervision_candidate` coverage. Their authority is exclusively PostgreSQL. Reservation requires
+canonical runtime and supervision in one transaction; separate databases or
+file-authoritative canonical state are not admitted. Sequential paths retain
+optional PostgreSQL. Internal supervision requires explicit runtime composition
+and native qualification. Lot 7 exposes the five `agent-run*` commands with
+explicit action fingerprints; native application still requires exact package,
+client, helper, profile and validation-boundary evidence.
+
+Lot 6 adds explicit shared schema 5 integration intentions and authenticated
+verification observations. The intention precedes Git effects; local prepared
+results are adopted only after reconciliation. The frozen plan pins verification
+controls and the proof authority; PostgreSQL remains the exclusive shared
+authority and existing sequential workflows still need no PostgreSQL.
+
+The port is `src/core/ports/agent-execution-store-port.mjs`; its PostgreSQL
+adapter and the shared PostgreSQL v3/v4/v5/v6 migrations are implementation evidence.
+Shared schema 2 to 3 to 4 to 5 to 6 migrations are explicit and locked.
+Readiness, registry-independent reads and normal claims never apply DDL. Intact
+v2-v5 historical coordination data remains readable for pre-migration backup;
+normal shared writes require v6. A reservation requires a positive planning
+revision; it does not change the initial historical revision zero implicitly.
+Injected activation and termination fixture verifiers establish no native
+admission or descendant-termination proof. Lot 4 adds a candidate executor and
+authenticated local admission transport. Its worker environment contains no
+PostgreSQL writer credentials; the supervisor evaluates exact scopes under the
+live attempt reservation. Native trust, hook execution and confinement must be
+qualified before this candidate can advertise availability. `supervision_candidate`
+remains the governed coverage while native composition is pending.
+
+The explicit run lifecycle owns local worker worktrees and bulky output files.
+Shared attempt results contain bounded local references, byte counts and hashes,
+never transcripts or credentials. No automatic purge applies. Task leases,
+worktree heartbeats and global generation leases have separate authority.
+Policy completeness must not be interpreted as a running capability or an
+observed instance of these concepts.
+
 ## Mode Contract Summary
 
 The overlay above describes where each concept lives. These are the operational guarantees the modes must preserve:
@@ -131,6 +171,18 @@ ADR-0008 or in the shared coordination port.
   - `planning_states`
   - `handoff_relays`
   - `coordination_records`
+  - `execution_runs`
+  - `execution_tasks`
+  - `execution_attempts`
+  - `execution_events`
+  - `execution_supervisors`
+  - `execution_acceptances`
+  - `execution_integrations`
+  - `execution_run_validations`
+  - `execution_integration_intents`
+  - `execution_cancel_requests`
+  - `execution_cleanup_operations`
+  - `execution_cleanup_resources`
 
 ## Regression Rules
 

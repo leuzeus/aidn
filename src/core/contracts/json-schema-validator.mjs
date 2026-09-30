@@ -106,7 +106,7 @@ function hasDuplicates(values) {
   return new Set(values).size !== values.length;
 }
 
-function validateSchemaNode(schema, location, { root }) {
+function validateSchemaNode(schema, location, { root, contractKind = "cli-output" }) {
   const issues = [];
   if (!isPlainObject(schema)) {
     return [`${location}: schema must be a plain object`];
@@ -128,8 +128,8 @@ function validateSchemaNode(schema, location, { root }) {
     issues.push(`${location}/$id: root schema identifier is required`);
   } else if (Object.prototype.hasOwnProperty.call(schema, "$id")) {
     if (!root || typeof schema.$id !== "string"
-      || !schema.$id.startsWith("aidn://contracts/cli-output/")) {
-      issues.push(`${location}/$id: expected an AIDN CLI-output contract URI on the root schema`);
+      || !schema.$id.startsWith(`aidn://contracts/${contractKind}/`)) {
+      issues.push(`${location}/$id: expected an AIDN ${contractKind === "cli-output" ? "CLI-output" : contractKind} contract URI on the root schema`);
     }
   }
   if (schema.title != null && typeof schema.title !== "string") {
@@ -253,12 +253,15 @@ function validateSchemaNode(schema, location, { root }) {
   return issues;
 }
 
-export function validateJsonSchemaDefinition(schema, location = "#") {
-  return validateSchemaNode(schema, location, { root: true });
+export function validateJsonSchemaDefinition(schema, location = "#", { contractKind = "cli-output" } = {}) {
+  if (!["cli-output", "agent-execution"].includes(contractKind)) {
+    return [`${location}: unsupported contract profile`];
+  }
+  return validateSchemaNode(schema, location, { root: true, contractKind });
 }
 
-export function collectUnsupportedSchemaKeywords(schema, location = "#") {
-  return validateJsonSchemaDefinition(schema, location)
+export function collectUnsupportedSchemaKeywords(schema, location = "#", options = {}) {
+  return validateJsonSchemaDefinition(schema, location, options)
     .filter((issue) => issue.endsWith("unsupported schema keyword"));
 }
 
@@ -382,8 +385,8 @@ function validateValue(value, schema, location) {
   return issues;
 }
 
-export function validateJsonSchema(value, schema, location = "$") {
-  const definitionIssues = validateJsonSchemaDefinition(schema);
+export function validateJsonSchema(value, schema, location = "$", options = {}) {
+  const definitionIssues = validateJsonSchemaDefinition(schema, "#", options);
   if (definitionIssues.length > 0) {
     return definitionIssues;
   }

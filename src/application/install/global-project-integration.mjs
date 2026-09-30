@@ -2,24 +2,29 @@ import path from 'node:path';
 import { resolveGlobalRuntime, resolveGlobalRecoveryRuntime, GLOBAL_INTEGRATION_REVISION } from './global-runtime-store.mjs';
 import { assertGlobalSkillsEnabled } from './global-skills-migration-service.mjs';
 
-function verifySkills(runtime) {
+function verifySkills(runtime, beforeObserve) {
   const groups = new Map();
   for (const asset of runtime.state.assets ?? []) if (asset.path.endsWith(`${path.sep}SKILL.md`)) {
     const home = path.dirname(path.dirname(path.dirname(asset.path)));
     if (!groups.has(home)) groups.set(home, []);
     groups.get(home).push(asset.path);
   }
-  for (const [home, files] of groups) assertGlobalSkillsEnabled(home, files);
+  for (const [home, files] of groups) {
+    beforeObserve?.(home); beforeObserve?.(path.join(home, 'config.toml'));
+    for (const file of files) beforeObserve?.(file);
+    assertGlobalSkillsEnabled(home, files);
+  }
 }
 
-export function resolveGlobalProjectBinding(binding, { recoveryPlanId } = {}) {
+export function resolveGlobalProjectBinding(binding, { recoveryPlanId, beforeObserve } = {}) {
   if (!binding || binding.schema_version !== 1 || !path.isAbsolute(binding.home ?? '')
       || typeof binding.installation_id !== 'string' || binding.integration_revision !== GLOBAL_INTEGRATION_REVISION) throw new Error('GLOBAL_PROJECT_BINDING_INVALID');
+  beforeObserve?.(binding.home);
   const runtime = recoveryPlanId
-    ? resolveGlobalRecoveryRuntime({ home: binding.home, expectedPlanId: recoveryPlanId })
-    : resolveGlobalRuntime({ home: binding.home, installationId: binding.installation_id, integrationRevision: binding.integration_revision });
+    ? resolveGlobalRecoveryRuntime({ home: binding.home, expectedPlanId: recoveryPlanId, beforeObserve })
+    : resolveGlobalRuntime({ home: binding.home, installationId: binding.installation_id, integrationRevision: binding.integration_revision, beforeObserve });
   if (runtime.state.installation_id !== binding.installation_id) throw new Error('GLOBAL_INSTALLATION_MISMATCH');
-  verifySkills(runtime);
+  verifySkills(runtime, beforeObserve);
   return runtime;
 }
 
