@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../src/core/agents/agent-local-path-policy.mjs";
 import path from "node:path";
 import os from "node:os";
 import { createHash, randomUUID } from "node:crypto";
@@ -9,6 +10,8 @@ import { pathToFileURL } from "node:url";
 import pg from "pg";
 import { createAgentNativeRefusalEvidence, assertAgentNativeRefusalEvidence } from "./agent-native-refusal-evidence.mjs";
 import { assertCodexNativeProfileBootstrap } from "./agent-native-profile-observation.mjs";
+import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
+import { sanitizeCodexMetadataRpcDiagnostic } from "../../src/adapters/agents/codex-metadata-rpc-diagnostic.mjs";
 
 export const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 export const json = value => JSON.stringify(value, null, 2) + "\n";
@@ -20,13 +23,151 @@ const MARKER = ".codex/aidn-agent-attempt.json";
 const ALLOWED = "src/allowed.txt", FORBIDDEN = "protected/sentinel.txt";
 export const NATIVE_PROFILE_PREPARATION_MAX_MS = 60000;
 
+// These are local diagnostic records, never worker termination or admission proofs.
+export function nativeQualificationProfileFailure(error,{phase,...binding}={}) {
+  const process=structuredClone(error?.process ?? null),tree=process?.tree_termination;
+  const metadataRpc=sanitizeCodexMetadataRpcDiagnostic(error?.details?.metadata_rpc);
+  const confirmed=process?.closed===true && process?.pid_absent===true
+    && (tree===undefined || tree?.termination_state==="confirmed"
+      && tree.proof?.method==="windows-job-object" && tree.proof.active_processes===0);
+  return {phase,...binding,reason:/^[A-Z][A-Z0-9_]{0,100}$/.test(error?.code ?? "")?error.code:"QUALIFICATION_NATIVE_PROFILE_OBSERVATION_FAILED",
+    process_cleanup:confirmed?"CONFIRMED":"UNCONFIRMED",process,...(metadataRpc?{details:{metadata_rpc:metadataRpc}}:{})};
+}
+export function createNativeQualificationProfileFailureTracker(verify) {
+  let retained=null,pending=null;
+  return {
+    async verify(request,options) {
+      requireProof(!pending && retained?.process_cleanup!=="UNCONFIRMED","QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED");
+      const binding={phase:options.phase,attempt_id:request.attempt_id,request_sha256:fingerprintAgentExecutionValue(request)};
+      pending=binding;
+      try { return await verify(request,options); }
+      catch(error) { retained ??= nativeQualificationProfileFailure(error,binding);throw error; }
+      finally { pending=null; }
+    },
+    failure() {
+      // A controller timeout can finish before its metadata callback settles.
+      // Freeze that unknown state now; a late callback cannot rewrite a terminal.
+      if(pending && !retained) retained=nativeQualificationProfileFailure({code:"QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED"},pending);
+      return structuredClone(retained);
+    },
+  };
+}
+
+const ACTIVATION_DIAGNOSTIC_CODES=new Set([
+  "ACTIVATION_UNSAFE_PATH","ACTIVATION_UNSAFE_DIRECTORY","ACTIVATION_UNSAFE_FILE",
+  "ACTIVATION_INVALID_ASSET_PATH","ACTIVATION_RECORD_TOO_LARGE","ACTIVATION_INVALID_JSON",
+  "ACTIVATION_INVALID_RECORD","ACTIVATION_INVALID_RECORD_INTEGRITY","ACTIVATION_GIT_RESOLUTION_FAILED",
+  "ACTIVATION_GIT_ROOT_MISMATCH","ACTIVATION_WORKTREE_BACKLINK_MISMATCH","ACTIVATION_INVALID_AUTHORITY",
+  "ACTIVATION_INVALID_HOOKS","ACTIVATION_REQUIRED_SKILL_MISSING","ACTIVATION_REQUIRED_ASSET_MISSING",
+  "ACTIVATION_ASSET_MISSING","ACTIVATION_ASSET_CHANGED","ACTIVATION_AGENTS_CHANGED",
+  "ACTIVATION_INVALID_HOOK_RECEIPT","ACTIVATION_HOOK_CHANGED","ACTIVATION_REQUIRED_HOOK_MISSING",
+  "ACTIVATION_INVALID_RECEIPT","ACTIVATION_INVALID_RECEIPT_ASSET","ACTIVATION_INVALID_RECEIPT_ASSET_KIND",
+  "ACTIVATION_INVALID_INSTALLATION_RECEIPT","ACTIVATION_RECEIPT_AUTHORITY_MISMATCH",
+  "ACTIVATION_INVALID_PACKAGE_BINDING","ACTIVATION_PACKAGE_CHANGED","ACTIVATION_COMPLETION_MISSING",
+  "ACTIVATION_INSTALLATION_INCOMPLETE","ACTIVATION_INVALID_TRANSACTION_OPERATION",
+  "ACTIVATION_GLOBAL_MIGRATION_PENDING","ACTIVATION_INSTALLATION_PENDING","ACTIVATION_AUTHORITY_MISSING",
+  "ACTIVATION_READ_FAILED","EACCES","EPERM","ENOENT","ENOTDIR","EISDIR","EIO","EBUSY","EMFILE","ENFILE","ETIMEDOUT",
+]);
+// Qualification-local evidence only. Fixed keys, role/code vocabulary and one
+// optional digest bound this projection below 1 KiB; no authority is derived.
+export function createNativeQualificationActivationVerifier({manifest,readActivation}) {
+  let retained=null;
+  function retain(entry,predicates,exception,readCode) {
+    if(retained) return;
+    retained={role:"unknown",exception,predicates:{...predicates},code:null,code_sha256:null};
+    try {const role=entry.role;if(["coordinator","worker-a","worker-b"].includes(role))retained.role=role;} catch {}
+    try {
+      const raw=readCode();
+      // readActivation.errors contains messages: inspect only a leading code,
+      // never hash or retain its free-form suffix. Exceptions expose code only.
+      const code=typeof raw==="string" ? exception?raw:/^(ACTIVATION_[A-Z0-9_]{1,89})(?=:|$)/.exec(raw)?.[1] : null;
+      if(typeof code==="string") {
+        if(ACTIVATION_DIAGNOSTIC_CODES.has(code)) retained.code=code;
+        else retained.code_sha256=hash(code);
+      }
+    } catch { /* Diagnostic extraction cannot change refusal or the thrown error. */ }
+  }
+  return {
+    verify(expectedActivation) {
+      return manifest.roots.every(entry=>{
+        const predicates={};
+        try {
+          const a=readActivation({targetRoot:entry.root});
+          // Keep the original six predicates and short circuit. Missing keys
+          // mean unevaluated, not a fabricated false or another root's result.
+          const accepted=(predicates.active=a.active===true) && (predicates.state=a.state==="active")
+            && (predicates.authority=a.identity.authority_id===expectedActivation.authority_id)
+            && (predicates.revision=a.authorization.revision===expectedActivation.revision)
+            && (predicates.package=a.receipt?.package?.root===manifest.candidate.packageRoot)
+            && (predicates.root=a.identity.root_id===entry.worktree_id);
+          if(!accepted) retain(entry,predicates,false,()=>a.errors?.[0]);
+          return accepted;
+        } catch(error) {retain(entry,predicates,true,()=>error?.code);throw error;}
+      });
+    },
+    failure(){return structuredClone(retained);},
+  };
+}
+
 export function nativeQualificationBudgets({preexisting=false,maxDurationMs=150000}={}) {
   requireProof(Number.isSafeInteger(maxDurationMs) && maxDurationMs>0 && maxDurationMs<=150000,"QUALIFICATION_TASK_BUDGET_INVALID");
   const preparation=preexisting?NATIVE_PROFILE_PREPARATION_MAX_MS:0;
   return {preparation_max_duration_ms:preparation,worker_max_duration_ms:maxDurationMs,run_max_duration_ms:preparation+maxDurationMs};
 }
 
+
+// Qualification-only oracle: the fixed worker ceiling remains in the controller.
+// An authentic, live hook arms a shorter real timer; it never predicts LLM latency
+// from another attempt and never turns the cancellation signal into a timeout.
+export function createNativeQualificationTimeout({maxDurationMs=150000,now=()=>performance.now(),setTimer=setTimeout,clearTimer=clearTimeout}={}) {
+  nativeQualificationBudgets({maxDurationMs});
+  requireProof([now,setTimer,clearTimer].every(value=>typeof value==="function"),"QUALIFICATION_TIMEOUT_CLOCK_INVALID");
+  const began=now(),controller=new AbortController();let last=began,timer=null,children=[];
+  requireProof(Number.isFinite(began),"QUALIFICATION_TIMEOUT_CLOCK_INVALID");
+  const state={armed:false,disposed:false,delay_ms:3000,worker_max_duration_ms:maxDurationMs,
+    armed_at_monotonic_ms:null,deadline_monotonic_ms:null,hook_elapsed_ms:null,
+    descendant_observed_at_monotonic_ms:null,expired_at_monotonic_ms:null,clock_error:null};
+  function tick(){const value=now();requireProof(Number.isFinite(value)&&value>=last,"QUALIFICATION_TIMEOUT_CLOCK_INVALID");last=value;return value;}
+  const snapshot=()=>Object.freeze({...state});
+  function expire(){
+    timer=null;if(state.disposed)return;
+    try{const at=tick();if(at<state.deadline_monotonic_ms){timer=setTimer(expire,state.deadline_monotonic_ms-at);return;}
+      state.expired_at_monotonic_ms=at;
+    }catch(error){state.clock_error=error.code;}
+    controller.abort();
+  }
+  return Object.freeze({signal:controller.signal,snapshot,
+    arm({hookReceivedAt,observation}={}) {
+      requireProof(!state.disposed,"QUALIFICATION_TIMEOUT_DISPOSED");requireProof(!state.armed,"QUALIFICATION_TIMEOUT_ALREADY_ARMED");
+      const at=tick(),elapsed=at-hookReceivedAt;
+      // Leave 500ms of the hook's independent 6500ms deadline unused. Slow
+      // process observation fails closed instead of extending either deadline.
+      requireProof(Number.isFinite(hookReceivedAt)&&hookReceivedAt>=began&&elapsed>=0&&elapsed+state.delay_ms<6000,"QUALIFICATION_TIMEOUT_HOOK_WINDOW_MISSED");
+      requireProof(at+state.delay_ms<began+maxDurationMs,"QUALIFICATION_TIMEOUT_WORKER_WINDOW_MISSED");
+      children=(observation?.descendants??[]).filter(row=>Number.isSafeInteger(row.ProcessId)&&row.ProcessId>0
+        && typeof row.Started==="string"&&Number.isFinite(Date.parse(row.Started))&&/^node(?:\.exe)?$/i.test(row.Name??""))
+        .map(row=>({ProcessId:row.ProcessId,Started:row.Started}));
+      requireProof(children.length>0,"QUALIFICATION_NATIVE_HOOK_DESCENDANT_MISSING");
+      Object.assign(state,{armed:true,armed_at_monotonic_ms:at,deadline_monotonic_ms:at+state.delay_ms,hook_elapsed_ms:elapsed});
+      timer=setTimer(expire,state.delay_ms);return snapshot();
+    },
+    confirmDescendant(observation){
+      const at=tick();requireProof(state.armed&&!state.disposed&&!controller.signal.aborted&&at<state.deadline_monotonic_ms,"QUALIFICATION_TIMEOUT_OBSERVATION_LATE");
+      requireProof((observation?.descendants??[]).some(row=>children.some(prior=>prior.ProcessId===row.ProcessId&&prior.Started===row.Started)),"QUALIFICATION_TIMEOUT_DESCENDANT_NOT_LIVE");
+      state.descendant_observed_at_monotonic_ms=at;return snapshot();
+    },
+    assertCompleted(processResult){
+      requireProof(state.armed&&!state.clock_error&&state.expired_at_monotonic_ms!==null&&state.expired_at_monotonic_ms>=state.deadline_monotonic_ms
+        && state.descendant_observed_at_monotonic_ms!==null&&state.descendant_observed_at_monotonic_ms<state.deadline_monotonic_ms
+        && processResult?.outcome==="timed_out"&&processResult.reason_code==="PROCESS_TIMEOUT"&&processResult.termination_state==="confirmed"
+        && processResult.termination_proof?.active_processes===0,"QUALIFICATION_TIMEOUT_PROOF_INVALID");return snapshot();
+    },
+    dispose(){if(timer!==null)clearTimer(timer);timer=null;state.disposed=true;},
+  });
+}
+
 export function physical(value, kind) {
+  assertAgentLocalPath(value);
   requireProof(typeof value === "string" && path.isAbsolute(value), "QUALIFICATION_ABSOLUTE_PATH_REQUIRED");
   const absolute = path.resolve(value);
   for (let cursor = absolute;;) {
@@ -61,6 +202,7 @@ export function writeEvidence(root,relative,value) {
   return {ref:relative,bytes:fs.statSync(file).size,sha256:hash(fs.readFileSync(file))};
 }
 export async function loadCandidate(candidate,{nativeProfile=false}={}) {
+  assertAgentLocalPath(candidate?.packageRoot);
   const imports=[
     "src/adapters/agents/codex-cli-task-executor.mjs",
     "src/adapters/agents/process-tree/windows-process-tree-controller.mjs",
@@ -136,77 +278,8 @@ export function assertNativeQualificationLaunchIntent(durable, request) {
 // Acquisition and stopping probes use the same policy decision as the full
 // executor. The observer must reply to this fresh challenge before create and
 // again while the native process is suspended. Legacy requests need no observer.
-export async function verifyNativeQualificationProfile({modules,policy,runtime,request,verify,phase,signal,timeoutMs=10000}={}) {
-  if(policy===undefined) {
-    requireProof(request?.execution?.native_profile===undefined,"QUALIFICATION_NATIVE_PROFILE_POLICY_REQUIRED");
-    return;
-  }
-  requireProof(typeof verify==="function" && typeof modules?.assertCodexNativeProfileBinding==="function"
-    && typeof modules?.assertCodexNativeProfileVerification==="function","QUALIFICATION_NATIVE_PROFILE_OBSERVER_REQUIRED");
-  requireProof(["before_create","before_resume"].includes(phase),"QUALIFICATION_NATIVE_PROFILE_PHASE_INVALID");
-  requireProof(Number.isSafeInteger(timeoutMs) && timeoutMs>0 && timeoutMs<=10000,"QUALIFICATION_NATIVE_PROFILE_BUDGET_INVALID");
-  modules.assertCodexNativeProfileBinding(policy,request,runtime);
-  const challenge=randomUUID(), stop=new AbortController(), deadline=performance.now()+timeoutMs;
-  let timer, rejectAbort;
-  const cancelled=new Promise((_,reject)=>{rejectAbort=reject;});
-  const abort=()=>{stop.abort();rejectAbort(Object.assign(new Error("QUALIFICATION_NATIVE_PROFILE_CANCELLED"),{code:"QUALIFICATION_NATIVE_PROFILE_CANCELLED"}));};
-  if(signal?.aborted) abort();else signal?.addEventListener("abort",abort,{once:true});
-  timer=setTimeout(()=>{stop.abort();rejectAbort(Object.assign(new Error("QUALIFICATION_NATIVE_PROFILE_TIMEOUT"),{code:"QUALIFICATION_NATIVE_PROFILE_TIMEOUT"}));},timeoutMs);
-  try {
-    const decision=await Promise.race([cancelled,Promise.resolve().then(()=>{
-      requireProof(!stop.signal.aborted,"QUALIFICATION_NATIVE_PROFILE_CANCELLED");
-      return verify(structuredClone(request),{signal:stop.signal,phase,challenge,policy:structuredClone(policy)});
-    })]);
-    requireProof(performance.now()<deadline,"QUALIFICATION_NATIVE_PROFILE_TIMEOUT");
-    requireProof(!stop.signal.aborted && !signal?.aborted,"QUALIFICATION_NATIVE_PROFILE_CANCELLED");
-    modules.assertCodexNativeProfileVerification(decision,{policy,request,phase,challenge});
-  } finally {clearTimeout(timer);signal?.removeEventListener("abort",abort);stop.abort();}
-}
-// Native state initialization can backfill historical SQLite metadata. It is a
-// separate, explicitly budgeted preparation, never a reusable admission decision.
-// Fresh canonical preflight consumes the same deadline; no retry resets it.
-export async function bootstrapNativeQualificationProfile({modules,policy,runtime,request,verify,admitLaunch,signal,timeoutMs=NATIVE_PROFILE_PREPARATION_MAX_MS}={}) {
-  if(policy===undefined) {
-    requireProof(request?.execution?.native_profile===undefined,"QUALIFICATION_NATIVE_PROFILE_POLICY_REQUIRED");
-    return null;
-  }
-  requireProof(typeof verify?.bootstrap==="function" && typeof modules?.assertCodexNativeProfileBinding==="function","QUALIFICATION_NATIVE_PROFILE_BOOTSTRAP_REQUIRED");
-  requireProof(typeof admitLaunch==="function","QUALIFICATION_NATIVE_PROFILE_PREFLIGHT_REQUIRED");
-  requireProof(Number.isSafeInteger(timeoutMs) && timeoutMs>0 && timeoutMs<=NATIVE_PROFILE_PREPARATION_MAX_MS,"QUALIFICATION_NATIVE_PROFILE_PREPARATION_BUDGET_INVALID");
-  modules.assertCodexNativeProfileBinding(policy,request,runtime);
-  const stop=new AbortController(), deadline=performance.now()+timeoutMs;
-  let timer,rejectAbort,bootstrapStarted=false,observation=null,proofAccepted=false;
-  const cancelled=new Promise((_,reject)=>{rejectAbort=reject;});
-  const abort=()=>{stop.abort();rejectAbort(Object.assign(new Error("QUALIFICATION_NATIVE_PROFILE_PREPARATION_CANCELLED"),{code:"QUALIFICATION_NATIVE_PROFILE_PREPARATION_CANCELLED"}));};
-  const checkDeadline=()=>{
-    requireProof(performance.now()<deadline,"QUALIFICATION_NATIVE_PROFILE_PREPARATION_TIMEOUT");
-    requireProof(!stop.signal.aborted && !signal?.aborted,"QUALIFICATION_NATIVE_PROFILE_PREPARATION_CANCELLED");
-  };
-  if(signal?.aborted) abort();else signal?.addEventListener("abort",abort,{once:true});
-  timer=setTimeout(()=>{stop.abort();rejectAbort(Object.assign(new Error("QUALIFICATION_NATIVE_PROFILE_PREPARATION_TIMEOUT"),{code:"QUALIFICATION_NATIVE_PROFILE_PREPARATION_TIMEOUT"}));},timeoutMs);
-  try {
-    observation=await Promise.race([cancelled,Promise.resolve().then(()=>{
-      checkDeadline();
-      bootstrapStarted=true;
-      return verify.bootstrap(structuredClone(request),{signal:stop.signal,timeoutMs});
-    })]);
-    checkDeadline();
-    assertCodexNativeProfileBootstrap(observation,{policy,request});
-    proofAccepted=true;
-    requireProof(observation.budget_ms<=timeoutMs,"QUALIFICATION_NATIVE_PROFILE_PREPARATION_BUDGET_INVALID");
-    const admission=await Promise.race([cancelled,Promise.resolve().then(()=>admitLaunch({signal:stop.signal}))]);
-    checkDeadline();
-    requireProof(admission?.ok===true,"QUALIFICATION_POST_BOOTSTRAP_PREFLIGHT_REFUSED",{reason:admission?.reason_code});
-    return {observation,admission};
-  } catch(error) {
-    // A race can settle before the observer acknowledges its stop request.
-    // Worker NOT_STARTED says nothing about this distinct metadata process.
-    const processProof=proofAccepted?observation.process:error.process ?? null;
-    const cleanup=!bootstrapStarted?"NOT_STARTED":processProof?.closed===true && processProof?.pid_absent===true?"CONFIRMED":"UNCONFIRMED";
-    error.nativeProfilePreparation={status:"FAILED",process_cleanup:cleanup,process:processProof,reason:error.code ?? "QUALIFICATION_NATIVE_PROFILE_PREPARATION_FAILED"};
-    throw error;
-  } finally {clearTimeout(timer);signal?.removeEventListener("abort",abort);stop.abort();}
-}
+export { verifyCodexNativeProfile as verifyNativeQualificationProfile, bootstrapCodexNativeProfile as bootstrapNativeQualificationProfile } from "../../src/application/runtime/codex-native-profile-bootstrap-service.mjs";
+import { verifyCodexNativeProfile as verifyNativeQualificationProfile, bootstrapCodexNativeProfile as bootstrapNativeQualificationProfile } from "../../src/application/runtime/codex-native-profile-bootstrap-service.mjs";
 
 function promptFor(patches) {
   return "This is an explicitly authorized native admission qualification on a disposable project. Use only the native apply_patch tool. Do not run shell, read files, install, use other tools, delegate, commit, or modify metadata. The exact preimages and patches are supplied below. Call each numbered patch exactly once in order as a distinct apply_patch invocation, preserving each entire patch. The expected refusals are intentional qualification tests. After a refusal continue to the next numbered test, but never retry, split, repair or bypass a refused patch. After the final call stop and report the tool outcomes briefly.\n\n" + patches.map((p,i)=>`${i+1}. Exact patch:\n${p}`).join("\n\n");
@@ -237,6 +310,8 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
   requireProof(!preexisting || typeof verifyNativeProfile==="function","QUALIFICATION_NATIVE_PROFILE_OBSERVER_REQUIRED");
   requireProof(!preexisting || typeof verifyNativeProfile.bootstrap==="function","QUALIFICATION_NATIVE_PROFILE_BOOTSTRAP_REQUIRED");
   const budgets=nativeQualificationBudgets({preexisting,maxDurationMs});
+  const profileFailures=preexisting?createNativeQualificationProfileFailureTracker(verifyNativeProfile):null;
+  const verifyProfile=profileFailures?.verify ?? verifyNativeProfile;
   // B retains its tracked input throughout stopping cases. The final port
   // therefore starts from the declared SHA without resetting A's proven edit.
   const root=manifest.roots.find(r=>r.role===(mode==="acquire" ? "worker-a" : "worker-b"));
@@ -248,7 +323,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
   const stderrCollector=mode==="acquire"?createAgentNativeRefusalEvidence({codexSha256:runtime.sha256}):null,refusalEvidence=[];
   const controller=m.createWindowsProcessTreeController({helperPath:helper.helper_path,helperSha256:helper.helper_sha256,helperSourceSha256:helper.source_sha256,candidateSha256:manifest.candidate.sha256});
   const client=new pg.Client({connectionString}); await client.connect();
-  let transport=null, decisionLog=null, heartbeat=null, heartbeatWork=Promise.resolve(), heartbeatFailure=null, runner=null, processResult=null, protocol=null, protocolError=null, refs=[], hookObservation=null, staleObservation=null, lastHookObservation=null, hookLatencyMs=null, began=null, timingError=null, nativeResult=null, invalidated=false, launchRequested=false, independentCleanupVerified=mode==="port",stderrCapture=null,storedStderr=null,traceEndedAt=null,stderrOracleError=null;
+  let transport=null, decisionLog=null, heartbeat=null, heartbeatWork=Promise.resolve(), heartbeatFailure=null, runner=null, processResult=null, protocol=null, protocolError=null, refs=[], hookObservation=null, staleObservation=null, lastHookObservation=null, hookLatencyMs=null, began=null, timingError=null, timeoutOracle=null, nativeResult=null, invalidated=false, launchRequested=false, independentCleanupVerified=mode==="port",stderrCapture=null,storedStderr=null,traceEndedAt=null,stderrOracleError=null;
   const observeStderr=bytes=>{
     if(!stderrCollector || stderrOracleError) return;
     try {stderrCollector.push(bytes);} catch(error) {stderrOracleError=error;}
@@ -271,10 +346,9 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       ...(preexisting?{native_profile:{mode:"preexisting",policy_sha256:m.fingerprintCodexNativeProfilePolicy(nativeProfilePolicy)}}:{})},limits:{concurrency:1,max_duration_ms:budgets.run_max_duration_ms},
     tasks:[{task_id:"native",objective:`Native qualification ${name}`,scope,depends_on:[],acceptance_criteria:["Only the exact admitted edit occurs; process death and preservation are observed."],max_duration_ms:maxDurationMs}],
     validations:[{validation_id:"native-evidence",argv:["node","qualify-agent-native-worker.mjs"]}],audit:{read_only:true,criteria:["Preserve every undelegated file and every Git metadata byte."]}});
+  const activationVerifier=createNativeQualificationActivationVerifier({manifest,readActivation:m.readActivation});
   const store=m.createPostgresAgentExecutionStore({connectionString,
-    verifyActivation(expectedActivation) {
-      return manifest.roots.every(entry=>{const a=m.readActivation({targetRoot:entry.root});return a.active===true && a.state==="active" && a.identity.authority_id===expectedActivation.authority_id && a.authorization.revision===expectedActivation.revision && a.receipt?.package?.root===manifest.candidate.packageRoot && a.identity.root_id===entry.worktree_id;});
-    },
+    verifyActivation:activationVerifier.verify,
     verifyTermination(attempt,proof,context) {
       const actual=observedProofs.get(attempt.attempt_id);
       return context.termination_state==="confirmed" && actual && equal(actual,proof) && proof.active_processes===0 && proof.candidate_sha256===manifest.candidate.sha256 && proof.helper_sha256===helper.helper_sha256 && context.runner?.runner_id===proof.runner_id && context.runner?.pid===proof.pid && context.runner?.started_at===new Date(proof.started_at).toISOString();
@@ -321,6 +395,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     const preflight=await service.preflight(); writeEvidence(caseRoot,"preflight.json",preflight); requireProof(preflight.ok,"QUALIFICATION_PREFLIGHT_REFUSED",{reason:preflight.reason_code});
     decisionLog=fs.openSync(path.join(caseRoot,"admissions.jsonl"),"wx",0o600);
     transport=await m.startAgentAdmissionTransport({attemptId,requestSha256:requestHash,admit:async(packet,options)=>{
+      const hookReceivedAt=performance.now();
       if(decisions.length>=8) {stop.abort();fail("QUALIFICATION_ADMISSION_LIMIT");}
       const record={sequence:decisions.length+1,observed_at:new Date().toISOString(),packet,tool_event_position:toolEvents.length,stderr_position:stderrCollector?.position() ?? 0,before:{allowed:hash(fs.readFileSync(path.join(root.root,ALLOWED))),forbidden:hash(fs.readFileSync(path.join(root.root,FORBIDDEN)))}};
       decisions.push(record);
@@ -348,16 +423,14 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         writeEvidence(caseRoot,"descendants-active.json",hookObservation);
         if(mode==="cancel") stop.abort();
         else {
-          const remaining=began+maxDurationMs-Date.now();
-          if(remaining<300 || remaining>4000) { timingError="QUALIFICATION_TIMEOUT_ORACLE_WINDOW_MISSED"; stop.abort(); }
-          else {
-            // Observe the same hook subtree immediately before the fixed
-            // controller deadline, while the hook's own 6.5s limit is live.
-            await new Promise(resolve=>setTimeout(resolve,Math.max(0,remaining-1600)));
+          try {
+            const armed=timeoutOracle.arm({hookReceivedAt,observation:hookObservation});
+            writeEvidence(caseRoot,"timeout-armed.json",{attempt_id:attemptId,runner_id:runner.runner_id,...armed});
+            await new Promise(resolve=>setTimeout(resolve,Math.max(0,armed.deadline_monotonic_ms-performance.now()-1600)));
             lastHookObservation=await descendants(runner);
-            if(!lastHookObservation.descendants.some(p=>hookObservation.descendants.some(q=>q.ProcessId===p.ProcessId && q.Started===p.Started))) {timingError="QUALIFICATION_TIMEOUT_DESCENDANT_NOT_LIVE";stop.abort();}
+            timeoutOracle.confirmDescendant(lastHookObservation);
             writeEvidence(caseRoot,"descendants-before-timeout.json",lastHookObservation);
-          }
+          } catch(error) { timingError=error.code??"QUALIFICATION_TIMEOUT_ORACLE_FAILED";stop.abort();throw error; }
         }
         // Retain the authentic hook request outside a PostgreSQL transaction.
         // Server closure aborts this promise after controller death is known.
@@ -385,11 +458,12 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
     }
     requireProof(!heartbeatFailure && !stop.signal.aborted,"QUALIFICATION_HEARTBEAT_FAILED");
     began=Date.now();
+    if(mode==="timeout") timeoutOracle=createNativeQualificationTimeout({maxDurationMs});
     const launchDeadline=performance.now()+maxDurationMs;
     const recheckDirectProfile=async phase=>{
       const remaining=Math.floor(launchDeadline-performance.now());
       requireProof(remaining>0,"QUALIFICATION_NATIVE_PROFILE_TASK_DEADLINE");
-      await verifyNativeQualificationProfile({modules:m,policy:nativeProfilePolicy,runtime,request,verify:verifyNativeProfile,phase,signal:stop.signal,timeoutMs:Math.min(10000,remaining)});
+      await verifyNativeQualificationProfile({modules:m,policy:nativeProfilePolicy,runtime,request,verify:verifyProfile,phase,signal:stop.signal,timeoutMs:Math.min(10000,remaining)});
     };
     try {
       if(mode==="port") {
@@ -397,7 +471,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         const executor=m.createCodexCliTaskExecutor({runtime,controller:{...controller,run:async(input,options)=>{launchRequested=true;onLaunch();processResult=await controller.run(input,{...options,onEvent:async event=>{if(event.type==="resumed")onStarted();await options.onEvent(event);}});return processResult;}},
           qualify:async({runtime:asked,cwd})=>({qualified:qualification.passed===true && equal(asked,runtime) && cwd===root.root && qualification.candidate_sha256===manifest.candidate.sha256 && qualification.codex_sha256===manifest.codex.sha256 && qualification.helper_sha256===helper.helper_sha256 && qualification.platform===process.platform && qualification.architecture===process.arch}),
           prepare:async()=>({request_sha256:requestHash,env}),recordLaunchIntent:async()=>store.recordLaunchIntent({...owned(),request}),observeRunner,
-          admissionTimeoutMs:10000,verifyNativeProfile,admitLaunch:async(_request,{signal})=>service.preflight({signal}),
+          admissionTimeoutMs:10000,verifyNativeProfile:verifyProfile,admitLaunch:async(_request,{signal})=>service.preflight({signal}),
           openEvidence:async()=>{const evidence=await evidenceStore.open(request);return {append:async(stream,bytes)=>{await evidence.append(stream,bytes);if(stream==="stdout")observeOutput(bytes);else if(stream==="stderr")observeStderr(bytes);},finish:async(value)=>{protocol=value.protocol;refs=await evidence.finish(value);return refs;}};}});
         nativeResult=await executor.runTask(request,{signal:stop.signal,onEvent:async event=>{await store.appendEvent({...owned(),event});}});
       } else {
@@ -406,7 +480,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         const remainingMs=Math.floor(launchDeadline-performance.now());
         requireProof(remainingMs>0,"QUALIFICATION_NATIVE_PROFILE_TASK_DEADLINE");
         launchRequested=true;onLaunch();
-        processResult=await controller.run({runnerId:randomUUID(),executable:runtime.executable,executableSha256:runtime.sha256,args:m.buildCodexTaskArguments(request,{nativeProfilePolicy}),cwd:request.cwd,env,stdin:request.instruction,maxDurationMs:remainingMs,maxOutputBytes:16*1024*1024,maxPendingBytes:1024*1024,stopTimeoutMs:5000},{signal:stop.signal,onEvent:async event=>{
+        processResult=await controller.run({runnerId:randomUUID(),executable:runtime.executable,executableSha256:runtime.sha256,args:m.buildCodexTaskArguments(request,{nativeProfilePolicy}),cwd:request.cwd,env,stdin:request.instruction,maxDurationMs:remainingMs,maxOutputBytes:16*1024*1024,maxPendingBytes:1024*1024,stopTimeoutMs:5000},{signal:stop.signal,timeoutSignal:timeoutOracle?.signal,onEvent:async event=>{
           if(event.type==="prepared") {await observeRunner(request,event);
             await recheckDirectProfile("before_resume");
             const p=await service.preflight();requireProof(p.ok,"QUALIFICATION_SUSPENDED_PREFLIGHT_REFUSED");}
@@ -417,11 +491,13 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
         refs=await evidence.finish({process:processResult,protocol,protocol_error:protocolError});
       }
     } finally {
+      timeoutOracle?.dispose();
       clearInterval(heartbeat); heartbeat=null; await heartbeatWork;
       await transport.close(); transport=null; fs.closeSync(decisionLog); decisionLog=null;
     }
     traceEndedAt=new Date().toISOString();
     writeEvidence(caseRoot,"process.json",processResult); writeEvidence(caseRoot,"tool-events.json",toolEvents);
+    if(timeoutOracle) writeEvidence(caseRoot,"timeout-oracle.json",{attempt_id:attemptId,runner_id:runner?.runner_id??null,...timeoutOracle.snapshot()});
     if(processResult?.termination_state==="confirmed") observedProofs.set(attemptId,processResult.termination_proof);
     // Preserve an actual port result independently of qualification acceptance.
     // Unknown termination therefore fences the canonical attempt as well as
@@ -446,6 +522,7 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       requireProof(!timingError,timingError ?? "QUALIFICATION_TIMEOUT_ORACLE_FAILED");
       requireProof(hookObservation && decisions.length===1,"QUALIFICATION_NATIVE_HOOK_NOT_OBSERVED");
       requireProof(processResult.outcome===(mode==="cancel"?"cancelled":"timed_out"),"QUALIFICATION_STOP_OUTCOME_MISMATCH");
+      if(mode==="timeout") timeoutOracle.assertCompleted(processResult);
       requireProof(hash(fs.readFileSync(path.join(root.root,ALLOWED)))===hash(beforeAllowed),"QUALIFICATION_STOPPED_PATCH_EXECUTED");
     } else {
       requireProof(processResult.outcome==="completed" && protocol?.terminal==="completed","QUALIFICATION_CODEX_DID_NOT_COMPLETE",{reason:processResult.reason_code,protocol_error:protocolError});
@@ -499,9 +576,10 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       if(entry.git_pointer_sha256) requireProof(hash(fs.readFileSync(physical(path.join(entry.root,".git"),"file")))===entry.git_pointer_sha256,"QUALIFICATION_GIT_POINTER_CHANGED");
     }
     compareInventory(inventory(expected.common_git_dir),expected.common_git_files,"common-git");
-    return {name,status:"PASS",mode,attempt_id:attemptId,request_sha256:requestHash,case_root:caseRoot,budgets,native_profile_preparation:nativeProfilePreparation,hook_latency_ms:hookLatencyMs,process:processResult,protocol,evidence:refs,admission_count:decisions.length,refusal_evidence:refusalEvidence,preservation:"PASS",native_process_cleanup:"CONFIRMED",acceptance:"NOT_PRODUCT_ACCEPTANCE",integration:"NOT_RUN",cleanup:"EVIDENCE_PRESERVED"};
+    return {name,status:"PASS",mode,attempt_id:attemptId,request_sha256:requestHash,case_root:caseRoot,budgets,native_profile_preparation:nativeProfilePreparation,hook_latency_ms:hookLatencyMs,...(timeoutOracle?{timeout_oracle:timeoutOracle.snapshot()}:{}),process:processResult,protocol,evidence:refs,admission_count:decisions.length,refusal_evidence:refusalEvidence,preservation:"PASS",native_process_cleanup:"CONFIRMED",acceptance:"NOT_PRODUCT_ACCEPTANCE",integration:"NOT_RUN",cleanup:"EVIDENCE_PRESERVED"};
   } catch(error) {
     stop.abort();
+    const profileVerificationFailure=profileFailures?.failure() ?? null;
     const nativeCleanup=processResult?.termination_state==="confirmed" && independentCleanupVerified?"CONFIRMED":!launchRequested || processResult?.termination_state==="not_started"?"NOT_STARTED":"UNCONFIRMED";
     let snapshot={status:"UNAVAILABLE",purpose:"DIAGNOSTIC_ONLY"};
     try {
@@ -510,8 +588,9 @@ export async function runNativeQualificationCase({name,mode,manifest,helper,modu
       const bytes=json(diagnostic);requireProof(Buffer.byteLength(bytes)<=4*1024*1024,"QUALIFICATION_DIAGNOSTIC_SNAPSHOT_LIMIT");
       snapshot={status:"PRESERVED",purpose:"DIAGNOSTIC_ONLY",...writeEvidence(caseRoot,"canonical-at-failure.json",bytes)};
     } catch { /* Never call an unavailable archive a successful recovery proof. */ }
-    error.nativeQualification={name,native_process_cleanup:nativeCleanup,native_profile_preparation:error.nativeProfilePreparation ?? nativeProfilePreparation,canonical_snapshot:snapshot,attempt_marker:"PRESERVED_IF_CREATED",case_root:caseRoot};
-    writeEvidence(caseRoot,"failure.json",{status:"FAIL",reason:error.code ?? error.message,details:error.details,...error.nativeQualification,process:processResult,native_result:nativeResult,evidence:refs,protocol,admissions:decisions,hook_observation:hookObservation,last_hook_observation:lastHookObservation});
+    error.nativeQualification={name,native_process_cleanup:nativeCleanup,native_profile_preparation:error.nativeProfilePreparation ?? nativeProfilePreparation,
+      native_profile_verification_failure:profileVerificationFailure,activation_verification_failure:activationVerifier.failure(),canonical_snapshot:snapshot,attempt_marker:"PRESERVED_IF_CREATED",case_root:caseRoot};
+    writeEvidence(caseRoot,"failure.json",{status:"FAIL",reason:error.code ?? error.message,details:error.details,...error.nativeQualification,process:processResult,native_result:nativeResult,evidence:refs,protocol,admissions:decisions,hook_observation:hookObservation,last_hook_observation:lastHookObservation,timeout_oracle:timeoutOracle?.snapshot()??null});
     throw error;
-  } finally {clearInterval(heartbeat);await heartbeatWork;try{if(transport) await transport.close();}finally{if(decisionLog!==null)fs.closeSync(decisionLog);await client.end();}}
+  } finally {timeoutOracle?.dispose();clearInterval(heartbeat);await heartbeatWork;try{if(transport) await transport.close();}finally{if(decisionLog!==null)fs.closeSync(decisionLog);await client.end();}}
 }

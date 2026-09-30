@@ -93,10 +93,15 @@ const importPaths = new Set([
   "tools/verify/qualify-agent-native-worker.mjs", "tools/verify/agent-native-qualification-driver.mjs",
   "tools/verify/agent-native-refusal-evidence.mjs",
   "tools/verify/agent-native-profile-observation.mjs",
+  "src/application/runtime/codex-native-profile-observation-service.mjs",
+  "src/application/runtime/codex-native-profile-bootstrap-service.mjs",
   "src/adapters/agents/codex-native-profile-policy.mjs",
-  "src/core/agents/agent-execution-contracts.mjs",
+  "src/adapters/agents/codex-metadata-rpc-diagnostic.mjs",
+  "src/core/agents/codex-startup-arguments.mjs",
+  "src/core/agents/agent-execution-contracts.mjs", "src/core/agents/agent-local-path-policy.mjs",
   "src/core/contracts/json-schema-validator.mjs",
   "tools/perf/agent-execution-postgres-test-lib.mjs",
+  "src/lib/fs/remove-path-with-retry.mjs",
 ].map((relative) => key(path.join(packageRoot, relative))));
 const dependencies = key(path.join(packageRoot, "node_modules")) + path.sep;
 const executionSchemas = key(path.join(packageRoot, "src/core/contracts/agent-execution")) + path.sep;
@@ -181,24 +186,166 @@ try {
       qualification.qualifyAgentNativeWorker, driver.runNativeQualificationCase,
       profileObservation.observerMetadata, profileObservation.discoverCodexNativeProfileMetadata]) assert.equal(typeof fn, "function");
   });
+  await check("startup source import allowance never permits validation reads", () => {
+    const startupSource = path.join(packageRoot, "src/core/agents/codex-startup-arguments.mjs");
+    assert.throws(() => fs.readFileSync(startupSource), /Forbidden native fixture effect/);
+    assert.throws(() => fsPromises.readFile(startupSource), /Forbidden native fixture effect/);
+    assert.deepEqual(effects, ["fs.readFileSync:read", "fs.promises.readFile:read"]); effects.length = 0;
+  });
+
+  function activationVerifierFixture(read) {
+    const source={roots:manifest.roots,candidate:{packageRoot:"fixture-package"}};
+    const valid=entry=>({active:true,state:"active",identity:{authority_id:"authority-fixture",root_id:entry.worktree_id},
+      authorization:{revision:1},receipt:{package:{root:"fixture-package"}},errors:[]});
+    const calls=[];
+    const verifier=driver.createNativeQualificationActivationVerifier({manifest:source,readActivation:({targetRoot})=>{
+      const entry=source.roots.find(value=>value.root===targetRoot);calls.push(entry.role);
+      return read?read(valid(entry),entry):valid(entry);
+    }});
+    return {verifier,calls,expected:{authority_id:"authority-fixture",revision:1}};
+  }
+  await check("activation verifier keeps successful boolean and every root read",()=>{
+    const x=activationVerifierFixture();assert.equal(x.verifier.verify(x.expected),true);
+    assert.deepEqual(x.calls,roles);assert.equal(x.verifier.failure(),null);
+  });
+  const activationPredicates=["active","state","authority","revision","package","root"];
+  for(const [index,mutate] of [
+    value=>{value.active=false;},value=>{value.state="revoked";},
+    value=>{value.identity.authority_id="foreign";},value=>{value.authorization.revision=2;},
+    value=>{value.receipt.package.root="foreign";},value=>{value.identity.root_id="foreign";},
+  ].entries()) await check("activation refusal retains evaluated predicates: "+activationPredicates[index],()=>{
+    const x=activationVerifierFixture((value,entry)=>{if(entry.role==="worker-a")mutate(value);return value;});
+    assert.equal(x.verifier.verify(x.expected),false);assert.deepEqual(x.calls,["coordinator","worker-a"]);
+    const failure=x.verifier.failure();
+    assert.deepEqual(failure,{role:"worker-a",exception:false,
+      predicates:Object.fromEntries(activationPredicates.slice(0,index+1).map((name,offset)=>[name,offset<index])),
+      code:null,code_sha256:null});
+    assert.ok(Buffer.byteLength(JSON.stringify(failure))<=1024);
+  });
+  await check("activation short circuit never reads a later predicate or root",()=>{
+    const x=activationVerifierFixture(value=>{
+      value.active=false;Object.defineProperty(value,"state",{get(){throw Error("must not read");}});return value;
+    });
+    assert.equal(x.verifier.verify(x.expected),false);assert.deepEqual(x.calls,["coordinator"]);
+    assert.deepEqual(x.verifier.failure().predicates,{active:false});
+  });
+  await check("activation exception is rethrown unchanged with safe code only",()=>{
+    const error=Object.assign(new Error("PRIVATE MESSAGE"),{code:"EACCES",path:"PRIVATE PATH",stack:"PRIVATE STACK"});
+    const x=activationVerifierFixture(()=>{throw error;});
+    assert.throws(()=>x.verifier.verify(x.expected),value=>value===error);
+    assert.deepEqual(x.verifier.failure(),{role:"coordinator",exception:true,predicates:{},code:"EACCES",code_sha256:null});
+  });
+  await check("activation retains only the first refusal through later checks and consumer mutation",()=>{
+    let first=true;const x=activationVerifierFixture(value=>{if(first){first=false;value.active=false;value.errors=["ACTIVATION_ASSET_CHANGED: PRIVATE PATH"];}else value.state="revoked";return value;});
+    assert.equal(x.verifier.verify(x.expected),false);const original=x.verifier.failure();
+    x.verifier.failure().predicates.active=true;
+    assert.equal(x.verifier.verify(x.expected),false);
+    assert.deepEqual(x.verifier.failure(),original);
+    assert.equal(original.code,"ACTIVATION_ASSET_CHANGED");assert.equal(original.code_sha256,null);
+  });
+  await check("activation diagnostics drop free fields and bound unknown code and role",()=>{
+    const unknown="ACTIVATION_FUTURE_CODE",raw="PRIVATE "+ "x".repeat(4000);
+    const source={roots:[{role:raw,root:"fixture-root",worktree_id:raw}],candidate:{packageRoot:raw}};
+    const verifier=driver.createNativeQualificationActivationVerifier({manifest:source,readActivation:()=>({
+      active:false,state:raw,errors:[unknown+": "+raw,"EACCES"],message:raw,details:{uri:raw},stack:raw,
+    })});
+    assert.equal(verifier.verify({authority_id:raw,revision:1}),false);
+    const diagnostic=verifier.failure();
+    assert.deepEqual(diagnostic,{role:"unknown",exception:false,predicates:{active:false},code:null,code_sha256:driver.hash(unknown)});
+    assert.ok(Buffer.byteLength(JSON.stringify(diagnostic))<=1024);
+    assert.equal(JSON.stringify(diagnostic).includes("PRIVATE"),false);
+  });
+  await check("activation predicate exceptions retain only completed evaluations",()=>{
+    const error=Object.assign(new Error("PRIVATE"),{code:"ACTIVATION_FUTURE_CODE"});
+    const x=activationVerifierFixture(value=>{Object.defineProperty(value.authorization,"revision",{get(){throw error;}});return value;});
+    assert.throws(()=>x.verifier.verify(x.expected),value=>value===error);
+    assert.deepEqual(x.verifier.failure(),{role:"coordinator",exception:true,
+      predicates:{active:true,state:true,authority:true},code:null,code_sha256:driver.hash(error.code)});
+  });
+  await check("activation unknown exception codes stay bounded without retaining arbitrary fields",()=>{
+    const code="PRIVATE-CODE-"+"x".repeat(8192),error=Object.assign(new Error("PRIVATE"),{code,details:{uri:"PRIVATE"}});
+    const x=activationVerifierFixture(()=>{throw error;});
+    assert.throws(()=>x.verifier.verify(x.expected),value=>value===error);
+    const diagnostic=x.verifier.failure();assert.equal(diagnostic.code,null);
+    assert.equal(diagnostic.code_sha256,driver.hash(code));
+    assert.ok(Buffer.byteLength(JSON.stringify(diagnostic))<=1024);
+    assert.equal(JSON.stringify(diagnostic).includes("PRIVATE"),false);
+  });
+  await check("activation errors without a typed prefix retain no message digest",()=>{
+    const x=activationVerifierFixture(value=>{value.active=false;value.errors=["PRIVATE_MESSAGE"];return value;});
+    assert.equal(x.verifier.verify(x.expected),false);
+    assert.equal(x.verifier.failure().code,null);assert.equal(x.verifier.failure().code_sha256,null);
+  });
+  await check("activation diagnostic extraction never replaces a refusal or exception",()=>{
+    const x=activationVerifierFixture(value=>{value.active=false;Object.defineProperty(value,"errors",{get(){throw Error("PRIVATE");}});return value;});
+    assert.equal(x.verifier.verify(x.expected),false);assert.equal(x.verifier.failure().code,null);
+    const error=Object.defineProperty(new Error("PRIVATE"),"code",{get(){throw Error("PRIVATE CODE");}});
+    const y=activationVerifierFixture(()=>{throw error;});
+    assert.throws(()=>y.verifier.verify(y.expected),value=>value===error);assert.equal(y.verifier.failure().code,null);
+  });
+
+  await check("qualification path helpers refuse cloud roots before filesystem observation", async () => {
+    for (const name of ["OneDrive", "oNeDrIvE - Fixture", "OneDrive. ", "ONEDRI~1"]) {
+      const cloud = path.join(root, name, "unobserved");
+      assert.throws(() => driver.physical(cloud, "file"), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+      assert.throws(() => driver.inventory(cloud), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+      assert.throws(() => preparation.nativeQualificationHomeIdentity(cloud), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+      assert.throws(() => refresh.readAgentNativeRefreshHomeIdentity({ codex_home: cloud }), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+      await assert.rejects(driver.loadCandidate({ packageRoot: cloud }), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+    }
+    assert.deepEqual(effects, []);
+  });
+  await check("preparation previews reject every explicit cloud argument before any read", async () => {
+    for (const field of ["outputRoot", "codexBinary", "npmCli", "codexHome"]) {
+      const options = { outputRoot: path.join(root, "output"), codexBinary: path.join(root, "codex.exe"), npmCli: path.join(root, "npm-cli.js"),
+        ...(field === "codexHome" ? { nativeProfileMode: "preexisting" } : {}) };
+      options[field] = path.join(root, "OneDrive", "unobserved");
+      await assert.rejects(preparation.prepareAgentNativeQualification(options), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+    }
+    assert.deepEqual(effects, []);
+  });
+  await check("refresh previews reject every explicit cloud argument before any read", async () => {
+    for (const field of ["manifestPath", "trustEvidencePath", "outputRoot", "npmCli"]) {
+      const options = { manifestPath: path.join(root, "manifest.json"), trustEvidencePath: path.join(root, "review.json"), outputRoot: path.join(root, "output"), npmCli: path.join(root, "npm-cli.js") };
+      options[field] = path.join(root, "OneDrive - Fixture", "unobserved");
+      await assert.rejects(refresh.refreshAgentNativeCandidate(options), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+    }
+    assert.deepEqual(effects, []);
+  });
+  await check("worker previews reject every explicit cloud argument before any read", async () => {
+    for (const field of ["manifest", "helperManifest", "reviewProof", "pgBin", "outputRoot", "nativeProfilePolicy"]) {
+      const options = { manifest: path.join(root, "manifest.json"), helperManifest: path.join(root, "helper.json"), reviewProof: path.join(root, "review.json"),
+        pgBin: path.join(root, "pgsql"), outputRoot: path.join(root, "output"), nativeProfilePolicy: path.join(root, "policy.json"), model: "fixture", effort: "high" };
+      options[field] = path.join(root, "OneDrive", "unobserved");
+      await assert.rejects(qualification.qualifyAgentNativeWorker(options), { code: "AGENT_CLOUD_PATH_EXCLUDED" });
+    }
+    assert.deepEqual(effects, []);
+  });
+  await check("path policy import allowance remains closed during validation", () => {
+    const policySource = path.join(packageRoot, "src/core/agents/agent-local-path-policy.mjs");
+    assert(importPaths.has(key(policySource)));
+    assert.throws(() => fs.readFileSync(policySource), /Forbidden native fixture effect/);
+    assert.deepEqual(effects, ["fs.readFileSync:read"]); effects.length = 0;
+  });
   const review = refresh.assertAgentNativeRefreshReview, plan = refresh.assertAgentNativeRefreshPlan;
   const preserve = refresh.assertAgentNativeRefreshPreservation, gitMarkers = refresh.assertAgentNativeRefreshGitMarkers;
   const rejects = (fn, code) => assert.throws(fn, { code });
-  const bootstrapFixture=()=>{
+  const bootstrapFixture=(managed=false)=>{
     const policy={contract_version:"codex-native-profile-policy.v1",mode:"preexisting",
       home:{physical_path:path.join(root,"selected-profile"),identity_sha256:sha("a")},client_sha256:sha("b"),
       backend:{platform:"win32",architecture:"x64",sandbox:"elevated",provisioning:"existing-only"},
       configuration:{sources_sha256:sha("c"),effective_settings_sha256:sha("d"),mcp_server_ids:[],plugin_ids:[],app_ids:[],environment_override_names:[]},
       hooks_sha256:sha("e"),effects:{state_root:path.join(root,"attempt-state"),shared_effects_sha256:sha("f")}};
+    if(managed) { policy.contract_version="codex-native-profile-policy.v2"; policy.backend.provisioning="codex-managed"; }
     const request={attempt_id:"attempt.bootstrap",cwd:path.join(root,"worker-a"),execution:{native_profile:{mode:"preexisting",policy_sha256:profilePolicy.fingerprintCodexNativeProfilePolicy(policy)}}};
-    const observation={protocol_version:1,status:"bootstrap_completed",authorization:"NOT_GRANTED",native_execution:"NOT_RUN",
+    const observation={protocol_version:managed?2:1,status:"bootstrap_completed",authorization:"NOT_GRANTED",native_execution:"NOT_RUN",
       attempt_id:request.attempt_id,request_sha256:fingerprint(request),policy_sha256:profilePolicy.fingerprintCodexNativeProfilePolicy(policy),
       state_root:profilePolicy.resolveCodexNativeProfileStatePaths(policy,request).root,budget_ms:60000,
       process:{closed:true,pid_absent:true,exit_code:0,signal:null,response_count:5,budget_ms:60000},preservation:"PASS",
       home_identity_sha256:policy.home.identity_sha256,client_sha256:policy.client_sha256,
       sources_sha256:policy.configuration.sources_sha256,effective_settings_sha256:policy.configuration.effective_settings_sha256,
       hooks_sha256:policy.hooks_sha256,setup_sha256:sha("1"),shared_effects_sha256:policy.effects.shared_effects_sha256,
-      provisioning_performed:false,environment_restricted:true};
+      ...profilePolicy.codexNativeProfilePreservationEvidence(policy),environment_restricted:true};
     const calls=[],verify=()=>assert.fail("bootstrap cannot replace fresh challenge verification");
     verify.bootstrap=async(received,{timeoutMs,signal})=>{calls.push("bootstrap");assert.deepEqual(received,request);assert.equal(signal.aborted,false);
       return {...structuredClone(observation),budget_ms:timeoutMs,process:{...observation.process,budget_ms:timeoutMs}};};
@@ -216,6 +363,18 @@ try {
     const result=await driver.bootstrapNativeQualificationProfile(x.options);
     assert.deepEqual(x.calls,["bootstrap","preflight"]);assert.deepEqual(result,{observation:x.observation,admission:{ok:true}});
     assert.equal(JSON.stringify({policy:x.policy,request:x.request}),before);
+  });
+  await check("explicit v2 bootstrap still requires exact native identity and fresh canonical admission",async()=>{
+    const x=bootstrapFixture(true), result=await driver.bootstrapNativeQualificationProfile(x.options);
+    assert.deepEqual(x.calls,["bootstrap","preflight"]); assert.equal(result.observation.protocol_version,2);
+    assert.equal(result.observation.sandbox_maintenance,"codex-managed"); assert.equal(result.observation.protected_resources_preserved,true);
+    assert.equal(Object.hasOwn(result.observation,"provisioning_performed"),false);
+    for(const mutate of [value=>{value.protocol_version=1;},value=>{value.provisioning_performed=false;},
+      value=>{value.protected_resources_preserved=false;},value=>{value.client_sha256=sha("0");}]) {
+      const invalid=bootstrapFixture(true); mutate(invalid.observation);
+      await assert.rejects(()=>driver.bootstrapNativeQualificationProfile(invalid.options),{code:"PROFILE_BOOTSTRAP_REFUSED"});
+      assert.deepEqual(invalid.calls,["bootstrap"]);
+    }
   });
   for(const [name,mutate] of [
     ["foreign attempt",v=>{v.attempt_id="attempt.other";}],
@@ -279,6 +438,88 @@ try {
     const error=await driver.bootstrapNativeQualificationProfile(x.options).catch(error=>error);
     assert.equal(error.code,"PROFILE_METADATA_INCOMPLETE");assert.equal(error.nativeProfilePreparation.process_cleanup,"CONFIRMED");assert.deepEqual(error.nativeProfilePreparation.process,proof);
     let finalized=0;await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{finalized++;return {ok:true};}},preparation:error.nativeProfilePreparation});assert.equal(finalized,1);
+  });
+
+  for(const [name,process] of [
+    ["missing",null],
+    ["parent still present",{closed:true,pid_absent:false,exit_code:1,signal:null,response_count:1,budget_ms:10000}],
+    ["tree unknown",{closed:true,pid_absent:true,exit_code:1,signal:null,response_count:1,budget_ms:10000,tree_termination:{termination_state:"unknown",proof:null}}],
+  ]) await check("unknown metadata blocks finalization despite a completed bootstrap: "+name,async()=>{
+    let finalized=0;
+    const failure={phase:"before_create",attempt_id:"attempt.failed",request_sha256:sha("a"),reason:"PROFILE_METADATA_INCOMPLETE",process_cleanup:"UNCONFIRMED",process};
+    const result=await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{finalized++;return {ok:true};}},
+      preparation:{status:"COMPLETED",process_cleanup:"CONFIRMED"},verificationFailure:failure});
+    assert.equal(finalized,0);assert.equal(result.reason,"QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED");
+    assert.deepEqual(result.native_profile_verification_failure,failure);
+  });
+  for(const phase of ["before_create","before_resume"]) await check("failed metadata proof survives callback normalization at "+phase,async()=>{
+    const x=bootstrapFixture(),proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:2,budget_ms:10000};
+    const original=Object.assign(new Error("metadata failed"),{code:"PROFILE_METADATA_INCOMPLETE",process:proof});
+    const tracker=driver.createNativeQualificationProfileFailureTracker(async()=>{throw original;});
+    let normalized;
+    try { await driver.verifyNativeQualificationProfile({...x.options,verify:tracker.verify,phase}); }
+    catch { normalized={reason_code:"PROCESS_CALLBACK_FAILED",termination_state:"confirmed"}; }
+    const failure=tracker.failure();
+    assert.equal(normalized.reason_code,"PROCESS_CALLBACK_FAILED");
+    assert.deepEqual(failure,{phase,attempt_id:x.request.attempt_id,request_sha256:fingerprint(x.request),
+      reason:"PROFILE_METADATA_INCOMPLETE",process_cleanup:"CONFIRMED",process:proof});
+    const terminal=JSON.parse(JSON.stringify({native_process_cleanup:"NOT_STARTED",process:null,native_profile_verification_failure:failure}));
+    assert.equal(terminal.process,null);assert.equal(terminal.native_process_cleanup,"NOT_STARTED");
+    assert.deepEqual(terminal.native_profile_verification_failure.process,proof);
+    proof.closed=false;assert.equal(tracker.failure().process.closed,true);
+  });
+  await check("port callback keeps metadata proof before executor replaces the error",async()=>{
+    const x=bootstrapFixture(),proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:1,budget_ms:10000};
+    const metadataRpc={version:1,kind:"server_request",method_type:"string",method:"item/tool/call",method_sha256:null,id_type:"string",expected_method:"initialize",request_index:1,phase:"awaiting_response"};
+    const tracker=driver.createNativeQualificationProfileFailureTracker(async()=>{throw Object.assign(new Error("metadata"),{code:"PROFILE_METADATA_UNEXPECTED_RPC",process:proof,
+      details:{metadata_rpc:metadataRpc,params:"RAW_METADATA_MUST_NOT_BE_RETAINED",other:"discard"}});});
+    const port=async()=>{try{await tracker.verify(x.request,{phase:"before_resume"});}catch{throw Object.assign(new Error("normalized"),{code:"CODEX_NATIVE_PROFILE_VERIFICATION_FAILED"});}};
+    await assert.rejects(port,{code:"CODEX_NATIVE_PROFILE_VERIFICATION_FAILED"});
+    assert.equal(tracker.failure().reason,"PROFILE_METADATA_UNEXPECTED_RPC");assert.deepEqual(tracker.failure().process,proof);
+    assert.deepEqual(tracker.failure().details,{metadata_rpc:metadataRpc});
+    assert.equal(JSON.stringify(tracker.failure()).includes("RAW_METADATA_MUST_NOT_BE_RETAINED"),false);
+    metadataRpc.request_index=2;assert.equal(tracker.failure().details.metadata_rpc.request_index,1);
+  });
+  await check("pending metadata is retained unknown without waiting or accepting a late proof",async()=>{
+    const x=bootstrapFixture();let rejectPending,calls=0;
+    const tracker=driver.createNativeQualificationProfileFailureTracker(()=>{calls++;return new Promise((_,reject)=>{rejectPending=reject;});});
+    const pending=tracker.verify(x.request,{phase:"before_create"}).catch(error=>error);
+    const frozen=tracker.failure();assert.equal(frozen.process_cleanup,"UNCONFIRMED");assert.equal(frozen.process,null);
+    rejectPending(Object.assign(new Error("late"),{code:"PROFILE_METADATA_INCOMPLETE",process:{closed:true,pid_absent:true}}));
+    await pending;assert.deepEqual(tracker.failure(),frozen);
+    await assert.rejects(()=>tracker.verify(x.request,{phase:"before_resume"}),{code:"QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED"});
+    assert.equal(calls,1);
+  });
+  await check("metadata Job proof is preserved without replacing worker proof or inventing closure",async()=>{
+    const x=bootstrapFixture(),proof={closed:false,pid_absent:false,exit_code:null,signal:null,response_count:0,budget_ms:10000,
+      tree_termination:{termination_state:"confirmed",proof:{method:"windows-job-object",active_processes:0}}};
+    const tracker=driver.createNativeQualificationProfileFailureTracker(async()=>{throw Object.assign(new Error("metadata"),{code:"PROFILE_TREE_CALLBACK_FAILED",process:proof});});
+    await assert.rejects(()=>tracker.verify(x.request,{phase:"before_resume"}),{code:"PROFILE_TREE_CALLBACK_FAILED"});
+    assert.deepEqual(tracker.failure().process,proof);assert.equal(tracker.failure().process_cleanup,"UNCONFIRMED");
+  });
+  await check("final metadata failure keeps its process evidence and original error",async()=>{
+    const proof={closed:true,pid_absent:true,exit_code:1,signal:null,response_count:2,budget_ms:10000};
+    const metadataRpc={version:1,kind:"server_request",method_type:"string",method:"item/tool/call",method_sha256:null,id_type:"string",expected_method:"initialize",request_index:1,phase:"awaiting_response"};
+    const original=Object.assign(new Error("final metadata"),{code:"PROFILE_METADATA_UNEXPECTED_RPC",process:proof,
+      details:{metadata_rpc:metadataRpc,raw:"RAW_METADATA_MUST_NOT_BE_RETAINED"}});
+    const error=await qualification.finalizeNativeQualificationProfile({verify:{finalize:async()=>{throw original;}},
+      preparation:{process_cleanup:"CONFIRMED"}}).catch(error=>error);
+    assert.equal(error,original);assert.deepEqual(error.nativeProfileFinalization,
+      {phase:"finalize",reason:"PROFILE_METADATA_UNEXPECTED_RPC",process_cleanup:"CONFIRMED",process:proof,details:{metadata_rpc:metadataRpc}});
+    assert.equal(JSON.stringify(error.nativeProfileFinalization).includes("RAW_METADATA_MUST_NOT_BE_RETAINED"),false);
+  });
+
+  for(const [name,metadataRpc] of [
+    ["missing",undefined],["null",null],["raw text","RAW_METADATA_MUST_NOT_BE_RETAINED"],
+    ["incomplete",{method:"item/tool/call"}],
+    ["extra raw fields",{version:1,kind:"server_request",method_type:"string",method:"item/tool/call",method_sha256:null,id_type:"string",expected_method:"initialize",request_index:1,phase:"awaiting_response",params:"RAW_METADATA_MUST_NOT_BE_RETAINED"}],
+    ["unknown raw method",{version:1,kind:"server_request",method_type:"string",method:"RAW_METADATA_MUST_NOT_BE_RETAINED",method_sha256:null,id_type:"string",expected_method:"initialize",request_index:1,phase:"awaiting_response"}],
+  ]) await check("qualification failure discards invalid RPC details: "+name,()=>{
+    const record=driver.nativeQualificationProfileFailure({code:"PROFILE_METADATA_UNEXPECTED_RPC",
+      details:{metadata_rpc:metadataRpc,raw:"RAW_METADATA_MUST_NOT_BE_RETAINED"}},{phase:"before_resume"});
+    assert.equal(Object.hasOwn(record,"details"),false);
+    assert.equal(JSON.stringify(record).includes("RAW_METADATA_MUST_NOT_BE_RETAINED"),false);
+    assert.equal(record.process_cleanup,"UNCONFIRMED");
   });
   await check("native review accepts both worktrees with the shared coordinator source", () => assert.equal(review(manifest, trust), true));
   await check("refresh requires a complete explicit preexisting-profile identity", () => {
@@ -651,6 +892,81 @@ try {
     const before=JSON.stringify(input);assert.equal(qualification.summarizeNativeProcessCleanup(input),expected);assert.equal(JSON.stringify(input),before);
   });
   await check("all pure fixture inputs are unchanged", () => assert.equal(JSON.stringify({ manifest, trust, installation, baseline, markers }), unchangedInputs));
+
+  function timeoutFixture(hookLatency=10000) {
+    let at=0, nextId=0;const timers=new Map();
+    const clock={now:()=>at,setTimer:(callback,delay)=>{const id=++nextId;timers.set(id,{callback,due:at+delay});return id;},clearTimer:id=>timers.delete(id)};
+    const oracle=driver.createNativeQualificationTimeout({maxDurationMs:150000,...clock});
+    const child={ProcessId:17,Started:"2026-01-01T00:00:01.000Z",Name:"node.exe"};
+    const observation={descendants:[child]};
+    function advance(milliseconds) {
+      const until=at+milliseconds;
+      for(;;){const entry=[...timers.entries()].sort((a,b)=>a[1].due-b[1].due)[0];if(!entry||entry[1].due>until)break;
+        at=entry[1].due;timers.delete(entry[0]);entry[1].callback();}
+      at=until;
+    }
+    advance(hookLatency);const hookReceivedAt=at;advance(25);
+    const process={outcome:"timed_out",reason_code:"PROCESS_TIMEOUT",termination_state:"confirmed",termination_proof:{active_processes:0}};
+    return{oracle,observation,hookReceivedAt,process,advance,pending:()=>timers.size,setClock:value=>{at=value;}};
+  }
+  for(const latency of [10000,80000]) await check("native timeout arms on its own live hook after "+latency+"ms",()=>{
+    const x=timeoutFixture(latency),before=JSON.stringify(x.observation);
+    const armed=x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});
+    assert.equal(armed.delay_ms,3000);assert.equal(armed.deadline_monotonic_ms,latency+3025);assert.equal(x.oracle.signal.aborted,false);
+    x.advance(1400);x.oracle.confirmDescendant(x.observation);x.advance(1599);assert.equal(x.oracle.signal.aborted,false);
+    x.advance(1);assert.equal(x.oracle.signal.aborted,true);x.oracle.assertCompleted(x.process);
+    assert.equal(x.oracle.snapshot().expired_at_monotonic_ms,latency+3025);assert.equal(JSON.stringify(x.observation),before);
+    x.oracle.dispose();assert.equal(x.pending(),0);
+  });
+  await check("native timeout cannot reuse or extend an armed deadline",()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});const first=x.oracle.snapshot();
+    rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation}),"QUALIFICATION_TIMEOUT_ALREADY_ARMED");
+    assert.deepEqual(x.oracle.snapshot(),first);x.oracle.dispose();
+  });
+  await check("native timeout refuses a hook too close to its own 6500ms expiry",()=>{
+    const x=timeoutFixture();x.advance(3000);rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation}),"QUALIFICATION_TIMEOUT_HOOK_WINDOW_MISSED");
+    assert.equal(x.pending(),0);x.oracle.dispose();
+  });
+  await check("native timeout cannot extend the fixed worker ceiling",()=>{
+    const x=timeoutFixture(147000);rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation}),"QUALIFICATION_TIMEOUT_WORKER_WINDOW_MISSED");
+    assert.equal(x.pending(),0);x.oracle.dispose();
+  });
+  await check("native timeout refuses an unobserved descendant",()=>{
+    const x=timeoutFixture();rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:{descendants:[]}}),"QUALIFICATION_NATIVE_HOOK_DESCENDANT_MISSING");
+    assert.equal(x.pending(),0);x.oracle.dispose();
+  });
+  for(const field of ["ProcessId","Started"]) await check("native timeout refuses changed descendant "+field,()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});const changed=structuredClone(x.observation);
+    changed.descendants[0][field]=field==="ProcessId"?18:"2026-01-01T00:00:02.000Z";
+    rejects(()=>x.oracle.confirmDescendant(changed),"QUALIFICATION_TIMEOUT_DESCENDANT_NOT_LIVE");x.oracle.dispose();
+  });
+  await check("native timeout refuses observation after the armed deadline",()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});x.advance(3000);
+    rejects(()=>x.oracle.confirmDescendant(x.observation),"QUALIFICATION_TIMEOUT_OBSERVATION_LATE");x.oracle.dispose();
+  });
+  for(const [name,mutate] of [
+    ["cancelled",p=>{p.outcome="cancelled";p.reason_code="PROCESS_CANCELLED";}],
+    ["unconfirmed Job",p=>{p.termination_state="unknown";p.termination_proof=null;}],
+    ["active Job",p=>{p.termination_proof.active_processes=1;}],
+    ["completed",p=>{p.outcome="completed";p.reason_code="PROCESS_EXITED";}],
+  ]) await check("native timeout never accepts "+name,()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});x.oracle.confirmDescendant(x.observation);x.advance(3000);mutate(x.process);
+    rejects(()=>x.oracle.assertCompleted(x.process),"QUALIFICATION_TIMEOUT_PROOF_INVALID");x.oracle.dispose();
+  });
+  await check("native timeout failure without a hook cannot arm a replacement",()=>{
+    const x=timeoutFixture();x.oracle.dispose();x.advance(150000);assert.equal(x.oracle.signal.aborted,false);assert.equal(x.pending(),0);
+    rejects(()=>x.oracle.assertCompleted(x.process),"QUALIFICATION_TIMEOUT_PROOF_INVALID");
+    rejects(()=>x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation}),"QUALIFICATION_TIMEOUT_DISPOSED");
+  });
+  await check("native timeout disposal cancels its pending timer",()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});x.oracle.dispose();x.advance(3000);
+    assert.equal(x.oracle.signal.aborted,false);assert.equal(x.pending(),0);rejects(()=>x.oracle.assertCompleted(x.process),"QUALIFICATION_TIMEOUT_PROOF_INVALID");
+  });
+  await check("native timeout refuses a regressed monotone clock",()=>{
+    const x=timeoutFixture();x.oracle.arm({hookReceivedAt:x.hookReceivedAt,observation:x.observation});x.setClock(0);
+    rejects(()=>x.oracle.confirmDescendant(x.observation),"QUALIFICATION_TIMEOUT_CLOCK_INVALID");x.oracle.dispose();
+  });
+
   const nativeCases = ["acquire", "cancel", "timeout", "port"].map(mode => ({ mode, status: "PASS", native_process_cleanup: "CONFIRMED" }));
   await check("four native cases still require independent principal sandbox confirmation", () => {
     assert.deepEqual(qualification.nativeQualificationHostConfirmationState(nativeCases), {
@@ -670,6 +986,10 @@ try {
   for (const undo of restore.reverse()) undo();
   syncBuiltinESMExports();
 }
+const processChecks = await (await import("./verify-agent-process-tree-fixtures.mjs")).verifyPortableProcessTreeFixtures();
+assert.ok(processChecks.length > 0 && processChecks.every(check => check.status === "PASS"));
+for (const check of processChecks) process.stdout.write("PASS " + check.name + "\n");
+checks += processChecks.length;
 checks += await (await import("./agent-native-profile-preparation-fixtures.mjs")).runAgentNativeProfilePreparationFixtures();
 const profileChecks = await (await import("./agent-native-profile-observation-fixtures.mjs")).runAgentNativeProfileObservationFixtures();
 assert.ok(Array.isArray(profileChecks) && profileChecks.length > 0 && profileChecks.every(check => check.status === "PASS"));

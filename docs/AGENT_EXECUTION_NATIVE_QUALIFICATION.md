@@ -114,7 +114,12 @@ only that the concrete review materials and disposable worktrees are ready.
 
 An isolated configuration home is not an OS sandbox boundary on Windows. When
 another home would contend with an existing provisioned backend, preparation can
-select that existing home explicitly:
+select the currently operational home explicitly. Historical setup markers in
+another home do not prove compatible credentials: the reviewed Windows client
+uses shared local accounts with credentials stored per home, and a failed logon
+can trigger a password rotation that invalidates the other home's credentials.
+Use the operational profile, not an old test home's apparent readiness:
+
 
 ~~~text
 node tools/verify/prepare-agent-native-qualification.mjs --output-root <new-absolute-directory> --codex-binary <absolute-native-executable> --native-profile-mode preexisting --codex-home <existing-absolute-home>
@@ -141,7 +146,8 @@ The following strict observation still has its own ten-second budget. Bootstrap
 does not grant trust, admission or qualification, and cannot replace that fresh
 observation. It never retries a failed preparation automatically.
 
-Before execution, a local codex-native-profile-policy.v1 document binds the home
+Before execution, an explicitly selected local codex-native-profile-policy.v1
+or codex-native-profile-policy.v2 document binds the home
 identity, client hash, elevated backend, configuration-source and effective-setting
 hashes, integration identifiers, reviewed hooks, separate attempt-state directory
 and allowed shared native effects. Only its fingerprint enters the versioned
@@ -157,6 +163,14 @@ remain fingerprinted, and every required sandbox, provider, integration and hook
 condition is still checked. Configuration warnings are not successful validation.
 Isolated profiles retain strict parsing. This choice follows the explicit bound
 mode; a failed launch never retries with relaxed arguments.
+
+During metadata observation, `account/updated` is an informational notification
+when it has no id and its params value is an object (including an empty object).
+The observer ignores its values without retaining them or granting authority;
+this envelope check is not full payload validation. Expected responses,
+preservation checks, byte limits, deadlines and process closure remain required.
+Requests with an id and all other unexpected methods remain refused. A retained
+method-only diagnostic cannot establish the contents of an earlier payload.
 
 Codex may emit a nonterminal `item.completed` error diagnostic after
 `thread.started` but before `turn.started`, including for ignored historical
@@ -202,11 +216,24 @@ an older successful attempt, until termination is reconciled. No extra wait
 extends the preparation budget and no later callback authorizes a new launch.
 
 The frozen run duration includes preparation plus the unchanged worker duration
-(for example, 60 + 150 seconds). Worker latency and timeout measurement start
-only after preparation and its canonical preflight complete. The smaller timeout
-scenario budget is derived from the cancellation case's worker latency alone.
-Preparation cannot consume or extend the worker budget; the worker deadline
-then remains fixed through its separate before-create and before-resume checks.
+(for example, 60 + 150 seconds). The worker ceiling starts only after preparation
+and its canonical preflight complete, and remains fixed through the separate
+before-create and before-resume checks. Preparation cannot consume or extend it.
+
+The native timeout scenario does not predict one model invocation's latency from
+another. After observing the actual admission-hook descendant, it arms a separate
+three-second monotonic deadline inside the fixed 150-second worker ceiling. Both
+the hook's own deadline and the worker ceiling must retain the required margin.
+The scenario records the arm time and expiry, observes the same descendant again
+before expiry, then requires a real timed-out result, a confirmed empty Job and
+independent absence of the observed process identities. A missing or late hook
+fails the scenario; it never causes an automatic retry.
+
+The internal controller's optional timeoutSignal invokes its existing timeout
+stop path. It can only stop work earlier: the fixed timer remains active, normal
+signal cancellation remains cancelled, and the first stop reason is retained.
+No result is relabeled after execution. The helper protocol, public task request
+and production executor's fixed duration remain unchanged.
 
 The supervisor checks the effective configuration and hooks before creation and
 again before resuming a suspended worker. Responses bind a fresh challenge,
@@ -302,8 +329,13 @@ preserve the required evidence; it must target only the explicitly owned fixture
 
 The qualifier preserves a bounded diagnostic snapshot before removing its owned
 ephemeral PostgreSQL cluster. This snapshot is not operational authority and
-cannot restore or resume an attempt. A failed run's marker and evidence remain
-intact. Any subsequent qualification uses fresh database and attempt identities.
+cannot restore or resume an attempt. The first refused activation check also
+retains a local diagnostic below 1 KiB: the root role, evaluated boolean
+predicates, and a known code or unknown-code digest. Unevaluated predicates are
+absent; messages, paths and asset contents are not retained. This evidence does
+not retry or relax activation and does not establish an earlier unrecorded cause.
+A failed run's marker and evidence remain intact. Any subsequent qualification
+uses fresh database and attempt identities.
 Removing an owned marker requires preserving its exact bytes and a reviewed
 reconciliation record: confirmed process termination, independent absence of
 the observed runner and descendants, and unchanged roots and Git metadata apart
@@ -382,3 +414,289 @@ termination and preservation; the old package's results are not transferred.
 For preexisting mode, also observe the effective configuration and consented
 effects again, freeze the local policy and bind the new review to the refreshed
 manifest and candidate. Fresh launch-time observations remain mandatory.
+
+## Public lifecycle qualification (lot 7 candidate)
+
+The production composition now reuses the metadata observer and bounded
+bootstrap from `src/application/runtime/codex-native-profile-observation-service.mjs`
+and `codex-native-profile-bootstrap-service.mjs`. The historical tool exports
+remain compatible. `codex-agent-attempt-service.mjs` performs actual delegated
+admission, authenticated transport and pinned execution. Import and construction
+do not probe a profile. Preview verifies pinned local evidence and PostgreSQL
+readiness without launching Codex; fresh native observations still precede an
+explicit worker launch.
+The production metadata bridge uses a separately pinned Node executable
+(`native.metadata_runner`) inside the controlled Job. Its journal distinguishes
+closed parent observations from actual descendant termination. Historical
+`closed`/`pid_absent` flags cannot satisfy recovery of that tree; every invocation
+needs a matching candidate/helper/Node/bridge proof, including after an error.
+
+The controlled metadata bridge verifies the complete candidate inventory before
+creation and again before resuming its suspended process. Each pass uses at
+most four concurrent file readers, retains the physical-path and before/after
+identity checks, and stays inside the original observation deadline. There is
+no cross-pass hash cache. A failed pass stops assigning reads. If in-flight
+reads cannot settle within the original remaining budget, their cleanup stays
+unconfirmed and the collector refuses subsequent calls. After a confirmed
+empty Job, a callback refusal retains its first bounded integrity or deadline
+code; controller timeout,
+cancellation and unknown termination retain their own precedence.
+Native qualification of this bridge must be retained for the exact candidate
+and helper composition before public agent-run execution is admitted.
+
+Prepare a new catalogue for the campaign before reserving the run. It needs one
+distinct pristine worker root per attempt, including the dependent task; do not
+reuse a dirty root or a previous campaign's marker. Canonical installation is
+verify-only with an independent receipt at each root. Freeze base SHA, task
+contract hashes, root identities and complete preimages, then review the exact
+native hook definitions and observe trust for every root through the supported
+native API. Linked worktrees may legitimately share the coordinator's hook
+source; this never substitutes for observing trust at each worker root. The
+initial native capacity is one to four worker roots, separately from concurrency.
+
+Claim and placement occur later. The supervisor may place a pristine reviewed
+root at a dependent task's integrated SHA only under current authority and an
+immutable placement intent, preserving installed controls. Unexpected state,
+conflict or interrupted placement stops the run without reset. Each native
+metadata bootstrap has its own retained intent/terminal evidence. A never-started
+worker does not prove the distinct metadata process stopped.
+
+The public configuration pins the candidate, runtime, helper, preparation,
+native profile/consent, Git executable and validation boundary. A helper or
+trampoline change requires new native evidence. Earlier lot 4 results qualify
+only their original bytes. The final lot 7 campaign must run two actual Codex
+workers concurrently, integrate their independent scopes, run a dependent task
+on that integrated SHA, validate and audit it, and demonstrate preservation and
+owned cleanup. Retain the campaign evidence with its exact candidate and
+composition bindings. Portable fixture PASS, native metadata readiness and human approval
+remain distinct from that final result.
+
+Windows process and validation confinement probes are separate explicit tools;
+they are not required Linux CI invocations. The current production path selects
+Windows preexisting-profile mode only. Unqualified OS/profile/helper/boundary
+compositions report UNAVAILABLE and cannot fall back to ordinary subprocesses,
+copied trust or a different sandbox. Existing profile setup is a precondition,
+never an AIDN setup or repair fallback. Explicit v2 selection separately declares
+the official client's sandbox maintenance during execution.
+
+Validation-boundary file inspection streams the selected Codex client up to
+512 MiB, matching the worker client bound. Runner, trampoline, controller source
+and helper pins retain their 256 MiB limit. Reads use at most 64 KiB chunks and
+verify the complete SHA-256 plus unchanged file identity and size; increasing the
+client bound does not authorize a client or establish native availability.
+
+The inspected official source for Codex `0.158.0-alpha.2.1` invokes an elevated
+setup refresh on the `codex sandbox` path even when sandbox state exists. V1
+therefore retains `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any native process.
+Neither setup completion nor a local attestation overrides that refusal.
+
+V2 is a separate explicit contract, not a relaxation of a v1 proof:
+
+- Select `codex-native-profile-policy.v2` and `backend.provisioning: codex-managed`
+  for a worker. Obtain the v2 effect digest through
+  `readCodexNativeProfileSharedEffects(home, "codex-native-profile-policy.v2")`.
+  Consent includes `approved`, `state_root`, that `shared_effects_sha256` and
+  `sandbox_maintenance: codex-managed`. A v1 consent is rejected.
+- Select `codex-sandbox-validation-configuration.v2` for validation. Its exact
+  protected resource list covers configuration, data, Git and runtime, with
+  physical paths and file/directory kinds. The qualification plan fingerprints
+  this list and its complete ordered preimages. OneDrive remains excluded.
+- Codex owns maintenance of its sandbox accounts, permissions and network rules.
+  Setup markers are observations, not immutable v2 authorities. AIDN never
+  substitutes `provisioning_performed: false` or a claim that all Windows state
+  is unchanged. Configuration sources, hooks, trust and the declared protected
+  resources remain frozen.
+- Windows v2 declares the official backend's required `:root` read access.
+  Only scratch is writable; snapshots remain read-only, the supervisor and
+  selected Codex home are explicitly denied, and network is disabled. This is
+  not a claim of global OS-level read isolation or a OneDrive read prohibition.
+  The named permissions are supplied as structured native CLI overrides from
+  the frozen policy, without editing user configuration. Native denial probes
+  must confirm the protected boundaries before availability can be granted.
+  The reviewed client currently fails this boundary before launch with
+  `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`. A signed
+  `agent-verification-boundary.v2` report cannot override that incompatibility.
+  A future compatible composition still needs all five native proofs.
+
+An unavailable or failed native composition stays unavailable. The final lot 7
+campaign remains unexecuted until the exact composition passes these checks.
+Portable checks and Job/trampoline fixtures may still pass; they do not close
+that confinement requirement or establish merge/release readiness.
+
+## Cooperative qualification (plan v2 / boundary v3)
+
+`agent-execution-plan.v2` selects `assurance_profile: codex-cooperative.v1`.
+Its validation configuration is `codex-sandbox-validation-configuration.v3`
+and its qualification is `agent-verification-boundary.v3`; both explicitly
+declare `read_isolation: not_guaranteed`. Strict plans and evidence remain
+separate. The worker continues to use the independently versioned
+`codex-native-profile-policy.v2` with its existing home and Codex-managed
+maintenance consent. No new profile, history copy or setup path is introduced.
+
+This mode assumes cooperative agents. Reads of the profile, supervisor and
+on-disk secrets are not isolated. AIDN's environment allowlist still excludes
+PostgreSQL credentials. Named-resource preimages establish observed
+preservation, not absence of reads or resistance to a hostile worker. OneDrive
+remains excluded from AIDN tasks and resources without changing its permissions.
+
+Worker commands use official `codex exec --sandbox workspace-write`. Validation
+commands use official `codex sandbox` with root/snapshot reads and scratch-only
+writes, without profile/supervisor read denials. Network access is disabled for
+sandboxed commands; native model service traffic and the supervisor admission
+transport are distinct. Retain the existing restrictions on integrations,
+approval escalation and nested agents. The supervisor, not Codex exit zero,
+decides acceptance after scope inspection, integration and exact-SHA checks.
+
+After portable fixtures and an independent review, freeze one source commit and
+package and the explicitly selected operational client. Store new evidence
+outside the package. Reuse pinned helpers only when their source and binary
+hashes match. Do not relabel old reports or run a newer client automatically.
+The existing qualification helper accepts an exact approved probe plan to
+collect first evidence; it neither signs its own qualification nor relaxes
+production admission. Its five cases remain filesystem, network, timeout,
+cancel and callback, with at most 60 seconds per cooperative case plus bounded
+controller shutdown. Report preparation, observed child startup and actual
+probe execution separately.
+
+The filesystem case must witness a second native launch while checking write
+denials on the snapshot and supervisor, then check again after that launch has
+stopped. Both process identities and confirmed Job termination belong to the
+evidence. Reading the supervisor is an observation, not a required denial.
+Any forbidden write, unexpected named-resource change, network access or
+unknown termination still fails qualification. A failed case stops the campaign
+and retains its resources; there is no automatic repair or retry.
+
+After these cases pass, run the existing real-worker admission campaign with
+fresh candidate bindings, then the neutral three-task campaign using three
+independently prepared `verify-only` worktrees and disposable PostgreSQL.
+Concurrency is two, each task has at most five minutes and the run at most
+fifteen minutes. Two workers must actually overlap; the dependent task must
+start from the integrated predecessor SHA. Integration, validation, audit,
+reconciliation and controlled cleanup retain their original proof requirements.
+Publish fixture, PostgreSQL, Windows process/sandbox and real-Codex results
+separately. Cooperative native availability remains unqualified until these
+reports agree; portable PASS never supplies missing native evidence.
+
+## Cooperative network limitation (plan v3 / boundary v4)
+
+An explicit `agent-execution-plan.v3` selects `codex-cooperative.v2`.
+Its configuration `codex-sandbox-validation-configuration.v4` and qualification
+`agent-verification-boundary.v4` declare both `read_isolation` and
+`network_isolation` as `not_guaranteed`. Qualification requires
+`network_disabled: false`, meaning denial is not attested. Earlier plans and
+the v3 boundary above keep their original network-denial requirement.
+
+The selected Windows composition reached a loopback canary despite
+`network.enabled=false`. Its failed report is preserved; it does not establish
+Internet access. This new profile removes only network denial from delivery
+and activation criteria. Official Codex invocations still request disabled
+networking. AIDN adds no firewall repair, proxy, setup or new native home.
+
+The v4 probe plan selects four required `cases`: filesystem, timeout, cancel and
+callback. Its separate `diagnostic_cases` contains network and runs only when
+explicitly selected. That diagnostic retains its actual PASS or FAIL and is
+never accepted as qualification evidence. The four required reports must bind
+to the v4 profile, candidate, policy, process identities and named resources;
+old reports cannot be relabeled. A failed required case still stops the campaign.
+
+Concurrent write protection, scratch-only validation writes, immutable snapshots,
+confirmed descendant termination, real admission hooks, exact-SHA acceptance,
+the three-task parallel campaign, reconciliation and controlled cleanup are
+unchanged requirements. A missing proof keeps this composition unavailable.
+Previews expose the network limitation and include it in the action fingerprint.
+Do not advertise network isolation or full qualification from this exception.
+
+## Reviewed Windows client incompatibility
+
+The following finding applies to the strict validation contracts v1/v2. Their
+refusal is retained. It does not qualify or prohibit the separate cooperative
+contracts above, whose retained guarantees need new native evidence.
+
+Source review at Codex commit
+[0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807](https://github.com/openai/codex/commit/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807)
+identifies a separate v2 blocker. The elevated path calls an ordinary refresh,
+including with valid existing credentials. The refresh skips account provisioning
+but still reconciles persistent deny-read ACLs for the common sandbox group.
+The registry is keyed by Codex home and group SID, without an active-process
+lease. Another launch in the same home with no deny paths can remove the
+validation's denials while its process still runs. See the
+[refresh call](https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/identity.rs#L269-L280),
+[shared-group reconciliation](https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/setup_provisioning.rs#L896-L930)
+and [removal of previous denials](https://github.com/openai/codex/blob/0d9c7cbfa6cf1489f55a8a9542b75ddd2c061807/codex-rs/windows-sandbox-rs/src/deny_read_state.rs#L38-L65).
+
+For this client, v2 is refused before observation, intent writes or process
+creation with `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`. One-time canary success
+and signed evidence cannot make this shared state into a per-process guarantee.
+AIDN introduces no global lock, ACL repair, alternate profile or fallback to
+circumvent the refusal. Extending a startup timeout does not fix this property.
+
+The local root-read attempt ended at its 15-second process limit without the
+probe handshake. Its containing Job reached zero active processes and the named
+protected files were unchanged. This is failed native evidence, not a successful
+confinement test. The source finding above is independent of the timeout; it does
+not establish which startup operation consumed those 15 seconds. No later native
+case or final concurrent-worker campaign was executed for that candidate.
+
+## Use Codex setup; qualify AIDN separately
+
+Codex provides the sandbox and its setup/repair flow. Use the
+[official Windows sandbox controls](https://learn.chatgpt.com/docs/windows/windows-sandbox)
+or the documented
+[`windowsSandbox/setupStart` API](https://learn.chatgpt.com/docs/app-server#windows-sandbox-setup-windowssandboxsetupstart)
+as an explicit operator action outside `agent-run*`. AIDN does not implement a
+second setup path, administer Windows security state or attempt repairs after a
+failed availability check. The former managed-setup experiment is withdrawn;
+its source history remains in Git.
+
+| Codex responsibility | AIDN responsibility |
+| --- | --- |
+| Sandbox installation, configuration and native execution | Check the selected backend's availability and refuse incompatibility |
+| Native authentication and project/hook trust | Bind the reviewed configuration and verify real hooks and delegated admission |
+| `codex exec` and its JSONL task events | Bound inputs/output, explicit cwd/configuration, timeout and independent descendant-stop proof |
+| Native process behavior | PostgreSQL claims/leases, dependency order, file scopes, Git integration and audit of the exact SHA |
+
+Follow these steps without introducing a new preparation subsystem:
+
+1. Establish an operational sandbox through Codex's supported controls. Record
+   the selected client/profile; do not copy history, credentials or trust as a
+   workaround. No additional profile bootstrap is required by this correction.
+2. Prepare the exact candidate package and dedicated worktrees outside OneDrive
+   using the procedure above. Each worktree retains its own `verify-only`
+   installation and native review.
+3. Freeze the selected contract and check native prerequisites. V1 remains
+   refused for the reviewed client. An explicit v2 plan declares Codex-managed
+   maintenance and binds the protected resource observations; never switch
+   versions or sandboxes after failure. AIDN performs no automatic setup or repair.
+4. Run the distinct native confinement and worker probes: authorized edit,
+   forbidden edit, observed hooks, timeout/cancellation, descendant termination
+   and preservation of unrelated worktrees, Git and runtime state.
+5. Only after those proofs, run the lot 7 campaign: two simultaneous workers,
+   their dependent task, integration, validation and read-only audit on the exact
+   integrated SHA. Record PostgreSQL, process and native Codex results separately.
+
+`setupCompleted`, a successful `/hooks` review, a zero exit code and fixture PASS
+are different evidence. None proves the next step automatically. Codex's
+`turn/interrupt` requests an interruption; AIDN must still confirm that the
+worker's descendants stopped before accepting cleanup or relaunch. The actual
+supervised worker continues to use `codex-cli-task`, not a new App Server backend.
+
+The final lot 7 campaign is **UNAVAILABLE / not executed** for this candidate
+until the distinct native evidence is retained and reviewed. The v2 contract
+correction alone is not a native qualification or merge-readiness claim.
+
+## OneDrive exclusion in AIDN
+
+The agent execution boundary rejects OneDrive workspaces, task scopes, request
+paths and evidence/configuration paths before observing the excluded target.
+It covers standard personal and business directory names, case variants, Win32
+trailing-dot/space aliases and short-name spellings. Other short-name paths are
+refused without resolving them. An ordinary filename such as `OneDriveConnector.mjs`
+is not a OneDrive directory. Explicit excluded roots can also describe a renamed
+cloud location; no provider scan discovers those roots implicitly.
+
+Before delegated worktree activation, a bounded local precheck inspects Git and
+installation pointers and refuses excluded destinations before following them.
+It rereads pointer fingerprints after activation and grants no activation trust.
+This remains an application policy with an external concurrent-change limitation.
+It neither edits OneDrive ACLs nor proves that Windows, a shell or another client
+denies reads. Native write admission retains its existing supported tool scope.

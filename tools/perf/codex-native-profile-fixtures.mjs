@@ -3,7 +3,7 @@ import path from "node:path";
 import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
 import { buildCodexTaskArguments, createCodexWorkerEnvironment } from "../../src/adapters/agents/codex-cli-task-executor.mjs";
 import { assertCodexNativeProfilePolicy, fingerprintCodexNativeProfilePolicy, assertCodexNativeProfileBinding,
-  resolveCodexNativeProfileStatePaths, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
+  resolveCodexNativeProfileStatePaths, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES, codexNativeProfilePreservationEvidence } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
 
 // Contract doubles only: these responses never qualify a native profile.
 export function nativeProfileFixturePolicy(runtime, stateRoot) {
@@ -16,12 +16,12 @@ export function nativeProfileFixturePolicy(runtime, stateRoot) {
 }
 
 export function nativeProfileFixtureDecision(request, { policy, phase, challenge }) {
-  return { protocol_version: 1, ok: true, phase, challenge, policy_sha256: fingerprintCodexNativeProfilePolicy(policy),
+  return { protocol_version: policy.contract_version === "codex-native-profile-policy.v2" ? 2 : 1, ok: true, phase, challenge, policy_sha256: fingerprintCodexNativeProfilePolicy(policy),
     attempt_id: request.attempt_id, request_sha256: fingerprintAgentExecutionValue(request), home_identity_sha256: policy.home.identity_sha256,
     client_sha256: policy.client_sha256, backend: policy.backend.sandbox,
     sources_sha256: policy.configuration.sources_sha256, effective_settings_sha256: policy.configuration.effective_settings_sha256,
     hooks_sha256: policy.hooks_sha256, shared_effects_sha256: policy.effects.shared_effects_sha256,
-    unexpected_hooks: 0, integrations_disabled: true, environment_restricted: true, provisioning_performed: false };
+    unexpected_hooks: 0, integrations_disabled: true, environment_restricted: true, ...codexNativeProfilePreservationEvidence(policy) };
 }
 
 export async function verifyNativeProfileFixtures({ check, setup, cwd }) {
@@ -55,6 +55,28 @@ export async function verifyNativeProfileFixtures({ check, setup, cwd }) {
       assert.notEqual(fingerprintCodexNativeProfilePolicy(changed), fingerprintCodexNativeProfilePolicy(policy));
     }
   });
+  await check("v2 requires an explicit paired contract and Codex maintenance selection", () => {
+    const { runtime } = setup({ nativeProfile: true }), original = runtime.nativeProfilePolicy;
+    for (const edits of [{ contract_version: "codex-native-profile-policy.v2" }, { backend: { ...original.backend, provisioning: "codex-managed" } }]) {
+      assert.throws(() => assertCodexNativeProfilePolicy({ ...original, ...edits }), /CODEX_NATIVE_PROFILE_POLICY_INVALID/);
+    }
+    const v2 = { ...original, contract_version: "codex-native-profile-policy.v2", backend: { ...original.backend, provisioning: "codex-managed" } };
+    assert.equal(assertCodexNativeProfilePolicy(v2), true);
+    assert.notEqual(fingerprintCodexNativeProfilePolicy(original), fingerprintCodexNativeProfilePolicy(v2));
+  });
+  const managedPolicy = policy => { policy.contract_version = "codex-native-profile-policy.v2"; policy.backend.provisioning = "codex-managed"; };
+  await check("v2 worker performs ordinary challenge verification without setup flags", async () => {
+    const { executor, request, runtime } = setup({ nativeProfile: true, mutatePolicy: managedPolicy });
+    assert.equal((await executor.runTask(request)).outcome, "completed");
+    assert(!buildCodexTaskArguments(request, { nativeProfilePolicy: runtime.nativeProfilePolicy }).some(arg => /setupStart|setup-start/u.test(arg)));
+  });
+  for (const edits of [{ protocol_version: 1 }, { provisioning_performed: false }, { protected_resources_preserved: false }, { sandbox_maintenance: "existing-only" }]) {
+    await check("v2 worker refuses legacy or contradictory maintenance decision before launch", async () => {
+      const { executor, request, calls } = setup({ nativeProfile: true, mutatePolicy: managedPolicy,
+        profileVerification: async (_request, _options, decision) => ({ ...decision, ...edits }) });
+      assert.equal((await executor.runTask(request)).reason_code, "CODEX_NATIVE_PROFILE_VERIFICATION_REFUSED"); assert(!calls.includes("run"));
+    });
+  }
   await check("native profile final environment filters exactly match the worker allowlist", () => {
     const { runtime, request } = setup({ nativeProfile: true }), policy = runtime.nativeProfilePolicy;
     const host = Object.fromEntries(CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES.map(name => [name, "synthetic"])); host.EXTRA_PRIVATE_VALUE = "not-admitted";

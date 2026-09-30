@@ -52,7 +52,7 @@ function createFakeResolution() {
     contract: {
       scope: "shared-coordination-only",
       schema_name: "aidn_shared",
-      schema_version: 5,
+      schema_version: 6,
       schema_file: path.resolve(process.cwd(), "tools/perf/sql/shared-coordination-postgres.sql"),
       driver: {
         package_name: "pg",
@@ -66,7 +66,7 @@ function createFakeResolution() {
         return {
           ok: true,
           schema_name: "aidn_shared",
-          schema_version: 5,
+          schema_version: 6,
         };
       },
       async healthcheck() {
@@ -75,7 +75,7 @@ function createFakeResolution() {
           database_name: "aidn_test",
           schema_name: "aidn_shared",
           current_schema_name: "public",
-          expected_schema_version: 5,
+          expected_schema_version: 6,
           applied_schema_versions: state.latestSchemaVersion > 0 ? [state.latestSchemaVersion] : [],
           latest_applied_schema_version: state.latestSchemaVersion,
           tables_present: [

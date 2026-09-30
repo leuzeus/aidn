@@ -21,8 +21,10 @@ const seal = (value) => ({ ...value, integrity_sha256: hash(stable(value)) });
 function fail(code, detail = "") { throw Object.assign(new Error(`${code}${detail ? `: ${detail}` : ""}`), { code }); }
 
 // Reject redirects on the whole path, including ancestors outside the checkout.
-function safeAbsolute(input, { directory = false, mustExist = false } = {}) {
+function safeAbsolute(input, { directory = false, mustExist = false, beforeObserve } = {}) {
+  beforeObserve?.(input);
   const absolute = path.resolve(input), parsed = path.parse(absolute);
+  beforeObserve?.(absolute);
   let cursor = parsed.root;
   const parts = absolute.slice(parsed.root.length).split(path.sep).filter(Boolean);
   for (let index = 0; index < parts.length; index += 1) {
@@ -37,19 +39,19 @@ function safeAbsolute(input, { directory = false, mustExist = false } = {}) {
   }
   return absolute;
 }
-function physicalDirectory(input, allowMissing = false) {
-  const absolute = safeAbsolute(input, { directory: true, mustExist: !allowMissing });
+function physicalDirectory(input, allowMissing = false, beforeObserve) {
+  const absolute = safeAbsolute(input, { directory: true, mustExist: !allowMissing, beforeObserve });
   let existing = absolute;
   while (!fs.existsSync(existing)) existing = path.dirname(existing);
   return path.join(fs.realpathSync.native(existing), path.relative(existing, absolute));
 }
-function localPath(root, relative) {
+function localPath(root, relative, beforeObserve) {
   if (typeof relative !== "string" || relative.includes("\\") || relative.startsWith("/")
       || relative.split("/").some((part) => !part || part === "." || part === ".." || part.includes(":"))) fail("ACTIVATION_INVALID_ASSET_PATH");
-  return safeAbsolute(path.join(root, ...relative.split("/")));
+  return safeAbsolute(path.join(root, ...relative.split("/")), { beforeObserve });
 }
-function readBytes(file, maxBytes = 8 * 1024 * 1024) {
-  const absolute = safeAbsolute(file);
+function readBytes(file, maxBytes = 8 * 1024 * 1024, beforeObserve) {
+  const absolute = safeAbsolute(file, { beforeObserve });
   if (!fs.existsSync(absolute)) return null;
   if (fs.statSync(absolute).size > maxBytes) fail("ACTIVATION_RECORD_TOO_LARGE");
   return fs.readFileSync(absolute);
@@ -83,8 +85,8 @@ export function createActivationGitEnvironment(env = process.env) {
   return result;
 }
 
-export function resolveActivationTarget({ targetRoot = process.cwd() } = {}) {
-  const input = physicalDirectory(targetRoot, true);
+export function resolveActivationTarget({ targetRoot = process.cwd(), beforeObserve } = {}) {
+  const input = physicalDirectory(targetRoot, true, beforeObserve);
   let markerRoot = input;
   while (!fs.existsSync(path.join(markerRoot, ".git"))) {
     const parent = path.dirname(markerRoot);
@@ -93,8 +95,8 @@ export function resolveActivationTarget({ targetRoot = process.cwd() } = {}) {
   }
   let root = input, gitDir = null, commonDir = null;
   if (markerRoot) {
-    const marker = path.join(markerRoot, ".git"), stat = fs.lstatSync(marker);
-    safeAbsolute(marker, { directory: stat.isDirectory(), mustExist: true });
+    const marker = path.join(markerRoot, ".git"); beforeObserve?.(marker); const stat = fs.lstatSync(marker);
+    safeAbsolute(marker, { directory: stat.isDirectory(), mustExist: true, beforeObserve });
     // A caller's Git environment must never redirect project authorization.
     const env = createActivationGitEnvironment();
     const result = spawnSync("git", ["-C", markerRoot, "rev-parse", "--path-format=absolute", "--show-toplevel", "--absolute-git-dir", "--git-common-dir"], {
@@ -103,10 +105,10 @@ export function resolveActivationTarget({ targetRoot = process.cwd() } = {}) {
     if (result.error || result.signal || result.status !== 0) fail("ACTIVATION_GIT_RESOLUTION_FAILED");
     const lines = result.stdout.trim().split(/\r?\n/);
     if (lines.length !== 3 || lines.some((line) => !path.isAbsolute(line))) fail("ACTIVATION_GIT_RESOLUTION_FAILED");
-    [root, gitDir, commonDir] = lines.map((line) => physicalDirectory(line));
-    if (identityPath(root) !== identityPath(physicalDirectory(markerRoot))) fail("ACTIVATION_GIT_ROOT_MISMATCH");
+    [root, gitDir, commonDir] = lines.map((line) => physicalDirectory(line, false, beforeObserve));
+    if (identityPath(root) !== identityPath(physicalDirectory(markerRoot, false, beforeObserve))) fail("ACTIVATION_GIT_ROOT_MISMATCH");
     if (identityPath(gitDir) !== identityPath(commonDir)) {
-      const backlink = readBytes(path.join(gitDir, "gitdir"));
+      const backlink = readBytes(path.join(gitDir, "gitdir"), undefined, beforeObserve);
       if (!backlink || identityPath(path.resolve(backlink.toString("utf8").trim())) !== identityPath(marker)) fail("ACTIVATION_WORKTREE_BACKLINK_MISMATCH");
     }
   }
@@ -115,12 +117,12 @@ export function resolveActivationTarget({ targetRoot = process.cwd() } = {}) {
   return {
     target_root: root, root_id: scopeId(root), scope, git_dir: gitDir, common_dir: commonDir,
     authority_id: scopeId(authorityRoot),
-    authority_path: safeAbsolute(path.join(authorityRoot, commonDir ? "aidn/authorization.json" : ".aidn/install/authorization.json")),
+    authority_path: safeAbsolute(path.join(authorityRoot, commonDir ? "aidn/authorization.json" : ".aidn/install/authorization.json"), { beforeObserve }),
   };
 }
 
-function readAuthority(identity) {
-  const bytes = readBytes(identity.authority_path, 65536);
+function readAuthority(identity, beforeObserve) {
+  const bytes = readBytes(identity.authority_path, 65536, beforeObserve);
   if (bytes === null) return { bytes: null, document: null };
   const document = unseal(parse(bytes));
   if (document.schema_version !== 1 || document.scope !== identity.scope || document.authority_id !== identity.authority_id
@@ -149,7 +151,7 @@ function matchesOwnedHook(actual, owned) {
   return actual.event === owned.event && equal(actual.hook, owned.hook)
     && Object.entries(owned.group).every(([key, value]) => equal(actual.group[key], value));
 }
-function validateNativeAssets(root, assets, globalRuntime = null) {
+function validateNativeAssets(root, assets, globalRuntime = null, beforeObserve) {
   const required = {
     "AGENTS.md": "agents-block", ".codex/hooks.json": "hooks",
     ".codex/hooks/aidn-hook-runtime.mjs": "file", ".codex/hooks/aidn-session-start.mjs": "file", ".codex/hooks/aidn-pre-tool-use.mjs": "file",
@@ -161,7 +163,7 @@ function validateNativeAssets(root, assets, globalRuntime = null) {
   }
   for (const [relative, kind] of Object.entries(required)) if (assets[relative]?.kind !== kind) fail("ACTIVATION_REQUIRED_ASSET_MISSING", relative);
   for (const [relative, asset] of Object.entries(assets)) {
-    const bytes = readBytes(localPath(root, relative));
+    const bytes = readBytes(localPath(root, relative, beforeObserve), undefined, beforeObserve);
     if (bytes === null) fail("ACTIVATION_ASSET_MISSING", relative);
     if (asset.kind === "file") {
       if (bytes.toString("base64") !== asset.current) fail("ACTIVATION_ASSET_CHANGED", relative);
@@ -181,13 +183,13 @@ function validateNativeAssets(root, assets, globalRuntime = null) {
   }
 }
 
-function validateReceipt(identity, { globalRecoveryPlanId } = {}) {
-  const bytes = readBytes(localPath(identity.target_root, RECEIPT));
+function validateReceipt(identity, { globalRecoveryPlanId, beforeObserve } = {}) {
+  const bytes = readBytes(localPath(identity.target_root, RECEIPT, beforeObserve));
   if (bytes === null) return null;
   const receipt = unseal(parse(bytes)), root = identity.target_root;
   if (receipt.schema_version !== 1 || receipt.scope !== "codex-integration" || receipt.root_id !== identity.root_id || !object(receipt.assets)) fail("ACTIVATION_INVALID_RECEIPT");
   for (const [relative, asset] of Object.entries(receipt.assets)) {
-    localPath(root, relative);
+    localPath(root, relative, beforeObserve);
     if (!codexPath(relative) || !object(asset) || !["file", "hooks", "agents-block"].includes(asset.kind)
         || (asset.kind === "hooks" ? !Array.isArray(asset.current) : typeof asset.current !== "string")) fail("ACTIVATION_INVALID_RECEIPT_ASSET");
     if ((asset.kind === "hooks") !== (relative === ".codex/hooks.json") || (asset.kind === "agents-block") !== (relative === "AGENTS.md")) fail("ACTIVATION_INVALID_RECEIPT_ASSET_KIND");
@@ -195,7 +197,7 @@ function validateReceipt(identity, { globalRecoveryPlanId } = {}) {
   if (receipt.installation !== undefined) {
     if (!object(receipt.installation) || !object(receipt.installation.assets)) fail("ACTIVATION_INVALID_INSTALLATION_RECEIPT");
     for (const [relative, asset] of Object.entries(receipt.installation.assets)) {
-      localPath(root, relative);
+      localPath(root, relative, beforeObserve);
       if (!isLocalInstallationTarget(relative) || !object(asset) || !["local-file", "config-fields", "append-lines", "seed-file"].includes(asset.kind)) fail("ACTIVATION_INVALID_RECEIPT_ASSET");
     }
   }
@@ -204,39 +206,39 @@ function validateReceipt(identity, { globalRecoveryPlanId } = {}) {
   if (!object(binding) || !path.isAbsolute(binding.root ?? "") || !isAidnProductVersion(binding.version) || binding.entry !== "bin/aidn.mjs"
       || !HASH.test(String(binding.entry_sha256)) || !HASH.test(String(binding.version_sha256))) fail("ACTIVATION_INVALID_PACKAGE_BINDING");
   if (receipt.global_runtime) {
-    resolveGlobalProjectBinding(receipt.global_runtime, { recoveryPlanId: globalRecoveryPlanId });
+    resolveGlobalProjectBinding(receipt.global_runtime, { recoveryPlanId: globalRecoveryPlanId, beforeObserve });
   } else {
-    const packageRoot = physicalDirectory(binding.root);
-    const version = readBytes(localPath(packageRoot, "VERSION")), entry = readBytes(localPath(packageRoot, binding.entry));
+    const packageRoot = physicalDirectory(binding.root, false, beforeObserve);
+    const version = readBytes(localPath(packageRoot, "VERSION", beforeObserve)), entry = readBytes(localPath(packageRoot, binding.entry, beforeObserve));
     if (!version || !entry || version.toString("utf8").trim() !== binding.version || hash(version) !== binding.version_sha256 || hash(entry) !== binding.entry_sha256) fail("ACTIVATION_PACKAGE_CHANGED");
   }
   const id = receipt.last_transaction;
   if (typeof id !== "string" || !/^[a-f0-9]{32}$/.test(id)) fail("ACTIVATION_COMPLETION_MISSING");
-  const tx = unseal(parse(readBytes(localPath(root, `.aidn/install/transactions/${id}.json`))));
+  const tx = unseal(parse(readBytes(localPath(root, `.aidn/install/transactions/${id}.json`, beforeObserve))));
   const externalComplete = tx.external_status === "complete"
     || (["rollback", "uninstall"].includes(tx.action) && tx.external_status === "skipped");
   if (tx.schema_version !== 1 || tx.id !== id || tx.root_id !== identity.root_id || !["codex-integration", "installation"].includes(tx.scope)
       || tx.status !== "complete" || (tx.scope === "installation" && !externalComplete) || !Array.isArray(tx.operations)) fail("ACTIVATION_INSTALLATION_INCOMPLETE");
   for (const operation of tx.operations) {
     if (!object(operation)) fail("ACTIVATION_INVALID_TRANSACTION_OPERATION");
-    localPath(root, operation.path);
+    localPath(root, operation.path, beforeObserve);
     if (!codexPath(operation.path) && !(tx.scope === "installation" && isLocalInstallationTarget(operation.path))) fail("ACTIVATION_INVALID_TRANSACTION_OPERATION");
   }
-  if (Object.keys(receipt.assets).length) validateNativeAssets(root, receipt.assets, receipt.global_runtime);
+  if (Object.keys(receipt.assets).length) validateNativeAssets(root, receipt.assets, receipt.global_runtime, beforeObserve);
   return receipt;
 }
 
-export function readActivation({ targetRoot = process.cwd() } = {}) {
+export function readActivation({ targetRoot = process.cwd(), beforeObserve } = {}) {
   let identity = null, authorization = null, receipt = null;
   const errors = [];
   let state = "degraded";
   try {
-    identity = resolveActivationTarget({ targetRoot });
-    authorization = readAuthority(identity).document;
+    identity = resolveActivationTarget({ targetRoot, beforeObserve });
+    authorization = readAuthority(identity, beforeObserve).document;
     if (authorization?.status === "revoked") return { state: "revoked", active: false, identity, authorization, receipt, errors };
-    if (readBytes(localPath(identity.target_root, ".aidn/install/global-migration.json")) !== null) fail("ACTIVATION_GLOBAL_MIGRATION_PENDING");
-    if (readBytes(localPath(identity.target_root, ".aidn/install/pending.json")) !== null) fail("ACTIVATION_INSTALLATION_PENDING");
-    receipt = validateReceipt(identity);
+    if (readBytes(localPath(identity.target_root, ".aidn/install/global-migration.json", beforeObserve)) !== null) fail("ACTIVATION_GLOBAL_MIGRATION_PENDING");
+    if (readBytes(localPath(identity.target_root, ".aidn/install/pending.json", beforeObserve)) !== null) fail("ACTIVATION_INSTALLATION_PENDING");
+    receipt = validateReceipt(identity, { beforeObserve });
     if (receipt?.activation && !authorization) fail("ACTIVATION_AUTHORITY_MISSING");
     if (!receipt || !Object.keys(receipt.assets).length) state = authorization ? "unprepared" : "absent";
     else if (receipt.activation) {

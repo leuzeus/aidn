@@ -76,8 +76,11 @@ function main() {
     const policy = getMetadataPolicy(concept);
     if (policy?.coverage_kind !== "supervision_candidate" || policy?.authority_backend !== "postgres"
       || policy?.source_of_truth_concept !== concept) {
-      issues.push(`${concept}: persistence-only metadata must close over its PostgreSQL authority policy`);
+      issues.push(`${concept}: conditional supervision metadata must close over its PostgreSQL authority policy`);
       continue;
+    }
+    if(!policy.notes.includes("conditional native prototype") || !policy.notes.includes("no automatic purge")) {
+      issues.push(`${concept}: conditional native availability and retained evidence must be explicit`);
     }
     const schema = { execution_run: runSchema, delegated_task: taskSchema, execution_attempt: attemptSchema }[concept];
     for (const fieldName of policy.required_fields) {

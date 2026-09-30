@@ -31,7 +31,10 @@ function fileKey(value) {
 }
 const importReads = new Set([
   "src/core/agents/agent-execution-contracts.mjs",
+  "src/core/agents/agent-local-path-policy.mjs",
   "src/core/contracts/json-schema-validator.mjs",
+  "src/core/contracts/agent-execution/plan.v2.schema.json",
+  "src/core/contracts/agent-execution/plan.v3.schema.json",
   "src/core/ports/agent-task-executor-port.mjs",
   "src/application/runtime/agent-task-executor-registry-service.mjs",
   ...["descriptor", "availability", "plan", "run", "task", "attempt", "delegation", "request", "event", "result", "acceptance",
@@ -160,6 +163,17 @@ for (const kind of ["descriptor", "availability", "plan", "run", "task", "attemp
 }
 assert.equal(contracts.validateAgentExecutionBindings(fixture).ok, true);
 assert.equal(contracts.normalizeAgentExecutionPlan(fixture.plan).plan_sha256, fixture.expected.plan_sha256);
+for (const version of [2, 3]) {
+  const cooperative = structuredClone(fixture.plan);
+  delete cooperative.plan_sha256;
+  cooperative.contract_version = `agent-execution-plan.v${version}`;
+  cooperative.assurance_profile = `codex-cooperative.v${version - 1}`;
+  const cooperativeBefore = JSON.stringify(cooperative);
+  assert.equal(contracts.validateAgentExecutionContract("plan", cooperative).ok, true);
+  assert.equal(contracts.normalizeAgentExecutionPlan(cooperative).assurance_profile, `codex-cooperative.v${version - 1}`);
+  assert.notEqual(contracts.fingerprintAgentExecutionPlan(cooperative), fixture.expected.plan_sha256);
+  assert.equal(JSON.stringify(cooperative), cooperativeBefore);
+}
 assert.equal(JSON.stringify(fixture), before);
 assert.equal(probes, 0);
 assert.equal(tasks, 0);

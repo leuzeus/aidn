@@ -83,11 +83,15 @@ function main() {
         matrixIssues.push(`${concept}: existing optional PostgreSQL and explicit synchronization must remain intact`);
       }
       if (!policy?.source_of_truth.includes("explicit qualified composition required")
-        || !policy?.notes.includes("public supervised commands remain unavailable") || policy?.projection !== "none") {
-        matrixIssues.push(`${concept}: ${mode} must require explicit qualification and keep public commands unavailable`);
+        || !policy?.notes.includes("conditional native prototype") || !policy?.notes.includes("matching native qualification")
+        || policy?.projection !== "read-only runtime agent-run* JSON status and action previews" || policy?.projection_is_canonical !== false) {
+        matrixIssues.push(`${concept}: ${mode} must require explicit qualification for the conditional public prototype`);
       }
       if (!policy?.retention.includes("no automatic purge") || !policy?.notes.includes("No files, SQLite or in-memory authority fallback, inferred runtime instances")) {
         matrixIssues.push(`${concept}: candidate retention and instance boundary must be explicit`);
+      }
+      if (concept==="execution_run" && ["execution_cancel_requests","execution_cleanup_operations","execution_cleanup_resources"].some(table=>!policy.shared_runtime.includes(table))) {
+        matrixIssues.push(`${concept}: cancellation and cleanup tables must remain covered by the run`);
       }
     }
   }

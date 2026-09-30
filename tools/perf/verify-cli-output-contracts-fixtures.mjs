@@ -443,6 +443,21 @@ const CONTRACT_CASES = [
     args: ["runtime", "coordinator-dispatch-execute", "--json"],
   },
   {
+    name: "runtime-agent-run", schema: "runtime-agent-run.v1.schema.json", args: ["runtime", "agent-run", "--json"], allowNonZero: true,
+  },
+  {
+    name: "runtime-agent-run-status", schema: "runtime-agent-run-status.v1.schema.json", args: ["runtime", "agent-run-status", "--json"], allowNonZero: true,
+  },
+  {
+    name: "runtime-agent-run-resume", schema: "runtime-agent-run-resume.v1.schema.json", args: ["runtime", "agent-run-resume", "--json"], allowNonZero: true,
+  },
+  {
+    name: "runtime-agent-run-cancel", schema: "runtime-agent-run-cancel.v1.schema.json", args: ["runtime", "agent-run-cancel", "--json"], allowNonZero: true,
+  },
+  {
+    name: "runtime-agent-run-cleanup", schema: "runtime-agent-run-cleanup.v1.schema.json", args: ["runtime", "agent-run-cleanup", "--json"], allowNonZero: true,
+  },
+  {
     name: "runtime-coordinator-orchestrate",
     schema: "runtime-coordinator-orchestrate.v1.schema.json",
     args: ["runtime", "coordinator-orchestrate", "--max-iterations", "1", "--json"],

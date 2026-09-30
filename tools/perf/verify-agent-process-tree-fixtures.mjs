@@ -3,11 +3,146 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import childProcess, { spawn } from "node:child_process";
+import { EventEmitter, getEventListeners } from "node:events";
+import { syncBuiltinESMExports } from "node:module";
+import { pathToFileURL } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { buildAgentProcessHelper } from "../verify/build-agent-process-helper.mjs";
 import { createWindowsProcessTreeController } from "../../src/adapters/agents/process-tree/windows-process-tree-controller.mjs";
+
+// Exercise the actual controller with restored built-in doubles: no process,
+// filesystem mutation, helper build or platform prerequisite is involved.
+export async function verifyPortableProcessTreeFixtures() {
+  const checks = [], check = async (name, action) => { await action(); checks.push({ name, status: "PASS" }); };
+  const original = { spawn: childProcess.spawn, lstat: fs.lstatSync, read: fs.readFileSync,
+    realpath: fs.realpathSync.native, platform: Object.getOwnPropertyDescriptor(process, "platform"), arch: Object.getOwnPropertyDescriptor(process, "arch") };
+  const cwd = path.resolve(os.tmpdir(), "aidn-process-tree-portable"), bytes = Buffer.from("portable helper bytes");
+  const sha256 = createHash("sha256").update(bytes).digest("hex"), events = [], commands = [];
+  let launched = 0, mode = "complete", onRead = null, onSpawn = null, onStop = null;
+  try {
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    Object.defineProperty(process, "arch", { value: "x64", configurable: true });
+    fs.lstatSync = file => ({ isSymbolicLink: () => false, isDirectory: () => file === cwd, isFile: () => file !== cwd, nlink: 1 });
+    fs.realpathSync.native = file => path.resolve(file);
+    fs.readFileSync = () => { onRead?.(); return bytes; };
+    childProcess.spawn = () => {
+      launched++; onSpawn?.();
+      const child = new EventEmitter(); child.pid = 1234; child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+      child.stdin = new EventEmitter(); child.stdin.writable = true; child.stdin.destroyed = false;
+      let payload, sequence = 0, resumed = false, terminal = false;
+      const runner = { pid: 5678, started_at: "2026-01-01T00:00:00.000Z", job_name: `Local\\aidn-execution-${"a".repeat(32)}` };
+      const frame = value => child.stdout.emit("data", Buffer.from(JSON.stringify({ protocol: "aidn-process-tree.v1", runner_id: payload.runner_id, sequence: ++sequence, ...value }) + "\n"));
+      const finish = () => { if (terminal) return; terminal = true;
+        frame({ type: "terminal", outcome: resumed ? "completed" : "cancelled", reason_code: resumed ? "PROCESS_COMPLETED" : "PROCESS_CANCELLED",
+          termination_state: "confirmed", exit_code: resumed ? 0 : 1, observed_at: "2026-01-01T00:00:01.000Z", resumed, active_processes: 0, ...runner });
+        child.emit("close", 0, null);
+      };
+      child.kill = () => { if (!terminal) { terminal = true; child.emit("close", null, "SIGTERM"); } };
+      child.stdin.write = (text, callback) => {
+        const message = JSON.parse(text); commands.push(message.action ?? "payload"); callback?.();
+        if (!message.action) { payload = message; queueMicrotask(() => frame({ type: "prepared", suspended: true, job_assigned: true, ...runner })); }
+        else if (message.action === "resume") { resumed = true; queueMicrotask(() => {
+          frame({ type: "resumed", ...runner });
+          if (mode === "stdout-close") frame({ type: "stdout", data: Buffer.from("fixture").toString("base64") });
+          if (!["hold", "unconfirmed"].includes(mode)) finish();
+        }); }
+        else if (message.action === "stop") { const stopped = onStop; onStop = null; stopped?.(); queueMicrotask(mode === "unconfirmed" ? () => child.kill() : finish); }
+        return true;
+      };
+      return child;
+    };
+    syncBuiltinESMExports();
+    const controller = createWindowsProcessTreeController({ helperPath: path.join(cwd, "helper.exe"), helperSha256: sha256,
+      helperSourceSha256: sha256, candidateSha256: sha256 });
+    const request = changes => ({ runnerId: "fixture.portable", executable: path.join(cwd, "node.exe"), executableSha256: sha256,
+      args: [], cwd, env: {}, stdin: "", maxDurationMs: 1000, stopTimeoutMs: 10, ...changes });
+    const clean = (...signals) => { for (const signal of signals) assert.equal(getEventListeners(signal, "abort").length, 0); };
+    const preflight = async (options, outcome, reason) => { const before = launched;
+      const result = await controller.run(request(), options); assert.equal(launched, before);
+      assert.equal(result.outcome, outcome); assert.equal(result.reason_code, reason); assert.equal(result.termination_state, "not_started"); };
+    await check("portable absent timeoutSignal preserves ordinary completion", async () => {
+      const result = await controller.run(request()); assert.equal(result.outcome, "completed"); assert.equal(result.termination_state, "confirmed");
+    });
+    await check("portable invalid timeoutSignal is rejected without spawn", async () => {
+      for (const timeoutSignal of [null, {}, { aborted: true }, "timeout"]) await preflight({ timeoutSignal }, "failed", "PROCESS_REQUEST_INVALID");
+    });
+    await check("portable pre-timeout and pre-cancel preserve distinct outcomes without spawn", async () => {
+      const timeout = AbortSignal.abort(), cancel = AbortSignal.abort();
+      await preflight({ timeoutSignal: timeout }, "timed_out", "PROCESS_TIMEOUT_BEFORE_START");
+      await preflight({ signal: cancel, timeoutSignal: timeout }, "cancelled", "PROCESS_CANCELLED_BEFORE_START"); clean(timeout, cancel);
+    });
+    await check("portable timeout during availability never creates helper", async () => {
+      const timeout = new AbortController(); onRead = () => timeout.abort();
+      try { await preflight({ timeoutSignal: timeout.signal }, "timed_out", "PROCESS_TIMEOUT_BEFORE_START"); }
+      finally { onRead = null; } clean(timeout.signal);
+    });
+    await check("portable pre-spawn cancellation wins both signals during availability", async () => {
+      const cancel = new AbortController(), timeout = new AbortController(); onRead = () => { timeout.abort(); cancel.abort(); };
+      try { await preflight({ signal: cancel.signal, timeoutSignal: timeout.signal }, "cancelled", "PROCESS_CANCELLED_BEFORE_START"); }
+      finally { onRead = null; } clean(cancel.signal, timeout.signal);
+    });
+    await check("portable timeout between spawn and listener installation is observed", async () => {
+      const timeout = new AbortController(); onSpawn = () => timeout.abort();
+      let result; try { result = await controller.run(request(), { timeoutSignal: timeout.signal }); } finally { onSpawn = null; }
+      assert.equal(result.outcome, "timed_out"); assert.equal(result.reason_code, "PROCESS_TIMEOUT"); assert.equal(result.termination_state, "confirmed"); clean(timeout.signal);
+    });
+    await check("portable timeout releases unsettled preparation and forbids late resume", async () => {
+      const timeout = new AbortController(); let complete; events.length = 0; commands.length = 0;
+      const result = await controller.run(request(), { timeoutSignal: timeout.signal, onEvent(event) {
+        events.push(event.type); if (event.type === "prepared") { queueMicrotask(() => timeout.abort()); return new Promise(resolve => { complete = resolve; }); }
+      } });
+      assert.equal(result.outcome, "timed_out"); assert.equal(result.reason_code, "PROCESS_TIMEOUT"); assert.equal(result.termination_proof.active_processes, 0);
+      assert.deepEqual(events, ["prepared"]); assert(!commands.includes("resume")); complete(); await delay(5);
+      assert.deepEqual(events, ["prepared"]); assert(!commands.includes("resume")); clean(timeout.signal);
+    });
+    for (const first of ["cancel", "timeout"]) await check(`portable ${first} wins competing stop signals`, async () => {
+      const cancel = new AbortController(), timeout = new AbortController(); mode = "hold";
+      const result = await controller.run(request(), { signal: cancel.signal, timeoutSignal: timeout.signal, onEvent(event) {
+        if (event.type === "resumed") { if (first === "cancel") { cancel.abort(); timeout.abort(); } else { timeout.abort(); cancel.abort(); } }
+      } });
+      assert.equal(result.outcome, first === "cancel" ? "cancelled" : "timed_out"); assert.equal(result.reason_code, first === "cancel" ? "PROCESS_CANCELLED" : "PROCESS_TIMEOUT");
+      assert.equal(result.termination_proof.active_processes, 0); clean(cancel.signal, timeout.signal); mode = "complete";
+    });
+    await check("portable callback failure remains authoritative after timeoutSignal", async () => {
+      const timeout = new AbortController(); onStop = () => timeout.abort(); commands.length = 0;
+      const result = await controller.run(request(), { timeoutSignal: timeout.signal, onEvent() { throw new Error("fixture callback failure"); } });
+      assert.equal(timeout.signal.aborted, true); assert.equal(result.outcome, "failed"); assert.equal(result.reason_code, "PROCESS_CALLBACK_FAILED");
+      assert.equal(result.termination_state, "confirmed"); assert.equal(result.termination_proof.active_processes, 0);
+      assert(!commands.includes("resume")); clean(timeout.signal);
+    });
+    await check("portable timeout cannot promote unknown termination", async () => {
+      const timeout = new AbortController(); mode = "unconfirmed";
+      const result = await controller.run(request(), { timeoutSignal: timeout.signal, onEvent(event) { if (event.type === "resumed") timeout.abort(); } });
+      assert.equal(result.outcome, "indeterminate"); assert.equal(result.reason_code, "PROCESS_HELPER_TERMINATION_UNCONFIRMED");
+      assert.equal(result.termination_state, "unknown"); assert.equal(result.termination_proof, null); clean(timeout.signal); mode = "complete";
+    });
+    await check("portable fixed deadline remains active without timeoutSignal firing", async () => {
+      const timeout = new AbortController(), started = Date.now(); mode = "hold";
+      const result = await controller.run(request({ maxDurationMs: 25 }), { timeoutSignal: timeout.signal });
+      assert(Date.now() - started < 1000); assert.equal(result.outcome, "timed_out"); assert.equal(result.reason_code, "PROCESS_TIMEOUT");
+      clean(timeout.signal); const previous = commands.length; timeout.abort(); await delay(5); assert.equal(commands.length, previous); mode = "complete";
+    });
+    await check("portable timeout releases stdout callback after helper close", async () => {
+      const timeout = new AbortController(); mode = "stdout-close";
+      const result = await controller.run(request(), { timeoutSignal: timeout.signal, onEvent(event) {
+        if (event.type === "stdout") { queueMicrotask(() => timeout.abort()); return new Promise(() => {}); }
+      } });
+      assert.equal(result.outcome, "timed_out"); assert.equal(result.termination_state, "confirmed"); clean(timeout.signal); mode = "complete";
+    });
+    await check("portable completed run removes both listeners before late abort", async () => {
+      const cancel = new AbortController(), timeout = new AbortController();
+      const result = await controller.run(request(), { signal: cancel.signal, timeoutSignal: timeout.signal });
+      assert.equal(result.outcome, "completed"); clean(cancel.signal, timeout.signal); const previous = commands.length;
+      cancel.abort(); timeout.abort(); await delay(5); assert.equal(commands.length, previous);
+    });
+    return checks;
+  } finally {
+    childProcess.spawn = original.spawn; fs.lstatSync = original.lstat; fs.readFileSync = original.read; fs.realpathSync.native = original.realpath;
+    Object.defineProperty(process, "platform", original.platform); Object.defineProperty(process, "arch", original.arch); syncBuiltinESMExports();
+  }
+}
 
 const checks = [], digest = (file) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 const check = async (name, action) => { await action(); checks.push({ name, status: "PASS" }); };
@@ -17,9 +152,13 @@ async function assertGone(pids) {
   while (Date.now() < deadline && pids.some(alive)) await delay(20);
   assert(pids.every((pid) => !alive(pid)), "owned fixture process must be absent");
 }
+async function main() {
+const portable = process.argv.length === 3 && process.argv[2] === "--portable";
 let root, marker, spectator, spectatorExit, manifest;
 let cleanup = { root_removed: false, spectator_stopped: false };
 try {
+  if (portable) checks.push(...await verifyPortableProcessTreeFixtures());
+  else {
   if (process.platform !== "win32" || process.arch !== "x64") throw new Error("PROCESS_TREE_NATIVE_PLATFORM_UNAVAILABLE");
   const args = process.argv.slice(2);
   if (args.length && (args.length !== 2 || args[0] !== "--helper-manifest" || !path.isAbsolute(args[1]))) throw new Error("PROCESS_TREE_FIXTURE_ARGUMENTS_INVALID");
@@ -175,6 +314,7 @@ try {
     const result = await controller.run(request("throw 1"), { signal: abort.signal, onEvent: async () => assert.fail("no callback expected") });
     assert.equal(result.outcome, "cancelled"); assert.equal(result.termination_state, "not_started");
   });
+  }
 } catch (error) {
   process.exitCode = 1; checks.push({ name: error.message, status: "FAIL", detail: error.stack?.split("\n").slice(0, 4).join("\n") });
 } finally {
@@ -188,7 +328,10 @@ try {
     fs.rmSync(root, { recursive: true, force: false }); cleanup.root_removed = !fs.existsSync(root);
   }
 }
-console.log(JSON.stringify({ status: process.exitCode ? "FAIL" : "PASS", proof_class: "native-process-windows",
+console.log(JSON.stringify({ status: process.exitCode ? "FAIL" : "PASS", proof_class: portable ? "portable-process-controller-doubles" : "native-process-windows",
   codex_executed: false, sandbox_containment_qualified: false,
   helper_sha256: manifest?.helper_sha256 ?? null, source_sha256: manifest?.source_sha256 ?? null,
   checks, cleanup }, null, 2));
+
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) await main();

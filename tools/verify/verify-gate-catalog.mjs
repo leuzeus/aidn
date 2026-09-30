@@ -806,6 +806,43 @@ for (const [name, candidate] of Object.entries({
 }
 
 const negativeProbes = {
+  agent_run_lifecycle_required: (() => {
+    const candidate = clone(catalog);
+    candidate.gates = candidate.gates.filter(gate => gate.id !== "runtime-agent-run-lifecycle");
+    return candidateRejected({ candidateCatalog: candidate });
+  })(),
+  agent_run_lifecycle_obligations: ["dev", "main", "release"].every(context => {
+    const candidate = clone(catalog);
+    candidate.gates.find(gate => gate.id === "runtime-agent-run-lifecycle").obligation[context] = "optional";
+    return candidateRejected({ candidateCatalog: candidate });
+  }),
+  agent_run_lifecycle_invocation_omission: (() => {
+    const commands = packageJson.scripts["perf:verify-agent-run-lifecycle-fixtures"].split(" && ");
+    return commands.length === 7
+      && commands.includes("node tools/perf/verify-codex-sandbox-validation-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-codex-startup-arguments-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-agent-local-path-policy-fixtures.mjs")
+      && new Set(commands).size === commands.length
+      && commands.every((_, index) => {
+        const candidate = clone(packageJson);
+        candidate.scripts["perf:verify-agent-run-lifecycle-fixtures"] = commands.filter((_, position) => position !== index).join(" && ");
+        return candidateRejected({ candidatePackageJson: candidate });
+      });
+  })(),
+  agent_run_lifecycle_invocation_duplication: (() => {
+    const commands = packageJson.scripts["perf:verify-agent-run-lifecycle-fixtures"].split(" && ");
+    return commands.every(command => {
+      const candidate = clone(packageJson);
+      candidate.scripts["perf:verify-agent-run-lifecycle-fixtures"] = [...commands, command].join(" && ");
+      return candidateRejected({ candidatePackageJson: candidate });
+    });
+  })(),
+  agent_run_lifecycle_catalog_duplication: (() => {
+    const candidate = clone(catalog);
+    candidate.gates.push({ ...candidate.gates.find(gate => gate.id === "runtime-agent-run-lifecycle"), id: "fixture-agent-run-copy", allow_script_reuse: true });
+    return candidateRejected({ candidateCatalog: candidate });
+  })(),
   ...persistenceNegativeProbes,
   agent_execution_gate_removal_rejected: agentExecutionPolicyProbe(({ catalog: candidate }) => {
     candidate.gates = candidate.gates.filter((gate) => gate.id !== "runtime-agent-execution-contracts");

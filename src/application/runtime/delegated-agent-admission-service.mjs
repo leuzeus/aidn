@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../core/agents/agent-local-path-policy.mjs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { parseNativePatch, resolveNativeAdmissionPath } from "./native-write-admission-service.mjs";
@@ -37,6 +38,8 @@ export function createDelegatedAgentAdmissionService({ store, binding, inspectWo
       request_sha256:expected.requestSha256, admission_sha256:admissionHash, operations, observation };
   }
   async function observed(context,signal) {
+    assertAgentLocalPath(context.attempt?.worktree?.cwd);
+    assertAgentLocalPath(context.request?.cwd);
     if (signal?.aborted) fail("DELEGATED_ADMISSION_CANCELLED");
     const actual=await inspectWorktree(structuredClone(context),{signal});
     if (signal?.aborted) fail("DELEGATED_ADMISSION_CANCELLED");

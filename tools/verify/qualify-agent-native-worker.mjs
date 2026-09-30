@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../src/core/agents/agent-local-path-policy.mjs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -8,8 +9,8 @@ import { withEphemeralPostgres } from "../perf/agent-execution-postgres-test-lib
 import { assertAgentNativeRefreshReview, assertAgentNativeQualificationRefreshContinuity, readAgentNativeRefreshLineage } from "./refresh-agent-native-candidate.mjs";
 import { nativeQualificationHomeIdentity } from "./prepare-agent-native-qualification.mjs";
 import { fingerprintAgentExecutionValue } from "../../src/core/agents/agent-execution-contracts.mjs";
-import { fingerprintCodexNativeProfilePolicy } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
-import { hash, json, fail, requireProof, physical, inventory, compareInventory, writeEvidence, loadCandidate, runNativeQualificationCase, nativeQualificationBudgets } from "./agent-native-qualification-driver.mjs";
+import { fingerprintCodexNativeProfilePolicy, codexNativeProfilePreservationEvidence } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
+import { hash, json, fail, requireProof, physical, inventory, compareInventory, writeEvidence, loadCandidate, runNativeQualificationCase, nativeQualificationBudgets, nativeQualificationProfileFailure } from "./agent-native-qualification-driver.mjs";
 import { readCodexNativeProfileSharedEffects } from "./agent-native-profile-observation.mjs";
 
 const SOURCE=path.resolve(import.meta.dirname,"../..");
@@ -51,20 +52,24 @@ export function assertNativeQualificationProfileReview({manifest,review,policy}=
   const approved=review?.native_profile;
   requireProof(exactKeys(approved,["mode","policy_sha256","consent"]) && approved.mode==="preexisting"
     && approved.policy_sha256===policySha256,"QUALIFICATION_NATIVE_PROFILE_REVIEW_REQUIRED");
-  const consent=approved.consent;
-  requireProof(exactKeys(consent,["approved","shared_effects_sha256","state_root"]) && consent.approved===true
+  const consent=approved.consent, managed=policy.contract_version==="codex-native-profile-policy.v2";
+  requireProof(exactKeys(consent,["approved","shared_effects_sha256","state_root",...(managed?["sandbox_maintenance"]:[])]) && consent.approved===true
     && consent.shared_effects_sha256===policy.effects.shared_effects_sha256
-    && consent.state_root===policy.effects.state_root,"QUALIFICATION_NATIVE_PROFILE_EFFECT_CONSENT_REQUIRED");
+    && consent.state_root===policy.effects.state_root && (!managed || consent.sandbox_maintenance==="codex-managed"
+      && policy.effects.shared_effects_sha256===fingerprintAgentExecutionValue(readCodexNativeProfileSharedEffects(undefined,policy.contract_version))),"QUALIFICATION_NATIVE_PROFILE_EFFECT_CONSENT_REQUIRED");
   return {policy_sha256:policySha256,consent:structuredClone(consent)};
 }
 
 // Never observe an older successful request while the current metadata process
 // has indeterminate termination. The worker's cleanup status is independent.
-export async function finalizeNativeQualificationProfile({verify,preparation,signal}={}) {
+export async function finalizeNativeQualificationProfile({verify,preparation,verificationFailure,signal}={}) {
+  if(verificationFailure?.process_cleanup==="UNCONFIRMED") return {ok:false,status:"UNCONFIRMED",
+    reason:"QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED",native_profile_verification_failure:structuredClone(verificationFailure)};
   if(preparation?.process_cleanup==="UNCONFIRMED") return {ok:false,status:"UNCONFIRMED",
     reason:"QUALIFICATION_NATIVE_PROFILE_PREPARATION_TERMINATION_UNCONFIRMED",native_profile_preparation:preparation};
   requireProof(typeof verify?.finalize==="function","QUALIFICATION_NATIVE_PROFILE_OBSERVER_REQUIRED");
-  return verify.finalize({signal});
+  try { return await verify.finalize({signal}); }
+  catch(error) { error.nativeProfileFinalization=nativeQualificationProfileFailure(error,{phase:"finalize"});throw error; }
 }
 
 // A later non-started scenario cannot erase the death proofs of earlier
@@ -86,13 +91,14 @@ export function summarizeNativeProcessCleanup({launchRequests,processesStarted,c
 // Existing native project/hook trust and authentication must already exist.
 export async function qualifyAgentNativeWorker({manifest:manifestFile,helperManifest,pgBin,model,effort,reviewProof,nativeProfilePolicy:policyFile,outputRoot,write=false}={}) {
   requireProof(typeof write==="boolean","QUALIFICATION_EXPLICIT_WRITE_BOOLEAN_REQUIRED");
+  for(const value of [manifestFile,helperManifest,reviewProof,pgBin,outputRoot,policyFile]) assertAgentLocalPath(value);
   manifestFile=physical(manifestFile,"file"); helperManifest=physical(helperManifest,"file"); reviewProof=physical(reviewProof,"file"); pgBin=physical(pgBin,"directory"); outputRoot=physical(outputRoot);
   const manifest=read(manifestFile), helper=read(helperManifest), review=read(reviewProof);
   const nativeProfilePolicy=policyFile===undefined?undefined:read(policyFile);
   const profileReview=assertNativeQualificationProfileReview({manifest,review,policy:nativeProfilePolicy});
   if(profileReview) {
     requireProof(fingerprintAgentExecutionValue(nativeQualificationHomeIdentity(manifest.codex_home))===manifest.native_profile.home_identity_sha256,"QUALIFICATION_NATIVE_PROFILE_HOME_CHANGED");
-    requireProof(fingerprintAgentExecutionValue(readCodexNativeProfileSharedEffects(manifest.codex_home))===nativeProfilePolicy.effects.shared_effects_sha256,"QUALIFICATION_NATIVE_PROFILE_EFFECTS_CHANGED");
+    requireProof(fingerprintAgentExecutionValue(readCodexNativeProfileSharedEffects(manifest.codex_home,nativeProfilePolicy.contract_version))===nativeProfilePolicy.effects.shared_effects_sha256,"QUALIFICATION_NATIVE_PROFILE_EFFECTS_CHANGED");
     physical(nativeProfilePolicy.effects.state_root);
     for(const protectedRoot of [SOURCE,manifest.codex_home,manifest.candidate.packageRoot,...manifest.roots.map(root=>root.root)]) {
       requireProof(outside(protectedRoot,nativeProfilePolicy.effects.state_root) && outside(nativeProfilePolicy.effects.state_root,protectedRoot),"QUALIFICATION_NATIVE_PROFILE_EFFECT_ROOT_OVERLAP");
@@ -167,7 +173,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
   const result={ok:true,status:write?"running":"preview",written:write,...identityRecord,output_root:outputRoot,native_launch_requests:0,native_processes_started:0,checks:[],qualification:"NOT_RUN",native_process_cleanup:"NOT_STARTED",integration:"NOT_RUN",cleanup:"NOT_STARTED",
     ...(profileReview?{native_profile_observation:{status:"NOT_RUN"},native_profile_preparation:{status:"NOT_RUN",...nativeQualificationBudgets({preexisting:true})}}:{}),
     effects:["Create one ephemeral PostgreSQL cluster with four distinct scenario databases","Acquire native proof using reviewed candidate controller and arguments","Verify allowed, forbidden, mixed and stale native apply_patch requests","Observe a native hook descendant before cancellation and timeout","Use the full AgentTaskExecutor port only after initial native proofs pass","Preserve logs, per-attempt markers and authorized file changes; remove only owned PostgreSQL cluster",
-      ...(profileReview?["Prepare native metadata for each exact attempt within 60 seconds including fresh canonical admission; this budget precedes and does not extend the worker execution deadline","Allow native SQLite backfill to copy historical titles, first messages and previews into the reviewed local attempt-state directory; preserve failed state without automatic retry, SQLite disabling or metadata alteration","Observe the explicitly selected existing native profile before create, before resume and after workers; no setup, trust change or credential copy","Allow only the native profile effects bound by the reviewed current shared-effects digest and state root"]:[])]};
+      ...(profileReview?["Prepare native metadata for each exact attempt within 60 seconds including fresh canonical admission; this budget precedes and does not extend the worker execution deadline","Allow native SQLite backfill to copy historical titles, first messages and previews into the reviewed local attempt-state directory; preserve failed state without automatic retry, SQLite disabling or metadata alteration","Observe the explicitly selected existing native profile before create, before resume and after workers; AIDN calls no setup, makes no trust change or credential copy","Allow only the native profile effects bound by the reviewed current shared-effects digest and state root"]:[])]};
   if(!write) return result;
   fs.mkdirSync(outputRoot);
   writeEvidence(outputRoot,"owner.json",{qualification_id:manifest.preparation_id,created_at:new Date().toISOString(),pid:process.pid});
@@ -181,24 +187,28 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
     if(!verifyNativeProfile || profileFinalized) return;
     profileFinalized=true;
     try {
-      const observation=await finalizeNativeQualificationProfile({verify:verifyNativeProfile,preparation:result.native_profile_preparation,signal:AbortSignal.timeout(15000)});
-      if(observation?.reason==="QUALIFICATION_NATIVE_PROFILE_PREPARATION_TERMINATION_UNCONFIRMED") {
+      const observation=await finalizeNativeQualificationProfile({verify:verifyNativeProfile,preparation:result.native_profile_preparation,verificationFailure:result.native_profile_verification_failure,signal:AbortSignal.timeout(15000)});
+      if(["QUALIFICATION_NATIVE_PROFILE_PREPARATION_TERMINATION_UNCONFIRMED","QUALIFICATION_NATIVE_PROFILE_VERIFICATION_TERMINATION_UNCONFIRMED"].includes(observation?.reason)) {
         result.native_profile_observation=observation;
         writeEvidence(outputRoot,"native-profile-final-not-run.json",observation);
         return;
       }
-      requireProof(observation?.ok===true && observation.preservation==="PASS" && observation.provisioning_performed===false,"QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_REQUIRED");
+      requireProof(observation?.ok===true && observation.preservation==="PASS"
+        && Object.entries(codexNativeProfilePreservationEvidence(nativeProfilePolicy)).every(([key,value])=>observation[key]===value)
+        && (nativeProfilePolicy.contract_version==="codex-native-profile-policy.v2" ? !Object.hasOwn(observation,"provisioning_performed")
+          : !Object.hasOwn(observation,"sandbox_maintenance") && !Object.hasOwn(observation,"protected_resources_preserved")),"QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_REQUIRED");
       result.native_profile_observation=observation;
       writeEvidence(outputRoot,"native-profile-final.json",observation);
     } catch(error) {
-      result.native_profile_observation={ok:false,status:"UNCONFIRMED",reason:error.code ?? "QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_FAILED"};
+      result.native_profile_observation={ok:false,status:"UNCONFIRMED",reason:error.code ?? "QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_FAILED",
+        ...(error.nativeProfileFinalization ?? {})};
       writeEvidence(outputRoot,"native-profile-final-failure.json",result.native_profile_observation);
       throw error;
     }
   }
   try {
     const modules=await loadCandidate(manifest.candidate,{nativeProfile:Boolean(profileReview)});
-    requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory),"QUALIFICATION_INSTALLED_CANDIDATE_CHANGED");
+    requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot,{beforeObserve:assertAgentLocalPath}))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory),"QUALIFICATION_INSTALLED_CANDIDATE_CHANGED");
     if(profileReview) {
       requireProof(modules.fingerprintCodexNativeProfilePolicy(nativeProfilePolicy)===profileReview.policy_sha256,"QUALIFICATION_CANDIDATE_PROFILE_POLICY_MISMATCH");
       const {createCodexNativeProfileVerifier}=await import("./agent-native-profile-observation.mjs");
@@ -220,15 +230,16 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
           await admin.query(`CREATE DATABASE ${dbName}`);
           const url=new URL(connectionString);url.pathname="/"+dbName;
           result.postgres.databases.push(dbName);
-          let duration=150000;
-          if(mode==="timeout") duration=Math.min(150000,Math.max(5000,Math.round(result.checks.find(c=>c.mode==="cancel").hook_latency_ms+3000)));
+          // Every worker has the same fixed ceiling. Timeout qualification arms
+          // its shorter deadline only after observing this attempt's live hook.
+          const duration=150000;
           const prior=mode==="port" ? {...identityRecord,passed:result.checks.length===3 && result.checks.every(c=>c.status==="PASS")} : null;
           const check=await runNativeQualificationCase({name:mode,mode,manifest,helper,modules,connectionString:url.toString(),outputRoot,expected,model,effort,nativeProfilePolicy,verifyNativeProfile,maxDurationMs:duration,qualification:prior,onLaunch:()=>result.native_launch_requests++,onStarted:()=>result.native_processes_started++});
           result.checks.push(check);writeEvidence(outputRoot,`case-${mode}.json`,check);
           if(profileReview) result.native_profile_preparation={...check.native_profile_preparation,completed_attempts:result.checks.length};
           process.stderr.write(JSON.stringify({qualification_case:mode,state:"passed",native_process_cleanup:check.native_process_cleanup,at:new Date().toISOString()})+"\n");
         }
-        requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory) && hash(fs.readFileSync(manifest.candidate.archivePath))===manifest.candidate.sha256,"QUALIFICATION_FINAL_CANDIDATE_CHANGED");
+        requireProof(modules.fingerprintAgentExecutionValue(modules.inventoryRuntime(manifest.candidate.packageRoot,{beforeObserve:assertAgentLocalPath}))===modules.fingerprintAgentExecutionValue(manifest.candidate.inventory) && hash(fs.readFileSync(manifest.candidate.archivePath))===manifest.candidate.sha256,"QUALIFICATION_FINAL_CANDIDATE_CHANGED");
         requireProof(hash(fs.readFileSync(manifest.codex.binary_path))===manifest.codex.sha256 && hash(fs.readFileSync(helper.helper_path))===helper.helper_sha256,"QUALIFICATION_FINAL_EXECUTABLE_CHANGED");
       } finally {await admin.end();}
     },{binDir:pgBin});
@@ -247,6 +258,7 @@ export async function qualifyAgentNativeWorker({manifest:manifestFile,helperMani
     });
   } catch(error) {
     if(profileReview && error.nativeQualification?.native_profile_preparation) result.native_profile_preparation={...error.nativeQualification.native_profile_preparation,completed_attempts:result.checks.length};
+    if(profileReview && error.nativeQualification?.native_profile_verification_failure) result.native_profile_verification_failure=error.nativeQualification.native_profile_verification_failure;
     try {await finalizeProfile();} catch(profileError) {error.profileObservationError=profileError.code ?? "QUALIFICATION_NATIVE_PROFILE_FINAL_OBSERVATION_FAILED";}
     primaryError=error;result.ok=false;result.status="failed";result.qualification=error.code==="QUALIFICATION_CLIENT_REFUSAL_UNAVAILABLE"?"UNAVAILABLE":"FAIL";result.reason=error.code ?? error.message;result.details=error.details;
     result.failed_case=error.nativeQualification ?? null;

@@ -71,7 +71,9 @@ schema 4 supervisor generations, acceptances, integration and final validation,
 with `supervision_candidate` coverage. Canonical runtime and supervision must
 share one PostgreSQL transaction. Writers check reservations atomically. The
 internal scheduler requires explicit preparation, Git and validation dependencies
-and a separately qualified native executor; public commands remain unavailable.
+and a separately qualified native executor. Lot 7 exposes explicit public
+preview/status/resume/cancel/cleanup commands; their native execution availability
+remains conditional on exact composition evidence.
 Readiness and reads do not register, heartbeat or migrate;
 intact v2 remains readable for backup while writes require explicit migration.
 
@@ -105,5 +107,57 @@ separate required proofs. There is no automatic purge.
 Lot 6 adds explicit shared schema 5 integration intentions and authenticated
 verification observations. The intention precedes Git effects; local prepared
 results are adopted only after reconciliation. The frozen plan pins verification
-controls and the proof authority; PostgreSQL remains the exclusive shared
-authority and existing sequential workflows still need no PostgreSQL.
+controls and the proof authority. A supervisor serializes its own coordination transactions to avoid competing
+with itself for the canonical fence; queue time counts against the unchanged
+coordination deadline. Worker concurrency remains bounded by the frozen plan,
+and a coordination failure prevents queued calls from starting. Before capturing a completed worker result,
+the supervisor verifies the full plan/run/task/attempt/delegation/request/result
+binding. Validation receives the exact task specification from the frozen plan;
+the enriched delegated-task record remains the acceptance authority.
+Stopped results enter capture, commit, validation and acceptance serially because
+they share one validation boundary. Worker execution remains concurrent. Queued
+results recheck run cancellation and deadline before effects; a failed acceptance
+stops the queue without starting another validation.
+Verification accepts textual output and byte views, including Uint8Array values
+produced by the native boundary's structured clone. It checks the combined byte
+limit before copying each view into retained logs and signing the verdict;
+non-byte containers remain refused.
+PostgreSQL remains the exclusive shared authority and existing sequential
+workflows still need no PostgreSQL.
+
+Lot 7 adds shared schema 6 for durable cancellation requests and cleanup
+operations/resources. Migration stays explicit. Cancellation is a request to
+stop, never proof of termination. Recovery may retain a verified `not_started`
+receipt when no worker runner exists. It preserves the original proof and typed
+reconciliation without inventing a result or Job termination; metadata process
+closure remains independently required. Conflicting or incomplete receipts fail
+closed. If runner persistence was interrupted after creation, recovery verifies
+the closed local process receipt against the exact request, candidate, helper and
+runner identity; any conflicting persisted runner is refused. Cleanup admits completed runs only, with
+stopped supervisor/attempt/Git trees, integrated commits and retained resource
+preimages. Full Git observations are captured during retention preparation. Cleanup
+transactions freshly compare physical identities, bytes, modes, directory entries
+and both worktree registration backlinks against that retained preimage, without
+repeating the Git subprocess inventory. Retained HEAD/tree/index fields are not
+new Git observations; the integration head keeps its separate current fence.
+Scans observe cancellation, and the existing inspection/coordination deadlines
+remain unchanged. Only the locked transaction snapshot may be shared between
+resource inspections; filesystem observations are never cached.
+A new cleaner generation needs proof that its predecessor stopped.
+Removal recovery observes the original directory and worktree metadata absent;
+a relocated worktree cannot be reported as removed. Owned verification snapshots
+must bind to persisted authenticated validation observations. Archives and source
+commit references survive cleanup; failed runs and conflicts are retained.
+
+Operation-journal inspection reads each record once, checking its physical path,
+size and stable file identity before parsing those same bytes. Full inspection
+remains fresh across calls and keeps the 4.5-second bound, including for large
+retained journals; missing termination records continue to block recovery.
+
+Cleanup admission may inspect the complete resource batch under one canonical
+lock. Every filesystem observation stays fresh; one supervisor-owned global
+termination check follows them and covers workers, Git and validation processes.
+The whole batch keeps the 4.5-second callback bound; partial, duplicate or foreign
+results are refused. The scalar inspector remains available for individual
+removal fences. PostgreSQL connection errors prevent commit and remain typed;
+a failed rollback cannot replace the original failure.

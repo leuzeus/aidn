@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../src/core/agents/agent-local-path-policy.mjs";
 import os from "node:os";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -22,6 +23,7 @@ export function nativeQualificationHomeIdentity(home) {
 }
 
 function checkedPath(value, kind) {
+  assertAgentLocalPath(value);
   if (typeof value !== "string" || !path.isAbsolute(value)) fail("PREPARATION_ABSOLUTE_PATH_REQUIRED");
   const absolute = path.resolve(value);
   let cursor = absolute;
@@ -143,6 +145,7 @@ export async function prepareAgentNativeQualification({ outputRoot, codexBinary,
   if (typeof write !== "boolean") fail("PREPARATION_EXPLICIT_WRITE_BOOLEAN_REQUIRED");
   if (!["isolated", "preexisting"].includes(nativeProfileMode)) fail("PREPARATION_NATIVE_PROFILE_MODE_INVALID");
   if ((nativeProfileMode === "preexisting") !== (codexHome !== undefined)) fail("PREPARATION_NATIVE_PROFILE_SELECTION_REQUIRED");
+  for (const value of [outputRoot, codexBinary, npmCli, codexHome]) assertAgentLocalPath(value);
   const profileIdentity = nativeProfileMode === "preexisting" ? nativeQualificationHomeIdentity(codexHome) : null;
   if (profileIdentity) codexHome = profileIdentity.physical_path;
   outputRoot = checkedPath(outputRoot);
@@ -192,7 +195,7 @@ export async function prepareAgentNativeQualification({ outputRoot, codexBinary,
     const { planInstallation, executeInstallation, verifyInstallationCandidate } = await installedModule("src/application/install/installation-service.mjs");
     const { readActivation } = await installedModule("src/application/install/project-activation-service.mjs");
     const candidate = { packageRoot, archivePath, sha256: hash(fs.readFileSync(archivePath)),
-      version: fs.readFileSync(path.join(packageRoot, "VERSION"), "utf8").trim(), inventory: inventoryRuntime(packageRoot) };
+      version: fs.readFileSync(path.join(packageRoot, "VERSION"), "utf8").trim(), inventory: inventoryRuntime(packageRoot, { beforeObserve: assertAgentLocalPath }) };
     if (JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"))).version !== candidate.version) fail("PREPARATION_PACKAGE_VERSION_MISMATCH");
     const gitOptions = { hooksPath: paths.hooks };
     git(paths.primary, ["init", "--quiet", "--initial-branch=codex/qualification"], gitOptions);

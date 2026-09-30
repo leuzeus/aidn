@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import os from "node:os";
+import { createHash } from "node:crypto";
+import { createCodexMetadataRpcDiagnostic, sanitizeCodexMetadataRpcDiagnostic } from "../../src/adapters/agents/codex-metadata-rpc-diagnostic.mjs";
 import { EventEmitter } from "node:events";
 import { PassThrough, Writable } from "node:stream";
 import { pathToFileURL } from "node:url";
@@ -9,19 +11,24 @@ import * as profile from "../../src/adapters/agents/codex-native-profile-policy.
 import { normalizeCodexNativeProfileConfiguration, validateCodexNativeProfileMetadata,
   createCodexNativeProfileVerifier, collectCodexNativeProfileMetadata,
   buildCodexNativeProfileObservationArguments, assertCodexNativeProfileBootstrap,
-  createCodexNativeProfileObserver, CODEX_NATIVE_PROFILE_SHARED_EFFECTS,
+  createCodexNativeProfileObserver, CODEX_NATIVE_PROFILE_SHARED_EFFECTS, CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2,
+  readCodexNativeProfileSharedEffects,
   discoverCodexNativeProfileMetadata, discoverCodexNativeProfileEnvironmentOverrideNames } from "../verify/agent-native-profile-observation.mjs";
 import { assertNativeQualificationProfileReview } from "../verify/qualify-agent-native-worker.mjs";
 import { verifyNativeQualificationProfile } from "../verify/agent-native-qualification-driver.mjs";
 
 const clone = structuredClone;
 const H = letter => letter.repeat(64);
-function fixture() {
+function fixture({ managed = false } = {}) {
   const base = path.join(os.tmpdir(), "aidn-profile-observation-pure"), home = path.join(base, "home"), stateRoot = path.join(base, "state");
   const policy = { contract_version: "codex-native-profile-policy.v1", mode: "preexisting", home: { physical_path: home, identity_sha256: H("a") },
     client_sha256: H("b"), backend: { platform: "win32", architecture: "x64", sandbox: "elevated", provisioning: "existing-only" },
     configuration: { sources_sha256: H("c"), effective_settings_sha256: H("d"), mcp_server_ids: ["one.with space"], plugin_ids: ["synthetic@local"], app_ids: ["app1"], environment_override_names: ["SYNTHETIC_EXTRA"] },
     hooks_sha256: H("e"), effects: { state_root: stateRoot, shared_effects_sha256: H("f") } };
+  if (managed) {
+    policy.contract_version = "codex-native-profile-policy.v2"; policy.backend.provisioning = "codex-managed";
+    policy.effects.shared_effects_sha256 = fingerprint(CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2);
+  }
   const definition = JSON.stringify({ hooks: { PreToolUse: [{ matcher: ".*", hooks: [{ type: "command", command: "synthetic-before", timeout: 600 }] }],
     SessionStart: [{ matcher: ".*", hooks: [{ type: "command", command: "synthetic-start", timeout: 600 }] }] } });
   const manifest = { codex_home: home, codex: { binary_path: path.join(base, "client.exe"), sha256: policy.client_sha256 },
@@ -51,15 +58,16 @@ function fixture() {
   const result = validateCodexNativeProfileMetadata({ metadata, manifest, policy, request, sourceFiles });
   policy.configuration.sources_sha256 = result.sources_sha256; policy.configuration.effective_settings_sha256 = result.effective_settings_sha256; policy.hooks_sha256 = result.hooks_sha256;
   request.execution.native_profile.policy_sha256 = profile.fingerprintCodexNativeProfilePolicy(policy);
-  const consent = { approved: true, shared_effects_sha256: policy.effects.shared_effects_sha256, state_root: policy.effects.state_root };
+  const consent = { approved: true, shared_effects_sha256: policy.effects.shared_effects_sha256, state_root: policy.effects.state_root,
+    ...(managed ? { sandbox_maintenance: "codex-managed" } : {}) };
   const review = { native_profile: { mode: "preexisting", policy_sha256: profile.fingerprintCodexNativeProfilePolicy(policy), consent } };
-  const observation = { status: "verified", ...result, home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
-    shared_effects_sha256: policy.effects.shared_effects_sha256, setup_sha256: H("1"), process: metadata.process, preservation: "PASS", provisioning_performed: false, environment_restricted: true };
+  const observation = { protocol_version: managed ? 2 : 1, status: "verified", ...result, home_identity_sha256: policy.home.identity_sha256, client_sha256: policy.client_sha256,
+    shared_effects_sha256: policy.effects.shared_effects_sha256, setup_sha256: H("1"), process: metadata.process, preservation: "PASS", ...profile.codexNativeProfilePreservationEvidence(policy), environment_restricted: true };
   return { policy, request, manifest, config, metadata, sourceFiles, consent, review, observation };
 }
 
-function doubleTransport({ alter, silent = false, leaveAlive = false, chunked = false } = {}) {
-  const calls = []; let alive = false;
+function doubleTransport({ alter, append = () => [], silent = false, leaveAlive = false, chunked = false } = {}) {
+  const calls = [], writes = []; let alive = false;
   const spawnProcess = () => {
     alive = true; const child = new EventEmitter(); child.pid = 12345; child.stdout = new PassThrough(); child.stderr = new PassThrough();
     const close = () => { if (leaveAlive) return; alive = false; child.emit("close", 0, null); };
@@ -68,13 +76,15 @@ function doubleTransport({ alter, silent = false, leaveAlive = false, chunked = 
       const message = JSON.parse(chunk.toString()); calls.push(message);
       if (message.id && !silent) queueMicrotask(() => {
         const reply = alter ? alter(message) : { id: message.id, result: { marker: "été", method: message.method } };
-        const bytes = Buffer.from(JSON.stringify(reply) + "\r\n");
+        const bytes = Buffer.from([reply, ...append(message)].map(row => JSON.stringify(row) + "\r\n").join(""));
         if (chunked) for (const byte of bytes) child.stdout.write(Buffer.from([byte])); else child.stdout.write(bytes);
       }); callback();
     }, final(callback) { callback(); queueMicrotask(close); } });
+    const write = child.stdin.write.bind(child.stdin);
+    child.stdin.write = (chunk, ...args) => { writes.push(JSON.parse(chunk.toString())); return write(chunk, ...args); };
     return child;
   };
-  return { spawnProcess, isAlive: () => alive, calls };
+  return { spawnProcess, isAlive: () => alive, calls, writes };
 }
 
 export async function runAgentNativeProfileObservationFixtures() {
@@ -185,7 +195,71 @@ export async function runAgentNativeProfileObservationFixtures() {
     ["different hook timeout", x => { x.metadata.hooks.data[0].hooks[0].timeoutSec = 1; }, "PROFILE_HOOK_DEFINITION_CHANGED"],
     ["different hook command", x => { x.metadata.hooks.data[0].hooks[0].command = "other"; }, "PROFILE_HOOK_DEFINITION_CHANGED"],
   ];
-  for (const [name, mutate, expected] of mutations) await check(name, () => { const value = fixture(); mutate(value); assert.throws(() => validate(value), code(expected)); });
+  for (const managed of [false, true]) for (const [name, mutate, expected] of mutations) await check((managed ? "v2: " : "") + name, () => {
+    const value = fixture({ managed }); mutate(value); assert.throws(() => validate(value), code(expected));
+  });
+  await check("v2 effect policy is explicit and excludes immutable setup assertions without profile IO", () => {
+    const effects = readCodexNativeProfileSharedEffects(undefined, "codex-native-profile-policy.v2");
+    assert.deepEqual(effects, CODEX_NATIVE_PROFILE_SHARED_EFFECTS_V2);
+    assert.notEqual(fingerprint(effects), fingerprint(CODEX_NATIVE_PROFILE_SHARED_EFFECTS));
+    assert.equal(Object.hasOwn(effects, "immutable_setup_sha256"), false);
+    assert.match(effects.evidence_limit, /do not establish unchanged Windows/u);
+    assert.throws(() => readCodexNativeProfileSharedEffects(undefined, "unknown"), code("CODEX_NATIVE_PROFILE_POLICY_INVALID"));
+  });
+  await check("v2 requires explicit maintenance consent and its exact effect hash before observation", () => {
+    const x = fixture({ managed: true }); assert.deepEqual(assertNativeQualificationProfileReview(x).consent, x.consent);
+    for (const mutate of [
+      value => { delete value.consent.sandbox_maintenance; },
+      value => { value.consent.sandbox_maintenance = "existing-only"; },
+      value => { value.consent.extra = true; },
+      value => { value.policy.effects.shared_effects_sha256 = H("f"); value.consent.shared_effects_sha256 = H("f");
+        value.review.native_profile.policy_sha256 = profile.fingerprintCodexNativeProfilePolicy(value.policy); },
+    ]) {
+      const value = fixture({ managed: true }); mutate(value); let calls = 0;
+      assert.throws(() => createCodexNativeProfileVerifier({ ...value, observer: async () => { calls++; } }), code("PROFILE_EXPLICIT_CONSENT_REQUIRED"));
+      assert.throws(() => assertNativeQualificationProfileReview(value), code("QUALIFICATION_NATIVE_PROFILE_EFFECT_CONSENT_REQUIRED")); assert.equal(calls, 0);
+    }
+    const legacy = fixture(); legacy.consent.sandbox_maintenance = "codex-managed";
+    assert.throws(() => createCodexNativeProfileVerifier(legacy), code("PROFILE_EXPLICIT_CONSENT_REQUIRED"));
+  });
+  await check("v2 metadata proposal rejects old consent without accessing the profile or collector", async () => {
+    const x = fixture({ managed: true }); let calls = 0;
+    await assert.rejects(discoverCodexNativeProfileMetadata({ ...x, policyTemplate: x.policy,
+      consent: { approved: true, metadata_only: true, state_root: x.policy.effects.state_root }, collect: async () => { calls++; } }),
+    code("PROFILE_EXPLICIT_CONSENT_REQUIRED")); assert.equal(calls, 0);
+  });
+  await check("v2 internal sandbox files may change while protected observations and bootstrap remain exact", async () => {
+    const x = fixture({ managed: true }); let count = 0;
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async options => ({
+      ...clone(x.observation), setup_sha256: H(String(++count)), process: { ...x.observation.process, budget_ms: options.timeoutMs },
+    }) });
+    const bootstrap = await verifier.bootstrap(x.request);
+    assert.equal(bootstrap.protocol_version, 2); assert.equal(bootstrap.authorization, "NOT_GRANTED");
+    assert.equal(bootstrap.sandbox_maintenance, "codex-managed"); assert.equal(bootstrap.protected_resources_preserved, true);
+    assert.equal(Object.hasOwn(bootstrap, "provisioning_performed"), false);
+    const context = { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" };
+    const decision = await verifier(x.request, context);
+    assert.equal(profile.assertCodexNativeProfileVerification(decision, { ...context, policy: x.policy, request: x.request }), true);
+    const final = await verifier.finalize({}); assert.equal(final.setup_sha256, H("3"));
+    assert.equal(final.protected_resources_preserved, true); assert.equal(Object.hasOwn(final, "provisioning_performed"), false);
+    assert.match(final.evidence_limit, /do not establish unchanged Windows/u);
+  });
+  await check("v1 still rejects changed internal sandbox files between observations", async () => {
+    const x = fixture(); let count = 0;
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async () => ({ ...clone(x.observation), setup_sha256: H(String(++count)) }) });
+    await verifier(x.request, { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" });
+    await assert.rejects(verifier.finalize({}), code("PROFILE_PRESERVATION_FAILED"));
+  });
+  for (const mutate of [
+    value => { value.protocol_version = 1; }, value => { value.provisioning_performed = false; },
+    value => { value.protected_resources_preserved = false; }, value => { value.sources_sha256 = H("0"); },
+    value => { value.hooks_sha256 = H("0"); }, value => { value.environment_restricted = false; },
+  ]) await check("v2 refuses legacy or changed protected evidence", async () => {
+    const x = fixture({ managed: true }); mutate(x.observation);
+    const verifier = createCodexNativeProfileVerifier({ ...x, observer: async () => x.observation });
+    await assert.rejects(verifier(x.request, { phase: "before_create", challenge: "11111111-1111-1111-1111-111111111111" }), code("PROFILE_OBSERVATION_INCOMPLETE"));
+  });
+
   await check("review accepts legacy with no profile", () => assert.equal(assertNativeQualificationProfileReview({ manifest: {}, review: {} }), null));
   await check("review requires bound shared-effect consent", () => {
     const x = fixture(); assert.deepEqual(assertNativeQualificationProfileReview(x).consent, x.consent); delete x.review.native_profile.consent;
@@ -300,6 +374,24 @@ export async function runAgentNativeProfileObservationFixtures() {
     assert.equal(result.process.pid_absent, true); assert.deepEqual(transport.calls.map(x => x.method), ["initialize", "initialized", "config/read", "config/read", "hooks/list", "windowsSandbox/readiness"]);
     assert.equal(result.configs[0].marker, "été");
   });
+  await check("historical one-root metadata preserves four responses and no requirements field", async () => {
+    const x = fixture(), transport = doubleTransport();
+    const result = await collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2) }, transport);
+    assert.equal(result.process.response_count, 4); assert.equal(Object.hasOwn(result, "requirements"), false);
+    assert(!transport.calls.some(row => row.method === "configRequirements/read"));
+  });
+  for (const invalid of [undefined, null, false, "managed-setup.v1", "managed-setup.v2", "", {}]) await check("explicit metadata profile refused before spawn " + String(invalid), async () => {
+    const x = fixture(); let calls = 0;
+    await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2), metadataProfile: invalid }, { spawnProcess() { calls++; } }), code("PROFILE_METADATA_PROFILE_INVALID"));
+    assert.equal(calls, 0);
+  });
+  await check("readiness remains an observation without execution authority", async () => {
+    const x = fixture(), transport = doubleTransport({ alter: message => ({ id: message.id,
+      result: message.method === "windowsSandbox/readiness" ? { status: "updateRequired" } : {} }) });
+    const result = await collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1, 2) }, transport);
+    assert.equal(result.readiness.status, "updateRequired"); assert.equal(Object.hasOwn(result, "authorized"), false);
+    assert.equal(transport.calls.length, 5);
+  });
   await check("extended transport budget must be explicit and is capped at sixty seconds", async () => {
     const x = fixture(), transport = doubleTransport();
     const result = await collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1) }, { ...transport, timeoutMs: 60000 });
@@ -307,6 +399,148 @@ export async function runAgentNativeProfileObservationFixtures() {
     let calls = 0;
     await assert.rejects(collectCodexNativeProfileMetadata({ roots: x.manifest.roots.slice(1) }, { timeoutMs: 60001, spawnProcess() { calls++; } }), code("PROFILE_METADATA_TIMEOUT_INVALID"));
     assert.equal(calls, 0);
+  });
+  for (const phase of ["before_config", "after_responses"]) {
+    for (const params of [{}, { authMode: null, planType: null },
+      { authMode: "chatgpt", planType: "pro", private: "synthetic-private-account" }]) {
+      await check("account update notification is opaque at " + phase + " " + JSON.stringify(params), async () => {
+        const notification = { method: "account/updated", params };
+        const reply = request => ({ id: request.id, result: { marker: "metadata", method: request.method } });
+        const before = request => phase === "before_config" && request.id === 2;
+        const transport = doubleTransport({
+          alter: request => before(request) ? notification : reply(request),
+          append: request => before(request) ? [reply(request)] : phase === "after_responses"
+            && request.method === "windowsSandbox/readiness" ? [notification] : [],
+        });
+        let result;
+        await assert.doesNotReject(async () => {
+          result = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport);
+        }, "valid account/updated must not abort metadata at " + phase);
+        assert.equal(result.process.response_count, 5); assert.equal(result.process.budget_ms, 10000);
+        assert.equal(result.process.closed, true); assert.equal(result.process.pid_absent, true);
+        assert.deepEqual(transport.writes.map(row => row.method),
+          ["initialize", "initialized", "config/read", "config/read", "hooks/list", "windowsSandbox/readiness"]);
+        assert.equal(result.configs[0].marker, "metadata");
+        for (const value of ["authMode", "planType", "synthetic-private-account", "account/updated"]) {
+          assert(!JSON.stringify(result).includes(value)); assert(!JSON.stringify(transport.writes).includes(value));
+        }
+      });
+    }
+  }
+  for (const params of [undefined, null, [], "synthetic-private-param", 42]) {
+    await check("account update refuses nonobject params " + JSON.stringify(params), async () => {
+      const transport = doubleTransport({
+        alter: request => request.id === 2 ? { method: "account/updated", params } : { id: request.id, result: {} },
+        append: request => request.id === 2 ? [{ id: request.id, result: {} }] : [],
+      });
+      const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+      assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+      assert.deepEqual(error.details?.metadata_rpc, { version: 1, kind: "notification", method_type: "string",
+        method: "account/updated", method_sha256: null, id_type: "absent", phase: "awaiting_response",
+        expected_method: "config/read", request_index: 2 });
+      assert.equal(error.process.closed, true); assert.equal(error.process.pid_absent, true);
+      assert.equal(error.process.response_count, 1);
+      assert.deepEqual(transport.writes.map(row => row.method), ["initialize", "initialized", "config/read"]);
+      assert(!JSON.stringify(error.details).includes("synthetic-private"));
+    });
+  }
+  for (const id of [null, "synthetic-private-id", 23]) {
+    await check("account update with server id is refused " + String(id), async () => {
+      const transport = doubleTransport({
+        alter: request => request.id === 2 ? { id, method: "account/updated", params: { private: "synthetic-private-param" } }
+          : { id: request.id, result: {} },
+        append: request => request.id === 2 ? [{ id: request.id, result: {} }, { method: "account/updated", params: {} }] : [],
+      });
+      const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+      assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+      assert.deepEqual(error.details?.metadata_rpc, { version: 1, kind: "server_request", method_type: "string",
+        method: "account/updated", method_sha256: null, id_type: id === null ? "null" : typeof id,
+        phase: "awaiting_response", expected_method: "config/read", request_index: 2 });
+      assert.equal(error.process.closed, true); assert.equal(error.process.pid_absent, true);
+      assert.equal(error.process.response_count, 1);
+      assert.deepEqual(transport.writes.map(row => row.method), ["initialize", "initialized", "config/read"]);
+      assert(!JSON.stringify(error.details).includes("synthetic-private"));
+    });
+  }
+  for (const method of ["account/chatgptAuthTokens/refresh", "unknown/account-update"]) {
+    await check("account update does not admit another method " + method, async () => {
+      const message = { method, params: { private: "synthetic-private-param" },
+        ...(method === "account/chatgptAuthTokens/refresh" ? { id: "synthetic-private-id" } : {}) };
+      const transport = doubleTransport({
+        alter: request => request.id === 2 ? message : { id: request.id, result: {} },
+        append: request => request.id === 2 ? [{ id: request.id, result: {} }, { method: "account/updated", params: {} }] : [],
+      });
+      const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+      assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+      assert.equal(error.details.metadata_rpc.method, method.startsWith("unknown/") ? null : method);
+      if (method.startsWith("unknown/")) assert.equal(error.details.metadata_rpc.method_sha256, createHash("sha256").update(method).digest("hex"));
+      assert.equal(error.process.closed, true); assert.equal(error.process.pid_absent, true);
+      assert.equal(error.process.response_count, 1);
+      assert.deepEqual(transport.writes.map(row => row.method), ["initialize", "initialized", "config/read"]);
+      assert(!JSON.stringify(error.details).includes("synthetic-private"));
+    });
+  }
+  await check("first unexpected RPC stops all protocol writes in the same chunk", async () => {
+    const transport = doubleTransport({ alter: () => ({ id: "synthetic-private-id", method: "item/tool/call", params: { secret: "synthetic-private-param" } }),
+      append: request => [{ id: request.id, result: { secret: "synthetic-private-result" } }, { method: "thread/started" }] });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+    assert.deepEqual(transport.writes.map(row => row.method), ["initialize"]);
+    assert.deepEqual(error.details?.metadata_rpc, { version: 1, kind: "server_request", method_type: "string", method: "item/tool/call",
+      method_sha256: null, id_type: "string", phase: "awaiting_response", expected_method: "initialize", request_index: 1 });
+    assert.equal(error.process.closed, true); assert.equal(error.process.pid_absent, true);
+    assert(!JSON.stringify(error.details).includes("synthetic-private"));
+  });
+  await check("unknown RPC diagnostic hashes only its method and never retains payload or id", async () => {
+    const method = "unknown/synthetic-private-method", transport = doubleTransport({ alter: () => ({ method, id: { secret: "synthetic-private-id" },
+      params: { secret: "synthetic-private-param" }, result: "synthetic-private-result" }) });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+    const diagnostic = error.details?.metadata_rpc;
+    assert(diagnostic); assert.equal(diagnostic.method, null); assert.equal(diagnostic.method_type, "string");
+    assert.equal(diagnostic.method_sha256, createHash("sha256").update(method).digest("hex")); assert.equal(diagnostic.id_type, "object");
+    assert(!JSON.stringify(diagnostic).includes("synthetic-private")); assert(Buffer.byteLength(JSON.stringify(diagnostic)) < 1024);
+  });
+  await check("RPC after the final response retains a complete phase without dispatch", async () => {
+    const transport = doubleTransport({ append: request => request.method === "windowsSandbox/readiness"
+      ? [{ method: "thread/started", params: { secret: "synthetic-private-param" } }] : [] });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC");
+    assert.deepEqual(error.details?.metadata_rpc, { version: 1, kind: "notification", method_type: "string", method: "thread/started",
+      method_sha256: null, id_type: "absent", phase: "after_responses", expected_method: "complete", request_index: 5 });
+    assert.equal(error.process.response_count, 5);
+    assert.deepEqual(transport.writes.map(row => row.method), ["initialize", "initialized", "config/read", "config/read", "hooks/list", "windowsSandbox/readiness"]);
+  });
+  await check("RPC diagnostics reject raw fields and accessors without hiding the refusal", () => {
+    const value = createCodexMetadataRpcDiagnostic({ message: { id: null, method: "configWarning" },
+      expectedMethod: "initialize", requestIndex: 1, phase: "awaiting_response" });
+    assert.equal(value.kind, "server_request"); assert.equal(value.id_type, "null");
+    assert.deepEqual(sanitizeCodexMetadataRpcDiagnostic(value), value);
+    for (const invalid of [{ ...value, params: "synthetic-private-param" }, { ...value, id: "synthetic-private-id" },
+      { ...value, method: "synthetic-private-method" }, { ...value, request_index: 8 },
+      { ...value, phase: "after_responses" }, { ...value, method_sha256: H("a") }]) {
+      assert.equal(sanitizeCodexMetadataRpcDiagnostic(invalid), null);
+    }
+    let accessed = false;
+    const accessor = { ...value }; Object.defineProperty(accessor, "method", { enumerable: true, get() { accessed = true; throw Error("must not read"); } });
+    assert.equal(sanitizeCodexMetadataRpcDiagnostic(accessor), null); assert.equal(accessed, false);
+    const malformed = createCodexMetadataRpcDiagnostic({ message: { method: { private: "synthetic-private-method" } },
+      expectedMethod: "hooks/list", requestIndex: 4, phase: "awaiting_response" });
+    assert.equal(malformed.method_type, "object"); assert.equal(malformed.method, null); assert.equal(malformed.method_sha256, null);
+    assert(!JSON.stringify(malformed).includes("synthetic-private"));
+  });
+  await check("known notification name with null server id remains refused", async () => {
+    const transport = doubleTransport({ alter: () => ({ id: null, method: "configWarning", params: {} }) });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_UNEXPECTED_RPC"); assert.equal(error.details.metadata_rpc.id_type, "null");
+    assert.equal(error.details.metadata_rpc.kind, "server_request"); assert.deepEqual(transport.writes.map(row => row.method), ["initialize"]);
+  });
+  await check("unknown termination remains primary while the first RPC diagnostic survives", async () => {
+    const transport = doubleTransport({ leaveAlive: true, alter: () => ({ method: "thread/started", params: {} }) });
+    const error = await collectCodexNativeProfileMetadata({ roots: fixture().manifest.roots.slice(1) }, transport).catch(error => error);
+    assert.equal(error.code, "PROFILE_METADATA_TERMINATION_UNCONFIRMED");
+    assert.equal(error.process.closed, false); assert.equal(error.process.pid_absent, false);
+    assert.equal(error.details.metadata_rpc.method, "thread/started");
   });
   await check("server request cannot trigger a command", async () => {
     const transport = doubleTransport({ alter: () => ({ id: "server-1", method: "command/exec", params: {} }) }), x = fixture();

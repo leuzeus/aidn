@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
+import strictAssert from "node:assert/strict";
 import { payloadDigest } from "../../src/adapters/runtime/artifact-projector-adapter.mjs";
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from "../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs";
@@ -8,6 +9,49 @@ import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persisten
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
+  }
+}
+
+async function verifyOptionalLegacyTable(payload) {
+  const options = { targetRoot: path.resolve("/tmp/runtime-optional-legacy"),
+    connectionString: "postgres://aidn:test@localhost:5432/aidn",
+    env: { AIDN_PROJECT_ID: "optional-legacy", AIDN_WORKSPACE_ID: "fixture" } };
+  const absent = createRuntimePersistenceFakePgClientFactory();
+  // Model PostgreSQL's aborted transaction state, which a caught query error
+  // does not reset. This double is local to the absent-table regression.
+  const absentStore = createPostgresRuntimeArtifactStore({ ...options, clientFactory() {
+    const client = absent.factory(); let active = false, aborted = false;
+    return { ...client, async query(text, values) {
+      const sql = String(text).trim();
+      if (sql === "ROLLBACK") { active = false; aborted = false; return client.query(text, values); }
+      if (aborted) throw Object.assign(new Error("transaction aborted"), { code: "25P02" });
+      if (sql === "BEGIN") active = true;
+      try { const result = await client.query(text, values); if (sql === "COMMIT") active = false; return result; }
+      catch (error) { if (active) aborted = true; throw error; }
+    } };
+  } });
+  await absentStore.writeIndexProjection({ payload });
+  strictAssert.equal(absent.state.tablesPresent.has("runtime_snapshots"), false);
+  strictAssert.equal((await absentStore.loadSnapshot({ includePayload: true })).exists, true);
+
+  const scope = absentStore.describeBackend().runtime_scope_id, legacy = path.resolve(options.targetRoot);
+  strictAssert.notEqual(scope, legacy);
+  const present = createRuntimePersistenceFakePgClientFactory({ initialTables: ["runtime_snapshots"],
+    initialSnapshots: [scope, legacy, "retained.foreign"].map(scope_key => ({ scope_key, payload: { retained: true } })) });
+  await createPostgresRuntimeArtifactStore({ ...options, clientFactory: present.factory }).writeIndexProjection({ payload });
+  strictAssert.deepEqual([...present.state.runtimeSnapshots.keys()], ["retained.foreign"]);
+  for (const code of ["42501", "42703", "42P01", "08006"]) {
+    const failing = createRuntimePersistenceFakePgClientFactory({ initialTables: ["runtime_snapshots"] });
+    const error = Object.assign(new Error("fixture legacy deletion refused"), { code });
+    const store = createPostgresRuntimeArtifactStore({ ...options, clientFactory() {
+      const client = failing.factory();
+      return { ...client, async query(text, values) {
+        if (String(text).includes("DELETE FROM aidn_runtime.runtime_snapshots")) throw error;
+        return client.query(text, values);
+      } };
+    } });
+    await strictAssert.rejects(store.writeIndexProjection({ payload }), observed => observed === error);
+    strictAssert.equal(failing.state.queryLog.at(-1).sql, "ROLLBACK");
   }
 }
 
@@ -221,6 +265,8 @@ async function main() {
     postgresRoundTripEquivalentPayload.cycles[0].updated_at = localMidnightIso("2026-02-17");
     postgresRoundTripEquivalentPayload.session_cycle_links[0].updated_at = localMidnightIso("2026-02-24");
     assert(payloadDigest(dateOnlyPayload) === payloadDigest(postgresRoundTripEquivalentPayload), "stable payload digest should ignore host mtime precision and normalize date-only timestamps");
+
+    await verifyOptionalLegacyTable(payload);
 
     await store.writeIndexProjection({
       payload,

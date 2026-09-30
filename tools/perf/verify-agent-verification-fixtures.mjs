@@ -5,6 +5,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { createVerificationFixture, canonical, digest, signed } from "./agent-verification-test-lib.mjs";
 import { createAgentValidationEvidenceVerifier } from "../../src/adapters/runtime/local-agent-verification.mjs";
 import { fingerprintAgentExecutionValue as fingerprint, normalizeAgentExecutionPlan } from "../../src/core/agents/agent-execution-contracts.mjs";
+import { createSchedulerFixture } from "./agent-execution-scheduler-test-lib.mjs";
 
 const checks = [];
 async function check(name, body) { try { await body(); checks.push({ name, status: "PASS" }); } catch (cause) { checks.push({ name, status: "FAIL", detail: String(cause.stack ?? cause).slice(0, 2400) }); } }
@@ -22,6 +23,28 @@ function forgedDocument(f, document, reference, mutate) {
   return replace(document);
 }
 
+await check("scheduler validates its canonical planned task through the real local verifier", () => fixture({}, async f => {
+  const scheduler = createSchedulerFixture({ plan: f.plan, runId: f.run.run_id });
+  try {
+    const producer = f.create({ boundary: { ...f.boundary,
+      run: async (...args) => structuredClone(await f.boundary.run(...args)) } });
+    const result = await scheduler.create({
+      // The scheduler/store/Git doubles supply a known real fixture commit;
+      // snapshot extraction, checks, signatures and strict task comparison are real.
+      git: { ...scheduler.git, createTaskCommit: async () => ({ source_sha: f.candidateSha, parent_sha: f.baseSha }) },
+      validateTask: input => producer.validateTask(input),
+      store: { ...scheduler.store, recordAcceptance: async input => {
+        await scheduler.store.recordAcceptance(input);
+        throw Object.assign(new Error("fixture stops after task acceptance"), { code: "FIXTURE_ACCEPTANCE_RECORDED" });
+      } },
+    }).run(scheduler.options);
+    assert.equal(result.reason_code, "FIXTURE_ACCEPTANCE_RECORDED");
+    assert.equal(f.calls, 1);
+    assert.equal(scheduler.state.acceptances[0].acceptance.decision, "accepted");
+    assert.equal(scheduler.state.acceptances[0].acceptance.validation.tested_sha, f.candidateSha);
+  } finally { scheduler.cleanup(); }
+}));
+
 await check("construction and failed availability do not write or launch", () => fixture({}, async f => {
   const before = fs.readdirSync(f.resourcesRoot).sort();
   const producer = f.create({ boundary: null });
@@ -31,6 +54,83 @@ await check("construction and failed availability do not write or launch", () =>
 await check("explicit fixture boundary never advertises native qualification", () => fixture({}, async f => {
   assert.deepEqual(await f.create().checkAvailability({ plan: f.plan }), { status: "available", evidence_class: "fixture", native: false });
   assert.equal((await f.create({ evidenceClass: "native" }).checkAvailability({ plan: f.plan })).status, "unavailable");
+}));
+for (const [boundaryVersion, planVersion, profile, networkDisabled] of [
+  ["agent-verification-boundary.v3", "agent-execution-plan.v2", "codex-cooperative.v1", true],
+  ["agent-verification-boundary.v4", "agent-execution-plan.v3", "codex-cooperative.v2", false],
+]) await check(`${boundaryVersion} retains exact-SHA checks and its explicit assurance claims`, () => fixture({}, async f => {
+  const plan = normalizeAgentExecutionPlan({ ...raw(f.plan), contract_version: planVersion, assurance_profile: profile });
+  const strict = f.boundary.getDescriptor().qualification.payload;
+  const qualification = { ...strict, contract_version: boundaryVersion, boundary_id: "codex-sandbox-validation", evidence_class: "native",
+    assurance_profile: profile, read_isolation: "not_guaranteed", sandbox_maintenance: "codex-managed", network_disabled: networkDisabled,
+    protected_resources_preserved: true, protected_resources_sha256: "a".repeat(64), supervisor_write_protected: true, concurrent_write_protection: true,
+    ...(!networkDisabled ? { network_isolation: "not_guaranteed" } : {}) };
+  delete qualification.supervisor_resources_inaccessible;
+  let probes = 0;
+  // This is a signed, injected consumer double. It supplies no OS/native evidence.
+  const boundaryFor = payload => ({ ...f.boundary, getDescriptor: () => ({ boundary_id: payload.boundary_id, qualification: signed(payload, f.privateKey) }),
+    checkAvailability: async () => { probes++; return { available: true, native: true }; },
+    run: async (...args) => ({ ...structuredClone(await f.boundary.run(...args)), boundary_id: payload.boundary_id }) });
+  const producer = f.create({ evidenceClass: "native", boundary: boundaryFor(qualification) });
+  assert.equal((await producer.checkAvailability({ plan })).status, "available");
+  const validation = await producer.validateTask({ ...f.taskInput, plan });
+  assert.equal(validation.status, "passed"); assert.equal(validation.tested_sha, f.candidateSha); assert.equal(f.calls, 1);
+  const input = { ...f.verificationInput({ validation }, "task"), plan, run: { ...f.run, plan_sha256: plan.plan_sha256 } };
+  const proof = await producer.evidenceVerifier.verify(input);
+  assert.equal(proof.snapshots[0].candidate_sha, f.candidateSha);
+  const fields = ["supervisor_write_protected", "concurrent_write_protection", "snapshot_read_only", "network_disabled", "descendant_termination",
+    ...(!networkDisabled ? ["network_isolation"] : [])];
+  for (const field of fields) {
+    const missing = { ...qualification }; delete missing[field];
+    assert.equal((await f.create({ evidenceClass: "native", boundary: boundaryFor(missing) }).checkAvailability({ plan })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
+    const changed = forgedDocument(f, { validation }, validation.checks[0].evidence, payload => {
+      const q = payload.boundary_qualification.payload; delete q[field]; payload.boundary_qualification = signed(q, f.privateKey);
+    });
+    await assert.rejects(producer.evidenceVerifier.verify({ ...input, document: changed, subject_sha256: fingerprint(changed) }), /BOUNDARY_UNAVAILABLE/);
+  }
+  for (const [field, value] of [["network_disabled", !networkDisabled], ...(!networkDisabled ? [["network_isolation", "guaranteed"]] : [])]) {
+    const changed = forgedDocument(f, { validation }, validation.checks[0].evidence, payload => {
+      const q = payload.boundary_qualification.payload; q[field] = value; payload.boundary_qualification = signed(q, f.privateKey);
+    });
+    assert.equal((await f.create({ evidenceClass: "native", boundary: boundaryFor({ ...qualification, [field]: value }) }).checkAvailability({ plan })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
+    await assert.rejects(producer.evidenceVerifier.verify({ ...input, document: changed, subject_sha256: fingerprint(changed) }), /BOUNDARY_UNAVAILABLE/);
+  }
+  const changedPlan = raw(plan); changedPlan.execution.engine.sha256 = "9".repeat(64);
+  assert.equal((await producer.checkAvailability({ plan: normalizeAgentExecutionPlan(changedPlan) })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
+  const before = probes;
+  assert.equal((await producer.checkAvailability({ plan: f.plan })).reason_code, "VERIFICATION_ASSURANCE_PROFILE_MISMATCH");
+  assert.equal((await f.create({ boundary: boundaryFor(strict) }).checkAvailability({ plan })).reason_code, "VERIFICATION_ASSURANCE_PROFILE_MISMATCH");
+  assert.equal(probes, before); assert.equal(f.calls, 1);
+}));
+await check("qualification versions bind only their selected plan and preserve legacy network denial", () => fixture({}, async f => {
+  const plans = [f.plan, normalizeAgentExecutionPlan({ ...raw(f.plan), contract_version: "agent-execution-plan.v2", assurance_profile: "codex-cooperative.v1" }),
+    normalizeAgentExecutionPlan({ ...raw(f.plan), contract_version: "agent-execution-plan.v3", assurance_profile: "codex-cooperative.v2" })];
+  const strict = f.boundary.getDescriptor().qualification.payload;
+  const managed = { ...strict, contract_version: "agent-verification-boundary.v2", boundary_id: "codex-sandbox-validation", evidence_class: "native",
+    sandbox_maintenance: "codex-managed", protected_resources_preserved: true, protected_resources_sha256: "a".repeat(64) };
+  const cooperative = { ...managed, contract_version: "agent-verification-boundary.v3", assurance_profile: "codex-cooperative.v1",
+    read_isolation: "not_guaranteed", supervisor_write_protected: true, concurrent_write_protection: true };
+  delete cooperative.supervisor_resources_inaccessible;
+  const unrestricted = { ...cooperative, contract_version: "agent-verification-boundary.v4", assurance_profile: "codex-cooperative.v2",
+    network_isolation: "not_guaranteed", network_disabled: false };
+  let probes = 0;
+  const boundaryFor = payload => ({ ...f.boundary, getDescriptor: () => ({ boundary_id: payload.boundary_id, qualification: signed(payload, f.privateKey) }),
+    checkAvailability: async () => { probes++; return { available: true, native: true }; } });
+  for (const [qualification, expectedPlan] of [[strict, 0], [managed, 0], [cooperative, 1], [unrestricted, 2]]) {
+    const producer = f.create({ evidenceClass: qualification.evidence_class, boundary: boundaryFor(qualification) });
+    for (const [index, plan] of plans.entries()) {
+      const before = probes, availability = await producer.checkAvailability({ plan });
+      if (index === expectedPlan) assert.equal(availability.status, "available");
+      else { assert.equal(availability.reason_code, "VERIFICATION_ASSURANCE_PROFILE_MISMATCH"); assert.equal(probes, before); }
+    }
+    if (qualification !== unrestricted) for (const value of [false, undefined]) {
+      const invalid = { ...qualification, network_disabled: value, network_isolation: "not_guaranteed" };
+      if (value === undefined) delete invalid.network_disabled;
+      assert.equal((await f.create({ evidenceClass: qualification.evidence_class, boundary: boundaryFor(invalid) })
+        .checkAvailability({ plan: plans[expectedPlan] })).reason_code, "VERIFICATION_BOUNDARY_UNAVAILABLE");
+    }
+  }
+  assert.equal(f.calls, 0); assert.equal(fs.existsSync(path.join(f.resourcesRoot, "verification", "intents")), false);
 }));
 await check("legacy plan, absent key, changed pin and changed environment are unavailable", () => fixture({}, async f => {
   const legacy = raw(f.plan); delete legacy.verification;
@@ -227,6 +327,53 @@ await check("unconfirmed termination preserves intent and refuses another child"
   assert.equal(stopRequests, 1);
   await assert.rejects(f.create().validateTask(f.taskInput), /RECONCILIATION_REQUIRED/); assert.equal(f.calls, 1);
 }));
+for (const transport of ["structured clone", "offset byte view"]) await check(transport + " preserves exact stdout and binary stderr through signed verification", () => fixture({
+  script: "process.stdout.write(JSON.stringify({contract_version:'agent-verification-check.v1',validation_id:'contents',status:'passed'})+'\\n');process.stderr.write(Buffer.from([0,255,128,65]));",
+}, async f => {
+  let expected;
+  const boundary = { ...f.boundary, run: async (...args) => {
+    const result = await f.boundary.run(...args);
+    expected = { stdout: Buffer.from(result.stdout), stderr: Buffer.from(result.stderr) };
+    const copy = structuredClone(result);
+    for (const channel of ["stdout", "stderr"]) {
+      assert.equal(Buffer.isBuffer(copy[channel]), false);
+      assert.ok(copy[channel] instanceof Uint8Array);
+      if (transport === "offset byte view") {
+        const padded = Buffer.concat([Buffer.from("prefix"), expected[channel], Buffer.from("suffix")]);
+        copy[channel] = new Uint8Array(padded.buffer, padded.byteOffset + 6, expected[channel].length);
+      }
+    }
+    return copy;
+  } };
+  const producer = f.create({ boundary }), validation = await producer.validateTask(f.taskInput);
+  assert.equal(validation.status, "passed"); assert.equal(validation.tested_sha, f.candidateSha);
+  await producer.evidenceVerifier.verify(f.verificationInput({ validation }, "task"));
+  const payload = JSON.parse(fs.readFileSync(path.join(f.resourcesRoot, validation.checks[0].evidence.ref))).payload;
+  for (const channel of ["stdout", "stderr"]) {
+    const reference = payload.checks[0][channel];
+    assert.deepEqual(fs.readFileSync(path.join(f.resourcesRoot, reference.ref)), expected[channel]);
+    assert.equal(reference.bytes, expected[channel].length); assert.equal(reference.sha256, digest(expected[channel]));
+  }
+  assert.equal(f.calls, 1);
+}));
+await check("non-byte output containers remain refused for both channels", async () => {
+  for (const invalid of [{}, [], new ArrayBuffer(1), new DataView(new ArrayBuffer(1)), new Uint16Array(1), new Uint8ClampedArray(1)]) {
+    for (const channel of ["stdout", "stderr"]) await fixture({}, async f => {
+      const boundary = { ...f.boundary, run: async (...args) => ({ ...await f.boundary.run(...args), [channel]: invalid }) };
+      await assert.rejects(f.create({ boundary }).validateTask(f.taskInput), /VERIFICATION_OUTPUT_INVALID/);
+      assert.equal(fs.existsSync(path.join(f.resourcesRoot, "verification", "results")), false);
+    });
+  }
+});
+await check("oversized byte views are refused before copying or signing", async () => {
+  for (const channel of ["stdout", "stderr"]) await fixture({ outputLimit: 1024 }, async f => {
+    const boundary = { ...f.boundary, run: async (...args) => ({ ...await f.boundary.run(...args), [channel]: new Uint8Array(1025) }) };
+    await assert.rejects(f.create({ boundary }).validateTask(f.taskInput), /VERIFICATION_OUTPUT_LIMIT/);
+    assert.equal(fs.existsSync(path.join(f.resourcesRoot, "verification", "logs")), false);
+    assert.equal(fs.existsSync(path.join(f.resourcesRoot, "verification", "results")), false);
+  });
+});
+
 await check("oversized process output is refused before copying or signing a verdict", () => fixture({ script: "process.stdout.write('x'.repeat(100000));", outputLimit: 1024 }, async f => {
   await assert.rejects(f.create().validateTask(f.taskInput), /OUTPUT_LIMIT/); assert.equal(f.calls, 1);
 }));

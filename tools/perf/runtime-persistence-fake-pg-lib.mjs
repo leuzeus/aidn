@@ -201,6 +201,9 @@ export function createRuntimePersistenceFakePgClientFactory({
             requireTable('artifacts');
             return { rows: [] };
           }
+          if (sql === "SELECT to_regclass('aidn_runtime.runtime_snapshots') AS runtime_snapshots") {
+            return { rows: [{ runtime_snapshots: state.tablesPresent.has("runtime_snapshots") ? "aidn_runtime.runtime_snapshots" : null }] };
+          }
           if (sql === "SELECT to_regclass('aidn_shared.execution_runs') AS execution_runs") {
             return { rows: [{ execution_runs: state.executionSchema ? 'aidn_shared.execution_runs' : null }] };
           }

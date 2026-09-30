@@ -15,8 +15,12 @@ process.once("message", async ({ mode, connectionString, args }) => {
     const store = createPostgresAgentExecutionStore({ connectionString,
       verifyActivation: () => true, verifyTermination: (_attempt, proof) => proof?.fixtureConfirmed === true,
       verifySupervisorTermination: (_supervisor,proof) => ({ok:proof?.fixtureConfirmed===true,supervisor_stopped:true,descendants_stopped:true,git_operations_stopped:true}),
+      verifyCleanupTermination: (_cleaner,proof) => ({ok:proof?.fixtureConfirmed===true,cleaner_stopped:true,descendants_stopped:true,git_operations_stopped:true}),
+      inspectCleanup: (resource,{cleanup}) => ({resource_id:resource.resource_id,cwd:resource.cwd,preimage_sha256:resource.preimage_sha256,
+        repository_identity_sha256:cleanup.repository_identity_sha256,retention:resource.retention,exists:true,registered:true,
+        clean:true,retained:true,processes_stopped:true,links_safe:true}),
       inspectIntegration: input => ({ok:true,repository_identity_sha256:input.repository_identity_sha256,ref:input.ref,
-        head_sha:input.parent_sha ?? args?.intent?.parent_sha,source_parent_sha:null,result_parent_sha:input.parent_sha}) });
+        head_sha:input.parent_sha ?? args?.intent?.parent_sha ?? args?.cleanup?.integrated_sha,source_parent_sha:null,result_parent_sha:input.parent_sha}) });
     const value = mode === "migrate"
       ? await createPostgresSharedCoordinationStore({ connectionString }).bootstrap()
       : await store[mode](args);

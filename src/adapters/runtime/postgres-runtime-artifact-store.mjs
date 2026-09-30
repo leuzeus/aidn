@@ -195,20 +195,14 @@ async function replaceRelationalProjectionRows(client, scopeKey, rowsByTable) {
 }
 
 async function purgeLegacySnapshotRow(client, scopeKey) {
-  try {
-    await client.query(
-      `
-      DELETE FROM aidn_runtime.runtime_snapshots
-      WHERE scope_key = $1
-      `,
-      [scopeKey],
-    );
-  } catch (error) {
-    const classification = classifyPostgresRuntimePersistenceError(error);
-    if (classification.category !== "schema") {
-      throw error;
-    }
-  }
+  // Fresh relational installations have no legacy snapshot table. A caught
+  // undefined-table error would still abort the surrounding transaction.
+  const relation = await client.query("SELECT to_regclass('aidn_runtime.runtime_snapshots') AS runtime_snapshots");
+  if (relation.rows[0]?.runtime_snapshots == null) return;
+  await client.query(
+    `DELETE FROM aidn_runtime.runtime_snapshots WHERE scope_key = $1`,
+    [scopeKey],
+  );
 }
 
 async function readRelationalSnapshotForScope(client, scopeKey, {

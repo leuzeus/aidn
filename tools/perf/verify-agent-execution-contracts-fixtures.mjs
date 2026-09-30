@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
   assertAgentExecutionContract,
+  isAgentExecutionRuntimeScopeId,
   fingerprintAgentExecutionPlan,
   fingerprintAgentExecutionValue,
   fingerprintTaskContract,
@@ -75,27 +77,204 @@ function withPreexistingNativeProfile() {
   return bundle;
 }
 
-await check("registry has exactly one positive case per internal schema", () => {
-  assert.deepEqual(listAgentExecutionContractKinds().sort(), kinds);
-  assert.deepEqual(readdirSync(schemaRoot).filter((name) => name.endsWith(".schema.json")).sort(), kinds.map((kind) => `${kind}.v1.schema.json`).sort());
+function cooperativePlan(version = 2) {
+  const value = copy(fixture.plan);
+  delete value.plan_sha256;
+  value.contract_version = `agent-execution-plan.v${version}`;
+  value.assurance_profile = `codex-cooperative.v${version - 1}`;
+  return value;
+}
+function resolvedScope(canonical, runtimeProfile = "default") {
+  return resolveRuntimeProjectContext({ targetRoot: process.cwd(), runtimeProfile, env: {}, workspace: {
+    project_id: canonical.project_id, workspace_id: canonical.workspace_id, worktree_id: "worktree.fixture",
+    project_id_source: "explicit", workspace_id_source: "explicit", worktree_id_source: "fixture",
+  } }).runtime_scope_id;
+}
+for (const version of [1, 2, 3]) await check(`plan v${version} accepts the actual canonical runtime scope without changing legacy fingerprints`, () => {
+  const value = version === 1 ? copy(fixture.plan) : cooperativePlan(version); delete value.plan_sha256;
+  value.canonical.runtime_scope_id = resolvedScope(value.canonical);
+  const before = JSON.stringify(value), normalized = normalizeAgentExecutionPlan(value);
+  assert.equal(normalized.canonical.runtime_scope_id, value.canonical.runtime_scope_id);
+  assert.equal(JSON.stringify(value), before);
+  const run = { ...copy(fixture.run), canonical: copy(value.canonical), plan_sha256: normalized.plan_sha256 };
+  assert.deepEqual(validateAgentExecutionContract("run", run), { ok: true, issues: [] });
+  const changed = copy(value); changed.canonical.runtime_scope_id = resolvedScope(changed.canonical, "other");
+  assert.notEqual(fingerprintAgentExecutionPlan(changed), normalized.plan_sha256);
+  assert.equal(normalizeAgentExecutionPlan(fixture.plan).plan_sha256, fixture.expected.plan_sha256);
 });
-for (const kind of kinds) {
-  const schema = JSON.parse(readFileSync(new URL(`${kind}.v1.schema.json`, schemaRoot), "utf8"));
-  await check(`${kind}: positive schema and semantic contract`, () => {
+
+await check("runtime scope namespace is bounded and does not widen ordinary identities", () => {
+  const base = copy(fixture.plan); delete base.plan_sha256;
+  const long = "a".repeat(128);
+  const value = copy(base); value.canonical.project_id = long; value.canonical.workspace_id = long;
+  value.canonical.runtime_scope_id = resolvedScope(value.canonical, long);
+  assert.equal(isAgentExecutionRuntimeScopeId(value.canonical.runtime_scope_id), true);
+  assertAgentExecutionContract("plan", value);
+  const malformed = [null, {}, true, "", "legacy=scope", "legacy".repeat(22),
+    "runtime:project=p:workspace=w:profile=", "runtime:workspace=w:project=p:profile=default",
+    "runtime:project=p:workspace=w:profile=default:extra=x", "runtime:project=p:workspace=w:profile=bad/path",
+    "runtime:project=p:workspace=w:profile=bad space", "runtime:project=p:workspace=w:profile=" + "a".repeat(129),
+    resolvedScope(base.canonical) + "\n", " " + resolvedScope(base.canonical)];
+  for (const scope of malformed) {
+    assert.equal(isAgentExecutionRuntimeScopeId(scope), false, JSON.stringify(scope));
+    const changed = copy(base); changed.canonical.runtime_scope_id = scope;
+    expectIssue(validateAgentExecutionContract("plan", changed), "SCHEMA_INVALID");
+  }
+  for (const field of ["project_id", "workspace_id", "session_id", "cycle_id"]) {
+    const changed = copy(base); changed.canonical[field] = "ordinary=invalid";
+    expectIssue(validateAgentExecutionContract("plan", changed), "SCHEMA_INVALID");
+  }
+  assert.equal(isAgentExecutionRuntimeScopeId(base.canonical.runtime_scope_id), true);
+});
+for (const kind of ["plan", "run"]) await check(kind + " rejects a composite scope naming another project or workspace", () => {
+  for (const field of ["project_id", "workspace_id"]) {
+    const value = copy(fixture[kind]); if (kind === "plan") delete value.plan_sha256;
+    value.canonical.runtime_scope_id = resolvedScope({ ...value.canonical, [field]: "foreign" });
+    expectIssue(validateAgentExecutionContract(kind, value), "RUNTIME_SCOPE_IDENTITY_MISMATCH");
+  }
+});
+
+const schemaCases = [
+  ...kinds.map(kind => ({ kind, file: `${kind}.v1.schema.json`, value: fixture[kind] })),
+  { kind: "plan", file: "plan.v2.schema.json", value: cooperativePlan() },
+  { kind: "plan", file: "plan.v3.schema.json", value: cooperativePlan(3) },
+];
+
+await check("registry has exactly one positive case per internal schema version", () => {
+  assert.deepEqual(listAgentExecutionContractKinds().sort(), kinds);
+  assert.deepEqual(readdirSync(schemaRoot).filter((name) => name.endsWith(".schema.json")).sort(), schemaCases.map(({ file }) => file).sort());
+});
+for (const { kind, file, value: positive } of schemaCases) {
+  const schema = JSON.parse(readFileSync(new URL(file, schemaRoot), "utf8"));
+  await check(`${file}: positive schema and semantic contract`, () => {
     assert.deepEqual(validateJsonSchemaDefinition(schema, "#", profile), []);
-    assert.deepEqual(validateJsonSchema(fixture[kind], schema, "$", profile), []);
-    assert.deepEqual(validateAgentExecutionContract(kind, fixture[kind]), { ok: true, issues: [] });
-    assert.equal(assertAgentExecutionContract(kind, fixture[kind]), fixture[kind]);
+    assert.deepEqual(validateJsonSchema(positive, schema, "$", profile), []);
+    assert.deepEqual(validateAgentExecutionContract(kind, positive), { ok: true, issues: [] });
+    assert.equal(assertAgentExecutionContract(kind, positive), positive);
   });
-  await check(`${kind}: every mandatory field is enforced`, () => {
+  await check(`${file}: every mandatory field is enforced`, () => {
     for (const field of schema.required) {
-      const value = copy(fixture[kind]);
+      const value = copy(positive);
       delete value[field];
       expectIssue(validateAgentExecutionContract(kind, value), "SCHEMA_INVALID");
     }
   });
-  await rejectContract(`${kind}: unknown fields rejected`, kind, (v) => { v.unrecognized_authority = true; }, "SCHEMA_INVALID");
+  await check(`${file}: unknown fields rejected`, () => {
+    const value = { ...copy(positive), unrecognized_authority: true };
+    expectIssue(validateAgentExecutionContract(kind, value), "SCHEMA_INVALID");
+  });
 }
+for (const version of [2, 3]) await check(`cooperative plan v${version} is explicit, immutable and has its own canonical fingerprint`, () => {
+  const value = cooperativePlan(version), before = JSON.stringify(value);
+  const normalized = normalizeAgentExecutionPlan(value);
+  // Derive this vector from the independently authored v1 canonical fixture,
+  // without asking the production serializer to produce its expected input.
+  assert.ok(fixture.expected.canonical_plan_json.startsWith('{"audit":'));
+  const canonical = fixture.expected.canonical_plan_json
+    .replace('{"audit":', `{"assurance_profile":"codex-cooperative.v${version - 1}","audit":`)
+    .replace('"contract_version":"agent-execution-plan.v1"', `"contract_version":"agent-execution-plan.v${version}"`);
+  const expected = createHash("sha256").update(canonical, "utf8").digest("hex");
+  assert.equal(normalized.plan_sha256, expected);
+  assert.notEqual(expected, fixture.expected.plan_sha256);
+  assert.equal(normalized.contract_version, `agent-execution-plan.v${version}`);
+  assert.equal(normalized.assurance_profile, `codex-cooperative.v${version - 1}`);
+  assert.equal(Object.isFrozen(normalized), true);
+  assert.equal(Object.isFrozen(normalized.execution), true);
+  assert.equal(JSON.stringify(value), before);
+  assert.equal(fingerprintAgentExecutionPlan(normalized), expected);
+  const reversed = Object.fromEntries(Object.entries(value).reverse());
+  assert.equal(fingerprintAgentExecutionPlan(reversed), expected);
+  const implicitConcurrency = copy(value); delete implicitConcurrency.limits.concurrency;
+  assert.equal(normalizeAgentExecutionPlan(implicitConcurrency).plan_sha256, expected);
+  assert.equal(Object.hasOwn(implicitConcurrency.limits, "concurrency"), false);
+  assert.throws(() => { normalized.assurance_profile = "other"; }, TypeError);
+  assert.equal(normalizeAgentExecutionPlan(fixture.plan).plan_sha256, fixture.expected.plan_sha256);
+  assert.equal(Object.hasOwn(normalizeAgentExecutionPlan(fixture.plan), "assurance_profile"), false);
+});
+for (const [name, mutate] of [
+  ["missing assurance", value => { delete value.assurance_profile; }],
+  ["unknown assurance", value => { value.assurance_profile = "codex-cooperative.v2"; }],
+  ["whitespace assurance", value => { value.assurance_profile += " "; }],
+  ["null assurance", value => { value.assurance_profile = null; }],
+  ["object assurance", value => { value.assurance_profile = { mode: "codex-cooperative.v1" }; }],
+  ["unknown version", value => { value.contract_version = "agent-execution-plan.v99"; }],
+  ["absent version", value => { delete value.contract_version; }],
+  ["object version", value => { value.contract_version = { toString: "not callable", valueOf: "not callable" }; }],
+  ["silent v1 downgrade", value => { value.contract_version = "agent-execution-plan.v1"; }],
+]) await check(`cooperative plan refuses ${name} without mutation`, () => {
+  const value = cooperativePlan(); mutate(value); const before = JSON.stringify(value);
+  expectIssue(validateAgentExecutionContract("plan", value), "SCHEMA_INVALID");
+  assert.throws(() => normalizeAgentExecutionPlan(value), error => error.code === "SCHEMA_INVALID");
+  assert.equal(JSON.stringify(value), before);
+});
+for (const [name, mutate] of [
+  ["missing profile", value => { delete value.assurance_profile; }],
+  ["prior profile", value => { value.assurance_profile = "codex-cooperative.v1"; }],
+  ["unknown profile", value => { value.assurance_profile = "codex-cooperative.v3"; }],
+  ["null profile", value => { value.assurance_profile = null; }],
+  ["implicit plan downgrade", value => { value.contract_version = "agent-execution-plan.v2"; }],
+  ["unknown plan", value => { value.contract_version = "agent-execution-plan.v4"; }],
+  ["declared network proof", value => { value.network_disabled = true; }],
+]) await check(`network-unassured plan refuses ${name} without mutation`, () => {
+  const value=cooperativePlan(3); mutate(value); const before=JSON.stringify(value);
+  expectIssue(validateAgentExecutionContract("plan",value),"SCHEMA_INVALID");
+  assert.throws(()=>normalizeAgentExecutionPlan(value), error=>error.code==="SCHEMA_INVALID");
+  assert.equal(JSON.stringify(value),before);
+});
+await check("network assurance profile changes never preserve a prior plan fingerprint", () => {
+  const original=normalizeAgentExecutionPlan(cooperativePlan()), changed=copy(original);
+  changed.contract_version="agent-execution-plan.v3";changed.assurance_profile="codex-cooperative.v2";
+  expectIssue(validateAgentExecutionContract("plan",changed),"PLAN_FINGERPRINT_MISMATCH");
+  assert.notEqual(fingerprintAgentExecutionPlan(changed),original.plan_sha256);
+  assert.equal(normalizeAgentExecutionPlan(original).plan_sha256,original.plan_sha256);
+  changed.plan_sha256=fingerprintAgentExecutionPlan(changed);
+  changed.contract_version="agent-execution-plan.v2";changed.assurance_profile="codex-cooperative.v1";
+  expectIssue(validateAgentExecutionContract("plan",changed),"PLAN_FINGERPRINT_MISMATCH");
+});
+await check("v1 plans cannot acquire a cooperative profile implicitly", () => {
+  const value = { ...copy(fixture.plan), assurance_profile: "codex-cooperative.v1" };
+  expectIssue(validateAgentExecutionContract("plan", value), "SCHEMA_INVALID");
+});
+await check("cooperative profile cannot be relabeled without changing the frozen hash", () => {
+  const value = copy(normalizeAgentExecutionPlan(cooperativePlan()));
+  value.contract_version = "agent-execution-plan.v1"; delete value.assurance_profile;
+  expectIssue(validateAgentExecutionContract("plan", value), "PLAN_FINGERPRINT_MISMATCH");
+  assert.equal(fingerprintAgentExecutionPlan(value), fixture.expected.plan_sha256);
+});
+for (const version of [2, 3]) await check(`cooperative plan v${version} keeps request and child contract shapes unchanged`, () => {
+  const bundle = copy(fixture); bundle.plan = normalizeAgentExecutionPlan(cooperativePlan(version));
+  for (const kind of ["run", "task", "attempt", "delegation", "request", "event", "result", "acceptance"]) bundle[kind].plan_sha256 = bundle.plan.plan_sha256;
+  for (const event of bundle.events) event.plan_sha256 = bundle.plan.plan_sha256;
+  bundle.request.delegation_sha256 = fingerprintAgentExecutionValue(bundle.delegation);
+  bundle.result.request_sha256 = fingerprintAgentExecutionValue(bundle.request);
+  bundle.acceptance.result_sha256 = fingerprintAgentExecutionValue(bundle.result);
+  const before = JSON.stringify(bundle);
+  assert.deepEqual(validateAgentExecutionBindings(bundle), { ok: true, issues: [] });
+  assert.deepEqual(bundle.request.execution, fixture.request.execution);
+  assert.equal(bundle.request.contract_version, "agent-task-request.v1");
+  assert.equal(JSON.stringify(bundle), before);
+  bundle.request.plan_sha256 = fixture.plan.plan_sha256;
+  expectIssue(validateAgentExecutionBindings(bundle), "PLAN_BINDING_MISMATCH");
+});
+for (const [name, mutate, code] of [
+  ["dependency cycle", value => { value.tasks[0].depends_on = ["join"]; }, "DEPENDENCY_CYCLE"],
+  ["unordered overlap", value => { value.tasks[1].scope = copy(value.tasks[0].scope); }, "UNORDERED_SCOPE_OVERLAP"],
+  ["protected authority", value => { value.canonical.scope[0].path = ".git/config"; }, "PROTECTED_SCOPE_PATH"],
+  ["out of scope", value => { value.tasks[0].scope[0].path = "src/unlisted.mjs"; }, "SCOPE_NOT_SUBSET"],
+  ["excess concurrency", value => { value.limits.concurrency = 5; }, "SCHEMA_INVALID"],
+  ["task duration", value => { value.tasks[0].max_duration_ms = value.limits.max_duration_ms + 1; }, "TASK_DURATION_EXCEEDS_RUN"],
+]) for (const version of [2, 3]) await check(`cooperative plan v${version} preserves ${name} rejection`, () => {
+  const value = cooperativePlan(version); mutate(value); const before = JSON.stringify(value);
+  expectIssue(validateAgentExecutionContract("plan", value), code);
+  assert.equal(JSON.stringify(value), before);
+});
+await check("version dispatch never invokes a contract-version getter", () => {
+  let reads = 0; const value = cooperativePlan();
+  Object.defineProperty(value, "contract_version", { enumerable: true, get() { reads++; return "agent-execution-plan.v2"; } });
+  expectIssue(validateAgentExecutionContract("plan", value), "INVALID_JSON");
+  assert.equal(reads, 0);
+});
+
 await check("complete independently authored model chain binds without mutation", () => {
   const before = JSON.stringify(fixture);
   assert.deepEqual(validateAgentExecutionBindings(fixture), { ok: true, issues: [] });
@@ -219,6 +398,14 @@ for (const [name, mutate] of [
     mutate(changed);
     expectIssue(validateAgentExecutionContract("plan", changed), "PLAN_FINGERPRINT_MISMATCH");
     assert.notEqual(fingerprintAgentExecutionPlan(changed), fixture.expected.plan_sha256);
+  });
+  for (const version of [2, 3]) await check(`cooperative plan v${version} fingerprint invalidates changed ${name}`, () => {
+    const changed = copy(normalizeAgentExecutionPlan(cooperativePlan(version)));
+    const previousHash = changed.plan_sha256; mutate(changed);
+    const before = JSON.stringify(changed);
+    expectIssue(validateAgentExecutionContract("plan", changed), "PLAN_FINGERPRINT_MISMATCH");
+    assert.notEqual(fingerprintAgentExecutionPlan(changed), previousHash);
+    assert.equal(JSON.stringify(changed), before);
   });
 }
 

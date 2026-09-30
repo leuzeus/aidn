@@ -11,6 +11,7 @@ export const AGENT_EXECUTION_TABLES = Object.freeze([
   "execution_runs", "execution_tasks", "execution_attempts", "execution_events",
   "execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations",
   "execution_integration_intents",
+  "execution_cancel_requests", "execution_cleanup_operations", "execution_cleanup_resources",
 ]);
 export const AGENT_EXECUTION_LEASE_MS = 60000;
 export const AGENT_EXECUTION_HEARTBEAT_MS = 10000;
@@ -48,6 +49,32 @@ export const AGENT_SUPERVISED_EXECUTION_STORE_METHODS = Object.freeze([
 export function assertAgentSupervisedExecutionStore(store) {
   if (!store || AGENT_SUPERVISED_EXECUTION_STORE_METHODS.some(method => typeof store[method] !== "function")) {
     throw new TypeError("AgentSupervisedExecutionStore requires the complete durable supervision port");
+  }
+  return store;
+}
+
+// Public lifecycle composition requires these additional durable methods.
+// Existing historical/scheduler doubles retain their previous assertions.
+// Cancel requests are immutable and bind both control revision and supervisor
+// generation. They stop new work without invalidating terminal worker evidence.
+// Cleanup is completed-run-only, with immutable exact resources, a separate
+// database-timed owner and mandatory physical/termination inspectors. No takeover
+// follows lease expiry alone; all previous cleaner generations must be stopped.
+// inspectCleanupAuthority({reconciliation:true}) observes only an already absent
+// journaled resource; it never grants a new removal. Normal authority requires
+// the exact retained preimage still present. recordCleanupResult includes the
+// retention reference as well as any removal observation, and rechecks absence.
+// verification_worktree additionally binds snapshot_sha256 to a persisted signed
+// evidence observation; the physical inspector verifies the exact run-owned
+// descriptor and cwd. Evidence archives and integration/source refs are retained.
+export const AGENT_RUN_LIFECYCLE_STORE_METHODS = Object.freeze([
+  ...AGENT_SUPERVISED_EXECUTION_STORE_METHODS, "previewRunReservation", "requestCancel",
+  "recordSupervisorStopped", "beginCleanup", "renewCleanup", "inspectCleanupAuthority",
+  "recordCleanupResult", "reconcileCleanup",
+]);
+export function assertAgentRunLifecycleStore(store) {
+  if (!store || AGENT_RUN_LIFECYCLE_STORE_METHODS.some(method=>typeof store[method]!=="function")) {
+    throw new TypeError("AgentRunLifecycleStore requires durable cancellation and cleanup authority");
   }
   return store;
 }

@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import {
   assertAgentExecutionContract, fingerprintAgentExecutionValue, fingerprintTaskContract,
   normalizeAgentExecutionPlan, validateAgentExecutionBindings, isExactExecutionPath, validateAgentRunValidationBindings,
-  validateAgentIntegrationIntentBindings,
+  validateAgentIntegrationIntentBindings, isAbsoluteExecutionCwd, isAgentExecutionRuntimeScopeId,
 } from "../../core/agents/agent-execution-contracts.mjs";
 import {
-  AGENT_EXECUTION_LEASE_MS, AGENT_EXECUTION_TABLES, assertAgentSupervisedExecutionStore,
+  AGENT_EXECUTION_LEASE_MS, AGENT_EXECUTION_TABLES, assertAgentRunLifecycleStore,
 } from "../../core/ports/agent-execution-store-port.mjs";
 import { lockExecutionPlanning, lockExecutionScope } from "./agent-execution-fence.mjs";
 
@@ -45,6 +45,44 @@ function boundedJson(value) {
     return copy(value);
   } catch { throw failure("EVIDENCE_INVALID"); }
 }
+function exactKeys(value,keys) {
+  return value && typeof value==="object" && !Array.isArray(value) && Object.keys(value).sort().join(",")===keys.split(",").sort().join(",");
+}
+function validEvidence(value) {
+  return exactKeys(value,"ref,sha256,bytes") && isExactExecutionPath(value.ref)
+    && HASH.test(value.sha256 ?? "") && Number.isSafeInteger(value.bytes) && value.bytes>=0;
+}
+function validRunner(value) {
+  return exactKeys(value,"host_id,runner_id,pid,started_at") && ID.test(value.host_id ?? "") && ID.test(value.runner_id ?? "")
+    && Number.isSafeInteger(value.pid) && value.pid>0 && typeof value.started_at==="string"
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value.started_at) && Number.isFinite(Date.parse(value.started_at));
+}
+function cleanupDocument(input) {
+  const value=boundedJson(input);
+  if (!exactKeys(value,"contract_version,cleanup_id,run_id,plan_sha256,repository_identity_sha256,integration_ref,integrated_sha,resources")
+    || value.contract_version!=="agent-cleanup-intent.v1" || !ID.test(value.cleanup_id ?? "") || !ID.test(value.run_id ?? "")
+    || !HASH.test(value.plan_sha256 ?? "") || !HASH.test(value.repository_identity_sha256 ?? "")
+    || !Array.isArray(value.resources) || !value.resources.length || value.resources.length>64) throw failure("CLEANUP_CONTRACT_INVALID");
+  const identities=new Set(), paths=new Set();
+  for (const resource of value.resources) {
+    const verification=resource?.kind==="verification_worktree";
+    if (!exactKeys(resource,"resource_id,kind,attempt_id,integration_id,cwd,preimage_sha256,retention"+(verification ? ",snapshot_sha256" : ""))
+      || !ID.test(resource.resource_id ?? "") || !["attempt_worktree","integration_worktree","verification_worktree"].includes(resource.kind)
+      || !isAbsoluteExecutionCwd(resource.cwd) || !HASH.test(resource.preimage_sha256 ?? "") || !validEvidence(resource.retention)
+      || (verification ? (resource.attempt_id!==null || resource.integration_id!==null || !HASH.test(resource.snapshot_sha256 ?? ""))
+        : resource.kind==="attempt_worktree" ? (!ID.test(resource.attempt_id ?? "") || resource.integration_id!==null)
+        : (!ID.test(resource.integration_id ?? "") || resource.attempt_id!==null))) throw failure("CLEANUP_RESOURCE_INVALID");
+    const physical=resource.cwd.replaceAll("\\","/").toLowerCase();
+    if (identities.has(resource.resource_id) || paths.has(physical)) throw failure("CLEANUP_RESOURCE_DUPLICATE");
+    identities.add(resource.resource_id); paths.add(physical);
+  }
+  return value;
+}
+function cleanupView(row) {
+  return row ? {cleanup:json(row,"cleanup_json"),cleanup_sha256:row.cleanup_sha256,ownership:json(row,"ownership_json"),
+    runner:json(row,"runner_json"),status:row.status,lease_until:row.lease_until,lease_live:row.lease_live,
+    termination:json(row,"termination_json")} : null;
+}
 function mapError(error) {
   if (knownFailures.has(error)) return error;
   if (error?.code === "23505") return failure("CONFLICT");
@@ -59,11 +97,17 @@ function json(row, field) {
   catch { throw failure("STORED_CONTRACT_INVALID"); }
 }
 function attemptView(row) {
+  const reconciliation = json(row, "reconciliation_json");
+  const notStarted = typeof reconciliation?.contract_version === "string" && reconciliation.contract_version.startsWith("agent-attempt-reconciliation.");
+  if (notStarted && (reconciliation.contract_version !== "agent-attempt-reconciliation.v1"
+    || reconciliation.termination_state !== "not_started" || Object.keys(reconciliation).sort().join(",") !== "contract_version,proof,termination_state"
+    || !reconciliation.proof || typeof reconciliation.proof !== "object" || Array.isArray(reconciliation.proof))) throw failure("RECONCILIATION_INVALID");
   return {
     attempt: json(row, "attempt_json"), delegation: json(row, "delegation_json"),
     request: json(row, "request_json"), runner: json(row, "runner_json"),
     result: json(row, "result_json"), termination: json(row, "termination_json"),
-    reconciliation: json(row, "reconciliation_json"), lease_until: row.lease_until,
+    reconciliation: notStarted ? reconciliation.proof : reconciliation,
+    reconciliation_termination_state: reconciliation ? (notStarted ? "not_started" : "confirmed") : null, lease_until: row.lease_until,
     preparation: json(row,"preparation_json"), dependency_binding: json(row,"dependency_binding_json"),
   };
 }
@@ -73,10 +117,11 @@ function attemptView(row) {
 export function createPostgresAgentExecutionStore({
   connectionString, clientFactory = null, moduleLoader = null,
   verifyActivation = null, verifyTermination = null, verifySupervisorTermination = null, inspectIntegration = null,
-  validationEvidenceVerifier = null,
+  validationEvidenceVerifier = null, inspectCleanup = null, inspectCleanupBatch = null, verifyCleanupTermination = null,
 } = {}) {
   async function withClient(operation) {
-    let client;
+    let client, originalQuery, connectionError;
+    const onError = error => { connectionError ??= mapError(error); };
     try {
       if (typeof connectionString !== "string" || !connectionString) throw failure("CONFIGURATION_REQUIRED");
       if (typeof clientFactory === "function") client = await clientFactory({ connectionString });
@@ -87,10 +132,24 @@ export function createPostgresAgentExecutionStore({
         client = new Client({ connectionString, connectionTimeoutMillis: 5000, query_timeout: 10000 });
       }
       if (!client || typeof client.query !== "function") throw failure("DRIVER_UNAVAILABLE");
+      if (typeof client.on === "function") client.on("error", onError);
+      originalQuery = client.query;
+      client.query = async (...args) => {
+        if (connectionError) throw connectionError;
+        const result = await originalQuery.apply(client, args);
+        if (connectionError) throw connectionError;
+        return result;
+      };
       if (typeof client.connect === "function") await client.connect();
-      return await operation(client);
+      const result = await operation(client);
+      if (connectionError) throw connectionError;
+      return result;
     } catch (error) { throw mapError(error); }
-    finally { if (typeof client?.end === "function") { try { await client.end(); } catch { /* Never replace the transaction's outcome. */ } } }
+    finally {
+      if (typeof client?.end === "function") { try { await client.end(); } catch { /* Never replace the transaction's outcome. */ } }
+      if (originalQuery) client.query = originalQuery;
+      if (typeof client?.removeListener === "function") client.removeListener("error", onError);
+    }
   }
 
   async function readiness(client) {
@@ -106,18 +165,25 @@ export function createPostgresAgentExecutionStore({
       const rows = await client.query("SELECT MAX(schema_version) AS version FROM aidn_runtime.schema_migrations WHERE schema_name=$1", ["aidn_runtime"]);
       runtime = rows.rows[0]?.version == null ? null : Number(rows.rows[0].version);
     }
-    const ready = missing.length === 0 && shared === 5 && runtime === 3;
+    const ready = missing.length === 0 && shared === 6 && runtime === 3;
     return { ok: ready, ready, shared_schema_version: shared, runtime_schema_version: runtime, missing_tables: missing };
   }
 
   const transactionFences = new WeakMap();
+  const cleanupFences = new WeakMap();
+  const cleanupHeadFences = new WeakMap();
   async function transaction(operation, readOnly = false) {
     return withClient(async client => {
       await client.query(readOnly ? "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY" : "BEGIN");
       transactionFences.set(client,new Map());
+      cleanupFences.set(client,new Map());
+      cleanupHeadFences.set(client,new Map());
       try {
-        await client.query("SET LOCAL lock_timeout = '2000ms'");
-        await client.query("SET LOCAL statement_timeout = '5000ms'");
+        // A peer may hold the canonical fence through one bounded 4500ms
+        // verifier; allow 500ms scheduling margin while the caller's 10s
+        // coordination deadline and the 60s ownership lease remain unchanged.
+        await client.query("SET LOCAL lock_timeout = '5000ms'");
+        await client.query("SET LOCAL statement_timeout = '9000ms'");
         await client.query("SET LOCAL idle_in_transaction_session_timeout = '10000ms'");
         if (!(await readiness(client)).ready) throw failure("SCHEMA_NOT_READY");
         const result = await operation(client);
@@ -126,19 +192,28 @@ export function createPostgresAgentExecutionStore({
         for (const fence of transactionFences.get(client).values()) {
           await supervisorGuard(client,fence.run,fence.ownership,{deadline:fence.deadline,final:true});
         }
+        for (const fence of cleanupFences.get(client).values()) {
+          const gitFence=cleanupHeadFences.get(client).get(fence.run.run_id);
+          // External cleanup observations may have yielded while the Git ref
+          // moved. Recheck it after those observations, then PostgreSQL time
+          // and ownership after the last external await, before committing.
+          if(gitFence)await inspectGit(fence.run,gitFence.supervisor,headInspection(gitFence.head),"head",[gitFence.head.sha]);
+          await cleanupGuard(client,fence.run,fence.cleanupId,fence.ownership,true);
+        }
         await client.query("COMMIT");
         return result;
       } catch (error) {
         // Expiry and revocation fence ownership durably even though the caller's
         // requested mutation is refused. Ordinary validation errors roll back.
-        await client.query(committedFailures.has(error) ? "COMMIT" : "ROLLBACK");
+        if (committedFailures.has(error)) await client.query("COMMIT");
+        else { try { await client.query("ROLLBACK"); } catch { /* Preserve the first failure when the connection is already lost. */ } }
         throw error;
-      } finally { transactionFences.delete(client); }
+      } finally { transactionFences.delete(client); cleanupFences.delete(client); cleanupHeadFences.delete(client); }
     });
   }
 
   async function digest(client, scopeKey) {
-    requireId(scopeKey);
+    if (!isAgentExecutionRuntimeScopeId(scopeKey)) throw failure("IDENTITY_INVALID");
     const index = await client.query("SELECT key FROM aidn_runtime.index_meta WHERE scope_key=$1 LIMIT 1", [scopeKey]);
     if (!index.rows.length) throw failure("CANONICAL_SCOPE_MISSING");
     const found = await client.query("SELECT path,sha256 FROM aidn_runtime.artifacts WHERE scope_key=$1 ORDER BY path", [scopeKey]);
@@ -197,10 +272,10 @@ export function createPostgresAgentExecutionStore({
     } catch { return false; }
   }
 
-  async function canonical(client, row, invalidate = true) {
+  async function canonical(client, row, invalidate = true, {readOnly=false}={}) {
     const plan = json(row, "plan_json"), currentRun = json(row, "run_json");
     const fail = async code => { if (invalidate) return recovery(client, row, code); throw failure(code); };
-    const planning = await client.query("SELECT revision,backlog_artifact_ref,backlog_artifact_sha256,session_id FROM aidn_shared.planning_states WHERE project_id=$1 AND workspace_id=$2 AND planning_key=$3 FOR UPDATE", [row.project_id, row.workspace_id, row.planning_key]);
+    const planning = await client.query("SELECT revision,backlog_artifact_ref,backlog_artifact_sha256,session_id FROM aidn_shared.planning_states WHERE project_id=$1 AND workspace_id=$2 AND planning_key=$3"+(readOnly ? "" : " FOR UPDATE"), [row.project_id, row.workspace_id, row.planning_key]);
     const current = planning.rows[0];
     if (!current || Number(current.revision) !== plan.canonical.planning_revision
       || current.backlog_artifact_sha256 !== plan.canonical.plan_sha256
@@ -456,12 +531,92 @@ export function createPostgresAgentExecutionStore({
     return head;
   }
 
+  async function cancelRow(client,runId) {
+    return (await client.query("SELECT * FROM aidn_shared.execution_cancel_requests WHERE run_id=$1",[runId])).rows[0] ?? null;
+  }
+  async function noCancellation(client,run) {
+    if (await cancelRow(client,run.run_id)) throw failure("CANCEL_REQUESTED");
+  }
+  async function cleanupRows(client,runId) {
+    return (await client.query("SELECT *,lease_until>clock_timestamp() AS lease_live FROM aidn_shared.execution_cleanup_operations WHERE run_id=$1 ORDER BY generation",[runId])).rows;
+  }
+  async function cleanupResources(client,runId,cleanupId) {
+    return (await client.query("SELECT * FROM aidn_shared.execution_cleanup_resources WHERE run_id=$1 AND cleanup_id=$2 ORDER BY resource_id",[runId,cleanupId])).rows;
+  }
+  async function cleanupGuard(client,run,cleanupId,ownership,final=false) {
+    const rows=await cleanupRows(client,run.run_id), current=rows.at(-1);
+    if (!current || current.cleanup_id!==cleanupId || !same(json(current,"ownership_json"),ownership)) throw failure("CLEANUP_OWNERSHIP_LOST");
+    if (!current.lease_live) throw failure("CLEANUP_LEASE_EXPIRED");
+    if (current.status!=="active" && !(final && current.status==="completed")) throw failure("CLEANUP_NOT_ACTIVE");
+    if (!final) cleanupFences.get(client).set(run.run_id,{run,cleanupId,ownership:copy(ownership)});
+    return current;
+  }
+  async function cleanupEligibility(client,run,cleanup,{inspectHead=false}={}) {
+    if (run.reservation_active || json(run,"run_json").lifecycle_status!=="completed") throw failure("CLEANUP_RUN_NOT_COMPLETED");
+    if (cleanup.run_id!==run.run_id || cleanup.plan_sha256!==run.plan_sha256) throw failure("CLEANUP_BINDING_INVALID");
+    const head=await requireAllIntegrated(client,run);
+    if (cleanup.repository_identity_sha256!==head.repository_identity_sha256 || cleanup.integration_ref!==head.ref
+      || cleanup.integrated_sha!==head.sha) throw failure("CLEANUP_BINDING_INVALID");
+    const supervisors=(await client.query("SELECT * FROM aidn_shared.execution_supervisors WHERE run_id=$1 ORDER BY generation",[run.run_id])).rows;
+    if (!supervisors.length || supervisors.some(row=>json(row,"supervisor_json").status!=="stopped" || !row.termination_json)) throw failure("CLEANUP_SUPERVISOR_NOT_STOPPED");
+    const attempts=(await client.query("SELECT * FROM aidn_shared.execution_attempts WHERE run_id=$1",[run.run_id])).rows;
+    if (attempts.some(row=>ACTIVE.has(json(row,"attempt_json").lifecycle_status)
+      || json(row,"attempt_json").lifecycle_status==="recovery_required" || (!row.termination_json && !row.reconciliation_json))) throw failure("CLEANUP_TERMINATION_UNCONFIRMED");
+    const integrations=await integrationRows(client,run.run_id), intents=await intentRows(client,run.run_id);
+    const acceptances=(await client.query("SELECT * FROM aidn_shared.execution_acceptances WHERE run_id=$1",[run.run_id])).rows;
+    const final=(await client.query("SELECT * FROM aidn_shared.execution_run_validations WHERE run_id=$1",[run.run_id])).rows[0];
+    for (const resource of cleanup.resources) {
+      if(resource.kind==="verification_worktree"){
+        const observations=[...acceptances.map(row=>({observation:json(row,"evidence_verification_json"),sha:json(row,"acceptance_json")?.candidate_sha})),
+          {observation:json(final,"evidence_verification_json"),sha:json(final,"validation_json")?.integrated_sha}];
+        const matches=observations.flatMap(({observation,sha})=>(observation?.snapshots ?? []).filter(item=>
+          item.snapshot_sha256===resource.snapshot_sha256 && item.candidate_sha===sha && item.repository_identity_sha256===head.repository_identity_sha256));
+        if(!matches.length || matches.some(item=>["candidate_sha","tree_sha","repository_identity_sha256"].some(key=>item[key]!==matches[0][key])))throw failure("CLEANUP_RESOURCE_UNSAFE");
+        continue;
+      }
+      const intent=resource.kind==="integration_worktree" ? intents.find(row=>row.integration_id===resource.integration_id) : null;
+      const attemptId=resource.attempt_id ?? intent?.attempt_id;
+      const attempt=attempts.find(row=>row.attempt_id===attemptId), accepted=acceptances.find(row=>row.attempt_id===attemptId);
+      const integrated=integrations.find(row=>row.attempt_id===attemptId && row.applied_json);
+      const expectedCwd=resource.kind==="attempt_worktree" ? json(attempt,"attempt_json")?.worktree.cwd : json(intent,"intent_json")?.workspace.cwd;
+      if (!attempt || !accepted || !integrated || json(attempt,"result_json")?.outcome!=="completed" || !attempt.termination_json
+        || json(accepted,"acceptance_json")?.decision!=="accepted" || resource.cwd!==expectedCwd
+        || (resource.kind==="integration_worktree" && (integrated.integration_id!==resource.integration_id || !intent?.applied_at))) throw failure("CLEANUP_RESOURCE_UNSAFE");
+    }
+    if(inspectHead){
+      const supervisor=json(supervisors.at(-1),"supervisor_json").ownership;
+      await inspectGit(run,supervisor,headInspection(head),"head",[head.sha]);
+      cleanupHeadFences.get(client).set(run.run_id,{head:copy(head),supervisor:copy(supervisor)});
+    }
+  }
+  async function cleanupInspection(client,run,cleanup,resource,phase,lockedSnapshot=null) {
+    if (typeof inspectCleanup!=="function") throw failure("CLEANUP_INSPECTOR_REQUIRED");
+    let observed;
+    try {
+      const state=lockedSnapshot ?? await snapshot(client,run);
+      observed=boundedJson(await boundedVerification(signal=>inspectCleanup(copy(resource),{
+        phase,run:json(run,"run_json"),snapshot:copy(state),cleanup:copy(cleanup),signal,
+      }),"CLEANUP_INSPECTION_TIMED_OUT"));
+    } catch(error) { if(knownFailures.has(error))throw error;throw failure("CLEANUP_INSPECTION_FAILED"); }
+    return validateCleanupObservation(observed,resource,cleanup,phase);
+  }
+  function validateCleanupObservation(observed,resource,cleanup,phase) {
+    if (!exactKeys(observed,"resource_id,cwd,preimage_sha256,repository_identity_sha256,retention,exists,registered,clean,retained,processes_stopped,links_safe")
+      || ["resource_id","cwd","preimage_sha256"].some(key=>observed[key]!==resource[key])
+      || observed.repository_identity_sha256!==cleanup.repository_identity_sha256 || !same(observed.retention,resource.retention)
+      || ["clean","retained","processes_stopped","links_safe"].some(key=>observed[key]!==true)
+      || observed.exists!==(phase==="before") || observed.registered!==(phase==="before")) throw failure("CLEANUP_INSPECTION_INVALID");
+    return observed;
+  }
+
   async function snapshot(client, run) {
     run=(await client.query("SELECT *,clock_timestamp() AS server_now FROM aidn_shared.execution_runs WHERE run_id=$1",[run.run_id])).rows[0];
     const supervisors=(await client.query("SELECT *,lease_until>clock_timestamp() AS lease_live FROM aidn_shared.execution_supervisors WHERE run_id=$1 ORDER BY generation",[run.run_id])).rows;
     const acceptances=(await client.query("SELECT * FROM aidn_shared.execution_acceptances WHERE run_id=$1 ORDER BY task_id,attempt_id",[run.run_id])).rows;
     const integrations=await integrationRows(client,run.run_id), intents=await intentRows(client,run.run_id);
     const final=(await client.query("SELECT * FROM aidn_shared.execution_run_validations WHERE run_id=$1",[run.run_id])).rows[0];
+    const cancellation=await cancelRow(client,run.run_id), cleaners=await cleanupRows(client,run.run_id), cleaner=cleaners.at(-1);
+    const resources=cleaner ? await cleanupResources(client,run.run_id,cleaner.cleanup_id) : [];
 
     const tasks = await client.query("SELECT task_json FROM aidn_shared.execution_tasks WHERE run_id=$1 ORDER BY task_id", [run.run_id]);
     const attempts = await client.query("SELECT * FROM aidn_shared.execution_attempts WHERE run_id=$1 ORDER BY task_id,ordinal", [run.run_id]);
@@ -470,6 +625,10 @@ export function createPostgresAgentExecutionStore({
       attempts: attempts.rows.map(attemptView), events: events.rows.map(row => json(row, "event_json")),
       canonical_snapshot_sha256: run.canonical_snapshot_sha256, reservation_active: run.reservation_active,
       recovery_reason: run.recovery_reason ?? null,
+      cancel_request:cancellation ? {request:json(cancellation,"request_json"),request_sha256:cancellation.request_sha256,
+        target_supervisor_generation:Number(cancellation.target_supervisor_generation),accepted_control_revision:Number(cancellation.accepted_control_revision)} : null,
+      cleanup:cleaner ? {current:cleanupView(cleaner),history:cleaners.slice(0,-1).map(cleanupView),resources:resources.map(row=>({
+        resource:json(row,"resource_json"),resource_sha256:row.resource_sha256,result:json(row,"result_json"),result_sha256:row.result_sha256 ?? null}))} : null,
       server_now:run.server_now,run_started_at:run.run_started_at,run_deadline_at:run.run_deadline_at,
       supervision:{mode:run.supervision_mode,control_revision:Number(run.control_revision),current:supervisorView(supervisors.at(-1)),history:supervisors.slice(0,-1).map(supervisorView)},
       acceptances:acceptances.map(row=>({acceptance:json(row,"acceptance_json"),acceptance_sha256:row.acceptance_sha256,
@@ -482,7 +641,178 @@ export function createPostgresAgentExecutionStore({
 
   const store = {
 
-    async claimSupervisor({runId,ownerId,runner,integration,expectedControlRevision,expectedPreviousGeneration=null}) {
+    async previewRunReservation({plan:input,runId,planningKey,canonicalSnapshotSha256}) {
+      requireId(runId);requireId(planningKey);requireHash(canonicalSnapshotSha256);
+      let plan;try {plan=normalizeAgentExecutionPlan(input);} catch {throw failure("CONTRACT_INVALID");}
+      const run=contract("run",{contract_version:"agent-execution-run.v1",run_id:runId,plan_id:plan.plan_id,plan_sha256:plan.plan_sha256,
+        authority_backend:"postgres",canonical:copy(plan.canonical),task_ids:plan.tasks.map(task=>task.task_id),lifecycle_status:"planned"});
+      return transaction(async client=>{
+        const row={run_id:runId,project_id:plan.canonical.project_id,workspace_id:plan.canonical.workspace_id,
+          runtime_scope_id:plan.canonical.runtime_scope_id,planning_key:planningKey,planning_revision:plan.canonical.planning_revision,
+          canonical_snapshot_sha256:canonicalSnapshotSha256,plan_json:plan,run_json:run};
+        await canonical(client,row,false,{readOnly:true});
+        const existing=await client.query("SELECT run_id FROM aidn_shared.execution_runs WHERE run_id=$1 OR (reservation_active AND (runtime_scope_id=$2 OR (project_id=$3 AND workspace_id=$4 AND planning_key=$5))) LIMIT 1",
+          [runId,row.runtime_scope_id,row.project_id,row.workspace_id,planningKey]);
+        if(existing.rows.length)throw failure("RESERVATION_CONFLICT");
+        return {ok:true,run_id:runId,plan_sha256:plan.plan_sha256,canonical_snapshot_sha256:canonicalSnapshotSha256,
+          planning_revision:plan.canonical.planning_revision,reservation_available:true};
+      },true);
+    },
+    async requestCancel({runId,expectedControlRevision,expectedSupervisorGeneration,request}) {
+      request=boundedJson(request);
+      if(!exactKeys(request,"contract_version,request_id,run_id,plan_sha256,reason") || request.contract_version!=="agent-cancel-request.v1"
+        || !ID.test(request.request_id ?? "") || !ID.test(request.reason ?? "") || request.run_id!==runId || !HASH.test(request.plan_sha256 ?? "")
+        || !Number.isSafeInteger(expectedSupervisorGeneration) || expectedSupervisorGeneration<0)throw failure("CANCEL_CONTRACT_INVALID");
+      const hash=fingerprintAgentExecutionValue({request,target_supervisor_generation:expectedSupervisorGeneration});
+      return transaction(async client=>{
+        const run=await lockedRun(client,runId), existing=await cancelRow(client,runId);
+        if(request.plan_sha256!==run.plan_sha256)throw failure("CANCEL_BINDING_INVALID");
+        if(existing){
+          if(existing.request_sha256!==hash || !same(json(existing,"request_json"),request))throw failure("CANCEL_REQUEST_CONFLICT");
+          return snapshot(client,run);
+        }
+        revision(run,expectedControlRevision);
+        if(Number(run.supervisor_generation)!==expectedSupervisorGeneration)throw failure("SUPERVISOR_OWNERSHIP_LOST");
+        if(!run.reservation_active)throw failure("RUN_NOT_ACTIVE");
+        await client.query("INSERT INTO aidn_shared.execution_cancel_requests(run_id,request_id,request_sha256,request_json,target_supervisor_generation,accepted_control_revision) VALUES($1,$2,$3,$4::jsonb,$5,$6)",
+          [runId,request.request_id,hash,JSON.stringify(request),expectedSupervisorGeneration,expectedControlRevision]);
+        await bump(client,run);
+        return snapshot(client,run);
+      });
+    },
+    async recordSupervisorStopped({runId,expectedSupervisor,expectedControlRevision,proof}) {
+      expectedSupervisor=copy(expectedSupervisor);proof=boundedJson(proof);
+      if(typeof verifySupervisorTermination!=="function")throw failure("SUPERVISOR_TERMINATION_VERIFIER_REQUIRED");
+      return transaction(async client=>{
+        const run=await lockedRun(client,runId);revision(run,expectedControlRevision);
+        if(run.reservation_active || !["completed","failed","cancelled"].includes(json(run,"run_json").lifecycle_status))throw failure("RUN_NOT_TERMINAL");
+        const row=await currentSupervisor(client,run), supervisor=json(row,"supervisor_json");
+        if(!supervisor || !same(supervisor.ownership,expectedSupervisor))throw failure("SUPERVISOR_OWNERSHIP_LOST");
+        if(row.termination_json){
+          if(!same(json(row,"termination_json"),proof))throw failure("SUPERVISOR_TERMINATION_CONFLICT");
+          return snapshot(client,run);
+        }
+        let observed;
+        try {observed=await boundedVerification(signal=>verifySupervisorTermination(copy(supervisor),copy(proof),{
+          run:json(run,"run_json"),pendingIntegrations:[],signal,
+        }),"SUPERVISOR_TERMINATION_TIMED_OUT");}catch{throw failure("SUPERVISOR_TERMINATION_UNCONFIRMED");}
+        if(!observed || ["ok","supervisor_stopped","descendants_stopped","git_operations_stopped"].some(key=>observed[key]!==true))throw failure("SUPERVISOR_TERMINATION_UNCONFIRMED");
+        await client.query("UPDATE aidn_shared.execution_supervisors SET supervisor_json=jsonb_set(supervisor_json,'{status}','\"stopped\"'::jsonb),termination_json=$3::jsonb,lease_until=clock_timestamp(),updated_at=clock_timestamp() WHERE run_id=$1 AND generation=$2",
+          [runId,expectedSupervisor.generation,JSON.stringify(proof)]);
+        await bump(client,run);return snapshot(client,run);
+      });
+    },
+
+    async beginCleanup({runId,expectedControlRevision,ownerId,runner,cleanup,expectedPreviousGeneration=null}) {
+      cleanup=cleanupDocument(cleanup);runner=boundedJson(runner);requireId(ownerId);
+      if(!validRunner(runner))throw failure("RUNNER_INVALID");
+      if(typeof inspectCleanup!=="function")throw failure("CLEANUP_INSPECTOR_REQUIRED");
+      if(typeof verifyCleanupTermination!=="function")throw failure("CLEANUP_TERMINATION_VERIFIER_REQUIRED");
+      const hash=fingerprintAgentExecutionValue(cleanup);
+      return transaction(async client=>{
+        const run=await lockedRun(client,runId);revision(run,expectedControlRevision);await cleanupEligibility(client,run,cleanup,{inspectHead:true});
+        const rows=await cleanupRows(client,runId), previous=rows.at(-1);
+        if(previous){
+          if(previous.cleanup_id!==cleanup.cleanup_id || previous.cleanup_sha256!==hash || !same(json(previous,"cleanup_json"),cleanup))throw failure("CLEANUP_INTENT_CONFLICT");
+          const resources=await cleanupResources(client,runId,cleanup.cleanup_id);
+          if(resources.length===cleanup.resources.length && resources.every(row=>row.result_json))return snapshot(client,run);
+          if(expectedPreviousGeneration!==Number(previous.generation) || previous.status!=="stopped" || !previous.termination_json)throw failure("CLEANUP_RECONCILIATION_REQUIRED");
+          if(json(previous,"runner_json").host_id!==runner.host_id)throw failure("CLEANUP_HOST_MISMATCH");
+        } else {
+          if(expectedPreviousGeneration!==null)throw failure("CLEANUP_PREDECESSOR_MISMATCH");
+          const lockedSnapshot=await snapshot(client,run);
+          if(typeof inspectCleanupBatch === "function") {
+            let observed;
+            try {
+              observed=boundedJson(await boundedVerification(signal=>inspectCleanupBatch(copy(cleanup.resources),{
+                phase:"before",run:json(run,"run_json"),snapshot:copy(lockedSnapshot),cleanup:copy(cleanup),signal,
+              }),"CLEANUP_INSPECTION_TIMED_OUT"));
+            } catch(error) { if(knownFailures.has(error))throw error;throw failure("CLEANUP_INSPECTION_FAILED"); }
+            if(!Array.isArray(observed) || observed.length!==cleanup.resources.length
+              || new Set(observed.map(value=>value?.resource_id)).size!==observed.length)throw failure("CLEANUP_INSPECTION_INVALID");
+            observed.forEach((value,index)=>validateCleanupObservation(value,cleanup.resources[index],cleanup,"before"));
+          } else for(const resource of cleanup.resources)await cleanupInspection(client,run,cleanup,resource,"before",lockedSnapshot);
+        }
+        const generation=Number(previous?.generation ?? 0)+1;
+        if(!Number.isSafeInteger(generation))throw failure("GENERATION_LIMIT");
+        const ownership={owner_id:ownerId,generation,lease_id:randomUUID()};
+        await client.query("INSERT INTO aidn_shared.execution_cleanup_operations(run_id,cleanup_id,generation,cleanup_sha256,cleanup_json,ownership_json,runner_json,lease_until,status) VALUES($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,clock_timestamp()+interval '60 seconds','active')",
+          [runId,cleanup.cleanup_id,generation,hash,JSON.stringify(cleanup),JSON.stringify(ownership),JSON.stringify(runner)]);
+        if(!previous)for(const resource of cleanup.resources)await client.query("INSERT INTO aidn_shared.execution_cleanup_resources(run_id,cleanup_id,resource_id,creator_generation,resource_json,resource_sha256) VALUES($1,$2,$3,$4,$5::jsonb,$6)",
+          [runId,cleanup.cleanup_id,resource.resource_id,generation,JSON.stringify(resource),fingerprintAgentExecutionValue(resource)]);
+        await bump(client,run);await cleanupGuard(client,run,cleanup.cleanup_id,ownership);
+        return snapshot(client,run);
+      });
+    },
+    async renewCleanup({runId,cleanupId,ownership}) {
+      ownership=copy(ownership);
+      return transaction(async client=>{
+        const run=await lockedRun(client,runId), row=await cleanupGuard(client,run,cleanupId,ownership);
+        await cleanupEligibility(client,run,json(row,"cleanup_json"));
+        await client.query("UPDATE aidn_shared.execution_cleanup_operations SET lease_until=clock_timestamp()+interval '60 seconds' WHERE run_id=$1 AND cleanup_id=$2 AND generation=$3 AND lease_until>clock_timestamp()",
+          [runId,cleanupId,ownership.generation]);
+        return snapshot(client,run);
+      });
+    },
+    async inspectCleanupAuthority({runId,cleanupId,ownership,resourceId,resourceSha256,reconciliation=false}) {
+      ownership=copy(ownership);requireId(resourceId);requireHash(resourceSha256);
+      if(typeof reconciliation!=="boolean")throw failure("CLEANUP_CONTRACT_INVALID");
+      return transaction(async client=>{
+        const run=await lockedRun(client,runId), row=await cleanupGuard(client,run,cleanupId,ownership), cleanup=json(row,"cleanup_json");
+        await cleanupEligibility(client,run,cleanup,{inspectHead:true});
+        const resource=(await cleanupResources(client,runId,cleanupId)).find(item=>item.resource_id===resourceId);
+        if(!resource || resource.resource_sha256!==resourceSha256 || resource.result_json)throw failure("CLEANUP_RESOURCE_MISMATCH");
+        await cleanupInspection(client,run,cleanup,json(resource,"resource_json"),reconciliation ? "after" : "before");
+        return {cleanup_sha256:row.cleanup_sha256,resource_sha256:resourceSha256,control_revision:Number(run.control_revision),ownership:copy(ownership)};
+      });
+    },
+    async recordCleanupResult({runId,cleanupId,ownership,resourceId,result}) {
+      ownership=copy(ownership);result=boundedJson(result);requireId(resourceId);
+      if(!exactKeys(result,"resource_id,preimage_sha256,outcome,evidence") || result.resource_id!==resourceId || result.outcome!=="removed"
+        || !HASH.test(result.preimage_sha256 ?? "") || !Array.isArray(result.evidence) || !result.evidence.length || result.evidence.length>16
+        || !result.evidence.every(validEvidence))throw failure("CLEANUP_RESULT_INVALID");
+      const hash=fingerprintAgentExecutionValue(result);
+      return transaction(async client=>{
+        const run=await lockedRun(client,runId), resource=(await cleanupResources(client,runId,cleanupId)).find(item=>item.resource_id===resourceId);
+        if(!resource || json(resource,"resource_json").preimage_sha256!==result.preimage_sha256)throw failure("CLEANUP_RESOURCE_MISMATCH");
+        if(resource.result_json){
+          if(resource.result_sha256!==hash || !same(json(resource,"result_json"),result))throw failure("CLEANUP_RESULT_CONFLICT");
+          return snapshot(client,run);
+        }
+        const row=await cleanupGuard(client,run,cleanupId,ownership), cleanup=json(row,"cleanup_json");
+        await cleanupEligibility(client,run,cleanup,{inspectHead:true});
+        const spec=json(resource,"resource_json");
+        if(!result.evidence.some(item=>same(item,spec.retention)))throw failure("CLEANUP_RETENTION_REQUIRED");
+        await cleanupInspection(client,run,cleanup,spec,"after");
+        await client.query("UPDATE aidn_shared.execution_cleanup_resources SET result_json=$4::jsonb,result_sha256=$5,result_generation=$6,completed_at=clock_timestamp() WHERE run_id=$1 AND cleanup_id=$2 AND resource_id=$3 AND result_json IS NULL",
+          [runId,cleanupId,resourceId,JSON.stringify(result),hash,ownership.generation]);
+        const resources=await cleanupResources(client,runId,cleanupId);
+        if(resources.every(item=>item.result_json))await client.query("UPDATE aidn_shared.execution_cleanup_operations SET status='completed' WHERE run_id=$1 AND cleanup_id=$2 AND generation=$3",[runId,cleanupId,ownership.generation]);
+        await bump(client,run);return snapshot(client,run);
+      });
+    },
+    async reconcileCleanup({runId,cleanupId,expectedOwnership,expectedControlRevision,proof}) {
+      expectedOwnership=copy(expectedOwnership);proof=boundedJson(proof);
+      if(typeof verifyCleanupTermination!=="function")throw failure("CLEANUP_TERMINATION_VERIFIER_REQUIRED");
+      return transaction(async client=>{
+        const run=await lockedRun(client,runId);revision(run,expectedControlRevision);
+        const row=(await cleanupRows(client,runId)).at(-1);
+        if(!row || row.cleanup_id!==cleanupId || !same(json(row,"ownership_json"),expectedOwnership))throw failure("CLEANUP_OWNERSHIP_LOST");
+        await cleanupEligibility(client,run,json(row,"cleanup_json"));
+        if(row.termination_json){
+          if(!same(json(row,"termination_json"),proof))throw failure("CLEANUP_TERMINATION_CONFLICT");
+          return snapshot(client,run);
+        }
+        let observed;
+        try {observed=await boundedVerification(signal=>verifyCleanupTermination(cleanupView(row),copy(proof),{run:json(run,"run_json"),signal}),"CLEANUP_TERMINATION_TIMED_OUT");}
+        catch{throw failure("CLEANUP_TERMINATION_UNCONFIRMED");}
+        if(!observed || ["ok","cleaner_stopped","descendants_stopped","git_operations_stopped"].some(key=>observed[key]!==true))throw failure("CLEANUP_TERMINATION_UNCONFIRMED");
+        await client.query("UPDATE aidn_shared.execution_cleanup_operations SET status='stopped',termination_json=$4::jsonb,lease_until=clock_timestamp() WHERE run_id=$1 AND cleanup_id=$2 AND generation=$3",
+          [runId,cleanupId,expectedOwnership.generation,JSON.stringify(proof)]);
+        await bump(client,run);return snapshot(client,run);
+      });
+    },
+    async claimSupervisor({runId,ownerId,runner,integration,expectedControlRevision,expectedPreviousGeneration=null,drainOnly=false}) {
       requireId(ownerId);
       if (typeof verifySupervisorTermination !== "function") throw failure("SUPERVISOR_TERMINATION_VERIFIER_REQUIRED");
       if (typeof inspectIntegration !== "function") throw failure("INTEGRATION_INSPECTOR_REQUIRED");
@@ -493,12 +823,15 @@ export function createPostgresAgentExecutionStore({
       return transaction(async client => {
         const run = await lockedRun(client,runId); revision(run,expectedControlRevision);
         if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
+        const cancelling=Boolean(await cancelRow(client,runId));
+        if(drainOnly!==true && drainOnly!==false)throw failure("DRAIN_MODE_INVALID");
+        if(cancelling!==drainOnly)throw failure(cancelling ? "CANCEL_REQUESTED" : "DRAIN_MODE_INVALID");
         const plan = json(run,"plan_json"), prior = await currentSupervisor(client,run);
         if (integration.base_sha !== plan.base.sha || integration.ref === plan.base.branch
           || integration.ref === "refs/heads/"+plan.base.branch) throw failure("INTEGRATION_TARGET_INVALID");
         if (run.supervision_mode !== "supervised") {
           if (expectedPreviousGeneration !== null || (await client.query("SELECT 1 FROM aidn_shared.execution_attempts WHERE run_id=$1 LIMIT 1",[runId])).rows.length) throw failure("LEGACY_RUN_ADOPTION_REFUSED");
-          await canonical(client,run);
+          if(!drainOnly)await canonical(client,run);
         } else {
           if (!prior || expectedPreviousGeneration !== Number(prior.generation)
             || json(prior,"supervisor_json").status !== "stopped" || !prior.termination_json) throw failure("SUPERVISOR_RECONCILIATION_REQUIRED");
@@ -567,6 +900,7 @@ export function createPostgresAgentExecutionStore({
     async resumeRun({runId,supervisor,expectedControlRevision}) {
       return transaction(async client => {
         const run=await lockedRun(client,runId); revision(run,expectedControlRevision);
+        await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor,{required:true}); await canonical(client,run);
         if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
         const unresolved=await client.query("SELECT 1 FROM aidn_shared.execution_attempts WHERE run_id=$1 AND (attempt_json->>'lifecycle_status' IN ('launch_intended','running','recovery_required') OR (termination_json IS NULL AND reconciliation_json IS NULL)) LIMIT 1",[runId]);
@@ -586,6 +920,7 @@ export function createPostgresAgentExecutionStore({
         || !Number.isSafeInteger(evidence.bytes) || evidence.bytes<0) throw failure("PREPARATION_INVALID");
       return transaction(async client => {
         const {run,row}=await lockedAttempt(client,attemptId);
+        await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor); await live(client,run,row,ownership);
         if (!row.request_json || fingerprintAgentExecutionValue(json(row,"request_json"))!==value.request_sha256) throw failure("PREPARATION_REQUEST_MISMATCH");
         if (row.preparation_json && !same(json(row,"preparation_json"),value)) throw failure("PREPARATION_CONFLICT");
@@ -598,6 +933,7 @@ export function createPostgresAgentExecutionStore({
       supervisor=copy(supervisor);
       return transaction(async client => {
         const run=await lockedRun(client,runId);
+        await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor,{required:true}); await canonical(client,run);
         if (!run.reservation_active || !RUN_ACTIVE.has(json(run,"run_json").lifecycle_status)) throw failure("RUN_NOT_ACTIVE");
         const row=(await client.query("SELECT * FROM aidn_shared.execution_attempts WHERE run_id=$1 AND attempt_id=$2 FOR UPDATE",[runId,acceptance.attempt_id])).rows[0];
@@ -622,6 +958,7 @@ export function createPostgresAgentExecutionStore({
       intent=copy(contract("integration-intent",intent)); supervisor=copy(supervisor);
       return transaction(async client=>{
         const run=await lockedRun(client,runId); revision(run,expectedControlRevision);
+        await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor,{required:true}); await canonical(client,run);
         if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
         const {rows,head}=await integrationChain(client,run), hash=fingerprintAgentExecutionValue(intent);
@@ -654,6 +991,7 @@ export function createPostgresAgentExecutionStore({
       supervisor=copy(supervisor);
       return transaction(async client => {
         const run=await lockedRun(client,runId); revision(run,expectedControlRevision);
+        if(!reconciliation)await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor,{required:true,deadline:!reconciliation});
         if (!reconciliation) await canonical(client,run);
         if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
@@ -701,6 +1039,7 @@ export function createPostgresAgentExecutionStore({
       if (!evidenceProof || Object.keys(evidenceProof).join(",")!=="evidence") throw failure("INTEGRATION_PROOF_INVALID");
       return transaction(async client => {
         const run=await lockedRun(client,runId); revision(run,expectedControlRevision);
+        if(!reconciliation)await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor,{required:true,deadline:!reconciliation});
         // Recovery records a fact about the immutable original preparation. A
         // revoked canonical context must still permit observing an earlier CAS;
@@ -736,6 +1075,7 @@ export function createPostgresAgentExecutionStore({
       supervisor=copy(supervisor);
       return transaction(async client => {
         const run=await lockedRun(client,runId); revision(run,expectedControlRevision);
+        await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor,{required:true}); await canonical(client,run);
         if (!run.reservation_active || !RUN_ACTIVE.has(json(run,"run_json").lifecycle_status)) throw failure("RUN_NOT_ACTIVE");
         const head=await requireAllIntegrated(client,run);
@@ -797,6 +1137,7 @@ export function createPostgresAgentExecutionStore({
       if (expectedPreviousAttemptId !== null) requireId(expectedPreviousAttemptId);
       return transaction(async client => {
         const run = await lockedRun(client, runId);
+        await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor);
         if (!run.reservation_active || !RUN_ACTIVE.has(json(run,"run_json").lifecycle_status)) throw failure("RUN_NOT_ACTIVE");
         const plan = await canonical(client, run);
@@ -857,6 +1198,7 @@ export function createPostgresAgentExecutionStore({
       contract("request", request);
       return transaction(async client => {
         const { run, row } = await lockedAttempt(client, attemptId);
+        await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor);
         await live(client, run, row, ownership);
         await bundle(client, run, row, { request });
@@ -893,7 +1235,7 @@ export function createPostgresAgentExecutionStore({
     async renewAttempt({ attemptId, ownership, supervisor = null }) {
       return transaction(async client => {
         const { run, row } = await lockedAttempt(client, attemptId);
-        await supervisorGuard(client,run,supervisor);
+        await supervisorGuard(client,run,supervisor,{deadline:!(await cancelRow(client,run.run_id))});
         await live(client, run, row, ownership);
         const renewed = await client.query("UPDATE aidn_shared.execution_attempts SET lease_until=clock_timestamp()+($2::bigint*interval '1 millisecond'), updated_at=clock_timestamp() WHERE attempt_id=$1 AND lease_until>clock_timestamp() RETURNING *", [attemptId,AGENT_EXECUTION_LEASE_MS]);
         if (!renewed.rows.length) return recovery(client,run,"LEASE_EXPIRED");
@@ -907,6 +1249,7 @@ export function createPostgresAgentExecutionStore({
         await client.query("SET LOCAL lock_timeout = '2000ms'");
         await client.query("SET LOCAL statement_timeout = '3000ms'");
         const { run, row } = await lockedAttempt(client, attemptId);
+        await noCancellation(client,run);
         await supervisorGuard(client,run,supervisor);
         await live(client, run, row, ownership);
         if (!row.request_json) throw failure("LAUNCH_INTENT_REQUIRED");
@@ -940,7 +1283,7 @@ export function createPostgresAgentExecutionStore({
       contract("event", event);
       return transaction(async client => {
         const { run, row } = await lockedAttempt(client, attemptId);
-        await supervisorGuard(client,run,supervisor);
+        await supervisorGuard(client,run,supervisor,{deadline:!(await cancelRow(client,run.run_id))});
         const attempt = assertOwnership(run,row,ownership);
         if (!row.request_json) throw failure("LAUNCH_INTENT_REQUIRED");
         if (["run_id","task_id","attempt_id","plan_sha256"].some(field => event[field] !== attempt[field])) throw failure("EVENT_BINDING_INVALID");
@@ -965,7 +1308,7 @@ export function createPostgresAgentExecutionStore({
       contract("result", result);
       return transaction(async client => {
         const { run, row } = await lockedAttempt(client, attemptId);
-        await supervisorGuard(client,run,supervisor);
+        await supervisorGuard(client,run,supervisor,{deadline:!(await cancelRow(client,run.run_id))});
         const attempt = await live(client, run, row, ownership, { allowTerminal: Boolean(row.result_json) });
         if (!row.request_json) throw failure("LAUNCH_INTENT_REQUIRED");
         if (run.supervision_mode === "supervised" && !row.preparation_json) throw failure("PREPARATION_REQUIRED");
@@ -1020,22 +1363,25 @@ export function createPostgresAgentExecutionStore({
         return { run: json(run,"run_json"), reason };
       });
     },
-    async reconcileAttempt({ attemptId, proof, supervisor = null }) {
+    async reconcileAttempt({ attemptId, proof, terminationState = "confirmed", supervisor = null }) {
+      if (!["confirmed", "not_started"].includes(terminationState)) throw failure("TERMINATION_STATE_INVALID");
+      const retained = terminationState === "not_started"
+        ? { contract_version: "agent-attempt-reconciliation.v1", termination_state: terminationState, proof: boundedJson(proof) } : boundedJson(proof);
       return transaction(async client => {
         const { run, row } = await lockedAttempt(client, attemptId);
         await supervisorGuard(client,run,supervisor,{deadline:false});
         if (!run.reservation_active) throw failure("RUN_NOT_ACTIVE");
         const attempt = json(row,"attempt_json");
         if (row.reconciliation_json) {
-          if (!same(json(row,"reconciliation_json"),boundedJson(proof))) throw failure("RECONCILIATION_CONFLICT");
+          if (!same(json(row,"reconciliation_json"),retained)) throw failure("RECONCILIATION_CONFLICT");
           return { ...attemptView(row), idempotent: true };
         }
         if (!ACTIVE.has(attempt.lifecycle_status) && attempt.lifecycle_status !== "recovery_required") throw failure("RECONCILIATION_NOT_REQUIRED");
-        const verified = await termination(row,proof,"confirmed");
+        await termination(row,terminationState === "not_started" ? retained.proof : retained,terminationState);
         const ended = { ...attempt, lifecycle_status: "cancelled" };
         const reconciled = await client.query(`UPDATE aidn_shared.execution_attempts SET
           attempt_json=$2::jsonb,reconciliation_json=$3::jsonb,generation=generation+1,
-          lease_until=clock_timestamp(),updated_at=clock_timestamp() WHERE attempt_id=$1 RETURNING *`, [attemptId,JSON.stringify(ended),JSON.stringify(verified)]);
+          lease_until=clock_timestamp(),updated_at=clock_timestamp() WHERE attempt_id=$1 RETURNING *`, [attemptId,JSON.stringify(ended),JSON.stringify(retained)]);
         const unresolved = await client.query("SELECT attempt_id FROM aidn_shared.execution_attempts WHERE run_id=$1 AND attempt_json->>'lifecycle_status'='recovery_required' LIMIT 1", [run.run_id]);
         if (!unresolved.rows.length && run.supervision_mode !== "supervised") {
           // Reconciliation proves process death only. Revoked or changed context
@@ -1056,6 +1402,7 @@ export function createPostgresAgentExecutionStore({
         const run = await lockedRun(client, runId);
         await supervisorGuard(client,run,supervisor,{deadline:outcome === "completed"});
         if (outcome === "completed") {
+          await noCancellation(client,run);
           if (run.supervision_mode !== "supervised") throw failure("ACCEPTANCE_REQUIRED");
           revision(run,expectedControlRevision); await canonical(client,run);
           if (run.reservation_active && !RUN_ACTIVE.has(json(run,"run_json").lifecycle_status)) throw failure("RECOVERY_REQUIRED");
@@ -1086,7 +1433,7 @@ export function createPostgresAgentExecutionStore({
       });
     },
   };
-  return assertAgentSupervisedExecutionStore(Object.fromEntries(Object.entries(store).map(([name, operation]) => [name, async (...args) => {
+  return assertAgentRunLifecycleStore(Object.fromEntries(Object.entries(store).map(([name, operation]) => [name, async (...args) => {
     try { return await operation(...args); } catch (error) { throw mapError(error); }
   }])));
 }

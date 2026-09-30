@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildAgentExecutionSchedule, projectAgentExecutionSchedule } from "../../src/core/agents/agent-execution-schedule.mjs";
 import { createLocalAgentGitIntegration } from "../../src/adapters/runtime/local-agent-git-integration.mjs";
+import { assertUnclaimedAgentRun } from "../../src/application/runtime/agent-run-supervisor.mjs";
 import { createSchedulerFixture, delay } from "./agent-execution-scheduler-test-lib.mjs";
 
 const checks = [];
@@ -56,6 +57,42 @@ await check("bounded concurrency, exact input SHA and deterministic acceptance/i
   assert.ok(f.operations.indexOf("integration-applied:b") < f.operations.indexOf("claim:c"));
   assert.equal(f.state.final_validation.validation.integrated_sha, f.state.integration_head.sha);
 }));
+await check("parallel workers serialize their shared validation boundary", async () => fixture({}, async f => {
+  let live = 0, maximum = 0; const calls = [];
+  const result = await f.create({ validateTask: async context => {
+    calls.push(context.task.task_id); live++; maximum = Math.max(maximum, live);
+    try {
+      assert.equal(live, 1, "shared boundary received overlapping invocations");
+      await delay(40); return await f.callbacks.validateTask(context);
+    } finally { live--; }
+  } }).run(f.options);
+  assert.equal(result.status, "completed", result.reason_code); assert.equal(f.maxLive, 2);
+  assert.equal(maximum, 1); assert.deepEqual(calls, ["a", "b", "c"]);
+  assert.equal(f.state.final_validation.validation.integrated_sha, f.state.integration_head.sha);
+}));
+await check("cancelled acceptance queue never starts another validation", async () => fixture({}, async f => {
+  const abort = new AbortController(); const calls = [];
+  const result = await f.create({ validateTask: async context => {
+    calls.push(context.task.task_id);
+    await delay(40); abort.abort(); await delay(5);
+    return f.callbacks.validateTask(context);
+  } }).run({ ...f.options, signal: abort.signal });
+  await delay(30);
+  assert.equal(result.status, "recovery_required"); assert.equal(result.reason_code, "TASK_VALIDATION_INTERRUPTED"); assert.equal(f.maxLive, 2);
+  assert.deepEqual(calls, ["a"]); assert.equal(f.state.acceptances.length, 0);
+  assert.equal(f.state.attempts.length, 2); assert.equal(f.state.integrations.length, 0);
+}));
+await check("first validation failure stops queued acceptance without hiding its cause", async () => fixture({}, async f => {
+  const calls = [];
+  const result = await f.create({ validateTask: async context => {
+    calls.push(context.task.task_id); await delay(40);
+    throw Object.assign(new Error("FIRST_VALIDATION_REFUSED"), { code: "FIRST_VALIDATION_REFUSED" });
+  } }).run(f.options);
+  await delay(30);
+  assert.equal(result.status, "recovery_required"); assert.equal(result.reason_code, "FIRST_VALIDATION_REFUSED");
+  assert.deepEqual(calls, ["a"]); assert.equal(f.state.acceptances.length, 0);
+  assert.equal(f.state.attempts.length, 2); assert.equal(f.state.integrations.length, 0);
+}));
 await check("concurrency one serializes child execution", async () => fixture({ concurrency: 1 }, async f => {
   const result = await f.create().run(f.options); assert.equal(result.status, "completed", result.reason_code); assert.equal(f.maxLive, 1);
 }));
@@ -94,6 +131,65 @@ await check("coordination failure stops launches and preserves uncertain attempt
   const result = await f.create().run(f.options); assert.equal(result.status, "recovery_required");
   assert.equal(f.state.attempts.length, 1); assert.ok(!f.operations.includes("claim:b"));
 }));
+await check("coordination transactions serialize while two workers remain concurrent", async () => fixture({ concurrency: 2 }, async f => {
+  let pending = 0, peak = 0; const store = { ...f.store };
+  for (const [name, operation] of Object.entries(store)) {
+    if (typeof operation !== "function" || ["getRun", "checkReadiness", "readCanonicalDigest"].includes(name)) continue;
+    store[name] = async (...args) => {
+      pending++; peak = Math.max(peak, pending);
+      try { await delay(12); return await operation(...args); } finally { pending--; }
+    };
+  }
+  const result = await f.create({ store }).run(f.options);
+  assert.equal(result.status, "completed", result.reason_code); assert.equal(peak, 1); assert.equal(f.maxLive, 2);
+}));
+await check("queued coordination never starts after its predecessor times out", async () => fixture({ tasks: [task("a")] }, async f => {
+  let release, intentCalls = 0, before;
+  const original = f.store.recordLaunchIntent;
+  const store = { ...f.store, admitDelegatedRequest: () => new Promise(resolve => { release = resolve; }),
+    recordLaunchIntent: async input => { intentCalls++; return original(input); } };
+  const prepareAttempt = async input => {
+    before = intentCalls;
+    await Promise.all([input.callbacks.admitDelegatedRequest({ evaluate: async () => ({ outcome: "allow" }) }), input.callbacks.recordLaunchIntent()]);
+    return f.callbacks.prepareAttempt(input);
+  };
+  const result = await f.create({ store, prepareAttempt, coordinationTimeoutMs: 30 }).run(f.options);
+  assert.equal(result.status, "recovery_required"); assert.equal(result.reason_code, "COORDINATION_TIMEOUT");
+  release({ admitted: true }); await delay(15);
+  assert.equal(intentCalls, before); assert.ok(!f.operations.some(item => item.startsWith("executor:")));
+}));
+await check("late coordination completion cannot release a newer queued call before its deadline check", async () => {
+  let now = 0; const clock = { now: () => now, setTimeout, clearTimeout };
+  await fixture({ tasks: [task("a")], clock }, async f => {
+    let release, intents = 0, before; const original = f.store.recordLaunchIntent;
+    const store = { ...f.store, admitDelegatedRequest: () => new Promise(resolve => { release = resolve; }),
+      recordLaunchIntent: async input => { intents++; return original(input); } };
+    const prepareAttempt = async input => {
+      before = intents;
+      const first = input.callbacks.admitDelegatedRequest({ evaluate: async () => ({ outcome: "allow" }) });
+      while (!release) await Promise.resolve();
+      now = 25; const second = input.callbacks.recordLaunchIntent();
+      now = 40; release({ admitted: true }); await Promise.all([first, second]);
+      return f.callbacks.prepareAttempt(input);
+    };
+    const result = await f.create({ store, prepareAttempt, coordinationTimeoutMs: 30 }).run(f.options);
+    assert.equal(result.reason_code, "COORDINATION_TIMEOUT"); assert.equal(intents, before);
+  });
+});
+await check("local failure drains an in-flight supervisor heartbeat before recovery mutation", async () => {
+  let renewing = false;
+  const clock = { now: () => performance.now(), setTimeout: (fn, ms) => setTimeout(fn, ms === 10000 ? 1 : ms), clearTimeout };
+  await fixture({ tasks: [task("a")], clock }, async f => {
+    const originalRenew = f.store.renewSupervisor, originalInvalidate = f.store.invalidateRun;
+    const store = { ...f.store, renewSupervisor: async input => {
+      renewing = true; try { await delay(20); return await originalRenew(input); } finally { renewing = false; }
+    }, invalidateRun: async input => { assert.equal(renewing, false); return originalInvalidate(input); } };
+    const prepareAttempt = async () => { while (!renewing) await delay(1); throw Object.assign(new Error("FIXTURE_LOCAL_FAILURE"), { code: "FIXTURE_LOCAL_FAILURE" }); };
+    const result = await f.create({ store, prepareAttempt, coordinationTimeoutMs: 1000 }).run(f.options);
+    assert.equal(result.status, "recovery_required"); assert.equal(result.reason_code, "FIXTURE_LOCAL_FAILURE");
+    assert.equal(result.durable_state_known, true); assert.equal(renewing, false);
+  });
+});
 await check("a hung coordination call is bounded and creates no child", async () => fixture({}, async f => {
   f.store.getRun = async () => new Promise(() => {});
   const result = await f.create({ coordinationTimeoutMs: 5 }).run(f.options);
@@ -310,12 +406,35 @@ if (!process.argv.includes("--synthetic-only")) await check("real Git resumes an
   assert.deepEqual(f.state.integration_intents[0].intent,expected);
   assert.equal(f.state.integrations[0].prepared.prepared_by.generation,2);
 }));
+for (const [field, value] of [["objective", "Changed after execution"], ["validation_ids", ["foreign"]], ["task_contract_sha256", "0".repeat(64)]]) {
+  await check(`recovered completed-task ${field} refuses before capture, commit or validation`, async () => fixture({ tasks: [task("a")] }, async f => {
+    const interrupted = await f.create({ validateTask: async () => { throw new Error("fixture interruption"); } }).run(f.options);
+    assert.equal(interrupted.status, "recovery_required");
+    f.state.tasks[0][field] = value;
+    let effects = 0;
+    const result = await f.create({
+      git: { ...f.git,
+        captureTaskChanges: async input => { effects++; return f.git.captureTaskChanges(input); },
+        createTaskCommit: async input => { effects++; return f.git.createTaskCommit(input); },
+      },
+      validateTask: async input => { effects++; return f.callbacks.validateTask(input); },
+    }).resume({ ...f.options, reconciliation: proof });
+    assert.equal(result.status, "recovery_required");
+    assert.equal(result.reason_code, "SUPERVISOR_RESULT_BINDING_INVALID");
+    assert.equal(effects, 0);
+    assert.equal(f.state.acceptances.length, 0);
+    assert.equal(f.state.integrations.length, 0);
+  }));
+}
+
 await check("validation callbacks receive immutable run and result identities",async()=>fixture({tasks:[task("a")]},async f=>{
   const seen=[];
   const options=Object.fromEntries(["validateTask","validateRun","auditRun"].map(name=>[name,async args=>{seen.push({name,args:structuredClone({...args,signal:undefined})});return f.callbacks[name](args);} ]));
   const result=await f.create(options).run(f.options);assert.equal(result.status,"completed",result.reason_code);
   assert.deepEqual(seen.map(item=>item.args.runId),[f.options.runId,f.options.runId,f.options.runId]);
   assert.match(seen[0].args.resultSha256,/^[a-f0-9]{64}$/);
+  assert.deepEqual(seen[0].args.task, f.plan.tasks[0]);
+  assert.deepEqual(seen[0].args.validationIds, ["contents"]);
   assert.equal(seen[1].args.integrationSequence,1);assert.equal(seen[2].args.integrationSequence,1);
 }));
 await check("already applied recovery records fact without another Git CAS",async()=>fixture({tasks:[task("a")],failure:{afterCas:true}},async f=>{
@@ -343,6 +462,65 @@ await check("cancelled resume does not acquire a new generation",async()=>fixtur
   const resumed=await f.create().resume({...f.options,reconciliation:proof,signal:controller.signal});
   assert.equal(resumed.status,"recovery_required");assert.equal(f.state.supervision.current.ownership.generation,generation);
 }));
+
+
+await check("durable cancellation before launch finishes without a worker", async () => fixture({}, async f => {
+  f.state.cancel_request = { request_sha256: "a".repeat(64) };
+  let drainOnly = null; const original = f.store.claimSupervisor;
+  f.store.claimSupervisor = async value => { drainOnly = value.drainOnly; return original(value); };
+  const outcome = await f.create().run(f.options);
+  assert.equal(outcome.status, "cancelled", outcome.reason_code); assert.equal(drainOnly, true);
+  assert.equal(f.state.attempts.length, 0); assert.ok(!f.operations.some(value => value.startsWith("start:")));
+}));
+await check("durable cancellation heartbeat drains results before finishing", async () => {
+  const clock = { now: () => performance.now(), setTimeout: (fn, ms) => setTimeout(fn, ms === 10000 ? 4 : ms), clearTimeout };
+  await fixture({ failure: { workerDelay: 30 }, clock }, async f => {
+    const original = f.store.renewSupervisor;
+    f.store.renewSupervisor = async () => { f.state.cancel_request = { request_sha256: "a".repeat(64) }; return original(); };
+    const outcome = await f.create().run(f.options);
+    assert.equal(outcome.status, "cancelled", outcome.reason_code);
+    assert.ok(f.operations.includes("renewSupervisor")); assert.equal(f.state.attempts.length, 2);
+    assert.ok(f.state.attempts.every(row => row.result.outcome === "cancelled" && row.termination.confirmed));
+    assert.ok(f.operations.indexOf("result:a") < f.operations.indexOf("finish:cancelled"));
+    assert.ok(!f.operations.includes("claim:c")); assert.equal(f.state.acceptances.length, 0);
+  });
+});
+await check("cancelled recovery drains instead of resuming or retrying", async () => fixture({ concurrency: 1, failure: { indeterminate: "a" } }, async f => {
+  await f.create().run(f.options);
+  f.state.cancel_request = { request_sha256: "a".repeat(64) };
+  const outcome = await f.create().resume({ ...f.options, reconciliation: { ...proof,
+    attempts: [{ attemptId: f.state.attempts[0].attempt.attempt_id, proof: { confirmed: true } }] } });
+  assert.equal(outcome.status, "cancelled", outcome.reason_code);
+  assert.ok(!f.operations.includes("resumeRun")); assert.ok(!f.operations.includes("claim:b"));
+  assert.equal(f.operations.filter(value => value === "claim:a").length, 1);
+}));
+
+
+await check("reserved run resumes before first supervisor claim", async () => fixture({}, async f => {
+  const observation = assertUnclaimedAgentRun(f.state);
+  const outcome = await f.create().resume({ ...f.options, reconciliation: { unclaimedRun: observation } });
+  assert.equal(outcome.status, "completed", outcome.reason_code);
+  assert.equal(f.operations.filter(value => value === "claimSupervisor").length, 1);
+  assert.ok(!f.operations.includes("reconcileSupervisor") && !f.operations.includes("resumeRun"));
+}));
+await check("reserved cancellation resumes only to drain without launch", async () => fixture({}, async f => {
+  f.state.cancel_request = { request_sha256: "a".repeat(64) };
+  let drainOnly = false; const original = f.store.claimSupervisor;
+  f.store.claimSupervisor = async value => { drainOnly = value.drainOnly; return original(value); };
+  const outcome = await f.create().resume({ ...f.options, reconciliation: { unclaimedRun: assertUnclaimedAgentRun(f.state) } });
+  assert.equal(outcome.status, "cancelled", outcome.reason_code); assert.equal(drainOnly, true);
+  assert.equal(f.state.attempts.length, 0); assert.ok(!f.operations.includes("resumeRun"));
+}));
+await check("unclaimed resume refuses absent or stale observation and hidden history", async () => {
+  for (const mutate of [f => null, f => ({ ...assertUnclaimedAgentRun(f.state), control_revision: 99 }),
+    f => { const value = assertUnclaimedAgentRun(f.state); f.state.supervision.history.push({}); return value; }]) {
+    await fixture({}, async f => {
+      const unclaimedRun = mutate(f), outcome = await f.create().resume({ ...f.options, reconciliation: { unclaimedRun } });
+      assert.equal(outcome.status, "recovery_required"); assert.match(outcome.reason_code, /UNCLAIMED_RUN_/);
+      assert.ok(!f.operations.includes("claimSupervisor")); assert.equal(f.state.attempts.length, 0);
+    });
+  }
+});
 
 const failed = checks.filter(check => check.status === "FAIL");
 console.log(JSON.stringify({ ok: !failed.length, checks, evidence: {

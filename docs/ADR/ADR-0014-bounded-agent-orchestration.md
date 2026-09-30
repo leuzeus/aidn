@@ -8,8 +8,17 @@ candidate Codex executor, delegated admission and native process controller.
 Lot 5 adds an internal bounded scheduler and the durable consolidation needed
 by dependent tasks (`supervision_candidate`). Lot 6 adds durable preparation
 intent and verification on an isolated exact-commit snapshot. Native availability still requires
-separate qualification of the exact composition. Public `agent-run*` commands
-remain unavailable.
+separate qualification of the exact composition. Lot 7 exposes explicit public
+`agent-run*` previews and lifecycle operations, with a pinned native composition
+that refuses application without the required exact evidence. Coverage remains
+`supervision_candidate`; the final parallel Codex campaign is a separate proof.
+
+Canonical supervision reservations use the exact runtime scope emitted by the
+existing workspace/runtime context resolver. Internal contracts also retain
+historical short scope IDs, without promoting them to aliases at the public
+entry point. Canonical reads and writers share this key, so reservations fence
+the same data that ordinary runtime operations can mutate. This is an identity
+compatibility correction, not a new scope authority or PostgreSQL migration.
 
 ## Date
 
@@ -27,6 +36,75 @@ Bounded parallel work therefore needs distinct task execution, authority and
 acceptance contracts before process or persistence implementations are added.
 
 ## Decision
+
+### Cooperative Codex execution (2026-09-28 amendment)
+
+`agent-execution-plan.v2` explicitly selects
+`assurance_profile: codex-cooperative.v1`. V1 plans retain their original
+semantics and fingerprints; no reader upgrades a plan implicitly. The executor
+remains `codex-cli-task`, the supervisor remains AIDN, and PostgreSQL retains
+the same run/task/attempt authority. JSONB plan storage needs no new migration.
+
+The cooperative plan uses `codex-sandbox-validation-configuration.v3` and
+`agent-verification-boundary.v3`, both declaring `read_isolation: not_guaranteed`.
+They cannot satisfy a strict v1/v2 plan, or consume its qualification. The
+worker's separate `codex-native-profile-policy.v2` remains the explicit
+Codex-managed maintenance policy; its version is not a validation guarantee.
+
+This revises the former read-isolation objective, which remains unachieved.
+Workers and validation commands may read the profile and supervisor. AIDN does
+not transmit PostgreSQL credentials in worker environments, but does not claim
+that secrets on disk are inaccessible. Signatures and named-resource preimages
+provide attribution and observed preservation, not protection from a hostile
+worker that can read the signing material. This is a cooperative workflow.
+
+The retained requirements are bounded writes, an immutable validation snapshot,
+scratch-only validation writes, disabled sandboxed-command network access,
+confirmed descendant termination, delegated admission and exact-SHA acceptance.
+The official Codex sandbox enforces native permissions; AIDN neither installs
+it nor repairs Windows permissions. Worker calls use `codex exec`; validations
+use `codex sandbox` with explicit permissions. No App Server, desktop agent
+transport, additional native home or alternate setup subsystem is introduced.
+
+Public previews expose the selected profile, required guarantees, limitations
+and observed qualification status in `action.preconditions.native`. These facts
+are part of the exact action hash. A declared profile is never a qualification.
+The existing bounded qualification helper can collect first evidence under an
+explicit exact-plan approval; production admission still requires independent
+native reports, matching package/client/helper/hooks/policy pins and confirmed
+process termination. Evidence stays outside the candidate package.
+
+Strict modes keep their existing refusal. Cooperative availability is qualified
+separately, including write restrictions during another launch, real hooks and
+two overlapping workers followed by a dependent task. Until this campaign passes,
+coverage remains `supervision_candidate` and the revised point 5 remains open.
+
+### Cooperative network limitation (2026-09-28 amendment)
+
+`agent-execution-plan.v3` explicitly selects `codex-cooperative.v2` with
+`codex-sandbox-validation-configuration.v4` and `agent-verification-boundary.v4`.
+Both boundary documents declare `read_isolation: not_guaranteed` and
+`network_isolation: not_guaranteed`; the qualification requires
+`network_disabled: false`. This means network denial is not attested. It does
+not assert that every destination is reachable. Earlier plans, profiles and
+their fingerprints keep their meaning; there is no automatic downgrade.
+
+The selected Windows composition allowed a connection to a loopback canary
+despite an explicit disabled-network policy. This observation does not prove
+Internet access. The failed report remains failed and retained. For this new
+profile only, network denial is no longer a delivery or activation criterion.
+Codex still receives the disabled-network request; AIDN does not reconfigure
+Windows filters, add a proxy or replace the official sandbox.
+
+Qualification requires four native cases: filesystem, timeout, cancel and
+callback. An explicitly requested network diagnostic remains separate, may
+report FAIL and never supplies qualification evidence. Concurrent write
+protection, preservation of named resources, confirmed process termination,
+actual admission hooks, exact-SHA validation and the complete parallel campaign
+remain required. Preview includes the network limitation in its action hash.
+The new profile cannot consume old reports or satisfy an older profile. Its
+availability remains conditional on the other native evidence, not on this
+documentary exception alone.
 
 ### Boundaries and identities
 
@@ -50,7 +128,7 @@ session, cycle, logical plan reference, exact task selector, canonical plan
 SHA-256, shared planning revision and activation authority/revision. The
 canonical task has no invented UUID; delegated IDs do not replace its identity.
 
-PostgreSQL remains optional for existing workflows. The future supervised path
+PostgreSQL remains optional for existing workflows. The supervised path
 requires PostgreSQL exclusively and fails closed if it is unavailable. It has
 no file, SQLite or in-memory authority fallback. Lot 2 modeled this requirement;
 lot 3 implements the separate `AgentExecutionStore` port and shared schema 3.
@@ -61,7 +139,7 @@ supervision authority without claiming that workers are available.
 ### Frozen execution contract
 
 Internal versioned schemas live under `src/core/contracts/agent-execution/`.
-The sixteen kinds are descriptor, availability, plan, run, task, attempt,
+The sixteen kinds (eighteen schemas, including three plan versions) are descriptor, availability, plan, run, task, attempt,
 delegation, request, event, result, acceptance, supervisor, integration-prepared,
 integration-applied, integration-intent and run-validation.
 `src/core/agents/agent-execution-contracts.mjs` owns pure semantic checks and
@@ -187,7 +265,8 @@ reads do not bootstrap, register a workspace or renew a worktree heartbeat.
 Intact schema 2 remains readable for backup before migration. Lot 3 required
 schema 3 for writes; lot 5 raised that prerequisite to schema 4, and lot 6
 requires explicit migration to schema 5 for integration intentions and verified
-acceptance observations. Intact historical schemas remain readable for backup.
+acceptance observations. Lot 7 requires schema 6 for durable cancellation and
+cleanup ownership. Intact historical schemas remain readable for backup.
 Backup refuses failed reads instead of emitting an empty success.
 The historical shared-coordination backup/restore covers planning, handoff and
 coordination records only. It is not a backup of execution runs or attempts;
@@ -255,6 +334,12 @@ intent publication, runner observation and event callbacks; a late decision
 cannot authorize a cancelled launch. Confirmation requires an observed
 zero active-process count; loss of observation produces `indeterminate`. Linux
 does not silently substitute PID or process-group termination for this proof.
+A trusted internal caller may supply a separate timeout signal to shorten the
+fixed process ceiling; it cannot extend that ceiling or change cancellation's
+meaning. The first stop cause wins. Native timeout qualification arms this
+shorter deadline after observing the actual hook descendant, rather than
+predicting model latency from a prior invocation. Missing live-descendant or
+termination evidence remains a qualification failure.
 The Codex executor uses resolved executable bytes, structured arguments, explicit
 sandbox/configuration and stdin prompt. It stores bounded transcripts locally,
 awaits serialized callbacks, and never forwards raw Codex JSONL to AIDN stdout.
@@ -397,8 +482,10 @@ criterion remains unavailable. Observed preservation does not prove OS confineme
 the concrete runner also requires an explicitly qualified execution boundary,
 with no raw process fallback. Fixture boundaries and signatures only qualify the
 protocol. Its attestation binds the OS, candidate engine, runner, environment and
-policy, and requires read-only snapshot access, inaccessible supervisor resources,
-disabled network and confirmed descendant termination. The verifier inherits no
+policy, and requires read-only snapshot access and confirmed descendant termination.
+Strict profiles also require inaccessible supervisor resources; network denial
+remains required except in the explicit `codex-cooperative.v2` profile above.
+The verifier inherits no
 environment; its closed variable allowlist permits only OS, locale and explicit
 scratch settings. Each check returns one JSON document containing exactly
 `contract_version: agent-verification-check.v1`, `validation_id` and `status`;
@@ -406,6 +493,161 @@ the child never supplies the tested SHA. Canonical audit replay rereads the
 PostgreSQL and Git facts and refuses material change while retaining prior proof
 bytes. Native permission enforcement requires separate platform evidence.
 No evidence is purged automatically, and repair still requires an explicit task.
+
+### Explicit lifecycle and native composition (lot 7)
+
+The five public commands are launch, status, resume, cancel and cleanup under
+`aidn runtime agent-run*`. Status is read-only; the other commands preview by
+default. `--json` changes only formatting. Launch/resume/cancel require
+`--execute --expect-plan <action_sha256> --sync-relay`; cleanup requires
+`--write --expect-plan <action_sha256> --sync-relay`. The complete action binds
+configuration, target, plan, activation, generation and material preconditions.
+Re-observation must produce the same digest before application. Preview never
+creates claims, leases, worktrees, archives or migrations and never invokes a
+native metadata observer.
+
+The public path requires `plan.supervision.configuration_sha256`. The local
+configuration pins the prepared catalogue, exact installed engine, client,
+helper, Git executable, native profile/consent and verification authorities.
+Historical plans remain valid without this optional field. The prepared
+catalogue binds base and task contracts before a run exists; final plan and
+attempt bindings are applied after reservation, avoiding a fingerprint cycle.
+
+Preparation of fresh unassigned worktrees is an explicit operation before the
+human native review. Each root receives its own canonical verify-only receipt;
+no receipt, authentication or trust is copied. The initial native composition
+supports Windows with an explicitly selected preexisting profile and at most
+four prepared worker roots. This is a native capacity limit, separate from plan
+concurrency. Every root needs an actual native trust observation. Linked roots
+may use the coordinator's observed hook definition, but its trust is not inferred
+for a new root.
+
+After the claim, adoption verifies the complete prepared preimage and durable
+placement intention. Dependent tasks receive the exact integrated input SHA.
+The supervisor preserves installed controls and refuses conflicts, dirty or
+ambiguous roots and protected-path changes. An interrupted placement is retained
+for reconciliation; it cannot reset the root or retry blindly. The native
+bootstrap has its own immutable intent/terminal observations and never converts
+an unknown metadata process into a stopped worker proof.
+The configuration also pins `native.metadata_runner` (Node executable and
+SHA-256). A candidate bridge places metadata observation beneath the controlled
+Windows Job and journals every invocation. Historical `closed`/`pid_absent`
+fields establish only parent-process observation; they never prove descendants
+stopped. Recovery requires the matching Job proof for every metadata operation,
+including failed observations. This bridge still needs separate native evidence.
+
+Production Git commands use the pinned process controller and executable under
+a Job, with an explicit environment and bounded stdin/output. Actual termination
+proofs bind the operation and observed runner; cancellation propagates to that
+controller. An unconfirmed tree quarantines further mutations. Legacy injected
+Git fixtures retain their separate, weaker process evidence and cannot qualify
+the public native path.
+
+Verification snapshots live in a dedicated subtree of run resources. The
+strict validation boundary must prevent access to sibling supervisor evidence,
+signing keys and PostgreSQL credentials and deny network access. The cooperative
+amendments above explicitly revise those guarantees; every profile preserves
+the exact snapshot. Its executable, trampoline, process controller and policy require
+independent native qualification; no caller-provided availability flag supplies
+that proof.
+The inspected Windows Codex elevated sandbox path refreshes native setup even
+when an existing backend is present. It cannot satisfy the current no-provisioning
+boundary and is explicitly refused with `SANDBOX_EXISTING_ONLY_UNSUPPORTED`
+before native process creation. A fabricated positive qualification record cannot
+override this refusal. No fallback backend, profile change or setup operation is
+introduced; the final native composition remains UNAVAILABLE.
+
+Shared schema 6 adds immutable cancellation requests, cleanup operations and
+cleanup resources. A cancellation request is durable and generation-bound; the
+supervisor stops launching and drains its workers. Resume reconciles old owners
+before continuing, including a cancelled run's drain-only path.
+A reservation interrupted before the first supervisor claim uses a distinct
+initial observation: no supervisor history, attempt, acceptance, integration or
+run deadline may exist. The observation binds the run, plan and control revision;
+local process journals must also establish termination before the first claim.
+Earlier worktree preparation is admitted only when each frozen catalogue row
+retains its exact preimage and one matching Git creation invocation. An extra,
+foreign or unfinished mutation blocks this initial recovery; matching a command
+does not replace the independent proof that its process tree has stopped.
+A pending cancellation permits only a drain claim, without launching a worker.
+
+Cleanup accepts completed runs only, after every supervisor, attempt and Git
+operation has confirmed termination. A separate leased cleaner generation owns
+the exact resource set. Before deletion, all bytes, Git metadata and immutable
+descriptors are retained outside those worktrees and bound to the PostgreSQL
+cleanup intention. Accepted verification snapshots must be identified by
+authenticated observations already persisted in PostgreSQL. Removal preserves
+task/source refs and proofs. Recovery after removal observes both the original
+physical root and its worktree metadata absent; relocation or unexplained state
+is refused. Failed runs, conflicts and unknown processes are preserved. No
+automatic purge or general worktree-management API is introduced.
+
+### Codex execution and AIDN governance boundary
+
+Codex owns the native execution environment. Its official tools configure the
+Windows sandbox, authenticate the user and record native project/hook trust.
+AIDN consumes that environment through `codex-cli-task`; it does not administer
+Windows accounts, ACLs, firewall/WFP state or sandbox provisioning.
+
+| Responsibility | Owner and boundary |
+| --- | --- |
+| Native sandbox installation, repair and configuration | Codex official tools, used explicitly outside the AIDN run lifecycle |
+| Authentication and project/hook trust | Native Codex controls and human review; AIDN cannot grant or copy them |
+| Task execution and structured events | Codex `exec`; AIDN supplies explicit cwd, model, effort, sandbox and bounded input/output |
+| Canonical admission, claims and leases | AIDN, with PostgreSQL authority for supervised runs |
+| Dependencies, concurrency and delegated files/operations | AIDN frozen plan, scheduler and admission checks |
+| Timeout, cancellation and descendant termination | AIDN requests the stop and retains independent process-tree evidence; a Codex interruption request is not termination proof |
+| Acceptance, integration and audit | AIDN, bound to the attempt and exact validated Git SHA |
+
+The [official sandbox documentation](https://learn.chatgpt.com/docs/windows/windows-sandbox)
+and [App Server setup API](https://learn.chatgpt.com/docs/app-server#windows-sandbox-setup-windowssandboxsetupstart)
+define the native setup path. `windowsSandbox/setupCompleted` reports the result
+of that operation, not AIDN admission, hook execution or worker qualification.
+The selected task backend remains
+[`codex exec`](https://learn.chatgpt.com/docs/non-interactive-mode); this decision
+adds no App Server task backend or automatic setup/repair fallback.
+
+Preparation is bounded to the plan: configure the sandbox with Codex outside the
+run, prepare the exact AIDN candidate and dedicated worktrees with `verify-only`,
+review native trust, then check availability and run the native probes. An
+incompatible sandbox is refused before launch. The v1 `existing-only` contract
+still returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` for the reviewed client.
+
+The explicit v2 profile and validation contracts select `codex-managed`:
+Codex may maintain its own sandbox resources during native execution, including
+accounts, ACLs and network rules. AIDN calls no setup or repair API and does not
+claim those Windows resources remain globally unchanged. This selection requires
+its own effect-bound consent and never upgrades a v1 policy or proof implicitly.
+Configuration, native trust, hooks and the exact declared protected data, Git and
+AIDN runtime resources remain bound to preimages. The v2 validation plan binds
+that resource list and every observation; a changed protected resource refuses
+qualification. Only independently reviewed native evidence establishes readiness,
+not acceptance of the contract or successful official setup. Windows v2 uses
+Codex's required root-read baseline, with writes restricted to scratch, explicit
+deny rules for the supervisor and Codex home, and no network. Native probes must
+verify those denials; application path scopes do not claim global read isolation.
+
+The reviewed Windows client cannot satisfy this validation boundary even under
+v2. Its ordinary elevated refresh reconciles persistent deny-read ACLs for the
+shared sandbox group, keyed by Codex home. A concurrent launch using the same
+home can revoke an active validation's denials. AIDN cannot serialize other
+Codex clients or establish process isolation by observing five canaries once.
+It therefore returns `SANDBOX_SHARED_DENY_READ_UNSUPPORTED` before effects for
+this exact client, even when signed qualification data is supplied. This is a
+backend incompatibility, not permission to add an AIDN ACL manager or weaken the
+supervisor/profile boundary. See the [source evidence](../AGENT_EXECUTION_NATIVE_QUALIFICATION.md#reviewed-windows-client-incompatibility).
+
+The experimental AIDN managed-setup models, host observers, setup protocol,
+preflight and operator journal are withdrawn from the active implementation.
+Their history remains in Git. The V1 does not reproduce Windows provisioning,
+enumerate the user profile, inspect OneDrive or copy profile history as a repair
+procedure. Existing worker metadata checks and process-tree supervision remain;
+standard process recovery and PostgreSQL run journals are not removed.
+
+Native availability still requires the allowed/forbidden edit, actual hooks,
+descendant stop and preservation proofs, followed by two concurrent Codex workers,
+a dependent task, integration, validation and audit on the exact candidate.
+Neither setup completion nor portable fixture success closes that requirement.
 
 ## Compatibility and qualification
 
@@ -428,6 +670,15 @@ fixtures do not establish that native hooks ran or that the sandbox confined a
 worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
+Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release.
+It covers seven portable suites: lifecycle, workspace, native-attempt composition,
+sandbox validation, controlled profile metadata, shared startup arguments and
+local path policy. Omission or duplicate invocation of any suite is rejected.
+The four context-resilience gates and their 43 historical invocations remain
+unchanged. PostgreSQL, Windows process trees, actual native hooks, validation
+confinement and parallel Codex execution are reported independently. These
+fixtures do not run official setup or qualify a native worker.
+
 The scheduler and Git integration gates use bounded subprocesses and disposable
 repositories. They qualify ordering, recovery and effects independently of real
 Codex parallelism, host confinement and the final native end-to-end scenario.
@@ -438,7 +689,17 @@ Codex parallelism, host confinement and the final native end-to-end scenario.
 - Three information concepts add governance without fabricating runtime state.
 - Pure checks cannot prove physical path safety, live ownership or process death;
   later adapters must enforce and qualify those boundaries.
-- The internal scheduler depends on durable integration for dependent tasks;
-  public command delivery and general cleanup remain subsequent increments.
+- The scheduler depends on durable integration for dependent tasks. Public
+  command availability does not establish native execution readiness; cleanup
+  remains limited to the frozen resources of a completed run.
   No swarm, mailbox, quorum, automatic
   reassignment, unbounded repair or general worktree administration is introduced.
+
+## Application exclusion of cloud workspaces
+
+AIDN agent execution refuses OneDrive paths in workspaces, delegated file scopes,
+requests, configuration and evidence. The check is lexical and precedes target
+observation; bounded local Git/installation pointer checks prevent known indirect
+redirection before delegated activation. Explicit exclusions support renamed
+roots without automatic cloud discovery. This policy changes no cloud ACL and
+claims no operating-system read prohibition or universal shell interception.

@@ -53,6 +53,7 @@ function createFakePgClientFactory() {
           if (sql.includes("CREATE TABLE aidn_shared.execution_runs")) return { rows: [] };
           if (sql.includes("ALTER TABLE aidn_shared.execution_runs")) return { rows: [] };
           if (sql.includes("CREATE TABLE aidn_shared.execution_integration_intents")) return { rows: [] };
+          if (sql.includes("CREATE TABLE aidn_shared.execution_cancel_requests")) return { rows: [] };
           if (!sql || sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK" || sql.startsWith("CREATE SCHEMA") || sql.startsWith("CREATE TABLE") || sql.startsWith("CREATE INDEX")) {
             return { rows: [] };
           }
@@ -234,6 +235,7 @@ function createFakePgClientFactory() {
                 ...(Math.max(...state.schemaMigrations) >= 3 ? ["execution_runs", "execution_tasks", "execution_attempts", "execution_events"].map(table_name => ({ table_name })) : []),
                 ...(Math.max(...state.schemaMigrations) >= 4 ? ["execution_supervisors", "execution_acceptances", "execution_integrations", "execution_run_validations"].map(table_name => ({ table_name })) : []),
                 ...(Math.max(...state.schemaMigrations) >= 5 ? [{table_name:"execution_integration_intents"}] : []),
+                ...(Math.max(...state.schemaMigrations) >= 6 ? ["execution_cancel_requests","execution_cleanup_operations","execution_cleanup_resources"].map(table_name=>({table_name})) : []),
               ],
             };
           }
@@ -293,12 +295,12 @@ async function main() {
     assert(!fake.state.queryLog.some(row => /CREATE|ALTER|UPDATE|INSERT/.test(row.sql)), "current schema bootstrap must execute no DDL or metadata mutation");
 
     const stalePreview = createFakePgClientFactory();
-    stalePreview.state.onMigrationLock = () => { stalePreview.state.schemaMigrations = [2, 3, 4, 5]; };
+    stalePreview.state.onMigrationLock = () => { stalePreview.state.schemaMigrations = [2, 3, 4, 5, 6]; };
     assert((await createPostgresSharedCoordinationStore({ clientFactory: stalePreview.factory }).bootstrap()).ok, "version reread must accept migration completed by another caller");
     assert(!stalePreview.state.queryLog.some(row => /CREATE TABLE/.test(row.sql)), "migration completed before lock acquisition must not be replayed");
 
     const future = createFakePgClientFactory();
-    future.state.schemaMigrations = [2, 3, 4, 5, 6];
+    future.state.schemaMigrations = [2, 3, 4, 5, 6, 7];
     const futureBootstrap = await createPostgresSharedCoordinationStore({ clientFactory: future.factory }).bootstrap();
     assert(!futureBootstrap.ok && futureBootstrap.error.code === "AIDN_SCHEMA_VERSION_AHEAD", "future schema must refuse bootstrap");
     assert(!future.state.queryLog.some(row => /CREATE|INSERT/.test(row.sql)), "future schema refusal must not mutate schema");
@@ -307,7 +309,7 @@ async function main() {
     const empty = createFakePgClientFactory();
     empty.state.schemaMigrations = [];
     assert((await createPostgresSharedCoordinationStore({ clientFactory: empty.factory }).bootstrap()).ok, "empty backend should apply the explicit bootstrap");
-    assert(JSON.stringify(empty.state.schemaMigrations) === "[2,3,4,5]", "empty bootstrap must record all ordered versions");
+    assert(JSON.stringify(empty.state.schemaMigrations) === "[2,3,4,5,6]", "empty bootstrap must record all ordered versions");
 
     const workspaceRegistration = await store.registerWorkspace({
       projectId: "project-1",
@@ -460,7 +462,7 @@ async function main() {
     const health = await store.healthcheck();
     assert(health.ok === true, "healthcheck should succeed");
     assert(health.schema_status === "ready", "healthcheck should expose ready schema status");
-    assert(health.latest_applied_schema_version === 5, "healthcheck should expose latest schema version");
+    assert(health.latest_applied_schema_version === 6, "healthcheck should expose latest schema version");
     assert(health.registered_project_count === 1, "healthcheck should expose registered project count");
     assert(health.compatibility_status === "project-scoped", "healthcheck should expose project-scoped compatibility when no legacy rows remain");
 

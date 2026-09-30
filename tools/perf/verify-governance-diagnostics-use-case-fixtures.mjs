@@ -37,6 +37,15 @@ function main() {
     assert(Array.isArray(diagnostics.runtime_surfaces) && diagnostics.runtime_surfaces.length >= 1, "diagnostics should expose runtime surface coverage");
     assert(typeof diagnostics.runtime_surface_summary.covered === "number", "diagnostics should summarize runtime surface coverage");
     assert(diagnostics.runtime_surfaces.every((item) => typeof item.status === "string" && typeof item.linked_concept_coverage_status === "string"), "diagnostics runtime surfaces should expose status fields");
+    for(const name of ["agent-run","agent-run-status","agent-run-resume","agent-run-cancel","agent-run-cleanup"]) {
+      const surface=diagnostics.runtime_surfaces.find(item=>item.id===`runtime-${name}`);
+      assert(surface?.status==="covered", `${name} must close its effect/JSON surface over governed execution concepts`);
+    }
+    for(const name of ["execution_run","delegated_task","execution_attempt"]) {
+      const governed=GOVERNED_CONCEPTS.find(item=>item.concept===name);
+      assert(governed.coverage_kind==="supervision_candidate" && governed.coverage_note.includes("conditional native prototype"), "coverage must not imply native qualification");
+      assert(!diagnostics.observed_artifacts.some(item=>item.concept===name), "source coverage must not fabricate observed execution instances");
+    }
     assert(Array.isArray(diagnostics.concepts) && diagnostics.concepts.some((item) => item.concept === "baseline"), "diagnostics should include baseline concept coverage");
     assert(diagnostics.concepts.some((item) => item.concept === "snapshot" && item.coverage_kind === "subsumed"), "diagnostics should classify snapshot coverage");
     assert(diagnostics.concepts.some((item) => item.concept === "decision" && item.coverage_kind === "subsumed"), "diagnostics should classify decision coverage");

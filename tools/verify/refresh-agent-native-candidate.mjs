@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../src/core/agents/agent-local-path-policy.mjs";
 import os from "node:os";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -24,6 +25,7 @@ const ARGS = Object.freeze({ pack: "core", persistencePolicy: "verify-only", run
   sourceBranch: "codex/qualification", verifyAfterInstall: true });
 
 function checkedPath(value, kind) {
+  assertAgentLocalPath(value);
   if (typeof value !== "string" || !path.isAbsolute(value)) fail("REFRESH_ABSOLUTE_PATH_REQUIRED");
   const absolute = path.resolve(value);
   let cursor = absolute;
@@ -335,6 +337,7 @@ export function readAgentNativeRefreshLineage(manifestPath, trustEvidencePath, o
 }
 
 async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) {
+  for (const value of [manifestPath, trustEvidencePath, outputRoot, npmCli]) assertAgentLocalPath(value);
   manifestPath = checkedPath(manifestPath, "file");
   trustEvidencePath = checkedPath(trustEvidencePath, "file");
   outputRoot = checkedPath(outputRoot);
@@ -365,7 +368,7 @@ async function inspect({ manifestPath, trustEvidencePath, outputRoot, npmCli }) 
   const from = (root, relative) => import(pathToFileURL(path.join(root, relative)).href);
   const oldActivation = await from(manifest.candidate.packageRoot, "src/application/install/project-activation-service.mjs");
   const { inventoryRuntime } = await from(manifest.candidate.packageRoot, "src/application/install/global-runtime-store.mjs");
-  if (!same(inventoryRuntime(manifest.candidate.packageRoot), manifest.candidate.inventory)) fail("REFRESH_OLD_CANDIDATE_CHANGED");
+  if (!same(inventoryRuntime(manifest.candidate.packageRoot, { beforeObserve: assertAgentLocalPath }), manifest.candidate.inventory)) fail("REFRESH_OLD_CANDIDATE_CHANGED");
   const before = baseline(manifest.roots), markersBefore = gitMarkers(manifest.roots);
   const baselinePath = checkedPath(path.join(oldOutput, "baseline.local.json"), "file");
   const baselineBytes = fs.readFileSync(baselinePath);
@@ -433,7 +436,7 @@ export async function refreshAgentNativeCandidate({ manifestPath, trustEvidenceP
     const { planInstallation, executeInstallation, verifyInstallationCandidate } = await installedModule("src/application/install/installation-service.mjs");
     const { readActivation } = await installedModule("src/application/install/project-activation-service.mjs");
     const candidate = { packageRoot, archivePath, sha256: hash(fs.readFileSync(archivePath)),
-      version: fs.readFileSync(path.join(packageRoot, "VERSION"), "utf8").trim(), inventory: inventoryRuntime(packageRoot) };
+      version: fs.readFileSync(path.join(packageRoot, "VERSION"), "utf8").trim(), inventory: inventoryRuntime(packageRoot, { beforeObserve: assertAgentLocalPath }) };
     if (JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"))).version !== candidate.version) fail("REFRESH_PACKAGE_VERSION_MISMATCH");
     const plans = [];
     for (const entry of manifest.roots) {
@@ -465,7 +468,7 @@ export async function refreshAgentNativeCandidate({ manifestPath, trustEvidenceP
     }
     if (!same(homeBefore, readAgentNativeRefreshHomeIdentity(manifest))) fail("REFRESH_NATIVE_HOME_CHANGED");
     if (hash(fs.readFileSync(manifest.codex.binary_path)) !== manifest.codex.sha256
-        || !same(inventoryRuntime(packageRoot), candidate.inventory)) fail("REFRESH_BINARY_IDENTITY_DRIFT");
+        || !same(inventoryRuntime(packageRoot, { beforeObserve: assertAgentLocalPath }), candidate.inventory)) fail("REFRESH_BINARY_IDENTITY_DRIFT");
     const after = baseline(roots);
     assertAgentNativeRefreshPreservation(before, after, completedRoles);
     assertAgentNativeRefreshGitMarkers(markersBefore, gitMarkers(roots));

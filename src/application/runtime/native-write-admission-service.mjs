@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { assertAgentLocalPath } from "../../core/agents/agent-local-path-policy.mjs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -55,6 +56,7 @@ export function parseNativePatch(request) {
 }
 
 export function resolveNativeAdmissionPath(root, cwd, input, {directory = false} = {}) {
+  for (const selected of [root, cwd, input]) assertAgentLocalPath(selected);
   if (typeof input !== "string" || !input || /[\x00-\x1f]/.test(input)) fail("INVALID_PATH");
   // Windows aliases, ADS, device paths, trailing-dot/space and alternate separators
   // are rejected consistently, including when qualification runs on Unix.
@@ -118,6 +120,8 @@ function observeGit(root) {
 // Consumes only the canonical resolutions already obtained by pre-write-admit.
 // This is scope admission, not content review, native trust, or an atomic lock.
 export function evaluateNativeWriteAdmission({request, result, observed, resolutions, cycleStatusMap, derivedFirstPlanStep, consistency, backendWarning}) {
+  assertAgentLocalPath(result?.target_root);
+  assertAgentLocalPath(request?.cwd);
   const reasons = [], operations = [], snapshots = [];
   const block = (code, requirement = code.toLowerCase()) => reasons.push({code, requirement});
   const root = fs.realpathSync.native(result.target_root);

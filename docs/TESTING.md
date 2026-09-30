@@ -259,6 +259,88 @@ native Codex, OS confinement and concurrent workers remain unqualified here.
 The gate belongs only to the runtime family; the four context-resilience groups
 and their 43 historical invocations are unchanged.
 
+For the public run lifecycle, run
+`npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
+`runtime-agent-run-lifecycle` executes these seven portable suites exactly once
+on dev, main and release:
+
+- `verify-agent-run-lifecycle-fixtures.mjs`
+- `verify-agent-run-workspace-fixtures.mjs`
+- `verify-codex-agent-attempt-fixtures.mjs`
+- `verify-codex-sandbox-validation-fixtures.mjs`
+- `verify-controlled-codex-profile-metadata-fixtures.mjs`
+- `verify-codex-startup-arguments-fixtures.mjs`
+- `verify-agent-local-path-policy-fixtures.mjs`
+
+They check preview purity, explicit action fingerprints, stale state,
+cancellation, read-only status, prepared-root adoption and completed-run cleanup.
+PEM public keys loaded through the native material reader reach the real evidence
+verifier as validated key objects. The file-backed regression rejects invalid
+signatures and incomplete evidence without granting qualification; read-only
+material loading does not open the private signing key.
+Disposable Git tests retain source commits and all local bytes before removal,
+reject relocation as evidence of deletion, recover an already removed owned
+worktree, and preserve unknown controlled-process termination. The injected
+process controller is a double, even when its child is real Git.
+
+The workspace fixture also inspects a 1,600-operation retained journal within
+the existing bound, then detects a newly missing termination record. Oversized
+and multiply linked journal records remain rejected before admission.
+Cleanup batch fixtures reject a missing global stop, late resource drift, partial
+or foreign results and batch timeout. A PostgreSQL connection-error fixture
+proves that no cleanup commits after losing its connection.
+
+Native-attempt fixtures check pinned files, immutable preparation/termination
+receipts, unavailable prerequisites and constructor purity. Sandbox-validation
+fixtures check closed configuration, framed protocol and boundary contracts.
+Controlled-metadata fixtures check explicit candidate/Node pins, bounded
+protocol and unknown-tree recovery. Shared startup fixtures preserve explicit
+worker arguments, integration restrictions and the closed worker environment.
+Local path fixtures reject OneDrive before target observation, including known
+Git and installation pointers, without changing user permissions.
+
+These suites run on Linux and Windows. They neither provision a sandbox nor
+qualify native Codex, real hooks or Windows process confinement. The four
+context-resilience gates and their 43 historical invocations are unchanged.
+AIDN managed-setup, inventory and host-journal experiments are removed from the
+active suite: official sandbox setup belongs to Codex, outside the run lifecycle.
+See the [responsibility boundary and native procedure](AGENT_EXECUTION_NATIVE_QUALIFICATION.md#use-codex-setup-qualify-aidn-separately).
+
+The separate Windows metadata process check
+`node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs --native`
+and exact-package end-to-end campaign remain outside this portable gate. Missing
+native prerequisites are UNAVAILABLE, never a fixture PASS. The current Windows
+validation v1 backend returns `SANDBOX_EXISTING_ONLY_UNSUPPORTED` before any
+native process because its existing-state path refreshes provisioning. V2
+explicitly declares Codex-managed maintenance and binds protected resource
+preimages, but the reviewed client returns `SANDBOX_SHARED_DENY_READ_UNSUPPORTED`
+because its read denials can be removed by a concurrent native launch. Fixtures
+verify this refusal before observers, evidence writes or processes, including
+with signed qualification data. They also test version separation, exact consent,
+native proof requirements and changed-resource refusal; none establishes native
+availability.
+Official setup and native trust review remain separate evidence.
+The cooperative plan v2 and validation boundary v3 are tested independently:
+v1 plan fingerprints stay stable, strict/cooperative evidence cannot mix,
+profile/limit/qualification changes invalidate the exact action, and selecting
+the new profile alone never claims native availability. The same portable
+lifecycle suite covers the preview declaration and version binding. Boundary
+fixtures and the five native cases retain write, network and termination
+requirements; read isolation is explicitly not guaranteed. The native
+filesystem case also observes write restrictions during a second launch and
+after its confirmed stop, within one 60-second cooperative probe budget.
+Changing to this profile requires new exact-package native evidence; old
+strict reports are not reclassified.
+Plan v3/profile `codex-cooperative.v2` and boundary v4 separately declare network
+isolation not guaranteed. Their portable fixtures reject mixed profiles, false
+network-denial attestations and missing write/process proofs. The four required
+native cases are filesystem, timeout, cancel and callback; a separately selected
+network diagnostic preserves its actual outcome and is never qualification
+evidence. Codex still receives a disabled-network request. Existing v1/v2 plans
+and v1/v2/v3 boundary evidence retain their original requirements and hashes.
+The final three-task/two-simultaneous-Codex campaign remains unexecuted until the
+exact compatible composition has its own evidence.
+
 For the injected supervisor candidate, run
 `npm run perf:verify-agent-execution-scheduler-fixtures` and
 `npm run perf:verify-agent-git-integration-fixtures`. Their required runtime gates
@@ -277,6 +359,16 @@ requires every plan check and every audit criterion on the exact integrated SHA.
 The pure contract gate checks the supervisor, integration journals and final
 validation bindings without claiming that it observed Git or a live lease.
 
+Scheduler fixtures also overlap completed workers against a single-invocation
+validator. They verify serial acceptance with concurrent workers, and no queued
+validation after cancellation or the first validation failure. Coordination calls
+from one supervisor also serialize while workers overlap. Queued calls keep the
+original coordination deadline and cannot start after a predecessor times out.
+Verification fixtures carry real child output through the native boundary's
+structured-clone handoff. Strings, Buffers and Uint8Array views retain their
+exact bytes in signed logs, including offset views and binary stderr. Other
+containers and oversized views remain refused before log or proof publication.
+
 For exact-commit verification, run
 `npm run perf:verify-agent-verification-fixtures`. Its required runtime gate
 `runtime-agent-verification` checks frozen controls, runner/environment pins,
@@ -286,6 +378,24 @@ it does not establish native read/write denial or authorize sandbox setup.
 Git recovery fixtures separately cover intent-before-effect, adoption of exact
 local preparation, missing/partial resources and preserved conflicts. PostgreSQL
 fixtures cover additive schema 5, immutable intent and authenticated observations.
+Workspace cleanup fixtures reject fresh content, index, HEAD, config and backlink
+changes without spawning Git inspection processes. They also cover linked
+coordinators, cancellation during scanning, and relocation with renamed worktree
+metadata. These checks retain the full Git preparation and current integration
+head checks; retained Git fields are not reported as fresh observations.
+
+Schema 6 adds cancellation and cleanup ownership. The PostgreSQL suite tests
+generations, retention evidence, stopped predecessors, immutable cleanup results
+and the window between actual Git removal and result publication. Its owned
+verification snapshots are eligible only through authenticated observations
+already accepted by PostgreSQL. Test cleanup removes only the disposable corpus;
+it does not authorize deleting failed or preexisting user resources.
+
+The scheduler-to-verifier regression passes a PostgreSQL-shaped delegated task
+through supervision and the real local verification adapter. It checks that the
+validator receives the exact planned task, while changed task content, selected
+validation IDs or task hash refuse before capture, commit or validation effects.
+Its store/executor/Git scheduling doubles remain fixture evidence, not native proof.
 
 For the candidate Codex task executor and delegated admission, run
 `npm run perf:verify-agent-worker-fixtures`. The required runtime gate tests
@@ -315,11 +425,30 @@ check also covers consented metadata preparation, request/policy/attempt and
 termination bindings, no-launch failures, cancellation and late decisions.
 An observer that ignores cancellation leaves metadata cleanup unconfirmed and
 cannot trigger a final observation of a previously successful attempt.
+Failed before-create, before-resume and port metadata callbacks retain their own
+process evidence through callback error normalization and finalization, separately
+from worker cleanup; an unresolved metadata callback blocks another observation.
+Only the validated, bounded RPC diagnostic survives in those failure details;
+raw payloads and unrelated error details are discarded.
+Activation fixtures preserve the original six short-circuited predicates and
+boolean/exception behavior while retaining only the first local refusal, with a
+role, evaluated booleans and a safe code or code digest in less than 1 KiB.
+Messages, paths and other free fields never enter that diagnostic.
+Observation fixtures accept opaque `account/updated` notifications with object
+parameters and no id before a response or after all responses, without retaining
+parameters or changing requests, deadlines or closure checks. Malformed envelopes,
+server requests and other unexpected methods remain refused without later writes.
 Synthetic callbacks verify that bootstrap and fresh canonical preflight share
 one 60-second maximum budget, counted separately in the run, before the unchanged
 worker deadline begins. The metadata collector and its warm verification remain
-separate bounded observations. These checks neither copy a real profile's
-historical metadata nor establish native startup performance.
+separate bounded observations. The native qualification fixtures also cover
+controller timeoutSignal behavior through portable doubles, and a post-hook
+monotonic deadline independent of a preceding model's latency. They reject late
+observations, preserve the fixed worker ceiling and distinguish cancellation
+from timeout. The focused controller check is
+`node tools/perf/verify-agent-process-tree-fixtures.mjs --portable`; it is also
+called by the existing native-qualification fixture gate. These checks neither
+copy a real profile's historical metadata nor establish native startup performance.
 It does not execute Codex or qualify the OS sandbox. The explicit Windows helper
 build and `tools/perf/verify-agent-process-tree-fixtures.mjs` separately test native
 process trees. An unavailable native prerequisite is not a fixture PASS.
@@ -340,8 +469,14 @@ acquire a PostgreSQL prerequisite. No system service or existing database is mod
 
 The suite uses separate Node processes and an IPC start barrier for concurrent
 migration, reservations and claims. It checks stale ownership, lease expiry,
-durable launch intent, immutable event replay, canonical planning/artifact
-consistency, reservation-aware writers and explicit reconciliation. The
+durable launch intent, typed never-started reconciliation without a synthetic
+result (including reconnect, conflicting state and observed-runner refusal;
+`--reconciliation` selects this regression and its schema prerequisite, reporting other cases skipped),
+immutable event replay, canonical planning/artifact
+consistency, reservation-aware writers and explicit reconciliation. Fresh relational
+bulk writes also run without a legacy snapshot table; an existing legacy table
+is purged only for the affected scopes, and a malformed legacy table must roll
+back the canonical write. The
 fixtures also cover schema 4 supervisor generations, durable deadlines,
 acceptance and prepared/applied journals. Concurrent ownership checks use
 separate processes. Focused transaction cases inject Git observations; the
@@ -786,3 +921,14 @@ Measurements report wall-clock milliseconds and output bytes on the same fixture
 bytes are not tokens. Native qualification uses a reviewed temporary client with
 human trust and verifies both a denied covered edit and an admitted edit after
 fresh core prerequisites. Error, timeout and out-of-coverage tests remain necessary.
+
+### Cloud path policy fixtures
+
+`node tools/perf/verify-agent-local-path-policy-fixtures.mjs` checks the application
+exclusion of standard OneDrive paths, aliases and explicitly excluded roots.
+Filesystem sentinels prove that rejected targets are not observed. Disposable
+Git and installation-pointer fixtures test refusal before activation follows an
+excluded destination. These checks change no user permissions and do not prove
+a Windows read denial, native hook execution or universal shell interception.
+This suite is already part of `runtime-agent-run-lifecycle`; do not rerun it as a
+second admission invocation.

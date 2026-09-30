@@ -11,6 +11,7 @@ const MAINTENANCE = new Set([
   "shared-coordination-bootstrap", "shared-coordination-status",
   "shared-coordination-projects", "governance-diagnostics",
   "list-agent-adapters", "verify-agent-roster", "mode-migrate",
+  "agent-run-status", "agent-run-cancel", "agent-run-cleanup",
 ]);
 const decision = (category, requires_activation = false) => ({ requires_activation, category });
 

@@ -20,9 +20,10 @@ export const GOVERNED_CONCEPTS = Object.freeze([
     concept,
     source_of_truth_concept: concept,
     metadata_concept: concept,
-    required: ["source_of_truth", "metadata"],
+    cli_contract: "runtime-agent-run.v1.schema.json",
+    required: ["source_of_truth", "metadata", "cli_contract"],
     coverage_kind: "supervision_candidate",
-    coverage_note: "Versioned contracts, PostgreSQL authority and an internal bounded scheduler with durable acceptance and integration; public supervised commands remain unavailable. Runtime composition requires explicit dependencies and native qualification. No runtime instances or operational availability are inferred from policy coverage.",
+    coverage_note: "Versioned contracts, PostgreSQL authority and five public lifecycle commands form a conditional native prototype. Explicit pinned configuration and matching native qualification are required. Cancellation and cleanup generations/resources remain records of execution_run; retained evidence is never purged automatically. No runtime instances or operational availability are inferred from policy coverage.",
   })),
   {
     concept: "project_activation",
@@ -196,6 +197,9 @@ export const GOVERNED_CONCEPTS = Object.freeze([
 ]);
 
 export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
+  ...["agent-run", "agent-run-status", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].map(name => ({
+    id: `runtime-${name}`, linked_concepts: ["execution_run", "delegated_task", "execution_attempt", "workspace", "project_activation", "cli_output_contract"],
+  })),
   { id: "bootstrap-authorize", linked_concepts: ["project_activation", "install_assets"] },
   { id: "bootstrap-authorize-write", linked_concepts: ["project_activation", "install_assets"] },
   { id: "bootstrap-revoke", linked_concepts: ["project_activation", "install_assets"] },
