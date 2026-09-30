@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.11.0
+
+- Add governed agent execution with explicit plans, bounded worker concurrency,
+  PostgreSQL claims and fencing, and isolated worktrees. PostgreSQL remains
+  optional for existing sequential workflows; agent execution requires the
+  explicit shared-schema migration through version 6.
+- Expose preview-first run, status, resume, cancel and cleanup commands. Writes
+  and shared synchronization require explicit intent and the exact action
+  fingerprint; unavailable native prerequisites prevent worker execution.
+- Integrate accepted task changes deterministically and start dependent tasks
+  from the actual integration head. Validate and audit the exact final commit;
+  retain signed evidence, process termination proofs and recovery history.
+- Preserve worker concurrency while serializing supervisor coordination. Recover
+  interrupted and never-started attempts without inventing results or acceptance.
+- Bound cleanup inspection with fresh filesystem comparisons and one global
+  termination check per resource batch. Preserve archives and source refs before
+  removing owned worktrees; reject stale observations and lost DB connections.
+- Document explicit cooperative Windows profiles and candidate-bound native
+  qualification. The codex-cooperative.v2 profile does not guarantee read or
+  network isolation. Publishing a package does not grant native trust or qualify
+  a new client setup.
+
 ## 0.10.14
 
 - Execute Codex and shell agent commands in the explicit target worktree through
