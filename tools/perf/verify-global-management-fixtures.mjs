@@ -43,7 +43,8 @@ try {
   const packagePath = path.join(root, 'fixture.tgz'); fs.writeFileSync(packagePath, 'fixture package');
   const options = { home, userHome, codexHome: path.join(userHome, '.codex'), packagePath,
     packageSha256: hash(fs.readFileSync(packagePath)), release: '0.10.0' };
-  const deps = { prepare, preflight: () => ({ compatible: true, projects: [] }) };
+  const probeRoots = [];
+  const deps = { prepare, preflight: ({ candidateRoot }) => { probeRoots.push(candidateRoot); return { compatible: true, projects: [] }; } };
   const before = snapshot(root);
   const plan = await planGlobalUpdate(options, deps);
   assert.equal(plan.status, 'installation-proposed'); assert.deepEqual(snapshot(root), before);
@@ -53,6 +54,8 @@ try {
   fs.writeFileSync(path.join(home, 'bin/aidn-setup.cmd'), '@echo off\r\npowershell.exe -NoProfile -File "%~dp0aidn-setup.ps1" %*\r\nexit /b %errorlevel%\r\n');
   assert.equal((await executeGlobalUpdate({ ...options, write: true, expectedPlanId: plan.plan_id }, deps)).status, 'complete');
   assert.equal((await planGlobalUpdate(options, deps)).status, 'up-to-date');
+  assert.equal(probeRoots.at(-1), source, 'explicit management package owns preview compatibility, not the older active engine');
+  assert(probeRoots.some(root => root !== source), 'apply also verifies the staged immutable candidate');
   assert.equal((await planGlobalUpdate({ ...options, release: '0.9.1' }, deps)).status, 'local-newer');
 
   const target = path.join(root, 'projet été'); fs.mkdirSync(target);

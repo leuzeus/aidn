@@ -2,6 +2,9 @@
 
 ## 0.12.0 (2026-10-02)
 
+- Accept named Codex skill preferences without changing user configuration.
+  Preserve disabled managed skills and support update previews from an explicitly
+  selected verified management package when an older engine cannot read the host.
 - Describe the existing workflow in a shadow definition and parity matrix;
   compile definitions deterministically against a closed primitive registry.
   SPEC and the existing default execution path retain their authority.

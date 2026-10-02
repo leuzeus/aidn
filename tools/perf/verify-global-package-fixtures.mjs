@@ -67,6 +67,12 @@ try {
   fs.writeFileSync(userConfig, `[[skills.config]]\npath = ${JSON.stringify(skill.path)}\nenabled = false\n`);
   assert.throws(() => globalCodexAssets({ home, packageRoot: prepared.packageRoot, userHome, codexHome: path.dirname(userConfig) }), /GLOBAL_SKILL_DISABLED/);
   assert.match(fs.readFileSync(userConfig, 'utf8'), /enabled = false/);
+  fs.writeFileSync(userConfig, '[[skills.config]]\nname = "aidn-context-reload"\nenabled = false\n');
+  assert.throws(() => globalCodexAssets({ home, packageRoot: prepared.packageRoot, userHome, codexHome: path.dirname(userConfig) }), /GLOBAL_SKILL_DISABLED/);
+  const pluginConfig = '[[skills.config]]\nname = "vendor:tool"\nenabled = false\n';
+  fs.writeFileSync(userConfig, pluginConfig);
+  assert.equal(globalCodexAssets({ home, packageRoot: prepared.packageRoot, userHome, codexHome: path.dirname(userConfig) }).length, assets.length);
+  assert.equal(fs.readFileSync(userConfig, 'utf8'), pluginConfig);
   fs.unlinkSync(userConfig);
   const launch = args => spawnSync(process.execPath, [path.join(home, 'bin/global-launcher.mjs'), ...args], { encoding: 'utf8', timeout: 15000, windowsHide: true });
   const result = launch(['--integration-revision', '1', 'version']);

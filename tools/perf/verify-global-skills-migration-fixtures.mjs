@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { planGlobalSkillsMigration, planRestoreGlobalSkillsMigration } from "../../src/application/install/global-skills-migration-service.mjs";
+import { assertGlobalSkillsEnabled, planGlobalSkillsMigration, planRestoreGlobalSkillsMigration } from "../../src/application/install/global-skills-migration-service.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
@@ -80,6 +80,52 @@ try {
     fs.writeFileSync(config, source); const plan = planGlobalSkillsMigration({ codexHome: home });
     assert.equal(plan.ok, true, JSON.stringify(plan.conflicts)); assert.ok(text(plan.operations[0], "after").startsWith(source));
     assert.equal(text(plan.operations[0], "after").match(/\[\[skills.config\]\]/g).length, 2);
+  });
+  check("named_third_party_selectors_are_preserved_byte_for_byte", () => {
+    const source = '[[skills.config]]\r\nname = "vendor:tool"\r\nenabled = false # keep disabled\r\n';
+    fs.writeFileSync(config, source); const before = snapshot(tempRoot);
+    assertGlobalSkillsEnabled(home, [known]);
+    const plan = planGlobalSkillsMigration({ codexHome: home });
+    assert.equal(plan.ok, true, JSON.stringify(plan.conflicts));
+    assert.ok(text(plan.operations[0], "after").startsWith(source));
+    assert.deepEqual(snapshot(tempRoot), before);
+  });
+  check("named_managed_skill_disablement_is_not_bypassed_by_enabled_path", () => {
+    const managed = path.join(home, "skills/aidn-start-session/SKILL.md");
+    for (const prefix of ["", `[[skills.config]]\npath = ${JSON.stringify(managed)}\nenabled = true\n`]) {
+      fs.writeFileSync(config, prefix + '[[skills.config]]\nname = "aidn-start-session"\nenabled = false\n');
+      const before = snapshot(tempRoot);
+      assert.throws(() => assertGlobalSkillsEnabled(home, [managed]), /GLOBAL_SKILL_DISABLED/);
+      assert.deepEqual(snapshot(tempRoot), before);
+    }
+  });
+  check("disabled_path_is_not_bypassed_by_enabled_name", () => {
+    fs.writeFileSync(config, `[[skills.config]]\npath = ${JSON.stringify(known)}\nenabled = false\n[[skills.config]]\nname = "start-session"\nenabled = true\n`);
+    assert.throws(() => assertGlobalSkillsEnabled(home, [known]), /GLOBAL_SKILL_DISABLED/);
+  });
+  check("enabled_managed_name_is_read_without_changing_host_preferences", () => {
+    fs.writeFileSync(config, '[[skills.config]]\nname = "start-session"\nenabled = true\n');
+    const before = snapshot(tempRoot); assertGlobalSkillsEnabled(home, [known]);
+    const plan = planGlobalSkillsMigration({ codexHome: home });
+    assert.equal(plan.ok, false);
+    assert.equal(plan.conflicts[0].code, "NAMED_SKILLS_CONFIG_REQUIRES_INSPECTION");
+    assert.equal(plan.operations.length, 0); assert.deepEqual(snapshot(tempRoot), before);
+  });
+  check("malformed_ambiguous_and_duplicate_name_selectors_fail_closed", () => {
+    for (const source of [
+      '[[skills.config]]\nname = ""\nenabled = false\n',
+      '[[skills.config]]\nname = "vendor:tool"\nenabled = "false"\n',
+      '[[skills.config]]\nname = "vendor:tool"\nname = "other:tool"\n',
+      '[[skills.config]]\nname = "vendor:tool"\n[[skills.config]]\nname = "vendor:tool"\n',
+      `[[skills.config]]\nname = "start-session"\npath = ${JSON.stringify(known)}\n`,
+      '[[skills.config]]\nenabled = false\n',
+    ]) {
+      fs.writeFileSync(config, source); const before = snapshot(tempRoot);
+      assert.throws(() => assertGlobalSkillsEnabled(home, [known]));
+      const plan = planGlobalSkillsMigration({ codexHome: home });
+      assert.equal(plan.ok, false); assert.equal(plan.operations.length, 0);
+      assert.deepEqual(snapshot(tempRoot), before);
+    }
   });
   check("ambiguous_duplicate_or_inline_configuration_is_refused", () => {
     for (const source of [
