@@ -132,6 +132,9 @@ finalization; `--verify` retains its read-only verification behavior.
     specific scope admission. It remains read-only; generic admission is not
     universal write permission. See [specific admission](CODEX_INTEGRATION.md#specific-native-write-admission).
 - `aidn codex hydrate-context --json`
+  - `--context-selection-file <request.json>` is an opt-in read-only consultation
+    with complete scoped units; it refuses output/projection writes and returns
+    exit 2 with a complete JSON response when required knowledge is unavailable
   - hidden bundle output defaults to `.aidn/runtime/context/hydrated-context.json`
   - strict `db-only` does not auto-project visible files
   - use `--materialize-visible-artifacts` to intentionally write managed visible exports

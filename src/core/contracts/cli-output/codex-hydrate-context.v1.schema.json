@@ -22,6 +22,9 @@
     "bundle_budget": {
       "type": ["object", "null"],
       "properties": {
+        "budget_scope": { "type": "string" },
+        "serialization": { "type": "string" },
+        "fits_hard_limit": { "type": "boolean" },
         "budget_status": { "type": "string" },
         "selected_count": { "type": "number" },
         "metadata_only_count": { "type": "number" },
@@ -83,6 +86,95 @@
         },
         "additionalProperties": true
       }
+    },
+    "context_selection": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "mode",
+        "status",
+        "write_authorization",
+        "purpose",
+        "scope",
+        "errors",
+        "omissions",
+        "expansions",
+        "source_revision"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "mode": {
+          "type": "string",
+          "const": "consultative"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "blocked"
+          ]
+        },
+        "write_authorization": {
+          "type": "boolean",
+          "const": false
+        },
+        "purpose": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "unit_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "omissions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "expansions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "source_revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": true
     },
     "runtime_state": { "type": "object", "additionalProperties": true },
     "handoff_packet": { "type": "object", "additionalProperties": true },

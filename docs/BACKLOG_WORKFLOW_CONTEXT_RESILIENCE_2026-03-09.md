@@ -286,6 +286,21 @@ See [GFD_ADOPTION.md](./GFD_ADOPTION.md) for precedence, attempt-evidence limits
 compatibility and rollback. Complete-unit selection and native installation,
 upgrade and model-token qualification remain subsequent lots.
 
+### WCR-13 - Consult Scoped Complete Units Before Default Routing
+
+Status: opt-in consultative selector implemented; default routing and native proof pending
+Priority: medium
+
+L2 adds an explicit read-only selection request to the existing hydrator. It
+checks accepted client unit bindings, declared mandatory dependencies, scope,
+lifecycle, exact source hashes and complete ATX sections before relevance or
+budget. Optional units are omitted whole; missing or oversized mandatory units
+refuse with expansion references. Files mode checks live files; DB-backed modes
+retain canonical-backend resolution. The entire compact JSON response is
+measured. Existing admissions and default routing are retained; source fixture
+measurements do not establish native model tokens. See
+[the consultation contract](./CODEX_INTEGRATION.md#opt-in-scoped-context-consultation).
+
 ## Sequencing Recommendation
 
 1. WCR-01

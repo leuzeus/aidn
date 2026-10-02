@@ -15,6 +15,91 @@ discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
 and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIES.md).
 
+## Opt-in scoped context consultation
+
+`aidn codex hydrate-context --target . --context-selection-file request.json --json`
+consults complete units without writing a cache, visible projection, policy or
+runtime state. It is an explicit alternative for evaluation; ordinary hydration
+and installed routing retain their existing behavior. Activation and canonical
+backend requirements still apply, and a complete response grants no admission.
+
+The caller supplies this versioned request:
+
+```json
+{
+  "schemaVersion": 1,
+  "purpose": "effective",
+  "asOf": "2026-10-02",
+  "scope": {
+    "project_id": "observed-project",
+    "workspace_id": "observed-workspace",
+    "worktree_id": "observed-worktree",
+    "runtime_scope_id": "observed-runtime-scope",
+    "cycle_id": "C101"
+  },
+  "roots": ["task-rule"],
+  "optional": [],
+  "units": [{
+    "id": "task-rule",
+    "path": "SPEC.md",
+    "heading": "## Invariants",
+    "sourceSha256": "replace-with-the-exact-full-source-sha256",
+    "authority": "client-spec",
+    "status": "effective",
+    "scope": {
+      "project_id": "observed-project",
+      "workspace_id": "*",
+      "worktree_id": "*"
+    },
+    "requires": []
+  }]
+}
+```
+
+Use observed identities from runtime diagnostics and the exact source hash from
+`runtime artifact-fetch`; the placeholders above intentionally cannot pass.
+Paths are POSIX artifact paths, relative to the audit root in files mode.
+`heading` is an exact ATX heading, or `null` for the whole artifact. A section
+includes its nested headings, conditions and exceptions; headings in fenced
+code are ignored. Duplicate or missing headings refuse the unit. Setext,
+embedded HTML and semantic interpretation of a rule are outside this selector.
+
+Effective units must match descriptors explicitly accepted by the client owner
+in `governanceAdoption.extensions.contextUnits`. Each authority ID must resolve
+to the same path in the client's adopted authorities and be effective as of the
+query date. The owner defines the roots and mandatory dependency graph; selection
+checks that declared closure, not the completeness of the owner's policy model.
+A request cannot accept detection, invent an authority or remove a dependency.
+`requires` entries have `id` and a nonempty `reason`. A dependency in another
+workspace or worktree additionally requires `crossWorkspace: true` or
+`crossWorktree: true` in the accepted descriptor. This only selects already
+readable data; it grants no access to another backend or checkout. Optional
+session/cycle scope pins distinguish task artifacts from shared rules.
+
+`purpose: historical` allows proposed, hypothetical, superseded and revoked
+units to be read with their lifecycle labels. It does not make them effective.
+The adoption declaration and authority path still have to be structurally valid.
+The request is a consultation description, never a replacement policy store.
+
+Missing mandatory content, unknown scope, changed source hashes, conflicts,
+unaccepted bindings and unavailable headings return `context_selection.status:
+blocked`, empty artifacts, reason codes and expansion references, with exit 2.
+Backend failure remains a diagnostic failure; no stale projection/cache is used.
+Files mode checks the live owned file and refuses symlinks outside the checkout.
+SQLite uses its recorded checkout and the existing identity resolver; unknown
+ownership refuses selection. An explicitly configured PostgreSQL backend cannot
+be replaced by a local `--backend` override.
+
+The budget counts the entire compact UTF-8 JSON response, including observations,
+scope, authority metadata and diagnostics. Optional units are removed whole.
+An oversized mandatory closure refuses with its required size and expansion
+references. Metadata alone can exceed the limit: `fits_hard_limit: false`
+reports that case rather than discarding an admission. `source_revision` binds
+the observed snapshot, backend, request and adoption; it is a read fingerprint,
+not a permission or database publication revision. No selection cache is reused.
+Output and projection flags are refused in this consultation mode. Rollback
+uses the ordinary consumer and preserves client adoption history.
+
 ## Project activation and skill names
 
 Before loading workflow context, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Continue only when `activation.active` is true and admission is admissible. The thirteen public skills now use `aidn-*` names, such as `aidn-context-reload` and `aidn-start-session`; their internal CLI `--skill context-reload` and `--skill start-session` identifiers stay compatible.

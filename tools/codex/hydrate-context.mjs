@@ -42,6 +42,7 @@ function parseArgs(argv) {
     handoffNextAgentGoal: "",
     handoffNote: "",
     json: false,
+    contextSelectionFile: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -57,6 +58,10 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--skill") {
       args.skill = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--context-selection-file") {
+      args.contextSelectionFile = String(argv[i + 1] ?? "").trim();
+      if (!args.contextSelectionFile || args.contextSelectionFile.startsWith("--")) throw new Error("Missing value for --context-selection-file");
       i += 1;
     } else if (token === "--history-limit") {
       args.historyLimit = Number(argv[i + 1] ?? 20);
@@ -152,6 +157,12 @@ function parseArgs(argv) {
   }
   if (!args.target) {
     throw new Error("Missing value for --target");
+  }
+  if (args.contextSelectionFile) {
+    const effects = ["--out", "--materialize-visible-artifacts", "--project-runtime-state", "--project-handoff-packet", "--project-agent-health-summary", "--project-agent-selection-summary", "--project-multi-agent-status"];
+    if (effects.some((flag) => argv.includes(flag))) throw new Error("Consultative context selection refuses output and projection writes");
+    if (argv.includes("--no-artifacts")) throw new Error("Consultative context selection requires canonical artifacts");
+    args.out = "";
   }
   if (!args.contextFile) {
     throw new Error("Missing value for --context-file");
@@ -275,6 +286,7 @@ function shouldProjectMultiAgentStatus(args, hydrated, targetRoot) {
 function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn codex hydrate-context --target . --json");
+  console.log("  npx aidn codex hydrate-context --target . --context-selection-file <request.json> --json  (read-only consultation)");
   console.log("  npx aidn codex hydrate-context --target . --skill context-reload --history-limit 10");
   console.log("  npx aidn codex hydrate-context --target . --skill start-session --project-runtime-state --json");
   console.log("  npx aidn codex hydrate-context --target . --skill start-session --materialize-visible-artifacts --project-runtime-state --json");
@@ -290,11 +302,21 @@ async function main() {
     const args = parseArgs(process.argv.slice(2));
     const hookContextStore = createHookContextStoreAdapter();
     const targetRoot = path.resolve(process.cwd(), args.target);
+    if (args.contextSelectionFile) {
+      const requestFile = path.resolve(targetRoot, args.contextSelectionFile);
+      args.contextRequest = JSON.parse(fs.readFileSync(requestFile, "utf8"));
+    }
     const hydrated = await runHydrateContextUseCase({
       args,
       hookContextStore,
       targetRoot,
     });
+    if (args.contextSelectionFile) {
+      if (args.json) console.log(JSON.stringify(hydrated));
+      else console.log(`Consultative context: ${hydrated.context_selection.status}; units=${hydrated.artifacts.length}; bytes=${hydrated.bundle_budget.total_bytes}`);
+      if (hydrated.context_selection.status === "blocked") process.exitCode = 2;
+      return;
+    }
     let runtimeState = null;
     let handoffPacket = null;
     let agentHealthSummary = null;

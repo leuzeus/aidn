@@ -398,6 +398,7 @@
     "perf:verify-workflow-console": "node tools/perf/verify-workflow-console-fixtures.mjs",
     "perf:verify-workflow-candidate": "node tools/perf/verify-workflow-candidate-fixtures.mjs",
     "perf:verify-workflow-instance": "node tools/perf/verify-workflow-instance-fixtures.mjs",
-    "perf:verify-workflow-segment": "node tools/perf/verify-workflow-segment-fixtures.mjs"
+    "perf:verify-workflow-segment": "node tools/perf/verify-workflow-segment-fixtures.mjs",
+    "perf:verify-scoped-context-selection": "node tools/perf/verify-scoped-context-selection-fixtures.mjs"
   }
 }
