@@ -1,3 +1,5 @@
+import { isWorkflowRecordArtifactPath } from "../../core/workflow/artifact-compare-swap.mjs";
+
 const DB_FIRST_PRESERVED_PATHS = new Set([
   "CURRENT-STATE.md",
   "RUNTIME-STATE.md",
@@ -25,5 +27,6 @@ export function shouldPreserveDbFirstArtifactPath(relativePath) {
   if (DB_FIRST_PRESERVED_PATHS.has(rel)) {
     return true;
   }
+  if (isWorkflowRecordArtifactPath(rel)) return true;
   return /^backlog\/BL-S[0-9]+.*\.md$/i.test(rel);
 }

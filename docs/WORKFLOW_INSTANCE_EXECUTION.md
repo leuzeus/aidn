@@ -5,6 +5,11 @@ in `src/application/runtime/workflow-instance-composition.mjs` is an explicit
 consumer of ADR-0018. It adds no CLI command or automatic workflow selection.
 Definitions remain descriptive, and existing default execution is unchanged.
 
+For reviewed candidate definitions and explicit selection for future instances,
+see [workflow candidate review](WORKFLOW_CANDIDATE_REVIEW.md). Existing instances
+retain their pins. Bulk DB index projection cannot replace a canonical workflow
+record with stale visible content.
+
 ## Preparation and checkpoints
 
 1. Supply a validated definition and explicit shadow context to `initialize`.

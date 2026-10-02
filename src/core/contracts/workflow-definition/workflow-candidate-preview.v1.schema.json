@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/workflow-candidate-preview.v1",
+  "title": "workflow-candidate-preview.v1",
+  "x-aidn-contract-version": "workflow-candidate-preview.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "written",
+    "proposal",
+    "baseline",
+    "scope",
+    "projection",
+    "quiescent",
+    "activation_eligible",
+    "preview_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "workflow-candidate-preview.v1"
+    },
+    "written": {
+      "const": false
+    },
+    "proposal": {
+      "type": "object"
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "instance",
+            "selection"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_sha256",
+        "persistence_sha256",
+        "runtime_scope_id",
+        "activation"
+      ],
+      "properties": {
+        "target_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "persistence_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "runtime_scope_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "activation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "authority_id",
+            "revision"
+          ],
+          "properties": {
+            "authority_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    "projection": {
+      "type": "object"
+    },
+    "quiescent": {
+      "type": "boolean"
+    },
+    "activation_eligible": {
+      "type": "boolean"
+    },
+    "preview_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

@@ -75,6 +75,13 @@ If the payload shape changes, update the schema, the fixture coverage, and the r
 
 ## Internal Shadow Workflow Definition
 
+ADR-0019 adds closed internal `workflow-candidate.v1`,
+`workflow-candidate-preview.v1`, `workflow-projection.v1` and
+`workflow-selection.v1` contracts. Nested definitions and compilations use the
+existing schemas. Retained selection validation recomputes diffs, permission
+ceilings and exact historical review previews. Projection regeneration detects
+stale content. These internal APIs add no public CLI contract case.
+
 ADR-0018 adds the closed internal `workflow-instance.v1` envelope with retained
 definition/compilation schemas, scope pins and typed event history. Replay
 validates cursor, bounded returns, run uniqueness and supervisor result binding.

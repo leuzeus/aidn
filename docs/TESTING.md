@@ -261,7 +261,7 @@ and their 43 historical invocations are unchanged.
 
 For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
-`runtime-agent-run-lifecycle` executes these nine portable suites exactly once
+`runtime-agent-run-lifecycle` executes these ten portable suites exactly once
 on dev, main and release:
 
 - `verify-agent-run-lifecycle-fixtures.mjs`
@@ -273,6 +273,17 @@ on dev, main and release:
 - `verify-agent-local-path-policy-fixtures.mjs`
 - `verify-workflow-segment-fixtures.mjs`
 - `verify-workflow-instance-fixtures.mjs`
+- `verify-workflow-candidate-fixtures.mjs`
+
+The candidate suite is also available as `perf:verify-workflow-candidate`. It
+checks deterministic proposals/diffs, invalid and permission-expanding
+suggestions, exact preview review, stale diagram/document detection, revocation,
+files/SQLite selection history and explicit future-instance selection. Existing
+instances remain pinned. Bulk SQLite DB projection preserves omitted workflow
+records and refuses stale ones; files-mode index refresh remains supported.
+The required PostgreSQL suite additionally checks selection CAS, reconnect,
+reservation fencing and rollback on omitted or stale workflow projections.
+These checks do not call a model or qualify native execution.
 
 The instance suite is also available as `perf:verify-workflow-instance`. It
 checks durable files/SQLite checkpoints, typed human decisions, bounded returns,
