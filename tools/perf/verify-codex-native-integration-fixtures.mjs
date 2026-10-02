@@ -73,6 +73,36 @@ try {
   const runtime = await import(pathToFileURL(path.join(client,".codex/hooks/aidn-hook-runtime.mjs")));
   const admission=runtime.readAdmission(client);
   assert.equal(admission.ok,true,"ready canonical fixture must admit generic write");
+  const compact = JSON.parse(runtime.compactAdmission(admission));
+  assert.equal(compact.admission, admission.admission_status);
+  assert.equal(compact.context.mode, admission.context.mode);
+  assert.equal(compact.write_authorization, false, "summary grants no permission");
+  const blockedAdmission = runtime.readAdmission(client, { nativeRequest: {
+    cwd: client, tool_name: "apply_patch", tool_input: { command: "invalid patch" },
+  }});
+  assert.equal(blockedAdmission.ok, false);
+  assert.equal(JSON.parse(runtime.compactAdmission(blockedAdmission)).admission, "blocked");
+  for (const fill of ["é😀", "\\\"\n\t"]) {
+    const long = { ...blockedAdmission, context: Object.fromEntries(Object.keys(compact.context).map((key) => [key, fill.repeat(1500)])),
+      blocking_reasons: Array.from({length: 12}, (_, index) => `${index}:${fill.repeat(1500)}late exception`) };
+    const original = JSON.stringify(long);
+    const encoded = runtime.compactAdmission(long), summary = JSON.parse(encoded);
+    assert(Buffer.byteLength(encoded, "utf8") <= 2400, "whole escaped UTF-8 payload is bounded");
+    assert.equal(summary.admission, "blocked");
+    assert.equal(summary.write_authorization, false);
+    assert(summary.omissions.blocking_reasons >= 8);
+    assert(summary.omissions.truncated_values.length > 0);
+    assert.match(summary.expansion, /pre-write-admit.*--json/);
+    assert.equal(JSON.stringify(long), original, "formatting must preserve its full input");
+    assert(!Object.values(summary.context).some((value) => /[\uD800-\uDBFF]$/.test(value)), "no split surrogate pair");
+    const denialSummary = runtime.compactAdmission(long, { maxBytes: 1000 });
+    assert(Buffer.byteLength(denialSummary, "utf8") <= 1000);
+    const denial = runtime.deny(`admission blocked. ${denialSummary}`);
+    assert.equal(denial.hookSpecificOutput.permissionDecision, "deny");
+    const retained = denial.hookSpecificOutput.permissionDecisionReason.split("admission blocked. ")[1];
+    assert.deepEqual(JSON.parse(retained), JSON.parse(denialSummary), "denial retains the whole expansion/omission summary");
+  }
+  record("compact-real-admissions-and-explicit-utf8-budget-omissions");
   const before=snapshot(client);
   for(const source of ["startup","resume","compact"]){
     const result=runHook(client,"SessionStart",{source},subfolder);
