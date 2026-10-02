@@ -73,6 +73,16 @@ Contract coverage is closed in both directions:
 
 If the payload shape changes, update the schema, the fixture coverage, and the relevant gate in the same change set.
 
+## Internal Shadow Workflow Definition
+
+ADR-0015 proposes `workflow-definition.v1` under
+`src/core/contracts/workflow-definition/`, using the explicit
+`workflow-definition` validator profile and contract URI namespace. It has no
+public CLI entry, dispatcher or runtime consumer. Descriptors and parity
+expectations in `tests/fixtures/workflow-shadow/` are reference data. The
+`contracts-workflow-shadow` gate checks schema, links, graph shape and existing
+helper behavior; it does not establish executable workflow availability.
+
 ## Internal Agent Execution Contracts
 
 ADR-0014 defines internal schemas under `src/core/contracts/agent-execution/`.

@@ -1,0 +1,402 @@
+{
+  "contract_version": "workflow-shadow-parity.v1",
+  "authority": "reference_only",
+  "baseline": {
+    "commit": "eaf87bd",
+    "product_version": "0.11.0",
+    "spec": "docs/SPEC.md"
+  },
+  "rules": [
+    {
+      "id": "SPEC-R01",
+      "classification": "audit_informed_profile",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R01"
+      },
+      "retained_obligations": "Reload -> start -> explicit mode -> COMMITTING mapping audit; DB-backed modes require blocking DB-backed hooks.",
+      "boundary": "Sequence belongs to the profile; canonical authority and refusal on unavailable backend remain engine invariants.",
+      "evidence_refs": [
+        "session_sequence",
+        "start_admission",
+        "mapped_choices",
+        "canonical_modes"
+      ]
+    },
+    {
+      "id": "SPEC-R02",
+      "classification": "audit_informed_profile",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R02"
+      },
+      "retained_obligations": "THINKING, EXPLORING, COMMITTING retain current permissions and retained-exploration conversion.",
+      "boundary": "Mode is distinct from delivery lane and native assurance. No relaxation of native write admission.",
+      "evidence_refs": [
+        "mode_semantics",
+        "mapped_choices"
+      ]
+    },
+    {
+      "id": "SPEC-R03",
+      "classification": "engine_invariant",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R03"
+      },
+      "retained_obligations": "COMMITTING has one traceable owner; session work is integration/handoff/orchestration unless an explicit exception exists.",
+      "boundary": "Current session/cycle handlers retain these preconditions; sessions/cycles are not made universal workflow primitives.",
+      "evidence_refs": [
+        "branch_ownership",
+        "mapped_choices"
+      ]
+    },
+    {
+      "id": "SPEC-R04",
+      "classification": "project_policy",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R04"
+      },
+      "retained_obligations": "Core DoR: ownership, objective, scope/non-scope, first step, constraints and required usage_matrix; adaptive depth by cycle type.",
+      "boundary": "Mandatory core remains invariant. Only adaptive depth and configured thresholds belong to project policy; existing adapter remains canonical.",
+      "evidence_refs": [
+        "definition_of_ready",
+        "convergence"
+      ]
+    },
+    {
+      "id": "SPEC-R05",
+      "classification": "audit_informed_profile",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R05"
+      },
+      "retained_obligations": "Mandatory drift-check on suspicion; findings, recovery choices and explicit change handling before continuation.",
+      "boundary": "No automated inference of human suspicion or acceptance; existing drift gates remain authoritative.",
+      "evidence_refs": [
+        "drift_procedure"
+      ]
+    },
+    {
+      "id": "SPEC-R06",
+      "classification": "audit_informed_profile",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R06"
+      },
+      "retained_obligations": "Select R1/R2/R3 before creating a branch; R2 needs predecessor import; R3 needs rationale and accepted risk; mismatch stops for user choice.",
+      "boundary": "Explicit intent and coherent ownership are engine invariants; continuity strategy belongs to the profile.",
+      "evidence_refs": [
+        "cycle_continuity"
+      ]
+    },
+    {
+      "id": "SPEC-R07",
+      "classification": "audit_informed_profile",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R07"
+      },
+      "retained_obligations": "Drift check and explicit per-open-cycle resolution, close notes/snapshots, review-ready PR handoff; mandatory DB constraint chain in dual/db-only.",
+      "boundary": "Missing/stale canonical context refuses; resolved outcome and nested checkpoint success stay distinct from admission.",
+      "evidence_refs": [
+        "close_decisions",
+        "cycle_completion",
+        "pr_lifecycle",
+        "canonical_modes"
+      ]
+    },
+    {
+      "id": "SPEC-R08",
+      "classification": "audit_informed_profile",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R08"
+      },
+      "retained_obligations": "Push/open-or-recover/triage/merge; valid threads fixed and tested, invalid threads explained; unresolved threads require explicit documented rationale.",
+      "boundary": "PR routing is tested; actual review and merge authority remain human/provider evidence.",
+      "evidence_refs": [
+        "pr_lifecycle",
+        "review_procedure"
+      ]
+    },
+    {
+      "id": "SPEC-R09",
+      "classification": "engine_invariant",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R09"
+      },
+      "retained_obligations": "After merge identify branch, fetch source, compare divergence; reconcile before new session/cycle; ambiguous strategy requires human choice.",
+      "boundary": "Git continuity is enforced by existing handlers; shadow data authorizes no fetch, merge or reconciliation.",
+      "evidence_refs": [
+        "post_merge",
+        "pr_lifecycle"
+      ]
+    },
+    {
+      "id": "SPEC-R10",
+      "classification": "audit_informed_profile",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R10"
+      },
+      "retained_obligations": "Incident triage L1-L4; L1 local repair, L2 tracked repair, L3/L4 STOP and authorization before rule edits; resume checkpoint and retain concise history.",
+      "boundary": "Project-specific triggers may live in the adapter; severity stop/authorization obligations cannot be weakened.",
+      "evidence_refs": [
+        "incident_procedure"
+      ]
+    },
+    {
+      "id": "SPEC-R11",
+      "classification": "engine_invariant",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R11"
+      },
+      "retained_obligations": "Reload required; COMMITTING audit required; skills do not decide or duplicate rules; missing audit state stops; shared-risk validation must converge across usages.",
+      "boundary": "Definition is reference_data, never a second normative authority. Promotion stays DONE-only and all existing obligations remain.",
+      "evidence_refs": [
+        "invariants",
+        "session_sequence",
+        "branch_ownership",
+        "convergence",
+        "promotion"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "session_sequence",
+      "kind": "procedure",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R01"
+      },
+      "expected_proof": "Record context-reload then start-session, explicit mode and COMMITTING branch audit; hooks alone do not prove the human sequence.",
+      "case_ids": []
+    },
+    {
+      "id": "start_admission",
+      "kind": "assertion",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateSourceBranchTransition"
+      },
+      "expected_proof": "Actions, reason codes, mapped identities and explicit choices match the existing source-branch helper.",
+      "case_ids": [
+        "source_create",
+        "source_choose",
+        "source_resume",
+        "source_stale_source",
+        "source_stale_session",
+        "source_active_session",
+        "previous_unclosed",
+        "previous_pr_open",
+        "previous_pr_closed",
+        "previous_sync_required",
+        "previous_merged",
+        "previous_unknown"
+      ]
+    },
+    {
+      "id": "mapped_choices",
+      "kind": "assertion",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateMappedBranchTransition"
+      },
+      "expected_proof": "Ambiguous/missing mappings refuse; multiple candidates require selection; explicit focus chooses the matching cycle.",
+      "case_ids": [
+        "mapped_ambiguous",
+        "mapped_missing",
+        "mapped_choose",
+        "mapped_session_committing",
+        "mapped_session_thinking",
+        "mapped_session_exploring",
+        "mapped_explicit_focus",
+        "mapped_cycle",
+        "mapped_intermediate",
+        "mapped_unresolved"
+      ]
+    },
+    {
+      "id": "mode_semantics",
+      "kind": "procedure",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R02"
+      },
+      "expected_proof": "THINKING does not implement, EXPLORING retained work enters a cycle, COMMITTING retains ownership. Warning behavior is covered separately by mapped_choices.",
+      "case_ids": []
+    },
+    {
+      "id": "branch_ownership",
+      "kind": "suite_reference",
+      "source": {
+        "path": "tools/perf/verify-branch-cycle-audit-admission-fixtures.mjs",
+        "anchor": "missing_session_mapping_blocks"
+      },
+      "expected_proof": "Existing CLI fixtures admit unique owners and refuse missing mapping; complete_cycle_warning_propagates retains nested warnings.",
+      "case_ids": []
+    },
+    {
+      "id": "cycle_continuity",
+      "kind": "suite_reference",
+      "source": {
+        "path": "tools/perf/verify-cycle-create-admission-fixtures.mjs",
+        "anchor": "source_branch_requires_choice"
+      },
+      "expected_proof": "Source requires explicit choice; session R2 and latest-cycle R1 pass; canonical unavailable/ambiguous context refuses.",
+      "case_ids": []
+    },
+    {
+      "id": "definition_of_ready",
+      "kind": "suite_reference",
+      "source": {
+        "path": "tools/perf/verify-start-session-admission-fixtures.mjs",
+        "anchor": "CASES"
+      },
+      "expected_proof": "Existing COMMITTING admission keeps canonical objective, scope, first step, constraints and project-adapter DoR checks.",
+      "case_ids": []
+    },
+    {
+      "id": "drift_procedure",
+      "kind": "procedure",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R05"
+      },
+      "expected_proof": "Suspected drift invokes drift-check; confirmed drift records recovery and parking-lot/CR/cycle/scope decision before resuming.",
+      "case_ids": []
+    },
+    {
+      "id": "incident_procedure",
+      "kind": "procedure",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R10"
+      },
+      "expected_proof": "L1 can self-repair; L2 retains temporary evidence; L3/L4 stop and require human authorization before changing rules.",
+      "case_ids": []
+    },
+    {
+      "id": "convergence",
+      "kind": "procedure",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R11"
+      },
+      "expected_proof": "Validate declared usage_matrix with meaningful non-primary usage; one passing nominal case cannot establish shared-surface stability.",
+      "case_ids": []
+    },
+    {
+      "id": "cycle_completion",
+      "kind": "suite_reference",
+      "source": {
+        "path": "tools/perf/verify-cycle-close-completion-fixtures.mjs",
+        "anchor": "main"
+      },
+      "expected_proof": "Terminal cycle closure keeps canonical evidence and propagates nested warning/refusal; terminal checkpoint does not reactivate a cycle.",
+      "case_ids": []
+    },
+    {
+      "id": "promotion",
+      "kind": "procedure",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "Only DONE cycles are eligible"
+      },
+      "expected_proof": "Only retained DONE cycles may be promoted; non-retained outcomes keep history and cannot enter the session baseline.",
+      "case_ids": []
+    },
+    {
+      "id": "close_decisions",
+      "kind": "assertion",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateCloseSessionTransition"
+      },
+      "expected_proof": "Missing session, unresolved/stale cycles and stale report refuse; resolved close retains decisions and outside-session warning.",
+      "case_ids": [
+        "close_missing_session",
+        "close_unresolved",
+        "close_stale_unresolved",
+        "close_stale_report",
+        "close_allowed",
+        "close_outside_session"
+      ]
+    },
+    {
+      "id": "pr_lifecycle",
+      "kind": "suite_reference",
+      "source": {
+        "path": "tools/perf/verify-pr-orchestrate-admission-fixtures.mjs",
+        "anchor": "push_required_without_upstream"
+      },
+      "expected_proof": "Existing CLI fixtures distinguish push, open PR, await review, post-merge sync and canonical lifecycle refusals.",
+      "case_ids": []
+    },
+    {
+      "id": "review_procedure",
+      "kind": "procedure",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R08"
+      },
+      "expected_proof": "Triage valid/invalid Codex threads with evidence and resolve or record explicit rationale before merge; await_review is not proof of human review.",
+      "case_ids": []
+    },
+    {
+      "id": "post_merge",
+      "kind": "assertion",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateLatestSessionContinuation"
+      },
+      "expected_proof": "Merged with pending sync refuses a new session; reconciled merge permits it.",
+      "case_ids": [
+        "previous_sync_required",
+        "previous_merged"
+      ]
+    },
+    {
+      "id": "invariants",
+      "kind": "assertion",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateRepairRouting"
+      },
+      "expected_proof": "Block overrides clean; warning routes audit-first; unknown reanchors; clear permits execution-or-audit.",
+      "case_ids": [
+        "repair_block",
+        "repair_explicit_block",
+        "repair_warning",
+        "repair_clear",
+        "repair_ok",
+        "repair_unknown"
+      ]
+    },
+    {
+      "id": "canonical_modes",
+      "kind": "suite_reference",
+      "source": {
+        "path": "tools/perf/verify-start-session-canonical-fixtures.mjs",
+        "anchor": "verifyCanonicalStartSession"
+      },
+      "expected_proof": "files/dual/db-only honor configured PostgreSQL, reject unavailable authority and stale/misleading projections; SQLite canonical reads preserve storage.",
+      "case_ids": []
+    },
+    {
+      "id": "alternate_macro",
+      "kind": "declaration",
+      "source": {
+        "path": "docs/ADR/ADR-0015-shadow-workflow-definition.md",
+        "anchor": "Second macro path"
+      },
+      "expected_proof": "Same schema expresses diagnosis, human approval, correction, review and at most two review-to-correction returns, then stop. No compiler/executor is claimed.",
+      "case_ids": []
+    }
+  ]
+}

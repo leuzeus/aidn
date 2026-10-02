@@ -16,3 +16,4 @@ Architectural decisions for the workflow product.
 - `ADR-0011-codex-installation-ownership-and-native-boundary.md`
 - `ADR-0012-project-activation-and-namespaced-skills.md`
 - `ADR-0013-global-user-runtime.md` (implementation in progress)
+- `ADR-0015-shadow-workflow-definition.md` (proposed; reference data only)

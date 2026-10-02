@@ -722,6 +722,22 @@ Use them when a change affects:
 
 ### 3. Workflow Admission / Repair-Layer Verifications
 
+For the descriptive workflow compatibility lot, run
+`npm run perf:verify-workflow-shadow`. The cataloged
+`contracts-workflow-shadow` gate checks the internal schema, the current and
+alternate macro descriptors, SPEC-R01 through SPEC-R11 coverage, actual shared
+helper decisions and negative reference/graph fixtures. The matrix in
+`docs/WORKFLOW_SHADOW_PARITY.md` distinguishes assertions from linked suites,
+procedural obligations and declaration-only evidence. No workflow is compiled
+or executed from the descriptors.
+
+Complement it with the existing workflow-transition fixture tool,
+start-session admission (including canonical backend/projection cases),
+branch-cycle admission, cycle-create admission, context-completion and
+state-mode-parity suites. These exercise the existing path without a binding.
+Explicit binding, compiled parity, durable instances and native execution are
+outside this lot; a reference descriptor passing is not evidence for them.
+
 These commands validate enforcement behavior:
 
 - `npm run perf:verify-start-session-admission`

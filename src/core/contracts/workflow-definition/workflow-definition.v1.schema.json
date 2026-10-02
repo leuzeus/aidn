@@ -1,0 +1,222 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/workflow-definition.v1",
+  "title": "Internal descriptive workflow definition v1",
+  "x-aidn-contract-version": "workflow-definition.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "workflow_id",
+    "revision",
+    "authority",
+    "lifecycle_status",
+    "owner",
+    "source_of_truth",
+    "compatibility",
+    "entry",
+    "steps",
+    "transitions"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "workflow-definition.v1"
+    },
+    "workflow_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "maxLength": 96
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "authority": {
+      "const": "shadow"
+    },
+    "lifecycle_status": {
+      "const": "reference_only"
+    },
+    "owner": {
+      "const": "aidn-maintainers"
+    },
+    "source_of_truth": {
+      "const": "docs/SPEC.md"
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_version",
+        "workflow_version",
+        "execution"
+      ],
+      "properties": {
+        "product_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "workflow_version": {
+          "const": 7
+        },
+        "execution": {
+          "const": "unsupported"
+        }
+      }
+    },
+    "entry": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "maxLength": 96
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "source",
+          "outcomes",
+          "rule_refs",
+          "evidence_refs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "maxLength": 96
+          },
+          "kind": {
+            "enum": [
+              "aidn_step",
+              "agent_segment",
+              "gate",
+              "human_decision",
+              "terminal"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "anchor"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^(docs|src|tools|scaffold|package)/[A-Za-z0-9_./-]+$"
+              },
+              "anchor": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 400
+              }
+            }
+          },
+          "outcomes": {
+            "type": "array",
+            "minItems": 0,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]*$",
+              "maxLength": 96
+            }
+          },
+          "rule_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^SPEC-R(0[1-9]|1[01])$"
+            }
+          },
+          "evidence_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]*$",
+              "maxLength": 96
+            }
+          },
+          "terminal_result": {
+            "enum": [
+              "completed",
+              "stopped",
+              "deferred"
+            ]
+          }
+        }
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "from",
+          "outcome",
+          "to",
+          "rule_refs",
+          "evidence_refs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "maxLength": 96
+          },
+          "from": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "maxLength": 96
+          },
+          "outcome": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "maxLength": 96
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "maxLength": 96
+          },
+          "rule_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^SPEC-R(0[1-9]|1[01])$"
+            }
+          },
+          "evidence_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]*$",
+              "maxLength": 96
+            }
+          },
+          "max_traversals": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "on_exhausted": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "maxLength": 96
+          }
+        }
+      }
+    }
+  }
+}
