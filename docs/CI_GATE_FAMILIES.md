@@ -14,7 +14,7 @@ selected at most once on a pull request.
 
 | Family | Workflow | Primary checks |
 | --- | --- | --- |
-| Contracts | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | JSON contracts, internal shadow workflow parity and exhaustive surface catalog |
+| Contracts | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | JSON contracts, internal shadow workflow parity and pure compilation, exhaustive surface catalog |
 | Effects | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | effect policy and no implicit write |
 | Governance | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | source of truth, metadata, completeness |
 | Docs | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | Markdown contracts and CLI inventory |

@@ -152,6 +152,15 @@
   },
   "gates": [
     {
+      "id": "contracts-workflow-compilation",
+      "family": "contracts",
+      "script": "perf:verify-workflow-compilation",
+      "job": "governance-admission/gates",
+      "surfaces": ["src/core/workflow", "src/core/contracts/workflow-definition", "package/catalogs/workflow-shadow.v1.json", "pure shadow compilation and parity"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "contracts-workflow-shadow",
       "family": "contracts",
       "script": "perf:verify-workflow-shadow",

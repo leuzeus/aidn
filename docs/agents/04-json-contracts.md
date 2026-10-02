@@ -83,6 +83,14 @@ expectations in `tests/fixtures/workflow-shadow/` are reference data. The
 `contracts-workflow-shadow` gate checks schema, links, graph shape and existing
 helper behavior; it does not establish executable workflow availability.
 
+ADR-0016 adds `workflow-shadow-context.v1` and `workflow-compilation.v1` in the
+same internal profile. Compilation is pure, with caller-supplied context and
+explicit definition/registry/compiler fingerprints. Optional `primitive_ref`
+preserves structural v1 compatibility; compilation requires a registered
+reference. No public CLI registry entry, binding or production dispatch is added.
+`contracts-workflow-compilation` verifies deterministic output and semantic
+refusals; a valid shadow envelope grants no authority to execute.
+
 ## Internal Agent Execution Contracts
 
 ADR-0014 defines internal schemas under `src/core/contracts/agent-execution/`.
