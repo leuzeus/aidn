@@ -2,8 +2,11 @@
 
 The internal `createProjectWorkflowInstanceService({ targetRoot })` composition
 in `src/application/runtime/workflow-instance-composition.mjs` is an explicit
-consumer of ADR-0018. It adds no CLI command or automatic workflow selection.
+consumer of ADR-0018. It performs no automatic workflow selection.
 Definitions remain descriptive, and existing default execution is unchanged.
+
+The experimental [workflow console](WORKFLOW_CONSOLE.md) now provides CLI and
+dashboard consumers of this service, with the same admission and recovery rules.
 
 For reviewed candidate definitions and explicit selection for future instances,
 see [workflow candidate review](WORKFLOW_CANDIDATE_REVIEW.md). Existing instances

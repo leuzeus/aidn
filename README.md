@@ -144,6 +144,12 @@ CLI effect semantics:
 - Public command effect classes live in `src/core/cli/effect-policy.mjs` and are verified with `npm run perf:verify-cli-effect-policy` plus `npm run perf:verify-cli-no-implicit-write`.
 - Public JSON output contracts live under `src/core/contracts/cli-output/` and are verified with `npm run perf:verify-cli-output-contracts`.
 
+The experimental [workflow console](docs/WORKFLOW_CONSOLE.md) exposes canonical
+workflow observations through `aidn runtime workflow-inspect --json` and the
+same guarded actions through `aidn runtime workflow-action`. A local dashboard
+starts only with `aidn runtime workflow-dashboard --serve`; JSON alone is a
+preview. It preserves existing instance pins and supervisor admission.
+
 Bounded supervised runs use a separate opt-in command family:
 `aidn runtime agent-run`, `agent-run-status`, `agent-run-resume`,
 `agent-run-cancel` and `agent-run-cleanup`. Every command selects a pinned local

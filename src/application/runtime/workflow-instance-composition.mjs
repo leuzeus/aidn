@@ -23,7 +23,7 @@ export function readWorkflowProjectAuthority({ targetRoot }) {
       activation: { authority_id: activation.authorization.authority_id, revision: activation.authorization.revision } } };
 }
 
-// Internal opt-in API. No automatic selection, CLI entry or client installation.
+// Opt-in API consumed by the console. No automatic selection or installation.
 export function createProjectWorkflowInstanceService({ targetRoot }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   const mode = () => resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "files";

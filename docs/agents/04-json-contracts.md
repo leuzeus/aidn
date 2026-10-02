@@ -75,6 +75,12 @@ If the payload shape changes, update the schema, the fixture coverage, and the r
 
 ## Internal Shadow Workflow Definition
 
+ADR-0020 exposes the experimental `runtime-workflow-inspect.v1`,
+`runtime-workflow-action.v1` and `runtime-workflow-dashboard.v1` public roots.
+The common derived view retains exact IDs, reason codes and independent run
+status axes. CLI and HTTP fixtures compare complete objects; existing internal
+schemas still validate nested instances and selections before projection.
+
 ADR-0019 adds closed internal `workflow-candidate.v1`,
 `workflow-candidate-preview.v1`, `workflow-projection.v1` and
 `workflow-selection.v1` contracts. Nested definitions and compilations use the

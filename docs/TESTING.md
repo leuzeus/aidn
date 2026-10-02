@@ -261,7 +261,7 @@ and their 43 historical invocations are unchanged.
 
 For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
-`runtime-agent-run-lifecycle` executes these ten portable suites exactly once
+`runtime-agent-run-lifecycle` executes these eleven portable suites exactly once
 on dev, main and release:
 
 - `verify-agent-run-lifecycle-fixtures.mjs`
@@ -274,6 +274,19 @@ on dev, main and release:
 - `verify-workflow-segment-fixtures.mjs`
 - `verify-workflow-instance-fixtures.mjs`
 - `verify-workflow-candidate-fixtures.mjs`
+- `verify-workflow-console-fixtures.mjs`
+
+The console suite is also available as `perf:verify-workflow-console`. It
+compares complete CLI and HTTP read/action payloads on disposable files/SQLite
+clients, exact preview application, revocation and stale projections; checks
+Host/Origin/token and unknown-effect refusal, in-flight preview invalidation,
+unavailable stores and mode
+changes; and keeps completed execution distinct from accepted/integrated/cleaned
+results. A changed checkpoint after preview is rejected before writing. The
+required PostgreSQL suite additionally compares CLI/HTTP against the actual
+backend and proves no read-time data, checkout or DDL changes. Browser visual
+inspection is separate from automated transport proof; neither is native
+executor qualification.
 
 The candidate suite is also available as `perf:verify-workflow-candidate`. It
 checks deterministic proposals/diffs, invalid and permission-expanding

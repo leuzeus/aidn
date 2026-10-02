@@ -22,8 +22,9 @@ export function createWorkflowInstanceService({ store, readAuthority, readSegmen
     }
     return observed;
   }
-  function commit(instance, previous, write, productive = true) {
+  function commit(instance, previous, write, productive = true, expectedResultSha256 = null) {
     if (typeof write !== "boolean") fail("WORKFLOW_INSTANCE_EXPLICIT_EFFECT_REQUIRED");
+    if (expectedResultSha256 && instance.instance_sha256 !== expectedResultSha256) fail("WORKFLOW_INSTANCE_PREVIEW_CHANGED");
     authority(instance, productive);
     if (!write) return { written: false, instance, cursor: inspectWorkflowInstance(instance) };
     authority(instance, productive);
@@ -44,23 +45,23 @@ export function createWorkflowInstanceService({ store, readAuthority, readSegmen
   }
   return Object.freeze({
     inspect(id) { const retained = current(id); return { ...retained, cursor: inspectWorkflowInstance(retained.instance) }; },
-    initialize({ instanceId, definition, context, write = false }) {
+    initialize({ instanceId, definition, context, write = false, expectedResultSha256 = null }) {
       const observed = readAuthority();
       const retained = store.read(instanceId);
       if (retained.instance) fail("WORKFLOW_INSTANCE_ALREADY_EXISTS");
       const instance = createWorkflowInstance({ instanceId, definition, context, scope: observed.scope });
-      return commit(instance, retained, write);
+      return commit(instance, retained, write, true, expectedResultSha256);
     },
-    decide({ instanceId, expectedSha256, outcome, evidence, write = false }) {
+    decide({ instanceId, expectedSha256, outcome, evidence, write = false, expectedResultSha256 = null }) {
       if (!expectedSha256) fail("WORKFLOW_INSTANCE_EXPECTED_REVISION_REQUIRED");
       const previous = current(instanceId, expectedSha256);
-      return commit(decideWorkflowInstance(previous.instance, { outcome, evidence }), previous, write);
+      return commit(decideWorkflowInstance(previous.instance, { outcome, evidence }), previous, write, true, expectedResultSha256);
     },
-    prepareSegment({ instanceId, expectedSha256, configurationPath, planPath, write = false }) {
+    prepareSegment({ instanceId, expectedSha256, configurationPath, planPath, write = false, expectedResultSha256 = null }) {
       if (!expectedSha256) fail("WORKFLOW_INSTANCE_EXPECTED_REVISION_REQUIRED");
       const previous = current(instanceId, expectedSha256);
       const { configuration, plan } = readSegment({ configuration_path: configurationPath, plan_path: planPath });
-      return commit(prepareWorkflowInstanceSegment(previous.instance, { configuration, plan, configurationPath, planPath }), previous, write);
+      return commit(prepareWorkflowInstanceSegment(previous.instance, { configuration, plan, configurationPath, planPath }), previous, write, true, expectedResultSha256);
     },
     async segment({ instanceId, expectedSha256, command = "agent-run-status", expectPlan = null, execute = false, syncRelay = false }) {
       if (!["agent-run", "agent-run-status", "agent-run-resume", "agent-run-cancel"].includes(command)) fail("WORKFLOW_INSTANCE_COMMAND_UNSUPPORTED");
@@ -81,14 +82,14 @@ export function createWorkflowInstanceService({ store, readAuthority, readSegmen
       }
       return lifecycle.invoke(args, { workflowInstance: pending });
     },
-    async reconcile({ instanceId, expectedSha256, write = false }) {
+    async reconcile({ instanceId, expectedSha256, write = false, expectedResultSha256 = null }) {
       if (!expectedSha256) fail("WORKFLOW_INSTANCE_EXPECTED_REVISION_REQUIRED");
       const previous = current(instanceId, expectedSha256);
       const result = await this.segment({ instanceId, expectedSha256 });
       if (result.errors?.length || !result.status) fail("WORKFLOW_INSTANCE_RECONCILIATION_REQUIRED");
       // This is observation only; uncertainty cannot call an executor. The CAS
       // writer retains the canonical reservation fence until the run releases it.
-      return commit(reconcileWorkflowInstanceSegment(previous.instance, result.status), previous, write, false);
+      return commit(reconcileWorkflowInstanceSegment(previous.instance, result.status), previous, write, false, expectedResultSha256);
     },
   });
 }
