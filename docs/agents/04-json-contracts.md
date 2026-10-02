@@ -75,6 +75,11 @@ If the payload shape changes, update the schema, the fixture coverage, and the r
 
 ## Internal Shadow Workflow Definition
 
+ADR-0018 adds the closed internal `workflow-instance.v1` envelope with retained
+definition/compilation schemas, scope pins and typed event history. Replay
+validates cursor, bounded returns, run uniqueness and supervisor result binding.
+Its opt-in internal composition adds no public JSON command or registry case.
+
 ADR-0017 adds closed `workflow-segment-binding.v1` and
 `workflow-segment-selection.v1` contracts in this namespace. The binding's nested
 definition and context are validated against their existing schemas by the

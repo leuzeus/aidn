@@ -16,6 +16,9 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "workflow_instance", source_of_truth_concept: "workflow_instance", metadata_concept: "workflow_instance",
+    required: ["source_of_truth", "metadata"], coverage_kind: "internal_candidate",
+    coverage_note: "Internal opt-in checkpoint service and canonical artifact adapters; no public CLI or native qualification inferred." },
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => ({
     concept,
     source_of_truth_concept: concept,

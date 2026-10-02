@@ -261,7 +261,7 @@ and their 43 historical invocations are unchanged.
 
 For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
-`runtime-agent-run-lifecycle` executes these eight portable suites exactly once
+`runtime-agent-run-lifecycle` executes these nine portable suites exactly once
 on dev, main and release:
 
 - `verify-agent-run-lifecycle-fixtures.mjs`
@@ -272,6 +272,15 @@ on dev, main and release:
 - `verify-codex-startup-arguments-fixtures.mjs`
 - `verify-agent-local-path-policy-fixtures.mjs`
 - `verify-workflow-segment-fixtures.mjs`
+- `verify-workflow-instance-fixtures.mjs`
+
+The instance suite is also available as `perf:verify-workflow-instance`. It
+checks durable files/SQLite checkpoints, typed human decisions, bounded returns,
+stale revisions, retained lock evidence, process interruption before and after
+a simulated effect, status-only recovery, and the real project composition on
+a disposable activation fixture. The required PostgreSQL suite checks actual
+artifact CAS with competing connections, reconnect, no DDL, rollback and the
+existing run reservation fence. These fixtures do not qualify native Codex.
 
 The segment suite is also available as `perf:verify-workflow-segment`. It verifies
 explicit configuration v2, closed binding/selection contracts, canonical and

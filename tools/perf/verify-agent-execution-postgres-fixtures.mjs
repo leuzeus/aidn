@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createPublicAgentRunLifecycle } from "../../src/application/runtime/agent-run-public-composition.mjs";
 import { parseAgentRunArguments } from "../../src/application/runtime/agent-run-lifecycle-service.mjs";
 import { bindWorkflowSegment } from "../../src/core/workflow/workflow-segment-binding.mjs";
+import { createWorkflowInstance, decideWorkflowInstance, assertWorkflowInstance } from "../../src/core/workflow/workflow-instance.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -518,6 +519,36 @@ async function runSuite({ connectionString, version, root }) {
       await shared.healthcheck();
       assert.equal(await dataSnapshot(), before); assert.equal(await ddlCount(), ddl);
     });
+    await check("workflow checkpoint CAS survives reconnect, concurrent writers and reservation fencing", async () => {
+      const seeded = await seed({ reserve: false }), scope = seeded.plan.canonical.runtime_scope_id;
+      const source = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/workflow-shadow/diagnostic-correction.v1.json", import.meta.url), "utf8"));
+      const definition = { ...source, entry: "approval", steps: source.steps.filter(row => row.id !== "diagnose"), transitions: source.transitions.filter(row => row.from !== "diagnose") };
+      const instance = createWorkflowInstance({ instanceId: "fixture", definition,
+        context: { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "db-only" },
+        scope: { target_sha256: "a".repeat(64), persistence_sha256: "a".repeat(64), runtime_scope_id: scope, activation: { authority_id: "fixture", revision: 1 } } });
+      const artifact = { path: "workflows/instances/fixture.json", kind: "workflow_instance", content: JSON.stringify(instance) };
+      const ddl = await ddlCount();
+      await executePostgresArtifactCommand(client, [scope], "compare-and-swap", { artifact, expectedSha256: null });
+      const peers = [new pg.Client({ connectionString }), new pg.Client({ connectionString })];
+      await Promise.all(peers.map(peer => peer.connect()));
+      try {
+        const observed = await executePostgresArtifactCommand(peers[0], [scope], "get", { path: artifact.path });
+        assertWorkflowInstance(JSON.parse(observed.content));
+        const outcomes = await Promise.allSettled(peers.map((peer, index) => executePostgresArtifactCommand(peer, [scope], "compare-and-swap", {
+          artifact: { ...artifact, content: JSON.stringify(decideWorkflowInstance(instance, { outcome: index ? "rejected" : "approved", evidence: [{ ref: "fixture", sha256: "b".repeat(64) }] })) },
+          expectedSha256: sha(artifact.content),
+        })));
+        assert.equal(outcomes.filter(row => row.status === "fulfilled").length, 1);
+        assert.match(outcomes.find(row => row.status === "rejected").reason.message, /ARTIFACT_REVISION_CONFLICT/);
+        const retained = await executePostgresArtifactCommand(peers[1], [scope], "get", { path: artifact.path });
+        assert.equal(JSON.parse(retained.content).revision, 2);
+        const digest = await seeded.store.readCanonicalDigest({ scopeKey: scope });
+        await seeded.store.reserveRun({ ...seeded.reservation, canonicalSnapshotSha256: digest.canonical_snapshot_sha256 });
+        const before = await dataSnapshot();
+        await reject(executePostgresArtifactCommand(peers[0], [scope], "compare-and-swap", { artifact, expectedSha256: sha(retained.content) }), "ARTIFACT_EXECUTION_SCOPE_RESERVED");
+        assert.equal(await dataSnapshot(), before); assert.equal(await ddlCount(), ddl);
+      } finally { await Promise.all(peers.map(peer => peer.end())); }
+    });
     await check("canonical resolver scope survives reservation and fences every canonical writer", async () => {
       let projectContext;
       const context = await seed({ reserve: false, transform: plan => {
@@ -617,6 +648,14 @@ async function runSuite({ connectionString, version, root }) {
           assert.equal(selected.action.preconditions.workflow.validation, "compiled");
           assert.ok(selected.action.preconditions.blockers.includes("AGENT_RUN_ACTIVATION_INVALID"));
           assert.ok(selected.action.preconditions.blockers.includes("AGENT_RUN_ABSOLUTE_PATH_REQUIRED"), "missing native candidate path must be reported");
+          const pins = { run_id: configuration.run_id, plan_sha256: context.plan.plan_sha256,
+            configuration_sha256: fingerprintAgentExecutionValue(configuration), binding_sha256: configuration.workflow.binding_sha256 };
+          const pinned = await createPublicAgentRunLifecycle({ workflowInstance: pins }).invoke(selectedArgs);
+          assert.equal(pinned.action_sha256, selected.action_sha256);
+          for (const field of Object.keys(pins)) {
+            const stale = await createPublicAgentRunLifecycle({ workflowInstance: { ...pins, [field]: "changed" } }).invoke(selectedArgs);
+            assert.deepEqual(stale.errors, ["WORKFLOW_INSTANCE_SEGMENT_CHANGED"]); assert.equal(stale.written, false);
+          }
           config.runtime.stateMode = "db-only"; writeAidnProjectConfig(target, config);
           const changed = await createPublicAgentRunLifecycle().invoke(selectedArgs);
           assert.deepEqual(changed.errors, ["WORKFLOW_SEGMENT_CONTEXT_CHANGED"]); assert.equal(changed.written, false);
