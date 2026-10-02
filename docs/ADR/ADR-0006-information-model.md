@@ -83,6 +83,21 @@ completeness. The schemas remain in the internal `agent-execution` namespace,
 outside the public CLI output registry. Native activation and termination
 qualification remain separate from persistence fixture evidence.
 
+## Scoped method adoption extension (2026-10-02)
+
+GFD references are governed within `project_policy`, not a separate concept or
+runtime store. Package-source adoption lives in the explicitly scoped
+`package/governance/gfd-adoption.v1.json`; a client's optional
+`governanceAdoption` remains in its existing durable workflow adapter. Owner,
+scope, pinned method, explicit acceptance, lifecycle, section bindings, omissions,
+review triggers and immutable prior-record references have a versioned validator.
+Proposed detection is never promoted to an effective rule. Source acceptance is
+not inherited by clients, and metadata validity cannot grant runtime authority.
+The complete GFD attempt/outcome schemas and retrospective migration are not
+adopted. `gate_result` remains excluded telemetry and supervised
+`execution_attempt` retains its existing contracts. See ADR-0010 and
+[the adoption guide](../GFD_ADOPTION.md) for the accepted scope and limits.
+
 ## Options Compared
 
 | Option | Result |

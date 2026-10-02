@@ -150,9 +150,10 @@ const METADATA_POLICIES = freezeDeep([
     label: "Project",
     required: ["project_id", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
     sourceOfTruthConcept: "project_policy",
-    evidenceTargets: ["src/lib/config/workflow-adapter-config-lib.mjs"],
-    recommended: ["steward", "privacy_classification", "retention_policy"],
+    evidenceTargets: ["src/lib/config/workflow-adapter-config-lib.mjs", "src/core/governance/adoption-policy.mjs", "package/governance/gfd-adoption.v1.json"],
+    recommended: ["steward", "privacy_classification", "retention_policy", "governance_adoption"],
     lifecycle: "draft -> active -> archived",
+    notes: "Optional governanceAdoption has an explicit owner, scope, pinned method, proposed/accepted/deprecated/superseded/revoked lifecycle, acceptance decision, section dispositions and review triggers. Its versioned validator preserves extensions and history references; unknown versions or malformed records fail before writing. Source adoption and installed-project acceptance remain distinct; gate_result stays CI telemetry.",
   }),
   policy({
     concept: "workspace",

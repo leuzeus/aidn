@@ -6,6 +6,7 @@ import {
   normalizeStateMode,
 } from "./aidn-config-lib.mjs";
 import { writeFileAtomicSync } from "../fs/atomic-write-lib.mjs";
+import { preserveGovernanceAdoption } from "../../core/governance/adoption-policy.mjs";
 
 const WORKFLOW_ADAPTER_CONFIG_VERSION = 1;
 
@@ -75,6 +76,9 @@ export function createDefaultWorkflowAdapterConfig(options = {}) {
   return {
     version: WORKFLOW_ADAPTER_CONFIG_VERSION,
     projectName: normalizeString(options.projectName),
+    ...(Object.hasOwn(options, "governanceAdoption") ? {
+      governanceAdoption: preserveGovernanceAdoption(options.governanceAdoption, { expectedScope: "installed-project" }),
+    } : {}),
     constraints: {
       runtime: normalizeString(options.constraints?.runtime),
       architecture: normalizeString(options.constraints?.architecture),
@@ -238,6 +242,9 @@ export function normalizeWorkflowAdapterConfig(data, options = {}) {
   return {
     version: WORKFLOW_ADAPTER_CONFIG_VERSION,
     projectName: normalizeString(base.projectName, defaults.projectName),
+    ...(Object.hasOwn(base, "governanceAdoption") ? {
+      governanceAdoption: preserveGovernanceAdoption(base.governanceAdoption, { expectedScope: "installed-project" }),
+    } : {}),
     constraints: {
       runtime: normalizeString(constraints.runtime, defaults.constraints.runtime),
       architecture: normalizeString(constraints.architecture, defaults.constraints.architecture),

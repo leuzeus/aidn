@@ -9,6 +9,7 @@ import {
 } from "../../lib/config/aidn-config-lib.mjs";
 import {
   normalizeWorkflowAdapterConfig,
+  readWorkflowAdapterConfig,
   resolveWorkflowAdapterConfigPath,
   writeWorkflowAdapterConfig,
 } from "../../lib/config/workflow-adapter-config-lib.mjs";
@@ -529,6 +530,7 @@ export function previewWorkflowAdapterMigration({
   }
   const legacyWorkflowSourcePath = buildLegacyWorkflowSourcePath(targetRoot);
   const aidnConfigState = readAidnProjectConfig(targetRoot);
+  const priorAdapter = readWorkflowAdapterConfig(targetRoot);
   const workflowText = readUtf8(workflowPath);
   const extractionSourceText = fs.existsSync(legacyWorkflowSourcePath)
     ? readUtf8(legacyWorkflowSourcePath)
@@ -564,6 +566,8 @@ export function previewWorkflowAdapterMigration({
   const retainedImportedSections = filterRetainedImportedSections(importedSections, promotedConfig);
   const finalizedConfig = normalizeWorkflowAdapterConfig({
     ...promotedConfig,
+    ...(Object.hasOwn(priorAdapter.data, "governanceAdoption")
+      ? { governanceAdoption: priorAdapter.data.governanceAdoption } : {}),
     legacyPreserved: {
       ...(promotedConfig.legacyPreserved ?? {}),
       importedSections: retainedImportedSections,

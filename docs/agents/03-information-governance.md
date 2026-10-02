@@ -72,6 +72,14 @@ If a concept already has a parent surface or an orthogonal telemetry layer, do n
 
 Keep the source-of-truth policy, metadata policy, and governance diagnostics in sync with the information model.
 
+GFD adoption is scoped project policy, not a new runtime concept. The package
+source declaration and client opt-in compatibility boundary are documented in
+[GFD_ADOPTION.md](../GFD_ADOPTION.md). Proposed detection cannot become an
+effective authority, and structural declaration validity grants no permission.
+Preserve earlier adoption references and distinguish material claim changes
+from editorial or observational additions. `gate_result` remains excluded CI
+telemetry; its failure alone supplies no verdict about an unexecuted product.
+
 ADR-0014 introduces internal contracts, transactional persistence and an injected
 supervisor candidate. `supervision_candidate` marks complete policy coverage
 without advertising public supervised commands or native qualification. Policy

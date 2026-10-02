@@ -275,6 +275,19 @@ restent des lots ulterieurs. Rejeu et interpretation: [TESTING.md](./TESTING.md)
 Suivi du routage: WCR-11 dans le
 [backlog de resilience](./BACKLOG_WORKFLOW_CONTEXT_RESILIENCE_2026-03-09.md).
 
+## Adoption explicite L1 - 2026-10-02
+
+Statut: adoption source partielle et preservation cliente implementees.
+
+La declaration source epingle GFD et les bindings locaux sous ADR-0010; les
+omissions et responsabilites humaines restent explicites. Le champ optionnel
+`governanceAdoption` de l'adaptateur client est valide et preserve sans adoption
+par defaut ni promotion d'une proposition. Il reste une politique projet locale
+dans les trois modes, sans migration DB ou changement d'admission.
+Rejeu: `node tools/perf/verify-governance-adoption-fixtures.mjs`, egalement inclus
+dans le gate existant de completude. Guide: [GFD_ADOPTION.md](./GFD_ADOPTION.md).
+Selection d'unites completes et qualification native restent a realiser.
+
 ## P2 - Application pilote External Pilot
 
 ### P2-01 - Migrer `external-pilot` apres validation AIDN

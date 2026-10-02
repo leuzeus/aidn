@@ -705,6 +705,20 @@ checked separately. Known scope and truncation limitations are observations,
 not desired acceptance criteria. No selector, runtime admission, GFD adoption,
 or existing context-resilience gate changes as part of this baseline.
 
+The existing governance-completeness gate also runs the L1 adoption fixtures.
+For a focused replay use
+`node tools/perf/verify-governance-adoption-fixtures.mjs`. The fixtures validate
+the pinned source declaration, its section/reference closure and each row's
+human responsibility. They prove that detection remains proposed, effective
+claims require an explicit date, invalid or unsupported declarations fail
+before writing, and nested extensions and historical references survive.
+Preview, explicit write and read-only list preserve a client-owned adoption in
+all three state-mode environments and satisfy the existing extensible v1 JSON
+roots. Adapter migration preserves the declaration from durable policy instead
+of inferring it from generated Markdown. All writes use owned temporary clients
+with cleanup; these checks do not qualify native install/upgrade or full GFD.
+See [the adoption guide](./GFD_ADOPTION.md) for scope and omissions.
+
 The local-daemon fixture prepares its temporary client with the canonical
 activation helper before starting the daemon. It filters copied installation
 assets and receipts rather than reusing another client's activation. Its
