@@ -1,11 +1,11 @@
 # Upgrade Guide
 
-## Prepared 0.12.0 workflow boundary
+## Upgrade to 0.12.0
 
-The 0.12.0 candidate adds opt-in workflow instances and the local console. The
+The 0.12.0 release adds opt-in workflow instances and the local console. The
 existing default workflow, workflow schema version 7 and database schema remain
 unchanged. Publication, global engine update and client/native qualification are
-separate operations; this preparation does not perform them.
+separate operations; publishing the package does not update or qualify clients.
 
 Before a version change, retain canonical instance/selection history and inspect
 any pending supervised runs through the existing lifecycle. Instance definitions,

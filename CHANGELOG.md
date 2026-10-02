@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.12.0 (prepared, not published)
+## 0.12.0 (2026-10-02)
 
 - Accept named Codex skill preferences without changing user configuration.
   Preserve disabled managed skills and support update previews from an explicitly
@@ -22,9 +22,9 @@
   productive writes to old-version instances without automatic migration.
 - Normalize the gzip operating-system byte in release tarballs so identical
   compressed payloads retain the same archive hash on Windows and Linux.
-- Prepare version metadata and upgrade guidance. This candidate adds no database
-  schema migration and does not qualify or update an external client, install
-  native hooks, publish a tag, or change default workflow selection.
+- Preserve database schema and default workflow selection. Existing workflow
+  instances remain pinned to their original product version; engine updates,
+  client migration and native hook qualification retain their separate admission.
 
 ## 0.11.0
 
