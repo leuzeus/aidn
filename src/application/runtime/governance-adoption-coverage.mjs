@@ -82,11 +82,13 @@ function readRecord(file, { root, scope, asOf, reference, adapter = false }) {
     if (!inside(fs.realpathSync(root), fs.realpathSync(file))) return empty("unavailable", ["declaration_outside_target"]);
     if (!fs.statSync(file).isFile() || fs.statSync(file).size > 1048576) return empty("unavailable", ["declaration_not_a_bounded_regular_file"]);
     const bytes = fs.readFileSync(file);
-    const document = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    let document;
+    try { document = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)); }
+    catch { return empty("invalid", ["declaration_invalid_utf8_or_json"]); }
     if (adapter && (!document || Array.isArray(document) || typeof document !== "object")) return empty("invalid", ["adapter_root_invalid"]);
     if (adapter && !Object.hasOwn(document, "governanceAdoption")) return empty("absent");
     return projectRecord(adapter ? document.governanceAdoption : document, { root, scope, asOf, sha256: hash(bytes), reference });
-  } catch { return empty("invalid", ["declaration_unreadable_or_invalid_json"]); }
+  } catch { return empty("unavailable", ["declaration_unreadable"]); }
 }
 
 export function projectGovernanceAdoptionCoverage({ targetRoot, packageRoot, asOf = new Date().toISOString().slice(0, 10) }) {
