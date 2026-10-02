@@ -39,7 +39,7 @@ Adapter rules in this file extend (but do not redefine) canonical mechanics from
 
 ```yaml
 workflow_product: aidn-workflow
-workflow_version: 0.10.7
+workflow_version: 0.12.0
 installed_pack: core
 project_name: repo-installed-core
 source_branch: dev
