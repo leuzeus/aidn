@@ -19,7 +19,7 @@ const root = path.resolve(import.meta.dirname, "../..");
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
 async function main() {
-  const report = { status: "FAIL", checks: [], native_client_qualification: "UNAVAILABLE", observations: {} };
+  const report = { status: "FAIL", proof_class: "fixture", checks: [], native_client_qualification: "UNAVAILABLE", observations: {}, measurements: [] };
   let stage = "fixture-setup";
   let temporary;
   const check = (name, observed, expected = true) => {
@@ -99,6 +99,19 @@ async function main() {
       ["S08-late-invariant", request(["invariants"]), "complete", ["invariants"]],
     ];
     report.corpus_sha256 = hash(JSON.stringify({ documents, units, scenarios }));
+    // Physical observation pins remain in the run hash above. This second hash
+    // identifies the logical corpus across disposable package runs.
+    const stableCorpus = (value) => {
+      if (Array.isArray(value)) return value.map(stableCorpus);
+      if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, stableCorpus(item)]));
+      if (value === scope.worktree_id) return "<observed-worktree>";
+      if (value === scope.runtime_scope_id) return "<observed-runtime-scope>";
+      return value;
+    };
+    report.logical_corpus_sha256 = hash(JSON.stringify(stableCorpus({ documents, units, scenarios })));
+    report.implementation_sha256 = Object.fromEntries(["src/application/codex/hydrate-context-use-case.mjs",
+      "src/application/codex/scoped-context-selection.mjs", "tools/perf/verify-scoped-context-selection-fixtures.mjs"]
+      .map((file) => [file, hash(fs.readFileSync(path.join(root, file)))]));
     stage = "eight-acceptance-scenarios";
     const legacy = await runHydrateContextUseCase({ targetRoot: temporary, hookContextStore: store, args });
     for (const [id, req, status, included] of scenarios) {
@@ -109,6 +122,33 @@ async function main() {
       check(`${id}_admission_unchanged`, result.decisions, legacy.decisions);
       check(`${id}_complete_json_budget`, result.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(result)));
       check(`${id}_no_truncation`, result.artifacts.every((row) => row.content_state === "included"));
+      const baselineTimes = [], scopedTimes = [];
+      let baselineBytes = 0, scopedBytes = 0;
+      for (let sample = 0; sample < 5; sample += 1) {
+        const baselineSample = async () => {
+          const start = performance.now();
+          const current = await runHydrateContextUseCase({ targetRoot: temporary, hookContextStore: store, args });
+          baselineTimes.push(performance.now() - start); baselineBytes = Buffer.byteLength(JSON.stringify(current));
+          assert.deepEqual(current.decisions, legacy.decisions, `${id}: repeated baseline admission`);
+        };
+        const scopedSample = async () => {
+          const start = performance.now(), current = await hydrate(req);
+          scopedTimes.push(performance.now() - start); scopedBytes = Buffer.byteLength(JSON.stringify(current));
+          assert.equal(current.context_selection.status, status, `${id}: repeated selection status`);
+          assert.deepEqual(current.artifacts.map((row) => row.unit_id), included, `${id}: repeated scope/closure`);
+          assert.deepEqual(current.decisions, legacy.decisions, `${id}: repeated admission unchanged`);
+          assert.equal(current.bundle_budget.total_bytes, scopedBytes, `${id}: repeated whole JSON count`);
+          assert(current.artifacts.every((row) => row.content_state === "included"), `${id}: repeated complete units`);
+        };
+        if (sample % 2) { await scopedSample(); await baselineSample(); }
+        else { await baselineSample(); await scopedSample(); }
+      }
+      const distribution = (values) => { const sorted = [...values].sort((a, b) => a - b); return {
+        min: sorted[0], median: sorted[Math.floor(sorted.length / 2)], max: sorted.at(-1) }; };
+      report.measurements.push({ scenario: id, scoped_status: status, repetitions: 5, alternating_order: true,
+        legacy_complete_json_bytes: baselineBytes, scoped_complete_json_bytes: scopedBytes,
+        byte_difference: scopedBytes - baselineBytes, legacy_service_ms: distribution(baselineTimes), scoped_service_ms: distribution(scopedTimes),
+        admission_unchanged: true, native_tokens: "UNAVAILABLE", native_context_presented: "UNAVAILABLE" });
     }
     const late = await hydrate(request(["invariants"]));
     check("late_exception_retained_utf8", late.artifacts[0].content_excerpt.includes("Été 😀"));

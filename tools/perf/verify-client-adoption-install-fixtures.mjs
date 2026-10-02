@@ -18,7 +18,7 @@ const packageRoot = value("--package-root", path.resolve(import.meta.dirname, ".
 const baselineRoot = value("--baseline-package-root", packageRoot);
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-client-adoption-install-"));
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const output = { status: "FAIL", proof_class: "fixture", checks: [], modes: [], native_qualification: "UNAVAILABLE", package: {} };
+const output = { status: "FAIL", proof_class: "fixture", checks: [], modes: [], baseline_observations: [], native_qualification: "UNAVAILABLE", package: {} };
 let stage = "prepare";
 const check = (name, observed) => { output.checks.push({ name, pass: Boolean(observed) }); assert(observed, name); };
 function snapshot(root) {
@@ -77,7 +77,19 @@ try {
     check(`${mode}_adoption_alone_does_not_activate`, !fs.existsSync(path.join(target, ".aidn/install/authorization.json")));
     await apply(baseline, baselineRoot);
     check(`${mode}_new_install_preserves_exact_adapter`, fs.readFileSync(adapterFile).equals(adapterBefore));
-    check(`${mode}_new_install_preserves_client_extension`, fs.readFileSync(path.join(target, "docs/audit/WORKFLOW.md"), "utf8").includes("External policy conflict requires owner arbitration"));
+    const extensionPresent = () => fs.readFileSync(path.join(target, "docs/audit/WORKFLOW.md"), "utf8").includes("External policy conflict requires owner arbitration");
+    if (baselineRoot !== packageRoot) {
+      const firstGeneration = extensionPresent();
+      output.baseline_observations.push({ mode, first_generation_client_extension: firstGeneration ? "PASS" : "FAIL",
+        recovery: firstGeneration ? "not_needed" : "explicit baseline reinstall before update; original FAIL retained" });
+      // The historical package may contain the first-generation defect fixed in
+      // L4. Preserve that FAIL, then use its supported reinstall to prepare only
+      // the update comparison. Candidate fresh install is a separate strict run.
+      if (!firstGeneration) await apply(baseline, baselineRoot);
+      check(`${mode}_baseline_ready_generation_preserves_client_extension`, extensionPresent());
+      check(`${mode}_baseline_recovery_keeps_policy_and_history`, fs.readFileSync(adapterFile).equals(adapterBefore)
+        && fs.readFileSync(path.join(target, client.history[0].reference)).equals(historyBefore));
+    } else check(`${mode}_new_install_preserves_client_extension`, extensionPresent());
     // A legitimate owner-maintained adapter update requires new derived docs.
     // This makes rollback exercise a real generation rather than a no-op repeat.
     const updatedAdapter = JSON.parse(adapterBefore); updatedAdapter.projectName = "updated synthetic client";
@@ -108,7 +120,8 @@ try {
     check(`${mode}_rollback_keeps_client_adoption_and_history`, fs.readFileSync(adapterFile).equals(adapterBefore)
       && fs.readFileSync(path.join(target, client.history[0].reference)).equals(historyBefore));
     check(`${mode}_rollback_keeps_outside_block_authority`, fs.readFileSync(path.join(target, "AGENTS.md"), "utf8").startsWith("# Client instructions"));
-    output.modes.push({ mode, install: "PASS", upgrade: baselineRoot === packageRoot ? "same-package reinstall PASS" : "same-version candidate update PASS",
+    output.modes.push({ mode, install: baselineRoot === packageRoot ? "candidate fresh install PASS" : "prepared baseline; see first-generation observations",
+      upgrade: baselineRoot === packageRoot ? "same-package adapter generation update PASS" : "same-version candidate update PASS",
       rollback: "PASS", adoption_sha256: hash(adapterBefore), history_sha256: hash(historyBefore) });
   }
   output.status = "PASS";
