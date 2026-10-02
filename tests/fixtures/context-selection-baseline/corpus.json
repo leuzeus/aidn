@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "baseline_reference": {
+    "commit": "ad4a1ce4a31917e28f8274b6cbbddb99c44d6dd0",
+    "tree": "e0781b7d173661b0a15b4dcb740f9b913c1a8031"
+  },
+  "scope": "Synthetic source-service fixtures; no installed client or native hook qualification.",
+  "guarantees": [
+    "Explicitly read-only service invocation leaves all fixture files unchanged.",
+    "Selected content retains source identity, selection reasons and visible truncation.",
+    "Unchanged selected sources retain their revision; changed selected sources change it.",
+    "Artifact-count omissions remain visible.",
+    "A missing index does not reuse a stale derived bundle.",
+    "The compact blocked admission retains its read-only instruction."
+  ],
+  "padding_line": "Neutral synthetic background; this line grants no authority or permission.\n",
+  "padding_repetitions": 100,
+  "mandatory_unit": "## Synthetic late invariant\nA required rule must be supplied completely or its consultation must be blocked.\nThis fixture is a test criterion, not an adopted product policy.\n",
+  "cycles": [
+    { "cycle_id": "C101", "state": "IMPLEMENTING", "fixture_worktree": "A" },
+    { "cycle_id": "C202", "state": "OPEN", "fixture_worktree": "B" }
+  ],
+  "routing_assets": [
+    "scaffold/root/AGENTS.md",
+    "scaffold/codex/aidn-context-reload/SKILL.md",
+    "scaffold/docs_audit/CURRENT-STATE.md",
+    "scaffold/docs_audit/WORKFLOW-KERNEL.md",
+    "scaffold/docs_audit/WORKFLOW_SUMMARY.md",
+    "scaffold/docs_audit/snapshots/context-snapshot.md",
+    "scaffold/docs_audit/baseline/current.md"
+  ],
+  "routing_anchors": ["CURRENT-STATE.md", "WORKFLOW-KERNEL.md", "WORKFLOW_SUMMARY.md"],
+  "compact_admission": {
+    "ok": false,
+    "admission_status": "blocked",
+    "context": {
+      "mode": "COMMITTING",
+      "branch_kind": "cycle",
+      "active_session": "S101",
+      "active_cycle": "C101",
+      "dor_state": "READY",
+      "runtime_state_mode": "db-only",
+      "repair_layer_status": "block",
+      "current_state_freshness": "stale"
+    },
+    "long_step_prefix": "Synthetic step: ",
+    "long_step_repetitions": 40,
+    "blocker_count": 6,
+    "long_blocker_repetitions": 40
+  }
+}

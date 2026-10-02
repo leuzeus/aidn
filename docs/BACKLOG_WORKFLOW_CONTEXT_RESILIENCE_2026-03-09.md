@@ -245,6 +245,30 @@ Progress note:
 - `AGENTS.md`, `REANCHOR_PROMPT.md`, `README_CodexOnline.md`, and troubleshooting now treat `apply_patch` as a durable write
 - the guidance is framed as workflow drift and re-anchor discipline, not as a tool-specific blame model
 
+### WCR-11 - Record The Source Context-Selection Baseline
+
+Status: baseline implemented; routing reduction and native qualification pending
+Priority: medium
+
+Files:
+
+- `tools/perf/verify-context-selection-baseline-fixtures.mjs`
+- `tests/fixtures/context-selection-baseline/corpus.json`
+- `tools/verify/verify-gate-runner-fixtures.mjs`
+
+The L0 fixture measures routing-asset sizes and references, whole hydration
+output, synthetic neighboring cycles, late-rule truncation and compact
+diagnostic omissions. Assertions protect read-only inputs, source revision,
+visible omissions and absence of stale-bundle reuse. The runner separately
+proves zero product execution when a required precondition is unavailable.
+
+This extends the evidence for WCR-02/WCR-03 without changing their reload path
+or the four context-resilience gates. See the L0 section in
+[TESTING.md](./TESTING.md) and the related
+[strict bundle backlog](./BACKLOG_AIDN_DB_ONLY_STRICT_CONTEXT_BUNDLE_2026-06-01.md).
+Complete-unit selection, task/worktree routing, GFD adoption and native
+qualification remain follow-up work; fixture `PASS` does not close them.
+
 ## Sequencing Recommendation
 
 1. WCR-01
