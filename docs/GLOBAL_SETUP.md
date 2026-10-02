@@ -242,8 +242,17 @@ The [skills documentation](https://learn.chatgpt.com/docs/build-skills) also
 describes `$HOME/.agents/skills`; the installer does not duplicate definitions
 there. [Custom agents](https://learn.chatgpt.com/docs/agent-configuration/subagents)
 use `CODEX_HOME/agents`. Documentation support alone is not native qualification.
-Explicitly disabled managed skills block migration; setup never silently
-re-enables them or overwrites the user's Codex configuration.
+Explicitly disabled managed skills block migration, whether selected by path or
+by name; setup never silently re-enables them or overwrites the user's Codex
+configuration. Unrelated named plugin preferences are preserved. Ambiguous
+selectors and exact-path skill migration with a matching broader name selector
+require inspection instead of rewriting that preference.
+
+If an older engine refuses a newer host configuration, use the management
+entrypoint from the exact verified release package as described above. Preview
+uses that entrypoint's read-only compatibility probe; application checks every
+registered project again through the staged candidate. The active generation,
+registry and project files retain their ordinary integrity checks.
 
 The global management fixtures exercise initial installation, two clients,
 immutable previews, wizard cancellation, exact-plan application, npm failure and
