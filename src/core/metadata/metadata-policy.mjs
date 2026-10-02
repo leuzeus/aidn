@@ -75,6 +75,14 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "workflow_instance", label: "Durable workflow instance",
+    required: ["contract_version", "instance_id", "revision", "definition", "compilation", "scope", "events", "instance_sha256"],
+    sourceOfTruthConcept: "workflow_instance",
+    evidenceTargets: ["src/core/contracts/workflow-definition/workflow-instance.v1.schema.json", "src/core/workflow/workflow-instance.mjs", "src/application/runtime/workflow-instance-service.mjs"],
+    lifecycle: "waiting -> reconciliation_required -> waiting|terminal",
+    notes: "Pinned definition, compilation and context with ordered human decisions, segment intents and observed supervisor results. Revision equals event count plus one. Run identities cannot repeat within an instance. CAS rejects competing revisions; abandoned file locks and uncertain effects require explicit reconciliation. Preserve execution, acceptance, integration, validation and cleanup distinctions. Internal API and durable fixtures do not establish native qualification.",
+  }),
+  policy({
     concept: "execution_run",
     label: "Bounded execution run",
     required: ["contract_version", "run_id", "plan_id", "plan_sha256", "authority_backend", "canonical", "task_ids", "lifecycle_status"],

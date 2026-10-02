@@ -16,7 +16,7 @@ export function createProjectArtifactStore(options = {}) {
     sqliteFile: resolveRuntimeSqliteFile({ ...options, targetRoot }) }) });
   if (resolution.backend !== 'postgres') throw new Error('ARTIFACT_BACKEND_UNSUPPORTED');
   const call = (action, input) => {
-    if (options.readOnly && action === 'upsert') throw new Error('Artifact store is read-only');
+    if (options.readOnly && ['upsert', 'compare-and-swap'].includes(action)) throw new Error('Artifact store is read-only');
     const child = spawnSync(process.execPath, [fileURLToPath(new URL('./project-artifact-store-worker.mjs', import.meta.url))], {
       input: JSON.stringify({ targetRoot, action, options: input }),
       encoding: 'utf8', shell: false, windowsHide: true, timeout: 60000,
@@ -30,6 +30,7 @@ export function createProjectArtifactStore(options = {}) {
   return assertProjectArtifactStore({
     backend: 'postgres', sqlite_file: '', read_only: options.readOnly === true,
     upsertArtifact: artifact => call('upsert', { artifact, auditRoot: options.auditRoot }),
+    compareAndSwapArtifact: request => call('compare-and-swap', { ...request, auditRoot: options.auditRoot }),
     getArtifact: artifactPath => call('get', { path: artifactPath, auditRoot: options.auditRoot }),
     listArtifacts: limit => call('list', { limit }),
     materializeArtifacts(materialize = {}) {

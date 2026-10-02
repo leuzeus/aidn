@@ -6,6 +6,9 @@ Proposed; opt-in segment integration. Portable and PostgreSQL fixtures do not
 qualify native Codex execution. ADR-0014 retains its native qualification gate.
 This decision does not promote the shadow definition over `docs/SPEC.md`.
 
+ADR-0018 adds a separate opt-in durable instance consumer. Standalone segment
+selection retains the behavior described here and does not imply macro progress.
+
 ## Context
 
 ADR-0016 compiles descriptive macro graphs without executing them. A selected

@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  workflow_instance: {
+    owner: "project workflow maintainer",
+    lifecycle: "waiting -> reconciliation_required -> waiting|terminal; unsupported handlers remain unavailable",
+    scope: "explicit physical target, runtime scope and activation revision; one pinned definition and compilation",
+    retention: "retain typed decisions, effect intents and supervisor proof references without automatic purge",
+    migration: "no automatic definition, compiler or context migration; historical inspection remains read-only",
+    replacement: "compare canonical content hash and append a typed checkpoint; ambiguous effects require supervisor reconciliation",
+    evidence_targets: ["src/core/workflow/workflow-instance.mjs", "src/adapters/runtime/workflow-instance-store.mjs", "src/application/runtime/workflow-instance-composition.mjs"],
+  },
   project_activation: {
     owner: "project maintainer",
     lifecycle: "absent -> authorized -> revoked; local preparation determines active or degraded status",
@@ -303,6 +312,14 @@ function policy({
 }
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
+  policy({
+    concept: "workflow_instance", label: "Durable workflow instance",
+    files: "docs/audit/workflows/instances/<id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is a derived projection",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "docs/audit/workflows/instances/<id>.json in dual or files with configured PostgreSQL",
+    notes: "ADR-0018 internal opt-in composition; SPEC remains rule authority. SQLite uses existing artifact tables; PostgreSQL uses existing contextual artifacts and reservation fence. Sequential human checkpoints require no PostgreSQL. Agent segments retain exclusive existing supervisor admission. No new shared coordination table or automatic client activation.",
+  }),
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
     concept,
     label: { execution_run: "Bounded execution run", delegated_task: "Delegated task", execution_attempt: "Execution attempt" }[concept],

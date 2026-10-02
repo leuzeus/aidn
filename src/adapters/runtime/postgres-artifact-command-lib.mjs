@@ -3,6 +3,7 @@ import { buildRuntimeHeadRows } from '../../application/runtime/runtime-relation
 import { analyzeStructuredArtifact, extractStructuredField } from '../../lib/workflow/structured-artifact-parser-lib.mjs';
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from '../../application/runtime/postgres-runtime-persistence-contract-service.mjs';
 import { guardCanonicalMutation } from './agent-execution-fence.mjs';
+import { assertArtifactCompareSwap } from '../../core/workflow/artifact-compare-swap.mjs';
 
 // All identifiers below are internal constants; values always use parameters.
 async function upsert(client, table, row, keys) {
@@ -32,10 +33,10 @@ export function validateArtifactPath(value, auditRoot = 'docs/audit') {
 
 // Uses an existing schema and scope only. No adoption, DDL or projection rebuild.
 export async function executePostgresArtifactCommand(client, scopes, action, options = {}) {
-  const writing = action === 'upsert';
-  if (!['upsert', 'get', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
+  const writing = action === 'upsert' || action === 'compare-and-swap';
+  if (!['upsert', 'compare-and-swap', 'get', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
   const artifactPath = action === 'list' ? null
-    : validateArtifactPath(action === 'upsert' ? options.artifact?.path : options.path, options.auditRoot);
+    : validateArtifactPath(writing ? options.artifact?.path : options.path, options.auditRoot);
   await client.query(writing ? 'BEGIN' : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   try {
     await client.query("SET LOCAL statement_timeout = '15000ms'");
@@ -65,6 +66,10 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
     } else if (action === 'get') {
       result = mapped((await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath])).rows[0]);
     } else {
+      if (action === 'compare-and-swap') {
+        const current = mapped((await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath])).rows[0]);
+        assertArtifactCompareSwap(options, current);
+      }
       const artifact = normalizeArtifact({ ...options.artifact, path: artifactPath });
       const sessionId = artifactPath.match(/^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/i)?.[1]?.toUpperCase();
       const cycleId = artifactPath.match(/^cycles\/(C\d+)[^/]*\/status\.md$/i)?.[1]?.toUpperCase();
