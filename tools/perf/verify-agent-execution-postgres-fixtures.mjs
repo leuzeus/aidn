@@ -3,6 +3,8 @@ import { createPublicAgentRunLifecycle } from "../../src/application/runtime/age
 import { parseAgentRunArguments } from "../../src/application/runtime/agent-run-lifecycle-service.mjs";
 import { bindWorkflowSegment } from "../../src/core/workflow/workflow-segment-binding.mjs";
 import { createWorkflowInstance, decideWorkflowInstance, assertWorkflowInstance } from "../../src/core/workflow/workflow-instance.mjs";
+import { proposeWorkflowCandidate, previewWorkflowCandidate } from "../../src/core/workflow/workflow-candidate.mjs";
+import { activateWorkflowCandidate, assertWorkflowSelection } from "../../src/core/workflow/workflow-selection.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -535,18 +537,41 @@ async function runSuite({ connectionString, version, root }) {
         const observed = await executePostgresArtifactCommand(peers[0], [scope], "get", { path: artifact.path });
         assertWorkflowInstance(JSON.parse(observed.content));
         const outcomes = await Promise.allSettled(peers.map((peer, index) => executePostgresArtifactCommand(peer, [scope], "compare-and-swap", {
-          artifact: { ...artifact, content: JSON.stringify(decideWorkflowInstance(instance, { outcome: index ? "rejected" : "approved", evidence: [{ ref: "fixture", sha256: "b".repeat(64) }] })) },
+          artifact: { ...artifact, content: JSON.stringify(decideWorkflowInstance(instance, { outcome: "rejected", evidence: [{ ref: "fixture-" + index, sha256: "b".repeat(64) }] })) },
           expectedSha256: sha(artifact.content),
         })));
         assert.equal(outcomes.filter(row => row.status === "fulfilled").length, 1);
         assert.match(outcomes.find(row => row.status === "rejected").reason.message, /ARTIFACT_REVISION_CONFLICT/);
         const retained = await executePostgresArtifactCommand(peers[1], [scope], "get", { path: artifact.path });
         assert.equal(JSON.parse(retained.content).revision, 2);
+        const seed = JSON.parse(retained.content), candidateDefinition = structuredClone(seed.definition); candidateDefinition.revision++;
+        candidateDefinition.transitions.find(edge => edge.max_traversals).max_traversals = 1;
+        const proposal = proposeWorkflowCandidate({ baseDefinition: seed.definition, definition: candidateDefinition, context: seed.compilation.context, explanation: "A bounded fixture candidate." });
+        const preview = previewWorkflowCandidate({ proposal, baseCompilation: seed.compilation, baseline: { kind: "instance", id: seed.instance_id, sha256: seed.instance_sha256 }, scope: seed.scope });
+        const selection = activateWorkflowCandidate({ seed: { instance_id: seed.instance_id, instance_sha256: seed.instance_sha256, definition: seed.definition, compilation: seed.compilation }, scope: seed.scope,
+          proposal, review: { decision: "approve", preview_sha256: preview.preview_sha256, evidence: [{ ref: "fixture-review", sha256: "c".repeat(64) }] } });
+        const selectedArtifact = { path: `workflows/definitions/${selection.workflow_id}.json`, kind: "workflow_selection", content: JSON.stringify(selection) };
+        await executePostgresArtifactCommand(peers[0], [scope], "compare-and-swap", { artifact: selectedArtifact, expectedSha256: null });
+        const selected = await executePostgresArtifactCommand(peers[1], [scope], "get", { path: selectedArtifact.path });
+        assertWorkflowSelection(JSON.parse(selected.content)); assert.equal(JSON.parse(selected.content).selection_sha256, selection.selection_sha256);
+        assert.equal(await ddlCount(), ddl, "checkpoint and selection CAS must not migrate schemas");
+        const bulk = createPostgresRuntimeArtifactStore({ connectionString, targetRoot: root, runtimeProjectContext: {
+          ...resolveRuntimeProjectContext({ targetRoot: root, projectId: seeded.plan.canonical.project_id, workspaceId: seeded.plan.canonical.workspace_id, env: {} }), runtime_scope_id: scope,
+        } });
+        const beforeProjection = await dataSnapshot();
+        for (const artifacts of [[], [{ ...artifact, content: "{}", content_format: "utf8" }, { ...selectedArtifact, content_format: "utf8" }]]) {
+          await reject(bulk.writeIndexProjection({ payload: { generated_at: new Date().toISOString(), artifacts, cycles: [], sessions: [], file_map: [], tags: [], artifact_tags: [] } }), "ARTIFACT_WORKFLOW_PROJECTION_CONFLICT");
+          assert.equal(await dataSnapshot(), beforeProjection);
+        }
+        // The legacy explicit bulk writer bootstraps its schema before its
+        // transaction. Only the new CAS/reservation operations promise no DDL.
+        const afterExplicitProjectionDdl = await ddlCount();
         const digest = await seeded.store.readCanonicalDigest({ scopeKey: scope });
         await seeded.store.reserveRun({ ...seeded.reservation, canonicalSnapshotSha256: digest.canonical_snapshot_sha256 });
         const before = await dataSnapshot();
         await reject(executePostgresArtifactCommand(peers[0], [scope], "compare-and-swap", { artifact, expectedSha256: sha(retained.content) }), "ARTIFACT_EXECUTION_SCOPE_RESERVED");
-        assert.equal(await dataSnapshot(), before); assert.equal(await ddlCount(), ddl);
+        await reject(executePostgresArtifactCommand(peers[1], [scope], "compare-and-swap", { artifact: selectedArtifact, expectedSha256: sha(selected.content) }), "ARTIFACT_EXECUTION_SCOPE_RESERVED");
+        assert.equal(await dataSnapshot(), before); assert.equal(await ddlCount(), afterExplicitProjectionDdl);
       } finally { await Promise.all(peers.map(peer => peer.end())); }
     });
     await check("canonical resolver scope survives reservation and fences every canonical writer", async () => {

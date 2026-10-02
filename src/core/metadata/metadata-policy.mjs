@@ -75,6 +75,14 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "workflow_selection", label: "Reviewed workflow definition selection",
+    required: ["contract_version", "workflow_id", "revision", "scope", "seed", "activations", "selection_sha256"],
+    sourceOfTruthConcept: "workflow_selection",
+    evidenceTargets: ["src/core/contracts/workflow-definition/workflow-selection.v1.schema.json", "src/core/workflow/workflow-candidate.mjs", "src/application/runtime/workflow-candidate-service.mjs"],
+    lifecycle: "proposed -> reviewed -> selected -> superseded",
+    notes: "Append-only activation history within the canonical artifact, initial instance reference, retained definition/compilation and review evidence bound to the exact scope and preview hash. Capabilities and control paths cannot expand through suggestions. Projection hashes identify both candidate and compilation. Selection only initializes explicitly requested new instances; it never migrates existing instances or grants native authority.",
+  }),
+  policy({
     concept: "workflow_instance", label: "Durable workflow instance",
     required: ["contract_version", "instance_id", "revision", "definition", "compilation", "scope", "events", "instance_sha256"],
     sourceOfTruthConcept: "workflow_instance",

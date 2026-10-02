@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  workflow_selection: {
+    owner: "project workflow maintainer",
+    lifecycle: "proposed -> reviewed -> explicitly selected -> superseded; existing instances remain pinned",
+    scope: "one workflow identity in a physical target and canonical runtime scope with pinned activation",
+    retention: "retain the canonical seed, every selected proposal and its exact review evidence; no automatic purge",
+    migration: "no authority transfer from SPEC and no automatic instance, definition or compiler migration",
+    replacement: "fresh deterministic preview, permission ceiling, exact review hash and canonical compare-and-swap",
+    evidence_targets: ["src/core/workflow/workflow-candidate.mjs", "src/core/workflow/workflow-selection.mjs", "src/application/runtime/workflow-candidate-composition.mjs"],
+  },
   workflow_instance: {
     owner: "project workflow maintainer",
     lifecycle: "waiting -> reconciliation_required -> waiting|terminal; unsupported handlers remain unavailable",
@@ -312,6 +321,14 @@ function policy({
 }
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
+  policy({
+    concept: "workflow_selection", label: "Reviewed workflow definition selection",
+    files: "docs/audit/workflows/definitions/<workflow-id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is derived",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "definition JSON plus deterministic Markdown and Mermaid carrying compiler identities and hashes",
+    notes: "ADR-0019 internal opt-in selection for future instances. Initial baseline is a terminal canonical instance; later proposals use the current selection. Suggestions cannot grant permissions or replace SPEC. Current activation, context and canonical artifact CAS remain required. Shared coordination boundaries and existing run reservation fencing are unchanged.",
+  }),
   policy({
     concept: "workflow_instance", label: "Durable workflow instance",
     files: "docs/audit/workflows/instances/<id>.json; configured PostgreSQL remains canonical",

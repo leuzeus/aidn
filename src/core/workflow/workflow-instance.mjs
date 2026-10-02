@@ -11,6 +11,7 @@ const fail = workflowInstanceFail;
 const copy = value => structuredClone(value);
 const content = ({ instance_sha256, ...value }) => value;
 const supported = step => ["approval", "review", "agent_segment", "terminal"].includes(step.primitive_ref);
+export const isWorkflowInstanceStepSupported = supported;
 const valid = (value, contract) => validateJsonSchema(value, contract, "$", { contractKind: "workflow-definition" }).length === 0;
 
 function seal(value) {

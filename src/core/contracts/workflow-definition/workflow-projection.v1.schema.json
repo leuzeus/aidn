@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/workflow-projection.v1",
+  "title": "workflow-projection.v1",
+  "x-aidn-contract-version": "workflow-projection.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "renderer_version",
+    "proposal_sha256",
+    "compilation_sha256",
+    "markdown",
+    "mermaid",
+    "projection_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "workflow-projection.v1"
+    },
+    "renderer_version": {
+      "const": "workflow-projection-renderer.v1"
+    },
+    "proposal_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "compilation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "markdown": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384
+    },
+    "mermaid": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384
+    },
+    "projection_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
