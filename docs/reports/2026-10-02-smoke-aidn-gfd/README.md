@@ -2,7 +2,9 @@
 
 This is non-normative experimental evidence from two new synthetic room-reservation API projects. It does not change AIDN policy or qualify a release.
 
-[French comparison report](report.pdf) · [Measured results and evidence hashes](results.json)
+[French comparison report](report.md) · [Measured results and evidence hashes](results.json)
+
+The full report is tracked as Markdown. The PDF and project archive are retained locally, outside this repository.
 
 Both development arms used native Codex GPT-6.1-Sol with medium effort. The AIDN package was built from the latest remote dev observed before the first arm: `89a709b9ccc3a1effb91356c654cb9fc3b5e4650` (0.12.0). Its canonical runtime used PostgreSQL 17.6, without SQLite fallback. Both applications used Node and SQLite. Project hooks were reviewed by the human and trusted through native supported controls.
 
