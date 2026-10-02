@@ -196,9 +196,12 @@ try {
     assert.deepEqual(fs.readdirSync(targetRoot), []);
   });
   await check("real composition persists human checkpoints in an activated disposable client fixture", () => {
+    const productVersion = fs.readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim();
+    const currentDefinition = structuredClone(definition); currentDefinition.compatibility.product_version = productVersion;
+    const currentContext = { ...context, product_version: productVersion };
     const targetRoot = path.join(root, "activated"), packageRoot = path.join(root, "neutral-package");
     const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
-    fs.mkdirSync(targetRoot); put(packageRoot, "VERSION", "0.11.0\n"); put(packageRoot, "bin/aidn.mjs", "// neutral fixture, never executed\n");
+    fs.mkdirSync(targetRoot); put(packageRoot, "VERSION", productVersion + "\n"); put(packageRoot, "bin/aidn.mjs", "// neutral fixture, never executed\n");
     applyAuthorization(planAuthorization({ targetRoot, action: "authorize" }));
     const identity = resolveActivationTarget({ targetRoot }), assets = {};
     for (const name of [".codex/hooks/aidn-hook-runtime.mjs", ".codex/hooks/aidn-session-start.mjs", ".codex/hooks/aidn-pre-tool-use.mjs", ".agents/skills/context-reload/SKILL.md", ".agents/skills/start-session/SKILL.md"]) {
@@ -210,16 +213,16 @@ try {
     put(targetRoot, ".codex/hooks.json", JSON.stringify({ hooks: Object.fromEntries(hooks.map(h => [h.event, [{ ...h.group, hooks: [h.hook] }]])) }));
     assets[".codex/hooks.json"] = { kind: "hooks", current: hooks };
     const receipt = { schema_version: 1, scope: "codex-integration", root_id: identity.root_id,
-      package: { root: packageRoot, version: "0.11.0", entry: "bin/aidn.mjs", entry_sha256: artifactContentHash(fs.readFileSync(path.join(packageRoot, "bin/aidn.mjs"), "utf8")), version_sha256: artifactContentHash("0.11.0\n") },
+      package: { root: packageRoot, version: productVersion, entry: "bin/aidn.mjs", entry_sha256: artifactContentHash(fs.readFileSync(path.join(packageRoot, "bin/aidn.mjs"), "utf8")), version_sha256: artifactContentHash(productVersion + "\n") },
       assets, last_transaction: "a".repeat(32), last_action: "install", activation: { mode: identity.scope, authority_id: identity.authority_id } };
     const tx = { schema_version: 1, id: receipt.last_transaction, scope: "codex-integration", root_id: identity.root_id, status: "complete", operations: [], receipt_after: receipt };
     const seal = value => JSON.stringify({ ...value, integrity_sha256: shadowHash(value) });
     put(targetRoot, `.aidn/install/transactions/${tx.id}.json`, seal(tx)); put(targetRoot, ".aidn/install/receipt.json", seal(receipt));
     assert.equal(readActivation({ targetRoot }).state, "active");
     const service = createProjectWorkflowInstanceService({ targetRoot });
-    const state = service.initialize({ instanceId: "fixture", definition, context, write: true }).instance;
+    const state = service.initialize({ instanceId: "fixture", definition: currentDefinition, context: currentContext, write: true }).instance;
     assert.equal(createProjectWorkflowInstanceService({ targetRoot }).inspect("fixture").instance.instance_sha256, state.instance_sha256);
-    const human = service.initialize({ instanceId: "human", definition, context, write: true }).instance;
+    const human = service.initialize({ instanceId: "human", definition: currentDefinition, context: currentContext, write: true }).instance;
     const decided = service.decide({ instanceId: "human", expectedSha256: human.instance_sha256, outcome: "rejected", evidence, write: true });
     assert.equal(decided.cursor.status, "terminal"); assert.equal(decided.instance.revision, 2);
     applyAuthorization(planAuthorization({ targetRoot, action: "revoke" }));

@@ -1,14 +1,33 @@
 #!/usr/bin/env node
 import crypto from "node:crypto";
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
 import { execFileSync, spawnSync } from "node:child_process";
+import { qualifyWorkflowPackage } from "./workflow-package-qualification-lib.mjs";
+import { buildPackageTarball, readPackageTarball } from "../lib/release-package-tar.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 
 function sha256(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
+
+function verifyGzipPortability() {
+  const compress = zlib.gzipSync, archives = [];
+  const content = Buffer.from("Portable package fixture\n");
+  try {
+    for (const host of [3, 10]) {
+      zlib.gzipSync = (...args) => { const bytes = compress(...args); bytes[9] = host; return bytes; };
+      archives.push(buildPackageTarball([{ relativePath: "fixture.txt", content }]));
+    }
+  } finally { zlib.gzipSync = compress; }
+  assert.deepEqual(archives[0], archives[1], "gzip host metadata must not change package bytes");
+  assert.equal(archives[0][9], 255, "gzip OS metadata must be neutral");
+  assert.deepEqual(readPackageTarball(archives[0]).get("fixture.txt"), content, "portable gzip must preserve package payload");
+  return { status: "PASS", simulated_host_os: [3, 10], retained_os: 255 };
 }
 
 function runBuild(outputRoot) {
@@ -50,10 +69,11 @@ function npmPackFiles() {
   return JSON.parse(result.stdout)[0].files.map((item) => item.path).sort();
 }
 
-function main() {
+async function main() {
   const started = Date.now();
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-release-repro-"));
   try {
+    const gzipPortability = verifyGzipPortability();
     const first = runBuild(path.join(tempRoot, "first"));
     const second = runBuild(path.join(tempRoot, "second"));
     const firstManifest = JSON.parse(fs.readFileSync(first.manifest, "utf8"));
@@ -97,6 +117,8 @@ function main() {
     ]) {
       if (!inputs.includes(required)) issues.push(`required package topology entry missing: ${required}`);
     }
+    const workflowQualification = await qualifyWorkflowPackage({ tarball: first.tarball, root: path.join(tempRoot, "workflow"),
+      descriptors: ["audit-informed", "diagnostic-correction"].map(name => JSON.parse(fs.readFileSync(path.join(repoRoot, "tests/fixtures/workflow-shadow", name + ".v1.json"), "utf8"))) });
     const output = {
       ok: issues.length === 0,
       status: issues.length === 0 ? "PASS" : "FAIL",
@@ -104,6 +126,9 @@ function main() {
       input_files: inputs.length,
       zip_sha256: sha256(first.zip),
       tarball_sha256: sha256(first.tarball),
+      build_runtime: { node: process.version, zlib: process.versions.zlib, platform: process.platform },
+      gzip_portability: gzipPortability,
+      workflow_qualification: workflowQualification,
       duration_ms: Date.now() - started,
       issues,
     };
@@ -115,8 +140,8 @@ function main() {
 }
 
 try {
-  main();
+  await main();
 } catch (error) {
-  console.error(`FAIL: ${error.message}`);
+  console.error(`FAIL: ${String(error.stack ?? error.message).slice(-8192)}`);
   process.exitCode = 1;
 }

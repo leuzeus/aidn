@@ -626,7 +626,7 @@
       "family": "release",
       "script": "perf:verify-release-reproducibility",
       "job": "governance-admission/gates",
-      "surfaces": ["GITHUB_SHA", "release zip", "checksums", "provenance"],
+      "surfaces": ["GITHUB_SHA", "release zip and tarball", "checksums", "provenance", "packaged workflow CLI/HTTP fixtures"],
       "condition": "git-clean-commit",
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },

@@ -51,7 +51,11 @@ export function buildPackageTarball(files) {
     if (padding) chunks.push(Buffer.alloc(padding));
   }
   chunks.push(Buffer.alloc(BLOCK_BYTES * 2));
-  return zlib.gzipSync(Buffer.concat(chunks), { level: 9, mtime: 0 });
+  const gzip = zlib.gzipSync(Buffer.concat(chunks), { level: 9, mtime: 0 });
+  // RFC 1952 OS=255 (unknown): the fixed ustar metadata above is portable.
+  // zlib otherwise stamps the build host here (Windows=10, Unix=3).
+  gzip[9] = 255;
+  return gzip;
 }
 
 function readString(header, start, length) {
