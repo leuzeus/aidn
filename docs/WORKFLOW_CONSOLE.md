@@ -89,3 +89,11 @@ The UI and API add no SQL write route or shared coordination authority.
 Fixtures prove these contracts and transport behavior, not native Codex or an
 external pilot. Cooperative profile limitations remain visible in supervisor
 preconditions and are not upgraded by the dashboard.
+
+Product upgrades preserve retained instances and selections without rewriting
+their pins. Inspection still exposes an instance compiled for an older product
+version, with `WORKFLOW_INSTANCE_AUTHORITY_CHANGED`; productive instance actions
+refuse with `WORKFLOW_INSTANCE_CONTEXT_CHANGED`. Selecting an old-version
+definition does not grant migration authority. Initialize a separately reviewed
+definition with an explicit context matching the executing package to start a
+new instance. See [upgrade guidance](UPGRADE.md) for the version boundary.

@@ -628,11 +628,16 @@ async function runSuite({ connectionString, version, root }) {
       const context=await seed({runIdOverride:configuration.run_id,transform:plan=>{
         configuration.planning_key=`planning.${plan.canonical.project_id.slice("project.".length)}`;
         plan.canonical.runtime_scope_id=resolveRuntimeProjectContext({targetRoot:target,projectId:plan.canonical.project_id,workspaceId:plan.canonical.workspace_id,env:{}}).runtime_scope_id;
-        if (workflow) configuration.workflow = bindWorkflowSegment({
-          definition: JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/workflow-shadow/diagnostic-correction.v1.json", import.meta.url))),
-          context: { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "dual" },
-          stepId: "correction", canonical: plan.canonical,
-        });
+        if (workflow) {
+          const productVersion = fs.readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim();
+          const definition = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/workflow-shadow/diagnostic-correction.v1.json", import.meta.url)));
+          definition.compatibility.product_version = productVersion;
+          configuration.workflow = bindWorkflowSegment({
+            definition,
+            context: { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: productVersion, workflow_version: 7, state_mode: "dual" },
+            stepId: "correction", canonical: plan.canonical,
+          });
+        }
         plan.supervision={configuration_sha256:fingerprintAgentExecutionValue(configuration)};
       }});
       const config=buildNextAidnProjectConfig({},{store:"dual-sqlite",stateMode:"dual"},{});

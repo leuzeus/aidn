@@ -22,8 +22,10 @@ import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-workflow-console-")), repo = fileURLToPath(new URL("../../", import.meta.url));
 const original = JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures/workflow-shadow/diagnostic-correction.v1.json")));
+const productVersion = fs.readFileSync(path.join(repo, "VERSION"), "utf8").trim();
+original.compatibility.product_version = productVersion;
 const definition = { ...original, workflow_id: "reviewed-correction", entry: "approval", steps: original.steps.filter(s => s.id !== "diagnose"), transitions: original.transitions.filter(e => e.from !== "diagnose") };
-const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "files" };
+const context = { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: productVersion, workflow_version: 7, state_mode: "files" };
 const evidence = [{ ref: "fixture-human-review", sha256: "b".repeat(64) }];
 const schemas = Object.fromEntries(["inspect", "action", "dashboard"].map(name => [name, JSON.parse(fs.readFileSync(path.join(repo, `src/core/contracts/cli-output/runtime-workflow-${name}.v1.schema.json`)))]));
 function contracted(name, output) { assert.deepEqual(validateJsonSchema(output, schemas[name]), []); return output; }
@@ -137,7 +139,7 @@ try {
   await check("checkpoint changes after preview refuse before a canonical write", () => {
     let revision = 1, writes = 0;
     const scope = () => ({ target_sha256: "a".repeat(64), persistence_sha256: "b".repeat(64), runtime_scope_id: "fixture", activation: { authority_id: "fixture", revision } });
-    const service = createWorkflowInstanceService({ store: { read: () => ({ instance: null, content_sha256: null }), compareAndSwap() { writes++; } }, readAuthority: () => ({ scope: scope(), stateMode: "files", productVersion: "0.11.0" }) });
+    const service = createWorkflowInstanceService({ store: { read: () => ({ instance: null, content_sha256: null }), compareAndSwap() { writes++; } }, readAuthority: () => ({ scope: scope(), stateMode: "files", productVersion }) });
     const input = { instanceId: "guarded", definition, context }, preview = service.initialize(input); revision++;
     assert.throws(() => service.initialize({ ...input, write: true, expectedResultSha256: preview.instance.instance_sha256 }), /PREVIEW_CHANGED/); assert.equal(writes, 0);
   });

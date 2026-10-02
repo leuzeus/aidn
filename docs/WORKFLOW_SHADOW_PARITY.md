@@ -65,7 +65,11 @@ Each descriptor edge links SPEC rules and expected evidence. Edge outcome names 
 - Alternate: THINKING/EXPLORING behavior, explicit focus among several cycles, and the second macro topology under the same schema.
 - Adversarial: ambiguous/missing mapping, stale merged cycles, unknown PR state, unresolved close, conflicting repair status and malformed descriptors.
 - Existing canonical-admission and state-mode suites cover files/dual/db-only, configured unavailable PostgreSQL, stale projections and the existing adapter without any binding.
-- Lot 2 separately checks pure compilation and single-transition explanations. An explicit default binding, handler effect previews, activation, durable instances and resume/migration remain unimplemented. No fixture result claims these capabilities.
+- Lot 2 separately checks pure compilation and single-transition explanations.
+  Later opt-in bindings, durable instances, reviewed selection and the console
+  are covered by their own suites; see [integrated qualification](qualification/WORKFLOW_0_12.md).
+  This shadow corpus grants no default binding, handler execution or automatic
+  instance migration. Its historical 0.11.0 context and golden hashes remain fixed.
 
 The current graph retains procedural re-entry through existing admission after drift/incident resolution. It adds no bound to the current workflow. The alternate graph declares exactly two review-to-correction returns, then stop; the lot 1 gate checks that declaration, while the compilation gate checks pure explanations through exhaustion. Neither executes a runtime retry loop.
 
