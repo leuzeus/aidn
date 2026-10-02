@@ -139,6 +139,16 @@ Rollback removes the opt-in consumer and retains client adoption history.
 
 ## Consequences
 
+2026-10-02 client coverage amendment: the existing read-only governance diagnostic
+may project the package-source declaration and client-owned adoption separately.
+Control classification is an optional declaration under project_policy, not a
+gate_result or runtime admission. Human responsibilities, deferred/omitted scope,
+unclassified controls and unavailable evidence remain visible. No fetched method,
+generated document or source declaration accepts a client or resolves a semantic
+authority conflict. The first generated workflow includes canonical adapter
+extensions without requiring an earlier file; updates and rollback retain policy
+and history under the existing installation ownership boundary.
+
 Positive:
 
 - clearer source-of-truth decisions

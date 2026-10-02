@@ -158,6 +158,16 @@ Installed procedure references retain the default read/recovery path; opt-in
 scoped consultation is covered by the scoped-selection gate. Fixture PASS does
 not qualify native routing or token consumption.
 
+`verify-governance-adoption-fixtures.mjs` also exercises the real read-only
+coverage CLI, source/client separation, declared automatic/human/native controls,
+unclassified/invalid bindings, proposals, withdrawals, future authorities,
+external conflicts and whole-tree preservation. The v1 contract rejects false
+conformance claims. `verify-client-adoption-install-fixtures.mjs` checks fresh
+generation, update previews, divergent managed files, exact adapter/history and
+outside-block preservation, idempotence and owned-generation rollback in
+files/dual/db-only. Its optional `--package-root` and `--baseline-package-root`
+allow exact installed package candidates; source defaults alone are fixture proof.
+
 For native write scope, first run
 `node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing
 Codex integration, admission and public contract/effect fixtures. The new cases

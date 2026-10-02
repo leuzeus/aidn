@@ -11,10 +11,21 @@ import { createDefaultWorkflowAdapterConfig, normalizeWorkflowAdapterConfig, rea
 import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { redactDiagnostic } from "../verify/git-worktree-state-lib.mjs";
+import { projectGovernanceAdoptionCoverage } from "../../src/application/runtime/governance-adoption-coverage.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const sourceFile = path.join(repoRoot, "package/governance/gfd-adoption.v1.json");
 const hash = (value) => createHash("sha256").update(value).digest("hex");
+function treeHash(root) {
+  const files = [];
+  const visit = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name), relative = path.relative(root, file);
+      if (entry.isDirectory()) { files.push([relative, "directory"]); visit(file); }
+      else files.push([relative, entry.isSymbolicLink() ? fs.readlinkSync(file) : hash(fs.readFileSync(file))]);
+    }
+  }; visit(root); return hash(JSON.stringify(files.sort()));
+}
 
 export function verifyGovernanceAdoptionFixtures() {
   const checks = [];
@@ -112,6 +123,74 @@ export function verifyGovernanceAdoptionFixtures() {
       try { writeWorkflowAdapterConfig(target, { governanceAdoption: invalid[0] }); } catch { /* expected */ }
       check(`${stateMode}_invalid_write_preserves_previous_bytes`, hash(fs.readFileSync(listed.path)), hash(before));
     }
+
+    stage = "diagnostic-coverage";
+    const coverageRoot = path.join(tempRoot, "coverage-client");
+    fs.mkdirSync(coverageRoot);
+    const observe = () => projectGovernanceAdoptionCoverage({ targetRoot: coverageRoot, packageRoot: repoRoot, asOf: "2026-10-02" });
+    check("diagnostic_source_cannot_accept_client", observe().client.status, "absent");
+    const covered = structuredClone(client);
+    covered.sections[0].controls = ["tools/check.mjs", "docs/review.md", "docs/native.md"];
+    covered.sections.push({ id: "6", disposition: "deferred", rationale: "Deferred pending separate evidence", responsibility: "project_owner", authorities: [], controls: [] },
+      { id: "7", disposition: "omitted", rationale: "Outside this client's selected method scope", responsibility: "project_owner", authorities: [], controls: [] });
+    covered.extensions.controlCoverage = { schemaVersion: 1, controls: covered.sections[0].controls.map((reference, index) => ({ reference, kind: ["automatic", "human", "native"][index] })) };
+    writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: covered });
+    for (const reference of ["docs/audit/SPEC.md", ...covered.sections[0].controls]) {
+      const file = path.join(coverageRoot, reference); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, "# Synthetic declared reference\n");
+    }
+    const adapterPath = readWorkflowAdapterConfig(coverageRoot).path;
+    const coverageBefore = fs.readFileSync(adapterPath);
+    const treeBefore = treeHash(coverageRoot);
+    const observed = observe();
+    check("client_declared_coverage_split", observed.client.coverage, { status: "declared", automatic: 1, human: 1, native: 1, unclassified: 0, deferred: 1, omitted: 1 });
+    check("client_human_responsibility_and_omissions_visible", observed.client.sections.every((row) => row.human_review === "required") && observed.client.omissions.length > 0);
+    check("available_references_do_not_prove_execution", observed.client.controls.every((row) => row.reference_status === "available_local" && row.execution === "not_evaluated"));
+    check("coverage_does_not_claim_conformance_or_native", observed.client.conformance === "not_evaluated" && observed.native_qualification === "not_evaluated" && observed.write_authorization === false);
+    const child = spawnSync(process.execPath, [path.join(repoRoot, "bin/aidn.mjs"), "runtime", "governance-diagnostics", "--target", coverageRoot, "--json"], {
+      cwd: repoRoot, encoding: "utf8", timeout: 30000, maxBuffer: 4 * 1024 * 1024,
+    });
+    if (child.status !== 0) throw Object.assign(new Error("coverage diagnostic CLI failed"), { diagnostic: { exit_code: child.status, signal: child.signal, stderr_tail: redactDiagnostic(child.stderr ?? "").slice(-2000) } });
+    const cliCoverage = JSON.parse(child.stdout);
+    const diagnosticSchema = JSON.parse(fs.readFileSync(path.join(repoRoot, "src/core/contracts/cli-output/runtime-governance-diagnostics.v1.schema.json")));
+    check("real_coverage_cli_contract", validateJsonSchema(cliCoverage, diagnosticSchema).length === 0);
+    check("real_coverage_cli_preserves_split", cliCoverage.governance_adoption.client.coverage, observed.client.coverage);
+    const falseClaim = structuredClone(cliCoverage); falseClaim.governance_adoption.client.conformance = "PASS";
+    check("diagnostic_contract_rejects_false_conformance", validateJsonSchema(falseClaim, diagnosticSchema).length > 0);
+    check("diagnostic_adapter_nonmutation", hash(fs.readFileSync(adapterPath)), hash(coverageBefore));
+    check("diagnostic_whole_tree_nonmutation", treeHash(coverageRoot), treeBefore);
+    check("diagnostic_does_not_activate_client", !fs.existsSync(path.join(coverageRoot, ".aidn/project/activation.json")) && !fs.existsSync(path.join(coverageRoot, ".aidn/install")));
+    const unclassified = structuredClone(covered); delete unclassified.extensions.controlCoverage;
+    writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: unclassified });
+    check("unknown_control_kind_stays_unclassified", observe().client.coverage.unclassified, 3);
+    const partial = structuredClone(covered); partial.extensions.controlCoverage.controls.pop();
+    writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: partial });
+    check("partial_control_classification_visible", observe().client.coverage.status, "partial");
+    for (const extension of [{ schemaVersion: 2, controls: [] }, { schemaVersion: 1, controls: [{ reference: "unbound", kind: "automatic" }] },
+      { schemaVersion: 1, controls: [covered.extensions.controlCoverage.controls[0], covered.extensions.controlCoverage.controls[0]] }]) {
+      writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: { ...covered, extensions: { ...covered.extensions, controlCoverage: extension } } });
+      check("invalid_control_binding_visible", observe().client.coverage.status, "invalid");
+      check("invalid_classification_not_partly_promoted", observe().client.coverage.unclassified, 3);
+    }
+    writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: { ...covered, status: "proposed", acceptance: null } });
+    check("diagnostic_proposal_remains_ineffective", observe().client.status, "proposed");
+    const futureAuthority = structuredClone(covered); futureAuthority.authorities[0].effectiveFrom = "2099-01-01";
+    writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: futureAuthority });
+    check("future_authority_does_not_apply_by_detection", observe().client.authorities[0].applicable === false && observe().client.sections[0].applicable === false);
+    writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: withdrawal });
+    check("diagnostic_withdrawal_keeps_history", observe().client.status === "inactive" && observe().client.history.length === 1);
+    fs.writeFileSync(adapterPath, JSON.stringify({ governanceAdoption: source }));
+    check("client_source_scope_rejected_by_diagnostic", observe().client.status, "invalid");
+    fs.writeFileSync(adapterPath, "{invalid JSON");
+    check("malformed_adapter_not_defaulted", observe().client.status, "invalid");
+    writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: covered });
+    fs.unlinkSync(path.join(coverageRoot, "docs/review.md"));
+    check("missing_declared_control_visible", observe().client.controls.find((row) => row.kind === "human").reference_status, "missing");
+    const thirdParty = structuredClone(covered);
+    thirdParty.authorities.push({ ...thirdParty.authorities[0], id: "external-authority", reference: "https://example.invalid/contract", owner: "external_owner", scope: "Independent external duty" });
+    thirdParty.precedence = "External contract and project policy conflict requires owner arbitration; no automatic precedence inference.";
+    writeWorkflowAdapterConfig(coverageRoot, { governanceAdoption: thirdParty });
+    check("third_party_authority_not_fetched_or_resolved", observe().client.authorities[1].reference_status, "external_not_checked");
+    check("conflicting_precedence_retains_human_review", observe().client.precedence === thirdParty.precedence && observe().client.authority_semantics === "human_review_required");
 
     stage = "migration-preservation";
     const target = path.join(tempRoot, "migration");
