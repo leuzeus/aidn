@@ -256,6 +256,25 @@ Gates cibles:
 - `npm run perf:verify-codex-db-only-skill-readiness`
 - `npm run perf:verify-skill-hooks`
 
+## Baseline complementaire L0 - 2026-10-02
+
+Statut: baseline source implementee; evolution du selecteur non realisee.
+
+La fixture `tools/perf/verify-context-selection-baseline-fixtures.mjs` complete
+les criteres de budget et de non-mutation avec un corpus synthetique fige. Elle
+mesure le JSON complet du service et le compare au budget d'artefacts rapporte;
+elle observe la presence de deux cycles actifs et d'une regle situee apres la
+limite d'extrait. Ces observations ne qualifient ni le routage par tache ni les
+lectures natives d'un client installe.
+
+Les assertions preservent les entrees en lecture seule, la revision des sources,
+les omissions visibles et l'absence de reutilisation d'un ancien bundle lorsque
+l'index manque. Aucun backend, mode `files`/`dual`/`db-only`, fallback canonique,
+contrat ou gate n'est modifie. L'adoption GFD et la selection d'unites completes
+restent des lots ulterieurs. Rejeu et interpretation: [TESTING.md](./TESTING.md).
+Suivi du routage: WCR-11 dans le
+[backlog de resilience](./BACKLOG_WORKFLOW_CONTEXT_RESILIENCE_2026-03-09.md).
+
 ## P2 - Application pilote External Pilot
 
 ### P2-01 - Migrer `external-pilot` apres validation AIDN

@@ -682,6 +682,29 @@ The gate-catalog verifier proves exact coverage and rejects missing commands,
 changed arguments, duplicates, or weakened obligations. See
 [the context verification guide](./VERIFY_CONTEXT_RESILIENCE.md) for each group.
 
+For the L0 baseline of context selection, run
+`node tools/perf/verify-context-selection-baseline-fixtures.mjs` directly. There
+is no npm alias or admission gate for this observational fixture. Its frozen
+[synthetic corpus](../tests/fixtures/context-selection-baseline/corpus.json)
+records the reference commit, read-only guarantees, and deliberately late rule.
+The fixture invokes the source hydration service with an empty output path and
+the scaffold's pure compact-admission formatter. It emits one JSON report with
+named assertions, expected/observed values, input hashes, and cleanup status.
+`PASS` applies to those assertions; it does not qualify task-specific selection
+or native Codex behavior.
+
+The observations keep complete service JSON bytes (compact and formatted)
+separate from the reported artifact budget. They also report selected cycles,
+late-unit completeness, compact diagnostic omissions, and routing-asset sizes
+and anchor references. Routing sizes are proxies, not model reads or tokens.
+The stress formatter input is synthetic and not validated as a native admission;
+`additionalContext` remains text. Three timings distinguish the first call from
+repetitions without claiming a cold system cache. A missing index must not reuse
+the stale derived bundle; source revision and artifact-count omissions are
+checked separately. Known scope and truncation limitations are observations,
+not desired acceptance criteria. No selector, runtime admission, GFD adoption,
+or existing context-resilience gate changes as part of this baseline.
+
 The local-daemon fixture prepares its temporary client with the canonical
 activation helper before starting the daemon. It filters copied installation
 assets and receipts rather than reusing another client's activation. Its
@@ -713,6 +736,9 @@ redacted exit/stdout/stderr diagnostics. Command failures likewise retain the
 exit code, signal, and bounded redacted stdout/stderr tails in both the JSON
 result and text summary. An unmet required condition is `FAIL`; only an unmet
 optional condition or an explicit catalog `skip` remains `SKIP`.
+The runner fixture counts product-command calls for an absent required
+PostgreSQL precondition: zero calls, an admission `FAIL`, and no process exit
+code. That result supplies no verdict about an unexecuted product command.
 `cleanliness-worktree` executes in `dev`, `main`, and `release` instead of using
 cleanliness as its own precondition. When changing this behavior, run:
 
