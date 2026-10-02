@@ -104,26 +104,36 @@ function skillConfigEntries(text) {
     if ((!section.length && field[0] === "skills") || (section.join(".") === "skills" && field[0] === "config")) fail("UNSUPPORTED_SKILLS_CONFIG_LAYOUT");
     if (!entry) continue;
     if (field.length !== 1) fail("UNSUPPORTED_SKILLS_CONFIG_LAYOUT");
-    if (!["path", "enabled"].includes(field[0])) continue;
+    if (!["path", "name", "enabled"].includes(field[0])) continue;
     if (entry.fields[field[0]]) fail("DUPLICATE_SKILLS_CONFIG_FIELD", field[0]);
     entry.fields[field[0]] = { value: assignment[2].trim(), line };
   }
-  const seen = new Map();
+  const paths = new Map(), names = new Map();
   for (const item of entries) {
-    if (!item.fields.path) fail("MISSING_SKILLS_CONFIG_PATH");
-    const entryPath = tomlString(item.fields.path.value);
-    if (!path.isAbsolute(entryPath)) fail("RELATIVE_SKILLS_CONFIG_PATH_REQUIRES_INSPECTION");
-    const key = pathKey(entryPath); if (seen.has(key)) fail("DUPLICATE_SKILLS_CONFIG_PATH", entryPath);
-    seen.set(key, item);
+    if (!item.fields.path && !item.fields.name) fail("MISSING_SKILLS_CONFIG_PATH");
+    if (item.fields.path && item.fields.name) fail("AMBIGUOUS_SKILLS_CONFIG_SELECTOR");
+    if (item.fields.path) {
+      const entryPath = tomlString(item.fields.path.value);
+      if (!path.isAbsolute(entryPath)) fail("RELATIVE_SKILLS_CONFIG_PATH_REQUIRES_INSPECTION");
+      const key = pathKey(entryPath); if (paths.has(key)) fail("DUPLICATE_SKILLS_CONFIG_PATH", entryPath);
+      paths.set(key, item);
+    } else {
+      const name = tomlString(item.fields.name.value);
+      if (!name.trim() || /[\r\n\0]/u.test(name)) fail("INVALID_SKILLS_CONFIG_NAME");
+      if (names.has(name)) fail("DUPLICATE_SKILLS_CONFIG_NAME");
+      names.set(name, item);
+    }
     if (item.fields.enabled && !/^(true|false)$/u.test(item.fields.enabled.value)) fail("INVALID_SKILLS_CONFIG_ENABLED");
   }
-  return seen;
+  return { paths, names };
 }
 export function assertGlobalSkillsEnabled(codexHome, skillPaths) {
   const home = absolute(codexHome);
   const entries = skillConfigEntries(safeRead(home, path.join(home, "config.toml")) ?? "");
   for (const file of skillPaths) {
-    if (entries.get(pathKey(file))?.fields.enabled?.value === "false") fail("GLOBAL_SKILL_DISABLED");
+    const name = path.basename(path.dirname(file));
+    if (entries.paths.get(pathKey(file))?.fields.enabled?.value === "false"
+        || entries.names.get(name)?.fields.enabled?.value === "false") fail("GLOBAL_SKILL_DISABLED");
   }
 }
 function disabledConfig(before, selectedPaths) {
@@ -132,7 +142,10 @@ function disabledConfig(before, selectedPaths) {
   const seen = skillConfigEntries(text);
   const edits = [], missing = [];
   for (const selected of selectedPaths) {
-    const item = seen.get(pathKey(selected));
+    // A name can select several installations. Never rewrite that broader
+    // selector or assume its precedence over a path during an exact-path repair.
+    if (seen.names.has(path.basename(path.dirname(selected)))) fail("NAMED_SKILLS_CONFIG_REQUIRES_INSPECTION");
+    const item = seen.paths.get(pathKey(selected));
     if (!item) { missing.push(selected); continue; }
     if (item.fields.enabled?.value === "false") continue;
     if (item.fields.enabled) {
