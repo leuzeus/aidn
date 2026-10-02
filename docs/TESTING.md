@@ -125,6 +125,10 @@ registry removal, read-only cleanup inventories, wizard cancellation and npm
 interruption/resume. Package installation and removal are injected; native Codex
 discovery, actual PostgreSQL, native secret entry and OS reboot recovery are not
 qualified by these fixtures.
+The management fixture inventories each directory explicitly and hashes every
+file, including hidden and binary files. Its oracle checks stable enumeration
+and detection of additions, deletions and content changes before testing preview
+and cancellation purity; no generated subtree is excluded from comparison.
 The global management suite also injects WinGet, PostgreSQL and bootstrap to
 exercise local provisioning, interrupted preparation, secret separation and
 nonempty-database refusal. This is not actual server installation evidence.
