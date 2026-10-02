@@ -7,6 +7,10 @@ extends ADR-0017 without changing default execution, public CLI selection or
 native qualification requirements. Source and disposable fixtures are distinct
 from an installed pilot or a qualified native Codex run.
 
+ADR-0020 adds the experimental CLI/dashboard consumer and an optional expected
+result hash for exact-preview checkpoint application. Default execution remains
+unchanged; the internal services retain admission and CAS authority.
+
 ## Decision
 
 `workflow_instance` is a governed canonical artifact with the closed internal

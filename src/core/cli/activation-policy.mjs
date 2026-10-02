@@ -31,9 +31,9 @@ export function classifyCliActivation(descriptor, args = []) {
   if (descriptor?.group === "root" && descriptor.name === "build-release") return decision("source-release");
   if (descriptor?.group === "project" && ["config", "add", "migrate", "list", "remove"].includes(descriptor.name)) return decision("maintenance");
   if (descriptor?.group === "runtime") {
-    // This command keeps its admission contract and guards itself before its
-    // backend loads; it must not acquire the generic refusal shape.
-    if (descriptor.name === "pre-write-admit") return decision("self-guarded");
+    // These commands retain their own admission/refusal contracts. Console
+    // reads remain available; effects recheck authority in the existing services.
+    if (["pre-write-admit", "workflow-inspect", "workflow-action", "workflow-dashboard"].includes(descriptor.name)) return decision("self-guarded");
     if (MAINTENANCE.has(descriptor.name)) return decision("maintenance");
     if (descriptor.name === "local-daemon") {
       const actions = ["--start", "--serve", "--status", "--stop"].filter((flag) => args.includes(flag));

@@ -128,7 +128,8 @@ function policyIsCheckable(policy) {
   if (!["read-only", "preview"].includes(policy.effect_class)) {
     return false;
   }
-  return policy.stability === "stable";
+  // Experimental console entry points also promise pure observation/preview.
+  return policy.stability === "stable" || ["runtime-workflow-inspect", "runtime-workflow-action", "runtime-workflow-dashboard"].includes(policy.id);
 }
 
 function guardedPathsForPolicy(policy) {

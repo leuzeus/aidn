@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AIDN · Workflows</title><link rel="stylesheet" href="/dashboard.css"><script src="/dashboard.js" defer></script></head>
+<body><header><a class="brand" href="/">AIDN<span>WORKFLOW CONSOLE</span></a><span class="local">LOCAL · OPT-IN</span></header>
+<main><section class="intro"><p class="eyebrow">PARCOURS & PREUVES</p><h1>Comprendre avant d’agir.</h1><p>Consultez les révisions canoniques, les étapes et les résultats. Chaque action commence par son aperçu exact.</p></section>
+<section class="connection"><label>Jeton de cette session<input id="token" type="password" autocomplete="off" placeholder="Jeton affiché par la commande --serve"></label><button id="refresh">Actualiser</button><span id="connection-state" role="status">Non connecté</span></section>
+<section class="filters"><label>Instance exacte<input id="instance" placeholder="Toutes les instances"></label><label>Workflow exact<input id="workflow" placeholder="Toutes les sélections"></label><label>Configuration du run<input id="configuration" placeholder="Optionnel · chemin absolu"></label><label>Run en direct<input id="run" placeholder="Avec sa configuration"></label></section>
+<p id="errors" class="error" role="alert"></p><div id="summary" class="summary"></div>
+<div class="columns"><section><h2>Parcours</h2><div id="instances" class="stack"><p class="empty">Connectez-vous pour lire l’état canonique.</p></div></section><section><h2>Catalogue & révisions</h2><div id="catalog" class="stack"></div><h2>Disponibilité & limites</h2><div id="limits" class="stack"></div></section></div>
+<section id="live-section"><h2>Run observé en direct</h2><p>Une exécution terminée ne prouve pas l’acceptation, l’intégration, la validation ou le nettoyage.</p><div id="live"></div></section>
+<section class="actions"><div><p class="eyebrow">ACTION EXPLICITE</p><h2>Préparer, vérifier, appliquer.</h2><p>La requête utilise le même contrat que <code>workflow-action --request</code>. Aucun effet n’est appliqué avant votre confirmation de l’aperçu.</p></div>
+<label>Requête JSON<textarea id="request" rows="9" spellcheck="false" placeholder='{"operation":"decide","input":{"instanceId":"…","expectedSha256":"…","outcome":"approved","evidence":[{"ref":"…","sha256":"…"}]}}'></textarea></label>
+<button id="preview">Préparer l’aperçu</button><pre id="preview-output">Aucun aperçu préparé.</pre>
+<label class="check"><input id="approve" type="checkbox">J’ai examiné les effets et j’autorise exactement cet aperçu.</label><label class="check"><input id="sync" type="checkbox">J’autorise la synchronisation partagée pour cette action de run.</label><button id="apply" disabled>Appliquer l’aperçu</button><pre id="result"></pre></section>
+<details><summary>Contrat de consultation complet · identique à la CLI</summary><pre id="raw"></pre></details>
+<footer>SPEC conserve l’autorité de règle. Les projections et les fixtures n’accordent aucune qualification native.</footer></main></body></html>

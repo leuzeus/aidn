@@ -73,7 +73,7 @@ export function createWorkflowCandidateService({ selections, instances, readAuth
       assertWorkflowSelection(selection);
       return selection;
     },
-    initializeSelected({ workflowId, instanceId, expectedSelectionSha256, write = false }) {
+    initializeSelected({ workflowId, instanceId, expectedSelectionSha256, write = false, expectedResultSha256 = null }) {
       const selection = selections.read(workflowId).record;
       if (!selection || !expectedSelectionSha256 || selection.selection_sha256 !== expectedSelectionSha256) fail("WORKFLOW_SELECTION_CHANGED");
       assertWorkflowSelection(selection);
@@ -81,7 +81,7 @@ export function createWorkflowCandidateService({ selections, instances, readAuth
       authority({ scope: selection.scope, compilation: active.compilation });
       const current = compileShadowWorkflow(active.definition, active.compilation.context);
       if (!current.ok || current.compilation.compilation_sha256 !== active.compilation.compilation_sha256) fail("WORKFLOW_SELECTION_COMPILATION_CHANGED");
-      return initializeInstance({ instanceId, definition: active.definition, context: active.compilation.context, write });
+      return initializeInstance({ instanceId, definition: active.definition, context: active.compilation.context, write, expectedResultSha256 });
     },
   });
 }

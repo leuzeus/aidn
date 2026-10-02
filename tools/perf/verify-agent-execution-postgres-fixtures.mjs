@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { createPublicAgentRunLifecycle } from "../../src/application/runtime/agent-run-public-composition.mjs";
+import { createProjectWorkflowConsole } from "../../src/application/runtime/workflow-console-composition.mjs";
+import { startWorkflowDashboard } from "../../src/adapters/workflow-console/dashboard-server.mjs";
 import { parseAgentRunArguments } from "../../src/application/runtime/agent-run-lifecycle-service.mjs";
 import { bindWorkflowSegment } from "../../src/core/workflow/workflow-segment-binding.mjs";
 import { createWorkflowInstance, decideWorkflowInstance, assertWorkflowInstance } from "../../src/core/workflow/workflow-instance.mjs";
@@ -681,6 +683,16 @@ async function runSuite({ connectionString, version, root }) {
             const stale = await createPublicAgentRunLifecycle({ workflowInstance: { ...pins, [field]: "changed" } }).invoke(selectedArgs);
             assert.deepEqual(stale.errors, ["WORKFLOW_INSTANCE_SEGMENT_CHANGED"]); assert.equal(stale.written, false);
           }
+          const consoleView = await createProjectWorkflowConsole({ targetRoot: target }).inspect({ configuration: configPath, run: context.runId });
+          assert.deepEqual(consoleView.errors, []); assert.equal(consoleView.view.live_run.status.execution_status, "planned");
+          assert.deepEqual(invoke("workflow-inspect"), consoleView);
+          const dashboard = await startWorkflowDashboard({ targetRoot: target });
+          try {
+            const response = await fetch(dashboard.url + "/api/inspect", { method: "POST", headers: { Origin: dashboard.url, Authorization: "Bearer " + dashboard.token, "Content-Type": "application/json" },
+              body: JSON.stringify({ configuration: configPath, run: context.runId }) });
+            assert.equal(response.status, 200); assert.deepEqual(await response.json(), consoleView);
+          } finally { dashboard.close(); }
+          console.log("PASS workflow console CLI/HTTP share the real PostgreSQL read model without writes or DDL");
           config.runtime.stateMode = "db-only"; writeAidnProjectConfig(target, config);
           const changed = await createPublicAgentRunLifecycle().invoke(selectedArgs);
           assert.deepEqual(changed.errors, ["WORKFLOW_SEGMENT_CONTEXT_CHANGED"]); assert.equal(changed.written, false);

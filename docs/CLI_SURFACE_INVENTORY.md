@@ -110,6 +110,9 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
 - `aidn runtime agent-run --configuration <file> --plan <file> --json`
+- `aidn runtime workflow-inspect --target <root> --json`
+- `aidn runtime workflow-action --target <root> --request <file> --json`
+- `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-resume --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-cancel --configuration <file> --run <id> --json`
@@ -138,6 +141,15 @@ finalization; `--verify` retains its read-only verification behavior.
   - shared runtime synchronization remains explicit and is not implied by `--json`
 
 ## Advanced public command families
+
+The three experimental `workflow-*` console commands share one application
+service with the loopback dashboard; see [the console guide](WORKFLOW_CONSOLE.md).
+Inspection is read-only. Actions require the exact preview hash and explicit
+`--write` or `--execute`, plus `--sync-relay` for run effects. Dashboard startup
+requires `--serve`; JSON alone opens no listener. Their self-guarded adapters
+preserve current instance/selection admission and the existing supervisor,
+including historical status/cancellation after revocation. No SQL or alternate
+execution route is exposed by the browser.
 
 The five `agent-run*` commands are opt-in supervision candidates. They use
 `tools/runtime/agent-run-cli.mjs` and one schema per command under `cli-output`.

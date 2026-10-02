@@ -3,8 +3,11 @@
 The internal `createProjectWorkflowCandidateService({ targetRoot })` in
 `src/application/runtime/workflow-candidate-composition.mjs` implements
 [ADR-0019](ADR/ADR-0019-reviewed-workflow-candidates.md). It uses an already
-activated target's canonical artifacts. It adds no public CLI command and does
-not install AIDN, call a model, authorize tools or start execution.
+activated target's canonical artifacts. It does not install AIDN, call a model,
+authorize tools or start execution.
+
+The experimental [workflow console](WORKFLOW_CONSOLE.md) exposes this same
+service through explicit CLI and dashboard requests under ADR-0020.
 
 ## Proposal and review
 

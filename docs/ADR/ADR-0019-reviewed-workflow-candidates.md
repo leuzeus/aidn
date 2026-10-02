@@ -6,6 +6,10 @@ Proposed; internal opt-in composition extending ADR-0016 through ADR-0018.
 SPEC remains the rule authority. Default execution and public CLI selection
 remain unchanged. Source fixtures do not qualify an installed native executor.
 
+ADR-0020 subsequently exposes these services through the experimental console
+CLI and local dashboard. Selection remains explicit and existing instances stay
+pinned; no default workflow is replaced.
+
 ## Decision
 
 An assistant can propose a definition and explanation from `generationInput`:

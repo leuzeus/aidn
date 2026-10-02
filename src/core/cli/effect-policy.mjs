@@ -90,6 +90,14 @@ function commandPolicy({
 }
 
 const CLI_EFFECT_POLICIES = freezeDeep([
+  ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => commandPolicy({
+    id: "runtime-" + name, command: "aidn runtime " + name + " --json", surfaceDefault: true, stability: "experimental",
+    effectClass: name === "workflow-inspect" ? "read-only" : "preview", surfaceDefaultEffect: name === "workflow-inspect" ? "read-only" : "preview",
+    effectVariants: name === "workflow-action" ? [{ whenArgs: ["--write"], effectClass: "mutating" }, { whenArgs: ["--execute"], effectClass: "executor" }]
+      : name === "workflow-dashboard" ? [{ whenArgs: ["--serve"], effectClass: "executor" }] : [],
+    jsonContract: "runtime-" + name + ".v1.schema.json", safeArgs: ["runtime", name, "--json"], allowNonZero: true,
+    notes: "Common CLI/dashboard application port. Inspection and JSON are read-only; explicit effects require the exact preview and existing admission. Server starts only with --serve on loopback.",
+  })),
   ...["agent-run", "agent-run-status", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].map(name => commandPolicy({
     id: "runtime-" + name, command: "aidn runtime " + name + " --json", surfaceDefault: true, stability: "experimental",
     effectClass: name === "agent-run-status" ? "read-only" : "preview", surfaceDefaultEffect: name === "agent-run-status" ? "read-only" : "preview",

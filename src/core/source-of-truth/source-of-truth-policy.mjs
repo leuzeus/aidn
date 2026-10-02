@@ -326,7 +326,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     files: "docs/audit/workflows/definitions/<workflow-id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
-    projection: "definition JSON plus deterministic Markdown and Mermaid carrying compiler identities and hashes",
+    projection: "definition JSON, deterministic Markdown/Mermaid and the derived CLI/dashboard view carrying compiler identities and hashes",
     notes: "ADR-0019 internal opt-in selection for future instances. Initial baseline is a terminal canonical instance; later proposals use the current selection. Suggestions cannot grant permissions or replace SPEC. Current activation, context and canonical artifact CAS remain required. Shared coordination boundaries and existing run reservation fencing are unchanged.",
   }),
   policy({
@@ -334,7 +334,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     files: "docs/audit/workflows/instances/<id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is a derived projection",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
-    projection: "docs/audit/workflows/instances/<id>.json in dual or files with configured PostgreSQL",
+    projection: "docs/audit/workflows/instances/<id>.json in dual or files with configured PostgreSQL; common CLI/dashboard read model is derived, never write authority",
     notes: "ADR-0018 internal opt-in composition; SPEC remains rule authority. SQLite uses existing artifact tables; PostgreSQL uses existing contextual artifacts and reservation fence. Sequential human checkpoints require no PostgreSQL. Agent segments retain exclusive existing supervisor admission. No new shared coordination table or automatic client activation.",
   }),
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({

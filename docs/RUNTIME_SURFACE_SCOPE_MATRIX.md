@@ -30,6 +30,7 @@ Purpose:
 
 | Path or surface | Scope | Shared by default | Current source of truth | Notes |
 | --- | --- | --- | --- | --- |
+| Workflow console view and loopback dashboard | `ephemeral` | no | derived from configured canonical artifacts and explicit supervisor status | ADR-0020. Per-record observation, retained/live distinction; memory-only token. Actions reuse the same CLI application services and admissions; no direct SQL or new shared surface. |
 | `workflows/definitions/<workflow-id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | files or configured canonical artifact store; configured PostgreSQL always wins | ADR-0019 reviewed selection for explicit future instances. Retained review/preview hashes; existing instances stay pinned. Bulk DB projections refuse stale content. No new shared surface. |
 | `workflows/instances/<id>.json` audit artifact | `checkout-bound` in files; configured runtime artifact scope in DB modes | no | files or configured canonical artifact store; configured PostgreSQL always wins | ADR-0018 internal opt-in instance. Dual JSON is derived; db-only has no automatic visible projection. Existing reservation fence applies; no new shared coordination table. |
 | `docs/audit/SPEC.md`, `docs/audit/WORKFLOW.md`, `docs/audit/WORKFLOW-KERNEL.md`, `docs/audit/WORKFLOW_SUMMARY.md`, `docs/audit/CODEX_ONLINE.md` | `checkout-bound` workflow bootstrap | no | worktree checkout or scaffold materialization | Protected workflow surfaces; strict `db-only` cleanup must not quarantine them. |

@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-workflow-dashboard.v1",
+  "title": "aidn runtime workflow-dashboard --json",
+  "x-aidn-command": "aidn runtime workflow-dashboard --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "command",
+    "effect_class",
+    "dry_run",
+    "written",
+    "shared_coordination_sync",
+    "errors",
+    "warnings",
+    "listening",
+    "url",
+    "token"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "runtime-workflow-dashboard.v1"
+    },
+    "command": {
+      "const": "aidn runtime workflow-dashboard"
+    },
+    "effect_class": {
+      "enum": [
+        "read-only",
+        "preview",
+        "mutating",
+        "executor"
+      ]
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "written": {
+      "type": "boolean"
+    },
+    "shared_coordination_sync": {
+      "type": "boolean"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "listening": {
+      "type": "boolean"
+    },
+    "url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "token": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
