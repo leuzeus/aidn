@@ -75,10 +75,19 @@ If the payload shape changes, update the schema, the fixture coverage, and the r
 
 ## Internal Shadow Workflow Definition
 
+ADR-0017 adds closed `workflow-segment-binding.v1` and
+`workflow-segment-selection.v1` contracts in this namespace. The binding's nested
+definition and context are validated against their existing schemas by the
+binding validator. Explicit run configuration v2 requires this binding; v1
+rejects it. Existing public `agent-run*` JSON roots remain v1 and expose the
+selection at the extensible `action.preconditions.workflow`. The lifecycle gate
+validates the nested contract as well as the public root. Selection does not
+change the descriptive macro's execution availability or source of truth.
+
 ADR-0015 proposes `workflow-definition.v1` under
 `src/core/contracts/workflow-definition/`, using the explicit
 `workflow-definition` validator profile and contract URI namespace. It has no
-public CLI entry, dispatcher or runtime consumer. Descriptors and parity
+standalone public CLI entry or handler dispatcher. Descriptors and parity
 expectations in `tests/fixtures/workflow-shadow/` are reference data. The
 `contracts-workflow-shadow` gate checks schema, links, graph shape and existing
 helper behavior; it does not establish executable workflow availability.
@@ -87,7 +96,8 @@ ADR-0016 adds `workflow-shadow-context.v1` and `workflow-compilation.v1` in the
 same internal profile. Compilation is pure, with caller-supplied context and
 explicit definition/registry/compiler fingerprints. Optional `primitive_ref`
 preserves structural v1 compatibility; compilation requires a registered
-reference. No public CLI registry entry, binding or production dispatch is added.
+reference. This pure compiler adds no public CLI registry entry or dispatch;
+ADR-0017 supplies its explicit run-local consumer.
 `contracts-workflow-compilation` verifies deterministic output and semantic
 refusals; a valid shadow envelope grants no authority to execute.
 

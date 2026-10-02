@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createPublicAgentRunLifecycle } from "../../src/application/runtime/agent-run-public-composition.mjs";
 import { parseAgentRunArguments } from "../../src/application/runtime/agent-run-lifecycle-service.mjs";
+import { bindWorkflowSegment } from "../../src/core/workflow/workflow-segment-binding.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -43,6 +44,7 @@ const lifecycleChecks=new Set([
   "unknown cooperative assurance is rejected before PostgreSQL writes",
   "canonical resolver scope survives reservation and fences every canonical writer",
   "public CLI status and planned cancellation use real PostgreSQL without native preparation",
+  "workflow segment public preview and cancellation retain PostgreSQL pins without native preparation",
   "cleanup batch admits only a complete exact bounded observation",
   "cleanup connection error refuses commit and retains the first failure",
   "cleanup rechecks Git after external observations before authority or durable results",
@@ -549,12 +551,15 @@ async function runSuite({ connectionString, version, root }) {
       await context.store.reserveRun(context.reservation);
       await reject(context.store.previewRunReservation(context.reservation),"AGENT_EXECUTION_RESERVATION_CONFLICT");
     });
-    await check("public CLI status and planned cancellation use real PostgreSQL without native preparation",async()=>{
-      const target=path.join(root,"public-cli-target"), resources=path.join(root,"public-cli-resources");
+    for (const workflow of [false, true]) await check(workflow
+      ? "workflow segment public preview and cancellation retain PostgreSQL pins without native preparation"
+      : "public CLI status and planned cancellation use real PostgreSQL without native preparation",async()=>{
+      const suffix = workflow ? "-workflow" : "";
+      const target=path.join(root,"public-cli-target"+suffix), resources=path.join(root,"public-cli-resources"+suffix);
       fs.mkdirSync(target);fs.mkdirSync(resources);
       const init=spawnSync("git",["init",target],{encoding:"utf8",windowsHide:true,timeout:10000});assert.equal(init.status,0);
       const reference=name=>({path:path.join(resources,name),sha256:sha("deliberately unavailable native reference")});
-      const configuration={contract_version:"agent-run-configuration.v1",run_id:"run.public.lifecycle",target_root:target,resources_root:resources,
+      const configuration={contract_version:workflow ? "agent-run-configuration.v2" : "agent-run-configuration.v1",run_id:"run.public.lifecycle"+suffix,target_root:target,resources_root:resources,
         planning_key:"pending",integration_ref:"refs/heads/codex/public-lifecycle",prepared_manifest:reference("prepared.json"),
         git:{executable:process.execPath,sha256:sha("unused native Git executable")},
         commit_identity:{name:"AIDN fixture",email:"fixture@example.invalid",timestamp:"2026-09-26T00:00:00Z"},
@@ -565,13 +570,18 @@ async function runSuite({ connectionString, version, root }) {
       const context=await seed({runIdOverride:configuration.run_id,transform:plan=>{
         configuration.planning_key=`planning.${plan.canonical.project_id.slice("project.".length)}`;
         plan.canonical.runtime_scope_id=resolveRuntimeProjectContext({targetRoot:target,projectId:plan.canonical.project_id,workspaceId:plan.canonical.workspace_id,env:{}}).runtime_scope_id;
+        if (workflow) configuration.workflow = bindWorkflowSegment({
+          definition: JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/workflow-shadow/diagnostic-correction.v1.json", import.meta.url))),
+          context: { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "dual" },
+          stepId: "correction", canonical: plan.canonical,
+        });
         plan.supervision={configuration_sha256:fingerprintAgentExecutionValue(configuration)};
       }});
       const config=buildNextAidnProjectConfig({},{store:"dual-sqlite",stateMode:"dual"},{});
       config.runtime.persistence={backend:"postgres",connectionRef:"env:AIDN_TEST_PG_URL"};writeAidnProjectConfig(target,config);
       writeSharedRuntimeLocator(target,{enabled:true,projectId:context.plan.canonical.project_id,workspaceId:context.plan.canonical.workspace_id,
         backend:{kind:"postgres",connectionRef:"env:AIDN_TEST_PG_URL"},projection:{localIndexMode:"preserve-current"}});
-      const configPath=path.join(root,"public-run-configuration.json");fs.writeFileSync(configPath,JSON.stringify(configuration));
+      const configPath=path.join(root,"public-run-configuration"+suffix+".json");fs.writeFileSync(configPath,JSON.stringify(configuration));
       const tree=()=>{const files=[];const visit=directory=>{for(const entry of fs.readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){
         const file=path.join(directory,entry.name);if(entry.isDirectory())visit(file);else files.push([path.relative(target,file),sha(fs.readFileSync(file))]);
       }};visit(target);return fingerprintAgentExecutionValue(files);};
@@ -597,6 +607,21 @@ async function runSuite({ connectionString, version, root }) {
         const refusal = await createPublicAgentRunLifecycle().invoke(parseAgentRunArguments("agent-run", ["--target", target,
           "--configuration", configPath, "--plan", divergentPath, "--json"]));
         assert.equal(refusal.written, false); assert.deepEqual(refusal.errors, ["AGENT_RUN_RUNTIME_SCOPE_MISMATCH"]);
+        if (workflow) {
+          const planPath = path.join(root, "public-workflow-plan.json"); fs.writeFileSync(planPath, JSON.stringify(context.plan));
+          const selectedArgs = parseAgentRunArguments("agent-run", ["--target", target, "--configuration", configPath, "--plan", planPath, "--json"]);
+          const selected = await createPublicAgentRunLifecycle().invoke(selectedArgs);
+          assert.deepEqual(selected.errors, []); assert.equal(selected.written, false); assert.equal(selected.can_apply, false);
+          assert.equal(selected.action.preconditions.workflow.binding_sha256, configuration.workflow.binding_sha256);
+          assert.equal(selected.action.preconditions.workflow.plan_sha256, context.plan.plan_sha256);
+          assert.equal(selected.action.preconditions.workflow.validation, "compiled");
+          assert.ok(selected.action.preconditions.blockers.includes("AGENT_RUN_ACTIVATION_INVALID"));
+          assert.ok(selected.action.preconditions.blockers.includes("AGENT_RUN_ABSOLUTE_PATH_REQUIRED"), "missing native candidate path must be reported");
+          config.runtime.stateMode = "db-only"; writeAidnProjectConfig(target, config);
+          const changed = await createPublicAgentRunLifecycle().invoke(selectedArgs);
+          assert.deepEqual(changed.errors, ["WORKFLOW_SEGMENT_CONTEXT_CHANGED"]); assert.equal(changed.written, false);
+          config.runtime.stateMode = "dual"; writeAidnProjectConfig(target, config);
+        }
       } finally {
         if (previousConnection === undefined) delete process.env.AIDN_TEST_PG_URL; else process.env.AIDN_TEST_PG_URL = previousConnection;
       }
@@ -604,10 +629,16 @@ async function runSuite({ connectionString, version, root }) {
       const status=invoke("agent-run-status"), preview=invoke("agent-run-cancel");
       assert.equal(status.status.execution_status,"planned");assert.equal(status.written,false);assert.equal(preview.can_apply,true,JSON.stringify(preview));
       assert.equal(preview.written,false);assert.equal(preview.action.preconditions.activation.active,false);
+      if (workflow) {
+        assert.equal(status.action.preconditions.workflow.validation, "retained");
+        assert.equal(preview.action.preconditions.workflow.binding_sha256, configuration.workflow.binding_sha256);
+      } else assert.equal(Object.hasOwn(preview.action.preconditions, "workflow"), false);
       assert.equal(await dataSnapshot(),before);assert.equal(await ddlCount(),ddl);assert.equal(tree(),local);assert.deepEqual(fs.readdirSync(resources),[]);
       const cancelled=invoke("agent-run-cancel",["--execute","--expect-plan",preview.action_sha256,"--sync-relay"]);
       assert.equal(cancelled.written,true);assert.equal(cancelled.status.cancellation.status,"requested");
       const durable=await context.store.getRun({runId:context.runId});
+      assert.equal(durable.plan.supervision.configuration_sha256, fingerprintAgentExecutionValue(configuration));
+      assert.equal(durable.cancel_request.request.plan_sha256, context.plan.plan_sha256);
       assert.equal(durable.cancel_request.target_supervisor_generation,0);assert.equal(durable.attempts.length,0);assert.equal(durable.supervision.current,null);
       assert.equal(durable.run.lifecycle_status,"planned");assert.equal(tree(),local);assert.equal(await ddlCount(),ddl);assert.deepEqual(fs.readdirSync(resources),[]);
       const cancelledState=await dataSnapshot(), repeated=invoke("agent-run-cancel");

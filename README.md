@@ -153,6 +153,11 @@ or native Codex observation. Launch, resume and cancellation require
 `--execute --expect-plan <action_sha256> --sync-relay`; cleanup requires
 `--write --expect-plan <action_sha256> --sync-relay`. Status is read-only.
 
+An explicit v2 run configuration can bind one workflow agent segment to the
+frozen plan. The preview includes its provenance in the exact action hash;
+existing admission and native qualification still apply. See
+[workflow segment selection](docs/WORKFLOW_SEGMENT_EXECUTION.md).
+
 Supervised workspaces and task paths under OneDrive are refused by AIDN.
 This application exclusion does not modify OneDrive permissions or establish
 a Windows read prohibition.

@@ -2,7 +2,9 @@
 
 Lot 2 compiles the current reference workflow and the diagnostic/correction
 workflow without changing execution. See ADR-0016. The compiler is an internal
-package-source API, with no CLI command, automatic discovery or runtime caller.
+package-source API, with no standalone CLI command or automatic discovery.
+Lot 3 adds an explicit run-local consumer; see
+[segment selection](WORKFLOW_SEGMENT_EXECUTION.md). The compiler itself stays pure.
 
 ## Inputs and output
 
@@ -43,7 +45,7 @@ These are single-step explanations, not approvals or durable execution cursors.
 | Usage | Evidence | Limit |
 |---|---|---|
 | Current workflow | Fixed nominal, refusal, THINKING and drift/readmission traces; 28 compiled helper observations retain actions, reasons and full payloads. | Helper inputs are fixtures; procedural obligations still require their own evidence. |
-| Other topology | Diagnosis, human approval, correction, human review, completion/refusal and bounded return; graph-only edits and identity renaming use the same registry/compiler. | The segment has no produced plan; admission and lifecycle integration are deferred. |
+| Other topology | Diagnosis, human approval, correction, human review, completion/refusal and bounded return; graph-only edits and identity renaming use the same registry/compiler. | The compiler produces no agent plan; lot 3 connects an explicitly supplied plan through separate admission. |
 | Adversarial | Unknown primitive/source/outcome/condition, malformed JSON, incompatible context, unreachable steps, missing terminal result, incomplete bounds and unbounded returns refuse. | Graph validity alone does not prove SPEC compliance of arbitrary custom workflows. |
 | Determinism | Fixed hashes and byte-identical results after object/set ordering changes; context and graph changes alter hashes. | Registry/compiler versions and supplied context are part of the fingerprint. |
 | Effects | Tests deny filesystem access, process launch, network connection, clock and randomness during calls; family runner checks checkout preservation. | This proves the internal compiler boundary, not future handler purity. |
@@ -59,6 +61,7 @@ evidence and reference declarations distinct.
 SPEC and existing handlers retain their authority. The registry references
 those sources and carries finite macro output vocabularies; it dispatches none.
 Binding remains `null`, parameters remain empty and arbitrary executable
-expressions are rejected. Project binding, safe-point activation, actual segment
-plans, approval, native qualification, durable instance state and migration
-remain outside this lot. No binding-less client execution path changes.
+expressions are rejected. Lot 3 adds a separate run-local binding and selection
+envelope, exact action approval and lifecycle connection. Project binding
+discovery, macro activation, native qualification, durable macro instance state
+and migration remain outside this compiler. Existing default execution is unchanged.
