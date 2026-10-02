@@ -144,6 +144,12 @@ CLI effect semantics:
 - Public command effect classes live in `src/core/cli/effect-policy.mjs` and are verified with `npm run perf:verify-cli-effect-policy` plus `npm run perf:verify-cli-no-implicit-write`.
 - Public JSON output contracts live under `src/core/contracts/cli-output/` and are verified with `npm run perf:verify-cli-output-contracts`.
 
+The experimental [workflow console](docs/WORKFLOW_CONSOLE.md) exposes canonical
+workflow observations through `aidn runtime workflow-inspect --json` and the
+same guarded actions through `aidn runtime workflow-action`. A local dashboard
+starts only with `aidn runtime workflow-dashboard --serve`; JSON alone is a
+preview. It preserves existing instance pins and supervisor admission.
+
 Bounded supervised runs use a separate opt-in command family:
 `aidn runtime agent-run`, `agent-run-status`, `agent-run-resume`,
 `agent-run-cancel` and `agent-run-cleanup`. Every command selects a pinned local
@@ -152,6 +158,11 @@ Bounded supervised runs use a separate opt-in command family:
 or native Codex observation. Launch, resume and cancellation require
 `--execute --expect-plan <action_sha256> --sync-relay`; cleanup requires
 `--write --expect-plan <action_sha256> --sync-relay`. Status is read-only.
+
+An explicit v2 run configuration can bind one workflow agent segment to the
+frozen plan. The preview includes its provenance in the exact action hash;
+existing admission and native qualification still apply. See
+[workflow segment selection](docs/WORKFLOW_SEGMENT_EXECUTION.md).
 
 Supervised workspaces and task paths under OneDrive are refused by AIDN.
 This application exclusion does not modify OneDrive permissions or establish
@@ -316,7 +327,7 @@ For Windows setup including optional PostgreSQL preparation, follow
 [per-project Windows setup](docs/WINDOWS_PROJECT_SETUP.md) is historical 0.9.x guidance.
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.11.0` source also executes dispatched agent commands in their target
+The `v0.12.0` source also executes dispatched agent commands in their target
 worktree, including Windows paths with spaces and accents. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -398,7 +409,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.11.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.12.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

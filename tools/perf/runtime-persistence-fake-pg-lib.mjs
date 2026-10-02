@@ -283,6 +283,13 @@ export function createRuntimePersistenceFakePgClientFactory({
               .map((row) => clone(row));
             return { rows };
           }
+          if (sql.startsWith("SELECT path, content_format, content FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND (path LIKE 'workflows/instances/%'")) {
+            requireTable("artifacts"); requireTable("artifact_blobs");
+            return { rows: state.relationalRows.artifacts.filter(row => row.scope_key === values[0] && /^workflows\/(instances|definitions)\//.test(row.path)).map(row => {
+              const blob = state.relationalRows.artifact_blobs.find(item => item.scope_key === row.scope_key && item.artifact_id === row.artifact_id);
+              return clone({ path: row.path, content_format: row.content_format ?? blob?.content_format, content: row.content ?? blob?.content });
+            }) };
+          }
           const scopedSelectMatch = sql.match(/^SELECT[\s\S]+FROM aidn_runtime\.([a-z_]+)\s+WHERE scope_key = \$1\s+ORDER BY[\s\S]*$/i);
           if (scopedSelectMatch) {
             const tableName = normalizeScalar(scopedSelectMatch[1]).toLowerCase();

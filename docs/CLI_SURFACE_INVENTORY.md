@@ -110,6 +110,9 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime shared-coordination-status --json`
 - `aidn runtime shared-coordination-projects --json`
 - `aidn runtime agent-run --configuration <file> --plan <file> --json`
+- `aidn runtime workflow-inspect --target <root> --json`
+- `aidn runtime workflow-action --target <root> --request <file> --json`
+- `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-resume --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-cancel --configuration <file> --run <id> --json`
@@ -139,6 +142,15 @@ finalization; `--verify` retains its read-only verification behavior.
 
 ## Advanced public command families
 
+The three experimental `workflow-*` console commands share one application
+service with the loopback dashboard; see [the console guide](WORKFLOW_CONSOLE.md).
+Inspection is read-only. Actions require the exact preview hash and explicit
+`--write` or `--execute`, plus `--sync-relay` for run effects. Dashboard startup
+requires `--serve`; JSON alone opens no listener. Their self-guarded adapters
+preserve current instance/selection admission and the existing supervisor,
+including historical status/cancellation after revocation. No SQL or alternate
+execution route is exposed by the browser.
+
 The five `agent-run*` commands are opt-in supervision candidates. They use
 `tools/runtime/agent-run-cli.mjs` and one schema per command under `cli-output`.
 
@@ -166,6 +178,12 @@ workflow adapters and sequential commands retain their contracts.
 | `agent-run-cleanup` | Preview eligible, retained resources of a completed run | `--write --expect-plan <action_sha256> --sync-relay` |
 
 All accept `--target <root>`, `--configuration <file>` and `--json`.
+Explicit `agent-run-configuration.v2` adds a frozen workflow segment binding.
+Its contracted selection appears at `action.preconditions.workflow` and enters
+the exact action hash. V1 configuration remains unchanged. Selection preserves
+canonical admission, scope/DAG authority, reservation and native qualification;
+it does not traverse the macro graph. See
+[segment preparation and evidence](WORKFLOW_SEGMENT_EXECUTION.md).
 `agent-run` requires `--plan <file>`; the other four require `--run <id>`.
 `--help`/`-h` is read-only and returns before configuration or native discovery.
 `--dry-run` is preview-only and cannot combine with effect selectors or

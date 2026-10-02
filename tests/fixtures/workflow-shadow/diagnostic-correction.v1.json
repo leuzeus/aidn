@@ -1,0 +1,228 @@
+{
+  "contract_version": "workflow-definition.v1",
+  "revision": 2,
+  "authority": "shadow",
+  "lifecycle_status": "reference_only",
+  "owner": "aidn-maintainers",
+  "source_of_truth": "docs/SPEC.md",
+  "compatibility": {
+    "product_version": "0.11.0",
+    "workflow_version": 7,
+    "execution": "unsupported"
+  },
+  "workflow_id": "diagnostic-correction",
+  "entry": "diagnose",
+  "steps": [
+    {
+      "id": "diagnose",
+      "kind": "aidn_step",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R05"
+      },
+      "outcomes": [
+        "diagnosed",
+        "blocked"
+      ],
+      "rule_refs": [
+        "SPEC-R05"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ],
+      "primitive_ref": "diagnosis"
+    },
+    {
+      "id": "approval",
+      "kind": "human_decision",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R10"
+      },
+      "outcomes": [
+        "approved",
+        "rejected"
+      ],
+      "rule_refs": [
+        "SPEC-R10"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ],
+      "primitive_ref": "approval"
+    },
+    {
+      "id": "correction",
+      "kind": "agent_segment",
+      "source": {
+        "path": "src/core/contracts/agent-execution/plan.v3.schema.json",
+        "anchor": "agent-execution-plan.v3"
+      },
+      "outcomes": [
+        "completed",
+        "failed"
+      ],
+      "rule_refs": [
+        "SPEC-R03",
+        "SPEC-R04"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ],
+      "primitive_ref": "agent_segment"
+    },
+    {
+      "id": "review",
+      "kind": "human_decision",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R08"
+      },
+      "outcomes": [
+        "accepted",
+        "rejected"
+      ],
+      "rule_refs": [
+        "SPEC-R08"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ],
+      "primitive_ref": "review"
+    },
+    {
+      "id": "done",
+      "kind": "terminal",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R11"
+      },
+      "outcomes": [],
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ],
+      "terminal_result": "completed",
+      "primitive_ref": "terminal"
+    },
+    {
+      "id": "stop",
+      "kind": "terminal",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R11"
+      },
+      "outcomes": [],
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ],
+      "terminal_result": "stopped",
+      "primitive_ref": "terminal"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "diagnose_diagnosed",
+      "from": "diagnose",
+      "outcome": "diagnosed",
+      "to": "approval",
+      "rule_refs": [
+        "SPEC-R05"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ]
+    },
+    {
+      "id": "diagnose_blocked",
+      "from": "diagnose",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R05"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ]
+    },
+    {
+      "id": "approval_approved",
+      "from": "approval",
+      "outcome": "approved",
+      "to": "correction",
+      "rule_refs": [
+        "SPEC-R10"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ]
+    },
+    {
+      "id": "approval_rejected",
+      "from": "approval",
+      "outcome": "rejected",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R10"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ]
+    },
+    {
+      "id": "correction_completed",
+      "from": "correction",
+      "outcome": "completed",
+      "to": "review",
+      "rule_refs": [
+        "SPEC-R04"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ]
+    },
+    {
+      "id": "correction_failed",
+      "from": "correction",
+      "outcome": "failed",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R04"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ]
+    },
+    {
+      "id": "review_accepted",
+      "from": "review",
+      "outcome": "accepted",
+      "to": "done",
+      "rule_refs": [
+        "SPEC-R08"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ]
+    },
+    {
+      "id": "review_rejected",
+      "from": "review",
+      "outcome": "rejected",
+      "to": "correction",
+      "rule_refs": [
+        "SPEC-R08"
+      ],
+      "evidence_refs": [
+        "alternate_macro"
+      ],
+      "max_traversals": 2,
+      "on_exhausted": "stop"
+    }
+  ]
+}

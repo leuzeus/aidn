@@ -14,7 +14,7 @@ selected at most once on a pull request.
 
 | Family | Workflow | Primary checks |
 | --- | --- | --- |
-| Contracts | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | JSON contracts and exhaustive surface catalog |
+| Contracts | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | JSON contracts, internal shadow workflow parity and pure compilation, exhaustive surface catalog |
 | Effects | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | effect policy and no implicit write |
 | Governance | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | source of truth, metadata, completeness |
 | Docs | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | Markdown contracts and CLI inventory |
@@ -25,6 +25,11 @@ selected at most once on a pull request.
 | Cleanliness | [`.github/workflows/governance-admission.yml`](../.github/workflows/governance-admission.yml) | branch policy, gate catalog, clean local full run |
 
 The executable catalog is `package/catalogs/gates.v1.json`. Every entry declares family, script, job, surfaces, condition, obligations for `dev`, `main`, and release, and reports one of `PASS`, `FAIL`, or `SKIP`.
+
+The existing `runtime-agent-run-lifecycle` gate includes the opt-in workflow
+segment binding suite. PostgreSQL segment retention and public cancellation are
+covered by the existing required PostgreSQL fixture gate. No extra gate or
+duplicate invocation is added; native qualification remains separate.
 
 The same catalog contains the adaptive lane and path policy. `FAST` is limited
 to recognized historical documentation. `STANDARD` selects the implicated

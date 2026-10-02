@@ -1,5 +1,23 @@
 # Upgrade Guide
 
+## Upgrade to 0.12.0
+
+The 0.12.0 release adds opt-in workflow instances and the local console. The
+existing default workflow, workflow schema version 7 and database schema remain
+unchanged. Publication, global engine update and client/native qualification are
+separate operations; publishing the package does not update or qualify clients.
+
+Before a version change, retain canonical instance/selection history and inspect
+any pending supervised runs through the existing lifecycle. Instance definitions,
+compilation, registry and product-version fingerprints remain pinned. After an
+upgrade, old instances remain inspectable but productive transitions fail closed
+on version drift; there is no automatic rebinding or bulk instance migration.
+Prepare and review a definition and explicit context for the new product version
+before initializing a new instance. Do not edit a retained envelope's hashes or
+reuse an old activation review to make it pass. Historical run status, cancellation
+and cleanup retain their existing lifecycle admission; an upgrade grants no new
+native execution authority.
+
 ## Move a 0.9.x project to the global engine
 
 Install a verified [global release](GLOBAL_SETUP.md) first. This replaces

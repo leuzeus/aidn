@@ -254,7 +254,7 @@ function validateSchemaNode(schema, location, { root, contractKind = "cli-output
 }
 
 export function validateJsonSchemaDefinition(schema, location = "#", { contractKind = "cli-output" } = {}) {
-  if (!["cli-output", "agent-execution"].includes(contractKind)) {
+  if (!["cli-output", "agent-execution", "workflow-definition"].includes(contractKind)) {
     return [`${location}: unsupported contract profile`];
   }
   return validateSchemaNode(schema, location, { root: true, contractKind });

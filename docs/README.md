@@ -41,6 +41,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 
 ## Runtime And Operations
 
+- [Workflow console and guarded actions](./WORKFLOW_CONSOLE.md)
 - [Shared runtime migration guide](./MIGRATION_SHARED_RUNTIME_POSTGRESQL.md)
 - [Runtime persistence migration guide](./MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)

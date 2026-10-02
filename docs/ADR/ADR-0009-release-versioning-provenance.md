@@ -22,6 +22,11 @@ separate; successful installation records a receipt-bound product version.
 and checksums so installed clients can pin a published package rather than a
 source worktree.
 
+2026-10-02: release gzip headers retain OS=255 (unknown), removing the host OS
+byte from artifact identity while preserving the ustar payload. Qualification
+reports record Node/zlib/platform versions; byte parity across different
+compression implementations requires measured evidence.
+
 ## Context
 
 AIDN ships as a package source repository with local release artifacts, manifests and checksums. The release surface is already validated by `build-release`, `npm pack --dry-run` and topology checks, but the source of version truth and the provenance of published artifacts still need an explicit architectural home.

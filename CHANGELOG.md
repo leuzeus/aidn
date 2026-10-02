@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.12.0 (2026-10-02)
+
+- Accept named Codex skill preferences without changing user configuration.
+  Preserve disabled managed skills and support update previews from an explicitly
+  selected verified management package when an older engine cannot read the host.
+- Describe the existing workflow in a shadow definition and parity matrix;
+  compile definitions deterministically against a closed primitive registry.
+  SPEC and the existing default execution path retain their authority.
+- Add explicit run-local workflow bindings to the existing supervisor, durable
+  instance checkpoints and bounded returns, with canonical compare-and-swap,
+  interruption recovery and files/SQLite/PostgreSQL coverage.
+- Retain reviewed candidate definitions and exact preview evidence. Selection
+  affects explicitly initialized future instances; existing instances keep their
+  definition, compiler, registry, scope and product-version pins.
+- Expose workflow inspection and preview-first actions through a common CLI and
+  loopback dashboard service, with explicit writes, exact action fingerprints
+  and unchanged native supervisor admission.
+- Qualify the built release tarball through disposable CLI/HTTP fixtures in the
+  reproducibility gate. Preserve historical 0.11.0 reference hashes and refuse
+  productive writes to old-version instances without automatic migration.
+- Normalize the gzip operating-system byte in release tarballs so identical
+  compressed payloads retain the same archive hash on Windows and Linux.
+- Preserve database schema and default workflow selection. Existing workflow
+  instances remain pinned to their original product version; engine updates,
+  client migration and native hook qualification retain their separate admission.
+
 ## 0.11.0
 
 - Add governed agent execution with explicit plans, bounded worker concurrency,

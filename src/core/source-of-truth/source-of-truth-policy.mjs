@@ -25,6 +25,24 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  workflow_selection: {
+    owner: "project workflow maintainer",
+    lifecycle: "proposed -> reviewed -> explicitly selected -> superseded; existing instances remain pinned",
+    scope: "one workflow identity in a physical target and canonical runtime scope with pinned activation",
+    retention: "retain the canonical seed, every selected proposal and its exact review evidence; no automatic purge",
+    migration: "no authority transfer from SPEC and no automatic instance, definition or compiler migration",
+    replacement: "fresh deterministic preview, permission ceiling, exact review hash and canonical compare-and-swap",
+    evidence_targets: ["src/core/workflow/workflow-candidate.mjs", "src/core/workflow/workflow-selection.mjs", "src/application/runtime/workflow-candidate-composition.mjs"],
+  },
+  workflow_instance: {
+    owner: "project workflow maintainer",
+    lifecycle: "waiting -> reconciliation_required -> waiting|terminal; unsupported handlers remain unavailable",
+    scope: "explicit physical target, runtime scope and activation revision; one pinned definition and compilation",
+    retention: "retain typed decisions, effect intents and supervisor proof references without automatic purge",
+    migration: "no automatic definition, compiler or context migration; historical inspection remains read-only",
+    replacement: "compare canonical content hash and append a typed checkpoint; ambiguous effects require supervisor reconciliation",
+    evidence_targets: ["src/core/workflow/workflow-instance.mjs", "src/adapters/runtime/workflow-instance-store.mjs", "src/application/runtime/workflow-instance-composition.mjs"],
+  },
   project_activation: {
     owner: "project maintainer",
     lifecycle: "absent -> authorized -> revoked; local preparation determines active or degraded status",
@@ -209,10 +227,10 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     owner: "supervising coordinator",
     lifecycle: "planned -> running -> completed|failed|cancelled|recovery_required",
     scope: "one admitted canonical task and frozen plan on one supervisor host; at most one mutating run per canonical scope",
-    retention: "retain run identity, frozen plan, cancellation request, cleanup generations and exact resource outcomes with acceptance evidence; archives, transcripts and Git refs remain retained; no automatic purge in V1",
+    retention: "retain run identity, frozen plan and exact configuration including any workflow segment binding, cancellation request, cleanup generations and exact resource outcomes with acceptance evidence; archives, transcripts and Git refs remain retained; no automatic purge in V1",
     migration: "explicit additive shared PostgreSQL schema 2 to 3 to 4 to 5 to 6 migrations; readiness and normal writes never apply DDL",
     replacement: "a changed plan requires a new run identity and fingerprint; never overwrite prior run evidence",
-    evidence_targets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution", "src/core/ports/agent-execution-store-port.mjs", "src/adapters/runtime/postgres-agent-execution-store.mjs", "tools/perf/sql/shared-coordination-postgres-v3.sql", "tools/perf/sql/shared-coordination-postgres-v4.sql", "tools/perf/sql/shared-coordination-postgres-v5.sql", "tools/perf/sql/shared-coordination-postgres-v6.sql", "src/application/runtime/agent-run-lifecycle-service.mjs", "src/application/runtime/agent-run-cleanup-service.mjs", "src/core/contracts/cli-output/runtime-agent-run.v1.schema.json", "src/adapters/runtime/local-agent-verification.mjs", "src/application/runtime/agent-run-supervisor.mjs", "src/application/runtime/agent-task-integration-service.mjs", "docs/ADR/ADR-0014-bounded-agent-orchestration.md"],
+    evidence_targets: ["src/core/agents/agent-execution-contracts.mjs", "src/core/contracts/agent-execution", "src/core/ports/agent-execution-store-port.mjs", "src/adapters/runtime/postgres-agent-execution-store.mjs", "tools/perf/sql/shared-coordination-postgres-v3.sql", "tools/perf/sql/shared-coordination-postgres-v4.sql", "tools/perf/sql/shared-coordination-postgres-v5.sql", "tools/perf/sql/shared-coordination-postgres-v6.sql", "src/application/runtime/agent-run-lifecycle-service.mjs", "src/core/workflow/workflow-segment-binding.mjs", "src/core/contracts/workflow-definition/workflow-segment-binding.v1.schema.json", "src/application/runtime/agent-run-cleanup-service.mjs", "src/core/contracts/cli-output/runtime-agent-run.v1.schema.json", "src/adapters/runtime/local-agent-verification.mjs", "src/application/runtime/agent-run-supervisor.mjs", "src/application/runtime/agent-task-integration-service.mjs", "docs/ADR/ADR-0014-bounded-agent-orchestration.md"],
   },
   delegated_task: {
     owner: "supervising coordinator",
@@ -303,6 +321,22 @@ function policy({
 }
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
+  policy({
+    concept: "workflow_selection", label: "Reviewed workflow definition selection",
+    files: "docs/audit/workflows/definitions/<workflow-id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is derived",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "definition JSON, deterministic Markdown/Mermaid and the derived CLI/dashboard view carrying compiler identities and hashes",
+    notes: "ADR-0019 internal opt-in selection for future instances. Initial baseline is a terminal canonical instance; later proposals use the current selection. Suggestions cannot grant permissions or replace SPEC. Current activation, context and canonical artifact CAS remain required. Shared coordination boundaries and existing run reservation fencing are unchanged.",
+  }),
+  policy({
+    concept: "workflow_instance", label: "Durable workflow instance",
+    files: "docs/audit/workflows/instances/<id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is a derived projection",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "docs/audit/workflows/instances/<id>.json in dual or files with configured PostgreSQL; common CLI/dashboard read model is derived, never write authority",
+    notes: "ADR-0018 internal opt-in composition; SPEC remains rule authority. SQLite uses existing artifact tables; PostgreSQL uses existing contextual artifacts and reservation fence. Sequential human checkpoints require no PostgreSQL. Agent segments retain exclusive existing supervisor admission. No new shared coordination table or automatic client activation.",
+  }),
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
     concept,
     label: { execution_run: "Bounded execution run", delegated_task: "Delegated task", execution_attempt: "Execution attempt" }[concept],

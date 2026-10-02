@@ -42,7 +42,10 @@ export async function planGlobalUpdate(options, dependencies = {}) {
     const verified = verifyReleaseMetadata(release, metadata, manifest, checksums);
     artifact = { kind: 'release', packageSha256: verified.sha256, releaseCommit: manifest.git_commit, version };
   }
-  const probeRoot = previous?.packageRoot ?? (state ? verifyRuntimeGeneration(home, state.active).packageRoot : sourceRoot);
+  // A verified newer package may be the explicit management entrypoint when
+  // the active engine cannot read a newer host configuration. Its read-only
+  // probe still checks every project; apply repeats with the staged candidate.
+  const probeRoot = previous?.packageRoot ?? sourceRoot;
   const preflight = (dependencies.preflight ?? preflightGlobalProjects)({ home, candidateRoot: probeRoot });
   const order = state ? compareVersions(version, state.active.version) : 1;
   const status = !preflight.compatible ? 'blocked' : !rollback && order < 0 ? 'local-newer'

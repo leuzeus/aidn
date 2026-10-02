@@ -14,6 +14,8 @@ import {
   rebuildRuntimeHeads,
 } from "../sqlite/workflow-db-schema-lib.mjs";
 import { shouldPreserveDbFirstArtifactPath } from "../workflow/db-first-artifact-path-policy.mjs";
+import { assertWorkflowRecordProjection } from "../../core/workflow/artifact-compare-swap.mjs";
+import { readAidnProjectConfig, resolveConfigStateMode } from "../config/aidn-config-lib.mjs";
 
 const require = createRequire(import.meta.url);
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -457,7 +459,7 @@ function setMeta(db, key, value) {
   stmt.run(key, value, new Date().toISOString());
 }
 
-function writeSqliteIndex(outputPath, payload, schemaFile) {
+function writeSqliteIndex(outputPath, payload, schemaFile, protectWorkflowRecords) {
   const DatabaseSync = getDatabaseSync();
   const absolute = path.resolve(process.cwd(), outputPath);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
@@ -485,6 +487,9 @@ function writeSqliteIndex(outputPath, payload, schemaFile) {
 
     db.exec("BEGIN TRANSACTION;");
     try {
+      if (protectWorkflowRecords) assertWorkflowRecordProjection(
+        db.prepare("SELECT path, content_format, content FROM v_materializable_artifacts WHERE path LIKE 'workflows/instances/%' OR path LIKE 'workflows/definitions/%'").all(),
+        payload.artifacts, { allowMissing: true });
       db.exec("DELETE FROM artifact_tags;");
       db.exec("DELETE FROM tags;");
       db.exec("DELETE FROM file_map;");
@@ -840,7 +845,8 @@ export function createIndexStore(options = {}) {
         outputs.push({ kind: "sql", path: out.path, written: out.written, bytes_written: out.bytes_written });
       }
       if (mode === "sqlite" || mode === "dual-sqlite" || mode === "all") {
-        const out = writeSqliteIndex(sqliteOutput, payload, schemaFile);
+        const protectWorkflowRecords = !options.targetRoot || (resolveConfigStateMode(readAidnProjectConfig(options.targetRoot).data) ?? "files") !== "files";
+        const out = writeSqliteIndex(sqliteOutput, payload, schemaFile, protectWorkflowRecords);
         outputs.push({ kind: "sqlite", path: out.path, written: out.written, bytes_written: out.bytes_written });
       }
       return outputs;

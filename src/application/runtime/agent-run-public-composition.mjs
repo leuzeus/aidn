@@ -1,4 +1,7 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { readAidnProjectConfig, resolveConfigStateMode } from "../../lib/config/aidn-config-lib.mjs";
+import { requiresWorkflowSegmentCompilation } from "../../core/workflow/workflow-segment-binding.mjs";
 import { createAgentRunLifecycle } from "./agent-run-lifecycle-service.mjs";
 import { readAgentRunConfiguration, readAgentRunFile, agentRunPhysicalPath } from "./agent-run-configuration-service.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
@@ -55,7 +58,8 @@ function materialSnapshot(snapshot) {
   };
 }
 
-export function createPublicAgentRunLifecycle() {
+export function createPublicAgentRunLifecycle({ workflowInstance = null } = {}) {
+  const retainedInstance = workflowInstance ? structuredClone(workflowInstance) : null;
   // The secret connection value never enters returned contexts/action documents.
   const dependencies = new WeakMap();
   async function readContext(args) {
@@ -77,6 +81,14 @@ export function createPublicAgentRunLifecycle() {
     if (args.command !== "agent-run" && !snapshot) fail("AGENT_RUN_NOT_FOUND");
     const plan = normalizeAgentExecutionPlan(args.command === "agent-run" ? readAgentRunFile(path.resolve(args.plan)).value : snapshot.plan);
     if (plan.supervision?.configuration_sha256 !== selected.configuration_sha256) fail("AGENT_RUN_CONFIGURATION_CHANGED");
+    if (retainedInstance && (configuration.run_id !== retainedInstance.run_id || plan.plan_sha256 !== retainedInstance.plan_sha256
+      || selected.configuration_sha256 !== retainedInstance.configuration_sha256
+      || configuration.workflow?.binding_sha256 !== retainedInstance.binding_sha256)) fail("WORKFLOW_INSTANCE_SEGMENT_CHANGED");
+    if (configuration.contract_version === "agent-run-configuration.v2" && requiresWorkflowSegmentCompilation(args.command, snapshot)) {
+      const product = readAgentRunFile(fileURLToPath(new URL("../../../VERSION", import.meta.url)), { json: false, maxBytes: 128 }).value.toString("utf8").trim();
+      const stateMode = resolveConfigStateMode(readAidnProjectConfig(targetRoot).data);
+      if (configuration.workflow.context.product_version !== product || configuration.workflow.context.state_mode !== stateMode) fail("WORKFLOW_SEGMENT_CONTEXT_CHANGED");
+    }
     if (plan.canonical.project_id !== workspace.project_id || plan.canonical.workspace_id !== workspace.workspace_id) fail("AGENT_RUN_WORKSPACE_MISMATCH");
     assertAgentRunRuntimeScope(plan, resolveRuntimeProjectContext({ targetRoot, workspace }));
     const blockers = [];

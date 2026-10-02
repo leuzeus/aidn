@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-workflow-inspect.v1",
+  "title": "aidn runtime workflow-inspect --json",
+  "x-aidn-command": "aidn runtime workflow-inspect --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "command",
+    "effect_class",
+    "dry_run",
+    "written",
+    "shared_coordination_sync",
+    "errors",
+    "warnings",
+    "view"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "runtime-workflow-inspect.v1"
+    },
+    "command": {
+      "const": "aidn runtime workflow-inspect"
+    },
+    "effect_class": {
+      "enum": [
+        "read-only",
+        "preview",
+        "mutating",
+        "executor"
+      ]
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "written": {
+      "type": "boolean"
+    },
+    "shared_coordination_sync": {
+      "type": "boolean"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "view": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "contract_version": {
+          "const": "workflow-console-view.v1"
+        },
+        "authority": {
+          "const": "derived"
+        },
+        "consistency": {
+          "const": "per_record"
+        },
+        "registry": {
+          "type": "object"
+        },
+        "admission": {
+          "type": "object"
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "selections": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "live_run": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "view_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "contract_version",
+        "authority",
+        "consistency",
+        "registry",
+        "admission",
+        "instances",
+        "selections",
+        "live_run",
+        "limits",
+        "view_sha256"
+      ]
+    }
+  }
+}

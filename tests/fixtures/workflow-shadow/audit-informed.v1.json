@@ -1,0 +1,1018 @@
+{
+  "contract_version": "workflow-definition.v1",
+  "revision": 2,
+  "authority": "shadow",
+  "lifecycle_status": "reference_only",
+  "owner": "aidn-maintainers",
+  "source_of_truth": "docs/SPEC.md",
+  "compatibility": {
+    "product_version": "0.11.0",
+    "workflow_version": 7,
+    "execution": "unsupported"
+  },
+  "workflow_id": "audit-informed",
+  "entry": "reload",
+  "steps": [
+    {
+      "id": "reload",
+      "kind": "aidn_step",
+      "source": {
+        "path": "tools/perf/reload-check.mjs",
+        "anchor": "main"
+      },
+      "outcomes": [
+        "ready",
+        "blocked"
+      ],
+      "rule_refs": [
+        "SPEC-R01",
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "session_sequence"
+      ],
+      "primitive_ref": "context_reload"
+    },
+    {
+      "id": "start",
+      "kind": "aidn_step",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateSourceBranchTransition"
+      },
+      "outcomes": [
+        "admitted",
+        "choice",
+        "blocked"
+      ],
+      "rule_refs": [
+        "SPEC-R01",
+        "SPEC-R07",
+        "SPEC-R08",
+        "SPEC-R09"
+      ],
+      "evidence_refs": [
+        "start_admission"
+      ],
+      "primitive_ref": "session_admission"
+    },
+    {
+      "id": "select_cycle",
+      "kind": "human_decision",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateMappedBranchTransition"
+      },
+      "outcomes": [
+        "selected",
+        "cancelled"
+      ],
+      "rule_refs": [
+        "SPEC-R01",
+        "SPEC-R03"
+      ],
+      "evidence_refs": [
+        "mapped_choices"
+      ],
+      "primitive_ref": "cycle_selection"
+    },
+    {
+      "id": "mode",
+      "kind": "human_decision",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R02"
+      },
+      "outcomes": [
+        "thinking",
+        "exploring",
+        "committing"
+      ],
+      "rule_refs": [
+        "SPEC-R02"
+      ],
+      "evidence_refs": [
+        "mode_semantics"
+      ],
+      "primitive_ref": "mode_selection"
+    },
+    {
+      "id": "thinking",
+      "kind": "aidn_step",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R02"
+      },
+      "outcomes": [
+        "finished"
+      ],
+      "rule_refs": [
+        "SPEC-R02"
+      ],
+      "evidence_refs": [
+        "mode_semantics"
+      ],
+      "primitive_ref": "thinking"
+    },
+    {
+      "id": "exploring",
+      "kind": "aidn_step",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R02"
+      },
+      "outcomes": [
+        "discarded",
+        "retained"
+      ],
+      "rule_refs": [
+        "SPEC-R02"
+      ],
+      "evidence_refs": [
+        "mode_semantics"
+      ],
+      "primitive_ref": "exploring"
+    },
+    {
+      "id": "cycle_context",
+      "kind": "human_decision",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R06"
+      },
+      "outcomes": [
+        "existing",
+        "create"
+      ],
+      "rule_refs": [
+        "SPEC-R03",
+        "SPEC-R06"
+      ],
+      "evidence_refs": [
+        "cycle_continuity",
+        "branch_ownership"
+      ],
+      "primitive_ref": "cycle_context"
+    },
+    {
+      "id": "branch_audit",
+      "kind": "gate",
+      "source": {
+        "path": "tools/perf/branch-cycle-audit-hook.mjs",
+        "anchor": "main"
+      },
+      "outcomes": [
+        "admitted",
+        "blocked"
+      ],
+      "rule_refs": [
+        "SPEC-R03",
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "branch_ownership"
+      ],
+      "primitive_ref": "branch_audit"
+    },
+    {
+      "id": "continuity",
+      "kind": "aidn_step",
+      "source": {
+        "path": "tools/perf/cycle-create-hook.mjs",
+        "anchor": "main"
+      },
+      "outcomes": [
+        "admitted",
+        "blocked"
+      ],
+      "rule_refs": [
+        "SPEC-R06"
+      ],
+      "evidence_refs": [
+        "cycle_continuity"
+      ],
+      "primitive_ref": "cycle_continuity"
+    },
+    {
+      "id": "ready",
+      "kind": "gate",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R04"
+      },
+      "outcomes": [
+        "admitted",
+        "blocked"
+      ],
+      "rule_refs": [
+        "SPEC-R04"
+      ],
+      "evidence_refs": [
+        "definition_of_ready"
+      ],
+      "primitive_ref": "definition_of_ready"
+    },
+    {
+      "id": "implement",
+      "kind": "aidn_step",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R04"
+      },
+      "outcomes": [
+        "ready_for_validation",
+        "drift_suspected",
+        "incident_detected"
+      ],
+      "rule_refs": [
+        "SPEC-R04",
+        "SPEC-R05",
+        "SPEC-R10"
+      ],
+      "evidence_refs": [
+        "definition_of_ready",
+        "drift_procedure",
+        "incident_procedure"
+      ],
+      "primitive_ref": "implementation"
+    },
+    {
+      "id": "drift",
+      "kind": "aidn_step",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R05"
+      },
+      "outcomes": [
+        "resolved",
+        "unresolved"
+      ],
+      "rule_refs": [
+        "SPEC-R05"
+      ],
+      "evidence_refs": [
+        "drift_procedure"
+      ],
+      "primitive_ref": "drift"
+    },
+    {
+      "id": "incident",
+      "kind": "human_decision",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R10"
+      },
+      "outcomes": [
+        "resolved",
+        "stopped"
+      ],
+      "rule_refs": [
+        "SPEC-R10"
+      ],
+      "evidence_refs": [
+        "incident_procedure"
+      ],
+      "primitive_ref": "incident"
+    },
+    {
+      "id": "validate",
+      "kind": "gate",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R11"
+      },
+      "outcomes": [
+        "passed",
+        "failed"
+      ],
+      "rule_refs": [
+        "SPEC-R04",
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "convergence"
+      ],
+      "primitive_ref": "validation"
+    },
+    {
+      "id": "cycle_close",
+      "kind": "aidn_step",
+      "source": {
+        "path": "tools/perf/cycle-close-hook.mjs",
+        "anchor": "main"
+      },
+      "outcomes": [
+        "done",
+        "non_retained",
+        "blocked"
+      ],
+      "rule_refs": [
+        "SPEC-R07",
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "cycle_completion"
+      ],
+      "primitive_ref": "cycle_close"
+    },
+    {
+      "id": "promote",
+      "kind": "aidn_step",
+      "source": {
+        "path": "tools/perf/promote-baseline-hook.mjs",
+        "anchor": "main"
+      },
+      "outcomes": [
+        "promoted",
+        "deferred"
+      ],
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "promotion"
+      ],
+      "primitive_ref": "promotion"
+    },
+    {
+      "id": "close_drift",
+      "kind": "aidn_step",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R07"
+      },
+      "outcomes": [
+        "resolved",
+        "unresolved"
+      ],
+      "rule_refs": [
+        "SPEC-R05",
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "drift_procedure"
+      ],
+      "primitive_ref": "close_drift"
+    },
+    {
+      "id": "close",
+      "kind": "aidn_step",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateCloseSessionTransition"
+      },
+      "outcomes": [
+        "allowed",
+        "blocked",
+        "deferred"
+      ],
+      "rule_refs": [
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "close_decisions"
+      ],
+      "primitive_ref": "session_close"
+    },
+    {
+      "id": "pr",
+      "kind": "human_decision",
+      "source": {
+        "path": "src/application/runtime/pr-orchestrate-admit-use-case.mjs",
+        "anchor": "runPrOrchestrateAdmitUseCase"
+      },
+      "outcomes": [
+        "merged",
+        "pending",
+        "blocked"
+      ],
+      "rule_refs": [
+        "SPEC-R08"
+      ],
+      "evidence_refs": [
+        "pr_lifecycle",
+        "review_procedure"
+      ],
+      "primitive_ref": "pr_review"
+    },
+    {
+      "id": "sync",
+      "kind": "gate",
+      "source": {
+        "path": "src/application/runtime/workflow-transition-lib.mjs",
+        "anchor": "evaluateLatestSessionContinuation"
+      },
+      "outcomes": [
+        "reconciled",
+        "required"
+      ],
+      "rule_refs": [
+        "SPEC-R09"
+      ],
+      "evidence_refs": [
+        "post_merge"
+      ],
+      "primitive_ref": "post_merge"
+    },
+    {
+      "id": "done",
+      "kind": "terminal",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R09"
+      },
+      "outcomes": [],
+      "rule_refs": [
+        "SPEC-R09"
+      ],
+      "evidence_refs": [
+        "post_merge"
+      ],
+      "terminal_result": "completed",
+      "primitive_ref": "terminal"
+    },
+    {
+      "id": "stop",
+      "kind": "terminal",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R11"
+      },
+      "outcomes": [],
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "invariants"
+      ],
+      "terminal_result": "stopped",
+      "primitive_ref": "terminal"
+    },
+    {
+      "id": "deferred",
+      "kind": "terminal",
+      "source": {
+        "path": "docs/SPEC.md",
+        "anchor": "SPEC-R07"
+      },
+      "outcomes": [],
+      "rule_refs": [
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "close_decisions"
+      ],
+      "terminal_result": "deferred",
+      "primitive_ref": "terminal"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "reload_ready",
+      "from": "reload",
+      "outcome": "ready",
+      "to": "start",
+      "rule_refs": [
+        "SPEC-R01"
+      ],
+      "evidence_refs": [
+        "session_sequence"
+      ]
+    },
+    {
+      "id": "reload_blocked",
+      "from": "reload",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "invariants"
+      ]
+    },
+    {
+      "id": "start_admitted",
+      "from": "start",
+      "outcome": "admitted",
+      "to": "mode",
+      "rule_refs": [
+        "SPEC-R01"
+      ],
+      "evidence_refs": [
+        "start_admission"
+      ]
+    },
+    {
+      "id": "start_choice",
+      "from": "start",
+      "outcome": "choice",
+      "to": "select_cycle",
+      "rule_refs": [
+        "SPEC-R01",
+        "SPEC-R03"
+      ],
+      "evidence_refs": [
+        "mapped_choices"
+      ]
+    },
+    {
+      "id": "start_blocked",
+      "from": "start",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R01"
+      ],
+      "evidence_refs": [
+        "start_admission"
+      ]
+    },
+    {
+      "id": "select_cycle_selected",
+      "from": "select_cycle",
+      "outcome": "selected",
+      "to": "mode",
+      "rule_refs": [
+        "SPEC-R03"
+      ],
+      "evidence_refs": [
+        "mapped_choices"
+      ]
+    },
+    {
+      "id": "select_cycle_cancelled",
+      "from": "select_cycle",
+      "outcome": "cancelled",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R03"
+      ],
+      "evidence_refs": [
+        "mapped_choices"
+      ]
+    },
+    {
+      "id": "mode_thinking",
+      "from": "mode",
+      "outcome": "thinking",
+      "to": "thinking",
+      "rule_refs": [
+        "SPEC-R02"
+      ],
+      "evidence_refs": [
+        "mode_semantics"
+      ]
+    },
+    {
+      "id": "mode_exploring",
+      "from": "mode",
+      "outcome": "exploring",
+      "to": "exploring",
+      "rule_refs": [
+        "SPEC-R02"
+      ],
+      "evidence_refs": [
+        "mode_semantics"
+      ]
+    },
+    {
+      "id": "mode_committing",
+      "from": "mode",
+      "outcome": "committing",
+      "to": "cycle_context",
+      "rule_refs": [
+        "SPEC-R02",
+        "SPEC-R03"
+      ],
+      "evidence_refs": [
+        "branch_ownership"
+      ]
+    },
+    {
+      "id": "thinking_finished",
+      "from": "thinking",
+      "outcome": "finished",
+      "to": "close_drift",
+      "rule_refs": [
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "drift_procedure"
+      ]
+    },
+    {
+      "id": "exploring_discarded",
+      "from": "exploring",
+      "outcome": "discarded",
+      "to": "close_drift",
+      "rule_refs": [
+        "SPEC-R02"
+      ],
+      "evidence_refs": [
+        "mode_semantics"
+      ]
+    },
+    {
+      "id": "exploring_retained",
+      "from": "exploring",
+      "outcome": "retained",
+      "to": "continuity",
+      "rule_refs": [
+        "SPEC-R02",
+        "SPEC-R06"
+      ],
+      "evidence_refs": [
+        "cycle_continuity"
+      ]
+    },
+    {
+      "id": "branch_audit_admitted",
+      "from": "branch_audit",
+      "outcome": "admitted",
+      "to": "ready",
+      "rule_refs": [
+        "SPEC-R03",
+        "SPEC-R04"
+      ],
+      "evidence_refs": [
+        "definition_of_ready"
+      ]
+    },
+    {
+      "id": "branch_audit_blocked",
+      "from": "branch_audit",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R03"
+      ],
+      "evidence_refs": [
+        "branch_ownership"
+      ]
+    },
+    {
+      "id": "continuity_admitted",
+      "from": "continuity",
+      "outcome": "admitted",
+      "to": "branch_audit",
+      "rule_refs": [
+        "SPEC-R06"
+      ],
+      "evidence_refs": [
+        "cycle_continuity"
+      ]
+    },
+    {
+      "id": "continuity_blocked",
+      "from": "continuity",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R06"
+      ],
+      "evidence_refs": [
+        "cycle_continuity"
+      ]
+    },
+    {
+      "id": "ready_admitted",
+      "from": "ready",
+      "outcome": "admitted",
+      "to": "implement",
+      "rule_refs": [
+        "SPEC-R04"
+      ],
+      "evidence_refs": [
+        "definition_of_ready"
+      ]
+    },
+    {
+      "id": "ready_blocked",
+      "from": "ready",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R04"
+      ],
+      "evidence_refs": [
+        "definition_of_ready"
+      ]
+    },
+    {
+      "id": "implement_ready_for_validation",
+      "from": "implement",
+      "outcome": "ready_for_validation",
+      "to": "validate",
+      "rule_refs": [
+        "SPEC-R04",
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "convergence"
+      ]
+    },
+    {
+      "id": "implement_drift_suspected",
+      "from": "implement",
+      "outcome": "drift_suspected",
+      "to": "drift",
+      "rule_refs": [
+        "SPEC-R05"
+      ],
+      "evidence_refs": [
+        "drift_procedure"
+      ]
+    },
+    {
+      "id": "implement_incident_detected",
+      "from": "implement",
+      "outcome": "incident_detected",
+      "to": "incident",
+      "rule_refs": [
+        "SPEC-R10"
+      ],
+      "evidence_refs": [
+        "incident_procedure"
+      ]
+    },
+    {
+      "id": "drift_resolved",
+      "from": "drift",
+      "outcome": "resolved",
+      "to": "ready",
+      "rule_refs": [
+        "SPEC-R05"
+      ],
+      "evidence_refs": [
+        "drift_procedure"
+      ]
+    },
+    {
+      "id": "drift_unresolved",
+      "from": "drift",
+      "outcome": "unresolved",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R05"
+      ],
+      "evidence_refs": [
+        "drift_procedure"
+      ]
+    },
+    {
+      "id": "incident_resolved",
+      "from": "incident",
+      "outcome": "resolved",
+      "to": "ready",
+      "rule_refs": [
+        "SPEC-R10"
+      ],
+      "evidence_refs": [
+        "incident_procedure"
+      ]
+    },
+    {
+      "id": "incident_stopped",
+      "from": "incident",
+      "outcome": "stopped",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R10"
+      ],
+      "evidence_refs": [
+        "incident_procedure"
+      ]
+    },
+    {
+      "id": "validate_passed",
+      "from": "validate",
+      "outcome": "passed",
+      "to": "cycle_close",
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "cycle_completion"
+      ]
+    },
+    {
+      "id": "validate_failed",
+      "from": "validate",
+      "outcome": "failed",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "convergence"
+      ]
+    },
+    {
+      "id": "cycle_close_done",
+      "from": "cycle_close",
+      "outcome": "done",
+      "to": "promote",
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "cycle_close_non_retained",
+      "from": "cycle_close",
+      "outcome": "non_retained",
+      "to": "close_drift",
+      "rule_refs": [
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "cycle_completion"
+      ]
+    },
+    {
+      "id": "cycle_close_blocked",
+      "from": "cycle_close",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "cycle_completion"
+      ]
+    },
+    {
+      "id": "promote_promoted",
+      "from": "promote",
+      "outcome": "promoted",
+      "to": "close_drift",
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "promote_deferred",
+      "from": "promote",
+      "outcome": "deferred",
+      "to": "close_drift",
+      "rule_refs": [
+        "SPEC-R11"
+      ],
+      "evidence_refs": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "close_drift_resolved",
+      "from": "close_drift",
+      "outcome": "resolved",
+      "to": "close",
+      "rule_refs": [
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "close_decisions"
+      ]
+    },
+    {
+      "id": "close_drift_unresolved",
+      "from": "close_drift",
+      "outcome": "unresolved",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R05"
+      ],
+      "evidence_refs": [
+        "drift_procedure"
+      ]
+    },
+    {
+      "id": "close_allowed",
+      "from": "close",
+      "outcome": "allowed",
+      "to": "pr",
+      "rule_refs": [
+        "SPEC-R07",
+        "SPEC-R08"
+      ],
+      "evidence_refs": [
+        "pr_lifecycle"
+      ]
+    },
+    {
+      "id": "close_blocked",
+      "from": "close",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "close_decisions"
+      ]
+    },
+    {
+      "id": "close_deferred",
+      "from": "close",
+      "outcome": "deferred",
+      "to": "deferred",
+      "rule_refs": [
+        "SPEC-R07"
+      ],
+      "evidence_refs": [
+        "close_decisions"
+      ]
+    },
+    {
+      "id": "pr_merged",
+      "from": "pr",
+      "outcome": "merged",
+      "to": "sync",
+      "rule_refs": [
+        "SPEC-R08",
+        "SPEC-R09"
+      ],
+      "evidence_refs": [
+        "post_merge"
+      ]
+    },
+    {
+      "id": "pr_pending",
+      "from": "pr",
+      "outcome": "pending",
+      "to": "deferred",
+      "rule_refs": [
+        "SPEC-R08"
+      ],
+      "evidence_refs": [
+        "review_procedure"
+      ]
+    },
+    {
+      "id": "pr_blocked",
+      "from": "pr",
+      "outcome": "blocked",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R08"
+      ],
+      "evidence_refs": [
+        "review_procedure"
+      ]
+    },
+    {
+      "id": "sync_reconciled",
+      "from": "sync",
+      "outcome": "reconciled",
+      "to": "done",
+      "rule_refs": [
+        "SPEC-R09"
+      ],
+      "evidence_refs": [
+        "post_merge"
+      ]
+    },
+    {
+      "id": "sync_required",
+      "from": "sync",
+      "outcome": "required",
+      "to": "stop",
+      "rule_refs": [
+        "SPEC-R09"
+      ],
+      "evidence_refs": [
+        "post_merge"
+      ]
+    },
+    {
+      "id": "cycle_context_existing",
+      "from": "cycle_context",
+      "outcome": "existing",
+      "to": "branch_audit",
+      "rule_refs": [
+        "SPEC-R03"
+      ],
+      "evidence_refs": [
+        "branch_ownership"
+      ]
+    },
+    {
+      "id": "cycle_context_create",
+      "from": "cycle_context",
+      "outcome": "create",
+      "to": "continuity",
+      "rule_refs": [
+        "SPEC-R06"
+      ],
+      "evidence_refs": [
+        "cycle_continuity"
+      ]
+    }
+  ]
+}

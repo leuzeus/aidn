@@ -1,0 +1,497 @@
+{
+  "version": "workflow-shadow-registry.v1",
+  "authority": "reference_only",
+  "execution": "unsupported",
+  "rules": [
+    "SPEC-R01",
+    "SPEC-R02",
+    "SPEC-R03",
+    "SPEC-R04",
+    "SPEC-R05",
+    "SPEC-R06",
+    "SPEC-R07",
+    "SPEC-R08",
+    "SPEC-R09",
+    "SPEC-R10",
+    "SPEC-R11"
+  ],
+  "evidence": [
+    "alternate_macro",
+    "branch_ownership",
+    "canonical_modes",
+    "close_decisions",
+    "convergence",
+    "cycle_completion",
+    "cycle_continuity",
+    "definition_of_ready",
+    "drift_procedure",
+    "incident_procedure",
+    "invariants",
+    "mapped_choices",
+    "mode_semantics",
+    "post_merge",
+    "pr_lifecycle",
+    "promotion",
+    "review_procedure",
+    "session_sequence",
+    "start_admission"
+  ],
+  "primitives": [
+    {
+      "id": "agent_segment",
+      "version": 1,
+      "kind": "agent_segment",
+      "sources": [
+        {
+          "path": "src/core/contracts/agent-execution/plan.v3.schema.json",
+          "anchor": "agent-execution-plan.v3"
+        }
+      ],
+      "outcomes": [
+        "completed",
+        "failed"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "approval",
+      "version": 1,
+      "kind": "human_decision",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R10"
+        }
+      ],
+      "outcomes": [
+        "approved",
+        "rejected"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "branch_audit",
+      "version": 1,
+      "kind": "gate",
+      "sources": [
+        {
+          "path": "tools/perf/branch-cycle-audit-hook.mjs",
+          "anchor": "main"
+        }
+      ],
+      "outcomes": [
+        "admitted",
+        "blocked"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "close_drift",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R07"
+        }
+      ],
+      "outcomes": [
+        "resolved",
+        "unresolved"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "context_reload",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "tools/perf/reload-check.mjs",
+          "anchor": "main"
+        }
+      ],
+      "outcomes": [
+        "blocked",
+        "ready"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "cycle_close",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "tools/perf/cycle-close-hook.mjs",
+          "anchor": "main"
+        }
+      ],
+      "outcomes": [
+        "blocked",
+        "done",
+        "non_retained"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "cycle_context",
+      "version": 1,
+      "kind": "human_decision",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R06"
+        }
+      ],
+      "outcomes": [
+        "create",
+        "existing"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "cycle_continuity",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "tools/perf/cycle-create-hook.mjs",
+          "anchor": "main"
+        }
+      ],
+      "outcomes": [
+        "admitted",
+        "blocked"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "cycle_selection",
+      "version": 1,
+      "kind": "human_decision",
+      "sources": [
+        {
+          "path": "src/application/runtime/workflow-transition-lib.mjs",
+          "anchor": "evaluateMappedBranchTransition"
+        }
+      ],
+      "outcomes": [
+        "cancelled",
+        "selected"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "definition_of_ready",
+      "version": 1,
+      "kind": "gate",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R04"
+        }
+      ],
+      "outcomes": [
+        "admitted",
+        "blocked"
+      ],
+      "admission_boundary": true,
+      "observation": null
+    },
+    {
+      "id": "diagnosis",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R05"
+        }
+      ],
+      "outcomes": [
+        "blocked",
+        "diagnosed"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "drift",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R05"
+        }
+      ],
+      "outcomes": [
+        "resolved",
+        "unresolved"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "exploring",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R02"
+        }
+      ],
+      "outcomes": [
+        "discarded",
+        "retained"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "implementation",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R04"
+        }
+      ],
+      "outcomes": [
+        "drift_suspected",
+        "incident_detected",
+        "ready_for_validation"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "incident",
+      "version": 1,
+      "kind": "human_decision",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R10"
+        }
+      ],
+      "outcomes": [
+        "resolved",
+        "stopped"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "mode_selection",
+      "version": 1,
+      "kind": "human_decision",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R02"
+        }
+      ],
+      "outcomes": [
+        "committing",
+        "exploring",
+        "thinking"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "post_merge",
+      "version": 1,
+      "kind": "gate",
+      "sources": [
+        {
+          "path": "src/application/runtime/workflow-transition-lib.mjs",
+          "anchor": "evaluateLatestSessionContinuation"
+        }
+      ],
+      "outcomes": [
+        "reconciled",
+        "required"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "pr_review",
+      "version": 1,
+      "kind": "human_decision",
+      "sources": [
+        {
+          "path": "src/application/runtime/pr-orchestrate-admit-use-case.mjs",
+          "anchor": "runPrOrchestrateAdmitUseCase"
+        }
+      ],
+      "outcomes": [
+        "blocked",
+        "merged",
+        "pending"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "promotion",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "tools/perf/promote-baseline-hook.mjs",
+          "anchor": "main"
+        }
+      ],
+      "outcomes": [
+        "deferred",
+        "promoted"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "review",
+      "version": 1,
+      "kind": "human_decision",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R08"
+        }
+      ],
+      "outcomes": [
+        "accepted",
+        "rejected"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "session_admission",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "src/application/runtime/workflow-transition-lib.mjs",
+          "anchor": "evaluateSourceBranchTransition"
+        }
+      ],
+      "outcomes": [
+        "admitted",
+        "blocked",
+        "choice"
+      ],
+      "admission_boundary": false,
+      "observation": {
+        "field": "action",
+        "values": {
+          "create_session_allowed": "admitted",
+          "resume_current_cycle": "admitted",
+          "resume_current_session": "admitted",
+          "choose_cycle": "choice",
+          "blocked_ambiguous_topology": "blocked",
+          "blocked_non_compliant_branch": "blocked",
+          "blocked_session_base_gate": "blocked",
+          "blocked_stale_open_cycle_state": "blocked"
+        }
+      }
+    },
+    {
+      "id": "session_close",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "src/application/runtime/workflow-transition-lib.mjs",
+          "anchor": "evaluateCloseSessionTransition"
+        }
+      ],
+      "outcomes": [
+        "allowed",
+        "blocked",
+        "deferred"
+      ],
+      "admission_boundary": false,
+      "observation": {
+        "field": "action",
+        "values": {
+          "close_session_allowed": "allowed",
+          "blocked_missing_active_session": "blocked",
+          "blocked_open_cycles_require_resolution": "blocked",
+          "blocked_stale_open_cycles_require_regularization": "blocked",
+          "blocked_stale_reported_cycles_require_regularization": "blocked"
+        }
+      }
+    },
+    {
+      "id": "terminal",
+      "version": 1,
+      "kind": "terminal",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R09"
+        },
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R11"
+        },
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R07"
+        }
+      ],
+      "outcomes": [],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "thinking",
+      "version": 1,
+      "kind": "aidn_step",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R02"
+        }
+      ],
+      "outcomes": [
+        "finished"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    },
+    {
+      "id": "validation",
+      "version": 1,
+      "kind": "gate",
+      "sources": [
+        {
+          "path": "docs/SPEC.md",
+          "anchor": "SPEC-R11"
+        }
+      ],
+      "outcomes": [
+        "failed",
+        "passed"
+      ],
+      "admission_boundary": false,
+      "observation": null
+    }
+  ]
+}

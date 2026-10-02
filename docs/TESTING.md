@@ -125,6 +125,10 @@ registry removal, read-only cleanup inventories, wizard cancellation and npm
 interruption/resume. Package installation and removal are injected; native Codex
 discovery, actual PostgreSQL, native secret entry and OS reboot recovery are not
 qualified by these fixtures.
+The management fixture inventories each directory explicitly and hashes every
+file, including hidden and binary files. Its oracle checks stable enumeration
+and detection of additions, deletions and content changes before testing preview
+and cancellation purity; no generated subtree is excluded from comparison.
 The global management suite also injects WinGet, PostgreSQL and bootstrap to
 exercise local provisioning, interrupted preparation, secret separation and
 nonempty-database refusal. This is not actual server installation evidence.
@@ -261,7 +265,7 @@ and their 43 historical invocations are unchanged.
 
 For the public run lifecycle, run
 `npm run perf:verify-agent-run-lifecycle-fixtures`. The required runtime gate
-`runtime-agent-run-lifecycle` executes these seven portable suites exactly once
+`runtime-agent-run-lifecycle` executes these eleven portable suites exactly once
 on dev, main and release:
 
 - `verify-agent-run-lifecycle-fixtures.mjs`
@@ -271,6 +275,50 @@ on dev, main and release:
 - `verify-controlled-codex-profile-metadata-fixtures.mjs`
 - `verify-codex-startup-arguments-fixtures.mjs`
 - `verify-agent-local-path-policy-fixtures.mjs`
+- `verify-workflow-segment-fixtures.mjs`
+- `verify-workflow-instance-fixtures.mjs`
+- `verify-workflow-candidate-fixtures.mjs`
+- `verify-workflow-console-fixtures.mjs`
+
+The console suite is also available as `perf:verify-workflow-console`. It
+compares complete CLI and HTTP read/action payloads on disposable files/SQLite
+clients, exact preview application, revocation and stale projections; checks
+Host/Origin/token and unknown-effect refusal, in-flight preview invalidation,
+unavailable stores and mode
+changes; and keeps completed execution distinct from accepted/integrated/cleaned
+results. A changed checkpoint after preview is rejected before writing. The
+required PostgreSQL suite additionally compares CLI/HTTP against the actual
+backend and proves no read-time data, checkout or DDL changes. Browser visual
+inspection is separate from automated transport proof; neither is native
+executor qualification.
+
+The candidate suite is also available as `perf:verify-workflow-candidate`. It
+checks deterministic proposals/diffs, invalid and permission-expanding
+suggestions, exact preview review, stale diagram/document detection, revocation,
+files/SQLite selection history and explicit future-instance selection. Existing
+instances remain pinned. Bulk SQLite DB projection preserves omitted workflow
+records and refuses stale ones; files-mode index refresh remains supported.
+The required PostgreSQL suite additionally checks selection CAS, reconnect,
+reservation fencing and rollback on omitted or stale workflow projections.
+These checks do not call a model or qualify native execution.
+
+The instance suite is also available as `perf:verify-workflow-instance`. It
+checks durable files/SQLite checkpoints, typed human decisions, bounded returns,
+stale revisions, retained lock evidence, process interruption before and after
+a simulated effect, status-only recovery, and the real project composition on
+a disposable activation fixture. The required PostgreSQL suite checks actual
+artifact CAS with competing connections, reconnect, no DDL, rollback and the
+existing run reservation fence. These fixtures do not qualify native Codex.
+
+The segment suite is also available as `perf:verify-workflow-segment`. It verifies
+explicit configuration v2, closed binding/selection contracts, canonical and
+compiler pins, exact action approval, revocation, scope/DAG refusal and the
+existing scheduler's independent/dependent tasks with injected adapters. It
+checks the public composition's PostgreSQL refusal on a disposable directory.
+The required PostgreSQL suite additionally checks v2 JSONB pins and public
+status/cancel, plus direct composition preview/context drift and missing native
+prerequisites on an uninstalled client fixture. Native Codex remains `SKIP` in
+these fixtures; neither a live pilot nor a source-repository session is needed.
 
 They check preview purity, explicit action fingerprints, stale state,
 cancellation, read-only status, prepared-root adoption and completed-run cleanup.
@@ -597,7 +645,7 @@ When a change affects release/versioning, install examples, or build-release pro
 - `npm run perf:verify-tracked-sensitivity`
 - `npm run perf:verify-doc-references`
 
-The release version verifier checks that the sole product version authority `VERSION`, its derived `package.json` and package-lock root versions, the workflow and pack manifests, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
+The release version verifier checks that the sole product version authority `VERSION`, its derived `package.json` and package-lock root versions, the workflow and pack manifests, README tagged install examples, and the documented Git workflow provenance policy stay aligned. The reproducibility verifier builds the exact clean tracked commit twice in isolated output roots, compares bytes, checks the npm package topology, and rejects sensitive inputs. It then extracts that tarball and qualifies packaged workflow CLI/HTTP behavior on disposable activation fixtures, including future-instance selection and refusal of historical product-version writes. The output binds these results to the source commit and archive hashes; native Codex, external clients and PostgreSQL are explicitly SKIP in this package-only scenario. The separate required runtime PostgreSQL gate supplies real DB evidence. See [the integrated matrix](qualification/WORKFLOW_0_12.md). `perf:verify-release-artifacts` remains the post-build check used by the main publication job.
 The branch-policy fixtures distinguish feature ancestry from `dev`, release
 ancestry from `dev`, hotfix ancestry from `main`, and exact main-to-dev
 synchronization. They also reject non-patch hotfix versions, mismatched
@@ -721,6 +769,33 @@ Use them when a change affects:
 - adoption/persistence contracts
 
 ### 3. Workflow Admission / Repair-Layer Verifications
+
+For the descriptive workflow compatibility lot, run
+`npm run perf:verify-workflow-shadow`. The cataloged
+`contracts-workflow-shadow` gate checks the internal schema, the current and
+alternate macro descriptors, SPEC-R01 through SPEC-R11 coverage, actual shared
+helper decisions and negative reference/graph fixtures. The matrix in
+`docs/WORKFLOW_SHADOW_PARITY.md` distinguishes assertions from linked suites,
+procedural obligations and declaration-only evidence. This gate does not compile
+or execute workflows from the descriptors.
+
+For pure internal compilation (ADR-0016), also run
+`npm run perf:verify-workflow-compilation`. Its required
+`contracts-workflow-compilation` gate checks closed compilation/context schemas,
+registry references, deterministic normalized output and fixed hashes, both
+macro paths, bounded return exhaustion, 28 actual helper observations and
+malformed reference/condition/topology refusals. Calls are tested with ambient
+I/O, process, clock and randomness APIs denied. The single-transition explanation
+is a pure model: no handler, gate or agent segment is executed. See
+`docs/WORKFLOW_SHADOW_COMPILATION.md` for the limits of those results.
+
+Complement it with the existing workflow-transition fixture tool,
+start-session admission (including canonical backend/projection cases),
+branch-cycle admission, cycle-create admission, context-completion and
+state-mode-parity suites. These exercise the existing path without a binding.
+Explicit binding, durable instances and native execution are outside both shadow
+lots; a reference descriptor passing is not evidence for them. Compiled parity
+is bounded to the helper observations and paths exercised by its own gate.
 
 These commands validate enforcement behavior:
 

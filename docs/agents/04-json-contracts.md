@@ -73,6 +73,52 @@ Contract coverage is closed in both directions:
 
 If the payload shape changes, update the schema, the fixture coverage, and the relevant gate in the same change set.
 
+## Internal Shadow Workflow Definition
+
+ADR-0020 exposes the experimental `runtime-workflow-inspect.v1`,
+`runtime-workflow-action.v1` and `runtime-workflow-dashboard.v1` public roots.
+The common derived view retains exact IDs, reason codes and independent run
+status axes. CLI and HTTP fixtures compare complete objects; existing internal
+schemas still validate nested instances and selections before projection.
+
+ADR-0019 adds closed internal `workflow-candidate.v1`,
+`workflow-candidate-preview.v1`, `workflow-projection.v1` and
+`workflow-selection.v1` contracts. Nested definitions and compilations use the
+existing schemas. Retained selection validation recomputes diffs, permission
+ceilings and exact historical review previews. Projection regeneration detects
+stale content. These internal APIs add no public CLI contract case.
+
+ADR-0018 adds the closed internal `workflow-instance.v1` envelope with retained
+definition/compilation schemas, scope pins and typed event history. Replay
+validates cursor, bounded returns, run uniqueness and supervisor result binding.
+Its opt-in internal composition adds no public JSON command or registry case.
+
+ADR-0017 adds closed `workflow-segment-binding.v1` and
+`workflow-segment-selection.v1` contracts in this namespace. The binding's nested
+definition and context are validated against their existing schemas by the
+binding validator. Explicit run configuration v2 requires this binding; v1
+rejects it. Existing public `agent-run*` JSON roots remain v1 and expose the
+selection at the extensible `action.preconditions.workflow`. The lifecycle gate
+validates the nested contract as well as the public root. Selection does not
+change the descriptive macro's execution availability or source of truth.
+
+ADR-0015 proposes `workflow-definition.v1` under
+`src/core/contracts/workflow-definition/`, using the explicit
+`workflow-definition` validator profile and contract URI namespace. It has no
+standalone public CLI entry or handler dispatcher. Descriptors and parity
+expectations in `tests/fixtures/workflow-shadow/` are reference data. The
+`contracts-workflow-shadow` gate checks schema, links, graph shape and existing
+helper behavior; it does not establish executable workflow availability.
+
+ADR-0016 adds `workflow-shadow-context.v1` and `workflow-compilation.v1` in the
+same internal profile. Compilation is pure, with caller-supplied context and
+explicit definition/registry/compiler fingerprints. Optional `primitive_ref`
+preserves structural v1 compatibility; compilation requires a registered
+reference. This pure compiler adds no public CLI registry entry or dispatch;
+ADR-0017 supplies its explicit run-local consumer.
+`contracts-workflow-compilation` verifies deterministic output and semantic
+refusals; a valid shadow envelope grants no authority to execute.
+
 ## Internal Agent Execution Contracts
 
 ADR-0014 defines internal schemas under `src/core/contracts/agent-execution/`.

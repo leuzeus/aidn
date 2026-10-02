@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { assertArtifactCompareSwap } from "../../core/workflow/artifact-compare-swap.mjs";
 import {
   cleanupOrphanArtifactBlobs,
   ensureWorkflowDbSchema,
@@ -254,11 +255,12 @@ export function createArtifactStore(options = {}) {
   if (readOnly && !fs.existsSync(sqliteFile)) {
     return createMissingReadOnlyArtifactStore(sqliteFile);
   }
-  if (!readOnly) {
+  if (options.existingOnly && !fs.existsSync(sqliteFile)) throw new Error("ARTIFACT_STORE_MISSING");
+  if (!readOnly && !options.existingOnly) {
     fs.mkdirSync(path.dirname(sqliteFile), { recursive: true });
   }
   const db = new DatabaseSync(sqliteFile, readOnly ? { readOnly: true } : {});
-  if (!readOnly) {
+  if (!readOnly && !options.existingOnly) {
     db.exec("PRAGMA foreign_keys=OFF;");
     ensureWorkflowDbSchema({
       db,
@@ -327,10 +329,20 @@ export function createArtifactStore(options = {}) {
       updated_at = excluded.updated_at;
   `);
 
-  return {
+  const store = {
     sqlite_file: sqliteFile,
     read_only: readOnly,
     exists: true,
+    compareAndSwapArtifact(request) {
+      if (readOnly) throw new Error("Artifact store is read-only");
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        assertArtifactCompareSwap(request, store.getArtifact(request.artifact?.path));
+        const result = store.upsertArtifact(request.artifact);
+        db.exec("COMMIT");
+        return result;
+      } catch (error) { db.exec("ROLLBACK"); throw error; }
+    },
     upsertArtifact(input) {
       if (readOnly) {
         throw new Error("Artifact store is read-only");
@@ -454,6 +466,7 @@ export function createArtifactStore(options = {}) {
       db.close();
     },
   };
+  return store;
 }
 
 function parseArgs(argv) {

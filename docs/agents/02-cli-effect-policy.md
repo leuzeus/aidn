@@ -37,6 +37,10 @@ The classification keeps automation from confusing output format with write perm
   the complete observed action, including material preconditions. Preview never
   creates preparation resources, reserves a run or observes native Codex state.
 - Every public stable command must have an effect class.
+- `workflow-inspect` is read-only; `workflow-action` requires the exact console
+  preview and explicit write/execute flags. Run actions also require shared
+  sync. `workflow-dashboard` is preview-only until `--serve` explicitly opens
+  its foreground loopback listener. Both clients use the same admissions.
 - A command whose effect depends on an option carries a machine-readable
   invocation rule. Options do not inherit a command-level class as a shortcut.
 - Effect resolution uses an immutable copy of the original argument vector and

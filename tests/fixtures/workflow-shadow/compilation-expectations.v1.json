@@ -1,0 +1,65 @@
+{
+  "compilation_sha256": {
+    "audit-informed": "a15d5d3ae480c8f273b7b992ab69d0fd7b7c223a8a79f34d703b5f4a84be0c9b",
+    "diagnostic-correction": "b38801494df7688cfcd69f530512d774c2a7981df8ac16ca764f5174cad9d8fe"
+  },
+  "action_targets": {
+    "create_session_allowed": "mode",
+    "resume_current_session": "mode",
+    "resume_current_cycle": "mode",
+    "choose_cycle": "select_cycle",
+    "blocked_ambiguous_topology": "stop",
+    "blocked_non_compliant_branch": "stop",
+    "blocked_session_base_gate": "stop",
+    "blocked_stale_open_cycle_state": "stop",
+    "close_session_allowed": "pr",
+    "blocked_missing_active_session": "stop",
+    "blocked_open_cycles_require_resolution": "stop",
+    "blocked_stale_open_cycles_require_regularization": "stop",
+    "blocked_stale_reported_cycles_require_regularization": "stop"
+  },
+  "traces": [
+    {
+      "id": "current_nominal",
+      "workflow_id": "audit-informed",
+      "outcomes": ["ready", "admitted", "committing", "existing", "admitted", "admitted", "ready_for_validation", "passed", "done", "promoted", "resolved", "allowed", "merged", "reconciled"],
+      "steps": ["reload", "start", "mode", "cycle_context", "branch_audit", "ready", "implement", "validate", "cycle_close", "promote", "close_drift", "close", "pr", "sync", "done"]
+    },
+    {
+      "id": "current_refusal",
+      "workflow_id": "audit-informed",
+      "outcomes": ["ready", "blocked"],
+      "steps": ["reload", "start", "stop"]
+    },
+    {
+      "id": "current_thinking",
+      "workflow_id": "audit-informed",
+      "outcomes": ["ready", "admitted", "thinking", "finished", "resolved", "deferred"],
+      "steps": ["reload", "start", "mode", "thinking", "close_drift", "close", "deferred"]
+    },
+    {
+      "id": "current_drift_readmission",
+      "workflow_id": "audit-informed",
+      "outcomes": ["ready", "admitted", "committing", "existing", "admitted", "admitted", "drift_suspected", "resolved", "blocked"],
+      "steps": ["reload", "start", "mode", "cycle_context", "branch_audit", "ready", "implement", "drift", "ready", "stop"]
+    },
+    {
+      "id": "alternate_nominal",
+      "workflow_id": "diagnostic-correction",
+      "outcomes": ["diagnosed", "approved", "completed", "accepted"],
+      "steps": ["diagnose", "approval", "correction", "review", "done"]
+    },
+    {
+      "id": "alternate_refusal",
+      "workflow_id": "diagnostic-correction",
+      "outcomes": ["diagnosed", "rejected"],
+      "steps": ["diagnose", "approval", "stop"]
+    },
+    {
+      "id": "alternate_exhaustion",
+      "workflow_id": "diagnostic-correction",
+      "outcomes": ["diagnosed", "approved", "completed", "rejected", "completed", "rejected", "completed", "rejected"],
+      "steps": ["diagnose", "approval", "correction", "review", "correction", "review", "correction", "review", "stop"]
+    }
+  ]
+}

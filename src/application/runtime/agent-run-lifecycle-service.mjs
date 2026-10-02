@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { fingerprintAgentExecutionValue, normalizeAgentExecutionPlan } from "../../core/agents/agent-execution-contracts.mjs";
+import { previewWorkflowSegment, requiresWorkflowSegmentCompilation } from "../../core/workflow/workflow-segment-binding.mjs";
 
 const ACTIONS = new Set(["agent-run", "agent-run-status", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"]);
 const HASH = /^[a-f0-9]{64}$/;
@@ -90,6 +91,10 @@ export function buildAgentRunActionPreview(args, context) {
   if (context.snapshot && (context.snapshot.run.run_id !== runId || context.snapshot.run.plan_sha256 !== plan.plan_sha256)) fail("AGENT_RUN_BINDING_CHANGED");
   const preconditions = copy(context.preconditions);
   if (!preconditions || !Array.isArray(preconditions.blockers)) fail("AGENT_RUN_PRECONDITIONS_REQUIRED");
+  if (context.configuration.contract_version === "agent-run-configuration.v2") {
+    preconditions.workflow = previewWorkflowSegment(context.configuration.workflow, plan,
+      { compile: requiresWorkflowSegmentCompilation(args.command, context.snapshot) });
+  }
   // Read adapters must provide material facts explicitly. Heartbeat timestamps,
   // server time and lease expiry timestamps are deliberately not hashed; their
   // currently valid/invalid classification, generation and revision are hashed.

@@ -94,6 +94,8 @@ ci-dessus sans inventer d'instances runtime.
 
 | Concept | Portée et relation | Autorité et rétention |
 |---|---|---|
+| `workflow_instance` (ADR-0018, candidat interne) | Définition, compilation, contexte et activation épinglés; décisions et intentions de segments conservées. | Artefact canonique selon le mode; PostgreSQL configuré reste prioritaire. Écriture conditionnelle à la révision, aucune migration silencieuse ni purge des preuves. |
+| `workflow_selection` (ADR-0019, candidat interne) | Historique des propositions, compilations, previews et revues exactes; sélection pour les futures instances explicites. | Artefact canonique selon le mode; CAS et activation courante obligatoires. SPEC reste autorité de règle. Projections dérivées vérifiables; aucune migration des instances existantes. |
 | `execution_run` | Une tâche canonique admissible, son contexte coordinateur et un plan figé. | PostgreSQL exclusif, table `execution_runs`; conserver plan et preuves sans purge automatique. |
 | `delegated_task` | Identité locale au run, fichiers exacts/opérations, dépendances et critères d'acceptation. | Plan parent figé dans `execution_tasks`; aucune session artificielle ni substitution de l'identité canonique. |
 | `execution_attempt` | Une tentative ordonnée; délégation, ownership et résultat liés au même run/task/attempt. | PostgreSQL, tables `execution_attempts` et `execution_events`; sorties volumineuses locales, références/taille/empreinte dans les résultats partagés. |

@@ -3,6 +3,7 @@ import { assertAgentLocalPath } from "../../core/agents/agent-local-path-policy.
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { fingerprintAgentExecutionValue } from "../../core/agents/agent-execution-contracts.mjs";
+import { assertWorkflowSegmentBinding } from "../../core/workflow/workflow-segment-binding.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const HASH = /^[a-f0-9]{64}$/;
@@ -26,9 +27,11 @@ function reference(value) {
 export function assertAgentRunConfiguration(value) {
   // Canonical serialization first rejects non-JSON values/getters before reads.
   fingerprintAgentExecutionValue(value);
+  const workflow = value?.contract_version === "agent-run-configuration.v2";
   object(value, ["contract_version", "run_id", "target_root", "resources_root", "planning_key",
-    "integration_ref", "prepared_manifest", "git", "commit_identity", "native", "verification"], "AGENT_RUN_CONFIGURATION_INVALID");
-  if (value.contract_version !== "agent-run-configuration.v1" || !ID.test(value.run_id) || !ID.test(value.planning_key)) fail("AGENT_RUN_CONFIGURATION_INVALID");
+    "integration_ref", "prepared_manifest", "git", "commit_identity", "native", "verification", ...(workflow ? ["workflow"] : [])], "AGENT_RUN_CONFIGURATION_INVALID");
+  if (!workflow && value.contract_version !== "agent-run-configuration.v1" || !ID.test(value.run_id) || !ID.test(value.planning_key)) fail("AGENT_RUN_CONFIGURATION_INVALID");
+  if (workflow) assertWorkflowSegmentBinding(value.workflow);
   absolute(value.target_root); absolute(value.resources_root);
   const relative = path.relative(value.target_root, value.resources_root), reverse = path.relative(value.resources_root, value.target_root);
   const inside = part => part === "" || !path.isAbsolute(part) && part !== ".." && !part.startsWith(".." + path.sep);

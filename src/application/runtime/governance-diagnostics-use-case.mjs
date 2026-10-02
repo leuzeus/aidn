@@ -16,6 +16,12 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "workflow_selection", source_of_truth_concept: "workflow_selection", metadata_concept: "workflow_selection",
+    cli_contract: "runtime-workflow-inspect.v1.schema.json", required: ["source_of_truth", "metadata", "cli_contract"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Reviewed selection and common CLI/dashboard projection for future instances; no generated permission or native authority." },
+  { concept: "workflow_instance", source_of_truth_concept: "workflow_instance", metadata_concept: "workflow_instance",
+    cli_contract: "runtime-workflow-inspect.v1.schema.json", required: ["source_of_truth", "metadata", "cli_contract"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Explicit checkpoints and common CLI/dashboard projections use canonical adapters and current admission; native qualification is not inferred." },
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => ({
     concept,
     source_of_truth_concept: concept,
@@ -197,6 +203,9 @@ export const GOVERNED_CONCEPTS = Object.freeze([
 ]);
 
 export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
+  ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => ({
+    id: `runtime-${name}`, linked_concepts: ["workflow_instance", "workflow_selection", "workflow_rules", "execution_run", "delegated_task", "execution_attempt", "project_activation", "cli_output_contract"],
+  })),
   ...["agent-run", "agent-run-status", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].map(name => ({
     id: `runtime-${name}`, linked_concepts: ["execution_run", "delegated_task", "execution_attempt", "workspace", "project_activation", "cli_output_contract"],
   })),

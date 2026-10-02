@@ -37,13 +37,47 @@ function prepare({ version, artifact }) {
   fs.writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify({ name: 'aidn-workflow', version, type: 'module' }));
   return { packageRoot, pointer: sealRuntimeGeneration({ home, directory, packageRoot, provenance: { sha256: artifact.packageSha256 } }) };
 }
-const snapshot = directory => fs.readdirSync(directory, { recursive: true }).sort()
-  .filter(name => fs.statSync(path.join(directory, name)).isFile()).map(name => [name, hash(fs.readFileSync(path.join(directory, name)))]);
+function snapshot(directory) {
+  const files = [];
+  // Enumerate each directory explicitly. Native recursive readdir intermittently
+  // omitted complete subtrees in Node 22 CI, creating false mutation reports.
+  function visit(current) {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const file = path.join(current, entry.name);
+      assert.equal(entry.isSymbolicLink(), false, 'fixture snapshot must not follow an unowned symlink');
+      if (entry.isDirectory()) visit(file);
+      else if (entry.isFile()) files.push([path.relative(directory, file), hash(fs.readFileSync(file))]);
+      else assert.fail('unsupported fixture filesystem entry');
+    }
+  }
+  visit(directory);
+  return files.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+}
 try {
+  const oracleRoot = path.join(root, 'oracle espace été'), expected = [];
+  for (let directory = 0; directory < 16; directory++) {
+    const relative = path.join(`sous-dossier-${directory}`, '.hidden', 'binary.dat');
+    const file = path.join(oracleRoot, relative), bytes = Buffer.from([0, 255, directory]);
+    fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, bytes);
+    expected.push([relative, hash(bytes)]);
+  }
+  expected.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  for (let repeat = 0; repeat < 8; repeat++) assert.deepEqual(snapshot(oracleRoot), expected, 'every subtree and hidden binary file is inventoried');
+  const changedFile = path.join(oracleRoot, expected[0][0]), original = fs.readFileSync(changedFile);
+  fs.writeFileSync(changedFile, Buffer.from('changed'));
+  assert.notDeepEqual(snapshot(oracleRoot), expected, 'content changes remain detectable');
+  fs.writeFileSync(changedFile, original);
+  fs.unlinkSync(changedFile);
+  assert.equal(snapshot(oracleRoot).length, expected.length - 1, 'deletions remain detectable');
+  fs.writeFileSync(changedFile, original);
+  const addedFile = path.join(oracleRoot, 'added.dat'); fs.writeFileSync(addedFile, 'new');
+  assert.equal(snapshot(oracleRoot).length, expected.length + 1, 'additions remain detectable');
+  fs.unlinkSync(addedFile); assert.deepEqual(snapshot(oracleRoot), expected);
   const packagePath = path.join(root, 'fixture.tgz'); fs.writeFileSync(packagePath, 'fixture package');
   const options = { home, userHome, codexHome: path.join(userHome, '.codex'), packagePath,
     packageSha256: hash(fs.readFileSync(packagePath)), release: '0.10.0' };
-  const deps = { prepare, preflight: () => ({ compatible: true, projects: [] }) };
+  const probeRoots = [];
+  const deps = { prepare, preflight: ({ candidateRoot }) => { probeRoots.push(candidateRoot); return { compatible: true, projects: [] }; } };
   const before = snapshot(root);
   const plan = await planGlobalUpdate(options, deps);
   assert.equal(plan.status, 'installation-proposed'); assert.deepEqual(snapshot(root), before);
@@ -53,6 +87,8 @@ try {
   fs.writeFileSync(path.join(home, 'bin/aidn-setup.cmd'), '@echo off\r\npowershell.exe -NoProfile -File "%~dp0aidn-setup.ps1" %*\r\nexit /b %errorlevel%\r\n');
   assert.equal((await executeGlobalUpdate({ ...options, write: true, expectedPlanId: plan.plan_id }, deps)).status, 'complete');
   assert.equal((await planGlobalUpdate(options, deps)).status, 'up-to-date');
+  assert.equal(probeRoots.at(-1), source, 'explicit management package owns preview compatibility, not the older active engine');
+  assert(probeRoots.some(root => root !== source), 'apply also verifies the staged immutable candidate');
   assert.equal((await planGlobalUpdate({ ...options, release: '0.9.1' }, deps)).status, 'local-newer');
 
   const target = path.join(root, 'projet été'); fs.mkdirSync(target);

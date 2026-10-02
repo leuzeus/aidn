@@ -818,11 +818,15 @@ const negativeProbes = {
   }),
   agent_run_lifecycle_invocation_omission: (() => {
     const commands = packageJson.scripts["perf:verify-agent-run-lifecycle-fixtures"].split(" && ");
-    return commands.length === 7
+    return commands.length === 11
       && commands.includes("node tools/perf/verify-codex-sandbox-validation-fixtures.mjs")
       && commands.includes("node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs")
       && commands.includes("node tools/perf/verify-codex-startup-arguments-fixtures.mjs")
       && commands.includes("node tools/perf/verify-agent-local-path-policy-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-workflow-segment-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-workflow-instance-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-workflow-candidate-fixtures.mjs")
+      && commands.includes("node tools/perf/verify-workflow-console-fixtures.mjs")
       && new Set(commands).size === commands.length
       && commands.every((_, index) => {
         const candidate = clone(packageJson);

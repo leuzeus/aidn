@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { createPublicAgentRunLifecycle } from "../../src/application/runtime/agent-run-public-composition.mjs";
+import { createProjectWorkflowConsole } from "../../src/application/runtime/workflow-console-composition.mjs";
+import { startWorkflowDashboard } from "../../src/adapters/workflow-console/dashboard-server.mjs";
 import { parseAgentRunArguments } from "../../src/application/runtime/agent-run-lifecycle-service.mjs";
+import { bindWorkflowSegment } from "../../src/core/workflow/workflow-segment-binding.mjs";
+import { createWorkflowInstance, decideWorkflowInstance, assertWorkflowInstance } from "../../src/core/workflow/workflow-instance.mjs";
+import { proposeWorkflowCandidate, previewWorkflowCandidate } from "../../src/core/workflow/workflow-candidate.mjs";
+import { activateWorkflowCandidate, assertWorkflowSelection } from "../../src/core/workflow/workflow-selection.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -43,6 +49,7 @@ const lifecycleChecks=new Set([
   "unknown cooperative assurance is rejected before PostgreSQL writes",
   "canonical resolver scope survives reservation and fences every canonical writer",
   "public CLI status and planned cancellation use real PostgreSQL without native preparation",
+  "workflow segment public preview and cancellation retain PostgreSQL pins without native preparation",
   "cleanup batch admits only a complete exact bounded observation",
   "cleanup connection error refuses commit and retains the first failure",
   "cleanup rechecks Git after external observations before authority or durable results",
@@ -516,6 +523,59 @@ async function runSuite({ connectionString, version, root }) {
       await shared.healthcheck();
       assert.equal(await dataSnapshot(), before); assert.equal(await ddlCount(), ddl);
     });
+    await check("workflow checkpoint CAS survives reconnect, concurrent writers and reservation fencing", async () => {
+      const seeded = await seed({ reserve: false }), scope = seeded.plan.canonical.runtime_scope_id;
+      const source = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/workflow-shadow/diagnostic-correction.v1.json", import.meta.url), "utf8"));
+      const definition = { ...source, entry: "approval", steps: source.steps.filter(row => row.id !== "diagnose"), transitions: source.transitions.filter(row => row.from !== "diagnose") };
+      const instance = createWorkflowInstance({ instanceId: "fixture", definition,
+        context: { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: "0.11.0", workflow_version: 7, state_mode: "db-only" },
+        scope: { target_sha256: "a".repeat(64), persistence_sha256: "a".repeat(64), runtime_scope_id: scope, activation: { authority_id: "fixture", revision: 1 } } });
+      const artifact = { path: "workflows/instances/fixture.json", kind: "workflow_instance", content: JSON.stringify(instance) };
+      const ddl = await ddlCount();
+      await executePostgresArtifactCommand(client, [scope], "compare-and-swap", { artifact, expectedSha256: null });
+      const peers = [new pg.Client({ connectionString }), new pg.Client({ connectionString })];
+      await Promise.all(peers.map(peer => peer.connect()));
+      try {
+        const observed = await executePostgresArtifactCommand(peers[0], [scope], "get", { path: artifact.path });
+        assertWorkflowInstance(JSON.parse(observed.content));
+        const outcomes = await Promise.allSettled(peers.map((peer, index) => executePostgresArtifactCommand(peer, [scope], "compare-and-swap", {
+          artifact: { ...artifact, content: JSON.stringify(decideWorkflowInstance(instance, { outcome: "rejected", evidence: [{ ref: "fixture-" + index, sha256: "b".repeat(64) }] })) },
+          expectedSha256: sha(artifact.content),
+        })));
+        assert.equal(outcomes.filter(row => row.status === "fulfilled").length, 1);
+        assert.match(outcomes.find(row => row.status === "rejected").reason.message, /ARTIFACT_REVISION_CONFLICT/);
+        const retained = await executePostgresArtifactCommand(peers[1], [scope], "get", { path: artifact.path });
+        assert.equal(JSON.parse(retained.content).revision, 2);
+        const seed = JSON.parse(retained.content), candidateDefinition = structuredClone(seed.definition); candidateDefinition.revision++;
+        candidateDefinition.transitions.find(edge => edge.max_traversals).max_traversals = 1;
+        const proposal = proposeWorkflowCandidate({ baseDefinition: seed.definition, definition: candidateDefinition, context: seed.compilation.context, explanation: "A bounded fixture candidate." });
+        const preview = previewWorkflowCandidate({ proposal, baseCompilation: seed.compilation, baseline: { kind: "instance", id: seed.instance_id, sha256: seed.instance_sha256 }, scope: seed.scope });
+        const selection = activateWorkflowCandidate({ seed: { instance_id: seed.instance_id, instance_sha256: seed.instance_sha256, definition: seed.definition, compilation: seed.compilation }, scope: seed.scope,
+          proposal, review: { decision: "approve", preview_sha256: preview.preview_sha256, evidence: [{ ref: "fixture-review", sha256: "c".repeat(64) }] } });
+        const selectedArtifact = { path: `workflows/definitions/${selection.workflow_id}.json`, kind: "workflow_selection", content: JSON.stringify(selection) };
+        await executePostgresArtifactCommand(peers[0], [scope], "compare-and-swap", { artifact: selectedArtifact, expectedSha256: null });
+        const selected = await executePostgresArtifactCommand(peers[1], [scope], "get", { path: selectedArtifact.path });
+        assertWorkflowSelection(JSON.parse(selected.content)); assert.equal(JSON.parse(selected.content).selection_sha256, selection.selection_sha256);
+        assert.equal(await ddlCount(), ddl, "checkpoint and selection CAS must not migrate schemas");
+        const bulk = createPostgresRuntimeArtifactStore({ connectionString, targetRoot: root, runtimeProjectContext: {
+          ...resolveRuntimeProjectContext({ targetRoot: root, projectId: seeded.plan.canonical.project_id, workspaceId: seeded.plan.canonical.workspace_id, env: {} }), runtime_scope_id: scope,
+        } });
+        const beforeProjection = await dataSnapshot();
+        for (const artifacts of [[], [{ ...artifact, content: "{}", content_format: "utf8" }, { ...selectedArtifact, content_format: "utf8" }]]) {
+          await reject(bulk.writeIndexProjection({ payload: { generated_at: new Date().toISOString(), artifacts, cycles: [], sessions: [], file_map: [], tags: [], artifact_tags: [] } }), "ARTIFACT_WORKFLOW_PROJECTION_CONFLICT");
+          assert.equal(await dataSnapshot(), beforeProjection);
+        }
+        // The legacy explicit bulk writer bootstraps its schema before its
+        // transaction. Only the new CAS/reservation operations promise no DDL.
+        const afterExplicitProjectionDdl = await ddlCount();
+        const digest = await seeded.store.readCanonicalDigest({ scopeKey: scope });
+        await seeded.store.reserveRun({ ...seeded.reservation, canonicalSnapshotSha256: digest.canonical_snapshot_sha256 });
+        const before = await dataSnapshot();
+        await reject(executePostgresArtifactCommand(peers[0], [scope], "compare-and-swap", { artifact, expectedSha256: sha(retained.content) }), "ARTIFACT_EXECUTION_SCOPE_RESERVED");
+        await reject(executePostgresArtifactCommand(peers[1], [scope], "compare-and-swap", { artifact: selectedArtifact, expectedSha256: sha(selected.content) }), "ARTIFACT_EXECUTION_SCOPE_RESERVED");
+        assert.equal(await dataSnapshot(), before); assert.equal(await ddlCount(), afterExplicitProjectionDdl);
+      } finally { await Promise.all(peers.map(peer => peer.end())); }
+    });
     await check("canonical resolver scope survives reservation and fences every canonical writer", async () => {
       let projectContext;
       const context = await seed({ reserve: false, transform: plan => {
@@ -549,12 +609,15 @@ async function runSuite({ connectionString, version, root }) {
       await context.store.reserveRun(context.reservation);
       await reject(context.store.previewRunReservation(context.reservation),"AGENT_EXECUTION_RESERVATION_CONFLICT");
     });
-    await check("public CLI status and planned cancellation use real PostgreSQL without native preparation",async()=>{
-      const target=path.join(root,"public-cli-target"), resources=path.join(root,"public-cli-resources");
+    for (const workflow of [false, true]) await check(workflow
+      ? "workflow segment public preview and cancellation retain PostgreSQL pins without native preparation"
+      : "public CLI status and planned cancellation use real PostgreSQL without native preparation",async()=>{
+      const suffix = workflow ? "-workflow" : "";
+      const target=path.join(root,"public-cli-target"+suffix), resources=path.join(root,"public-cli-resources"+suffix);
       fs.mkdirSync(target);fs.mkdirSync(resources);
       const init=spawnSync("git",["init",target],{encoding:"utf8",windowsHide:true,timeout:10000});assert.equal(init.status,0);
       const reference=name=>({path:path.join(resources,name),sha256:sha("deliberately unavailable native reference")});
-      const configuration={contract_version:"agent-run-configuration.v1",run_id:"run.public.lifecycle",target_root:target,resources_root:resources,
+      const configuration={contract_version:workflow ? "agent-run-configuration.v2" : "agent-run-configuration.v1",run_id:"run.public.lifecycle"+suffix,target_root:target,resources_root:resources,
         planning_key:"pending",integration_ref:"refs/heads/codex/public-lifecycle",prepared_manifest:reference("prepared.json"),
         git:{executable:process.execPath,sha256:sha("unused native Git executable")},
         commit_identity:{name:"AIDN fixture",email:"fixture@example.invalid",timestamp:"2026-09-26T00:00:00Z"},
@@ -565,13 +628,23 @@ async function runSuite({ connectionString, version, root }) {
       const context=await seed({runIdOverride:configuration.run_id,transform:plan=>{
         configuration.planning_key=`planning.${plan.canonical.project_id.slice("project.".length)}`;
         plan.canonical.runtime_scope_id=resolveRuntimeProjectContext({targetRoot:target,projectId:plan.canonical.project_id,workspaceId:plan.canonical.workspace_id,env:{}}).runtime_scope_id;
+        if (workflow) {
+          const productVersion = fs.readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim();
+          const definition = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/workflow-shadow/diagnostic-correction.v1.json", import.meta.url)));
+          definition.compatibility.product_version = productVersion;
+          configuration.workflow = bindWorkflowSegment({
+            definition,
+            context: { contract_version: "workflow-shadow-context.v1", authority: "caller_supplied", product_version: productVersion, workflow_version: 7, state_mode: "dual" },
+            stepId: "correction", canonical: plan.canonical,
+          });
+        }
         plan.supervision={configuration_sha256:fingerprintAgentExecutionValue(configuration)};
       }});
       const config=buildNextAidnProjectConfig({},{store:"dual-sqlite",stateMode:"dual"},{});
       config.runtime.persistence={backend:"postgres",connectionRef:"env:AIDN_TEST_PG_URL"};writeAidnProjectConfig(target,config);
       writeSharedRuntimeLocator(target,{enabled:true,projectId:context.plan.canonical.project_id,workspaceId:context.plan.canonical.workspace_id,
         backend:{kind:"postgres",connectionRef:"env:AIDN_TEST_PG_URL"},projection:{localIndexMode:"preserve-current"}});
-      const configPath=path.join(root,"public-run-configuration.json");fs.writeFileSync(configPath,JSON.stringify(configuration));
+      const configPath=path.join(root,"public-run-configuration"+suffix+".json");fs.writeFileSync(configPath,JSON.stringify(configuration));
       const tree=()=>{const files=[];const visit=directory=>{for(const entry of fs.readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){
         const file=path.join(directory,entry.name);if(entry.isDirectory())visit(file);else files.push([path.relative(target,file),sha(fs.readFileSync(file))]);
       }};visit(target);return fingerprintAgentExecutionValue(files);};
@@ -597,6 +670,39 @@ async function runSuite({ connectionString, version, root }) {
         const refusal = await createPublicAgentRunLifecycle().invoke(parseAgentRunArguments("agent-run", ["--target", target,
           "--configuration", configPath, "--plan", divergentPath, "--json"]));
         assert.equal(refusal.written, false); assert.deepEqual(refusal.errors, ["AGENT_RUN_RUNTIME_SCOPE_MISMATCH"]);
+        if (workflow) {
+          const planPath = path.join(root, "public-workflow-plan.json"); fs.writeFileSync(planPath, JSON.stringify(context.plan));
+          const selectedArgs = parseAgentRunArguments("agent-run", ["--target", target, "--configuration", configPath, "--plan", planPath, "--json"]);
+          const selected = await createPublicAgentRunLifecycle().invoke(selectedArgs);
+          assert.deepEqual(selected.errors, []); assert.equal(selected.written, false); assert.equal(selected.can_apply, false);
+          assert.equal(selected.action.preconditions.workflow.binding_sha256, configuration.workflow.binding_sha256);
+          assert.equal(selected.action.preconditions.workflow.plan_sha256, context.plan.plan_sha256);
+          assert.equal(selected.action.preconditions.workflow.validation, "compiled");
+          assert.ok(selected.action.preconditions.blockers.includes("AGENT_RUN_ACTIVATION_INVALID"));
+          assert.ok(selected.action.preconditions.blockers.includes("AGENT_RUN_ABSOLUTE_PATH_REQUIRED"), "missing native candidate path must be reported");
+          const pins = { run_id: configuration.run_id, plan_sha256: context.plan.plan_sha256,
+            configuration_sha256: fingerprintAgentExecutionValue(configuration), binding_sha256: configuration.workflow.binding_sha256 };
+          const pinned = await createPublicAgentRunLifecycle({ workflowInstance: pins }).invoke(selectedArgs);
+          assert.equal(pinned.action_sha256, selected.action_sha256);
+          for (const field of Object.keys(pins)) {
+            const stale = await createPublicAgentRunLifecycle({ workflowInstance: { ...pins, [field]: "changed" } }).invoke(selectedArgs);
+            assert.deepEqual(stale.errors, ["WORKFLOW_INSTANCE_SEGMENT_CHANGED"]); assert.equal(stale.written, false);
+          }
+          const consoleView = await createProjectWorkflowConsole({ targetRoot: target }).inspect({ configuration: configPath, run: context.runId });
+          assert.deepEqual(consoleView.errors, []); assert.equal(consoleView.view.live_run.status.execution_status, "planned");
+          assert.deepEqual(invoke("workflow-inspect"), consoleView);
+          const dashboard = await startWorkflowDashboard({ targetRoot: target });
+          try {
+            const response = await fetch(dashboard.url + "/api/inspect", { method: "POST", headers: { Origin: dashboard.url, Authorization: "Bearer " + dashboard.token, "Content-Type": "application/json" },
+              body: JSON.stringify({ configuration: configPath, run: context.runId }) });
+            assert.equal(response.status, 200); assert.deepEqual(await response.json(), consoleView);
+          } finally { dashboard.close(); }
+          console.log("PASS workflow console CLI/HTTP share the real PostgreSQL read model without writes or DDL");
+          config.runtime.stateMode = "db-only"; writeAidnProjectConfig(target, config);
+          const changed = await createPublicAgentRunLifecycle().invoke(selectedArgs);
+          assert.deepEqual(changed.errors, ["WORKFLOW_SEGMENT_CONTEXT_CHANGED"]); assert.equal(changed.written, false);
+          config.runtime.stateMode = "dual"; writeAidnProjectConfig(target, config);
+        }
       } finally {
         if (previousConnection === undefined) delete process.env.AIDN_TEST_PG_URL; else process.env.AIDN_TEST_PG_URL = previousConnection;
       }
@@ -604,10 +710,16 @@ async function runSuite({ connectionString, version, root }) {
       const status=invoke("agent-run-status"), preview=invoke("agent-run-cancel");
       assert.equal(status.status.execution_status,"planned");assert.equal(status.written,false);assert.equal(preview.can_apply,true,JSON.stringify(preview));
       assert.equal(preview.written,false);assert.equal(preview.action.preconditions.activation.active,false);
+      if (workflow) {
+        assert.equal(status.action.preconditions.workflow.validation, "retained");
+        assert.equal(preview.action.preconditions.workflow.binding_sha256, configuration.workflow.binding_sha256);
+      } else assert.equal(Object.hasOwn(preview.action.preconditions, "workflow"), false);
       assert.equal(await dataSnapshot(),before);assert.equal(await ddlCount(),ddl);assert.equal(tree(),local);assert.deepEqual(fs.readdirSync(resources),[]);
       const cancelled=invoke("agent-run-cancel",["--execute","--expect-plan",preview.action_sha256,"--sync-relay"]);
       assert.equal(cancelled.written,true);assert.equal(cancelled.status.cancellation.status,"requested");
       const durable=await context.store.getRun({runId:context.runId});
+      assert.equal(durable.plan.supervision.configuration_sha256, fingerprintAgentExecutionValue(configuration));
+      assert.equal(durable.cancel_request.request.plan_sha256, context.plan.plan_sha256);
       assert.equal(durable.cancel_request.target_supervisor_generation,0);assert.equal(durable.attempts.length,0);assert.equal(durable.supervision.current,null);
       assert.equal(durable.run.lifecycle_status,"planned");assert.equal(tree(),local);assert.equal(await ddlCount(),ddl);assert.deepEqual(fs.readdirSync(resources),[]);
       const cancelledState=await dataSnapshot(), repeated=invoke("agent-run-cancel");
