@@ -250,7 +250,7 @@
     "perf:verify-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
     "perf:verify-agent-execution-postgres": "node tools/perf/verify-agent-execution-postgres-fixtures.mjs",
     "perf:verify-agent-worker-fixtures": "node tools/perf/verify-codex-task-executor-fixtures.mjs && node tools/perf/verify-delegated-agent-admission-fixtures.mjs && node tools/perf/verify-agent-native-qualification-fixtures.mjs",
-    "perf:verify-agent-run-lifecycle-fixtures": "node tools/perf/verify-agent-run-lifecycle-fixtures.mjs && node tools/perf/verify-agent-run-workspace-fixtures.mjs && node tools/perf/verify-codex-agent-attempt-fixtures.mjs && node tools/perf/verify-codex-sandbox-validation-fixtures.mjs && node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs && node tools/perf/verify-codex-startup-arguments-fixtures.mjs && node tools/perf/verify-agent-local-path-policy-fixtures.mjs",
+    "perf:verify-agent-run-lifecycle-fixtures": "node tools/perf/verify-agent-run-lifecycle-fixtures.mjs && node tools/perf/verify-agent-run-workspace-fixtures.mjs && node tools/perf/verify-codex-agent-attempt-fixtures.mjs && node tools/perf/verify-codex-sandbox-validation-fixtures.mjs && node tools/perf/verify-controlled-codex-profile-metadata-fixtures.mjs && node tools/perf/verify-codex-startup-arguments-fixtures.mjs && node tools/perf/verify-agent-local-path-policy-fixtures.mjs && node tools/perf/verify-workflow-segment-fixtures.mjs",
     "perf:verify-agent-execution-scheduler-fixtures": "node tools/perf/verify-agent-execution-scheduler-fixtures.mjs",
     "perf:verify-agent-verification-fixtures": "node tools/perf/verify-agent-verification-fixtures.mjs",
     "perf:verify-agent-git-integration-fixtures": "node tools/perf/verify-agent-git-integration-fixtures.mjs",
@@ -392,6 +392,7 @@
     "perf:verify-installation-persistence-policy": "node tools/perf/verify-installation-persistence-policy-fixtures.mjs",
     "perf:verify-global-skills-transaction": "node tools/perf/verify-global-skills-transaction-fixtures.mjs",
     "perf:verify-activation-lifecycle": "node tools/perf/verify-activation-lifecycle-fixtures.mjs",
-    "perf:verify-global-runtime": "node tools/perf/verify-global-management-fixtures.mjs && node tools/perf/verify-global-recovery-fixtures.mjs && node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-hook-connector-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs"
+    "perf:verify-global-runtime": "node tools/perf/verify-global-management-fixtures.mjs && node tools/perf/verify-global-recovery-fixtures.mjs && node tools/perf/verify-global-runtime-store-fixtures.mjs && node tools/perf/verify-global-package-fixtures.mjs && node tools/perf/verify-global-hook-connector-fixtures.mjs && node tools/perf/verify-global-migration-inventory-fixtures.mjs && node tools/perf/verify-global-project-compatibility-fixtures.mjs",
+    "perf:verify-workflow-segment": "node tools/perf/verify-workflow-segment-fixtures.mjs"
   }
 }

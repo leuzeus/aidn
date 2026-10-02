@@ -671,9 +671,10 @@ worker. Native qualification is separate from these CI checks.
 An unqualified OS cannot advertise the future capability.
 
 Lot 7 adds `runtime-agent-run-lifecycle`, required once for dev, main and release.
-It covers seven portable suites: lifecycle, workspace, native-attempt composition,
+It now covers eight portable suites: lifecycle, workspace, native-attempt composition,
 sandbox validation, controlled profile metadata, shared startup arguments and
-local path policy. Omission or duplicate invocation of any suite is rejected.
+local path policy, plus the explicit workflow segment selection from ADR-0017.
+Omission or duplicate invocation of any suite is rejected.
 The four context-resilience gates and their 43 historical invocations remain
 unchanged. PostgreSQL, Windows process trees, actual native hooks, validation
 confinement and parallel Codex execution are reported independently. These

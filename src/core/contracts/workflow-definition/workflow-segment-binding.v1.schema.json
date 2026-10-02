@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/workflow-segment-binding.v1",
+  "title": "workflow-segment-binding.v1",
+  "x-aidn-contract-version": "workflow-segment-binding.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "selection",
+    "revision",
+    "definition",
+    "context",
+    "step_id",
+    "canonical_sha256",
+    "definition_sha256",
+    "compilation_sha256",
+    "compiler_version",
+    "registry",
+    "binding_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "workflow-segment-binding.v1"
+    },
+    "selection": {
+      "const": "explicit_segment"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "definition": {
+      "type": "object"
+    },
+    "context": {
+      "type": "object"
+    },
+    "step_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "maxLength": 96
+    },
+    "canonical_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "definition_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "compilation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "compiler_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "registry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "binding_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

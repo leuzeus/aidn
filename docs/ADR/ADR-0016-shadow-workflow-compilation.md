@@ -4,6 +4,9 @@
 
 Proposed for review, 2026-10-01. Implements lot 2 after ADR-0015's reference
 corpus. SPEC remains canonical; no production authority or execution is enabled.
+ADR-0017 subsequently adds an explicit run-local consumer through the existing
+agent lifecycle. The statements below describe the historical lot 2 boundary;
+the compiler remains pure and descriptive.
 
 ## Decision
 

@@ -26,6 +26,11 @@ selected at most once on a pull request.
 
 The executable catalog is `package/catalogs/gates.v1.json`. Every entry declares family, script, job, surfaces, condition, obligations for `dev`, `main`, and release, and reports one of `PASS`, `FAIL`, or `SKIP`.
 
+The existing `runtime-agent-run-lifecycle` gate includes the opt-in workflow
+segment binding suite. PostgreSQL segment retention and public cancellation are
+covered by the existing required PostgreSQL fixture gate. No extra gate or
+duplicate invocation is added; native qualification remains separate.
+
 The same catalog contains the adaptive lane and path policy. `FAST` is limited
 to recognized historical documentation. `STANDARD` selects the implicated
 families and falls back conservatively for unknown paths. `ASSURED` selects all

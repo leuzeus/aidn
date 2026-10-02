@@ -166,6 +166,12 @@ workflow adapters and sequential commands retain their contracts.
 | `agent-run-cleanup` | Preview eligible, retained resources of a completed run | `--write --expect-plan <action_sha256> --sync-relay` |
 
 All accept `--target <root>`, `--configuration <file>` and `--json`.
+Explicit `agent-run-configuration.v2` adds a frozen workflow segment binding.
+Its contracted selection appears at `action.preconditions.workflow` and enters
+the exact action hash. V1 configuration remains unchanged. Selection preserves
+canonical admission, scope/DAG authority, reservation and native qualification;
+it does not traverse the macro graph. See
+[segment preparation and evidence](WORKFLOW_SEGMENT_EXECUTION.md).
 `agent-run` requires `--plan <file>`; the other four require `--run <id>`.
 `--help`/`-h` is read-only and returns before configuration or native discovery.
 `--dry-run` is preview-only and cannot combine with effect selectors or
