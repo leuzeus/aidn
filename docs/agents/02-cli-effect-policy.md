@@ -53,6 +53,9 @@ The classification keeps automation from confusing output format with write perm
 ## Examples
 
 - `aidn runtime project-runtime-state --json` must be read-only by default.
+- `aidn codex hydrate-context --context-selection-file <request.json> --json`
+  is read-only and refuses output/projection flags; ordinary hydration retains
+  its existing hidden-projector effect. Consultation never grants admission.
 - `aidn runtime project-runtime-state --json --write` may project or write only when the command documents that behavior.
 - `aidn runtime project-handoff-packet --json` must be read-only by default.
 - `aidn runtime mode-migrate --json` must only preview config, schema, and projection changes; `--write` is required to apply them.

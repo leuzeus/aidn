@@ -879,7 +879,17 @@
             "role": "format-only"
           }
         ],
-        "variants": []
+        "variants": [
+          {
+            "id": "codex-hydrate-context/consultative-selection",
+            "when_args": [
+              "--context-selection-file"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "codex-hydrate-context/consultative-selection"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -10084,6 +10094,40 @@
       "effects": {
         "role": "effect-neutral",
         "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/codex/hydrate-context.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn codex hydrate-context:--context-selection-file",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/codex/hydrate-context.mjs",
+      "entrypoint": "aidn codex hydrate-context --context-selection-file",
+      "implementation": "tools/codex/hydrate-context.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "projector",
+        "variants": [
+          {
+            "when_args": [
+              "--context-selection-file"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "codex-hydrate-context/consultative-selection"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",

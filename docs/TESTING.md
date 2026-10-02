@@ -705,7 +705,19 @@ checked separately. Known scope and truncation limitations are observations,
 not desired acceptance criteria. No selector, runtime admission, GFD adoption,
 or existing context-resilience gate changes as part of this baseline.
 
-The existing governance-completeness gate also runs the L1 adoption fixtures.
+The required `codex-scoped-context-selection` gate runs
+`npm run perf:verify-scoped-context-selection`. Its eight acceptance scenarios
+and reserved controls cover accepted dependency closure, ambiguous and absent
+rules, historical hypotheses, explicit cross-worktree coordination, late UTF-8
+exceptions and complete JSON byte budgets. It exercises the real consultation
+CLI in files/dual/db-only mode environments and the real SQLite store, verifies
+no output/projection write, changed authority/source/backend fingerprints,
+refusal of caller-removed obligations and local overrides of configured
+PostgreSQL. A live files-mode change invalidates an unchanged index. The existing
+L0 observation fixture remains unchanged for comparison. These are source and
+disposable-fixture proofs; native Codex reads/tokens remain UNAVAILABLE.
+
+The existing governance-completeness gate runs the L1 adoption fixtures.
 For a focused replay use
 `node tools/perf/verify-governance-adoption-fixtures.mjs`. The fixtures validate
 the pinned source declaration, its section/reference closure and each row's

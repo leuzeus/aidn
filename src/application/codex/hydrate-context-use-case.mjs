@@ -18,6 +18,9 @@ import {
   resolveRepairRelationThresholds,
 } from "../../core/workflow/repair-layer-policy.mjs";
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "../runtime/runtime-snapshot-service.mjs";
+import { readWorkflowAdapterConfig } from "../../lib/config/workflow-adapter-config-lib.mjs";
+import { selectScopedContext, finalizeScopedContextBudget } from "./scoped-context-selection.mjs";
+import { resolveRuntimeProjectContext } from "../runtime/runtime-project-context-service.mjs";
 
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
@@ -127,7 +130,10 @@ function enforceHardArtifactBudget(selected, omittedCount, targetBytes, hardLimi
 function resolveArtifactSnapshotBackend(indexFile, backend, configData) {
   const configPersistence = resolveConfigRuntimePersistence(configData);
   const requested = String(backend ?? "").trim().toLowerCase();
-  if (requested === "auto" && configPersistence?.backend) {
+  if (configPersistence?.backend === "postgres" && !["", "auto", "postgres"].includes(requested)) {
+    throw new Error("Artifact snapshot backend conflicts with canonical PostgreSQL configuration");
+  }
+  if (["", "auto"].includes(requested) && configPersistence?.backend) {
     return {
       backend: configPersistence.backend,
       connectionRef: configPersistence.connectionRef ?? "",
@@ -777,6 +783,9 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
   let artifactSource = null;
   let selectedArtifacts = [];
   let repairLayer = null;
+  let scopedSelection = null;
+  const scopedRequested = Object.hasOwn(args, "contextRequest");
+  const adoption = scopedRequested ? readWorkflowAdapterConfig(targetRoot).data.governanceAdoption : null;
   if (args.includeArtifacts) {
     const indexFile = resolveTargetPath(targetRoot, args.indexFile);
     const config = readAidnProjectConfig(targetRoot);
@@ -792,6 +801,20 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
           connectionRef,
           configData: config.data,
         });
+      if (scopedRequested) {
+        const resolved = resolveRuntimeProjectContext({ targetRoot });
+        // SQLite's historical index does not store project_context. Its recorded
+        // checkout and the existing locator supply the local identity; never use
+        // query-supplied IDs as a replacement for missing source scope.
+        if (!index.payload.project_context && backend === "sqlite" && index.payload.target_root
+          && path.resolve(index.payload.target_root) === path.resolve(targetRoot)) {
+          index.payload = { ...index.payload, project_context: resolved };
+        }
+        const source = index.payload.project_context;
+        if (source && ["project_id", "workspace_id", "runtime_scope_id", "worktree_id"].some((key) => source[key] !== resolved[key])) {
+          index.payload = { ...index.payload, project_context: null };
+        }
+      }
       artifactSource = buildArtifactSourceDescriptor({
         backend,
         indexAbsolute: index.absolute,
@@ -799,7 +822,21 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
         connectionRef,
         includeCompatLocalIndex: args.includeCompatLocalIndex === true,
       });
-      const selection = selectArtifacts(index.payload, args.maxArtifactBytes, {
+      const selection = scopedRequested ? selectScopedContext({
+        payload: index.payload, request: args.contextRequest, adoption, backend,
+        readCanonicalText: effectiveStateMode === "files" ? (artifact) => {
+          const auditRoot = path.resolve(index.payload.audit_root || path.join(targetRoot, "docs/audit"));
+          const file = path.resolve(auditRoot, artifact.path);
+          const withinRoot = path.relative(targetRoot, file);
+          if (withinRoot.startsWith("..") || path.isAbsolute(withinRoot)) return null;
+          try {
+            const realFile = fs.realpathSync(file);
+            const relative = path.relative(fs.realpathSync(targetRoot), realFile);
+            if (relative.startsWith("..") || path.isAbsolute(relative)) return null;
+            return new TextDecoder("utf-8", { fatal: true }).decode(fs.readFileSync(realFile));
+          } catch { return null; }
+        } : undefined,
+      }) : selectArtifacts(index.payload, args.maxArtifactBytes, {
         minRelationConfidence: args.minRelationConfidence,
         relationThresholds: args.relationThresholds,
         allowAmbiguousLinks: args.allowAmbiguousLinks,
@@ -807,9 +844,10 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
         bundleTargetBytes: args.bundleTargetBytes,
         bundleHardLimitBytes: args.bundleHardLimitBytes,
       });
-      selectedArtifacts = selection.selected;
-      repairLayer = summarizeRepairLayer(index.payload, selection);
-      artifactSource.bundle_budget = selection.bundle_budget;
+      scopedSelection = scopedRequested ? selection : null;
+      selectedArtifacts = scopedRequested ? selection.units : selection.selected;
+      repairLayer = scopedRequested ? null : summarizeRepairLayer(index.payload, selection);
+      artifactSource.bundle_budget = selection.bundle_budget ?? null;
       artifactSource.source_revision = selection.source_revision;
     }
   }
@@ -833,6 +871,14 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
     source_revision: artifactSource?.source_revision ?? null,
     artifacts: selectedArtifacts,
   };
+
+  if (scopedRequested) {
+    scopedSelection ??= selectScopedContext({ payload: null, request: args.contextRequest, adoption, backend: null });
+    hydrated.source_revision = scopedSelection.source_revision;
+    hydrated.visible_projection_policy = { mode: "consultative-read-only", materialize_visible_artifacts: false };
+    finalizeScopedContextBudget(hydrated, scopedSelection, args);
+    return hydrated;
+  }
 
   if (args.out) {
     const outFile = resolveTargetPath(targetRoot, args.out);

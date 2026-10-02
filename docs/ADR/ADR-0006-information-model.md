@@ -98,6 +98,29 @@ adopted. `gate_result` remains excluded telemetry and supervised
 `execution_attempt` retains its existing contracts. See ADR-0010 and
 [the adoption guide](../GFD_ADOPTION.md) for the accepted scope and limits.
 
+## Scoped consultation extension (2026-10-02)
+
+The opt-in context selector reuses `artifact`, `project_policy` and
+`runtime_project_context`. Its request describes a consultation, not a new
+source of policy or permission. Client-owned adoption authorities bind exact
+paths; full-source hashes, lifecycle and project/workspace/worktree identities
+are checked before section extraction. Effective and historical consultation
+are distinct. Effective unit descriptors must exactly match the client's
+accepted `governanceAdoption.extensions.contextUnits`; a query cannot remove
+their mandatory dependencies or promote detected rules. Dependencies carry
+explicit reasons; cross-worktree and
+cross-workspace dependencies require explicit query bindings and remain inside
+the already readable snapshot. In files mode the current file is checked;
+in DB-backed modes the selected backend is read without projection fallback.
+SQLite local identity uses the existing resolver plus its recorded checkout.
+Missing identity or required content refuses consultation rather than guessing.
+Complete ATX sections, including subordinate conditions and exceptions, are
+the smallest supported unit. Unrecognized/ambiguous headings refuse selection.
+The complete compact JSON payload is measured; optional units may be omitted
+whole, while an oversized mandatory closure refuses with expansion references.
+No new canonical store, runtime admission or default installed route is added.
+Rollback removes the opt-in consumer and retains client adoption history.
+
 ## Options Compared
 
 | Option | Result |

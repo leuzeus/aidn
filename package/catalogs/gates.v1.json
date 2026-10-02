@@ -305,6 +305,23 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "codex-scoped-context-selection",
+      "family": "codex",
+      "script": "perf:verify-scoped-context-selection",
+      "job": "governance-admission/gates",
+      "surfaces": [
+        "opt-in scoped context consultation",
+        "complete mandatory Markdown units",
+        "whole JSON budget and canonical identity"
+      ],
+      "condition": "always",
+      "obligation": {
+        "dev": "required",
+        "main": "required",
+        "release": "required"
+      }
+    },
+    {
       "id": "codex-context-admission",
       "family": "codex",
       "script": "perf:verify-context-admission",

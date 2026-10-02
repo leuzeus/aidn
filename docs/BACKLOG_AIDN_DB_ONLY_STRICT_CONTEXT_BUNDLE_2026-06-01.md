@@ -288,6 +288,18 @@ Rejeu: `node tools/perf/verify-governance-adoption-fixtures.mjs`, egalement incl
 dans le gate existant de completude. Guide: [GFD_ADOPTION.md](./GFD_ADOPTION.md).
 Selection d'unites completes et qualification native restent a realiser.
 
+## L2 consultation incrementale — 2026-10-02
+
+Selection opt-in de sections ATX completes livree dans l'hydrateur existant.
+Le client accepte ses unit bindings dans son adaptateur durable; la requete
+ne peut retirer leurs dependances. Portee projet/workspace/worktree et
+session/cycle, lifecycle, hash de source et identite locale SQLite sont verifies.
+Le mode files lit le fichier actuel. Une source obligatoire absente ou trop
+grande refuse avec expansion; les unites optionnelles sont omises entieres.
+Le budget mesure le JSON compact complet. Le routage installe par defaut,
+l'admission runtime et la qualification native restent distincts.
+Voir [le contrat consultatif](./CODEX_INTEGRATION.md#opt-in-scoped-context-consultation).
+
 ## P2 - Application pilote External Pilot
 
 ### P2-01 - Migrer `external-pilot` apres validation AIDN
