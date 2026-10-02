@@ -3,6 +3,7 @@
 Lot 1 describes the current audit-informed workflow without changing execution.
 SPEC remains canonical. ADR-0015 is proposed; the descriptors have no production authority.
 The source baseline is dev at eaf87bd (0.11.0). Package-source tests are not installed-client or native qualification.
+Lot 2 adds pure compilation of descriptor revision 2; see `docs/WORKFLOW_SHADOW_COMPILATION.md` and ADR-0016. The matrix below retains the evidence types and claims of the lot 1 gate.
 
 ## Artifacts
 
@@ -64,9 +65,9 @@ Each descriptor edge links SPEC rules and expected evidence. Edge outcome names 
 - Alternate: THINKING/EXPLORING behavior, explicit focus among several cycles, and the second macro topology under the same schema.
 - Adversarial: ambiguous/missing mapping, stale merged cycles, unknown PR state, unresolved close, conflicting repair status and malformed descriptors.
 - Existing canonical-admission and state-mode suites cover files/dual/db-only, configured unavailable PostgreSQL, stale projections and the existing adapter without any binding.
-- An explicit default binding, compilation, effect previews, activation, durable instances and resume/migration remain unimplemented. No fixture result claims these capabilities.
+- Lot 2 separately checks pure compilation and single-transition explanations. An explicit default binding, handler effect previews, activation, durable instances and resume/migration remain unimplemented. No fixture result claims these capabilities.
 
-The current graph retains procedural re-entry through existing admission after drift/incident resolution. It adds no bound to the current workflow. The alternate graph declares exactly two review-to-correction returns, then stop; the gate checks that declaration, without executing a retry loop.
+The current graph retains procedural re-entry through existing admission after drift/incident resolution. It adds no bound to the current workflow. The alternate graph declares exactly two review-to-correction returns, then stop; the lot 1 gate checks that declaration, while the compilation gate checks pure explanations through exhaustion. Neither executes a runtime retry loop.
 
 ## Verification
 

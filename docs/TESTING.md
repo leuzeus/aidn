@@ -728,15 +728,26 @@ For the descriptive workflow compatibility lot, run
 alternate macro descriptors, SPEC-R01 through SPEC-R11 coverage, actual shared
 helper decisions and negative reference/graph fixtures. The matrix in
 `docs/WORKFLOW_SHADOW_PARITY.md` distinguishes assertions from linked suites,
-procedural obligations and declaration-only evidence. No workflow is compiled
-or executed from the descriptors.
+procedural obligations and declaration-only evidence. This gate does not compile
+or execute workflows from the descriptors.
+
+For pure internal compilation (ADR-0016), also run
+`npm run perf:verify-workflow-compilation`. Its required
+`contracts-workflow-compilation` gate checks closed compilation/context schemas,
+registry references, deterministic normalized output and fixed hashes, both
+macro paths, bounded return exhaustion, 28 actual helper observations and
+malformed reference/condition/topology refusals. Calls are tested with ambient
+I/O, process, clock and randomness APIs denied. The single-transition explanation
+is a pure model: no handler, gate or agent segment is executed. See
+`docs/WORKFLOW_SHADOW_COMPILATION.md` for the limits of those results.
 
 Complement it with the existing workflow-transition fixture tool,
 start-session admission (including canonical backend/projection cases),
 branch-cycle admission, cycle-create admission, context-completion and
 state-mode-parity suites. These exercise the existing path without a binding.
-Explicit binding, compiled parity, durable instances and native execution are
-outside this lot; a reference descriptor passing is not evidence for them.
+Explicit binding, durable instances and native execution are outside both shadow
+lots; a reference descriptor passing is not evidence for them. Compiled parity
+is bounded to the helper observations and paths exercised by its own gate.
 
 These commands validate enforcement behavior:
 

@@ -4,6 +4,8 @@
 
 Proposed for review. Lot 1 implements reference data and compatibility checks
 only. It does not transfer production authority or introduce an execution path.
+ADR-0016 subsequently adds pure shadow compilation; production authority and
+execution remain deferred. The statements below describe the lot 1 boundary.
 
 ## Date
 

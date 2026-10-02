@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/workflow-shadow-context.v1",
+  "title": "Internal shadow workflow-shadow-context.v1",
+  "x-aidn-contract-version": "workflow-shadow-context.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "authority",
+    "product_version",
+    "workflow_version",
+    "state_mode"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "workflow-shadow-context.v1"
+    },
+    "authority": {
+      "const": "caller_supplied"
+    },
+    "product_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "workflow_version": {
+      "const": 7
+    },
+    "state_mode": {
+      "enum": [
+        "files",
+        "dual",
+        "db-only"
+      ]
+    }
+  }
+}

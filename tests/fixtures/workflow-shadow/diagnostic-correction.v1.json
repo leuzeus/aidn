@@ -1,6 +1,6 @@
 {
   "contract_version": "workflow-definition.v1",
-  "revision": 1,
+  "revision": 2,
   "authority": "shadow",
   "lifecycle_status": "reference_only",
   "owner": "aidn-maintainers",
@@ -29,7 +29,8 @@
       ],
       "evidence_refs": [
         "alternate_macro"
-      ]
+      ],
+      "primitive_ref": "diagnosis"
     },
     {
       "id": "approval",
@@ -47,7 +48,8 @@
       ],
       "evidence_refs": [
         "alternate_macro"
-      ]
+      ],
+      "primitive_ref": "approval"
     },
     {
       "id": "correction",
@@ -66,7 +68,8 @@
       ],
       "evidence_refs": [
         "alternate_macro"
-      ]
+      ],
+      "primitive_ref": "agent_segment"
     },
     {
       "id": "review",
@@ -84,7 +87,8 @@
       ],
       "evidence_refs": [
         "alternate_macro"
-      ]
+      ],
+      "primitive_ref": "review"
     },
     {
       "id": "done",
@@ -100,7 +104,8 @@
       "evidence_refs": [
         "alternate_macro"
       ],
-      "terminal_result": "completed"
+      "terminal_result": "completed",
+      "primitive_ref": "terminal"
     },
     {
       "id": "stop",
@@ -116,7 +121,8 @@
       "evidence_refs": [
         "alternate_macro"
       ],
-      "terminal_result": "stopped"
+      "terminal_result": "stopped",
+      "primitive_ref": "terminal"
     }
   ],
   "transitions": [

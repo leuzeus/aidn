@@ -149,6 +149,11 @@
               "stopped",
               "deferred"
             ]
+          },
+          "primitive_ref": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 96
           }
         }
       }

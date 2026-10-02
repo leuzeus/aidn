@@ -1,6 +1,6 @@
 {
   "contract_version": "workflow-definition.v1",
-  "revision": 1,
+  "revision": 2,
   "authority": "shadow",
   "lifecycle_status": "reference_only",
   "owner": "aidn-maintainers",
@@ -30,7 +30,8 @@
       ],
       "evidence_refs": [
         "session_sequence"
-      ]
+      ],
+      "primitive_ref": "context_reload"
     },
     {
       "id": "start",
@@ -52,7 +53,8 @@
       ],
       "evidence_refs": [
         "start_admission"
-      ]
+      ],
+      "primitive_ref": "session_admission"
     },
     {
       "id": "select_cycle",
@@ -71,7 +73,8 @@
       ],
       "evidence_refs": [
         "mapped_choices"
-      ]
+      ],
+      "primitive_ref": "cycle_selection"
     },
     {
       "id": "mode",
@@ -90,7 +93,8 @@
       ],
       "evidence_refs": [
         "mode_semantics"
-      ]
+      ],
+      "primitive_ref": "mode_selection"
     },
     {
       "id": "thinking",
@@ -107,7 +111,8 @@
       ],
       "evidence_refs": [
         "mode_semantics"
-      ]
+      ],
+      "primitive_ref": "thinking"
     },
     {
       "id": "exploring",
@@ -125,7 +130,8 @@
       ],
       "evidence_refs": [
         "mode_semantics"
-      ]
+      ],
+      "primitive_ref": "exploring"
     },
     {
       "id": "cycle_context",
@@ -145,7 +151,8 @@
       "evidence_refs": [
         "cycle_continuity",
         "branch_ownership"
-      ]
+      ],
+      "primitive_ref": "cycle_context"
     },
     {
       "id": "branch_audit",
@@ -164,7 +171,8 @@
       ],
       "evidence_refs": [
         "branch_ownership"
-      ]
+      ],
+      "primitive_ref": "branch_audit"
     },
     {
       "id": "continuity",
@@ -182,7 +190,8 @@
       ],
       "evidence_refs": [
         "cycle_continuity"
-      ]
+      ],
+      "primitive_ref": "cycle_continuity"
     },
     {
       "id": "ready",
@@ -200,7 +209,8 @@
       ],
       "evidence_refs": [
         "definition_of_ready"
-      ]
+      ],
+      "primitive_ref": "definition_of_ready"
     },
     {
       "id": "implement",
@@ -223,7 +233,8 @@
         "definition_of_ready",
         "drift_procedure",
         "incident_procedure"
-      ]
+      ],
+      "primitive_ref": "implementation"
     },
     {
       "id": "drift",
@@ -241,7 +252,8 @@
       ],
       "evidence_refs": [
         "drift_procedure"
-      ]
+      ],
+      "primitive_ref": "drift"
     },
     {
       "id": "incident",
@@ -259,7 +271,8 @@
       ],
       "evidence_refs": [
         "incident_procedure"
-      ]
+      ],
+      "primitive_ref": "incident"
     },
     {
       "id": "validate",
@@ -278,7 +291,8 @@
       ],
       "evidence_refs": [
         "convergence"
-      ]
+      ],
+      "primitive_ref": "validation"
     },
     {
       "id": "cycle_close",
@@ -298,7 +312,8 @@
       ],
       "evidence_refs": [
         "cycle_completion"
-      ]
+      ],
+      "primitive_ref": "cycle_close"
     },
     {
       "id": "promote",
@@ -316,7 +331,8 @@
       ],
       "evidence_refs": [
         "promotion"
-      ]
+      ],
+      "primitive_ref": "promotion"
     },
     {
       "id": "close_drift",
@@ -335,7 +351,8 @@
       ],
       "evidence_refs": [
         "drift_procedure"
-      ]
+      ],
+      "primitive_ref": "close_drift"
     },
     {
       "id": "close",
@@ -354,7 +371,8 @@
       ],
       "evidence_refs": [
         "close_decisions"
-      ]
+      ],
+      "primitive_ref": "session_close"
     },
     {
       "id": "pr",
@@ -374,7 +392,8 @@
       "evidence_refs": [
         "pr_lifecycle",
         "review_procedure"
-      ]
+      ],
+      "primitive_ref": "pr_review"
     },
     {
       "id": "sync",
@@ -392,7 +411,8 @@
       ],
       "evidence_refs": [
         "post_merge"
-      ]
+      ],
+      "primitive_ref": "post_merge"
     },
     {
       "id": "done",
@@ -408,7 +428,8 @@
       "evidence_refs": [
         "post_merge"
       ],
-      "terminal_result": "completed"
+      "terminal_result": "completed",
+      "primitive_ref": "terminal"
     },
     {
       "id": "stop",
@@ -424,7 +445,8 @@
       "evidence_refs": [
         "invariants"
       ],
-      "terminal_result": "stopped"
+      "terminal_result": "stopped",
+      "primitive_ref": "terminal"
     },
     {
       "id": "deferred",
@@ -440,7 +462,8 @@
       "evidence_refs": [
         "close_decisions"
       ],
-      "terminal_result": "deferred"
+      "terminal_result": "deferred",
+      "primitive_ref": "terminal"
     }
   ],
   "transitions": [
