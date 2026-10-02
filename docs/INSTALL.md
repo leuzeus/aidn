@@ -566,6 +566,12 @@ Persistence rules:
 
 If your repository ignores `.aidn/`, carve out an exception for `.aidn/project/workflow.adapter.json` when you want team-shared persistence across clones.
 
+Adapter v1 optionally preserves a versioned `governanceAdoption` declaration.
+Defaults and install do not adopt GFD for a client. Existing valid declarations
+survive explicit adapter migration and wizard normalization; invalid declarations
+fail before writing. See [the scoped adoption guide](./GFD_ADOPTION.md) for owner
+acceptance, references, lifecycle, compatibility and native qualification limits.
+
 ### What to edit directly
 
 - edit `.aidn/project/workflow.adapter.json` via `aidn project config ... --write`; omit `--write` to preview

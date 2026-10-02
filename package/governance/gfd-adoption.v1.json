@@ -1,0 +1,365 @@
+{
+  "schemaVersion": 1,
+  "adoptionId": "aidn-source-gfd-2026-10-02",
+  "revision": 1,
+  "status": "accepted",
+  "scope": "package-source",
+  "owner": "project_owner",
+  "recordedAt": "2026-10-02",
+  "method": {
+    "name": "GFD",
+    "version": "0.1-draft",
+    "repository": "https://github.com/leuzeus/governance-first-development",
+    "commit": "0eec798a5270ba6de51f31708b3dbc5b6147d9fb",
+    "path": "METHOD.md",
+    "sha256": "f5c32d9f9f9ab8e0c56f2099daeac8f29eca27494b1102f46f657dcc54e94d8d"
+  },
+  "acceptance": {
+    "authority": "project_owner",
+    "decisionRef": "docs/ADR/ADR-0010-adaptive-repository-governance.md#gfd-adoption-amendment-2026-10-02",
+    "acceptedAt": "2026-10-02",
+    "effectiveFrom": "2026-10-02"
+  },
+  "precedence": "Applicable external obligations must be identified by their owner. Within each concept, its canonical source-of-truth policy and validated contracts govern; accepted scoped decisions cannot silently weaken invariants. Current intent governs subordinate plans. Instructions route to those authorities. GFD is binding only through this accepted mapping; informative material, projections, caches and history cannot replace an effective authority. Unresolved conflicts suspend the affected change; neither recency nor similarity resolves precedence.",
+  "authorities": [
+    {
+      "id": "spec",
+      "reference": "docs/SPEC.md",
+      "role": "specification",
+      "owner": "technical_owner",
+      "scope": "Non-negotiable workflow invariants",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "source-of-truth",
+      "reference": "src/core/source-of-truth/source-of-truth-policy.mjs",
+      "role": "canonical policy",
+      "owner": "data_owner",
+      "scope": "Canonical source by concept and state mode",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "metadata",
+      "reference": "src/core/metadata/metadata-policy.mjs",
+      "role": "metadata policy",
+      "owner": "data_owner",
+      "scope": "Governed metadata and lifecycle",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "contracts",
+      "reference": "src/core/contracts/cli-output/",
+      "role": "validated contracts",
+      "owner": "technical_owner",
+      "scope": "Public JSON commitments",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "information",
+      "reference": "docs/ADR/ADR-0006-information-model.md",
+      "role": "accepted decision",
+      "owner": "technical_owner",
+      "scope": "Information model and telemetry boundary",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "delivery",
+      "reference": "docs/ADR/ADR-0010-adaptive-repository-governance.md",
+      "role": "accepted decision",
+      "owner": "project_owner",
+      "scope": "Source delivery lanes and this scoped adoption",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "gates",
+      "reference": "package/catalogs/gates.v1.json",
+      "role": "executable control policy",
+      "owner": "technical_owner",
+      "scope": "Gate selection, obligations and conditions",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "agent-routing",
+      "reference": "AGENTS.md",
+      "role": "operational routing",
+      "owner": "project_owner",
+      "scope": "Bounded source-agent work; routes to scoped authorities",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "operating-model",
+      "reference": "docs/agents/00-agent-operating-model.md",
+      "role": "scoped operating policy",
+      "owner": "technical_owner",
+      "scope": "Intent, bounded scope and evidence",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    },
+    {
+      "id": "testing",
+      "reference": "docs/TESTING.md",
+      "role": "validation policy",
+      "owner": "evidence_operator",
+      "scope": "Claim-specific tests and proof limits",
+      "status": "effective",
+      "effectiveFrom": "2026-10-02"
+    }
+  ],
+  "sections": [
+    {
+      "id": "1",
+      "disposition": "adapted",
+      "rationale": "Personal agent-driven context and cumulative hats; project_owner reviews changed external or operational boundaries.",
+      "authorities": [
+        "delivery"
+      ],
+      "controls": [
+        "tools/verify/verify-governance-route-fixtures.mjs"
+      ],
+      "responsibility": "project_owner records changed project context and applicable duties."
+    },
+    {
+      "id": "2",
+      "disposition": "adapted",
+      "rationale": "Use the explicit scoped precedence and authority map; unresolved conflicts pause the affected change, not every historical consultation.",
+      "authorities": [
+        "source-of-truth",
+        "contracts",
+        "information",
+        "agent-routing"
+      ],
+      "controls": [
+        "tools/perf/verify-source-of-truth-policy.mjs",
+        "tools/perf/verify-governance-completeness.mjs"
+      ],
+      "responsibility": "project_owner resolves conflicts; technical_owner maintains canonical bindings."
+    },
+    {
+      "id": "3",
+      "disposition": "adopted",
+      "rationale": "Objectives, non-goals, assumptions and acceptance criteria precede implementation; detection does not accept a proposed rule.",
+      "authorities": [
+        "operating-model",
+        "spec"
+      ],
+      "controls": [
+        "tools/perf/verify-governance-adoption-fixtures.mjs"
+      ],
+      "responsibility": "project_owner accepts intent changes; agents maintain scope and distinguish proposals."
+    },
+    {
+      "id": "4",
+      "disposition": "adapted",
+      "rationale": "Use accepted ADRs or existing decision records for costly choices, with authority, date, status and replacement; avoid a record per trivial tool occurrence.",
+      "authorities": [
+        "information",
+        "delivery"
+      ],
+      "controls": [
+        "tools/perf/verify-governance-adoption-fixtures.mjs"
+      ],
+      "responsibility": "technical_owner records decisions; deciding authority accepts or supersedes them."
+    },
+    {
+      "id": "5",
+      "disposition": "adopted",
+      "rationale": "Preserve concept-specific invariants and public contracts; process compliance never establishes product validity.",
+      "authorities": [
+        "spec",
+        "contracts",
+        "source-of-truth"
+      ],
+      "controls": [
+        "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "tools/perf/verify-source-of-truth-policy.mjs"
+      ],
+      "responsibility": "technical_owner owns contracts and identifies any required material evidence."
+    },
+    {
+      "id": "6",
+      "disposition": "adapted",
+      "rationale": "Existing gate catalog owns automatic controls; manual risk, value, exceptions and costs remain claim-specific responsibilities.",
+      "authorities": [
+        "gates",
+        "testing"
+      ],
+      "controls": [
+        "tools/verify/verify-gate-catalog.mjs",
+        "tools/verify/verify-gate-runner-fixtures.mjs"
+      ],
+      "responsibility": "technical_owner reviews control value and fallback; evidence_operator records observed costs."
+    },
+    {
+      "id": "7",
+      "disposition": "adapted",
+      "rationale": "Use exact revision, method, environment and limits; retain PASS/FAIL/SKIP and explicit UNAVAILABLE evidence without converting CI telemetry into runtime state.",
+      "authorities": [
+        "testing",
+        "information"
+      ],
+      "controls": [
+        "tools/verify/verify-gate-runner-fixtures.mjs",
+        "tools/perf/verify-context-selection-baseline-fixtures.mjs"
+      ],
+      "responsibility": "evidence_operator qualifies claims and preserves evidence; native evidence is never inferred from fixtures."
+    },
+    {
+      "id": "7.1",
+      "disposition": "adapted",
+      "rationale": "Never attribute a product failure to an unexecuted product test. Separate execution, gate, proof, product judgement and failure layer in evidence; preserve causal references and assess claim-specific materiality. No general AOI schema conformance is claimed.",
+      "authorities": [
+        "testing",
+        "information"
+      ],
+      "controls": [
+        "tools/verify/verify-gate-runner-fixtures.mjs"
+      ],
+      "responsibility": "evidence_operator declares meaningful attempts and links correction validation; project_owner decides materiality and historical sidecars."
+    },
+    {
+      "id": "8",
+      "disposition": "adapted",
+      "rationale": "Keep proposed, effective and superseded sources distinguishable; preserve earlier immutable references and assess changed claims before invalidating evidence.",
+      "authorities": [
+        "metadata",
+        "information"
+      ],
+      "controls": [
+        "tools/perf/verify-metadata-policy.mjs",
+        "tools/perf/verify-governance-adoption-fixtures.mjs"
+      ],
+      "responsibility": "data_owner preserves history; technical_owner identifies affected claims."
+    },
+    {
+      "id": "9",
+      "disposition": "adapted",
+      "rationale": "Instructions route to stable authorities. L0 measures bytes and limitations; task-scoped complete units and native token promises remain later lots.",
+      "authorities": [
+        "agent-routing",
+        "testing"
+      ],
+      "controls": [
+        "tools/perf/verify-context-selection-baseline-fixtures.mjs"
+      ],
+      "responsibility": "technical_owner reviews context debt and names consumer and task."
+    },
+    {
+      "id": "10",
+      "disposition": "adapted",
+      "rationale": "Maintain one source per responsibility with reference checks; historical documents and generated summaries do not become canonical.",
+      "authorities": [
+        "information",
+        "metadata"
+      ],
+      "controls": [
+        "tools/verify/verify-doc-references.mjs"
+      ],
+      "responsibility": "technical_owner maintains ownership, replacement and translation relationships."
+    },
+    {
+      "id": "11",
+      "disposition": "adopted",
+      "rationale": "Agents keep bounded authorization and unchanged acceptance criteria; no invented authority, evidence, permissions or silent scope expansion.",
+      "authorities": [
+        "agent-routing",
+        "operating-model",
+        "testing"
+      ],
+      "controls": [
+        "tools/perf/verify-cli-no-implicit-write-fixtures.mjs"
+      ],
+      "responsibility": "project_owner authorizes scope; reviewers state actual independence and evidence limits."
+    },
+    {
+      "id": "12",
+      "disposition": "adopted",
+      "rationale": "Report only measured, named-proxy or unknown costs; do not reconstruct model tokens or savings from memory.",
+      "authorities": [
+        "testing",
+        "delivery"
+      ],
+      "controls": [
+        "tools/perf/verify-context-selection-baseline-fixtures.mjs"
+      ],
+      "responsibility": "evidence_operator records collection method; project_owner judges proportionality."
+    },
+    {
+      "id": "13",
+      "disposition": "adapted",
+      "rationale": "Use the minimum audit profile sufficient for the question; reform requires owner instruction and a testable bounded change.",
+      "authorities": [
+        "operating-model",
+        "delivery"
+      ],
+      "controls": [],
+      "responsibility": "project_owner selects improvements; evidence_operator separates facts, inferences and unknowns."
+    },
+    {
+      "id": "14",
+      "disposition": "adapted",
+      "rationale": "ADR-0010 and the executable catalog own delivery lanes. AIDN FAST is restricted to recognized non-normative/history docs; critical or public source changes remain ASSURED; emergency is an overlay. Client work modes are a separate axis.",
+      "authorities": [
+        "delivery",
+        "gates"
+      ],
+      "controls": [
+        "tools/verify/verify-governance-route-fixtures.mjs"
+      ],
+      "responsibility": "release_authority owns emergency/publication scope; no agent self-declares emergency."
+    },
+    {
+      "id": "15",
+      "disposition": "adopted",
+      "rationale": "This declaration pins method, scope, adaptations, omissions, owner and review triggers. Each client accepts its own policy; no full-conformance or certification claim follows.",
+      "authorities": [
+        "delivery",
+        "information"
+      ],
+      "controls": [
+        "tools/perf/verify-governance-adoption-fixtures.mjs"
+      ],
+      "responsibility": "project_owner accepts revisions and explicit omissions; retain superseded history."
+    }
+  ],
+  "omissions": [
+    "No complete GFD conformance or product certification is claimed.",
+    "Addendum 0001 schemas, general attempt storage and retrospective migration are not adopted. Its evidence distinctions and materiality principles are adapted prospectively.",
+    "No universal 8 KiB context or model-token budget is adopted; native consumption and token evidence are unavailable.",
+    "Native Codex, external client, Windows and live deployment qualification require separate evidence.",
+    "Installed projects must accept their own declaration; source adoption is never inherited by install or detection.",
+    "No committees, separate-person approval or invented external duties are imposed on this personal project."
+  ],
+  "reviewTriggers": [
+    "Contributors, users, deployment, criticality or external duties change.",
+    "A mapped contract, authority, control, method revision or acceptance rule changes materially.",
+    "Native or client evidence contradicts a recorded limit or obligation.",
+    "A control creates recurrent false blocks or measured maintenance/context cost."
+  ],
+  "history": [],
+  "replacement": null,
+  "extensions": {
+    "authorityHats": [
+      "project_owner",
+      "technical_owner",
+      "evidence_operator",
+      "release_authority",
+      "data_owner"
+    ],
+    "projectContext": "personal_agent_driven",
+    "clientAdoption": "explicit opt-in project_policy",
+    "addendum0001": {
+      "reference": "governance/addenda/0001-attempt-outcome-integrity.md",
+      "commit": "0eec798a5270ba6de51f31708b3dbc5b6147d9fb",
+      "sha256": "eae4608f8729ef07220a8f7ef2290abb0a97b20424b656a0ffb93dea69053efa",
+      "disposition": "principles adapted; executable schemas deferred"
+    }
+  }
+}

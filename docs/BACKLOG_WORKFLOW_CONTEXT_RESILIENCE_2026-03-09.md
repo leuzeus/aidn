@@ -269,6 +269,23 @@ or the four context-resilience gates. See the L0 section in
 Complete-unit selection, task/worktree routing, GFD adoption and native
 qualification remain follow-up work; fixture `PASS` does not close them.
 
+### WCR-12 - Bind Scoped GFD Adoption To Durable Policy
+
+Status: source adoption and client preservation implemented; native qualification pending
+Priority: medium
+
+L1 pins a partial source adoption in `package/governance/gfd-adoption.v1.json`
+under ADR-0010. Each section names local authorities, controls, human
+responsibility and explicit omissions. Clients opt in through their own optional
+`governanceAdoption` in durable adapter policy; defaults and detection do not
+accept it. Normalization, preview, explicit writes and adapter migration preserve
+accepted/proposed records and historical references. The existing
+governance-completeness gate includes the focused fixtures.
+
+See [GFD_ADOPTION.md](./GFD_ADOPTION.md) for precedence, attempt-evidence limits,
+compatibility and rollback. Complete-unit selection and native installation,
+upgrade and model-token qualification remain subsequent lots.
+
 ## Sequencing Recommendation
 
 1. WCR-01

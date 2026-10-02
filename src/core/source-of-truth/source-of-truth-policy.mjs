@@ -73,11 +73,11 @@ const CONCEPT_GOVERNANCE = freezeDeep({
   project_policy: {
     owner: "project policy maintainer",
     lifecycle: "initialized -> active -> migrated -> archived",
-    scope: "one installed project's workflow adapter policy",
-    retention: "retain while the project is governed and archive with project policy history",
+    scope: "one installed project's workflow adapter policy; package source adoption has its own explicitly scoped declaration",
+    retention: "retain while the project is governed and archive with project policy history; retain adoption revisions and immutable predecessor references without automatic purge",
     migration: "use project config migration with explicit --write",
     replacement: "a successor adapter file replaces the prior version through an explicit migration",
-    evidence_targets: ["src/lib/config/workflow-adapter-config-lib.mjs"],
+    evidence_targets: ["src/lib/config/workflow-adapter-config-lib.mjs", "src/core/governance/adoption-policy.mjs", "package/governance/gfd-adoption.v1.json"],
   },
   runtime_defaults: {
     owner: "runtime configuration maintainer",
@@ -383,7 +383,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: ".aidn/project/workflow.adapter.json",
     dbOnly: ".aidn/project/workflow.adapter.json",
     projection: "WORKFLOW.md, CODEX_ONLINE.md and index.md",
-    notes: "Project policy may be versioned by the installed client repository.",
+    notes: "Project policy may be versioned by the installed client repository. Optional governanceAdoption remains explicit, scoped and locally canonical in every mode; no detection, install default or source declaration accepts it for a client. Package-source adoption is scoped separately in package/governance/gfd-adoption.v1.json under ADR-0010. Declaration validity grants no runtime permission.",
   }),
   policy({
     concept: "runtime_defaults",
