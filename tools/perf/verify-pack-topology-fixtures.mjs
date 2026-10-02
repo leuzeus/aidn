@@ -180,6 +180,7 @@ function inspectPackageDocsAllowlist(files) {
     "docs/MULTI_PROJECT_POSTGRESQL_MIGRATION_GUIDE.md",
     "docs/RUNTIME_SURFACE_SCOPE_MATRIX.md",
     "docs/SPEC.md",
+    "docs/GFD_ADOPTION.md",
     "docs/TESTING.md",
     "docs/TROUBLESHOOTING.md",
     "docs/UPGRADE.md",
