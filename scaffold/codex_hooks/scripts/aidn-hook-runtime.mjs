@@ -250,19 +250,55 @@ export async function readDelegatedAdmission(projectRoot, nativeRequest, env = p
   return response;
 }
 
-export function compactAdmission(admission) {
+export function compactAdmission(admission, { maxBytes = 2400 } = {}) {
+  if (!Number.isInteger(maxBytes) || maxBytes < 1000 || maxBytes > 2400) throw new Error("admission_summary_budget_invalid");
   const context = admission.context ?? {};
-  const selected = Object.fromEntries([
+  const keys = [
     "mode", "branch_kind", "active_session", "active_cycle", "dor_state", "first_plan_step",
     "runtime_state_mode", "repair_layer_status", "current_state_freshness",
-  ].filter((key) => context[key] != null).map((key) => [key, String(context[key]).slice(0,180)]));
-  return JSON.stringify({
+  ].filter((key) => context[key] != null);
+  const reasons = admission.blocking_reasons ?? [];
+  const summary = {
     admission: admission.admission_status,
-    context: selected,
-    blocking_reasons: (admission.blocking_reasons ?? []).slice(0,4).map((value) => String(value).slice(0,220)),
-    next_action: admission.ok ? "Follow AGENTS.md routing; revalidate before the next covered edit."
+    context: {}, blocking_reasons: [], write_authorization: false,
+    omissions: { context_fields: [...keys], other_context_fields: Object.keys(context).length - keys.length,
+      blocking_reasons: reasons.length, truncated_values: [] },
+    expansion: "aidn runtime pre-write-admit --target . --skill context-reload --json",
+    next_action: admission.ok && ["admitted", "admitted_with_warnings"].includes(admission.admission_status)
+      ? "Follow AGENTS.md routing; revalidate before the next covered edit."
       : "Remain read-only; resolve the admission blockers using canonical state.",
-  }).slice(0,2400);
+  };
+  // Bound the complete encoded JSON, including escaping and omission metadata.
+  // Never cut the serialized document or a UTF-8 code point. This is a summary,
+  // not a complete context unit or an alternative to fresh native admission.
+  const fits = (value) => Buffer.byteLength(JSON.stringify(value), "utf8") <= maxBytes;
+  const excerpt = (value, limit) => {
+    const text = String(value);
+    let result = "", bytes = 0;
+    for (const character of text) {
+      const size = Buffer.byteLength(character, "utf8");
+      if (bytes + size > limit) break;
+      result += character; bytes += size;
+    }
+    return { text: result, truncated: result !== text };
+  };
+  for (const key of keys) {
+    const value = excerpt(context[key], 180);
+    const candidate = structuredClone(summary);
+    candidate.context[key] = value.text;
+    candidate.omissions.context_fields = candidate.omissions.context_fields.filter((item) => item !== key);
+    if (value.truncated) candidate.omissions.truncated_values.push(`context.${key}`);
+    if (fits(candidate)) Object.assign(summary, candidate);
+  }
+  for (let index = 0; index < Math.min(reasons.length, 4); index += 1) {
+    const value = excerpt(reasons[index], 220);
+    const candidate = structuredClone(summary);
+    candidate.blocking_reasons.push(value.text);
+    candidate.omissions.blocking_reasons -= 1;
+    if (value.truncated) candidate.omissions.truncated_values.push(`blocking_reasons.${index}`);
+    if (fits(candidate)) Object.assign(summary, candidate);
+  }
+  return JSON.stringify(summary);
 }
 
 export function deny(reason) {

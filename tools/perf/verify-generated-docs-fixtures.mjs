@@ -54,6 +54,19 @@ function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
 
+function snapshot(root) {
+  const entries = [];
+  const visit = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else entries.push([path.relative(root, file), sha256(file)]);
+    }
+  };
+  visit(root);
+  return JSON.stringify(entries.sort());
+}
+
 function main() {
   let tmpRoot = "";
   try {
@@ -62,7 +75,27 @@ function main() {
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-generated-docs-"));
     const codexStubBin = makeCodexStub(tmpRoot);
     const targetRoot = path.join(tmpRoot, "repo");
-    fs.cpSync(fixtureRoot, targetRoot, { recursive: true });
+    fs.mkdirSync(targetRoot);
+    // Establish real ownership before testing a document upgrade. Historical
+    // template/skill bytes are not an installation receipt for a fresh client.
+    for (const relative of [".aidn/config.json", ".aidn/project/workflow.adapter.json"]) {
+      const destination = path.join(targetRoot, relative);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(path.join(fixtureRoot, relative), destination);
+    }
+    const installArgs = ["--target", targetRoot, "--pack", "core", "--skip-artifact-import",
+      "--no-codex-migrate-custom", "--force-agents-merge"];
+    const adapterPath = path.join(targetRoot, ".aidn/project/workflow.adapter.json");
+    const adapter = JSON.parse(read(adapterPath));
+    adapter.legacyPreserved.importedSections.push("## Local Fast Path Override\n\n- preserved local extension");
+    fs.writeFileSync(adapterPath, `${JSON.stringify(adapter, null, 2)}\n`);
+    const seed = run(repoRoot, installArgs, codexStubBin);
+    if (seed.status !== 0) throw new Error(`Fresh fixture installation failed: ${seed.stderr.slice(-2000)}`);
+    for (const relative of ["baseline/current.md", "baseline/history.md", "parking-lot.md", "snapshots/context-snapshot.md"]) {
+      const destination = path.join(targetRoot, "docs/audit", relative);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(path.join(fixtureRoot, "docs/audit", relative), destination);
+    }
 
     const workflowPath = path.join(targetRoot, "docs", "audit", "WORKFLOW.md");
     const summaryPath = path.join(targetRoot, "docs", "audit", "WORKFLOW_SUMMARY.md");
@@ -73,7 +106,8 @@ function main() {
     const parkingLotPath = path.join(targetRoot, "docs", "audit", "parking-lot.md");
     const snapshotPath = path.join(targetRoot, "docs", "audit", "snapshots", "context-snapshot.md");
 
-    fs.writeFileSync(workflowPath, `${read(workflowPath).trimEnd()}\n\n## Local Fast Path Override\n\n- preserved local extension\n`, "utf8");
+    const managedBefore = [summaryPath, codexOnlinePath, indexPath].map((file) => [file, read(file)]);
+
     fs.writeFileSync(summaryPath, "# stale summary\n", "utf8");
     fs.writeFileSync(codexOnlinePath, "# stale codex online\n", "utf8");
     fs.writeFileSync(indexPath, "# stale index\n", "utf8");
@@ -82,22 +116,20 @@ function main() {
     fs.writeFileSync(parkingLotPath, `${read(parkingLotPath).trimEnd()}\n\n<!-- keep:parking-lot -->\n`, "utf8");
     fs.writeFileSync(snapshotPath, `${read(snapshotPath).trimEnd()}\n\n<!-- keep:snapshot -->\n`, "utf8");
 
+    const beforeConflict = snapshot(targetRoot);
+    const conflict = run(repoRoot, installArgs, codexStubBin);
+    const conflictReadOnly = conflict.status !== 0 && conflict.stderr.includes("MODIFIED_INSTALLATION_ASSET")
+      && snapshot(targetRoot) === beforeConflict;
+    // Restore only the fixture's own exact pre-images; never force adoption of
+    // divergent package-owned documents to make the rendering checks pass.
+    for (const [file, content] of managedBefore) fs.writeFileSync(file, content);
+
     const beforeHashes = {
       baselineCurrent: sha256(baselineCurrentPath),
       baselineHistory: sha256(baselineHistoryPath),
       parkingLot: sha256(parkingLotPath),
       snapshot: sha256(snapshotPath),
     };
-
-    const installArgs = [
-      "--target",
-      targetRoot,
-      "--pack",
-      "core",
-      "--skip-artifact-import",
-      "--no-codex-migrate-custom",
-      "--force-agents-merge",
-    ];
 
     const first = run(repoRoot, installArgs, codexStubBin);
 
@@ -127,8 +159,11 @@ function main() {
       codexOnline: sha256(codexOnlinePath),
       index: sha256(indexPath),
     };
+    const receipt = JSON.parse(read(path.join(targetRoot, ".aidn/install/receipt.json")));
 
     const checks = {
+      fresh_install_establishes_ownership: seed.status === 0,
+      divergent_managed_document_refused_without_write: conflictReadOnly,
       first_install_ok: first.status === 0,
       second_install_ok: second.status === 0,
       workflow_rendered_project_name: afterFirst.workflow.includes("project_name: repo-installed-core"),
@@ -154,8 +189,11 @@ function main() {
       second_install_stable_summary: generatedHashesAfterFirst.summary === generatedHashesAfterSecond.summary,
       second_install_stable_codex_online: generatedHashesAfterFirst.codexOnline === generatedHashesAfterSecond.codexOnline,
       second_install_stable_index: generatedHashesAfterFirst.index === generatedHashesAfterSecond.index,
-      generated_render_logged: first.stdout.includes("render generated doc: docs/audit/WORKFLOW.md")
-        && first.stdout.includes("render generated doc: docs/audit/index.md"),
+      generated_documents_match_owned_postimages: [workflowPath, summaryPath, codexOnlinePath, indexPath].every((file) => {
+        const relative = path.relative(targetRoot, file).replaceAll("\\", "/");
+        const owned = receipt.installation?.assets?.[relative];
+        return owned?.current != null && Buffer.from(owned.current, "base64").equals(fs.readFileSync(file));
+      }),
       workflow_not_preserved_custom: !first.stdout.includes("- docs/audit/WORKFLOW.md"),
       index_not_preserved_custom: !first.stdout.includes("- docs/audit/index.md"),
     };

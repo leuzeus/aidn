@@ -151,6 +151,13 @@ definition and requires that it disappear from the advertised agents. This
 proves discovery, not agent execution. Neither command qualifies server
 installation or trusted native hook execution. Those remain separate checks.
 
+For bounded hook summaries, `verify-codex-native-integration-fixtures.mjs` checks
+real admitted and blocked CLI values, complete JSON parsing, the whole 2400-byte
+UTF-8 budget, escaping, explicit omissions, expansion and unchanged inputs.
+Installed procedure references retain the default read/recovery path; opt-in
+scoped consultation is covered by the scoped-selection gate. Fixture PASS does
+not qualify native routing or token consumption.
+
 For native write scope, first run
 `node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing
 Codex integration, admission and public contract/effect fixtures. The new cases

@@ -17,6 +17,19 @@ and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIE
 
 ## Opt-in scoped context consultation
 
+Installed `WORKFLOW-KERNEL.md` includes a procedure routing table and recovery
+references. `context-reload` may consult the selection variant below only when
+explicitly requested; mandatory startup reads, session admission and fresh
+pre-write admission remain in force. Detailed hook responsibilities are grouped
+in the already-required `WORKFLOW_SUMMARY.md` phase gates.
+
+Native hook summaries are complete JSON bounded to 2400 UTF-8 bytes, including
+escaping and omission metadata. Truncated values and omitted blockers are
+reported with a read-only expansion command. Denial uses a 1000-byte summary so
+its reason retains the complete expansion and omissions. The full admission drives denial;
+the compact text carries `write_authorization: false`. These summaries are not
+complete context units and cannot discharge required procedural reads.
+
 `aidn codex hydrate-context --target . --context-selection-file request.json --json`
 consults complete units without writing a cache, visible projection, policy or
 runtime state. It is an explicit alternative for evaluation; ordinary hydration
