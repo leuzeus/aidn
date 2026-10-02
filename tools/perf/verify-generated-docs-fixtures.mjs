@@ -91,6 +91,7 @@ function main() {
     fs.writeFileSync(adapterPath, `${JSON.stringify(adapter, null, 2)}\n`);
     const seed = run(repoRoot, installArgs, codexStubBin);
     if (seed.status !== 0) throw new Error(`Fresh fixture installation failed: ${seed.stderr.slice(-2000)}`);
+    const freshExtensionRendered = read(path.join(targetRoot, "docs/audit/WORKFLOW.md")).includes("preserved local extension");
     for (const relative of ["baseline/current.md", "baseline/history.md", "parking-lot.md", "snapshots/context-snapshot.md"]) {
       const destination = path.join(targetRoot, "docs/audit", relative);
       fs.mkdirSync(path.dirname(destination), { recursive: true });
@@ -163,6 +164,7 @@ function main() {
 
     const checks = {
       fresh_install_establishes_ownership: seed.status === 0,
+      fresh_install_renders_client_extension: freshExtensionRendered,
       divergent_managed_document_refused_without_write: conflictReadOnly,
       first_install_ok: first.status === 0,
       second_install_ok: second.status === 0,

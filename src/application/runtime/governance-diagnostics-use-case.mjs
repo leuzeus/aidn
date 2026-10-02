@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { listCliEffectPolicies } from "../../core/cli/effect-policy.mjs";
 import { evaluateMetadataPolicy, getMetadataPolicy, listMetadataPolicies } from "../../core/metadata/metadata-policy.mjs";
 import { listGovernanceCoverageExceptions } from "../../core/governance/concept-coverage.mjs";
+import { projectGovernanceAdoptionCoverage } from "./governance-adoption-coverage.mjs";
 import { evaluateSourceOfTruthPolicy, getSourceOfTruthPolicy, listSourceOfTruthPolicies } from "../../core/source-of-truth/source-of-truth-policy.mjs";
 import {
   loadSqliteIndexPayloadSafe,
@@ -801,6 +802,7 @@ function summarizeObservedArtifacts(items) {
 }
 
 export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = null, includeObservedArtifacts = true } = {}) {
+  const governanceAdoption = projectGovernanceAdoptionCoverage({ targetRoot, packageRoot: REPO_ROOT });
   const concepts = GOVERNED_CONCEPTS.map(evaluateGovernedConcept);
   const conceptIndex = new Map(concepts.map((item) => [item.concept, item]));
   const runtimeSurfaces = GOVERNANCE_RUNTIME_SURFACES.map((entry) => evaluateGovernanceRuntimeSurface(entry, conceptIndex));
@@ -813,6 +815,8 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     ? OBSERVED_GOVERNANCE_ARTIFACTS.map((entry) => evaluateObservedGovernanceArtifact(entry, targetRoot, resolveObservedArtifactText))
     : [];
   const issues = [
+    ...[governanceAdoption.package_source, governanceAdoption.client].flatMap((entry) =>
+      entry.issues.map((issue) => `governance_adoption:${entry.scope}:${issue}`)),
     ...concepts.flatMap((item) => item.issues),
     ...runtimeSurfaces.flatMap((item) => item.issues),
     ...commandCoverage.flatMap((item) => item.linked_concepts
@@ -839,6 +843,7 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     ts: new Date().toISOString(),
     target_root: targetRoot,
     workspace,
+    governance_adoption: governanceAdoption,
     ok: issues.length === 0,
     governed_concepts: concepts.length,
     coverage_exceptions: coverageExceptions,

@@ -118,6 +118,9 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime agent-run-cancel --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-cleanup --configuration <file> --run <id> --json`
 - `aidn runtime governance-diagnostics --json`
+  - Additive `governance_adoption` separates package/client declarations, dated
+    applicability, declared control kinds, human responsibilities and omissions;
+    conformance, execution and native qualification remain unevaluated.
 - `aidn runtime list-agent-adapters --json`
 - `aidn runtime verify-agent-roster --json`
 - `aidn runtime handoff-admit --json`

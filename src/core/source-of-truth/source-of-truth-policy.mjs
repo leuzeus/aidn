@@ -383,7 +383,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: ".aidn/project/workflow.adapter.json",
     dbOnly: ".aidn/project/workflow.adapter.json",
     projection: "WORKFLOW.md, CODEX_ONLINE.md and index.md",
-    notes: "Project policy may be versioned by the installed client repository. Optional governanceAdoption remains explicit, scoped and locally canonical in every mode; no detection, install default or source declaration accepts it for a client. Package-source adoption is scoped separately in package/governance/gfd-adoption.v1.json under ADR-0010. Declaration validity grants no runtime permission.",
+    notes: "Project policy may be versioned by the installed client repository. Optional governanceAdoption remains explicit, scoped and locally canonical in every mode; no detection, install default or source declaration accepts it for a client. Package-source adoption is scoped separately in package/governance/gfd-adoption.v1.json under ADR-0010. Read-only governance diagnostics project the two declarations separately; optional controlCoverage classifies declared references without executing controls, resolving semantic authority conflicts or establishing conformance. Declaration validity grants no runtime permission.",
   }),
   policy({
     concept: "runtime_defaults",

@@ -130,11 +130,56 @@ existing destination. Existing policy remains owner-maintained; explicit
 adapter migration and the current wizard preserve an existing valid adoption
 record. Invalid declarations or unsupported versions fail before a write.
 Install/reinstall does not replace a client's adapter or add adoption defaults.
-Native installation/upgrade qualification remains L4/L5 work.
+Candidate installation, update and rollback can be verified on disposable clients;
+those package/CLI checks do not establish native approval or execution.
 
 The client file stays canonical project policy in `files`, `dual` and `db-only`.
 It is not runtime DB state. A valid declaration does not grant activation,
 native trust, workflow admission, shared synchronization or publication rights.
+
+## Read-only adoption coverage
+
+`aidn runtime governance-diagnostics --target . --json` adds an optional v1
+`governance_adoption` view. It separates the executing package's source declaration
+from the client's raw adapter declaration. Absent, invalid, unavailable, proposed,
+inactive and effective declarations remain distinct; no defaults or source
+inheritance accept a client. The observation date and full carrier-file SHA-256
+identify the reading. Effective means accepted and dated under the declaration
+validator; authenticity and semantic conflicts still require human review.
+
+Sections retain their disposition, rationale, owner responsibilities and omitted
+scope. Future authorities cannot make a section applicable early. Optional
+`extensions.controlCoverage` classifies references already bound in section
+`controls`; it does not execute them or accept evidence:
+
+```json
+{
+  "schemaVersion": 1,
+  "controls": [
+    { "reference": "tools/check-policy.mjs", "kind": "automatic" },
+    { "reference": "docs/review-procedure.md", "kind": "human" },
+    { "reference": "docs/native-qualification.md", "kind": "native" }
+  ]
+}
+```
+
+Declare only the client's actual references. Missing classifications stay
+unclassified; partial, duplicate, unknown or unbound classifications remain
+visible. Every section also retains its human responsibility. Control execution,
+GFD conformance and native qualification remain `not_evaluated`, even when a
+reference exists locally. External references are not fetched; fragments and
+semantic precedence are not verified. Local availability is observed relative to
+the target filesystem root, not by guessing another artifact namespace. A
+symlink escaping that root is not followed. Declarations larger than 1 MiB or
+unreadable carriers are reported unavailable without replacement or mutation.
+
+Installation renders adapter-owned imported sections on the first generation,
+as well as later generations. Updates retain the exact client adapter, adoption,
+history and independent AGENTS content outside the managed block. Divergent
+managed files cause a conflict before writes. Recorded rollback restores owned
+pre-images and preserves client-owned policy; an older derived document may need
+a separate reviewed regeneration after rollback. No client policy is inferred
+from that restored projection.
 
 ## Review, Compatibility And Rollback
 
