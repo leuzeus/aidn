@@ -168,6 +168,28 @@ outside-block preservation, idempotence and owned-generation rollback in
 files/dual/db-only. Its optional `--package-root` and `--baseline-package-root`
 allow exact installed package candidates; source defaults alone are fixture proof.
 
+For final context qualification, build with `tools/build-release.mjs
+--source-ref HEAD --require-clean --output-root <owned-external-dir> --json`,
+install that exact tarball, compare its files to the manifest's tracked inputs,
+then run the installed package's `tools/perf/verify-scoped-context-selection-fixtures.mjs`.
+Its 100 named criteria retain the eight scenarios and reserved refusals. Five
+alternating legacy/scoped service pairs per scenario measure whole compact JSON
+bytes and local min/median/max milliseconds, with repeated scope/closure,
+complete-unit and admission checks. Stable logical corpus and implementation
+hashes identify comparisons independently of temporary physical scope pins.
+These figures do not measure startup/session context presented to a model,
+tokens, native latency, or global file-size reduction; no timing threshold is
+introduced by the measurements.
+
+Run the installed client's adoption verifier separately for strict candidate
+fresh installation and for a pinned historical package update. The historical
+L3 first-generation defect remains FAIL in `baseline_observations`; a supported
+reinstall prepares only the update comparison. It cannot qualify candidate
+fresh installation or replace that independent run. Build output is a local
+candidate, never a published release. Native approval/execution requires the
+candidate-bound human review step in CODEX_NATIVE_QUALIFICATION.md; unavailable
+native or live PostgreSQL evidence stays separate from source/package PASS.
+
 For native write scope, first run
 `node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing
 Codex integration, admission and public contract/effect fixtures. The new cases
