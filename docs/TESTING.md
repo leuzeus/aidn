@@ -290,6 +290,11 @@ snapshot fixtures are distinct from live PostgreSQL proof. Generic pre-write
 fixtures assert configured PostgreSQL authority in all visible state modes,
 refusal without per-artifact fallback (including an empty historical head with
 a valid alternative), and retained optional files/SQLite behavior.
+The same pre-write fixture compares the complete real CLI JSON response with
+the producer for admitted, warned, refused, strict and native-request cases.
+Unindented serialization must retain nested evidence, nulls, reasons, exit
+status, empty diagnostic output and byte-for-byte unchanged checkout/Git state.
+Reported whitespace-byte savings are not token or latency measurements.
 The dedicated PostgreSQL artifact-store smoke additionally checks generic
 admission in `dual` and `files`, with all rows, another scope, projections and
 the Git index preserved.

@@ -1162,7 +1162,7 @@ function main() {
       nativeRequest,
     });
     if (args.json) {
-      console.log(JSON.stringify(output, null, 2));
+      console.log(JSON.stringify(output));
     } else {
       printText(output);
     }
