@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 import { planCodexAssets, executeCodexAssets, diagnoseCodexAssets } from "../../src/application/install/codex-assets-service.mjs";
+import { initGitRepo } from "./test-git-fixture-lib.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-codex-assets-"));
@@ -28,6 +29,7 @@ try {
   } };
   fs.writeFileSync(path.join(targetRoot, ".codex/hooks.json"), JSON.stringify(thirdParty));
   fs.writeFileSync(path.join(targetRoot, "AGENTS.md"), "# Client policy\nKeep this instruction.\n");
+  initGitRepo(targetRoot, { sourceBranch: "dev" });
   const child = spawnSync(process.execPath, [path.join(repoRoot, "tools/install.mjs"),
     "--target", targetRoot, "--pack", "core", "--init-defaults", "--project-name", "fixture",
     "--source-branch", "dev", "--skip-artifact-import", "--no-codex-migrate-custom"], {

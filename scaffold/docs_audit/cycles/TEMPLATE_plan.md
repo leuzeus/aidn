@@ -30,6 +30,18 @@ permission. A native edit cannot alter a frozen plan to expand its own scope;
 use the governed scope-change/transition process. This is scope admission,
 not semantic review or an alternative to DoR.
 
+### Scope entry example
+
+For a first task `implement parser validation`, copy the exact task text into
+`task` (not `text`) and declare each file operation in the scope block above:
+
+```json
+{"task":"implement parser validation","intent":"implementation","paths":[{"path":"src/parser.mjs","operations":["update"]}]}
+```
+
+This standalone example grants nothing. Replace `tasks: []` only after selecting
+the actual task and files; keep it empty while the plan is unprepared.
+
 ## Done criteria (per task)
 - Task 1:
 - Task 2:

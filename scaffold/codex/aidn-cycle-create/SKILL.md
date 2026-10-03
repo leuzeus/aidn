@@ -117,6 +117,11 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 8) Mark readying actions:
 - fill DoR checklist in status.md
 - set `dor_state: READY` only when core gate is satisfied
+- define the first plan task and its exact `task`, `intent`, file paths and operations in `plan.md`'s `Native write scope`; the default empty scope admits no product edit
+- before product implementation, apply the explicit `OPEN -> IMPLEMENTING` transition and set `scope_frozen: true` through the applicable workflow procedure
+- in dual/db-only, write these artifacts through the canonical DB-first procedure below, then refresh and revalidate context; visible Markdown is a projection
+- a successful generic pre-write admission does not admit a particular native patch: its phase, first task and exact file operations must pass the native write check
+- do not change a frozen plan to expand an edit's own permission; use the governed scope-change process
 
 9) Performance hook (mandatory in dual/db-only; optional in files):
 - run `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --json`

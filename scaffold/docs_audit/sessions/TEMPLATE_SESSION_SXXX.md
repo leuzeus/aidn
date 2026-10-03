@@ -73,6 +73,9 @@ If COMMITTING:
 ------------------------------------------------------------
 ## SESSION OBJECTIVE (1 clear sentence)
 
+session_objective: TO_DEFINE
+<!-- Replace TO_DEFINE with the concrete session goal before implementation. -->
+
 ------------------------------------------------------------
 ## TIME BUDGET
 - 30 min | 1h | 2h | other:
