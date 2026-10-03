@@ -309,6 +309,39 @@ else {
     assert.deepEqual(await snapshot(scopes[0]), aliasesSnapshot, 'head restoration must preserve all preimages');
     assert.deepEqual(await snapshot(scopes[1]), other, 'head resolution affected another scope');
     console.log('PASS live PostgreSQL: admission and handoff follow the verified current head while historical aliases remain unchanged; corrupted head refuses without fallback');
+    const currentHead = (await client.query("SELECT to_jsonb(t) AS row FROM aidn_runtime.runtime_heads t WHERE scope_key=$1 AND head_key='current_state'", [scopes[0]])).rows[0].row;
+    const emptyHeadPath = 'history/CURRENT-STATE-S009.md';
+    const emptyHeadSha = createHash('sha256').update('').digest('hex');
+    try {
+      await client.query(`INSERT INTO aidn_runtime.artifacts
+        (scope_key,artifact_id,path,kind,content_format,content,sha256,size_bytes,mtime_ns,updated_at)
+        VALUES ($1,-9003,$2,'other','utf8','',$3,0,1,'2020-01-01')`, [scopes[0], emptyHeadPath, emptyHeadSha]);
+      const emptyHead = { ...currentHead.payload_json, artifact_id: -9003,
+        artifact_path: emptyHeadPath, artifact_sha256: emptyHeadSha };
+      await client.query(`UPDATE aidn_runtime.runtime_heads SET artifact_id=-9003,
+        artifact_path=$2,artifact_sha256=$3,payload_json=$4::jsonb WHERE scope_key=$1 AND head_key='current_state'`,
+      [scopes[0], emptyHeadPath, emptyHeadSha, JSON.stringify(emptyHead)]);
+      const emptyHeadSnapshot = await snapshot(scopes[0]);
+      const emptyHeadCheckout = fs.readFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md'));
+      const emptyHeadGitIndex = fs.readFileSync(path.join(targetRoot, '.git/index'));
+      const refusedEmpty = runScript('tools/runtime/pre-write-admit.mjs', ['--skill', 'start-session', '--strict']);
+      assert.equal(refusedEmpty.status, 1);
+      const emptyResult = JSON.parse(refusedEmpty.stdout);
+      assert.equal(emptyResult.ok, false);
+      assert.equal(emptyResult.context.current_state_source, 'missing');
+      assert.match(emptyResult.blocking_reasons.join('\n'), /RUNTIME_CONTINUITY_ARTIFACT_EMPTY/);
+      assert.deepEqual(await snapshot(scopes[0]), emptyHeadSnapshot, 'empty head refusal changed canonical rows');
+      assert.deepEqual(fs.readFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md')), emptyHeadCheckout);
+      assert.deepEqual(fs.readFileSync(path.join(targetRoot, '.git/index')), emptyHeadGitIndex);
+    } finally {
+      await client.query(`UPDATE aidn_runtime.runtime_heads SET artifact_id=$2,
+        artifact_path=$3,artifact_sha256=$4,payload_json=$5::jsonb WHERE scope_key=$1 AND head_key='current_state'`,
+      [scopes[0], currentHead.artifact_id, currentHead.artifact_path, currentHead.artifact_sha256, JSON.stringify(currentHead.payload_json)]);
+      await client.query('DELETE FROM aidn_runtime.artifacts WHERE scope_key=$1 AND artifact_id=-9003', [scopes[0]]);
+    }
+    assert.deepEqual(await snapshot(scopes[0]), aliasesSnapshot, 'empty head restoration must preserve all preimages');
+    assert.deepEqual(await snapshot(scopes[1]), other, 'empty head resolution affected another scope');
+    console.log('PASS live PostgreSQL: valid empty historical head refuses without choosing the alternate current artifact; all rows, projections and Git index preserved');
     execFileSync('git', ['-C', targetRoot, 'checkout', '-b', 'feature/C001-test'], { stdio: 'pipe', windowsHide: true });
     const closureStatus = (state, usage) => `state: ${state}\nsession_owner: S001\nbranch_name: feature/C001-test\ncurrent goal: verify canonical closure\nusage_matrix_scope: shared\nusage_matrix_state: ${usage}\n`;
     await upsert({ path: 'cycles/C001-migration/status.md', content: closureStatus('VERIFYING', 'VERIFIED') });

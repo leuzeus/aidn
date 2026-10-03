@@ -288,7 +288,8 @@ missing/ambiguous canonical identities and heads, unavailable PostgreSQL, and
 one fresh snapshot per evaluation including an empty repair collection. Controlled
 snapshot fixtures are distinct from live PostgreSQL proof. Generic pre-write
 fixtures assert configured PostgreSQL authority in all visible state modes,
-refusal without per-artifact fallback, and retained optional files/SQLite behavior.
+refusal without per-artifact fallback (including an empty historical head with
+a valid alternative), and retained optional files/SQLite behavior.
 The dedicated PostgreSQL artifact-store smoke additionally checks generic
 admission in `dual` and `files`, with all rows, another scope, projections and
 the Git index preserved.

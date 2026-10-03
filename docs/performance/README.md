@@ -35,6 +35,8 @@ Generic pre-write admission and ordinary gating use that same authority even
 when the visible state mode is `files` or `dual`. Canonical session/cycle
 selection follows verified heads, exact identities and existing branch ownership;
 missing or ambiguous required context is a refusal, not a projection fallback.
+An existing authoritative head with empty content is refused even when another
+current artifact is available.
 Within one gating evaluation, intent and repair findings share one fresh snapshot.
 An empty findings collection is observed evidence; another evaluation reads again.
 Files and ordinary SQLite-dual workflows remain supported when PostgreSQL is not

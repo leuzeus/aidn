@@ -332,7 +332,7 @@ function resolveAuditArtifactText({
   if (dbBacked && preferDb) {
     const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath, sqlitePayload);
     const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
-    if (runtimeHeadArtifact && runtimeHeadText) {
+    if (runtimeHeadArtifact && (runtimeHeadText || !allowFileFallback)) {
       return {
         exists: true,
         source: dbSource,
@@ -377,7 +377,7 @@ function resolveAuditArtifactText({
   }
   const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath, sqlitePayload);
   const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
-  if (runtimeHeadArtifact && runtimeHeadText) {
+  if (runtimeHeadArtifact && (runtimeHeadText || !allowFileFallback)) {
     return {
       exists: true,
       source: dbSource,

@@ -140,9 +140,12 @@ réussis. Les constats historiques ci-dessus décrivent toujours le package init
 Le lot 3 corrige les sources de lecture et la fraîcheur de configuration. Ses
 vérifications locales comprennent 45 contrôles du cache, 28 cas de configuration,
 43 cas de sélection canonique dans le vrai CLI avec lecteur contrôlé, et une
-revue indépendante de la propagation des diagnostics inconnus. Les 66 scénarios
-d’admission générique canonique passent également ; 61 échouent sur le source
-de référence avec la même fixture. Les nouveaux cas
+revue indépendante de la propagation des diagnostics inconnus. La première matrice de 66 scénarios
+d’admission passe ; 61 échouent sur le source de référence avec la même fixture.
+La revue indépendante a ensuite reproduit un head canonique historique vide
+ignoré au profit d’un artefact courant valide. Les six régressions CLI ajoutées
+échouent avant ce dernier correctif ; la matrice finale de 74 cas passe, avec
+deux cas de compatibilité SQLite dual conservés. Les nouveaux cas
 échouent sur le source de référence : cache après remplacement atomique ; 39 des
 43 cas de gating ; les quatre assertions contre les faux diagnostics de
 réparation. Un snapshot canonique vide effectivement chargé reste distinct d’une

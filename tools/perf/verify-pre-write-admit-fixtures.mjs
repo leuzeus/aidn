@@ -589,9 +589,14 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
     cases.push({ id: `postgres-${defect}`, backend: "postgres", stateMode: "dual", skill: "start-session", defect, blocked: true });
   cases.push({ id: "postgres-historical-current-head", backend: "postgres", stateMode: "dual", skill: "start-session", defect: "historical-head", source: "postgres", mode: "EXPLORING" });
   for (const strict of [false, true]) cases.push({ id: `postgres-head-cli-${strict ? "strict" : "default"}`, backend: "postgres", stateMode: "dual", skill: "start-session", defect: "head-mismatch", cli: true, strict, blocked: true });
+  for (const stateMode of ["files", "dual", "db-only"]) for (const strict of [false, true])
+    cases.push({ id: `postgres-${stateMode}-empty-head-cli-${strict ? "strict" : "default"}`, backend: "postgres", stateMode,
+      skill: "start-session", defect: "empty-historical-head", cli: true, strict, blocked: true, mode: "unknown" });
   for (const skill of ["context-reload", "start-session", "cycle-create"])
     cases.push({ id: `sqlite-dual-${skill}`, backend: "sqlite", stateMode: "dual", skill, source: skill === "cycle-create" ? "sqlite" : "file", mode: skill === "cycle-create" ? "EXPLORING" : "THINKING" });
   cases.push({ id: "sqlite-dual-unavailable-compatible", backend: "sqlite", stateMode: "dual", skill: "start-session", unavailable: true, source: "file", mode: "THINKING" });
+  cases.push({ id: "sqlite-dual-empty-head-db-preference-compatible", backend: "sqlite", stateMode: "dual", skill: "cycle-create", defect: "empty-historical-head", source: "sqlite", mode: "EXPLORING" });
+  cases.push({ id: "sqlite-dual-empty-head-fileless-current-compatible", backend: "sqlite", stateMode: "dual", skill: "start-session", defect: "empty-historical-head", visibleCurrentMissing: true, source: "file", currentSource: "sqlite", mode: "EXPLORING" });
   cases.push({ id: "sqlite-db-only-unavailable", backend: "sqlite", stateMode: "db-only", skill: "start-session", unavailable: true, blocked: true });
   cases.push({ id: "sqlite-db-only-missing-current", backend: "sqlite", stateMode: "db-only", skill: "start-session", missing: "CURRENT-STATE.md", blocked: true });
   cases.push({ id: "files-optional-no-backend-read", backend: "sqlite", stateMode: "files", skill: "start-session", source: "file", mode: "THINKING", noRead: true });
@@ -609,6 +614,10 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
       payload.artifacts[0].content = upsertScalarLine(payload.artifacts[0].content, "mode", "THINKING");
       runtimeHeads.current_state = { head_key: "current_state", artifact_path: "history/CURRENT-STATE-S009.md", artifact_sha256: "pinned" };
     }
+    if (testCase.defect === "empty-historical-head") {
+      payload.artifacts.push({ path: "history/CURRENT-STATE-S009.md", content_format: "utf8", content: "", sha256: "pinned-empty" });
+      runtimeHeads.current_state = { head_key: "current_state", artifact_path: "history/CURRENT-STATE-S009.md", artifact_sha256: "pinned-empty" };
+    }
     const session = payload.artifacts.find(row => row.path.startsWith("sessions/"));
     const cycle = payload.artifacts.find(row => row.path.endsWith("/status.md"));
     if (testCase.defect === "session-ambiguous") payload.artifacts.push({ ...session, path: "sessions/S101-other.md" });
@@ -621,6 +630,9 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
     if (testCase.defect === "session-id-mismatch") session.content += "\nsession_id: S999\n";
     if (testCase.defect === "runtime-empty") payload.artifacts.find(row => row.path === "RUNTIME-STATE.md").content = " \n";
     fs.writeFileSync(recordFile, JSON.stringify({ backend: testCase.backend, available: !testCase.unavailable, payload, runtimeHeads }));
+    const visibleCurrent = path.join(root, "docs/audit/CURRENT-STATE.md");
+    const visibleCurrentText = testCase.visibleCurrentMissing ? fs.readFileSync(visibleCurrent) : null;
+    if (testCase.visibleCurrentMissing) fs.unlinkSync(visibleCurrent);
     const before = snapshot(root);
     const canonicalBefore = fs.readFileSync(recordFile, "utf8");
     const childArgs = testCase.cli ? ["--import", initializerFile, path.join(repoRoot, "tools/runtime/pre-write-admit.mjs"),
@@ -644,17 +656,21 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
       structured_result: Boolean(result) && !observed.error,
       exit_status_expected: child.status === (testCase.cli && testCase.strict && testCase.blocked ? 1 : 0),
       admission_expected: result?.ok === !testCase.blocked,
-      source_expected: !testCase.source || Object.entries(sources).every(([key, value]) => value === (key === missingKey ? "missing" : testCase.source)),
+      source_expected: !testCase.source || Object.entries(sources).every(([key, value]) => value === (key === missingKey ? "missing" : key === "current_state" && testCase.currentSource ? testCase.currentSource : testCase.source)),
       missing_source_observed: !missingKey || sources[missingKey] === "missing",
       mode_expected: !testCase.mode || result?.context?.mode === testCase.mode,
       required_canonical_no_file_fallback: !(testCase.backend === "postgres" || testCase.stateMode === "db-only") || !Object.values(sources).includes("file"),
       blocking_reason_present: !testCase.blocked || result?.blocking_reasons?.length > 0,
-      diagnostic_reason_expected: testCase.defect !== "head-mismatch" || result?.blocking_reasons?.some(reason => reason.includes("RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH")),
+      diagnostic_reason_expected: testCase.defect === "head-mismatch"
+        ? result?.blocking_reasons?.some(reason => reason.includes("RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH"))
+        : testCase.defect === "empty-historical-head" && testCase.blocked
+          ? result?.blocking_reasons?.some(reason => reason.includes("RUNTIME_CONTINUITY_ARTIFACT_EMPTY")) : true,
       backend_pinned: testCase.cli || testCase.backend !== "postgres" || observed.calls[0]?.backend === "postgres" && observed.calls[0]?.config_backend === "postgres",
       optional_files_no_read: !testCase.noRead || observed.calls.length === 0,
       checkout_and_git_index_unchanged: snapshot(root) === before,
       canonical_snapshot_unchanged: fs.readFileSync(recordFile, "utf8") === canonicalBefore,
     };
+    if (testCase.visibleCurrentMissing) fs.writeFileSync(visibleCurrent, visibleCurrentText);
     return { id: testCase.id, checks, error: observed.error ?? null, observed_sources: sources,
       blocking_reasons: result?.blocking_reasons ?? [], pass: Object.values(checks).every(Boolean) };
   });
