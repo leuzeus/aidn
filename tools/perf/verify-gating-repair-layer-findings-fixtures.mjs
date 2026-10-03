@@ -50,12 +50,17 @@ function main() {
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    // Repair parity needs one explicit canonical context; S102 remains in the
+    // corpus so its existing ambiguous-session repair finding is still checked.
+    fs.writeFileSync(path.join(target, "docs/audit/CURRENT-STATE.md"),
+      "# Current State\nactive_session: S101\nactive_cycle: C101\nmode: COMMITTING\n");
 
     const indexSync = runJson("tools/perf/index-sync.mjs", [
       "--target",
       target,
       "--store",
       "dual-sqlite",
+      "--with-content",
       "--json",
     ]);
     const sqliteFile = String(indexSync?.outputs?.find?.((row) => String(row?.backend ?? "").toLowerCase() === "sqlite")?.path ?? path.resolve(target, ".aidn/runtime/index/workflow-index.sqlite"));

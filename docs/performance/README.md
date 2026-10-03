@@ -31,6 +31,22 @@ Configured PostgreSQL is authoritative for automatic reload/gating snapshots and
 branch/session/cycle ownership. An explicit conflicting local backend is refused;
 an unavailable canonical backend cannot fall back to Markdown or SQLite.
 
+Generic pre-write admission and ordinary gating use that same authority even
+when the visible state mode is `files` or `dual`. Canonical session/cycle
+selection follows verified heads, exact identities and existing branch ownership;
+missing or ambiguous required context is a refusal, not a projection fallback.
+Within one gating evaluation, intent and repair findings share one fresh snapshot.
+An empty findings collection is observed evidence; another evaluation reads again.
+Files and ordinary SQLite-dual workflows remain supported when PostgreSQL is not
+configured.
+
+The process-local project-config cache checks file device/inode, size and
+nanosecond modification/change timestamps. A changed signature invalidates the
+entry, and parsed bytes are cached only after a bounded stable read. Invalid
+paths, read failures or continuing changes are diagnostic failures. This cache
+stores configuration only; it does not retain an admission verdict or impose a
+TTL on canonical runtime state.
+
 Repeated-fallback gating counts anomalous `reload-check` events in the last
 45 minutes for the current branch. A missing branch remains conservatively
 eligible. Missing, invalid or future timestamps do not prove an anomaly old.

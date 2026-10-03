@@ -130,6 +130,46 @@ Chaque lot est validé et livré par commits atomiques et PR. Le suivant commenc
 
 Le premier lot restaure l’intention des diagnostics existants et n’introduit pas de nouveau contrat public ou décision d’architecture. Une modification future de la sémantique de source ou de réutilisation devra être alignée avec les ADR et contrats ; une simple sérialisation lossless ne requiert pas un nouvel ADR par implication.
 
+## Vérifications des corrections au 3 octobre
+
+Les lots 1 et 2 sont fusionnés dans `dev` via les PR
+[#130](https://github.com/leuzeus/aidn/pull/130) et
+[#131](https://github.com/leuzeus/aidn/pull/131), chacune avec ses 12 contrôles CI
+réussis. Les constats historiques ci-dessus décrivent toujours le package initial.
+
+Le lot 3 corrige les sources de lecture et la fraîcheur de configuration. Ses
+vérifications locales comprennent 45 contrôles du cache, 28 cas de configuration,
+43 cas de sélection canonique dans le vrai CLI avec lecteur contrôlé, et une
+revue indépendante de la propagation des diagnostics inconnus. Les 66 scénarios
+d’admission générique canonique passent également ; 61 échouent sur le source
+de référence avec la même fixture. Les nouveaux cas
+échouent sur le source de référence : cache après remplacement atomique ; 39 des
+43 cas de gating ; les quatre assertions contre les faux diagnostics de
+réparation. Un snapshot canonique vide effectivement chargé reste distinct d’une
+lecture indisponible. Aucun verdict d’admission n’est conservé entre appels.
+
+Une base PostgreSQL distincte des anciens smokes vérifie aussi les admissions
+génériques `context-reload`, `start-session` et `cycle-create` en modes `dual` et
+`files`, puis leur refus lorsque la connexion canonique devient indisponible.
+Le nouveau scénario échoue sur le commit de référence à la lecture du mode
+local `unknown` au lieu du mode PostgreSQL `THINKING`, puis passe avec le correctif.
+La suite live conserve ses assertions de clôture, heads corrompus, rollback,
+scopes durable/legacy, non-mutation des lignes/fichiers/index Git, séparation du
+second projet et nettoyage des seuls scopes temporaires.
+
+Les scénarios de réparation ont été rendus explicites : contenu canonique importé
+et CURRENT-STATE sélectionnant la session/le cycle de la fixture. Le scénario
+live de drift possède désormais un objectif canonique de session et de cycle,
+comme sa prémisse « aucune divergence » l’exige. Les exigences de refus et de
+réparation sont conservées. Les premières exécutions sous `/tmp` étaient
+confondues par un marqueur Git hôte ; sous le répertoire de fixtures qualifié,
+les 28 tests de configuration passent sur la référence et la correction.
+Ce détail d’environnement n’est pas une régression produit ni un gain de performance.
+
+Ces preuves de correction ne préjugent pas du prochain résultat de qualité,
+de tokens ou de latence. La qualification du modèle exact et du shell Node 22
+est faite séparément, hors des budgets des deux futurs projets.
+
 ## Instrumentation du prochain benchmark
 
 Ajouter des sidecars corrélés aux événements bruts par ordinal et SHA-256, avec horloges murale et monotone à réception, marqueurs de phase et fixture hors chrono, et temps write/flush/ack des RPC. Calculer les unions depuis la clock monotone ; conserver les durées natives séparément. Une première réponse visible doit rester distincte du TTFT fournisseur et du premier résultat utile.

@@ -4,6 +4,12 @@ import { buildNoChangeFastPath } from "../../core/gating/gating-signal-policy.mj
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "./runtime-snapshot-service.mjs";
 import { countsAsRecentAnomalousFallback } from "../../core/gating/fallback-history-policy.mjs";
 import { findUniqueAuditArtifact } from "./runtime-head-resolution-service.mjs";
+import { readAidnProjectConfig, resolveConfigRuntimePersistence } from "../../lib/config/aidn-config-lib.mjs";
+import { createRuntimeCanonicalSnapshotReader } from "./runtime-persistence-service.mjs";
+import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
+import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
+import { resolveBranchMapping } from "../../lib/workflow/branch-mapping-lib.mjs";
+import { collectOpenCycles, normalizeScalar } from "../../lib/workflow/session-context-lib.mjs";
 
 function readTextSafe(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -275,6 +281,32 @@ function detectIndexBackend(indexFile, backend) {
   return detectRuntimeSnapshotBackend(indexFile, backend);
 }
 
+function summarizeRepairLayer(payload, exists = true) {
+  const findings = Array.isArray(payload?.migration_findings) ? payload.migration_findings : [];
+  const openFindings = findings.filter((row) => {
+    const severity = String(row?.severity ?? "").toLowerCase();
+    return severity === "warning" || severity === "error";
+  });
+  const severityCounts = {};
+  for (const row of openFindings) {
+    const severity = String(row?.severity ?? "unknown").toLowerCase();
+    severityCounts[severity] = Number(severityCounts[severity] ?? 0) + 1;
+  }
+  return {
+    exists,
+    blocking: openFindings.some((row) => String(row?.severity ?? "").toLowerCase() === "error"),
+    openCount: openFindings.length,
+    severityCounts,
+    topFindings: openFindings.slice(0, 5).map((row) => ({
+      severity: row?.severity ?? null,
+      finding_type: row?.finding_type ?? null,
+      entity_id: row?.entity_id ?? null,
+      artifact_path: row?.artifact_path ?? null,
+      message: row?.message ?? null,
+    })),
+  };
+}
+
 async function readRepairLayerSummary(targetRoot, indexFile, backend) {
   const absolute = path.resolve(process.cwd(), indexFile);
   if (detectIndexBackend(indexFile, backend) !== "postgres" && !fs.existsSync(absolute)) {
@@ -300,58 +332,159 @@ async function readRepairLayerSummary(targetRoot, indexFile, backend) {
       payload = null;
     }
   }
-  const findings = Array.isArray(payload?.migration_findings) ? payload.migration_findings : [];
-  const openFindings = findings.filter((row) => {
-    const severity = String(row?.severity ?? "").toLowerCase();
-    return severity === "warning" || severity === "error";
-  });
-  const severityCounts = {};
-  for (const row of openFindings) {
-    const severity = String(row?.severity ?? "unknown").toLowerCase();
-    severityCounts[severity] = Number(severityCounts[severity] ?? 0) + 1;
+  return summarizeRepairLayer(payload);
+}
+
+class CanonicalIntentError extends Error {
+  constructor(reasonCode) {
+    super(reasonCode);
+    this.reasonCode = reasonCode;
   }
-  return {
-    exists: true,
-    blocking: openFindings.some((row) => String(row?.severity ?? "").toLowerCase() === "error"),
-    openCount: openFindings.length,
-    severityCounts,
-    topFindings: openFindings.slice(0, 5).map((row) => ({
-      severity: row?.severity ?? null,
-      finding_type: row?.finding_type ?? null,
-      entity_id: row?.entity_id ?? null,
-      artifact_path: row?.artifact_path ?? null,
-      message: row?.message ?? null,
-    })),
+}
+
+// Only diagnosed canonical failures become workflow refusals. An unexpected
+// exception remains an exception rather than being reported as a clean gate.
+const CANONICAL_FAILURE_REASONS = new Map([
+  ["RUNTIME_CONTINUITY_ARTIFACT_AMBIGUOUS", "MAPPING_AMBIGUOUS"],
+  ["RUNTIME_CONTINUITY_ENTITY_AMBIGUOUS", "MAPPING_AMBIGUOUS"],
+  ["RUNTIME_ARTIFACT_PATH_AMBIGUOUS", "MAPPING_AMBIGUOUS"],
+  ["RUNTIME_CONTINUITY_ARTIFACT_EMPTY", "REQUIRED_ARTIFACT_MISSING"],
+  ["RUNTIME_CONTINUITY_ARTIFACT_IDENTITY_MISMATCH", "MAPPING_MISSING"],
+  ["RUNTIME_HEAD_INVALID", "MAPPING_MISSING"],
+  ["RUNTIME_HEAD_ARTIFACT_MISSING_OR_AMBIGUOUS", "MAPPING_MISSING"],
+  ["RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH", "MAPPING_MISSING"],
+]);
+
+function decodeArtifact(artifact) {
+  return artifact?.content_format === "base64"
+    ? Buffer.from(artifact.content, "base64").toString("utf8") : artifact?.content ?? "";
+}
+
+function usableId(value) {
+  const id = normalizeScalar(value).toUpperCase();
+  return id && !["NONE", "(NONE)", "UNKNOWN"].includes(id) ? id : "";
+}
+
+function canonicalIntent(continuity, targetRoot, branch) {
+  if (!continuity.canonical_available) throw new CanonicalIntentError("REQUIRED_ARTIFACT_MISSING");
+  if (continuity.canonical_continuity_status === "ambiguous") throw new CanonicalIntentError("MAPPING_AMBIGUOUS");
+  const sessions = continuity.sessions;
+  const cycles = collectOpenCycles(continuity.cycles);
+  const sessionId = usableId(continuity.current_state.active_session);
+  const cycleId = usableId(continuity.current_state.active_cycle);
+  let session = sessions.find(row => row.session_id === sessionId) ?? null;
+  let cycle = continuity.cycles.find(row => row.cycle_id === cycleId) ?? null;
+  if ((sessionId && !session) || (cycleId && !cycle)) throw new CanonicalIntentError("MAPPING_MISSING");
+
+  const branchKind = classifyAidnBranch(branch);
+  if ([AIDN_BRANCH_KIND.SESSION, AIDN_BRANCH_KIND.CYCLE, AIDN_BRANCH_KIND.INTERMEDIATE].includes(branchKind)) {
+    const mapping = resolveBranchMapping({ branch, branchKind, sessions, cycles });
+    if (mapping.ambiguous) throw new CanonicalIntentError("MAPPING_AMBIGUOUS");
+    if (mapping.missing) throw new CanonicalIntentError("MAPPING_MISSING");
+    if (mapping.mapped_session) session = mapping.mapped_session;
+    if (mapping.mapped_cycle) {
+      cycle = mapping.mapped_cycle;
+      const owner = usableId(cycle.session_owner);
+      session = sessions.find(row => row.session_id === owner) ?? null;
+      if (!session || (sessionId && owner !== sessionId)) throw new CanonicalIntentError("MAPPING_MISSING");
+    }
+  }
+  if (cycle && session && usableId(cycle.session_owner) && usableId(cycle.session_owner) !== session.session_id) {
+    throw new CanonicalIntentError("MAPPING_MISSING");
+  }
+  const artifactFor = row => {
+    if (!row) return null;
+    const artifactPath = path.relative(path.join(targetRoot, "docs/audit"), row.file_path).replace(/\\/g, "/");
+    const artifact = findUniqueAuditArtifact(continuity.snapshot.payload, artifactPath);
+    if (!artifact) throw new CanonicalIntentError("REQUIRED_ARTIFACT_MISSING");
+    return artifact;
   };
+  const sessionObjective = extractObjective(decodeArtifact(artifactFor(session)));
+  const cycleText = decodeArtifact(artifactFor(cycle));
+  const cycleGoal = cycle && cycles.includes(cycle) ? normalizeObjective(parseKeyValues(cycleText).current_goal) : null;
+  return { sessionObjective, cycleGoal, canonicalIntentUncertain: Boolean(cycle && !cycleGoal) };
 }
 
 export async function collectGatingObservations({ targetRoot, eventFile, indexSyncCheckFile, indexFile, indexBackend, stateMode, mode, reloadResult, gitAdapter, completionContext = null }) {
+  const configData = readAidnProjectConfig(targetRoot).data;
+  const persistence = resolveConfigRuntimePersistence(configData);
+  const backend = persistence?.backend === "postgres" ? "postgres" : detectIndexBackend(indexFile, indexBackend);
+  const canonicalRequired = backend === "postgres" || stateMode === "db-only";
   const sessionsRoot = path.join(targetRoot, "docs", "audit", "sessions");
-  const latestSession = getLatestFileByPattern(sessionsRoot, /^S\d+.*\.md$/i);
-  let sessionObjective = extractSessionObjective(latestSession);
-  let cycleGoal = getActiveCycleGoal(targetRoot);
-  if (completionContext) {
-    const cyclePath = `cycles/${completionContext.cycle_dir}/status.md`;
-    let statusText;
-    let sessionText;
-    if (stateMode !== "files" || indexBackend === "postgres") {
-      const snapshot = await readRuntimeSnapshot({ targetRoot, indexFile, backend: indexBackend });
-      if (!snapshot.payload) throw new Error("Canonical closure intent unavailable");
-      const decode = artifact => artifact?.content_format === "base64"
-        ? Buffer.from(artifact.content, "base64").toString("utf8") : artifact?.content ?? "";
-      statusText = decode(findUniqueAuditArtifact(snapshot.payload, cyclePath));
-      const sessions = (snapshot.payload.artifacts ?? []).filter(artifact =>
-        String(artifact.path).replace(/\\/g, "/").replace(/^docs\/audit\//i, "")
-          .match(/^sessions\/(S\d+)(?:[^\d/][^/]*)?\.md$/i)?.[1] === completionContext.session_id);
-      sessionText = sessions.length === 1 ? decode(sessions[0]) : "";
-    } else {
-      statusText = readTextSafe(path.join(targetRoot, "docs/audit", cyclePath));
-      const files = fs.existsSync(sessionsRoot) ? fs.readdirSync(sessionsRoot).filter(file =>
-        file.match(/^(S\d+)(?:[^\d/][^/]*)?\.md$/i)?.[1] === completionContext.session_id) : [];
-      sessionText = files.length === 1 ? readTextSafe(path.join(sessionsRoot, files[0])) : "";
+  let sessionObjective = null;
+  let cycleGoal = null;
+  let canonicalIntentUncertain = false;
+  let canonicalIntentFailureReason = null;
+  let snapshotAttempted = false;
+  let canonicalSnapshot = null;
+  const readerFactory = () => {
+    const reader = backend === "json" ? {
+      describeBackend: () => ({ backend_kind: "json" }),
+      async readCanonicalSnapshot() {
+        if (!fs.existsSync(indexFile)) throw new CanonicalIntentError("REQUIRED_ARTIFACT_MISSING");
+        try {
+          const snapshot = await readRuntimeSnapshot({ targetRoot, indexFile, backend });
+          return { exists: true, payload: snapshot.payload, runtimeHeads: snapshot.payload?.runtimeHeads ?? {} };
+        } catch (error) {
+          if (error?.code === "ENOENT" || error instanceof SyntaxError) {
+            throw new CanonicalIntentError("REQUIRED_ARTIFACT_MISSING");
+          }
+          throw error;
+        }
+      },
+    } : createRuntimeCanonicalSnapshotReader({ targetRoot, backend, sqliteFile: indexFile, configData,
+      connectionRef: persistence?.backend === backend ? persistence.connectionRef ?? "" : "" });
+    return {
+      describeBackend: () => reader.describeBackend(),
+      async readCanonicalSnapshot(options) {
+        snapshotAttempted = true;
+        canonicalSnapshot = await reader.readCanonicalSnapshot(options);
+        return canonicalSnapshot;
+      },
+    };
+  };
+  try {
+    if (!completionContext && canonicalRequired) {
+      const auditRoot = path.join(targetRoot, "docs/audit");
+      const continuity = await resolveWorkflowContinuityContext({ targetRoot,
+        // This private read is canonical-only even when projections are in files
+        // mode or an environment hint conflicts with configured PostgreSQL.
+        effectiveStateMode: "db-only",
+        visibleCurrentState: { audit_root: auditRoot, file_path: path.join(auditRoot, "CURRENT-STATE.md") },
+        runtimeSnapshotReaderFactory: readerFactory });
+      ({ sessionObjective, cycleGoal, canonicalIntentUncertain } = canonicalIntent(continuity, targetRoot, gitAdapter.getCurrentBranch(targetRoot)));
+    } else if (!completionContext) {
+      const latestSession = getLatestFileByPattern(sessionsRoot, /^S\d+.*\.md$/i);
+      sessionObjective = extractSessionObjective(latestSession);
+      cycleGoal = getActiveCycleGoal(targetRoot);
     }
-    cycleGoal = parseKeyValues(statusText).current_goal ?? null;
-    sessionObjective = extractObjective(sessionText);
+    if (completionContext) {
+      const cyclePath = `cycles/${completionContext.cycle_dir}/status.md`;
+      let statusText;
+      let sessionText;
+      if (stateMode !== "files" || backend === "postgres") {
+        const snapshot = await readerFactory().readCanonicalSnapshot({ includePayload: true, includeRuntimeHeads: true });
+        if (!snapshot?.exists || !snapshot.payload) throw new CanonicalIntentError("REQUIRED_ARTIFACT_MISSING");
+        statusText = decodeArtifact(findUniqueAuditArtifact(snapshot.payload, cyclePath));
+        const sessions = (snapshot.payload.artifacts ?? []).filter(artifact =>
+          String(artifact.path).replace(/\\/g, "/").replace(/^docs\/audit\//i, "")
+            .match(/^sessions\/(S\d+)(?:[^\d/][^/]*)?\.md$/i)?.[1] === completionContext.session_id);
+        sessionText = sessions.length === 1 ? decodeArtifact(sessions[0]) : "";
+      } else {
+        statusText = readTextSafe(path.join(targetRoot, "docs/audit", cyclePath));
+        const files = fs.existsSync(sessionsRoot) ? fs.readdirSync(sessionsRoot).filter(file =>
+          file.match(/^(S\d+)(?:[^\d/][^/]*)?\.md$/i)?.[1] === completionContext.session_id) : [];
+        sessionText = files.length === 1 ? readTextSafe(path.join(sessionsRoot, files[0])) : "";
+      }
+      cycleGoal = parseKeyValues(statusText).current_goal ?? null;
+      sessionObjective = extractObjective(sessionText);
+    }
+  } catch (error) {
+    canonicalIntentFailureReason = error instanceof CanonicalIntentError ? error.reasonCode
+      : (error instanceof Error ? CANONICAL_FAILURE_REASONS.get(error.message) : null);
+    if (!canonicalIntentFailureReason) throw error;
+    sessionObjective = null;
+    cycleGoal = null;
   }
   const changedFiles = getChangedFiles(targetRoot, gitAdapter);
   const noChangeFastPath = buildNoChangeFastPath(reloadResult, changedFiles);
@@ -367,7 +500,9 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
     ? path.resolve(indexSyncPayload.target_root)
     : null;
   const indexSyncTargetMatch = indexSyncTargetRoot === targetRoot;
-  const repairLayer = stateMode === "files" && indexBackend !== "postgres"
+  const repairLayer = snapshotAttempted
+    ? summarizeRepairLayer(canonicalSnapshot?.payload, Boolean(canonicalSnapshot?.payload))
+    : stateMode === "files" && backend !== "postgres"
     ? {
       exists: false,
       blocking: false,
@@ -375,11 +510,13 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
       severityCounts: {},
       topFindings: [],
     }
-    : await readRepairLayerSummary(targetRoot, indexFile, indexBackend);
+    : await readRepairLayerSummary(targetRoot, indexFile, backend);
 
   return {
     sessionObjective,
     cycleGoal,
+    canonicalIntentUncertain,
+    canonicalIntentFailureReason,
     changedFiles,
     noChangeFastPath,
     latestDriftMs: eventStats.latestDriftMs,
@@ -390,6 +527,7 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
     indexSyncTargetMatch,
     indexSyncDriftLevel: indexSyncPayload?.drift_level ?? null,
     repairLayerOpenCount: repairLayer.openCount,
+    repairLayerObserved: repairLayer.exists,
     repairLayerBlocking: repairLayer.blocking,
     repairLayerSeverityCounts: repairLayer.severityCounts,
     repairLayerTopFindings: repairLayer.topFindings,
