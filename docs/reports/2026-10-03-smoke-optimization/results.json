@@ -1,0 +1,2605 @@
+{
+  "schema": "aidn.smoke-benchmark-observational-aggregate.v1",
+  "status": "FINAL",
+  "title": "Deux smokes après optimisation AID’N, comparaison C1/C2",
+  "generated_at": "2026-10-03T05:04:35.109800+00:00",
+  "protocol": {
+    "subject": "API HTTP JSON de réservation de salles",
+    "order": [
+      "aidn",
+      "baseline"
+    ],
+    "phase_budgets_minutes": [
+      20,
+      12,
+      8
+    ],
+    "hard_deadline_minutes": 45,
+    "no_padding": true,
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "medium",
+    "provider_fallback": false,
+    "developer_helpers": false,
+    "application_database": "SQLite",
+    "aidn_runtime_database": "PostgreSQL",
+    "functional_criteria": 21,
+    "functional_points": 60,
+    "qualitative_points": {
+      "maintainability": 20,
+      "tests": 10,
+      "operations": 10
+    },
+    "functional_relative_weight_sum": 70,
+    "functional_score_formula": "60 * sum(weights of PASS criteria) / 70",
+    "sourceBranch_client": "main",
+    "package_source_branch": "dev",
+    "isolated_fresh_products_and_runtime": true,
+    "product_mutations_after_development": false
+  },
+  "identity": {
+    "source_commit_c1": "89a709b9ccc3a1effb91356c654cb9fc3b5e4650",
+    "source_tree_c1": "fc5800ba46c82cd4a19aff3c157a55d1985135c4",
+    "tarball_sha256_c1": "5cec528f1a7fe4afc5a10decd1be94750165c84f738fc23a2fab1692563d9236",
+    "source_commit_c2": "6a79e0dd983bb8d16769017d2ac9cbb011de2b05",
+    "source_tree_c2": "2c50d412d4981edfa98d3268ba1758c2fd502ec6",
+    "tarball_sha256_c2": "465f33d7f208e9fe050b0a7d92047f0d05e52210dc0fa523a3503040b7d40407",
+    "version_c2": "0.12.0",
+    "source_inputs_c2": 970,
+    "local_candidate_not_published": true,
+    "node_c2": "22.13.0",
+    "npm_c2": "10.9.2",
+    "pg_c2": "17.6",
+    "pg_driver_c2": "8.23.1",
+    "codex_cli": "0.159.0-alpha.3",
+    "native_source_commit": "3b01b36fa5eb96ba82a776bd3c2fc57f8969181f",
+    "fresh_pg_system_identifier": "7692273677615439893"
+  },
+  "campaigns": {
+    "C1": {
+      "aidn": {
+        "native_status": "COMPLETED",
+        "native_model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "model_fallback_observed": false,
+        "productive_seconds": 2164.054277058,
+        "phase_seconds": [
+          1060.206327594,
+          676.316019673,
+          427.53192979100004
+        ],
+        "external": {
+          "status": "PASS",
+          "startup_failure": null,
+          "passed_requirements": 21,
+          "total_requirements": 21,
+          "functional_score_out_of_60": 60
+        },
+        "qualitative": {
+          "scores": {
+            "functional": 60,
+            "maintainability": 17,
+            "tests": 9,
+            "operations": 9
+          },
+          "total_out_of_100": 95,
+          "not_evaluable_reasons": null,
+          "review_evidence": [
+            "X/src/app.js:5,13,60 and X/src/store.js:10: HTTP/validation grouped in app; persistence/migration grouped in store; small modules but HttpError couples storage to HTTP.\n",
+            "X/src/app.js:92: URI/domain/internal errors are separated and SQL details hidden; X/src/store.js:61 cleans up failed migration.\n",
+            "X/src/store.js:65: direct SQLite TEXT read leaves the confirmed NUL-title defect; no score alteration of the frozen behavioral oracle.\n",
+            "X/test/api.test.js:91,117,215,249,265: real rollback, migration, two-process concurrency/restart tests; eight executed, all passed.\n",
+            "X/src/server.js:11: graceful close and idle-connection cleanup, without bounded forced close; README clearly documents migration and backup.\n",
+            "Phase-3 own validation used Node 24 and acknowledged it; independent final rerun on Node 22 passed.\n"
+          ]
+        },
+        "tokens": {
+          "status": "PASS",
+          "input_tokens": 7961138,
+          "cached_input_tokens": 7704832,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 56457,
+          "reasoning_output_tokens": 6081,
+          "non_reasoning_output_tokens": 50376,
+          "total_tokens": 8017595,
+          "new_input_tokens": 256306,
+          "cache_hit_fraction": 0.967805356470394,
+          "tokens_per_validated_requirement": 381790.2380952381,
+          "tokens_per_quality_point": 84395.73684210527,
+          "validated_requirements": 21,
+          "quality_score": 95,
+          "validated_requirement_denominator": null,
+          "quality_score_denominator": null
+        },
+        "new_input_plus_output_tokens": 312763,
+        "latency": {
+          "status": "AVAILABLE_WALL_CLOCK_ONLY",
+          "basis": "observed_at client wall clock",
+          "totals": {
+            "runner_productive_seconds": 2164.054277058,
+            "command_count": 120,
+            "command_failures": 9,
+            "command_native_duration_seconds": 67.511,
+            "hook_count": 131,
+            "hook_native_duration_seconds": 7.303,
+            "auto_review_count": 63,
+            "auto_review_native_duration_seconds": 195.447,
+            "categories_observed_union_seconds": {
+              "agentMessage": 109.69358229637146,
+              "auto_review": 195.509423494339,
+              "commandExecution": 272.56009125709534,
+              "fileChange": 0.5505800247192383,
+              "hook": 7.423686265945435,
+              "reasoning": 241.4888412952423,
+              "userMessage": 0.00019407272338867188
+            },
+            "visible_tools_hooks_review_observed_union_seconds": 280.53435754776,
+            "no_visible_tools_hooks_review_observed_seconds": 1883.3810067176819,
+            "native_token_totals": {
+              "totalTokens": 8017595,
+              "inputTokens": 7961138,
+              "cachedInputTokens": 7704832,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 56457,
+              "reasoningOutputTokens": 6081
+            },
+            "volume": {
+              "command_aggregated_output_utf8_bytes": 782229,
+              "command_output_delta_utf8_bytes": 290875,
+              "command_output_delta_count": 264,
+              "command_request_utf8_bytes": 90267,
+              "agent_message_completed_utf8_bytes": 16364,
+              "agent_delta_utf8_bytes": 16364,
+              "agent_delta_count": 3318,
+              "hook_context_utf8_bytes": 5671,
+              "hook_context_entries": 8
+            },
+            "token_usage_snapshot_count": 86,
+            "last_token_usage_input_tokens_distribution": {
+              "count": 86,
+              "sum": 7961138,
+              "min": 16954,
+              "p50": 86802.5,
+              "p95": 163992.25,
+              "max": 170243
+            }
+          },
+          "phase_first_visible_text": [
+            {
+              "phase": 1,
+              "turn_id": "01a0fe99-55fc-74c3-b41e-91bda3c178a6",
+              "thread_id": "01a0fe99-55b1-76c0-9b49-3f45aeaa6e31",
+              "native_turn_wall_seconds": 1060.117,
+              "observed_turn_wall_seconds": 1060.1048243045807,
+              "runner_elapsed_seconds": 1060.206327594,
+              "first_agent_text_delta_after_turn_start_seconds": 3.3591339588165283,
+              "last_agent_text_delta_before_turn_end_seconds": 0.3020308017730713,
+              "first_command_started_after_turn_start_seconds": 8.4039888381958,
+              "item_counts": {
+                "userMessage": 1,
+                "agentMessage": 21,
+                "commandExecution": 49,
+                "reasoning": 37,
+                "fileChange": 3
+              },
+              "command_statuses": {
+                "completed": 45,
+                "failed": 4
+              },
+              "command_native_duration_seconds": {
+                "count": 49,
+                "sum": 26.556,
+                "min": 0.0,
+                "p50": 0.094,
+                "p95": 1.9337999999999997,
+                "max": 4.612
+              },
+              "command_observed_interval_seconds": {
+                "count": 49,
+                "sum": 114.21694922447205,
+                "min": 6.771087646484375e-05,
+                "p50": 2.4466991424560547,
+                "p95": 5.309200811386108,
+                "max": 9.347381353378296
+              },
+              "hook_count": 54,
+              "hook_native_duration_seconds": {
+                "count": 54,
+                "sum": 3.2720000000000002,
+                "min": 0.031,
+                "p50": 0.034,
+                "p95": 0.30379999999999996,
+                "max": 0.327
+              },
+              "hook_events": {
+                "sessionStart": 1,
+                "preToolUse": 53
+              },
+              "hook_statuses": {
+                "completed": 53,
+                "blocked": 1
+              },
+              "auto_review_count": 27,
+              "auto_review_native_duration_seconds": {
+                "count": 27,
+                "sum": 83.354,
+                "min": 1.966,
+                "p50": 3.001,
+                "p95": 4.4696,
+                "max": 5.034
+              },
+              "auto_review_statuses": {
+                "approved": 27
+              },
+              "category_observed_union_seconds": {
+                "userMessage": 5.0067901611328125e-05,
+                "agentMessage": 48.434017181396484,
+                "commandExecution": 114.21694922447205,
+                "reasoning": 61.67758059501648,
+                "fileChange": 0.34524989128112793,
+                "hook": 3.4007632732391357,
+                "auto_review": 83.37901043891907
+              },
+              "visible_tools_hooks_review_observed_union_seconds": 117.96296238899231,
+              "mutually_exclusive_observed_wall_seconds": {
+                "no_visible_tool_hook_or_review_interval": 942.1418619155884,
+                "hook": 3.4007632732391357,
+                "commandExecution": 30.83793878555298,
+                "auto_review + commandExecution": 83.37901043891907,
+                "fileChange": 0.34524989128112793
+              },
+              "token_usage_snapshot_count": 44,
+              "last_token_usage_input_tokens_distribution": {
+                "count": 44,
+                "sum": 3635896,
+                "min": 17381,
+                "p50": 83296.0,
+                "p95": 122861.0,
+                "max": 124847
+              },
+              "last_token_usage_cached_input_tokens_distribution": {
+                "count": 44,
+                "sum": 3515008,
+                "min": 11392,
+                "p50": 81856.0,
+                "p95": 121760.0,
+                "max": 123264
+              },
+              "token_usage_last_sum": {
+                "totalTokens": 3664209,
+                "inputTokens": 3635896,
+                "cachedInputTokens": 3515008,
+                "outputTokens": 28313,
+                "reasoningOutputTokens": 1451
+              },
+              "volume": {
+                "command_aggregated_output_utf8_bytes": 304588,
+                "command_output_delta_utf8_bytes": 100876,
+                "command_output_delta_count": 105,
+                "command_request_utf8_bytes": 39035,
+                "agent_message_completed_utf8_bytes": 7085,
+                "agent_delta_utf8_bytes": 7085,
+                "agent_delta_count": 1440,
+                "hook_context_utf8_bytes": 2830,
+                "hook_context_entries": 4
+              },
+              "command_categories": {
+                "aidn_cli_batch": {
+                  "count": 33,
+                  "failed_count": 3,
+                  "native_duration_seconds": 25.868,
+                  "output_utf8_bytes": 118852
+                },
+                "aidn_governance_or_context_batch": {
+                  "count": 8,
+                  "failed_count": 0,
+                  "native_duration_seconds": 0.0,
+                  "output_utf8_bytes": 164824
+                },
+                "other_or_mixed_batch": {
+                  "count": 7,
+                  "failed_count": 1,
+                  "native_duration_seconds": 0.292,
+                  "output_utf8_bytes": 19635
+                },
+                "product_verification_batch": {
+                  "count": 1,
+                  "failed_count": 0,
+                  "native_duration_seconds": 0.396,
+                  "output_utf8_bytes": 1277
+                }
+              },
+              "notification_count": 1991,
+              "longest_notification_gaps": [
+                {
+                  "seconds": 120.0916919708252,
+                  "start_epoch": 1790978494.4328454,
+                  "end_epoch": 1790978614.5245373,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 115.95353102684021,
+                  "start_epoch": 1790978209.5019572,
+                  "end_epoch": 1790978325.4554882,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 114.47589492797852,
+                  "start_epoch": 1790978368.5890775,
+                  "end_epoch": 1790978483.0649724,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 48.397170066833496,
+                  "start_epoch": 1790978011.3575919,
+                  "end_epoch": 1790978059.754762,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 47.62269067764282,
+                  "start_epoch": 1790978640.587869,
+                  "end_epoch": 1790978688.2105596,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 27.726555824279785,
+                  "start_epoch": 1790978877.8284092,
+                  "end_epoch": 1790978905.554965,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 25.88453698158264,
+                  "start_epoch": 1790978729.0161061,
+                  "end_epoch": 1790978754.900643,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 20.672952890396118,
+                  "start_epoch": 1790977976.8576853,
+                  "end_epoch": 1790977997.5306382,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 20.147358179092407,
+                  "start_epoch": 1790978827.6849759,
+                  "end_epoch": 1790978847.832334,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 17.402343273162842,
+                  "start_epoch": 1790978145.5344176,
+                  "end_epoch": 1790978162.936761,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                }
+              ]
+            },
+            {
+              "phase": 2,
+              "turn_id": "01a0fea9-8389-79c3-8bd9-70f70eb9c85e",
+              "thread_id": "01a0fe99-55b1-76c0-9b49-3f45aeaa6e31",
+              "native_turn_wall_seconds": 676.31,
+              "observed_turn_wall_seconds": 676.3053138256073,
+              "runner_elapsed_seconds": 676.316019673,
+              "first_agent_text_delta_after_turn_start_seconds": 2.6454856395721436,
+              "last_agent_text_delta_before_turn_end_seconds": 0.12658405303955078,
+              "first_command_started_after_turn_start_seconds": 12.0846848487854,
+              "item_counts": {
+                "userMessage": 1,
+                "agentMessage": 14,
+                "commandExecution": 17,
+                "reasoning": 15,
+                "fileChange": 3
+              },
+              "command_statuses": {
+                "completed": 17
+              },
+              "command_native_duration_seconds": {
+                "count": 17,
+                "sum": 23.262,
+                "min": 0.0,
+                "p50": 0.886,
+                "p95": 4.075199999999998,
+                "max": 6.504
+              },
+              "command_observed_interval_seconds": {
+                "count": 17,
+                "sum": 70.28414225578308,
+                "min": 0.0012345314025878906,
+                "p50": 3.910907506942749,
+                "p95": 6.706088018417356,
+                "max": 9.817773580551147
+              },
+              "hook_count": 20,
+              "hook_native_duration_seconds": {
+                "count": 20,
+                "sum": 1.601,
+                "min": 0.032,
+                "p50": 0.0345,
+                "p95": 0.3441,
+                "max": 0.365
+              },
+              "hook_events": {
+                "preToolUse": 20
+              },
+              "hook_statuses": {
+                "completed": 20
+              },
+              "auto_review_count": 15,
+              "auto_review_native_duration_seconds": {
+                "count": 15,
+                "sum": 44.615,
+                "min": 2.302,
+                "p50": 3.021,
+                "p95": 3.5086,
+                "max": 3.587
+              },
+              "auto_review_statuses": {
+                "approved": 15
+              },
+              "category_observed_union_seconds": {
+                "userMessage": 0.00011396408081054688,
+                "agentMessage": 30.92343282699585,
+                "commandExecution": 70.28414225578308,
+                "reasoning": 131.4581491947174,
+                "fileChange": 0.20533013343811035,
+                "hook": 1.6353321075439453,
+                "auto_review": 44.63129901885986
+              },
+              "visible_tools_hooks_review_observed_union_seconds": 72.12480449676514,
+              "mutually_exclusive_observed_wall_seconds": {
+                "no_visible_tool_hook_or_review_interval": 604.1805093288422,
+                "hook": 1.6353321075439453,
+                "commandExecution": 25.652843236923218,
+                "auto_review + commandExecution": 44.63129901885986,
+                "fileChange": 0.20533013343811035
+              },
+              "token_usage_snapshot_count": 17,
+              "last_token_usage_input_tokens_distribution": {
+                "count": 17,
+                "sum": 2631598,
+                "min": 125281,
+                "p50": 158388.0,
+                "p95": 169251.8,
+                "max": 170243
+              },
+              "last_token_usage_cached_input_tokens_distribution": {
+                "count": 17,
+                "sum": 2583168,
+                "min": 124672,
+                "p50": 155776.0,
+                "p95": 167705.6,
+                "max": 168832
+              },
+              "token_usage_last_sum": {
+                "totalTokens": 2650259,
+                "inputTokens": 2631598,
+                "cachedInputTokens": 2583168,
+                "outputTokens": 18661,
+                "reasoningOutputTokens": 3477
+              },
+              "volume": {
+                "command_aggregated_output_utf8_bytes": 108056,
+                "command_output_delta_utf8_bytes": 49583,
+                "command_output_delta_count": 119,
+                "command_request_utf8_bytes": 29400,
+                "agent_message_completed_utf8_bytes": 5091,
+                "agent_delta_utf8_bytes": 5091,
+                "agent_delta_count": 1013,
+                "hook_context_utf8_bytes": 2130,
+                "hook_context_entries": 3
+              },
+              "command_categories": {
+                "aidn_cli_batch": {
+                  "count": 15,
+                  "failed_count": 0,
+                  "native_duration_seconds": 22.576,
+                  "output_utf8_bytes": 57938
+                },
+                "aidn_governance_or_context_batch": {
+                  "count": 1,
+                  "failed_count": 0,
+                  "native_duration_seconds": 0.0,
+                  "output_utf8_bytes": 47412
+                },
+                "product_verification_batch": {
+                  "count": 1,
+                  "failed_count": 0,
+                  "native_duration_seconds": 0.686,
+                  "output_utf8_bytes": 2706
+                }
+              },
+              "notification_count": 1334,
+              "longest_notification_gaps": [
+                {
+                  "seconds": 86.0636522769928,
+                  "start_epoch": 1790979173.2986004,
+                  "end_epoch": 1790979259.3622527,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 58.3027126789093,
+                  "start_epoch": 1790979013.417707,
+                  "end_epoch": 1790979071.7204196,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 39.299617767333984,
+                  "start_epoch": 1790979281.1691272,
+                  "end_epoch": 1790979320.468745,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 32.62745952606201,
+                  "start_epoch": 1790979362.893498,
+                  "end_epoch": 1790979395.5209575,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 32.45618987083435,
+                  "start_epoch": 1790979117.0526807,
+                  "end_epoch": 1790979149.5088706,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 32.22516965866089,
+                  "start_epoch": 1790979458.3548508,
+                  "end_epoch": 1790979490.5800204,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 24.7066593170166,
+                  "start_epoch": 1790979417.2296922,
+                  "end_epoch": 1790979441.9363515,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 21.6762797832489,
+                  "start_epoch": 1790979562.2206066,
+                  "end_epoch": 1790979583.8968863,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 18.133457899093628,
+                  "start_epoch": 1790978994.3016071,
+                  "end_epoch": 1790979012.435065,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 17.800196886062622,
+                  "start_epoch": 1790979328.1957107,
+                  "end_epoch": 1790979345.9959075,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                }
+              ]
+            },
+            {
+              "phase": 3,
+              "turn_id": "01a0feb3-d57a-7191-bfa0-aef410840331",
+              "thread_id": "01a0feb3-d56a-7fa2-8829-86240d12bf89",
+              "native_turn_wall_seconds": 427.508,
+              "observed_turn_wall_seconds": 427.5052261352539,
+              "runner_elapsed_seconds": 427.53192979100004,
+              "first_agent_text_delta_after_turn_start_seconds": 2.821666955947876,
+              "last_agent_text_delta_before_turn_end_seconds": 0.1526319980621338,
+              "first_command_started_after_turn_start_seconds": 7.981743574142456,
+              "item_counts": {
+                "userMessage": 1,
+                "agentMessage": 11,
+                "commandExecution": 54,
+                "reasoning": 22
+              },
+              "command_statuses": {
+                "completed": 49,
+                "failed": 5
+              },
+              "command_native_duration_seconds": {
+                "count": 54,
+                "sum": 17.693,
+                "min": 0.0,
+                "p50": 0.0,
+                "p95": 2.0662999999999982,
+                "max": 4.869
+              },
+              "command_observed_interval_seconds": {
+                "count": 54,
+                "sum": 88.05899977684021,
+                "min": 6.914138793945312e-05,
+                "p50": 0.000704646110534668,
+                "p95": 5.7000488877296425,
+                "max": 10.052879810333252
+              },
+              "hook_count": 57,
+              "hook_native_duration_seconds": {
+                "count": 57,
+                "sum": 2.43,
+                "min": 0.032,
+                "p50": 0.035,
+                "p95": 0.0602,
+                "max": 0.318
+              },
+              "hook_events": {
+                "sessionStart": 1,
+                "preToolUse": 56
+              },
+              "hook_statuses": {
+                "completed": 57
+              },
+              "auto_review_count": 21,
+              "auto_review_native_duration_seconds": {
+                "count": 21,
+                "sum": 67.478,
+                "min": 2.161,
+                "p50": 3.132,
+                "p95": 4.721,
+                "max": 5.023
+              },
+              "auto_review_statuses": {
+                "approved": 21
+              },
+              "category_observed_union_seconds": {
+                "userMessage": 3.0040740966796875e-05,
+                "agentMessage": 30.336132287979126,
+                "commandExecution": 88.05899977684021,
+                "reasoning": 48.35311150550842,
+                "hook": 2.3875908851623535,
+                "auto_review": 67.49911403656006
+              },
+              "visible_tools_hooks_review_observed_union_seconds": 90.44659066200256,
+              "mutually_exclusive_observed_wall_seconds": {
+                "no_visible_tool_hook_or_review_interval": 337.05863547325134,
+                "hook": 2.3875908851623535,
+                "commandExecution": 20.55988574028015,
+                "auto_review + commandExecution": 67.49911403656006
+              },
+              "token_usage_snapshot_count": 25,
+              "last_token_usage_input_tokens_distribution": {
+                "count": 25,
+                "sum": 1693644,
+                "min": 16954,
+                "p50": 78404.0,
+                "p95": 92309.79999999999,
+                "max": 93770
+              },
+              "last_token_usage_cached_input_tokens_distribution": {
+                "count": 25,
+                "sum": 1606656,
+                "min": 11392,
+                "p50": 75776.0,
+                "p95": 90572.8,
+                "max": 92416
+              },
+              "token_usage_last_sum": {
+                "totalTokens": 1703127,
+                "inputTokens": 1693644,
+                "cachedInputTokens": 1606656,
+                "outputTokens": 9483,
+                "reasoningOutputTokens": 1153
+              },
+              "volume": {
+                "command_aggregated_output_utf8_bytes": 369585,
+                "command_output_delta_utf8_bytes": 140416,
+                "command_output_delta_count": 40,
+                "command_request_utf8_bytes": 21832,
+                "agent_message_completed_utf8_bytes": 4188,
+                "agent_delta_utf8_bytes": 4188,
+                "agent_delta_count": 865,
+                "hook_context_utf8_bytes": 711,
+                "hook_context_entries": 1
+              },
+              "command_categories": {
+                "aidn_cli_batch": {
+                  "count": 23,
+                  "failed_count": 3,
+                  "native_duration_seconds": 16.794,
+                  "output_utf8_bytes": 147904
+                },
+                "aidn_governance_or_context_batch": {
+                  "count": 12,
+                  "failed_count": 0,
+                  "native_duration_seconds": 0.0,
+                  "output_utf8_bytes": 137942
+                },
+                "other_or_mixed_batch": {
+                  "count": 15,
+                  "failed_count": 2,
+                  "native_duration_seconds": 0.0,
+                  "output_utf8_bytes": 3002
+                },
+                "product_verification_batch": {
+                  "count": 4,
+                  "failed_count": 0,
+                  "native_duration_seconds": 0.899,
+                  "output_utf8_bytes": 80737
+                }
+              },
+              "notification_count": 1262,
+              "longest_notification_gaps": [
+                {
+                  "seconds": 35.71532344818115,
+                  "start_epoch": 1790979871.0756907,
+                  "end_epoch": 1790979906.7910142,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 28.52609133720398,
+                  "start_epoch": 1790979757.2166402,
+                  "end_epoch": 1790979785.7427316,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 23.73761510848999,
+                  "start_epoch": 1790979712.792064,
+                  "end_epoch": 1790979736.529679,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 16.33734941482544,
+                  "start_epoch": 1790979934.5607283,
+                  "end_epoch": 1790979950.8980777,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 16.017796516418457,
+                  "start_epoch": 1790979985.087649,
+                  "end_epoch": 1790980001.1054456,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 12.515573740005493,
+                  "start_epoch": 1790979815.9778302,
+                  "end_epoch": 1790979828.493404,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 10.005862951278687,
+                  "start_epoch": 1790979743.415802,
+                  "end_epoch": 1790979753.421665,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 8.20778489112854,
+                  "start_epoch": 1790979623.9251385,
+                  "end_epoch": 1790979632.1329234,
+                  "previous_method": "account/rateLimits/updated",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 8.037410020828247,
+                  "start_epoch": 1790979852.118227,
+                  "end_epoch": 1790979860.155637,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                },
+                {
+                  "seconds": 6.6678197383880615,
+                  "start_epoch": 1790979640.9691699,
+                  "end_epoch": 1790979647.6369896,
+                  "previous_method": "item/completed",
+                  "next_method": "hook/started"
+                }
+              ]
+            }
+          ]
+        },
+        "native_commands": 120,
+        "failed_native_commands": 9,
+        "native_hooks": 131
+      },
+      "baseline": {
+        "native_status": "COMPLETED",
+        "native_model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "model_fallback_observed": false,
+        "productive_seconds": 1190.541822315,
+        "phase_seconds": [
+          508.665569623,
+          373.58181131499987,
+          308.2944413770001
+        ],
+        "external": {
+          "status": "PASS",
+          "startup_failure": null,
+          "passed_requirements": 21,
+          "total_requirements": 21,
+          "functional_score_out_of_60": 60
+        },
+        "qualitative": {
+          "scores": {
+            "functional": 60,
+            "maintainability": 17.5,
+            "tests": 10,
+            "operations": 10
+          },
+          "total_out_of_100": 97.5,
+          "not_evaluable_reasons": null,
+          "review_evidence": [
+            "Y/src/validation.mjs:15,46, Y/src/app.mjs:28 and Y/src/database.mjs:122: validation, HTTP and persistence separated; HttpError remains shared with storage.\n",
+            "Y/src/database.mjs:9 and Y/src/app.mjs:70: bounded WAL retry, sanitized errors and Retry-After; transaction scaffolding repeated in open/create/cancel.\n",
+            "Y/src/database.mjs:125: stored title bytes decoded explicitly; Y/src/validation.mjs:18 rejects malformed Unicode.\n",
+            "Y/test/api.test.mjs:176,227,289,346,395,426,448,464,492: rollback, forced restart, locks, migration and text regression; fifteen executed, all passed.\n",
+            "Y/src/server.mjs:18: guarded shutdown with five-second forced connection close; README and HANDOFF record Node 22 validation and limitations.\n"
+          ]
+        },
+        "tokens": {
+          "status": "PASS",
+          "input_tokens": 1663954,
+          "cached_input_tokens": 1556352,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 32920,
+          "reasoning_output_tokens": 4037,
+          "non_reasoning_output_tokens": 28883,
+          "total_tokens": 1696874,
+          "new_input_tokens": 107602,
+          "cache_hit_fraction": 0.9353335488841639,
+          "tokens_per_validated_requirement": 80803.52380952382,
+          "tokens_per_quality_point": 17403.835897435896,
+          "validated_requirements": 21,
+          "quality_score": 97.5,
+          "validated_requirement_denominator": null,
+          "quality_score_denominator": null
+        },
+        "new_input_plus_output_tokens": 140522,
+        "latency": {
+          "status": "AVAILABLE_WALL_CLOCK_ONLY",
+          "basis": "observed_at client wall clock",
+          "totals": {
+            "runner_productive_seconds": 1190.541822315,
+            "command_count": 49,
+            "command_failures": 9,
+            "command_native_duration_seconds": 205.974,
+            "hook_count": 0,
+            "hook_native_duration_seconds": 0,
+            "auto_review_count": 25,
+            "auto_review_native_duration_seconds": 82.971,
+            "categories_observed_union_seconds": {
+              "agentMessage": 39.09652233123779,
+              "auto_review": 82.9914276599884,
+              "commandExecution": 267.3813908100128,
+              "fileChange": 0.9180018901824951,
+              "hook": 0,
+              "reasoning": 166.81578040122986,
+              "userMessage": 0.0003674030303955078,
+              "webSearch": 1.6388864517211914
+            },
+            "visible_tools_hooks_review_observed_union_seconds": 269.8165717124939,
+            "no_visible_tools_hooks_review_observed_seconds": 920.5680510997772,
+            "native_token_totals": {
+              "totalTokens": 1696874,
+              "inputTokens": 1663954,
+              "cachedInputTokens": 1556352,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 32920,
+              "reasoningOutputTokens": 4037
+            },
+            "volume": {
+              "command_aggregated_output_utf8_bytes": 170104,
+              "command_output_delta_utf8_bytes": 32039,
+              "command_output_delta_count": 402,
+              "command_request_utf8_bytes": 13500,
+              "agent_message_completed_utf8_bytes": 5812,
+              "agent_delta_utf8_bytes": 5812,
+              "agent_delta_count": 1172,
+              "hook_context_utf8_bytes": 0,
+              "hook_context_entries": 0
+            },
+            "token_usage_snapshot_count": 45,
+            "last_token_usage_input_tokens_distribution": {
+              "count": 45,
+              "sum": 1663954,
+              "min": 13176,
+              "p50": 38802.0,
+              "p95": 57766.2,
+              "max": 59135
+            }
+          },
+          "phase_first_visible_text": [
+            {
+              "phase": 1,
+              "turn_id": "01a0feba-eeb9-7441-9a5b-62ec387a99ca",
+              "thread_id": "01a0feba-ee62-7b70-b357-71111090ded7",
+              "native_turn_wall_seconds": 508.55,
+              "observed_turn_wall_seconds": 508.5469605922699,
+              "runner_elapsed_seconds": 508.665569623,
+              "first_agent_text_delta_after_turn_start_seconds": 3.283160448074341,
+              "last_agent_text_delta_before_turn_end_seconds": 0.1263411045074463,
+              "first_command_started_after_turn_start_seconds": 7.174999237060547,
+              "item_counts": {
+                "userMessage": 1,
+                "agentMessage": 6,
+                "commandExecution": 14,
+                "reasoning": 9,
+                "webSearch": 1,
+                "fileChange": 4
+              },
+              "command_statuses": {
+                "completed": 11,
+                "failed": 3
+              },
+              "command_native_duration_seconds": {
+                "count": 14,
+                "sum": 2.875,
+                "min": 0.0,
+                "p50": 0.0055,
+                "p95": 0.7008499999999998,
+                "max": 1.254
+              },
+              "command_observed_interval_seconds": {
+                "count": 14,
+                "sum": 23.255879163742065,
+                "min": 7.176399230957031e-05,
+                "p50": 0.6894991397857666,
+                "p95": 4.28902302980423,
+                "max": 5.156703472137451
+              },
+              "hook_count": 0,
+              "hook_native_duration_seconds": {
+                "count": 0,
+                "sum": 0,
+                "min": null,
+                "p50": null,
+                "p95": null,
+                "max": null
+              },
+              "hook_events": {},
+              "hook_statuses": {},
+              "auto_review_count": 6,
+              "auto_review_native_duration_seconds": {
+                "count": 6,
+                "sum": 19.648,
+                "min": 2.52,
+                "p50": 2.9844999999999997,
+                "p95": 4.42275,
+                "max": 4.638
+              },
+              "auto_review_statuses": {
+                "approved": 6
+              },
+              "category_observed_union_seconds": {
+                "userMessage": 0.00016880035400390625,
+                "agentMessage": 13.843601942062378,
+                "commandExecution": 23.255879163742065,
+                "reasoning": 40.77939462661743,
+                "webSearch": 1.6388864517211914,
+                "fileChange": 0.3839578628540039,
+                "hook": 0,
+                "auto_review": 19.65029287338257
+              },
+              "visible_tools_hooks_review_observed_union_seconds": 25.278630018234253,
+              "mutually_exclusive_observed_wall_seconds": {
+                "no_visible_tool_hook_or_review_interval": 483.26833057403564,
+                "commandExecution": 3.6054928302764893,
+                "webSearch": 1.6387929916381836,
+                "commandExecution + webSearch": 9.34600830078125e-05,
+                "fileChange": 0.3839578628540039,
+                "auto_review + commandExecution": 19.65029287338257
+              },
+              "token_usage_snapshot_count": 14,
+              "last_token_usage_input_tokens_distribution": {
+                "count": 14,
+                "sum": 378209,
+                "min": 13608,
+                "p50": 26238.0,
+                "p95": 38963.35,
+                "max": 39263
+              },
+              "last_token_usage_cached_input_tokens_distribution": {
+                "count": 14,
+                "sum": 345856,
+                "min": 11392,
+                "p50": 25600.0,
+                "p95": 37907.2,
+                "max": 38656
+              },
+              "token_usage_last_sum": {
+                "totalTokens": 393358,
+                "inputTokens": 378209,
+                "cachedInputTokens": 345856,
+                "outputTokens": 15149,
+                "reasoningOutputTokens": 963
+              },
+              "volume": {
+                "command_aggregated_output_utf8_bytes": 14414,
+                "command_output_delta_utf8_bytes": 4711,
+                "command_output_delta_count": 70,
+                "command_request_utf8_bytes": 1585,
+                "agent_message_completed_utf8_bytes": 2081,
+                "agent_delta_utf8_bytes": 2081,
+                "agent_delta_count": 418,
+                "hook_context_utf8_bytes": 0,
+                "hook_context_entries": 0
+              },
+              "command_categories": {
+                "other_or_mixed_batch": {
+                  "count": 6,
+                  "failed_count": 0,
+                  "native_duration_seconds": 0.0,
+                  "output_utf8_bytes": 4894
+                },
+                "environment_setup_batch": {
+                  "count": 3,
+                  "failed_count": 1,
+                  "native_duration_seconds": 1.611,
+                  "output_utf8_bytes": 809
+                },
+                "product_verification_batch": {
+                  "count": 5,
+                  "failed_count": 2,
+                  "native_duration_seconds": 1.264,
+                  "output_utf8_bytes": 8711
+                }
+              },
+              "notification_count": 598,
+              "longest_notification_gaps": [
+                {
+                  "seconds": 161.5414388179779,
+                  "start_epoch": 1790980245.3887215,
+                  "end_epoch": 1790980406.9301603,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 125.48456835746765,
+                  "start_epoch": 1790980088.936888,
+                  "end_epoch": 1790980214.4214563,
+                  "previous_method": "account/rateLimits/updated",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 66.79291296005249,
+                  "start_epoch": 1790980439.9690642,
+                  "end_epoch": 1790980506.7619772,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 25.199035167694092,
+                  "start_epoch": 1790980515.854605,
+                  "end_epoch": 1790980541.0536401,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 17.47500729560852,
+                  "start_epoch": 1790980420.333692,
+                  "end_epoch": 1790980437.8086994,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 7.7448225021362305,
+                  "start_epoch": 1790980546.7288451,
+                  "end_epoch": 1790980554.4736676,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 6.813521385192871,
+                  "start_epoch": 1790980078.5413659,
+                  "end_epoch": 1790980085.3548872,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 6.6041646003723145,
+                  "start_epoch": 1790980216.6880903,
+                  "end_epoch": 1790980223.292255,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 4.650631666183472,
+                  "start_epoch": 1790980511.2039733,
+                  "end_epoch": 1790980515.854605,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 4.638033151626587,
+                  "start_epoch": 1790980223.2923343,
+                  "end_epoch": 1790980227.9303675,
+                  "previous_method": "item/autoApprovalReview/started",
+                  "next_method": "guardianWarning"
+                }
+              ]
+            },
+            {
+              "phase": 2,
+              "turn_id": "01a0fec2-b244-7490-912f-6f9d5ff03fcd",
+              "thread_id": "01a0feba-ee62-7b70-b357-71111090ded7",
+              "native_turn_wall_seconds": 373.577,
+              "observed_turn_wall_seconds": 373.5695712566376,
+              "runner_elapsed_seconds": 373.58181131499987,
+              "first_agent_text_delta_after_turn_start_seconds": 2.000554323196411,
+              "last_agent_text_delta_before_turn_end_seconds": 0.15343236923217773,
+              "first_command_started_after_turn_start_seconds": 5.269956350326538,
+              "item_counts": {
+                "userMessage": 1,
+                "agentMessage": 5,
+                "commandExecution": 13,
+                "reasoning": 9,
+                "fileChange": 5
+              },
+              "command_statuses": {
+                "completed": 12,
+                "failed": 1
+              },
+              "command_native_duration_seconds": {
+                "count": 13,
+                "sum": 167.052,
+                "min": 0.0,
+                "p50": 0.0,
+                "p95": 66.44039999999976,
+                "max": 164.844
+              },
+              "command_observed_interval_seconds": {
+                "count": 13,
+                "sum": 197.1046679019928,
+                "min": 0.00010013580322265625,
+                "p50": 3.149209976196289,
+                "p95": 69.71496987342812,
+                "max": 167.28833293914795
+              },
+              "hook_count": 0,
+              "hook_native_duration_seconds": {
+                "count": 0,
+                "sum": 0,
+                "min": null,
+                "p50": null,
+                "p95": null,
+                "max": null
+              },
+              "hook_events": {},
+              "hook_statuses": {},
+              "auto_review_count": 9,
+              "auto_review_native_duration_seconds": {
+                "count": 9,
+                "sum": 29.031,
+                "min": 2.284,
+                "p50": 2.855,
+                "p95": 4.6056,
+                "max": 4.608
+              },
+              "auto_review_statuses": {
+                "approved": 9
+              },
+              "category_observed_union_seconds": {
+                "userMessage": 0.00012087821960449219,
+                "agentMessage": 10.875049591064453,
+                "commandExecution": 181.67096877098083,
+                "reasoning": 72.46971011161804,
+                "fileChange": 0.3124692440032959,
+                "hook": 0,
+                "auto_review": 29.04729986190796
+              },
+              "visible_tools_hooks_review_observed_union_seconds": 181.86182403564453,
+              "mutually_exclusive_observed_wall_seconds": {
+                "no_visible_tool_hook_or_review_interval": 191.70774722099304,
+                "commandExecution": 152.50205492973328,
+                "fileChange": 0.1908552646636963,
+                "auto_review + commandExecution": 29.04729986190796,
+                "commandExecution + fileChange": 0.12161397933959961
+              },
+              "token_usage_snapshot_count": 10,
+              "last_token_usage_input_tokens_distribution": {
+                "count": 10,
+                "sum": 519541,
+                "min": 39609,
+                "p50": 53597.5,
+                "p95": 59060.75,
+                "max": 59135
+              },
+              "last_token_usage_cached_input_tokens_distribution": {
+                "count": 10,
+                "sum": 497920,
+                "min": 39040,
+                "p50": 50432.0,
+                "p95": 58291.2,
+                "max": 58752
+              },
+              "token_usage_last_sum": {
+                "totalTokens": 530036,
+                "inputTokens": 519541,
+                "cachedInputTokens": 497920,
+                "outputTokens": 10495,
+                "reasoningOutputTokens": 1825
+              },
+              "volume": {
+                "command_aggregated_output_utf8_bytes": 32530,
+                "command_output_delta_utf8_bytes": 12010,
+                "command_output_delta_count": 140,
+                "command_request_utf8_bytes": 2865,
+                "agent_message_completed_utf8_bytes": 1799,
+                "agent_delta_utf8_bytes": 1799,
+                "agent_delta_count": 358,
+                "hook_context_utf8_bytes": 0,
+                "hook_context_entries": 0
+              },
+              "command_categories": {
+                "product_verification_batch": {
+                  "count": 9,
+                  "failed_count": 1,
+                  "native_duration_seconds": 167.052,
+                  "output_utf8_bytes": 30036
+                },
+                "other_or_mixed_batch": {
+                  "count": 4,
+                  "failed_count": 0,
+                  "native_duration_seconds": 0.0,
+                  "output_utf8_bytes": 2494
+                }
+              },
+              "notification_count": 607,
+              "longest_notification_gaps": [
+                {
+                  "seconds": 79.84029769897461,
+                  "start_epoch": 1790980676.843495,
+                  "end_epoch": 1790980756.6837926,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 55.083229303359985,
+                  "start_epoch": 1790980824.772617,
+                  "end_epoch": 1790980879.8558464,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 34.006513833999634,
+                  "start_epoch": 1790980592.372641,
+                  "end_epoch": 1790980626.379155,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 34.001171827316284,
+                  "start_epoch": 1790980633.7089305,
+                  "end_epoch": 1790980667.7101023,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 18.986416339874268,
+                  "start_epoch": 1790980783.2343414,
+                  "end_epoch": 1790980802.2207577,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 17.653417825698853,
+                  "start_epoch": 1790980574.7192233,
+                  "end_epoch": 1790980592.372641,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 15.662324905395508,
+                  "start_epoch": 1790980766.130569,
+                  "end_epoch": 1790980781.792894,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 11.960792064666748,
+                  "start_epoch": 1790980812.811825,
+                  "end_epoch": 1790980824.772617,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 10.744867086410522,
+                  "start_epoch": 1790980905.5533087,
+                  "end_epoch": 1790980916.2981758,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 8.779731750488281,
+                  "start_epoch": 1790980896.766041,
+                  "end_epoch": 1790980905.5457728,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                }
+              ]
+            },
+            {
+              "phase": 3,
+              "turn_id": "01a0fec8-65a6-75d0-a2be-eb833cb3fde5",
+              "thread_id": "01a0fec8-659b-7ed0-b07f-904db0857a75",
+              "native_turn_wall_seconds": 308.269,
+              "observed_turn_wall_seconds": 308.26809096336365,
+              "runner_elapsed_seconds": 308.2944413770001,
+              "first_agent_text_delta_after_turn_start_seconds": 3.3974664211273193,
+              "last_agent_text_delta_before_turn_end_seconds": 0.18487000465393066,
+              "first_command_started_after_turn_start_seconds": 9.71249794960022,
+              "item_counts": {
+                "userMessage": 1,
+                "agentMessage": 6,
+                "commandExecution": 22,
+                "reasoning": 11,
+                "fileChange": 5
+              },
+              "command_statuses": {
+                "completed": 17,
+                "failed": 5
+              },
+              "command_native_duration_seconds": {
+                "count": 22,
+                "sum": 36.047,
+                "min": 0.0,
+                "p50": 0.0,
+                "p95": 0.6904999999999999,
+                "max": 33.349
+              },
+              "command_observed_interval_seconds": {
+                "count": 22,
+                "sum": 71.34192538261414,
+                "min": 8.654594421386719e-05,
+                "p50": 0.2707561254501343,
+                "p95": 5.3784965634346005,
+                "max": 36.481343507766724
+              },
+              "hook_count": 0,
+              "hook_native_duration_seconds": {
+                "count": 0,
+                "sum": 0,
+                "min": null,
+                "p50": null,
+                "p95": null,
+                "max": null
+              },
+              "hook_events": {},
+              "hook_statuses": {},
+              "auto_review_count": 10,
+              "auto_review_native_duration_seconds": {
+                "count": 10,
+                "sum": 34.292,
+                "min": 2.407,
+                "p50": 3.3040000000000003,
+                "p95": 4.774499999999999,
+                "max": 5.238
+              },
+              "auto_review_statuses": {
+                "approved": 10
+              },
+              "category_observed_union_seconds": {
+                "userMessage": 7.772445678710938e-05,
+                "agentMessage": 14.377870798110962,
+                "commandExecution": 62.45454287528992,
+                "reasoning": 53.566675662994385,
+                "fileChange": 0.2215747833251953,
+                "hook": 0,
+                "auto_review": 34.293834924697876
+              },
+              "visible_tools_hooks_review_observed_union_seconds": 62.67611765861511,
+              "mutually_exclusive_observed_wall_seconds": {
+                "no_visible_tool_hook_or_review_interval": 245.59197330474854,
+                "commandExecution": 28.16070795059204,
+                "auto_review + commandExecution": 34.293834924697876,
+                "fileChange": 0.2215747833251953
+              },
+              "token_usage_snapshot_count": 21,
+              "last_token_usage_input_tokens_distribution": {
+                "count": 21,
+                "sum": 766204,
+                "min": 13176,
+                "p50": 40070.0,
+                "p95": 47903.0,
+                "max": 48226
+              },
+              "last_token_usage_cached_input_tokens_distribution": {
+                "count": 21,
+                "sum": 712576,
+                "min": 0,
+                "p50": 38528.0,
+                "p95": 46336.0,
+                "max": 47744
+              },
+              "token_usage_last_sum": {
+                "totalTokens": 773480,
+                "inputTokens": 766204,
+                "cachedInputTokens": 712576,
+                "outputTokens": 7276,
+                "reasoningOutputTokens": 1249
+              },
+              "volume": {
+                "command_aggregated_output_utf8_bytes": 123160,
+                "command_output_delta_utf8_bytes": 15318,
+                "command_output_delta_count": 192,
+                "command_request_utf8_bytes": 9050,
+                "agent_message_completed_utf8_bytes": 1932,
+                "agent_delta_utf8_bytes": 1932,
+                "agent_delta_count": 396,
+                "hook_context_utf8_bytes": 0,
+                "hook_context_entries": 0
+              },
+              "command_categories": {
+                "other_or_mixed_batch": {
+                  "count": 10,
+                  "failed_count": 0,
+                  "native_duration_seconds": 33.349,
+                  "output_utf8_bytes": 75402
+                },
+                "product_verification_batch": {
+                  "count": 12,
+                  "failed_count": 5,
+                  "native_duration_seconds": 2.698,
+                  "output_utf8_bytes": 47758
+                }
+              },
+              "notification_count": 737,
+              "longest_notification_gaps": [
+                {
+                  "seconds": 29.91838550567627,
+                  "start_epoch": 1790981202.8619857,
+                  "end_epoch": 1790981232.7803712,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 29.261367559432983,
+                  "start_epoch": 1790981127.747969,
+                  "end_epoch": 1790981157.0093365,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 17.38799524307251,
+                  "start_epoch": 1790981103.1963933,
+                  "end_epoch": 1790981120.5843885,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 15.41064190864563,
+                  "start_epoch": 1790981030.4286683,
+                  "end_epoch": 1790981045.8393102,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 14.114878416061401,
+                  "start_epoch": 1790981013.8216693,
+                  "end_epoch": 1790981027.9365478,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 12.265074491500854,
+                  "start_epoch": 1790981053.99111,
+                  "end_epoch": 1790981066.2561846,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 11.655980825424194,
+                  "start_epoch": 1790980967.5547059,
+                  "end_epoch": 1790980979.2106867,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                },
+                {
+                  "seconds": 8.791679620742798,
+                  "start_epoch": 1790981079.4379697,
+                  "end_epoch": 1790981088.2296493,
+                  "previous_method": "item/completed",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 7.9176554679870605,
+                  "start_epoch": 1790980984.2842462,
+                  "end_epoch": 1790980992.2019017,
+                  "previous_method": "account/rateLimits/updated",
+                  "next_method": "item/started"
+                },
+                {
+                  "seconds": 7.483944654464722,
+                  "start_epoch": 1790981071.954025,
+                  "end_epoch": 1790981079.4379697,
+                  "previous_method": "item/started",
+                  "next_method": "item/completed"
+                }
+              ]
+            }
+          ]
+        },
+        "native_commands": 49,
+        "failed_native_commands": 9,
+        "native_hooks": 0
+      }
+    },
+    "C2": {
+      "aidn": {
+        "native_status": "COMPLETED",
+        "native_model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "model_fallback_observed": false,
+        "productive_seconds": 2010.9851864089942,
+        "phase_seconds": [
+          890.7368999889986,
+          673.2191084989972,
+          447.02917792099834
+        ],
+        "external": {
+          "status": "PASS",
+          "startup_failure": null,
+          "passed_requirements": 21,
+          "total_requirements": 21,
+          "functional_score_out_of_60": 60
+        },
+        "qualitative": {
+          "scores": {
+            "functional": 60,
+            "maintainability": 17.5,
+            "tests": 9,
+            "operations": 9.5
+          },
+          "total_out_of_100": 96.0,
+          "not_evaluable_reasons": null,
+          "review_evidence": [
+            "X/src/app.mjs:28 ; src/validation.mjs:5 ; src/store.mjs:71,79 : HTTP, validation et opérations persistantes séparées, requêtes préparées réutilisées.\n",
+            "X/src/store.mjs:5,85,95 : dépendance HttpError et blocs transactionnels répétés ; rollback non protégé susceptible de masquer erreur primaire, risque statique non reproduit.\n",
+            "X/test/api.test.mjs:109,125,137,156,197,250,278 : concurrence multiprocessus, restart, panne injectée, calendrier UTC, annulation et rollback migration/FK ; 11 groupes réellement PASS sous Node22.13.\n",
+            "Y dispose de preuves conservées plus ciblées sur rollback annulation, UPDATE anti-overlap, UTF8/chunked et snapshots v1 ; les probes inline déclarés par X ne sont pas des régressions conservées. Aucun des deux ne détecte le défaut NUL.\n",
+            "X/README.md:14,27,39 : commandes, sauvegarde DB/WAL, arrêt v1, restauration et replay ; src/server.mjs:16 sans délai maximal de drainage, aucun incident d’arrêt observé.\n",
+            "A/docs/audit/HANDOFF-PACKET.md:30,35,101,111 et S001.md : handoff final livré, validation phase3 et limites, malgré absence de HANDOFF dans export applicatif. Ne pas pénaliser cette exclusion de méthode. A4040 expose des champs de source PostgreSQL ; A4230 expose des succès upsert/matérialisation DB-first. Le libellé persisted PostgreSQL vient du caller et aucun readback DB final byte-identique n’a été effectué.\n"
+          ]
+        },
+        "tokens": {
+          "status": "PASS",
+          "input_tokens": 7222449,
+          "cached_input_tokens": 6987520,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 49948,
+          "reasoning_output_tokens": 6089,
+          "non_reasoning_output_tokens": 43859,
+          "total_tokens": 7272397,
+          "new_input_tokens": 234929,
+          "cache_hit_fraction": 0.9674723905977045,
+          "tokens_per_validated_requirement": 346304.61904761905,
+          "tokens_per_quality_point": 75754.13541666667,
+          "validated_requirements": 21,
+          "quality_score": 96,
+          "validated_requirement_denominator": 21,
+          "quality_score_denominator": 96.0
+        },
+        "new_input_plus_output_tokens": 284877,
+        "latency": {
+          "status": "AVAILABLE_OBSERVED",
+          "basis": "paired completed native turn windows, client monotonic receipt clocks",
+          "totals": {
+            "visible_tools_hooks_review_observed_union_seconds": 307.7865015769894,
+            "no_visible_tools_hooks_review_observed_seconds": 1703.0592869050106,
+            "paired_visible_intervals_lower_bound_seconds": 307.7865015769894,
+            "paired_union_includes_partial_run": false,
+            "command_count": 111,
+            "command_failures": 12,
+            "hook_count": 121,
+            "auto_review_count": 62,
+            "command_native_duration_seconds": 68.175,
+            "hook_native_duration_seconds": 6.896,
+            "auto_review_native_duration_seconds": 221.879,
+            "last_token_usage_input_tokens_distribution": {
+              "p50": 81021.0,
+              "max": 139639
+            },
+            "volume": {
+              "command_aggregated_output_utf8_bytes": 651408,
+              "command_output_delta_utf8_bytes": 240947,
+              "hook_context_utf8_bytes": 6892
+            },
+            "exact_duplicate_output_extra_utf8_bytes": 12522
+          },
+          "phase_first_visible_text": [
+            {
+              "phase": 1,
+              "first_agent_text_delta_after_turn_start_seconds": 4.407579037999312
+            },
+            {
+              "phase": 2,
+              "first_agent_text_delta_after_turn_start_seconds": 2.47301004199835
+            },
+            {
+              "phase": 3,
+              "first_agent_text_delta_after_turn_start_seconds": 4.67051142299897
+            }
+          ]
+        },
+        "native_commands": 111,
+        "failed_native_commands": 12,
+        "native_hooks": 121,
+        "own_tests": {
+          "runtime": "v22.13.0",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "evidence_id": "C2/evidence/own-tests-aidn-final.log"
+        }
+      },
+      "baseline": {
+        "native_status": "COMPLETED",
+        "native_model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "model_fallback_observed": false,
+        "productive_seconds": 992.3141645729993,
+        "phase_seconds": [
+          445.65637162099665,
+          368.760242645003,
+          177.89755030699962
+        ],
+        "external": {
+          "status": "PASS",
+          "startup_failure": null,
+          "passed_requirements": 21,
+          "total_requirements": 21,
+          "functional_score_out_of_60": 60
+        },
+        "qualitative": {
+          "scores": {
+            "functional": 60,
+            "maintainability": 17,
+            "tests": 9.5,
+            "operations": 9.5
+          },
+          "total_out_of_100": 96.0,
+          "not_evaluable_reasons": null,
+          "review_evidence": [
+            "Y/src/app.mjs:73,105 ; src/database.mjs:89 : handler mêlant routage/validation/métier/SQL, helper transaction centralisé et projection SQL partagée.\n",
+            "Y/src/app.mjs:51,122 : gestion aborted et logger injectable ; src/database.mjs:95 rollback non protégé, risque statique non reproduit ; migration SELECT* dépendant de l’ordre de colonnes, aucun échec observé.\n",
+            "Y/test/api.test.mjs:124,144,170,209,239,292,330,386 : contraintes SQL, body UTF8/chunked, échec annulation, migration interrompue/retry et snapshots complets, restart et course concurrente ; 12 groupes réellement PASS sous Node22.13.\n",
+            "Y/README.md:108,128,142,167 et HANDOFF.md:9,31,55 : upgrade, backup/rollback, limites et validation phase3 conservés ; src/server.mjs:11 sans délai maximal de drainage, aucun incident d’arrêt observé.\n",
+            "Les sous-scores donnent des totaux égaux : A17,5+9+9,5, B17+9,5+9,5. Ils reposent sur les critères décrits, sans ajustement pour viser une égalité. Nombres de groupes ne sont ni couverture de code ni unités équivalentes. Les deux manquent le contrôle NUL.\n"
+          ]
+        },
+        "tokens": {
+          "status": "PASS",
+          "input_tokens": 945767,
+          "cached_input_tokens": 823424,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 26602,
+          "reasoning_output_tokens": 3551,
+          "non_reasoning_output_tokens": 23051,
+          "total_tokens": 972369,
+          "new_input_tokens": 122343,
+          "cache_hit_fraction": 0.8706415004964225,
+          "tokens_per_validated_requirement": 46303.28571428572,
+          "tokens_per_quality_point": 10128.84375,
+          "validated_requirements": 21,
+          "quality_score": 96,
+          "validated_requirement_denominator": 21,
+          "quality_score_denominator": 96.0
+        },
+        "new_input_plus_output_tokens": 148945,
+        "latency": {
+          "status": "AVAILABLE_OBSERVED",
+          "basis": "paired completed native turn windows, client monotonic receipt clocks",
+          "totals": {
+            "visible_tools_hooks_review_observed_union_seconds": 53.86168560999795,
+            "no_visible_tools_hooks_review_observed_seconds": 938.3015646690037,
+            "paired_visible_intervals_lower_bound_seconds": 53.86168560999795,
+            "paired_union_includes_partial_run": false,
+            "command_count": 45,
+            "command_failures": 6,
+            "hook_count": 0,
+            "auto_review_count": 15,
+            "command_native_duration_seconds": 3.838,
+            "hook_native_duration_seconds": 0,
+            "auto_review_native_duration_seconds": 47.477,
+            "last_token_usage_input_tokens_distribution": {
+              "p50": 30326.0,
+              "max": 51164
+            },
+            "volume": {
+              "command_aggregated_output_utf8_bytes": 115098,
+              "command_output_delta_utf8_bytes": 17307,
+              "hook_context_utf8_bytes": 0
+            },
+            "exact_duplicate_output_extra_utf8_bytes": 257
+          },
+          "phase_first_visible_text": [
+            {
+              "phase": 1,
+              "first_agent_text_delta_after_turn_start_seconds": 3.506458431002102
+            },
+            {
+              "phase": 2,
+              "first_agent_text_delta_after_turn_start_seconds": 1.64748112199959
+            },
+            {
+              "phase": 3,
+              "first_agent_text_delta_after_turn_start_seconds": 2.7072962790007296
+            }
+          ]
+        },
+        "native_commands": 45,
+        "failed_native_commands": 6,
+        "native_hooks": 0,
+        "own_tests": {
+          "runtime": "v22.13.0",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "evidence_id": "C2/evidence/own-tests-baseline-final.log"
+        }
+      }
+    }
+  },
+  "frozen_criteria": [
+    {
+      "name": "health",
+      "weight": 1
+    },
+    {
+      "name": "room_creation",
+      "weight": 2
+    },
+    {
+      "name": "reservation_creation",
+      "weight": 4
+    },
+    {
+      "name": "reservation_lookup",
+      "weight": 2
+    },
+    {
+      "name": "unknown_resources",
+      "weight": 2
+    },
+    {
+      "name": "input_validation",
+      "weight": 4
+    },
+    {
+      "name": "timestamp_validation",
+      "weight": 4
+    },
+    {
+      "name": "overlap_rejected",
+      "weight": 5
+    },
+    {
+      "name": "adjacent_allowed",
+      "weight": 3
+    },
+    {
+      "name": "rooms_independent",
+      "weight": 2
+    },
+    {
+      "name": "idempotency_replay",
+      "weight": 4
+    },
+    {
+      "name": "idempotency_conflict",
+      "weight": 3
+    },
+    {
+      "name": "concurrent_collisions",
+      "weight": 5
+    },
+    {
+      "name": "concurrent_idempotency",
+      "weight": 4
+    },
+    {
+      "name": "restart_persistence",
+      "weight": 4
+    },
+    {
+      "name": "cancellation_history",
+      "weight": 4
+    },
+    {
+      "name": "cancel_frees_slot",
+      "weight": 3
+    },
+    {
+      "name": "cancelled_creation_replay",
+      "weight": 4
+    },
+    {
+      "name": "http_errors",
+      "weight": 3
+    },
+    {
+      "name": "sql_input_safety",
+      "weight": 3
+    },
+    {
+      "name": "phase1_upgrade_preservation",
+      "weight": 4
+    }
+  ],
+  "historical_criteria_status_rows": [
+    [
+      "health",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "room_creation",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "reservation_creation",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "reservation_lookup",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "unknown_resources",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "input_validation",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "timestamp_validation",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "overlap_rejected",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "adjacent_allowed",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "rooms_independent",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "idempotency_replay",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "idempotency_conflict",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "concurrent_collisions",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "concurrent_idempotency",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "restart_persistence",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "cancellation_history",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "cancel_frees_slot",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "cancelled_creation_replay",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "http_errors",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "sql_input_safety",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "phase1_upgrade_preservation",
+      "PASS",
+      "PASS"
+    ]
+  ],
+  "supplemental_title_nul": {
+    "frozen_functional_score_affected": false,
+    "C1": {
+      "aidn": "FAIL",
+      "baseline": "PASS",
+      "timing": "post-hoc"
+    },
+    "C2": {
+      "aidn": "FAIL",
+      "baseline": "FAIL",
+      "timing": "predeclared before corrected pair",
+      "defect": "GET/DELETE truncate after NUL; creation/replay preserve exact original"
+    }
+  },
+  "invalidated_pair": {
+    "status": "INVALIDATED",
+    "eligible_for_primary_comparison": false,
+    "selected_as_best_retry": false,
+    "reason": "Preparation configured client sourceBranch dev while both starter repositories are on main. The first A developer observed START_SESSION_BRANCH_NOT_AIDN in all three phases, asked for arbitration, and produced no application. Package provenance dev does not require client branch dev. Preserve this pair and its costs outside the primary quality/performance comparison; separate fresh corrected pair selected before external oracle/quality review, without product repair or choosing a better result.",
+    "decision_before_external_oracle_and_review": true,
+    "costs": {
+      "productive_seconds": 1482.4462265400034,
+      "total_tokens": 2365198,
+      "new_input_plus_output_tokens": 263566
+    },
+    "runs": {
+      "aidn": {
+        "native_status": "COMPLETED",
+        "native_model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "model_fallback_observed": false,
+        "productive_seconds": 242.2270800410024,
+        "phase_seconds": [
+          78.99383518100149,
+          55.98863826500019,
+          107.24460659500073
+        ],
+        "external": {
+          "status": "FAIL",
+          "startup_failure": "Application exited during startup; see server.log\n",
+          "passed_requirements": null,
+          "total_requirements": null,
+          "functional_score_out_of_60": null
+        },
+        "qualitative": {
+          "scores": {
+            "functional": null,
+            "maintainability": null,
+            "tests": null,
+            "operations": null
+          },
+          "total_out_of_100": null,
+          "not_evaluable_reasons": {
+            "maintainability": "Aucune application livrée après trois refus de branche liés à la préparation ; revue applicative impossible.",
+            "tests": "Aucune application livrée après trois refus de branche liés à la préparation ; revue applicative impossible.",
+            "operations": "Aucune application livrée après trois refus de branche liés à la préparation ; revue applicative impossible."
+          },
+          "review_evidence": [
+            "Décision de recommencer les deux bras avant oracle/revue : corrected-pair-root-decision.json ; invalid-pair-reference.json. Résultats externes et coûts natifs originaux conservés.\n"
+          ]
+        },
+        "tokens": {
+          "status": "PASS",
+          "input_tokens": 851462,
+          "cached_input_tokens": 739712,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 4131,
+          "reasoning_output_tokens": 435,
+          "non_reasoning_output_tokens": 3696,
+          "total_tokens": 855593,
+          "new_input_tokens": 111750,
+          "cache_hit_fraction": 0.8687551529017149,
+          "tokens_per_validated_requirement": null,
+          "tokens_per_quality_point": null,
+          "validated_requirements": null,
+          "quality_score": null,
+          "validated_requirement_denominator": null,
+          "quality_score_denominator": null
+        },
+        "new_input_plus_output_tokens": 115881,
+        "latency": {
+          "status": "AVAILABLE_OBSERVED",
+          "basis": "paired completed native turn windows, client monotonic receipt clocks",
+          "totals": {
+            "visible_tools_hooks_review_observed_union_seconds": 41.84187370699692,
+            "no_visible_tools_hooks_review_observed_seconds": 199.73561523300123,
+            "paired_visible_intervals_lower_bound_seconds": 41.84187370699692,
+            "paired_union_includes_partial_run": false,
+            "command_count": 32,
+            "command_failures": 7,
+            "hook_count": 35,
+            "auto_review_count": 10,
+            "command_native_duration_seconds": 2.292,
+            "hook_native_duration_seconds": 1.776,
+            "auto_review_native_duration_seconds": 36.336,
+            "last_token_usage_input_tokens_distribution": {
+              "p50": 39951.0,
+              "max": 54509
+            },
+            "volume": {
+              "command_aggregated_output_utf8_bytes": 295947,
+              "command_output_delta_utf8_bytes": 105592,
+              "hook_context_utf8_bytes": 1400
+            },
+            "exact_duplicate_output_extra_utf8_bytes": 77672
+          },
+          "phase_first_visible_text": [
+            {
+              "phase": 1,
+              "first_agent_text_delta_after_turn_start_seconds": 6.084671230999447
+            },
+            {
+              "phase": 2,
+              "first_agent_text_delta_after_turn_start_seconds": 3.105049756999506
+            },
+            {
+              "phase": 3,
+              "first_agent_text_delta_after_turn_start_seconds": 3.1681814280000253
+            }
+          ]
+        },
+        "native_commands": 32,
+        "failed_native_commands": 7,
+        "native_hooks": 35
+      },
+      "baseline": {
+        "native_status": "COMPLETED",
+        "native_model": "gpt-6.1-sol",
+        "reasoning_effort": "medium",
+        "model_fallback_observed": false,
+        "productive_seconds": 1240.219146499001,
+        "phase_seconds": [
+          569.7030006060013,
+          381.036361466,
+          289.4797844269997
+        ],
+        "external": {
+          "status": "PASS",
+          "startup_failure": null,
+          "passed_requirements": 21,
+          "total_requirements": 21,
+          "functional_score_out_of_60": 60
+        },
+        "qualitative": {
+          "scores": {
+            "functional": 60,
+            "maintainability": null,
+            "tests": null,
+            "operations": null
+          },
+          "total_out_of_100": null,
+          "not_evaluable_reasons": {
+            "maintainability": "Application externe évaluée et résultats conservés, mais revue qualitative comparative volontairement non conduite : la paire entière est invalidée par sa préparation. Ce motif ne décrit pas une incapacité à lire le produit B.",
+            "tests": "Application externe évaluée et résultats conservés, mais revue qualitative comparative volontairement non conduite : la paire entière est invalidée par sa préparation. Ce motif ne décrit pas une incapacité à lire le produit B.",
+            "operations": "Application externe évaluée et résultats conservés, mais revue qualitative comparative volontairement non conduite : la paire entière est invalidée par sa préparation. Ce motif ne décrit pas une incapacité à lire le produit B."
+          },
+          "review_evidence": [
+            "Décision de recommencer les deux bras avant oracle/revue : corrected-pair-root-decision.json ; invalid-pair-reference.json. Résultats externes et coûts natifs originaux conservés.\n"
+          ]
+        },
+        "tokens": {
+          "status": "PASS",
+          "input_tokens": 1474588,
+          "cached_input_tokens": 1361920,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 35017,
+          "reasoning_output_tokens": 5522,
+          "non_reasoning_output_tokens": 29495,
+          "total_tokens": 1509605,
+          "new_input_tokens": 112668,
+          "cache_hit_fraction": 0.9235935732557162,
+          "tokens_per_validated_requirement": 71885.95238095238,
+          "tokens_per_quality_point": null,
+          "validated_requirements": 21,
+          "quality_score": null,
+          "validated_requirement_denominator": 21,
+          "quality_score_denominator": null
+        },
+        "new_input_plus_output_tokens": 147685,
+        "latency": {
+          "status": "AVAILABLE_OBSERVED",
+          "basis": "paired completed native turn windows, client monotonic receipt clocks",
+          "totals": {
+            "visible_tools_hooks_review_observed_union_seconds": 121.81188178699449,
+            "no_visible_tools_hooks_review_observed_seconds": 1117.4741865680062,
+            "paired_visible_intervals_lower_bound_seconds": 121.81188178699449,
+            "paired_union_includes_partial_run": false,
+            "command_count": 49,
+            "command_failures": 5,
+            "hook_count": 0,
+            "auto_review_count": 18,
+            "command_native_duration_seconds": 71.093,
+            "hook_native_duration_seconds": 0,
+            "auto_review_native_duration_seconds": 51.548,
+            "last_token_usage_input_tokens_distribution": {
+              "p50": 35983.0,
+              "max": 59385
+            },
+            "volume": {
+              "command_aggregated_output_utf8_bytes": 148261,
+              "command_output_delta_utf8_bytes": 36100,
+              "hook_context_utf8_bytes": 0
+            },
+            "exact_duplicate_output_extra_utf8_bytes": 0
+          },
+          "phase_first_visible_text": [
+            {
+              "phase": 1,
+              "first_agent_text_delta_after_turn_start_seconds": 3.3243538000006083
+            },
+            {
+              "phase": 2,
+              "first_agent_text_delta_after_turn_start_seconds": 1.9746033179999358
+            },
+            {
+              "phase": 3,
+              "first_agent_text_delta_after_turn_start_seconds": 2.930221560998689
+            }
+          ]
+        },
+        "native_commands": 49,
+        "failed_native_commands": 5,
+        "native_hooks": 0
+      }
+    }
+  },
+  "shared_qualification_tokens_counted_once": {
+    "totalTokens": 38509,
+    "inputTokens": 38428,
+    "cachedInputTokens": 12544,
+    "outputTokens": 81
+  },
+  "reason_inventory": {
+    "json_candidates": 201,
+    "unresolved": 0,
+    "complete_terminal_aidn_documents": 22,
+    "observer_documents": 3,
+    "partial_children": 8,
+    "hook_summary_documents": 10,
+    "null_reason_occurrences": 22,
+    "empty_string_reason_occurrences": 1,
+    "public_contract_documents": 16,
+    "public_contract_pass": 15,
+    "public_contract_fail": 1,
+    "remaining_failed_contract": "runtime-project-handoff-packet.v1, six required properties absent in PG response"
+  },
+  "gfd": {
+    "package_source": "effective_declared",
+    "client_adoption": "absent",
+    "explicit_invocation_observed": false,
+    "isolated_causal_effect": "UNAVAILABLE"
+  },
+  "limits": [
+    "N=1 per arm and fixed A then B order",
+    "Provider TTFT, SQL/cache timings and helper-model token costs unavailable",
+    "Old Node24 phase3A and asymmetric migration fixture preparation corrected in new pair",
+    "Anonymous exports do not establish independent double-blind review",
+    "Two arms cannot isolate GFD contribution",
+    "NUL supplementary does not alter frozen functional score",
+    "Quality score is a subjective informed review, not a statistical estimator",
+    "Invalidated entire pair retained outside primary comparisons",
+    "Currency cost and exhaustive helper/observer usage unavailable"
+  ],
+  "local_evidence_hashes": {
+    "C1/report/actual-results.json\n": {
+      "sha256": "069d55b2b8d144023256ec32bf571299957365b24c0a1116e9a6f919215541b6",
+      "bytes": 16600
+    },
+    "ANALYSIS/latency/native-latency-analysis.json\n": {
+      "sha256": "6f0e710de0cc3fc0b82aadaf77edf3498ec3b7fa3b67f687764bb07d19462b86",
+      "bytes": 92555
+    },
+    "C1/evidence/text-roundtrip-comparison.json\n": {
+      "sha256": "0ed66644a6a013cca51c6ea1c890ac2100c1b6069d6a592614ad5a1b7d7abfd6",
+      "bytes": 4940
+    },
+    "ANALYSIS/corrected-qualitative-review.final.json\n": {
+      "sha256": "1df231d311b3489a055adede4ed2dbee530a6771d89712a73145303a8a6c58d2",
+      "bytes": 4315
+    },
+    "C2/evidence/run-aidn/run-summary.json\n": {
+      "sha256": "e1c89d25ee71f702cd3494266086d49d1b3e4657d87e804d899f82849755cec3",
+      "bytes": 1327
+    },
+    "C2/evidence/run-aidn/phase1-thread.json\n": {
+      "sha256": "198c57a5fc7cb1c31c724b0fb0d285b99e497e2589add76df361bcada9c771c6",
+      "bytes": 1991
+    },
+    "C2/evidence/run-aidn/phase3-thread.json\n": {
+      "sha256": "2132ab451fd0896bd13d109cc1329c5dc3b7b5ffe47e220630978c46a7b5933b",
+      "bytes": 1991
+    },
+    "C2/evidence/evaluation-aidn/result.json\n": {
+      "sha256": "4d508619949dd2543c98566245d045f955b75cbe35c6bb648c1df2f142c36925",
+      "bytes": 3118
+    },
+    "C2/evidence/run-aidn/native-events.jsonl\n": {
+      "sha256": "09348af9b4e8d149b3845ef4158948ad2b408d24d49b0f2094185f6522da4cbd",
+      "bytes": 4153055
+    },
+    "C2/evidence/run-aidn/native-event-clocks.jsonl\n": {
+      "sha256": "d5a8c95cd37653b9c9cf9000e5b22bc5046b2d1134882f4d49d643b60004d51f",
+      "bytes": 2268730
+    },
+    "C2/evidence/run-aidn/native-usage.jsonl\n": {
+      "sha256": "050dad07bf8eb48561861c33422583ec9737b2e488c925c238a849ac2a46818e",
+      "bytes": 1044
+    },
+    "C2/evidence/run-aidn/phase-timing.jsonl\n": {
+      "sha256": "2427712e8a47f636e87f048b73e8a67d47c21bfe6a507cf6ead3a0c2f40f8ddb",
+      "bytes": 1444
+    },
+    "C2/evidence/run-aidn/native-rpc-timing.jsonl\n": {
+      "sha256": "5d0520bb2606f8f14d3ecd2ac39a25f363c4adf32afffb1d49bce749e14d2ef9",
+      "bytes": 3560
+    },
+    "C2/evidence/run-aidn/measurement-availability.json\n": {
+      "sha256": "b93b00f8bae9c227f03375e93738e75975029b4c879e990dfdeac779cbbc28cd",
+      "bytes": 2321
+    },
+    "C2/evidence/run-baseline/run-summary.json\n": {
+      "sha256": "9d10087420ab813200c1c09e138f04f682071122a316c8ddf62a8ed7be4b0693",
+      "bytes": 1329
+    },
+    "C2/evidence/run-baseline/phase1-thread.json\n": {
+      "sha256": "622a7ed2df5e6591e02fcd858e5bf4954bc0fb6cd01b066b45c5330fa409a84b",
+      "bytes": 1923
+    },
+    "C2/evidence/run-baseline/phase3-thread.json\n": {
+      "sha256": "cc56a98f0868cefa8067843e17abcbdc03ad9162d9d3eab153c7c0ac6c6d72ac",
+      "bytes": 1923
+    },
+    "C2/evidence/evaluation-baseline/result.json\n": {
+      "sha256": "589a567ae050afc68db01ce83d0f74e6613cb7afcf5df1eac69fbf5278dfe61d",
+      "bytes": 3133
+    },
+    "C2/evidence/run-baseline/native-events.jsonl\n": {
+      "sha256": "7e110f5fe501123eea750d75766b15fef61c82ba2f1084cb32ee63f30a14e0ce",
+      "bytes": 1535299
+    },
+    "C2/evidence/run-baseline/native-event-clocks.jsonl\n": {
+      "sha256": "43ebffebf84c5d8170df180daae40a0d1b326b5103f7d3b335adbfd0d228ff49",
+      "bytes": 796281
+    },
+    "C2/evidence/run-baseline/native-usage.jsonl\n": {
+      "sha256": "1c17cb4e26478335db4ac7a96c6f16b3e0336656a04160b5b2ddb134be7f87a6",
+      "bytes": 1036
+    },
+    "C2/evidence/run-baseline/phase-timing.jsonl\n": {
+      "sha256": "4feb1bd963a3749090f88c6d0b1230c98a4db4ee7137dceeab2082f9184ce9d5",
+      "bytes": 1444
+    },
+    "C2/evidence/run-baseline/native-rpc-timing.jsonl\n": {
+      "sha256": "a2feab1f1c9ebcb7131e2865e7fe8d2c94de093f2a32515ff1cbe0c2682be325",
+      "bytes": 3560
+    },
+    "C2/evidence/run-baseline/measurement-availability.json\n": {
+      "sha256": "0d025424c8ecbfaac6613ea33c1e448bd20a3bc2a31b44f70589a94cce875479",
+      "bytes": 2321
+    },
+    "ANALYSIS/invalid-pair-reference.report-qualified.json\n": {
+      "sha256": "cef257bf2a894acecde4e943f6d733ab9cf4a3eac1adcce6d7c0ab0a41542b76",
+      "bytes": 1595
+    },
+    "INVALIDATED-PAIR/PROTOCOL.md\n": {
+      "sha256": "8d89f8cacaa5deb8a47fe340e7b3f937fb01abe340069d1a6e59affbbf19972a",
+      "bytes": 11637
+    },
+    "INVALIDATED-PAIR/preparation/install-aidn.mjs\n": {
+      "sha256": "b158a16bf9362a8611001717d96c2412b2622eb097295ab9f062759b95a4d25e",
+      "bytes": 2568
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/run-summary.json\n": {
+      "sha256": "47199b24ddbbf491bfcf6c1ff34ed3c5a130c77cf7ce6046d3035e55dbcc410f",
+      "bytes": 1325
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/native-events.jsonl\n": {
+      "sha256": "ac84fd3879cc9e4506d0cccaa7d0662c43321bfd12a8234a1e0753b490580694",
+      "bytes": 975552
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/run-summary.json\n": {
+      "sha256": "dafde2afe311c6413ea2bec79080d176b634523960510d95d48226e5e9eb59b7",
+      "bytes": 1323
+    },
+    "ANALYSIS/corrected-pair-root-decision.json\n": {
+      "sha256": "08a17bd952ea15be286ecc5774f5f9a572b9a848798a5f1cf5c7ad57e4736659",
+      "bytes": 824
+    },
+    "ANALYSIS/latency/round2-after-both-final/observed-friction-audit.json\n": {
+      "sha256": "c512f6aefdf56cf9193d31d2b964f18829fb2b96310b699812feccbc4e334566",
+      "bytes": 10546
+    },
+    "C2/evidence/invalid-pair-reference.json\n": {
+      "sha256": "41d4cefb0f3c5dea20ffa81a32319d5a8df69b1a39a5068714c27d21d05be0d4",
+      "bytes": 1119
+    },
+    "ANALYSIS/experimental-source-branch-review.md\n": {
+      "sha256": "4b6f1f092720e7897b35943e987c5564bb7d7ee9d96e82cfde54ade041649c89",
+      "bytes": 3925
+    },
+    "ANALYSIS/invalid-pair-qualitative-non-evaluation.final.json\n": {
+      "sha256": "c8d48093bd6740ef3372043b1a39c562182f082f02073047967841d65928cd0d",
+      "bytes": 2181
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/phase1-thread.json\n": {
+      "sha256": "b87358d91e5984c4a319312961cf7b4989393e36f20a91c238ee035fa185f109",
+      "bytes": 1931
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/phase3-thread.json\n": {
+      "sha256": "c01cee989c1d84eab7a0b8456922cd68afc824cb305f56322da201d755f96790",
+      "bytes": 1931
+    },
+    "INVALIDATED-PAIR/evidence/evaluation-aidn/result.json\n": {
+      "sha256": "9254d1f2fc5fe0cd0f3d5e7430846f663db32ce2204fcc0e3b411acffe4e70cc",
+      "bytes": 400
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/native-event-clocks.jsonl\n": {
+      "sha256": "4b698054d25181a8fec1c7616d05f4e83367a09ec7349c10bac80ef83fe0eec9",
+      "bytes": 691045
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/native-usage.jsonl\n": {
+      "sha256": "106905e104c1b1c24e9ee8c5602a6694db93340a8ef307924d24e09e8afbc22e",
+      "bytes": 1032
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/phase-timing.jsonl\n": {
+      "sha256": "6f1770a34e2430b886eb6deb8766da8b41a3f566e601f1f452458e7d20a1b1cc",
+      "bytes": 1451
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/native-rpc-timing.jsonl\n": {
+      "sha256": "557b448efc81d59ca441e80602f222b115367c0e28d90bb4df27bbb16ed49372",
+      "bytes": 3560
+    },
+    "INVALIDATED-PAIR/evidence/run-aidn/measurement-availability.json\n": {
+      "sha256": "2ee0a32fc0d57cd2b5d4621d25ffecf2b441f128b16d233d9372d0048c799cc9",
+      "bytes": 2321
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/phase1-thread.json\n": {
+      "sha256": "1fe79f58c71fa027f7d4ef3465dbc465c2e3c10369369dd097f23147b07510c2",
+      "bytes": 1873
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/phase3-thread.json\n": {
+      "sha256": "eba8b6640995a1a3c62398c7c6651ccb215b85154f6d70c78433f7f6b5d86409",
+      "bytes": 1873
+    },
+    "INVALIDATED-PAIR/evidence/evaluation-baseline/result.json\n": {
+      "sha256": "0c8b224a184ebcfac94eb2e9cfca0780b30e51167f5ef5759c159091bac3c5da",
+      "bytes": 3118
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/native-events.jsonl\n": {
+      "sha256": "5cd6c1c1543a7ef5e228aeb2160ec5f881d0b3e9d60389bfd9193d6c89e4751e",
+      "bytes": 1897201
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/native-event-clocks.jsonl\n": {
+      "sha256": "310249d221f3f69f956c2931df86454614001d732c8b2577fcc55cd1d70a2373",
+      "bytes": 937344
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/native-usage.jsonl\n": {
+      "sha256": "fdd1c6deccc037bed3bea1e8f2c44fae4c5e70bdfc3524179bb74331b29d3d69",
+      "bytes": 1037
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/phase-timing.jsonl\n": {
+      "sha256": "17fcd262ee8fbe538f405c12b575fe629164ab096f851aaa2a0dbd1cc2f4046c",
+      "bytes": 1444
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/native-rpc-timing.jsonl\n": {
+      "sha256": "91d4420af18b9c0d9fe26b1e003b343581d389f00a3f0cd5ffa60c8073d16d17",
+      "bytes": 3560
+    },
+    "INVALIDATED-PAIR/evidence/run-baseline/measurement-availability.json\n": {
+      "sha256": "a2f3927dbf14db37b0e0cdd81b82c02b8723ce014facd3b0479306862f65f725",
+      "bytes": 2321
+    },
+    "INVALIDATED-PAIR/evidence/preflight-ready.json\n": {
+      "sha256": "a779bd29081db3434aa7e4fbce476733ad12fad763f2dd086cb6bfa3e81de00e",
+      "bytes": 372
+    },
+    "INVALIDATED-PAIR/evidence/preflight-exact-ready.json\n": {
+      "sha256": "2e4216b62c9b6c88a3ce2d52cde40a811d1784aba1e3968d9b7f50d06eb9c096",
+      "bytes": 561
+    },
+    "INVALIDATED-PAIR/evidence/preflight-reauthenticated-exact.json\n": {
+      "sha256": "3acda452971d96b538da2be5e88adf7e45c7184d7ff40b6c1fae5cea382c620b",
+      "bytes": 1510
+    },
+    "INVALIDATED-PAIR/evidence/preflight-node.json\n": {
+      "sha256": "dc5c17c750173bbfaf23a6ce96f0186bc36a7be44b5347900cb452623a4ed704",
+      "bytes": 932
+    },
+    "ANALYSIS/latency/mcp-startup-audit.json\n": {
+      "sha256": "36bca95c05184dd5f299fd85b0b7c08b488b9bad6e0fe232aa8fb35ed821add0",
+      "bytes": 7636
+    },
+    "C2/evidence/text-roundtrip-comparison.json\n": {
+      "sha256": "ae0c5f51647849ce27c8c05755ded083a692ffc18bf76e801d43dc1afbb262d8",
+      "bytes": 4936
+    },
+    "C2/package/manifest.json\n": {
+      "sha256": "c5d6d3050adaf91b0ae3f34cb89a8f19a5d2be30dabcdeddc9f08dd944fc69c1",
+      "bytes": 58908
+    },
+    "C2/evidence/package-delivery.json\n": {
+      "sha256": "6e39b81ac9227962de59e5bcfbe15fdc85d386f5708b0c04c2f4d8e3345b4cf5",
+      "bytes": 620
+    },
+    "C2/evidence/preparation-manifest.json\n": {
+      "sha256": "22e12910b235348576d6330a4e4a6265fa59896b8cf79aa454f5d20c9e142b44",
+      "bytes": 7354
+    },
+    "C2/package/dist/aidn-workflow-0.12.0.tgz\n": {
+      "sha256": "465f33d7f208e9fe050b0a7d92047f0d05e52210dc0fa523a3503040b7d40407",
+      "bytes": 1946394
+    },
+    "C2/evidence/human-native-review-approval.json\n": {
+      "sha256": "c5aadcbe1059490788713ccac68780a07711ff24fc467fb1aec9469ffb9e2512",
+      "bytes": 1759
+    },
+    "C2/evidence/native-discovery-after-human-review/hooks-discovery.json\n": {
+      "sha256": "76936238882bf9415647e1734183d539f310b20499ffb292a1a433b5c41d849f",
+      "bytes": 2542
+    },
+    "C2/PROTOCOL.md\n": {
+      "sha256": "329cf2153633bf57a90f3cbcd1ca70b4a50eea4b54e23337364f37f7f6de319b",
+      "bytes": 11908
+    },
+    "C2/PHASE1.md\n": {
+      "sha256": "22eec9a153e935e227cec74a61bdd218a2d1b8c78b3d606ada5543bec38be877",
+      "bytes": 2536
+    },
+    "C2/PHASE2.md\n": {
+      "sha256": "550994f2c22a577139ea89fd604c57b4409192f778c52bbfbc0462a00933916b",
+      "bytes": 859
+    },
+    "C2/PHASE3.md\n": {
+      "sha256": "270f9c5a31dfb279d4f8f0da4ed2b2dcfd46b271dc1a41fc9086fd91e159538c",
+      "bytes": 766
+    },
+    "C2/evaluator.mjs\n": {
+      "sha256": "d362bfbf754254453a06cec3bdfab00473eccea52735d02282b6edf1e648d7dd",
+      "bytes": 11420
+    },
+    "C2/metrics.mjs\n": {
+      "sha256": "f69fbe0558bd4398b0e9f75ee1366fad166f30e458d7529a4c72e6263c3c2d33",
+      "bytes": 1905
+    },
+    "ANALYSIS/corrected-review-independent.md\n": {
+      "sha256": "557c9513d578a835b0d36656399e82a7773f3ee40be1c9305f9f4497b49db7c6",
+      "bytes": 20626
+    },
+    "ANALYSIS/static-architecture-followup.md\n": {
+      "sha256": "0239bf462d3545dfb068f3c4bd5c3f8bda461dbf7a6ad746e5af684a18f0fec3",
+      "bytes": 13113
+    },
+    "ANALYSIS/DELIVERED_FIXES_PR130_133.md\n": {
+      "sha256": "aed0775d1c5e90a5e1f32e5f5c61dce165c74292c173e08c7e5e0e16759801b5",
+      "bytes": 4154
+    },
+    "ANALYSIS/latency/corrected-after-both-final/metadata-analysis.json\n": {
+      "sha256": "cb7a8319b1fa37ea4e08df873b6cf61c513b47996a15843bb73dbcb485cedfb6",
+      "bytes": 35219
+    },
+    "ANALYSIS/latency/corrected-after-both-final/observed-friction-audit-v2.json\n": {
+      "sha256": "dbeacf3018c9d0690587cf07ee2bb7a76079c719b005a92cb33a1d2ae17a6b86",
+      "bytes": 63387
+    },
+    "ANALYSIS/latency/corrected-detailed-complete-v2/native-latency-analysis.json\n": {
+      "sha256": "34afc05924a4296bd596ef03c640519ea917d083410ee323eca7b8602645e81e",
+      "bytes": 98927
+    },
+    "ANALYSIS/reporting-final-review/README.md\n": {
+      "sha256": "7a686b24cd4ad9fcd774ab275fadbe2fdbaaa3fc87af2f9bd59d5388c8818f2e",
+      "bytes": 4353
+    },
+    "ANALYSIS/reporting-final-review/identity-replay.json\n": {
+      "sha256": "d6eb48550b44ff7fa9e11beb21ed53c31f531f7fc2f55f0f457ab6cd483b96de",
+      "bytes": 2828
+    },
+    "C2/evidence/both-final-root-qualification.json\n": {
+      "sha256": "dfeb6f91d1f3d29619b1ceb41fdb908c4d566f8297e6b89fcc24a555b1d313fd",
+      "bytes": 3213
+    },
+    "C2/evidence/products-before-external-evaluation.json\n": {
+      "sha256": "9037e6ed2b0f94fb6576186f335fe34c385ad5f3ebb591cff0ec54e08ef45825",
+      "bytes": 18116
+    },
+    "C2/evidence/products-after-external-evaluation.json\n": {
+      "sha256": "f06d598b9d0c2541097de834648dfdffb20ea6d2f89fd1f33d2671fff5762dbd",
+      "bytes": 18534
+    },
+    "C2/evidence/dedicated-postgres-qualification.json\n": {
+      "sha256": "79ad68b1b72f9e704d9f70c59b9fbbea8c982010cc1204a5a68959b8f3b17f6f",
+      "bytes": 12871
+    },
+    "C2/evidence/source-delivery-readback-before-a.json\n": {
+      "sha256": "6b13e82b1fb8741344b3f3ff2d99cb7277e08719fa5abf9b622d751c82e5862b",
+      "bytes": 5203
+    },
+    "C2/evidence/pair-launch-seal.json\n": {
+      "sha256": "b0b754ef5400f5f100347bc153631dcd645bf47205baa1999e87c86b6be6bc9b",
+      "bytes": 837
+    },
+    "ANALYSIS/workflow-reason/corrected-final/reason-inventory.md\n": {
+      "sha256": "bff094867e4f954b457c87abda22409016b8023c6700a68c4cf9f6e069e6eb6e",
+      "bytes": 52305
+    },
+    "ANALYSIS/workflow-reason/corrected-final/inventory-qualified.json\n": {
+      "sha256": "481cd3d52fe177fc75e5002b5330627daa7de668f8f3e17c43968eb52014042c",
+      "bytes": 1911147
+    },
+    "ANALYSIS/workflow-reason/corrected-final/integrity-proof.json\n": {
+      "sha256": "8dee27416994e8cead77b9c3286bd5a142c233a8541d5229794e9cd5a984dc9e",
+      "bytes": 17867
+    },
+    "ANALYSIS/corrected-gfd-workflow/aidn-gfd-workflow-note.md\n": {
+      "sha256": "79ef94f98774e8b35f9af27f0fe3f4a98e74d032d71205b0808750242154d68d",
+      "bytes": 21791
+    },
+    "ANALYSIS/corrected-gfd-workflow/aggregate.json\n": {
+      "sha256": "8f0bdf63f5e90ddeecedca16ee4f14d8aead27bd692a2efe8d9cc50e3befa1ab",
+      "bytes": 5624
+    },
+    "ANALYSIS/corrected-gfd-workflow/input-integrity.json\n": {
+      "sha256": "59ecd3b8155f812e5ec2c35a52a3ea1a98f3853ba48d3fcd31baafb27fe501ec",
+      "bytes": 246
+    },
+    "ANALYSIS/latency/corrected-after-both-final/NEUTRAL_METADATA_NOTE.md\n": {
+      "sha256": "fe2b1a1b57adc2c849135018e5c744414ab7acf50df58a2f6f33eac6f6e74648",
+      "bytes": 11943
+    },
+    "ANALYSIS/latency/corrected-after-both-final/final-note-publication-integrity.json\n": {
+      "sha256": "2c8e0bf1ae62b0172b7e7eba5b2204625f25e684777b73fe63995ec2603798ae",
+      "bytes": 2308
+    },
+    "ANALYSIS/public-report-appendices/DELIVERED_FIXES_PR130_133.md\n": {
+      "sha256": "aed0775d1c5e90a5e1f32e5f5c61dce165c74292c173e08c7e5e0e16759801b5",
+      "bytes": 4154
+    },
+    "ANALYSIS/public-report-appendices/aidn-gfd-workflow-note.md\n": {
+      "sha256": "e4b93fd1c1599c90addff016b58f2ecf4c5a94c253f5c1bfcd2162ce5cae279a",
+      "bytes": 24000
+    },
+    "ANALYSIS/public-report-appendices/baseline-review.md\n": {
+      "sha256": "f3f1fb573e883cc3001d032637fd27cae6d505c75e492050654ad30f21e91e55",
+      "bytes": 14690
+    },
+    "ANALYSIS/public-report-appendices/latency-inventory.md\n": {
+      "sha256": "eb1beb5d11408cc66b0a6f77d28bae1a74979756492758d78a2f80b4706f04b4",
+      "bytes": 12042
+    },
+    "ANALYSIS/public-report-appendices/reason-inventory.md\n": {
+      "sha256": "f7e1ed164a12e4f183e0afb86983d30901aea130a14a1415d9f0e424478f2deb",
+      "bytes": 55321
+    },
+    "ANALYSIS/public-report-appendices/static-architecture-followup.md\n": {
+      "sha256": "b3070041aa562e7135ab3e78d5db3920a2113e00766cc38fdd2df5e1c1b67f8a",
+      "bytes": 14419
+    }
+  },
+  "raw_traces_and_products_published": false,
+  "pdf_local_only": true
+}
