@@ -381,7 +381,7 @@ Priorité4 — expérimentation suivante : nouveau projet et runtime propres apr
 
 Les graphiques n’incluent que les valeurs réellement mesurées ; un bras nouveau absent n’est pas tracé à zéro. Les durées d’un essai partiel, si présentes, représentent son temps consommé. PNG et SVG accompagnent la version Markdown ; PDF local uniquement.
 
-![Développement mesuré — essais partiels conservés](figures/development-time.png)
+![Développement mesuré — C1 et C2](figures/development-time.png)
 
 ![Décomposition des tokens natifs primaires](figures/native-tokens.png)
 
@@ -1533,7 +1533,7 @@ La preuve finale ne se limite pas à README et aux exports anonymisés de code. 
 | `README.md:3–14,27–43` | Node 22.13.0/SQLite experimental, commandes start/test/migrate, PORT et DATABASE_FILE, persistance/répertoire runtime, migration atomique v1→v2, arrêt des anciens processus, backup DB/WAL, incompatibilité de downgrade sans backup ; annulation et replay historique ; verrouillage local/WAL/busy timeout ; erreurs et diagnostic d’exploitation ; validations réelles phase 1/2 et limites. |
 | `docs/audit/HANDOFF-PACKET.md:30–35,60–77,94–101` | `refresh_required`, prochain re-anchor puis attente d’un nouveau scope/cycle, THINKING/session sans session/cycle actifs ; signaux repair clean/freshness ok. La note de phase 3 énumère 11 tests Node22.13 et probes rollback annulation, replay immuable, overlap UPDATE, DELETE malformé, intégrité/FK, migration CLI deux fois avec données, smoke de démarrage et health, refus de futur schéma préservant les données. |
 | `HANDOFF-PACKET.md:101,111` | Probes inline non conservés comme tests, absence de charge soutenue/power-loss, SQLite expérimental, arrêt v1 et backup DB/WAL, local only ; échec strict control share 1.0 > 0.7 conservé séparément de la chaîne ordinaire réussie. |
-| `docs/audit/sessions/S001.md` et `CURRENT-STATE.md` finaux | Session fermée, C001/C002 terminés, continuation et rapport de vérification phase 3, CURRENT en THINKING avec active_session/active_cycle none. Ce sont des états/rapports livrés, pas une attribution de qualité indépendante. |
+| `A:S001` (session générée du client, hors source package) et `CURRENT-STATE.md` finaux | Session fermée, C001/C002 terminés, continuation et rapport de vérification phase 3, CURRENT en THINKING avec active_session/active_cycle none. Ce sont des états/rapports livrés, pas une attribution de qualité indépendante. |
 
 Les résultats phase 3 sont enregistrés à A:L3740 (11/11 tests), L3818 (probes inline réellement exécutés), puis dans le packet généré à L4040. Le JSON complet L4040 rapporte `current_state_source:postgres`, `runtime_state_source:postgres`, une consistency pass de source postgres et contient la note de handoff finale. Il est plus probant pour la source canonique que une simple qualification PostgreSQL imprimée par le caller à L4000 : ce dernier imprime `r['ok']` et `r['materialized']`, pas `r['backend']`.
 

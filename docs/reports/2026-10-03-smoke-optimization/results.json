@@ -84,12 +84,12 @@
           "total_out_of_100": 95,
           "not_evaluable_reasons": null,
           "review_evidence": [
-            "X/src/app.js:5,13,60 and X/src/store.js:10: HTTP/validation grouped in app; persistence/migration grouped in store; small modules but HttpError couples storage to HTTP.\n",
-            "X/src/app.js:92: URI/domain/internal errors are separated and SQL details hidden; X/src/store.js:61 cleans up failed migration.\n",
-            "X/src/store.js:65: direct SQLite TEXT read leaves the confirmed NUL-title defect; no score alteration of the frozen behavioral oracle.\n",
-            "X/test/api.test.js:91,117,215,249,265: real rollback, migration, two-process concurrency/restart tests; eight executed, all passed.\n",
-            "X/src/server.js:11: graceful close and idle-connection cleanup, without bounded forced close; README clearly documents migration and backup.\n",
-            "Phase-3 own validation used Node 24 and acknowledged it; independent final rerun on Node 22 passed.\n"
+            "X/src/app.js:5,13,60 and X/src/store.js:10: HTTP/validation grouped in app; persistence/migration grouped in store; small modules but HttpError couples storage to HTTP.",
+            "X/src/app.js:92: URI/domain/internal errors are separated and SQL details hidden; X/src/store.js:61 cleans up failed migration.",
+            "X/src/store.js:65: direct SQLite TEXT read leaves the confirmed NUL-title defect; no score alteration of the frozen behavioral oracle.",
+            "X/test/api.test.js:91,117,215,249,265: real rollback, migration, two-process concurrency/restart tests; eight executed, all passed.",
+            "X/src/server.js:11: graceful close and idle-connection cleanup, without bounded forced close; README clearly documents migration and backup.",
+            "Phase-3 own validation used Node 24 and acknowledged it; independent final rerun on Node 22 passed."
           ]
         },
         "tokens": {
@@ -839,11 +839,11 @@
           "total_out_of_100": 97.5,
           "not_evaluable_reasons": null,
           "review_evidence": [
-            "Y/src/validation.mjs:15,46, Y/src/app.mjs:28 and Y/src/database.mjs:122: validation, HTTP and persistence separated; HttpError remains shared with storage.\n",
-            "Y/src/database.mjs:9 and Y/src/app.mjs:70: bounded WAL retry, sanitized errors and Retry-After; transaction scaffolding repeated in open/create/cancel.\n",
-            "Y/src/database.mjs:125: stored title bytes decoded explicitly; Y/src/validation.mjs:18 rejects malformed Unicode.\n",
-            "Y/test/api.test.mjs:176,227,289,346,395,426,448,464,492: rollback, forced restart, locks, migration and text regression; fifteen executed, all passed.\n",
-            "Y/src/server.mjs:18: guarded shutdown with five-second forced connection close; README and HANDOFF record Node 22 validation and limitations.\n"
+            "Y/src/validation.mjs:15,46, Y/src/app.mjs:28 and Y/src/database.mjs:122: validation, HTTP and persistence separated; HttpError remains shared with storage.",
+            "Y/src/database.mjs:9 and Y/src/app.mjs:70: bounded WAL retry, sanitized errors and Retry-After; transaction scaffolding repeated in open/create/cancel.",
+            "Y/src/database.mjs:125: stored title bytes decoded explicitly; Y/src/validation.mjs:18 rejects malformed Unicode.",
+            "Y/test/api.test.mjs:176,227,289,346,395,426,448,464,492: rollback, forced restart, locks, migration and text regression; fifteen executed, all passed.",
+            "Y/src/server.mjs:18: guarded shutdown with five-second forced connection close; README and HANDOFF record Node 22 validation and limitations."
           ]
         },
         "tokens": {
@@ -1563,12 +1563,12 @@
           "total_out_of_100": 96.0,
           "not_evaluable_reasons": null,
           "review_evidence": [
-            "X/src/app.mjs:28 ; src/validation.mjs:5 ; src/store.mjs:71,79 : HTTP, validation et opérations persistantes séparées, requêtes préparées réutilisées.\n",
-            "X/src/store.mjs:5,85,95 : dépendance HttpError et blocs transactionnels répétés ; rollback non protégé susceptible de masquer erreur primaire, risque statique non reproduit.\n",
-            "X/test/api.test.mjs:109,125,137,156,197,250,278 : concurrence multiprocessus, restart, panne injectée, calendrier UTC, annulation et rollback migration/FK ; 11 groupes réellement PASS sous Node22.13.\n",
-            "Y dispose de preuves conservées plus ciblées sur rollback annulation, UPDATE anti-overlap, UTF8/chunked et snapshots v1 ; les probes inline déclarés par X ne sont pas des régressions conservées. Aucun des deux ne détecte le défaut NUL.\n",
-            "X/README.md:14,27,39 : commandes, sauvegarde DB/WAL, arrêt v1, restauration et replay ; src/server.mjs:16 sans délai maximal de drainage, aucun incident d’arrêt observé.\n",
-            "A/docs/audit/HANDOFF-PACKET.md:30,35,101,111 et S001.md : handoff final livré, validation phase3 et limites, malgré absence de HANDOFF dans export applicatif. Ne pas pénaliser cette exclusion de méthode. A4040 expose des champs de source PostgreSQL ; A4230 expose des succès upsert/matérialisation DB-first. Le libellé persisted PostgreSQL vient du caller et aucun readback DB final byte-identique n’a été effectué.\n"
+            "X/src/app.mjs:28 ; src/validation.mjs:5 ; src/store.mjs:71,79 : HTTP, validation et opérations persistantes séparées, requêtes préparées réutilisées.",
+            "X/src/store.mjs:5,85,95 : dépendance HttpError et blocs transactionnels répétés ; rollback non protégé susceptible de masquer erreur primaire, risque statique non reproduit.",
+            "X/test/api.test.mjs:109,125,137,156,197,250,278 : concurrence multiprocessus, restart, panne injectée, calendrier UTC, annulation et rollback migration/FK ; 11 groupes réellement PASS sous Node22.13.",
+            "Y dispose de preuves conservées plus ciblées sur rollback annulation, UPDATE anti-overlap, UTF8/chunked et snapshots v1 ; les probes inline déclarés par X ne sont pas des régressions conservées. Aucun des deux ne détecte le défaut NUL.",
+            "X/README.md:14,27,39 : commandes, sauvegarde DB/WAL, arrêt v1, restauration et replay ; src/server.mjs:16 sans délai maximal de drainage, aucun incident d’arrêt observé.",
+            "A/docs/audit/HANDOFF-PACKET.md:30,35,101,111 et S001.md : handoff final livré, validation phase3 et limites, malgré absence de HANDOFF dans export applicatif. Ne pas pénaliser cette exclusion de méthode. A4040 expose des champs de source PostgreSQL ; A4230 expose des succès upsert/matérialisation DB-first. Le libellé persisted PostgreSQL vient du caller et aucun readback DB final byte-identique n’a été effectué."
           ]
         },
         "tokens": {
@@ -1670,11 +1670,11 @@
           "total_out_of_100": 96.0,
           "not_evaluable_reasons": null,
           "review_evidence": [
-            "Y/src/app.mjs:73,105 ; src/database.mjs:89 : handler mêlant routage/validation/métier/SQL, helper transaction centralisé et projection SQL partagée.\n",
-            "Y/src/app.mjs:51,122 : gestion aborted et logger injectable ; src/database.mjs:95 rollback non protégé, risque statique non reproduit ; migration SELECT* dépendant de l’ordre de colonnes, aucun échec observé.\n",
-            "Y/test/api.test.mjs:124,144,170,209,239,292,330,386 : contraintes SQL, body UTF8/chunked, échec annulation, migration interrompue/retry et snapshots complets, restart et course concurrente ; 12 groupes réellement PASS sous Node22.13.\n",
-            "Y/README.md:108,128,142,167 et HANDOFF.md:9,31,55 : upgrade, backup/rollback, limites et validation phase3 conservés ; src/server.mjs:11 sans délai maximal de drainage, aucun incident d’arrêt observé.\n",
-            "Les sous-scores donnent des totaux égaux : A17,5+9+9,5, B17+9,5+9,5. Ils reposent sur les critères décrits, sans ajustement pour viser une égalité. Nombres de groupes ne sont ni couverture de code ni unités équivalentes. Les deux manquent le contrôle NUL.\n"
+            "Y/src/app.mjs:73,105 ; src/database.mjs:89 : handler mêlant routage/validation/métier/SQL, helper transaction centralisé et projection SQL partagée.",
+            "Y/src/app.mjs:51,122 : gestion aborted et logger injectable ; src/database.mjs:95 rollback non protégé, risque statique non reproduit ; migration SELECT* dépendant de l’ordre de colonnes, aucun échec observé.",
+            "Y/test/api.test.mjs:124,144,170,209,239,292,330,386 : contraintes SQL, body UTF8/chunked, échec annulation, migration interrompue/retry et snapshots complets, restart et course concurrente ; 12 groupes réellement PASS sous Node22.13.",
+            "Y/README.md:108,128,142,167 et HANDOFF.md:9,31,55 : upgrade, backup/rollback, limites et validation phase3 conservés ; src/server.mjs:11 sans délai maximal de drainage, aucun incident d’arrêt observé.",
+            "Les sous-scores donnent des totaux égaux : A17,5+9+9,5, B17+9,5+9,5. Ils reposent sur les critères décrits, sans ajustement pour viser une égalité. Nombres de groupes ne sont ni couverture de code ni unités équivalentes. Les deux manquent le contrôle NUL."
           ]
         },
         "tokens": {
@@ -1982,7 +1982,7 @@
         ],
         "external": {
           "status": "FAIL",
-          "startup_failure": "Application exited during startup; see server.log\n",
+          "startup_failure": "Application exited during startup; see server.log",
           "passed_requirements": null,
           "total_requirements": null,
           "functional_score_out_of_60": null
@@ -2001,7 +2001,7 @@
             "operations": "Aucune application livrée après trois refus de branche liés à la préparation ; revue applicative impossible."
           },
           "review_evidence": [
-            "Décision de recommencer les deux bras avant oracle/revue : corrected-pair-root-decision.json ; invalid-pair-reference.json. Résultats externes et coûts natifs originaux conservés.\n"
+            "Décision de recommencer les deux bras avant oracle/revue : corrected-pair-root-decision.json ; invalid-pair-reference.json. Résultats externes et coûts natifs originaux conservés."
           ]
         },
         "tokens": {
@@ -2100,7 +2100,7 @@
             "operations": "Application externe évaluée et résultats conservés, mais revue qualitative comparative volontairement non conduite : la paire entière est invalidée par sa préparation. Ce motif ne décrit pas une incapacité à lire le produit B."
           },
           "review_evidence": [
-            "Décision de recommencer les deux bras avant oracle/revue : corrected-pair-root-decision.json ; invalid-pair-reference.json. Résultats externes et coûts natifs originaux conservés.\n"
+            "Décision de recommencer les deux bras avant oracle/revue : corrected-pair-root-decision.json ; invalid-pair-reference.json. Résultats externes et coûts natifs originaux conservés."
           ]
         },
         "tokens": {
@@ -2207,395 +2207,395 @@
     "Currency cost and exhaustive helper/observer usage unavailable"
   ],
   "local_evidence_hashes": {
-    "C1/report/actual-results.json\n": {
+    "C1/report/actual-results.json": {
       "sha256": "069d55b2b8d144023256ec32bf571299957365b24c0a1116e9a6f919215541b6",
       "bytes": 16600
     },
-    "ANALYSIS/latency/native-latency-analysis.json\n": {
+    "ANALYSIS/latency/native-latency-analysis.json": {
       "sha256": "6f0e710de0cc3fc0b82aadaf77edf3498ec3b7fa3b67f687764bb07d19462b86",
       "bytes": 92555
     },
-    "C1/evidence/text-roundtrip-comparison.json\n": {
+    "C1/evidence/text-roundtrip-comparison.json": {
       "sha256": "0ed66644a6a013cca51c6ea1c890ac2100c1b6069d6a592614ad5a1b7d7abfd6",
       "bytes": 4940
     },
-    "ANALYSIS/corrected-qualitative-review.final.json\n": {
+    "ANALYSIS/corrected-qualitative-review.final.json": {
       "sha256": "1df231d311b3489a055adede4ed2dbee530a6771d89712a73145303a8a6c58d2",
       "bytes": 4315
     },
-    "C2/evidence/run-aidn/run-summary.json\n": {
+    "C2/evidence/run-aidn/run-summary.json": {
       "sha256": "e1c89d25ee71f702cd3494266086d49d1b3e4657d87e804d899f82849755cec3",
       "bytes": 1327
     },
-    "C2/evidence/run-aidn/phase1-thread.json\n": {
+    "C2/evidence/run-aidn/phase1-thread.json": {
       "sha256": "198c57a5fc7cb1c31c724b0fb0d285b99e497e2589add76df361bcada9c771c6",
       "bytes": 1991
     },
-    "C2/evidence/run-aidn/phase3-thread.json\n": {
+    "C2/evidence/run-aidn/phase3-thread.json": {
       "sha256": "2132ab451fd0896bd13d109cc1329c5dc3b7b5ffe47e220630978c46a7b5933b",
       "bytes": 1991
     },
-    "C2/evidence/evaluation-aidn/result.json\n": {
+    "C2/evidence/evaluation-aidn/result.json": {
       "sha256": "4d508619949dd2543c98566245d045f955b75cbe35c6bb648c1df2f142c36925",
       "bytes": 3118
     },
-    "C2/evidence/run-aidn/native-events.jsonl\n": {
+    "C2/evidence/run-aidn/native-events.jsonl": {
       "sha256": "09348af9b4e8d149b3845ef4158948ad2b408d24d49b0f2094185f6522da4cbd",
       "bytes": 4153055
     },
-    "C2/evidence/run-aidn/native-event-clocks.jsonl\n": {
+    "C2/evidence/run-aidn/native-event-clocks.jsonl": {
       "sha256": "d5a8c95cd37653b9c9cf9000e5b22bc5046b2d1134882f4d49d643b60004d51f",
       "bytes": 2268730
     },
-    "C2/evidence/run-aidn/native-usage.jsonl\n": {
+    "C2/evidence/run-aidn/native-usage.jsonl": {
       "sha256": "050dad07bf8eb48561861c33422583ec9737b2e488c925c238a849ac2a46818e",
       "bytes": 1044
     },
-    "C2/evidence/run-aidn/phase-timing.jsonl\n": {
+    "C2/evidence/run-aidn/phase-timing.jsonl": {
       "sha256": "2427712e8a47f636e87f048b73e8a67d47c21bfe6a507cf6ead3a0c2f40f8ddb",
       "bytes": 1444
     },
-    "C2/evidence/run-aidn/native-rpc-timing.jsonl\n": {
+    "C2/evidence/run-aidn/native-rpc-timing.jsonl": {
       "sha256": "5d0520bb2606f8f14d3ecd2ac39a25f363c4adf32afffb1d49bce749e14d2ef9",
       "bytes": 3560
     },
-    "C2/evidence/run-aidn/measurement-availability.json\n": {
+    "C2/evidence/run-aidn/measurement-availability.json": {
       "sha256": "b93b00f8bae9c227f03375e93738e75975029b4c879e990dfdeac779cbbc28cd",
       "bytes": 2321
     },
-    "C2/evidence/run-baseline/run-summary.json\n": {
+    "C2/evidence/run-baseline/run-summary.json": {
       "sha256": "9d10087420ab813200c1c09e138f04f682071122a316c8ddf62a8ed7be4b0693",
       "bytes": 1329
     },
-    "C2/evidence/run-baseline/phase1-thread.json\n": {
+    "C2/evidence/run-baseline/phase1-thread.json": {
       "sha256": "622a7ed2df5e6591e02fcd858e5bf4954bc0fb6cd01b066b45c5330fa409a84b",
       "bytes": 1923
     },
-    "C2/evidence/run-baseline/phase3-thread.json\n": {
+    "C2/evidence/run-baseline/phase3-thread.json": {
       "sha256": "cc56a98f0868cefa8067843e17abcbdc03ad9162d9d3eab153c7c0ac6c6d72ac",
       "bytes": 1923
     },
-    "C2/evidence/evaluation-baseline/result.json\n": {
+    "C2/evidence/evaluation-baseline/result.json": {
       "sha256": "589a567ae050afc68db01ce83d0f74e6613cb7afcf5df1eac69fbf5278dfe61d",
       "bytes": 3133
     },
-    "C2/evidence/run-baseline/native-events.jsonl\n": {
+    "C2/evidence/run-baseline/native-events.jsonl": {
       "sha256": "7e110f5fe501123eea750d75766b15fef61c82ba2f1084cb32ee63f30a14e0ce",
       "bytes": 1535299
     },
-    "C2/evidence/run-baseline/native-event-clocks.jsonl\n": {
+    "C2/evidence/run-baseline/native-event-clocks.jsonl": {
       "sha256": "43ebffebf84c5d8170df180daae40a0d1b326b5103f7d3b335adbfd0d228ff49",
       "bytes": 796281
     },
-    "C2/evidence/run-baseline/native-usage.jsonl\n": {
+    "C2/evidence/run-baseline/native-usage.jsonl": {
       "sha256": "1c17cb4e26478335db4ac7a96c6f16b3e0336656a04160b5b2ddb134be7f87a6",
       "bytes": 1036
     },
-    "C2/evidence/run-baseline/phase-timing.jsonl\n": {
+    "C2/evidence/run-baseline/phase-timing.jsonl": {
       "sha256": "4feb1bd963a3749090f88c6d0b1230c98a4db4ee7137dceeab2082f9184ce9d5",
       "bytes": 1444
     },
-    "C2/evidence/run-baseline/native-rpc-timing.jsonl\n": {
+    "C2/evidence/run-baseline/native-rpc-timing.jsonl": {
       "sha256": "a2feab1f1c9ebcb7131e2865e7fe8d2c94de093f2a32515ff1cbe0c2682be325",
       "bytes": 3560
     },
-    "C2/evidence/run-baseline/measurement-availability.json\n": {
+    "C2/evidence/run-baseline/measurement-availability.json": {
       "sha256": "0d025424c8ecbfaac6613ea33c1e448bd20a3bc2a31b44f70589a94cce875479",
       "bytes": 2321
     },
-    "ANALYSIS/invalid-pair-reference.report-qualified.json\n": {
+    "ANALYSIS/invalid-pair-reference.report-qualified.json": {
       "sha256": "cef257bf2a894acecde4e943f6d733ab9cf4a3eac1adcce6d7c0ab0a41542b76",
       "bytes": 1595
     },
-    "INVALIDATED-PAIR/PROTOCOL.md\n": {
+    "INVALIDATED-PAIR/PROTOCOL.md": {
       "sha256": "8d89f8cacaa5deb8a47fe340e7b3f937fb01abe340069d1a6e59affbbf19972a",
       "bytes": 11637
     },
-    "INVALIDATED-PAIR/preparation/install-aidn.mjs\n": {
+    "INVALIDATED-PAIR/preparation/install-aidn.mjs": {
       "sha256": "b158a16bf9362a8611001717d96c2412b2622eb097295ab9f062759b95a4d25e",
       "bytes": 2568
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/run-summary.json\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/run-summary.json": {
       "sha256": "47199b24ddbbf491bfcf6c1ff34ed3c5a130c77cf7ce6046d3035e55dbcc410f",
       "bytes": 1325
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/native-events.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/native-events.jsonl": {
       "sha256": "ac84fd3879cc9e4506d0cccaa7d0662c43321bfd12a8234a1e0753b490580694",
       "bytes": 975552
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/run-summary.json\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/run-summary.json": {
       "sha256": "dafde2afe311c6413ea2bec79080d176b634523960510d95d48226e5e9eb59b7",
       "bytes": 1323
     },
-    "ANALYSIS/corrected-pair-root-decision.json\n": {
+    "ANALYSIS/corrected-pair-root-decision.json": {
       "sha256": "08a17bd952ea15be286ecc5774f5f9a572b9a848798a5f1cf5c7ad57e4736659",
       "bytes": 824
     },
-    "ANALYSIS/latency/round2-after-both-final/observed-friction-audit.json\n": {
+    "ANALYSIS/latency/round2-after-both-final/observed-friction-audit.json": {
       "sha256": "c512f6aefdf56cf9193d31d2b964f18829fb2b96310b699812feccbc4e334566",
       "bytes": 10546
     },
-    "C2/evidence/invalid-pair-reference.json\n": {
+    "C2/evidence/invalid-pair-reference.json": {
       "sha256": "41d4cefb0f3c5dea20ffa81a32319d5a8df69b1a39a5068714c27d21d05be0d4",
       "bytes": 1119
     },
-    "ANALYSIS/experimental-source-branch-review.md\n": {
+    "ANALYSIS/experimental-source-branch-review.md": {
       "sha256": "4b6f1f092720e7897b35943e987c5564bb7d7ee9d96e82cfde54ade041649c89",
       "bytes": 3925
     },
-    "ANALYSIS/invalid-pair-qualitative-non-evaluation.final.json\n": {
+    "ANALYSIS/invalid-pair-qualitative-non-evaluation.final.json": {
       "sha256": "c8d48093bd6740ef3372043b1a39c562182f082f02073047967841d65928cd0d",
       "bytes": 2181
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/phase1-thread.json\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/phase1-thread.json": {
       "sha256": "b87358d91e5984c4a319312961cf7b4989393e36f20a91c238ee035fa185f109",
       "bytes": 1931
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/phase3-thread.json\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/phase3-thread.json": {
       "sha256": "c01cee989c1d84eab7a0b8456922cd68afc824cb305f56322da201d755f96790",
       "bytes": 1931
     },
-    "INVALIDATED-PAIR/evidence/evaluation-aidn/result.json\n": {
+    "INVALIDATED-PAIR/evidence/evaluation-aidn/result.json": {
       "sha256": "9254d1f2fc5fe0cd0f3d5e7430846f663db32ce2204fcc0e3b411acffe4e70cc",
       "bytes": 400
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/native-event-clocks.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/native-event-clocks.jsonl": {
       "sha256": "4b698054d25181a8fec1c7616d05f4e83367a09ec7349c10bac80ef83fe0eec9",
       "bytes": 691045
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/native-usage.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/native-usage.jsonl": {
       "sha256": "106905e104c1b1c24e9ee8c5602a6694db93340a8ef307924d24e09e8afbc22e",
       "bytes": 1032
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/phase-timing.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/phase-timing.jsonl": {
       "sha256": "6f1770a34e2430b886eb6deb8766da8b41a3f566e601f1f452458e7d20a1b1cc",
       "bytes": 1451
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/native-rpc-timing.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/native-rpc-timing.jsonl": {
       "sha256": "557b448efc81d59ca441e80602f222b115367c0e28d90bb4df27bbb16ed49372",
       "bytes": 3560
     },
-    "INVALIDATED-PAIR/evidence/run-aidn/measurement-availability.json\n": {
+    "INVALIDATED-PAIR/evidence/run-aidn/measurement-availability.json": {
       "sha256": "2ee0a32fc0d57cd2b5d4621d25ffecf2b441f128b16d233d9372d0048c799cc9",
       "bytes": 2321
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/phase1-thread.json\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/phase1-thread.json": {
       "sha256": "1fe79f58c71fa027f7d4ef3465dbc465c2e3c10369369dd097f23147b07510c2",
       "bytes": 1873
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/phase3-thread.json\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/phase3-thread.json": {
       "sha256": "eba8b6640995a1a3c62398c7c6651ccb215b85154f6d70c78433f7f6b5d86409",
       "bytes": 1873
     },
-    "INVALIDATED-PAIR/evidence/evaluation-baseline/result.json\n": {
+    "INVALIDATED-PAIR/evidence/evaluation-baseline/result.json": {
       "sha256": "0c8b224a184ebcfac94eb2e9cfca0780b30e51167f5ef5759c159091bac3c5da",
       "bytes": 3118
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/native-events.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/native-events.jsonl": {
       "sha256": "5cd6c1c1543a7ef5e228aeb2160ec5f881d0b3e9d60389bfd9193d6c89e4751e",
       "bytes": 1897201
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/native-event-clocks.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/native-event-clocks.jsonl": {
       "sha256": "310249d221f3f69f956c2931df86454614001d732c8b2577fcc55cd1d70a2373",
       "bytes": 937344
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/native-usage.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/native-usage.jsonl": {
       "sha256": "fdd1c6deccc037bed3bea1e8f2c44fae4c5e70bdfc3524179bb74331b29d3d69",
       "bytes": 1037
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/phase-timing.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/phase-timing.jsonl": {
       "sha256": "17fcd262ee8fbe538f405c12b575fe629164ab096f851aaa2a0dbd1cc2f4046c",
       "bytes": 1444
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/native-rpc-timing.jsonl\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/native-rpc-timing.jsonl": {
       "sha256": "91d4420af18b9c0d9fe26b1e003b343581d389f00a3f0cd5ffa60c8073d16d17",
       "bytes": 3560
     },
-    "INVALIDATED-PAIR/evidence/run-baseline/measurement-availability.json\n": {
+    "INVALIDATED-PAIR/evidence/run-baseline/measurement-availability.json": {
       "sha256": "a2f3927dbf14db37b0e0cdd81b82c02b8723ce014facd3b0479306862f65f725",
       "bytes": 2321
     },
-    "INVALIDATED-PAIR/evidence/preflight-ready.json\n": {
+    "INVALIDATED-PAIR/evidence/preflight-ready.json": {
       "sha256": "a779bd29081db3434aa7e4fbce476733ad12fad763f2dd086cb6bfa3e81de00e",
       "bytes": 372
     },
-    "INVALIDATED-PAIR/evidence/preflight-exact-ready.json\n": {
+    "INVALIDATED-PAIR/evidence/preflight-exact-ready.json": {
       "sha256": "2e4216b62c9b6c88a3ce2d52cde40a811d1784aba1e3968d9b7f50d06eb9c096",
       "bytes": 561
     },
-    "INVALIDATED-PAIR/evidence/preflight-reauthenticated-exact.json\n": {
+    "INVALIDATED-PAIR/evidence/preflight-reauthenticated-exact.json": {
       "sha256": "3acda452971d96b538da2be5e88adf7e45c7184d7ff40b6c1fae5cea382c620b",
       "bytes": 1510
     },
-    "INVALIDATED-PAIR/evidence/preflight-node.json\n": {
+    "INVALIDATED-PAIR/evidence/preflight-node.json": {
       "sha256": "dc5c17c750173bbfaf23a6ce96f0186bc36a7be44b5347900cb452623a4ed704",
       "bytes": 932
     },
-    "ANALYSIS/latency/mcp-startup-audit.json\n": {
+    "ANALYSIS/latency/mcp-startup-audit.json": {
       "sha256": "36bca95c05184dd5f299fd85b0b7c08b488b9bad6e0fe232aa8fb35ed821add0",
       "bytes": 7636
     },
-    "C2/evidence/text-roundtrip-comparison.json\n": {
+    "C2/evidence/text-roundtrip-comparison.json": {
       "sha256": "ae0c5f51647849ce27c8c05755ded083a692ffc18bf76e801d43dc1afbb262d8",
       "bytes": 4936
     },
-    "C2/package/manifest.json\n": {
+    "C2/package/manifest.json": {
       "sha256": "c5d6d3050adaf91b0ae3f34cb89a8f19a5d2be30dabcdeddc9f08dd944fc69c1",
       "bytes": 58908
     },
-    "C2/evidence/package-delivery.json\n": {
+    "C2/evidence/package-delivery.json": {
       "sha256": "6e39b81ac9227962de59e5bcfbe15fdc85d386f5708b0c04c2f4d8e3345b4cf5",
       "bytes": 620
     },
-    "C2/evidence/preparation-manifest.json\n": {
+    "C2/evidence/preparation-manifest.json": {
       "sha256": "22e12910b235348576d6330a4e4a6265fa59896b8cf79aa454f5d20c9e142b44",
       "bytes": 7354
     },
-    "C2/package/dist/aidn-workflow-0.12.0.tgz\n": {
+    "C2/package/dist/aidn-workflow-0.12.0.tgz": {
       "sha256": "465f33d7f208e9fe050b0a7d92047f0d05e52210dc0fa523a3503040b7d40407",
       "bytes": 1946394
     },
-    "C2/evidence/human-native-review-approval.json\n": {
+    "C2/evidence/human-native-review-approval.json": {
       "sha256": "c5aadcbe1059490788713ccac68780a07711ff24fc467fb1aec9469ffb9e2512",
       "bytes": 1759
     },
-    "C2/evidence/native-discovery-after-human-review/hooks-discovery.json\n": {
+    "C2/evidence/native-discovery-after-human-review/hooks-discovery.json": {
       "sha256": "76936238882bf9415647e1734183d539f310b20499ffb292a1a433b5c41d849f",
       "bytes": 2542
     },
-    "C2/PROTOCOL.md\n": {
+    "C2/PROTOCOL.md": {
       "sha256": "329cf2153633bf57a90f3cbcd1ca70b4a50eea4b54e23337364f37f7f6de319b",
       "bytes": 11908
     },
-    "C2/PHASE1.md\n": {
+    "C2/PHASE1.md": {
       "sha256": "22eec9a153e935e227cec74a61bdd218a2d1b8c78b3d606ada5543bec38be877",
       "bytes": 2536
     },
-    "C2/PHASE2.md\n": {
+    "C2/PHASE2.md": {
       "sha256": "550994f2c22a577139ea89fd604c57b4409192f778c52bbfbc0462a00933916b",
       "bytes": 859
     },
-    "C2/PHASE3.md\n": {
+    "C2/PHASE3.md": {
       "sha256": "270f9c5a31dfb279d4f8f0da4ed2b2dcfd46b271dc1a41fc9086fd91e159538c",
       "bytes": 766
     },
-    "C2/evaluator.mjs\n": {
+    "C2/evaluator.mjs": {
       "sha256": "d362bfbf754254453a06cec3bdfab00473eccea52735d02282b6edf1e648d7dd",
       "bytes": 11420
     },
-    "C2/metrics.mjs\n": {
+    "C2/metrics.mjs": {
       "sha256": "f69fbe0558bd4398b0e9f75ee1366fad166f30e458d7529a4c72e6263c3c2d33",
       "bytes": 1905
     },
-    "ANALYSIS/corrected-review-independent.md\n": {
+    "ANALYSIS/corrected-review-independent.md": {
       "sha256": "557c9513d578a835b0d36656399e82a7773f3ee40be1c9305f9f4497b49db7c6",
       "bytes": 20626
     },
-    "ANALYSIS/static-architecture-followup.md\n": {
+    "ANALYSIS/static-architecture-followup.md": {
       "sha256": "0239bf462d3545dfb068f3c4bd5c3f8bda461dbf7a6ad746e5af684a18f0fec3",
       "bytes": 13113
     },
-    "ANALYSIS/DELIVERED_FIXES_PR130_133.md\n": {
+    "ANALYSIS/DELIVERED_FIXES_PR130_133.md": {
       "sha256": "aed0775d1c5e90a5e1f32e5f5c61dce165c74292c173e08c7e5e0e16759801b5",
       "bytes": 4154
     },
-    "ANALYSIS/latency/corrected-after-both-final/metadata-analysis.json\n": {
+    "ANALYSIS/latency/corrected-after-both-final/metadata-analysis.json": {
       "sha256": "cb7a8319b1fa37ea4e08df873b6cf61c513b47996a15843bb73dbcb485cedfb6",
       "bytes": 35219
     },
-    "ANALYSIS/latency/corrected-after-both-final/observed-friction-audit-v2.json\n": {
+    "ANALYSIS/latency/corrected-after-both-final/observed-friction-audit-v2.json": {
       "sha256": "dbeacf3018c9d0690587cf07ee2bb7a76079c719b005a92cb33a1d2ae17a6b86",
       "bytes": 63387
     },
-    "ANALYSIS/latency/corrected-detailed-complete-v2/native-latency-analysis.json\n": {
+    "ANALYSIS/latency/corrected-detailed-complete-v2/native-latency-analysis.json": {
       "sha256": "34afc05924a4296bd596ef03c640519ea917d083410ee323eca7b8602645e81e",
       "bytes": 98927
     },
-    "ANALYSIS/reporting-final-review/README.md\n": {
+    "ANALYSIS/reporting-final-review/README.md": {
       "sha256": "7a686b24cd4ad9fcd774ab275fadbe2fdbaaa3fc87af2f9bd59d5388c8818f2e",
       "bytes": 4353
     },
-    "ANALYSIS/reporting-final-review/identity-replay.json\n": {
+    "ANALYSIS/reporting-final-review/identity-replay.json": {
       "sha256": "d6eb48550b44ff7fa9e11beb21ed53c31f531f7fc2f55f0f457ab6cd483b96de",
       "bytes": 2828
     },
-    "C2/evidence/both-final-root-qualification.json\n": {
+    "C2/evidence/both-final-root-qualification.json": {
       "sha256": "dfeb6f91d1f3d29619b1ceb41fdb908c4d566f8297e6b89fcc24a555b1d313fd",
       "bytes": 3213
     },
-    "C2/evidence/products-before-external-evaluation.json\n": {
+    "C2/evidence/products-before-external-evaluation.json": {
       "sha256": "9037e6ed2b0f94fb6576186f335fe34c385ad5f3ebb591cff0ec54e08ef45825",
       "bytes": 18116
     },
-    "C2/evidence/products-after-external-evaluation.json\n": {
+    "C2/evidence/products-after-external-evaluation.json": {
       "sha256": "f06d598b9d0c2541097de834648dfdffb20ea6d2f89fd1f33d2671fff5762dbd",
       "bytes": 18534
     },
-    "C2/evidence/dedicated-postgres-qualification.json\n": {
+    "C2/evidence/dedicated-postgres-qualification.json": {
       "sha256": "79ad68b1b72f9e704d9f70c59b9fbbea8c982010cc1204a5a68959b8f3b17f6f",
       "bytes": 12871
     },
-    "C2/evidence/source-delivery-readback-before-a.json\n": {
+    "C2/evidence/source-delivery-readback-before-a.json": {
       "sha256": "6b13e82b1fb8741344b3f3ff2d99cb7277e08719fa5abf9b622d751c82e5862b",
       "bytes": 5203
     },
-    "C2/evidence/pair-launch-seal.json\n": {
+    "C2/evidence/pair-launch-seal.json": {
       "sha256": "b0b754ef5400f5f100347bc153631dcd645bf47205baa1999e87c86b6be6bc9b",
       "bytes": 837
     },
-    "ANALYSIS/workflow-reason/corrected-final/reason-inventory.md\n": {
+    "ANALYSIS/workflow-reason/corrected-final/reason-inventory.md": {
       "sha256": "bff094867e4f954b457c87abda22409016b8023c6700a68c4cf9f6e069e6eb6e",
       "bytes": 52305
     },
-    "ANALYSIS/workflow-reason/corrected-final/inventory-qualified.json\n": {
+    "ANALYSIS/workflow-reason/corrected-final/inventory-qualified.json": {
       "sha256": "481cd3d52fe177fc75e5002b5330627daa7de668f8f3e17c43968eb52014042c",
       "bytes": 1911147
     },
-    "ANALYSIS/workflow-reason/corrected-final/integrity-proof.json\n": {
+    "ANALYSIS/workflow-reason/corrected-final/integrity-proof.json": {
       "sha256": "8dee27416994e8cead77b9c3286bd5a142c233a8541d5229794e9cd5a984dc9e",
       "bytes": 17867
     },
-    "ANALYSIS/corrected-gfd-workflow/aidn-gfd-workflow-note.md\n": {
+    "ANALYSIS/corrected-gfd-workflow/aidn-gfd-workflow-note.md": {
       "sha256": "79ef94f98774e8b35f9af27f0fe3f4a98e74d032d71205b0808750242154d68d",
       "bytes": 21791
     },
-    "ANALYSIS/corrected-gfd-workflow/aggregate.json\n": {
+    "ANALYSIS/corrected-gfd-workflow/aggregate.json": {
       "sha256": "8f0bdf63f5e90ddeecedca16ee4f14d8aead27bd692a2efe8d9cc50e3befa1ab",
       "bytes": 5624
     },
-    "ANALYSIS/corrected-gfd-workflow/input-integrity.json\n": {
+    "ANALYSIS/corrected-gfd-workflow/input-integrity.json": {
       "sha256": "59ecd3b8155f812e5ec2c35a52a3ea1a98f3853ba48d3fcd31baafb27fe501ec",
       "bytes": 246
     },
-    "ANALYSIS/latency/corrected-after-both-final/NEUTRAL_METADATA_NOTE.md\n": {
+    "ANALYSIS/latency/corrected-after-both-final/NEUTRAL_METADATA_NOTE.md": {
       "sha256": "fe2b1a1b57adc2c849135018e5c744414ab7acf50df58a2f6f33eac6f6e74648",
       "bytes": 11943
     },
-    "ANALYSIS/latency/corrected-after-both-final/final-note-publication-integrity.json\n": {
+    "ANALYSIS/latency/corrected-after-both-final/final-note-publication-integrity.json": {
       "sha256": "2c8e0bf1ae62b0172b7e7eba5b2204625f25e684777b73fe63995ec2603798ae",
       "bytes": 2308
     },
-    "ANALYSIS/public-report-appendices/DELIVERED_FIXES_PR130_133.md\n": {
+    "ANALYSIS/public-report-appendices/DELIVERED_FIXES_PR130_133.md": {
       "sha256": "aed0775d1c5e90a5e1f32e5f5c61dce165c74292c173e08c7e5e0e16759801b5",
       "bytes": 4154
     },
-    "ANALYSIS/public-report-appendices/aidn-gfd-workflow-note.md\n": {
+    "ANALYSIS/public-report-appendices/aidn-gfd-workflow-note.md": {
       "sha256": "e4b93fd1c1599c90addff016b58f2ecf4c5a94c253f5c1bfcd2162ce5cae279a",
       "bytes": 24000
     },
-    "ANALYSIS/public-report-appendices/baseline-review.md\n": {
+    "ANALYSIS/public-report-appendices/baseline-review.md": {
       "sha256": "f3f1fb573e883cc3001d032637fd27cae6d505c75e492050654ad30f21e91e55",
       "bytes": 14690
     },
-    "ANALYSIS/public-report-appendices/latency-inventory.md\n": {
+    "ANALYSIS/public-report-appendices/latency-inventory.md": {
       "sha256": "eb1beb5d11408cc66b0a6f77d28bae1a74979756492758d78a2f80b4706f04b4",
       "bytes": 12042
     },
-    "ANALYSIS/public-report-appendices/reason-inventory.md\n": {
+    "ANALYSIS/public-report-appendices/reason-inventory.md": {
       "sha256": "f7e1ed164a12e4f183e0afb86983d30901aea130a14a1415d9f0e424478f2deb",
       "bytes": 55321
     },
-    "ANALYSIS/public-report-appendices/static-architecture-followup.md\n": {
+    "ANALYSIS/public-report-appendices/static-architecture-followup.md": {
       "sha256": "b3070041aa562e7135ab3e78d5db3920a2113e00766cc38fdd2df5e1c1b67f8a",
       "bytes": 14419
     }

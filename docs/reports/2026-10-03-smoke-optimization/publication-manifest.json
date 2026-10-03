@@ -6,15 +6,15 @@
   "presentation_only_after_both_final": true,
   "native_or_model_calls": 0,
   "generated_report_sha256": "e8b25ddf92d5fc7d0e771d196be61f428c59adb7d018e12d9ec5c349bd015a4c",
-  "neutralization": "Named campaigns and analysis IDs replace local workspace prefixes; no factual values removed. Full observer appendices appended. Clarified completed native checks and weight normalization. Trailing whitespace and extra EOF blanks removed from Markdown/SVG exports; no data/plot meaning or coding experiment change.",
+  "neutralization": "Named campaigns and analysis IDs replace local workspace prefixes; no factual values removed. Generated client session qualified as A:S001, not a source-package projection. Full observer appendices appended. Clarified completed native checks and weight normalization. Figure1 title names C1/C2; all chart values unchanged. Trailing whitespace and extra EOF blanks removed from Markdown/SVG exports; no coding experiment change.",
   "files": {
     "report.md": {
-      "sha256": "d4f5426a9a29ea3dd332f1b1244261f09e975d95adb3ab89f7cef9ac2a3ac7f8",
-      "bytes": 206999
+      "sha256": "af6713dbaecbc61324dc818f9beaae0f29646c759da66fb6c2c5c011c5beb508",
+      "bytes": 207012
     },
     "results.json": {
-      "sha256": "8478f3c8011fa911a47db7e4735654752ffd9c1e772ea1c3bc5ea3048a187d4e",
-      "bytes": 102343
+      "sha256": "c9f6fdd624a61f8a9cf3fbf5b22f4d6fbf7593acfce344d26a4aaae009c7fd94",
+      "bytes": 102097
     },
     "reason-inventory.md": {
       "sha256": "f7e1ed164a12e4f183e0afb86983d30901aea130a14a1415d9f0e424478f2deb",
@@ -25,8 +25,8 @@
       "bytes": 20762
     },
     "aidn-gfd-workflow-note.md": {
-      "sha256": "e4b93fd1c1599c90addff016b58f2ecf4c5a94c253f5c1bfcd2162ce5cae279a",
-      "bytes": 24000
+      "sha256": "b866b3a3ab38c9f0b9e3d0226b852836f4b3201979e7281d23c276f1a0fe6cb7",
+      "bytes": 24031
     },
     "baseline-review.md": {
       "sha256": "3749d0770ddd044eab457578d7899371cdad72ce030cd8ccb7c9a6cee9833150",
@@ -45,19 +45,19 @@
       "bytes": 4154
     },
     "figures/development-time.png": {
-      "sha256": "197c32dc2fe682f6d1fad45a41e752cb1112269b0262d4aa1475ff1b16561815",
-      "bytes": 30799
+      "sha256": "155cc8718e0dc8240e54538553efabe9e39aadb86ebb9aa434fd838a9a4589fa",
+      "bytes": 29263
     },
     "figures/development-time.svg": {
-      "sha256": "4584d5c3d7e92d6d41c3ccae8a9bfc0f576ed3fd43b1383c36c6345d1308746d",
-      "bytes": 28643
+      "sha256": "7ff96680cbc6621125fa06e9216ac4470d38a0af9b799fdcbe35a62a9c883f6b",
+      "bytes": 27320
     },
     "figures/native-tokens.png": {
       "sha256": "2132c9f9b4a14690fb71c10005f363abcf25143373e49665ca9d4495b4f771d5",
       "bytes": 37274
     },
     "figures/native-tokens.svg": {
-      "sha256": "53fc33d5395d3fabaf12f4af9a3c10510a7b0ea42d8a0ad3b4960f2666fa9aa2",
+      "sha256": "6a7234ae0a574661ebacc4569671ad9094beccb8f4afa1a2382e0398e2e74edc",
       "bytes": 37037
     },
     "figures/new-input-output.png": {
@@ -65,7 +65,7 @@
       "bytes": 39392
     },
     "figures/new-input-output.svg": {
-      "sha256": "8a4734a2a83a20e78843b626462a718be9aa7acec0faee9c8112a0dbc7897983",
+      "sha256": "a52f614a96deaae041017d1e019caefc8f94b1829dcba78ca72f1715682421e7",
       "bytes": 32325
     },
     "figures/visible-interval-unions.png": {
@@ -73,7 +73,7 @@
       "bytes": 39190
     },
     "figures/visible-interval-unions.svg": {
-      "sha256": "8c8664ba9005025c91d772a6b3d5d6fec537e7812aa9031abf8b6c87ba220ff2",
+      "sha256": "7d870b91de3f9ffad36234e7992b1dcd49db008b7e698d7d2969c5f0cccb8e33",
       "bytes": 37563
     }
   }
