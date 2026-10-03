@@ -53,6 +53,180 @@ function expectWriteFailure(targetRoot, data, label, options = {}) {
   assert(temps.length === 0, `${label} left an atomic temp file`);
 }
 
+function verifyFreshConfigReads(tempRoot) {
+  resetAidnProjectConfigCache();
+  const checks = {};
+  const check = (name, condition) => {
+    assert(condition, name);
+    checks[name] = true;
+  };
+  const expectReadFailure = (root, label, pattern, options = {}) => {
+    let error;
+    try { readAidnProjectConfig(root, options); } catch (caught) { error = caught; }
+    check(label, Boolean(error) && pattern.test(String(error.message)));
+    check(`${label}_uncached`, readStats().entries === 0);
+    return error;
+  };
+  const config = ref => ({ runtime: { stateMode: "dual", persistence: { backend: "postgres", connectionRef: ref } } });
+  const root = path.join(tempRoot, "physical-freshness");
+  const file = writeRawConfig(root, config("env:ALPHA"));
+  const stamp = new Date("2020-01-01T00:00:00Z");
+  fs.utimesSync(file, stamp, stamp);
+  readAidnProjectConfig(root);
+  const before = fs.statSync(file, { bigint: true });
+  const replacement = path.join(root, ".aidn", "replacement.json");
+  fs.writeFileSync(replacement, `${JSON.stringify(config("env:BRAVO"), null, 2)}\n`);
+  fs.utimesSync(replacement, stamp, stamp);
+  fs.renameSync(replacement, file);
+  const replaced = fs.statSync(file, { bigint: true });
+  check("atomic_replacement_fixture_equal_mtime_and_size", before.mtimeNs === replaced.mtimeNs && before.size === replaced.size && before.ino !== replaced.ino);
+  check("atomic_replacement_reads_fresh_connection_ref", readAidnProjectConfig(root).data.runtime.persistence.connectionRef === "env:BRAVO");
+  writeRawConfig(root, config("env:DELTA"));
+  fs.utimesSync(file, stamp, stamp);
+  const inPlace = fs.statSync(file, { bigint: true });
+  check("in_place_fixture_equal_inode_mtime_and_size", replaced.ino === inPlace.ino && replaced.mtimeNs === inPlace.mtimeNs && replaced.size === inPlace.size && replaced.ctimeNs !== inPlace.ctimeNs);
+  const fresh = readAidnProjectConfig(root);
+  check("in_place_write_reads_fresh_connection_ref", fresh.data.runtime.persistence.connectionRef === "env:DELTA");
+  fresh.data.runtime.persistence.connectionRef = "env:POISON";
+  check("nested_returns_are_cloned", readAidnProjectConfig(root).data.runtime.persistence.connectionRef === "env:DELTA");
+  const otherRoot = path.join(tempRoot, "other-project");
+  writeRawConfig(otherRoot, config("env:OTHER"));
+  check("target_roots_have_independent_values", readAidnProjectConfig(otherRoot).data.runtime.persistence.connectionRef === "env:OTHER"
+    && readAidnProjectConfig(root).data.runtime.persistence.connectionRef === "env:DELTA");
+  fs.unlinkSync(file);
+  check("deletion_invalidates_positive_cache", readAidnProjectConfig(root).exists === false);
+  const negativeStats = readStats();
+  check("unchanged_absence_hits_negative_cache", readAidnProjectConfig(root).exists === false && readStats().hits === negativeStats.hits + 1);
+  writeRawConfig(root, config("env:BRAVO"));
+  check("creation_invalidates_negative_cache", readAidnProjectConfig(root).data.runtime.persistence.connectionRef === "env:BRAVO");
+
+  for (const field of ["dev", "ino", "mtimeNs", "ctimeNs", "size"]) {
+    resetAidnProjectConfigCache();
+    const signature = Object.fromEntries(["dev", "ino", "mtimeNs", "ctimeNs", "size"].map(key => [key, 2n ** 54n]));
+    let text = JSON.stringify(config("env:ALPHA"));
+    let reads = 0, stats = 0;
+    const fsImpl = {
+      statSync(_path, options) { assert(options.bigint === true, "stat must request lossless metadata"); stats += 1; return { ...signature, isFile: () => true }; },
+      readFileSync() { reads += 1; return text; },
+    };
+    const syntheticRoot = path.join(tempRoot, `precision-${field}`);
+    readAidnProjectConfig(syntheticRoot, { fsImpl });
+    const firstStats = stats;
+    readAidnProjectConfig(syntheticRoot, { fsImpl });
+    check(`${field}_hit_still_observes_signature`, reads === 1 && stats === firstStats + 1);
+    signature[field] += 1n;
+    text = JSON.stringify(config("env:BRAVO"));
+    check(`${field}_one_unit_change_above_safe_integer_invalidates`, readAidnProjectConfig(syntheticRoot, { fsImpl }).data.runtime.persistence.connectionRef === "env:BRAVO");
+  }
+
+  resetAidnProjectConfigCache();
+  const raceRoot = path.join(tempRoot, "read-replacement");
+  const raceFile = writeRawConfig(raceRoot, config("env:ALPHA"));
+  fs.utimesSync(raceFile, stamp, stamp);
+  let replacementReads = 0;
+  const replacementFs = { ...fs, readFileSync(...args) {
+    const text = fs.readFileSync(...args);
+    if (++replacementReads === 1) {
+      const next = `${raceFile}.replacement`;
+      fs.writeFileSync(next, `${JSON.stringify(config("env:BRAVO"), null, 2)}\n`);
+      fs.utimesSync(next, stamp, stamp);
+      fs.renameSync(next, raceFile);
+    }
+    return text;
+  } };
+  const replacementRead = readAidnProjectConfig(raceRoot, { fsImpl: replacementFs });
+  check("mid_read_replacement_retries_fresh_bytes", replacementRead.data.runtime.persistence.connectionRef === "env:BRAVO" && replacementReads === 2);
+  replacementRead.data.runtime.persistence.connectionRef = "env:POISON";
+  check("stable_retry_result_is_cloned_and_cached", readAidnProjectConfig(raceRoot, { fsImpl: replacementFs }).data.runtime.persistence.connectionRef === "env:BRAVO" && replacementReads === 2);
+
+  resetAidnProjectConfigCache();
+  const transientRoot = path.join(tempRoot, "transient-json");
+  const transientFile = writeRawConfig(transientRoot, {});
+  fs.writeFileSync(transientFile, "{");
+  let transientReads = 0;
+  const transientFs = { ...fs, readFileSync(...args) {
+    const text = fs.readFileSync(...args);
+    if (++transientReads === 1) writeRawConfig(transientRoot, config("env:BRAVO"));
+    return text;
+  } };
+  check("changing_invalid_json_retries_before_validation", readAidnProjectConfig(transientRoot, { fsImpl: transientFs }).data.runtime.persistence.connectionRef === "env:BRAVO" && transientReads === 2);
+  fs.writeFileSync(transientFile, "{");
+  expectReadFailure(transientRoot, "stable_invalid_json_fails", /Invalid JSON/);
+  fs.writeFileSync(transientFile, "[]");
+  expectReadFailure(transientRoot, "stable_non_object_json_fails", /expected JSON object/);
+
+  resetAidnProjectConfigCache();
+  let mutationReads = 0;
+  const mutableStat = { dev: 1n, ino: 2n, mtimeNs: 3n, ctimeNs: 4n, size: 5n };
+  const mutationFs = {
+    statSync() { return { ...mutableStat, isFile: () => true }; },
+    readFileSync() { mutationReads += 1; mutableStat.ctimeNs += 1n; return JSON.stringify(config("env:BRAVO")); },
+  };
+  expectReadFailure(path.join(tempRoot, "continuous-mutation"), "continuous_mutation_fails_diagnostically", /no stable observation after 3 attempts/, { fsImpl: mutationFs });
+  check("continuous_mutation_read_attempts_are_bounded", mutationReads === 3);
+
+  resetAidnProjectConfigCache();
+  const disappearingRoot = path.join(tempRoot, "disappearing");
+  const disappearingFile = writeRawConfig(disappearingRoot, config("env:ALPHA"));
+  let disappearanceReads = 0;
+  const disappearingFs = { ...fs, readFileSync() {
+    disappearanceReads += 1;
+    fs.unlinkSync(disappearingFile);
+    throw Object.assign(new Error("injected read disappearance"), { code: "ENOENT" });
+  } };
+  const disappeared = readAidnProjectConfig(disappearingRoot, { fsImpl: disappearingFs });
+  check("read_enoent_observes_optional_absence", disappeared.exists === false && disappearanceReads === 1 && Object.keys(disappeared.data).length === 0);
+  writeRawConfig(disappearingRoot, config("env:BRAVO"));
+  let retryReads = 0;
+  const retryFs = { ...fs, readFileSync(...args) {
+    if (++retryReads === 1) {
+      writeRawConfig(disappearingRoot, config("env:DELTA"));
+      throw Object.assign(new Error("injected replacement disappearance"), { code: "ENOENT" });
+    }
+    return fs.readFileSync(...args);
+  } };
+  check("read_enoent_replacement_retries_fresh_config", readAidnProjectConfig(disappearingRoot, { fsImpl: retryFs }).data.runtime.persistence.connectionRef === "env:DELTA" && retryReads === 2);
+
+  resetAidnProjectConfigCache();
+  const errorRoot = path.join(tempRoot, "read-errors");
+  const errorFile = writeRawConfig(errorRoot, config("env:ALPHA"));
+  let statDenied = false, readDenied = false;
+  const denied = () => Object.assign(new Error("injected config access denied"), { code: "EACCES" });
+  const errorFs = { ...fs,
+    statSync(...args) { if (statDenied) throw denied(); return fs.statSync(...args); },
+    readFileSync(...args) { if (readDenied) throw denied(); return fs.readFileSync(...args); },
+  };
+  readAidnProjectConfig(errorRoot, { fsImpl: errorFs });
+  statDenied = true;
+  const statError = expectReadFailure(errorRoot, "stat_error_does_not_return_cached_config", /access denied/, { fsImpl: errorFs });
+  check("stat_error_code_preserved", statError.code === "EACCES");
+  statDenied = false;
+  readAidnProjectConfig(errorRoot, { fsImpl: errorFs });
+  writeRawConfig(errorRoot, config("env:BRAVO"));
+  readDenied = true;
+  const readError = expectReadFailure(errorRoot, "read_error_does_not_return_cached_config", /access denied/, { fsImpl: errorFs });
+  check("read_error_code_preserved", readError.code === "EACCES");
+  readDenied = false;
+  check("read_recovers_from_fresh_source_after_error", readAidnProjectConfig(errorRoot, { fsImpl: errorFs }).data.runtime.persistence.connectionRef === "env:BRAVO");
+  fs.unlinkSync(errorFile);
+  fs.mkdirSync(errorFile);
+  expectReadFailure(errorRoot, "directory_is_invalid_config_not_absence", /expected regular file/);
+  const invalidParent = path.join(tempRoot, "invalid-parent");
+  fs.mkdirSync(invalidParent);
+  fs.writeFileSync(path.join(invalidParent, ".aidn"), "not a directory");
+  const parentError = expectReadFailure(invalidParent, "invalid_parent_is_not_optional_absence", /ENOTDIR/);
+  check("invalid_parent_error_code_preserved", parentError.code === "ENOTDIR");
+
+  resetAidnProjectConfigCache();
+  const fsIdentityRoot = path.join(tempRoot, "filesystem-identity");
+  writeRawConfig(fsIdentityRoot, config("env:ALPHA"));
+  readAidnProjectConfig(fsIdentityRoot);
+  const alternateFs = { ...fs, readFileSync() { throw denied(); } };
+  expectReadFailure(fsIdentityRoot, "injected_reader_cannot_inherit_another_reader_cache", /access denied/, { fsImpl: alternateFs });
+  resetAidnProjectConfigCache();
+  return checks;
+}
+
 function main() {
   let tempRoot = "";
   try {
@@ -200,11 +374,13 @@ function main() {
     const freshInvalid = path.join(tempRoot, "fresh-invalid");
     expectWriteFailure(freshInvalid, undefined, "fresh-undefined");
     assert(!fs.existsSync(freshInvalid), "fresh invalid write created target directories");
+    const freshnessChecks = verifyFreshConfigReads(tempRoot);
 
     console.log(JSON.stringify({
       ok: true,
       status: "PASS",
       cache_checks: true,
+      freshness_checks: freshnessChecks,
       version_identity_checks: { legacy_compatible: true, pure_factory: true, schema_version: 1, valid_semver_cases: validVersions.length, invalid_semver_cases: invalidVersions.length, diagnostic_states: ["unknown", "current", "mismatch"] },
       config_validation_cases: invalidCases.length + 1,
       undefined_preserved: true,
@@ -213,7 +389,7 @@ function main() {
     }, null, 2));
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     resetAidnProjectConfigCache();
     if (tempRoot && fs.existsSync(tempRoot)) {

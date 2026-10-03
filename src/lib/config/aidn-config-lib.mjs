@@ -67,37 +67,34 @@ export function inspectInstalledAidnVersion(configData, executingVersion) {
   };
 }
 
-function getConfigFileSignature(filePath) {
+const CONFIG_SIGNATURE_FIELDS = ["dev", "ino", "mtimeNs", "ctimeNs", "size"];
+const CONFIG_READ_ATTEMPTS = 3;
+
+function getConfigFileSignature(filePath, fsImpl) {
   try {
-    const stat = fs.statSync(filePath);
+    const stat = fsImpl.statSync(filePath, { bigint: true });
     if (!stat.isFile()) {
-      return {
-        exists: false,
-        mtimeMs: 0,
-        size: 0,
-      };
+      throw new Error(`Invalid config path in ${filePath}: expected regular file`);
     }
     return {
       exists: true,
-      mtimeMs: stat.mtimeMs,
+      dev: stat.dev,
+      ino: stat.ino,
+      mtimeNs: stat.mtimeNs,
+      ctimeNs: stat.ctimeNs,
       size: stat.size,
     };
   } catch (error) {
     if (error?.code !== "ENOENT") {
       throw error;
     }
-    return {
-      exists: false,
-      mtimeMs: 0,
-      size: 0,
-    };
+    return { exists: false };
   }
 }
 
 function signaturesMatch(left, right) {
   return left?.exists === right?.exists
-    && Number(left?.mtimeMs ?? 0) === Number(right?.mtimeMs ?? 0)
-    && Number(left?.size ?? 0) === Number(right?.size ?? 0);
+    && CONFIG_SIGNATURE_FIELDS.every((field) => left?.[field] === right?.[field]);
 }
 
 export function normalizeStateMode(value) {
@@ -158,11 +155,21 @@ export function resolveAidnConfigPath(targetRoot) {
   return path.resolve(targetRoot, ".aidn", "config.json");
 }
 
-export function readAidnProjectConfig(targetRoot) {
+export function readAidnProjectConfig(targetRoot, options = {}) {
   const filePath = resolveAidnConfigPath(targetRoot);
-  const signature = getConfigFileSignature(filePath);
+  const fsImpl = options.fsImpl ?? fs;
   const cached = projectConfigCache.get(filePath);
-  if (cached && signaturesMatch(cached.signature, signature)) {
+  const invalidate = () => {
+    if (projectConfigCache.delete(filePath)) projectConfigCacheStats.invalidations += 1;
+  };
+  let signature;
+  try {
+    signature = getConfigFileSignature(filePath, fsImpl);
+  } catch (error) {
+    invalidate();
+    throw error;
+  }
+  if (cached && cached.fsImpl === fsImpl && signaturesMatch(cached.signature, signature)) {
     projectConfigCacheStats.hits += 1;
     return {
       exists: cached.exists,
@@ -170,42 +177,42 @@ export function readAidnProjectConfig(targetRoot) {
       data: cloneJson(cached.data),
     };
   }
-  if (cached) {
-    projectConfigCacheStats.invalidations += 1;
-  }
+  invalidate();
   projectConfigCacheStats.misses += 1;
-  if (!signature.exists) {
-    const data = {};
-    projectConfigCache.set(filePath, {
-      signature,
-      exists: false,
-      data,
-    });
-    return {
-      exists: false,
-      path: filePath,
-      data: cloneJson(data),
-    };
+  for (let attempt = 0; attempt < CONFIG_READ_ATTEMPTS; attempt += 1) {
+    if (!signature.exists) {
+      const data = {};
+      projectConfigCache.set(filePath, { signature, fsImpl, exists: false, data });
+      return { exists: false, path: filePath, data: cloneJson(data) };
+    }
+    let text;
+    try {
+      text = fsImpl.readFileSync(filePath, "utf8");
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+      signature = getConfigFileSignature(filePath, fsImpl);
+      continue;
+    }
+    const afterRead = getConfigFileSignature(filePath, fsImpl);
+    if (!signaturesMatch(signature, afterRead)) {
+      signature = afterRead;
+      continue;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      throw new Error(`Invalid JSON in ${filePath}: ${error.message}`);
+    }
+    if (!isPlainObject(parsed)) {
+      throw new Error(`Invalid config root in ${filePath}: expected JSON object`);
+    }
+    // Bind parsed bytes only to an unchanged physical observation. A later
+    // call still stats the path freshly; this is neither a TTL nor a lock.
+    projectConfigCache.set(filePath, { signature: afterRead, fsImpl, exists: true, data: parsed });
+    return { exists: true, path: filePath, data: cloneJson(parsed) };
   }
-  let parsed;
-  try {
-    parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
-  } catch (error) {
-    throw new Error(`Invalid JSON in ${filePath}: ${error.message}`);
-  }
-  if (!isPlainObject(parsed)) {
-    throw new Error(`Invalid config root in ${filePath}: expected JSON object`);
-  }
-  projectConfigCache.set(filePath, {
-    signature,
-    exists: true,
-    data: parsed,
-  });
-  return {
-    exists: true,
-    path: filePath,
-    data: cloneJson(parsed),
-  };
+  throw new Error(`Config changed during read in ${filePath}: no stable observation after ${CONFIG_READ_ATTEMPTS} attempts`);
 }
 
 function assertJsonConfigValue(value, field, seen) {
