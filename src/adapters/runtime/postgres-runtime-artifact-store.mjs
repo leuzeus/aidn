@@ -70,15 +70,23 @@ async function createPgClient({
 async function withClient(runtime, fn) {
   const client = await createPgClient(runtime);
   let connected = false;
+  let operationFailed = false;
   try {
     if (typeof client.connect === "function") {
       await client.connect();
       connected = true;
     }
     return await fn(client);
+  } catch (error) {
+    operationFailed = true;
+    throw error;
   } finally {
     if (connected && typeof client.end === "function") {
-      await client.end();
+      try {
+        await client.end();
+      } catch (error) {
+        if (!operationFailed) throw error;
+      }
     }
   }
 }
@@ -215,64 +223,47 @@ async function readRelationalSnapshotForScope(client, scopeKey, {
   let meta = {};
   let hasRelationalPayload = false;
   let payload = null;
-  try {
-    metaRows = await selectScopedRows(client, "index_meta", scopeKey);
-    meta = buildRuntimeMetaMap(metaRows);
-    hasRelationalPayload = metaRows.length > 0;
-    runtimeHeadRows = includeRuntimeHeads
-      ? await selectScopedRows(client, "runtime_heads", scopeKey)
-      : [];
-    if (includePayload && hasRelationalPayload) {
-      const cycleRows = await selectScopedRows(client, "cycles", scopeKey);
-      const sessionRows = await selectScopedRows(client, "sessions", scopeKey);
-      const artifactRows = await selectScopedRows(client, "artifacts", scopeKey);
-      const artifactBlobRows = await selectScopedRows(client, "artifact_blobs", scopeKey);
-      const fileMapRows = await selectScopedRows(client, "file_map", scopeKey);
-      const tagRows = await selectScopedRows(client, "tags", scopeKey);
-      const artifactTagRows = await selectScopedRows(client, "artifact_tags", scopeKey);
-      const runMetricRows = await selectScopedRows(client, "run_metrics", scopeKey);
-      const artifactLinkRows = await selectScopedRows(client, "artifact_links", scopeKey);
-      const cycleLinkRows = await selectScopedRows(client, "cycle_links", scopeKey);
-      const sessionCycleLinkRows = await selectScopedRows(client, "session_cycle_links", scopeKey);
-      const sessionLinkRows = await selectScopedRows(client, "session_links", scopeKey);
-      const migrationRunRows = await selectScopedRows(client, "migration_runs", scopeKey);
-      const migrationFindingRows = await selectScopedRows(client, "migration_findings", scopeKey);
-      const repairDecisionRows = await selectScopedRows(client, "repair_decisions", scopeKey);
-      payload = rehydrateRuntimePayloadFromRelationalRows({
-        scopeKey,
-        meta,
-        cycles: cycleRows,
-        sessions: sessionRows,
-        artifacts: artifactRows,
-        artifactBlobs: artifactBlobRows,
-        fileMap: fileMapRows,
-        tags: tagRows,
-        artifactTags: artifactTagRows,
-        runMetrics: runMetricRows,
-        artifactLinks: artifactLinkRows,
-        cycleLinks: cycleLinkRows,
-        sessionCycleLinks: sessionCycleLinkRows,
-        sessionLinks: sessionLinkRows,
-        migrationRuns: migrationRunRows,
-        migrationFindings: migrationFindingRows,
-        repairDecisions: repairDecisionRows,
-      });
-    }
-  } catch (error) {
-    const classification = classifyPostgresRuntimePersistenceError(error);
-    if (classification.category !== "schema") {
-      throw error;
-    }
-  }
-  if (includeRuntimeHeads && runtimeHeadRows.length === 0) {
-    try {
-      runtimeHeadRows = await selectScopedRows(client, "runtime_heads", scopeKey);
-    } catch (error) {
-      const classification = classifyPostgresRuntimePersistenceError(error);
-      if (classification.category !== "schema") {
-        throw error;
-      }
-    }
+  metaRows = await selectScopedRows(client, "index_meta", scopeKey);
+  meta = buildRuntimeMetaMap(metaRows);
+  hasRelationalPayload = metaRows.length > 0;
+  runtimeHeadRows = includeRuntimeHeads
+    ? await selectScopedRows(client, "runtime_heads", scopeKey)
+    : [];
+  if (includePayload && hasRelationalPayload) {
+    const cycleRows = await selectScopedRows(client, "cycles", scopeKey);
+    const sessionRows = await selectScopedRows(client, "sessions", scopeKey);
+    const artifactRows = await selectScopedRows(client, "artifacts", scopeKey);
+    const artifactBlobRows = await selectScopedRows(client, "artifact_blobs", scopeKey);
+    const fileMapRows = await selectScopedRows(client, "file_map", scopeKey);
+    const tagRows = await selectScopedRows(client, "tags", scopeKey);
+    const artifactTagRows = await selectScopedRows(client, "artifact_tags", scopeKey);
+    const runMetricRows = await selectScopedRows(client, "run_metrics", scopeKey);
+    const artifactLinkRows = await selectScopedRows(client, "artifact_links", scopeKey);
+    const cycleLinkRows = await selectScopedRows(client, "cycle_links", scopeKey);
+    const sessionCycleLinkRows = await selectScopedRows(client, "session_cycle_links", scopeKey);
+    const sessionLinkRows = await selectScopedRows(client, "session_links", scopeKey);
+    const migrationRunRows = await selectScopedRows(client, "migration_runs", scopeKey);
+    const migrationFindingRows = await selectScopedRows(client, "migration_findings", scopeKey);
+    const repairDecisionRows = await selectScopedRows(client, "repair_decisions", scopeKey);
+    payload = rehydrateRuntimePayloadFromRelationalRows({
+      scopeKey,
+      meta,
+      cycles: cycleRows,
+      sessions: sessionRows,
+      artifacts: artifactRows,
+      artifactBlobs: artifactBlobRows,
+      fileMap: fileMapRows,
+      tags: tagRows,
+      artifactTags: artifactTagRows,
+      runMetrics: runMetricRows,
+      artifactLinks: artifactLinkRows,
+      cycleLinks: cycleLinkRows,
+      sessionCycleLinks: sessionCycleLinkRows,
+      sessionLinks: sessionLinkRows,
+      migrationRuns: migrationRunRows,
+      migrationFindings: migrationFindingRows,
+      repairDecisions: repairDecisionRows,
+    });
   }
   const heads = {};
   if (includeRuntimeHeads) {
@@ -439,21 +430,30 @@ export function createPostgresRuntimeArtifactStore({
     }
     try {
       const snapshot = await withClient(runtime, async (client) => {
-        let fallback = null;
-        for (const candidateScopeKey of scopeCandidates) {
-          const candidate = await readRelationalSnapshotForScope(client, candidateScopeKey, {
+        await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+        try {
+          let selected = null;
+          for (const candidateScopeKey of scopeCandidates) {
+            const candidate = await readRelationalSnapshotForScope(client, candidateScopeKey, {
+              includePayload,
+              includeRuntimeHeads,
+            });
+            selected ??= candidate;
+            if (candidate.hasRelationalPayload) {
+              selected = candidate;
+              break;
+            }
+          }
+          selected ??= await readRelationalSnapshotForScope(client, scopeKey, {
             includePayload,
             includeRuntimeHeads,
           });
-          fallback ??= candidate;
-          if (candidate.hasRelationalPayload) {
-            return candidate;
-          }
+          await client.query("COMMIT");
+          return selected;
+        } catch (error) {
+          try { await client.query("ROLLBACK"); } catch { /* Preserve the read/commit failure. */ }
+          throw error;
         }
-        return fallback ?? await readRelationalSnapshotForScope(client, scopeKey, {
-          includePayload,
-          includeRuntimeHeads,
-        });
       });
       const parsedPayload = snapshot.payload ?? null;
       const adoptionMetadata = parseJsonOrNull(snapshot.meta?.adoption_metadata_json);

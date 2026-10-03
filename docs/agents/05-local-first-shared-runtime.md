@@ -15,6 +15,13 @@ Shared runtime is opt-in and must not weaken checkout-bound auditability or loca
 - shared runtime may carry coordination metadata, not implicit copies of checkout-bound state
 - public runtime JSON outputs may expose connection references but must recursively redact resolved connection strings
 
+Full PostgreSQL runtime snapshots select their canonical/legacy scope and read
+all requested tables in one fresh `REPEATABLE READ READ ONLY` transaction.
+They commit before returning an observation; a query failure rolls back and
+returns neither partial payload nor partial heads. Cleanup errors must not
+replace the original failure. This per-call observation is not a cached verdict
+and does not change scope authority or implicitly bootstrap a missing schema.
+
 ## Do Not Move Implicitly
 
 ADR-0013 defines an explicit migration of standard AIDN executable assets to a

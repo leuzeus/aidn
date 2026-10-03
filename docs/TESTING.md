@@ -9,6 +9,12 @@ coexistence in either database result order, legacy-only compatibility and
 missing canonical artifacts without per-artifact fallback. They do not prove a
 running PostgreSQL server.
 
+The same parity fixture checks fresh repeatable-read read-only snapshot
+transactions, canonical/legacy priority, payload/head options, and refusal of
+partial results after requested-query errors. Rollback and client-close failures
+must preserve the primary error. Fake clients verify decisions and query order;
+they do not establish PostgreSQL isolation.
+
 Run `node tools/perf/verify-project-artifact-store-live-smoke.mjs` separately with
 `AIDN_RUNTIME_PG_SMOKE_URL` pointing to a dedicated test database. It creates two
 temporary project scopes, checks concurrent targeted writes and stable identifiers,
@@ -21,6 +27,18 @@ used or removed by this smoke.
 It removes only its own scopes and verifies cleanup. Missing credentials are
 `UNAVAILABLE`, not `PASS`. This is source/CLI integration proof, not native Codex
 hook execution or qualification of a PostgreSQL server installer.
+
+Run `node tools/perf/verify-postgres-runtime-snapshot-live-smoke.mjs` separately
+with that dedicated binding for snapshot isolation proof. A deterministic barrier
+lets a second connection commit a targeted artifact update between the reader's
+head and payload queries: the first snapshot must remain entirely on the old
+generation and the next call must see the new generation. Real missing-relation
+errors fail closed without another SELECT or candidate fallback; injected
+rollback/close errors preserve their original cause. PostgreSQL itself refuses
+a write in the read-only transaction. The smoke preserves checkout files, the
+Git index and unrelated rows, then removes only its own temporary scopes and
+verifies cleanup. Missing credentials remain `UNAVAILABLE`; this manual smoke
+is separate from required PR admission and native hook qualification.
 
 Initial-cycle admission is covered by the pre-write use-case and CLI fixtures:
 canonical initial session, missing/unknown/stale cycle, mismatched session and
