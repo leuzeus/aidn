@@ -4,7 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { normalizeHookPayload } from "../../src/application/codex/normalize-hook-payload.mjs";
-import { buildRunJsonHookSummary } from "../../src/core/workflow/workflow-output-factory.mjs";
+import {
+  buildRunJsonHookSummary,
+  buildCheckpointSummary,
+  buildWorkflowHookSummary,
+} from "../../src/core/workflow/workflow-output-factory.mjs";
 import { deriveGatingAction } from "../../src/core/gating/gating-policy.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
@@ -161,6 +165,27 @@ function main() {
       repair_primary_reason: "Producer diagnostic retained.",
     };
     const explicitRepairSummary = buildRunJsonHookSummary({ result: "warn", normalized: explicitRepair });
+    const explicitUnknownRepair = { ...explicitRepair, repair_layer_status: null };
+    const explicitUnknownSummary = buildRunJsonHookSummary({ result: "warn", normalized: explicitUnknownRepair });
+    const absentCheckpoint = buildCheckpointSummary({});
+    const failedWorkflow = buildWorkflowHookSummary({ result: "stop", reason_code: "HOOK_CHECKPOINT_FAILED" });
+    const unknownCheckpointWorkflow = buildWorkflowHookSummary({ checkpoint: { summary: {
+      repair_layer_open_count: 0, repair_layer_blocking: false, repair_layer_status: null,
+    } } });
+    const partialCheckpoint = buildCheckpointSummary({ gate: { levels: {
+      level2: { repair_layer_open_count: 0 },
+    } } });
+    const malformedCheckpoint = buildCheckpointSummary({ gate: { levels: {
+      level2: { repair_layer_open_count: false }, level3: { repair_layer_blocking: false },
+    } } });
+    const observedCleanCheckpoint = buildCheckpointSummary({ gate: { levels: {
+      level2: { repair_layer_open_count: 0 }, level3: { repair_layer_blocking: false },
+    } } });
+    const explicitUnknownWorkflow = buildWorkflowHookSummary({ checkpoint: { summary: explicitUnknownRepair } });
+    const normalizedFailedWorkflow = normalizeHookPayload(failedWorkflow);
+    const normalizedUnknownCheckpoint = normalizeHookPayload({ summary: absentCheckpoint });
+    const noRepairDiagnostic = (summary) => summary.repair_layer_status === null
+      && summary.repair_layer_advice === null && summary.repair_primary_reason === null;
 
     const checks = {
       checkpoint_open_count_present: Number(normalizedCheckpoint.repair_layer_open_count ?? 0) >= 1,
@@ -186,6 +211,20 @@ function main() {
       explicit_repair_advice_preserved: explicitRepairSummary.repair_layer_advice === explicitRepair.repair_layer_advice,
       explicit_repair_primary_reason_preserved: explicitRepairSummary.repair_primary_reason === explicitRepair.repair_primary_reason,
       observed_repair_status_matches_normalized: hookSummary.repair_layer_status === normalizedWorkflowHook.repair_layer_status,
+      explicit_unknown_summary_keeps_advice: explicitUnknownSummary.repair_layer_advice === explicitUnknownRepair.repair_layer_advice,
+      explicit_unknown_summary_keeps_primary_reason: explicitUnknownSummary.repair_primary_reason === explicitUnknownRepair.repair_primary_reason,
+      absent_checkpoint_cannot_claim_clean: noRepairDiagnostic(absentCheckpoint),
+      failed_workflow_cannot_claim_clean: noRepairDiagnostic(failedWorkflow),
+      failed_workflow_preserves_refusal: failedWorkflow.result === "stop" && failedWorkflow.reason_code === "HOOK_CHECKPOINT_FAILED",
+      unknown_checkpoint_workflow_cannot_claim_clean: noRepairDiagnostic(unknownCheckpointWorkflow),
+      partial_checkpoint_cannot_claim_clean: noRepairDiagnostic(partialCheckpoint),
+      malformed_checkpoint_cannot_claim_clean: noRepairDiagnostic(malformedCheckpoint),
+      observed_checkpoint_keeps_clean: observedCleanCheckpoint.repair_layer_status === "clean",
+      explicit_unknown_workflow_keeps_diagnostics: explicitUnknownWorkflow.repair_layer_status === null
+        && explicitUnknownWorkflow.repair_layer_advice === explicitUnknownRepair.repair_layer_advice
+        && explicitUnknownWorkflow.repair_primary_reason === explicitUnknownRepair.repair_primary_reason,
+      normalization_does_not_upgrade_unknown_workflow: noRepairDiagnostic(normalizedFailedWorkflow),
+      normalization_does_not_upgrade_unknown_checkpoint: noRepairDiagnostic(normalizedUnknownCheckpoint),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {

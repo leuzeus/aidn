@@ -114,6 +114,42 @@ function verifyObservedGateProjection(tempRoot) {
   checks.existing_summary_precedence_is_preserved = precedence.repair_layer_open_count === 2
     && precedence.repair_layer_blocking === true && precedence.repair_layer_status === "block";
 
+  const splitMeasurements = {
+    gate_count_summary_blocking: {
+      levels: { level2: { repair_layer_open_count: 0 } },
+      payload: { summary: { repair_layer_blocking: false } },
+    },
+    summary_count_gate_blocking: {
+      payload: { summary: { repair_layer_open_count: 0 } },
+      levels: { level3: { repair_layer_blocking: false } },
+    },
+    different_summaries: {
+      payload: { summary: { repair_layer_open_count: 0 } },
+      summary: { repair_layer_blocking: false },
+    },
+    input_and_payload: { repair_layer_open_count: 0, payload: { repair_layer_blocking: false } },
+    partial_summary_complete_gate: {
+      payload: { summary: { repair_layer_open_count: 0 } },
+      levels: { level2: { repair_layer_open_count: 1 }, level3: { repair_layer_blocking: false } },
+    },
+  };
+  for (const [name, input] of Object.entries(splitMeasurements)) {
+    const normalized = normalizeHookPayload(input);
+    checks[`${name}_cannot_manufacture_repair_diagnostic`] = normalized.repair_layer_status === null
+      && normalized.repair_layer_advice === null && normalized.repair_primary_reason === null;
+  }
+  for (const [name, count] of Object.entries({ boolean: false, empty_array: [], array: [0], object: {}, blank: " " })) {
+    const normalized = normalizeHookPayload({ summary: {
+      repair_layer_open_count: count, repair_layer_blocking: false,
+    } });
+    checks[`invalid_${name}_count_cannot_prove_clean`] = normalized.repair_layer_status === null
+      && normalized.repair_layer_advice === null && normalized.repair_primary_reason === null;
+  }
+  const numericString = normalizeHookPayload({ summary: {
+    repair_layer_open_count: "0", repair_layer_blocking: false,
+  } });
+  checks.numeric_string_count_keeps_compatibility = numericString.repair_layer_status === "clean";
+
   for (const [name, input] of Object.entries({
     warning: forms.skill_payload,
     blocked: { ...gate, result: "stop", reason_code: "L3_BLOCKING", payload: {
@@ -123,13 +159,16 @@ function verifyObservedGateProjection(tempRoot) {
       } } },
     }, levels: undefined },
     absent: { ok: false, result: "stop", reason_code: "HOOK_CHECKPOINT_FAILED" },
+    split_summary_gate: splitMeasurements.summary_count_gate_blocking,
+    split_gate_summary: splitMeasurements.gate_count_summary_blocking,
+    invalid_boolean_count: { summary: { repair_layer_open_count: false, repair_layer_blocking: false } },
   })) {
     const file = path.join(tempRoot, `normalization-${name}.json`);
     fs.writeFileSync(file, JSON.stringify(input));
     const output = runJson("tools/codex/normalize-hook-payload.mjs", ["--in", file, "--json"]);
-    checks[`normalization_cli_${name}_keeps_primary_cause`] = output.reason_code === input.reason_code;
+    checks[`normalization_cli_${name}_keeps_primary_cause`] = output.reason_code === (input.reason_code ?? null);
     checks[`normalization_cli_${name}_keeps_observation_state`] = output.repair_layer_status
-      === { warning: "warn", blocked: "block", absent: null }[name];
+      === ({ warning: "warn", blocked: "block" }[name] ?? null);
     if (name === "blocked") checks.normalization_cli_blocked_keeps_reload_blocker = output.reason_codes.includes("MAPPING_MISSING");
   }
   return checks;

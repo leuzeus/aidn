@@ -81,22 +81,30 @@ function projectRepairEvidence(input, payload, summaries, levels) {
   const level3 = objectOrEmpty(levels.level3);
   const summaryField = (key) => firstDefined(...summaries.map((summary) => summary[key]));
   const explicitStatus = firstDefined(summaryField("repair_layer_status"), input.repair_layer_status, payload.repair_layer_status);
-  const observedCount = firstDefined(summaryField("repair_layer_open_count"), level2.repair_layer_open_count,
-    input.repair_layer_open_count, payload.repair_layer_open_count);
-  const observedBlocking = toBooleanOrNull(firstDefined(summaryField("repair_layer_blocking"), level3.repair_layer_blocking,
-    input.repair_layer_blocking, payload.repair_layer_blocking));
-  const count = observedCount == null || typeof observedCount === "string" && observedCount.trim() === ""
-    ? null : Number(observedCount);
-  const measured = Number.isFinite(count) && count >= 0 && observedBlocking != null;
+  const measurementSources = [...summaries, {
+    repair_layer_open_count: level2.repair_layer_open_count,
+    repair_layer_blocking: level3.repair_layer_blocking,
+    repair_layer_top_findings: level2.repair_layer_top_findings,
+  }, input, payload];
+  const countSource = measurementSources.find((source) => source.repair_layer_open_count != null);
+  const blockingSource = measurementSources.find((source) => source.repair_layer_blocking != null);
+  const observedCount = countSource?.repair_layer_open_count;
+  const observedBlocking = toBooleanOrNull(blockingSource?.repair_layer_blocking);
+  const count = typeof observedCount === "number"
+    || typeof observedCount === "string" && observedCount.trim() !== "" ? Number(observedCount) : null;
+  const unknownStatus = countSource && Object.hasOwn(countSource, "repair_layer_status") && countSource.repair_layer_status == null;
+  const measured = countSource === blockingSource && !unknownStatus
+    && Number.isFinite(count) && count >= 0 && observedBlocking != null;
   const topFindings = firstDefined(summaryField("repair_layer_top_findings"), level2.repair_layer_top_findings,
     input.repair_layer_top_findings, payload.repair_layer_top_findings, []);
+  const measuredFindings = measured ? firstDefined(countSource.repair_layer_top_findings, []) : [];
   const measuredStatus = measured ? deriveRepairLayerStatus({ openCount: count, blocking: observedBlocking }) : null;
   const status = explicitStatus ?? measuredStatus;
   const canDeriveAdvice = measured && (explicitStatus == null || explicitStatus === measuredStatus);
   const advice = firstDefined(summaryField("repair_layer_advice"), input.repair_layer_advice, payload.repair_layer_advice,
-    canDeriveAdvice ? deriveRepairLayerAdvice({ openCount: count, blocking: observedBlocking, topFindings }) : null);
+    canDeriveAdvice ? deriveRepairLayerAdvice({ openCount: count, blocking: observedBlocking, topFindings: measuredFindings }) : null);
   const primaryReason = firstDefined(summaryField("repair_primary_reason"), input.repair_primary_reason, payload.repair_primary_reason,
-    canDeriveAdvice ? deriveRepairPrimaryReason({ status, advice, topFindings }) : null);
+    canDeriveAdvice ? deriveRepairPrimaryReason({ status, advice, topFindings: measuredFindings }) : null);
   return {
     repair_layer_open_count: Number.isFinite(count) && count >= 0 ? count : 0,
     repair_layer_blocking: observedBlocking === true,

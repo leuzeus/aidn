@@ -124,6 +124,16 @@ function main() {
         },
         expectedReason: null,
       },
+      {
+        name: "explicit_diagnostic_without_status",
+        payload: {
+          ok: true,
+          result: "warn",
+          repair_layer_advice: "Review the explicit producer diagnostic.",
+          repair_primary_reason: "Producer supplied a reason without a repair status.",
+        },
+        expectedReason: null,
+      },
     ];
     const reasonChecks = {};
     for (const testCase of reasonCases) {
@@ -143,9 +153,9 @@ function main() {
         reasonChecks[`${testCase.name}_${mode}_result_preserved`] = output.result === testCase.payload.result
           && output.normalized.result === testCase.payload.result
           && output.summary.result === testCase.payload.result;
-        reasonChecks[`${testCase.name}_${mode}_unobserved_repair_stays_null`] = output.summary.repair_layer_status === null
-          && output.summary.repair_layer_advice === null
-          && output.summary.repair_primary_reason === null
+        reasonChecks[`${testCase.name}_${mode}_repair_diagnostics_preserved`] = output.summary.repair_layer_status === null
+          && output.summary.repair_layer_advice === (testCase.payload.repair_layer_advice ?? null)
+          && output.summary.repair_primary_reason === (testCase.payload.repair_primary_reason ?? null)
           && output.normalized.repair_layer_status === null;
       }
     }
