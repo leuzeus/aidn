@@ -47,17 +47,93 @@ function extractSessionObjective(sessionPath) {
   return extractObjective(readTextSafe(sessionPath));
 }
 
+function objectiveVisibleLines(text) {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const visible = [];
+  let fence = null;
+  let comment = false;
+  for (const rawLine of lines) {
+    if (fence) {
+      const marker = rawLine.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (marker && marker[1][0] === fence.char && marker[1].length >= fence.length
+          && marker[2].trim() === "") fence = null;
+      continue;
+    }
+    if (!comment && /^(?: {4}|\t)/.test(rawLine)) {
+      visible.push("");
+      continue;
+    }
+    let line = "";
+    let remainder = rawLine;
+    while (remainder) {
+      if (comment) {
+        const end = remainder.indexOf("-->");
+        if (end < 0) break;
+        remainder = remainder.slice(end + 3);
+        comment = false;
+      } else {
+        const start = remainder.indexOf("<!--");
+        if (start < 0) { line += remainder; break; }
+        line += `${remainder.slice(0, start)} `;
+        remainder = remainder.slice(start + 4);
+        comment = true;
+      }
+    }
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (marker) {
+      fence = { char: marker[1][0], length: marker[1].length };
+      visible.push("");
+      continue;
+    }
+    visible.push(line);
+  }
+  return visible;
+}
+
+function normalizeObjective(value) {
+  let objective = String(value ?? "").trim();
+  if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(objective.replace(/[ \t]/g, ""))) return null;
+  if (/^\[[ xX]\](?:\s|$)/.test(objective)) return null;
+  const quoted = objective.match(/^`([^`]+)`$/);
+  const placeholder = (quoted ? quoted[1] : objective).toLowerCase().replace(/^\((.*)\)$/, "$1").trim();
+  if (!objective || ["none", "unknown", "to_define", "to define", "tbd", "todo", "1 clear sentence", "1 phrase"].includes(placeholder)) return null;
+  return objective;
+}
+
 function extractObjective(text) {
-  const kv = parseKeyValues(text);
-  if (kv.session_objective) {
-    return kv.session_objective;
+  const lines = objectiveVisibleLines(text);
+  const keyed = {};
+  for (const line of lines) {
+    const match = line.match(/^([A-Za-z_][A-Za-z0-9_ ]*):\s*(.*)$/);
+    const key = match?.[1].trim().toLowerCase().replace(/\s+/g, "_");
+    if (key !== "session_objective" && key !== "objective") continue;
+    const objective = normalizeObjective(match[2]);
+    if (objective) keyed[key] = objective;
   }
-  if (kv.objective) {
-    return kv.objective;
-  }
-  const headingMatch = text.match(/##\s*Session Objective[\s\S]*?(?:\n-|\n\*|\n\d+\.)\s*(.+)/i);
-  if (headingMatch) {
-    return headingMatch[1].trim();
+  const keyedObjective = keyed.session_objective ?? keyed.objective;
+  if (keyedObjective) return keyedObjective;
+  const heading = /^ {0,3}#{1,6}[ \t]+session[ \t]+objective(?:[ \t]+\([^)]*\))?[ \t]*#*[ \t]*$/i;
+  const start = lines.findIndex(line => heading.test(line));
+  if (start < 0) return null;
+  const listOrKey = /^(?:[-*+]\s+|\d+[.)]\s+|(?:session[_ ]objective|objective):)/i;
+  const boundary = index => /^ {0,3}#{1,6}(?:[ \t]|$)/.test(lines[index])
+    || (Boolean(lines[index].trim()) && !listOrKey.test(lines[index].trim())
+      && /^ {0,3}(?:=+|-+)[ \t]*$/.test(lines[index + 1] ?? ""));
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (boundary(i)) break;
+    const objective = normalizeObjective(line.trim().replace(/^(?:[-*+]\s+|\d+[.)]\s+)/, "")
+      .replace(/^(?:session[_ ]objective|objective):\s*/i, ""));
+    if (!objective) continue;
+    if (listOrKey.test(line.trim())) return objective;
+    const paragraph = [objective];
+    for (let j = i + 1; j < lines.length; j += 1) {
+      if (!lines[j].trim() || boundary(j) || listOrKey.test(lines[j].trim())) break;
+      const continuation = normalizeObjective(lines[j]);
+      if (!continuation) break;
+      paragraph.push(continuation);
+    }
+    return paragraph.join(" ").replace(/[ \t]+/g, " ");
   }
   return null;
 }

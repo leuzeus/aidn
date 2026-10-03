@@ -81,6 +81,14 @@ PostgreSQL selection, misleading local projections, normal reload history and a
 real repeated-anomaly stop through the standard hook and Codex JSON wrapper.
 These subprocess tests do not qualify native hook approval or client execution.
 
+The same routed branch-admission suite checks session objective extraction:
+canonical `session_objective` priority and last valid value, legacy keys/bullets,
+bounded Markdown paragraphs, placeholders, comments, fenced/indented examples,
+CRLF and real divergence. Valid key text, including backticks, is preserved.
+Preview preserves checkout and journal bytes. Terminal closure uses the same
+parser while ordinary reads retain active-cycle selection. These are source/CLI
+fixtures; they do not establish DB source parity or native client execution.
+
 The branch-admission verifier also executes the actual `drift-check` skill via
 the Codex JSON wrapper and proves that its event clears only the age signal on
 the next audit. It covers preview, generic evaluations, wrong branch/mode,
