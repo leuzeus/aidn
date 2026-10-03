@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
@@ -79,6 +80,66 @@ function runNodeJson(repoRoot, script, args, env = {}, expectStatus = 0) {
     throw new Error(`Command failed (${script} ${args.join(" ")}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
   }
   return JSON.parse(String(result.stdout ?? "{}"));
+}
+
+function snapshotFixtureBytes(root) {
+  return JSON.stringify(fs.readdirSync(root, { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile()).map(entry => {
+      const file = path.join(entry.parentPath, entry.name);
+      return [path.relative(root, file), fs.readFileSync(file).toString("base64")];
+    }).sort(([a], [b]) => a.localeCompare(b)));
+}
+
+function verifyLosslessJsonOutput(repoRoot, { readyTarget, blockedTarget, warningTarget }) {
+  const runtimeFile = pathToFileURL(path.join(repoRoot, "tools/runtime/pre-write-admit.mjs")).href;
+  const cliFile = path.join(repoRoot, "bin/aidn.mjs");
+  const cases = [];
+  for (const strict of [false, true]) {
+    for (const [id, target, admission] of [["ready", readyTarget, "admitted"], ["blocked", blockedTarget, "blocked"],
+      ["warning", warningTarget, "admitted_with_warnings"]])
+      cases.push({ id: `${id}-${strict ? "strict" : "default"}`, target, strict, admission });
+    cases.push({ id: `native-invalid-${strict ? "strict" : "default"}`, target: readyTarget, strict, admission: "blocked",
+      nativeRequest: { cwd: readyTarget, tool_name: "apply_patch", tool_input: { command: "invalid patch é😀\n\t\"quoted\"" } } });
+  }
+  cases.push({ id: "native-note-unicode", target: readyTarget, admission: "admitted", nativeRequest: {
+    cwd: readyTarget, tool_name: "apply_patch", tool_input: { command:
+      "*** Begin Patch\n*** Add File: docs/audit/notes/é😀.md\n+é😀\t\"quoted\"\n*** End Patch" } } });
+  cases.push({ id: "native-malformed-stdin", target: readyTarget, strict: true, admission: "blocked", nativeRequest: null, stdin: "{invalid" });
+  return cases.map(testCase => {
+    const before = snapshotFixtureBytes(testCase.target);
+    const request = { targetRoot: testCase.target, skill: "requirements-delta",
+      ...(testCase.nativeRequest === undefined ? {} : { nativeRequest: testCase.nativeRequest }) };
+    // Compare the entire public response with the producer, including nested
+    // diagnostics, nulls and native evidence; formatting must not project fields.
+    const reference = spawnSync(process.execPath, ["--input-type=module", "--eval",
+      `const { preWriteAdmit } = await import(${JSON.stringify(runtimeFile)}); console.log(JSON.stringify(await preWriteAdmit(${JSON.stringify(request)})));`],
+    { cwd: repoRoot, encoding: "utf8", timeout: 30000, maxBuffer: 10 * 1024 * 1024 });
+    assert(reference.status === 0 && !reference.error && reference.stderr === "", `JSON producer failed: ${reference.stderr}`);
+    const expected = JSON.parse(reference.stdout);
+    const child = spawnSync(process.execPath, [cliFile, "runtime", "pre-write-admit", "--target", testCase.target,
+      "--skill", "requirements-delta", ...(testCase.strict ? ["--strict"] : []),
+      ...(testCase.nativeRequest === undefined ? [] : ["--native-request-stdin"]), "--json"], {
+      cwd: repoRoot, encoding: "utf8", timeout: 30000, maxBuffer: 10 * 1024 * 1024,
+      input: testCase.stdin ?? (testCase.nativeRequest === undefined ? undefined : JSON.stringify(testCase.nativeRequest)),
+    });
+    assert(!child.error && child.status !== null, `JSON CLI failed: ${child.stderr}`);
+    let actual;
+    try { actual = JSON.parse(child.stdout); } catch { actual = null; }
+    const stdoutBytes = Buffer.byteLength(child.stdout, "utf8");
+    const previousPrettyBytes = Buffer.byteLength(`${JSON.stringify(expected, null, 2)}\n`, "utf8");
+    const checks = {
+      complete_producer_object_preserved: isDeepStrictEqual(actual, expected),
+      admission_expected: actual?.admission_status === testCase.admission,
+      denial_reasons_preserved: testCase.admission !== "blocked" || actual?.blocking_reasons?.length > 0,
+      exit_code_preserved: child.status === (testCase.strict && testCase.admission === "blocked" ? 1 : 0),
+      stderr_empty: child.stderr === "",
+      compact_document_only: child.stdout === `${JSON.stringify(expected)}\n`,
+      output_bytes_reduced: stdoutBytes < previousPrettyBytes,
+      checkout_and_git_index_unchanged: snapshotFixtureBytes(testCase.target) === before,
+    };
+    return { id: testCase.id, checks, stdout_bytes: stdoutBytes, previous_pretty_bytes: previousPrettyBytes,
+      whitespace_bytes_removed: previousPrettyBytes - stdoutBytes, pass: Object.values(checks).every(Boolean) };
+  });
 }
 
 function installSharedPlanningFixture(targetRoot, { selectedExecutionScope = "none" } = {}) {
@@ -544,11 +605,6 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
       skill: process.env.AIDN_CANONICAL_FIXTURE_SKILL }), calls })); }
     catch (error) { console.log(JSON.stringify({ error: error.message, calls })); }
   `;
-  const snapshot = root => JSON.stringify(fs.readdirSync(root, { recursive: true, withFileTypes: true })
-    .filter(entry => entry.isFile()).map(entry => {
-      const file = path.join(entry.parentPath, entry.name);
-      return [path.relative(root, file), fs.readFileSync(file).toString("base64")];
-    }).sort(([a], [b]) => a.localeCompare(b)));
   const artifacts = root => ["CURRENT-STATE.md", "RUNTIME-STATE.md", "sessions/S101-alpha.md",
     "cycles/C101-feature-alpha/status.md", "cycles/C101-feature-alpha/plan.md"].map(relative => ({
     path: relative, content_format: "utf8", content: fs.readFileSync(path.join(root, "docs/audit", relative), "utf8"),
@@ -633,7 +689,7 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
     const visibleCurrent = path.join(root, "docs/audit/CURRENT-STATE.md");
     const visibleCurrentText = testCase.visibleCurrentMissing ? fs.readFileSync(visibleCurrent) : null;
     if (testCase.visibleCurrentMissing) fs.unlinkSync(visibleCurrent);
-    const before = snapshot(root);
+    const before = snapshotFixtureBytes(root);
     const canonicalBefore = fs.readFileSync(recordFile, "utf8");
     const childArgs = testCase.cli ? ["--import", initializerFile, path.join(repoRoot, "tools/runtime/pre-write-admit.mjs"),
       "--target", root, "--skill", testCase.skill, ...(testCase.strict ? ["--strict"] : []), "--json"]
@@ -667,7 +723,7 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
           ? result?.blocking_reasons?.some(reason => reason.includes("RUNTIME_CONTINUITY_ARTIFACT_EMPTY")) : true,
       backend_pinned: testCase.cli || testCase.backend !== "postgres" || observed.calls[0]?.backend === "postgres" && observed.calls[0]?.config_backend === "postgres",
       optional_files_no_read: !testCase.noRead || observed.calls.length === 0,
-      checkout_and_git_index_unchanged: snapshot(root) === before,
+      checkout_and_git_index_unchanged: snapshotFixtureBytes(root) === before,
       canonical_snapshot_unchanged: fs.readFileSync(recordFile, "utf8") === canonicalBefore,
     };
     if (testCase.visibleCurrentMissing) fs.writeFileSync(visibleCurrent, visibleCurrentText);
@@ -1039,6 +1095,7 @@ function main() {
     assert(dbOnlyCloseSession.context.current_state_source === "sqlite", "db-only fileless close-session admission should load CURRENT-STATE from SQLite");
     assert(dbOnlyCloseSession.context.session_artifact_source === "sqlite", "db-only fileless close-session admission should load the session artifact from SQLite");
 
+    const losslessJsonEvidence = verifyLosslessJsonOutput(repoRoot, { readyTarget, blockedTarget, warningTarget });
     const output = {
       ts: new Date().toISOString(),
       fixtures_root: fixturesRoot,
@@ -1063,8 +1120,9 @@ function main() {
       initial_context_reload: contextReloadEvidence,
       initial_cycle_admission: initialCycleEvidence,
       canonical_source_selection: canonicalSourceEvidence,
+      lossless_json_output: losslessJsonEvidence,
       injected_failure_cleanup: injectedFailureCleanup,
-      pass: canonicalSourceEvidence.every(testCase => testCase.pass),
+      pass: [...canonicalSourceEvidence, ...losslessJsonEvidence].every(testCase => testCase.pass),
     };
 
     if (args.json) {

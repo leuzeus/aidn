@@ -173,6 +173,7 @@ async function main() {
     });
 
     assert(!sqliteSnapshot.warning, `sqlite parity snapshot should be readable (${sqliteSnapshot.warning || "ok"})`);
+    assert(!postgresSnapshot.warning, `postgres parity snapshot should be readable (${postgresSnapshot.warning || "ok"})`);
     assert(
       JSON.stringify(normalizePayloadForComparison(stablePayloadProjection(sqliteSnapshot.payload)))
         === JSON.stringify(normalizePayloadForComparison(stablePayloadProjection(postgresSnapshot.payload))),
@@ -184,6 +185,94 @@ async function main() {
     assert(JSON.stringify(sqliteHeadKeys) === JSON.stringify(postgresHeadKeys), "sqlite and postgres runtime head keys should match");
     assert(postgresSnapshot.runtimeHeads.current_state?.artifact_path === "CURRENT-STATE.md", "postgres parity snapshot should preserve current_state");
     assert(postgresSnapshot.runtimeHeads.handoff_packet?.artifact_path === "HANDOFF-PACKET.md", "postgres parity snapshot should preserve handoff_packet");
+
+    // The fake proves SQL lifecycle and option routing; isolation across a
+    // concurrent commit is covered separately by the manual live smoke.
+    const persisted = () => JSON.stringify({ rows: fake.state.relationalRows,
+      heads: [...fake.state.runtimeHeads], snapshots: [...fake.state.runtimeSnapshots],
+      tables: [...fake.state.tablesPresent], migrations: fake.state.schemaMigrations });
+    for (const includePayload of [false, true]) for (const includeRuntimeHeads of [false, true]) {
+      const before = persisted();
+      fake.state.queryLog.length = 0;
+      const selected = await postgresStore.loadSnapshot({ includePayload, includeRuntimeHeads });
+      const queries = fake.state.queryLog.map(query => query.sql);
+      assert(selected.exists && !selected.warning, "all snapshot option combinations should retain the canonical scope");
+      assert(Boolean(selected.payload) === includePayload, "payload option should control payload hydration");
+      assert(Boolean(Object.keys(selected.runtimeHeads).length) === includeRuntimeHeads, "head option should control head hydration");
+      assert(queries[0] === "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY" && queries.at(-1) === "COMMIT",
+        "snapshot should commit one repeatable-read read-only transaction");
+      assert(queries.filter(sql => sql.startsWith("BEGIN")).length === 1 && queries.filter(sql => sql === "COMMIT").length === 1,
+        "snapshot should use exactly one transaction");
+      assert(queries.every(sql => /^(SELECT\b|BEGIN\b|COMMIT$)/.test(sql)), "snapshot should not write, bootstrap or lock tables");
+      assert(queries.filter(sql => sql.includes("FROM aidn_runtime.runtime_heads")).length === Number(includeRuntimeHeads),
+        "snapshot should not reread runtime heads");
+      assert(queries.filter(sql => /^SELECT\b/.test(sql)).length === 1 + Number(includeRuntimeHeads) + (includePayload ? 15 : 0),
+        "snapshot should retain only the reads requested by its options");
+      assert(persisted() === before, "snapshot should preserve all fake persisted state");
+    }
+    fake.state.queryLog.length = 0;
+    assert((await postgresStore.loadRuntimeHeads()).current_state?.artifact_path === "CURRENT-STATE.md",
+      "loadRuntimeHeads should retain existing head resolution");
+    assert(fake.state.queryLog[0].sql === "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"
+      && fake.state.queryLog.at(-1).sql === "COMMIT", "loadRuntimeHeads should use the same read transaction");
+
+    const empty = createRuntimePersistenceFakePgClientFactory({ initialTables: [...fake.state.tablesPresent] });
+    const emptyStore = createPostgresRuntimeArtifactStore({ targetRoot: tempRoot,
+      connectionString: "postgres://aidn:test@localhost:5432/aidn", clientFactory: empty.factory });
+    const absent = await emptyStore.loadSnapshot();
+    assert(!absent.exists && absent.payload === null && !absent.warning && !Object.keys(absent.runtimeHeads).length,
+      "healthy absent scopes should remain absent without a schema warning");
+    assert(empty.state.queryLog[0].sql === "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"
+      && empty.state.queryLog.at(-1).sql === "COMMIT", "all absent scope candidates should share one transaction");
+
+    for (const missingTable of ["index_meta", "artifacts", "COMMIT"]) for (const failedCleanup of ["none", "rollback", "end", "both"]) {
+      const queries = [];
+      let ended = false;
+      let primary = null;
+      const failureStore = createPostgresRuntimeArtifactStore({ targetRoot: tempRoot,
+        connectionString: "postgres://aidn:test@localhost:5432/aidn",
+        clientFactory() {
+          const client = fake.factory();
+          return {
+            connect: () => client.connect(),
+            async end() { ended = true; if (["end", "both"].includes(failedCleanup)) throw new Error("fixture closure failure"); },
+            async query(sql, values) {
+              sql = String(sql).trim(); queries.push(sql);
+              if (sql === "ROLLBACK" && ["rollback", "both"].includes(failedCleanup)) throw new Error("fixture rollback failure");
+              if (missingTable === "COMMIT" ? sql === "COMMIT" : sql.includes(`FROM aidn_runtime.${missingTable}`)) {
+                primary = new Error(missingTable === "COMMIT" ? "fixture commit failure" : `relation \"aidn_runtime.${missingTable}\" does not exist`);
+                primary.code = missingTable === "COMMIT" ? "08006" : "42P01";
+                throw primary;
+              }
+              return client.query(sql, values);
+            },
+          };
+        } });
+      const failed = await failureStore.loadSnapshot();
+      assert(!failed.exists && failed.payload === null && !Object.keys(failed.runtimeHeads).length,
+        "any failed required table should discard the partial payload and heads");
+      assert(failed.warning === primary?.message, "rollback or client closure failure should preserve the original SQL error");
+      assert(queries[0] === "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY" && queries.at(-1) === "ROLLBACK"
+        && queries.filter(sql => sql === "ROLLBACK").length === 1 && (missingTable === "COMMIT" || !queries.includes("COMMIT")),
+        "failed snapshot should roll back once without committing");
+      assert(queries.findIndex(sql => missingTable === "COMMIT" ? sql === "COMMIT" : sql.includes(`FROM aidn_runtime.${missingTable}`)) === queries.length - 2,
+        "failed SQL must not trigger another table query or legacy candidate lookup");
+      assert(ended, "failed snapshot should close its client");
+    }
+
+    const falsyFailureStore = createPostgresRuntimeArtifactStore({ targetRoot: tempRoot,
+      connectionString: "postgres://aidn:test@localhost:5432/aidn", clientFactory() {
+        const client = fake.factory();
+        return { connect: () => client.connect(),
+          async end() { throw new Error("fixture closure must not replace a falsy primary failure"); },
+          async query(sql, values) {
+            if (String(sql).includes("FROM aidn_runtime.index_meta")) throw 0;
+            return client.query(sql, values);
+          } };
+      } });
+    const falsyFailure = await falsyFailureStore.loadSnapshot();
+    assert(!falsyFailure.exists && falsyFailure.payload === null && falsyFailure.warning === "0",
+      "client closure must preserve a falsy thrown primary failure");
 
     console.log("PASS");
   } catch (error) {

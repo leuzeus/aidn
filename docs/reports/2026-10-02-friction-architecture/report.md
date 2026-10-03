@@ -132,9 +132,10 @@ Le premier lot restaure l’intention des diagnostics existants et n’introduit
 
 ## Vérifications des corrections au 3 octobre
 
-Les lots 1 et 2 sont fusionnés dans `dev` via les PR
+Les lots 1, 2 et 3 sont fusionnés dans `dev` via les PR
 [#130](https://github.com/leuzeus/aidn/pull/130) et
-[#131](https://github.com/leuzeus/aidn/pull/131), chacune avec ses 12 contrôles CI
+[#131](https://github.com/leuzeus/aidn/pull/131), puis
+[#132](https://github.com/leuzeus/aidn/pull/132), chacune avec ses 12 contrôles CI
 réussis. Les constats historiques ci-dessus décrivent toujours le package initial.
 
 Le lot 3 corrige les sources de lecture et la fraîcheur de configuration. Ses
@@ -168,6 +169,42 @@ réparation sont conservées. Les premières exécutions sous `/tmp` étaient
 confondues par un marqueur Git hôte ; sous le répertoire de fixtures qualifié,
 les 28 tests de configuration passent sur la référence et la correction.
 Ce détail d’environnement n’est pas une régression produit ni un gain de performance.
+
+Le gate PostgreSQL natif jetable du lot 3 passe 75 contrôles, sans scénario sauté,
+avec nettoyage et aucun processus enfant restant, après qualification de
+PostgreSQL 17.6 privé. Le premier essai CI Codex du commit final échoue ; la suite
+locale exacte passe ses 10 gates et la relance CI du même commit passe. Les logs
+détaillés du premier échec restent inaccessibles sous la politique réseau ; aucune
+cause n’est attribuée à cet échec.
+
+Le lot 4 réduit les espaces de sérialisation de `pre-write-admit --json`, sans
+projeter ni supprimer de champ. Dix cas comparent le document complet au
+producteur, dont warnings/refus, mode strict, requêtes de patch Unicode et stdin
+malformé ; ils passent avec les 74 scénarios canoniques. Une comparaison réelle
+avant/après sur les mêmes clients Git passe 13 cas et 65 contrôles : huit objets
+JSON identiques, sorties texte/erreurs, stderr, codes de sortie et octets du
+checkout/index préservés. Les réponses mesurées économisent 3 509 à 3 834 octets
+(19,76 à 20,46 %). Cela ne mesure ni tokens ni latence.
+
+Le lecteur PostgreSQL complet est aussi reproduit sur une base dédiée, sans DDL
+concurrent : une barrière après le head A laisse un autre client valider B, puis
+la lecture initiale reprend. Avant correction, le head A accompagne le contenu
+B. Après correction, une transaction `REPEATABLE READ READ ONLY` couvre le choix
+de scope et toutes les tables demandées ; le lecteur reste entièrement sur A,
+puis le prochain appel voit B. Les 22 contrôles live passent, dont erreur réelle
+42P01 sans résultat partiel ni fallback, erreur primaire conservée malgré les
+échecs injectés de rollback/fermeture, écriture refusée par PostgreSQL et
+nettoyage des seuls scopes temporaires. Treize de ces contrôles échouent avant
+correction. La revue indépendante ajoute 18 assertions réussies sur erreurs et
+options. Cette cohérence ajoute BEGIN/COMMIT et ne promet pas une baisse de
+latence ; aucun snapshot ni verdict n’est conservé entre appels.
+
+Une fixture de persistance existante échoue également sur la référence sous
+Linux : des scopes Windows bruts ne correspondent pas aux cibles résolues en
+chemins absolus. Ses cibles deviennent des chemins temporaires possédés ; les
+métadonnées Windows et toutes les assertions sont conservées, avec nettoyage en
+finally. La même fixture corrigée passe avant et après la correction runtime.
+Ce changement de précondition ne démontre aucun gain produit.
 
 Ces preuves de correction ne préjugent pas du prochain résultat de qualité,
 de tokens ou de latence. La qualification du modèle exact et du shell Node 22
