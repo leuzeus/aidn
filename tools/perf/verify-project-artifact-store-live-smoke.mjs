@@ -90,7 +90,7 @@ else {
       return JSON.parse(child.stdout);
     };
     const written = cli('db-first-artifact', '--path', 'cycles/C001-migration/status.md', '--kind', 'cycle',
-      '--content', 'state: OPEN\nsession_owner: S001\nbranch_name: cycle/C001-test\ndor_state: READY\n', '--no-materialize');
+      '--content', 'state: OPEN\nsession_owner: S001\nbranch_name: cycle/C001-test\ndor_state: READY\ncurrent_goal: verify canonical workflow preservation\n', '--no-materialize');
     assert.equal(written.backend, 'postgres'); assert.equal(written.materialized, false);
     const read = cli('artifact-store', 'get', '--path', 'cycles/C001-migration/status.md');
     assert.equal(read.backend, 'postgres'); assert.equal(read.sqlite_file, '');
@@ -109,7 +109,7 @@ else {
     prepareActivationFixture(targetRoot, repoRoot);
     const initialCurrent = 'mode: THINKING\nactive_session: S001\nactive_cycle: none\ncycle_branch: none\nbranch_kind: session\nsession_branch: S001-initial\nupdated_at: 2026-09-25\n';
     await upsert({ path: 'CURRENT-STATE.md', content: initialCurrent });
-    await upsert({ path: 'sessions/S001-test.md', content: '## WORK MODE - THINKING\nsession_branch: S001-initial\ncycle_branch: none\nprimary_focus_cycle: none\n' });
+    await upsert({ path: 'sessions/S001-test.md', content: '## WORK MODE - THINKING\nsession_branch: S001-initial\ncycle_branch: none\nprimary_focus_cycle: none\nsession_objective: verify canonical workflow preservation\n' });
     await upsert({ path: 'RUNTIME-STATE.md', content: 'runtime_state_mode: db-only\nrepair_layer_status: clean\nrepair_routing_hint: continue\ncurrent_state_freshness: unknown\n' });
     fs.mkdirSync(path.join(targetRoot, 'docs/audit/sessions'), { recursive: true });
     fs.writeFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md'), 'mode: unknown\nactive_cycle: C999\nupdated_at: invalid\n');
@@ -154,6 +154,44 @@ else {
     console.log('PASS live PostgreSQL: runtime repair projection reads current clean/warn/block findings, ignores misleading caches, preserves all rows');
     assert.deepEqual(await snapshot(scopes[0]), initialSnapshot, 'initial admission/projection changed canonical data');
     assert.deepEqual(await snapshot(scopes[1]), other, 'initial admission affected another scope');
+    const admissionConfigPath = path.join(targetRoot, '.aidn/config.json');
+    const admissionConfigBefore = fs.readFileSync(admissionConfigPath);
+    const admissionFilesBefore = {
+      current: fs.readFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md')),
+      session: fs.readFileSync(path.join(targetRoot, 'docs/audit/sessions/S001-test.md')),
+      gitIndex: fs.readFileSync(path.join(targetRoot, '.git/index')),
+    };
+    try {
+      for (const stateMode of ['dual', 'files']) {
+        const configured = JSON.parse(admissionConfigBefore);
+        configured.runtime.stateMode = stateMode;
+        fs.writeFileSync(admissionConfigPath, JSON.stringify(configured));
+        for (const skill of ['context-reload', 'start-session', 'cycle-create']) {
+          const inspected = cli('pre-write-admit', '--skill', skill);
+          assert.equal(inspected.context.mode, 'THINKING', `${stateMode}/${skill}: canonical mode`);
+          assert.equal(inspected.context.current_state_source, 'postgres', `${stateMode}/${skill}: current state source`);
+          assert.equal(inspected.context.runtime_state_source, 'postgres', `${stateMode}/${skill}: runtime state source`);
+          assert.equal(inspected.context.session_artifact_source, 'postgres', `${stateMode}/${skill}: session source`);
+        }
+        const unavailable = JSON.parse(JSON.stringify(configured));
+        unavailable.runtime.persistence.connectionRef = 'env:AIDN_TEST_ABSENT_CONNECTION_0104';
+        fs.writeFileSync(admissionConfigPath, JSON.stringify(unavailable));
+        for (const skill of ['context-reload', 'start-session', 'cycle-create']) {
+          const inspected = cli('pre-write-admit', '--skill', skill);
+          assert.equal(inspected.ok, false, `${stateMode}/${skill}: unavailable canonical storage must refuse`);
+          assert(inspected.blocking_reasons.some(reason => /canonical runtime backend is unavailable/.test(reason)));
+          assert.notEqual(inspected.context.current_state_source, 'file');
+        }
+      }
+    } finally {
+      fs.writeFileSync(admissionConfigPath, admissionConfigBefore);
+    }
+    assert.deepEqual(fs.readFileSync(path.join(targetRoot, 'docs/audit/CURRENT-STATE.md')), admissionFilesBefore.current);
+    assert.deepEqual(fs.readFileSync(path.join(targetRoot, 'docs/audit/sessions/S001-test.md')), admissionFilesBefore.session);
+    assert.deepEqual(fs.readFileSync(path.join(targetRoot, '.git/index')), admissionFilesBefore.gitIndex);
+    assert.deepEqual(await snapshot(scopes[0]), initialSnapshot, 'generic admission changed canonical data');
+    assert.deepEqual(await snapshot(scopes[1]), other, 'generic admission changed another scope');
+    console.log('PASS live PostgreSQL: configured dual/files generic admissions use canonical current/runtime/session artifacts and refuse outage; projections, Git index, all rows and other scope preserved');
     const runScript = (script, args = []) => spawnSync(process.execPath,
       [path.join(repoRoot, script), '--target', targetRoot, ...args, '--json'],
       { encoding: 'utf8', timeout: 60000, windowsHide: true });
@@ -261,7 +299,9 @@ else {
       const corruptSnapshot = await snapshot(scopes[0]);
       const refused = runScript('tools/runtime/pre-write-admit.mjs', ['--skill', 'cycle-create', '--strict']);
       assert.equal(refused.status, 1);
-      assert.match(refused.stderr, /RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH/);
+      const refusedResult = JSON.parse(refused.stdout);
+      assert.equal(refusedResult.ok, false);
+      assert.match(refusedResult.blocking_reasons.join('\n'), /RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH/);
       assert.deepEqual(await snapshot(scopes[0]), corruptSnapshot, 'head refusal mutated database');
     } finally {
       await client.query("UPDATE aidn_runtime.runtime_heads SET payload_json=$2::jsonb WHERE scope_key=$1 AND head_key='runtime_state'", [scopes[0], JSON.stringify(head)]);
