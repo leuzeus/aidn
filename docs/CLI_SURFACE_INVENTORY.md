@@ -362,6 +362,11 @@ These are currently implemented as package scripts, tools, or internal wrappers,
     in the resolved target directory and records that directory in its command
     provenance. Relative child paths are resolved there, including through the
     daemon adapter. Existing effect and explicit-execution requirements remain.
+  - its summary preserves the existing workflow reason code; an actual command
+    failure retains `HOOK_COMMAND_FAILED`. Normalization reads reasons and repair
+    observations from one selected nested gate, including checkpoint and workflow
+    wrappers. Missing repair evidence remains unknown: a null diagnostic is not
+    evidence that the repair layer is clean.
 - `aidn runtime local-daemon` (public, experimental)
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`

@@ -4,7 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { normalizeHookPayload } from "../../src/application/codex/normalize-hook-payload.mjs";
-import { buildRunJsonHookSummary } from "../../src/core/workflow/workflow-output-factory.mjs";
+import {
+  buildRunJsonHookSummary,
+  buildCheckpointSummary,
+  buildWorkflowHookSummary,
+} from "../../src/core/workflow/workflow-output-factory.mjs";
+import { deriveGatingAction } from "../../src/core/gating/gating-policy.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function parseArgs(argv) {
@@ -122,6 +127,66 @@ function main() {
       normalized: normalizedWorkflowHook,
     });
 
+    const warning = deriveGatingAction({
+      level2: { required: true },
+      level3: { required: false },
+    });
+    const refusal = deriveGatingAction({
+      level2: { required: false },
+      level3: { required: true, reason: "blocking_l1_reason" },
+    });
+    const warningSummary = buildRunJsonHookSummary({ ...warning, normalized: warning });
+    const refusalSummary = buildRunJsonHookSummary({
+      ...refusal,
+      error: { message: "A business refusal is not a command execution failure." },
+      normalized: refusal,
+    });
+    const normalizedOnlySummary = buildRunJsonHookSummary({
+      result: warning.result,
+      reason_code: null,
+      normalized: warning,
+    });
+    const commandFailureSummary = buildRunJsonHookSummary({
+      error: { message: "Fixture command failed." },
+      reason_code: warning.reason_code,
+      normalized: refusal,
+    });
+    const rootReasonSummary = buildRunJsonHookSummary({ ...warning, normalized: refusal });
+    const noReasonSummary = buildRunJsonHookSummary({ result: "ok", normalized: { reason_code: null } });
+    const unobservedRepairSummary = buildRunJsonHookSummary({
+      result: "ok",
+      normalized: { repair_layer_open_count: 0, repair_layer_blocking: false, repair_layer_status: null },
+    });
+    const explicitRepair = {
+      repair_layer_open_count: 0,
+      repair_layer_blocking: false,
+      repair_layer_status: "warn",
+      repair_layer_advice: "Review the producer's diagnostic.",
+      repair_primary_reason: "Producer diagnostic retained.",
+    };
+    const explicitRepairSummary = buildRunJsonHookSummary({ result: "warn", normalized: explicitRepair });
+    const explicitUnknownRepair = { ...explicitRepair, repair_layer_status: null };
+    const explicitUnknownSummary = buildRunJsonHookSummary({ result: "warn", normalized: explicitUnknownRepair });
+    const absentCheckpoint = buildCheckpointSummary({});
+    const failedWorkflow = buildWorkflowHookSummary({ result: "stop", reason_code: "HOOK_CHECKPOINT_FAILED" });
+    const unknownCheckpointWorkflow = buildWorkflowHookSummary({ checkpoint: { summary: {
+      repair_layer_open_count: 0, repair_layer_blocking: false, repair_layer_status: null,
+    } } });
+    const partialCheckpoint = buildCheckpointSummary({ gate: { levels: {
+      level2: { repair_layer_open_count: 0 },
+    } } });
+    const malformedCheckpoint = buildCheckpointSummary({ gate: { levels: {
+      level2: { repair_layer_open_count: false }, level3: { repair_layer_blocking: false },
+    } } });
+    const observedCleanCheckpoint = buildCheckpointSummary({ gate: { levels: {
+      level2: { repair_layer_open_count: 0 }, level3: { repair_layer_blocking: false },
+    } } });
+    const explicitUnknownWorkflow = buildWorkflowHookSummary({ checkpoint: { summary: explicitUnknownRepair } });
+    const normalizedFailedWorkflow = normalizeHookPayload(failedWorkflow);
+    const normalizedUnknownCheckpoint = normalizeHookPayload({ summary: absentCheckpoint });
+    const noRepairDiagnostic = (summary) => summary.repair_layer_status === null
+      && summary.repair_layer_advice === null && summary.repair_primary_reason === null;
+
     const checks = {
       checkpoint_open_count_present: Number(normalizedCheckpoint.repair_layer_open_count ?? 0) >= 1,
       checkpoint_top_findings_present: Array.isArray(normalizedCheckpoint.repair_layer_top_findings)
@@ -132,6 +197,34 @@ function main() {
       hook_summary_open_count_present: Number(hookSummary.repair_layer_open_count ?? 0) >= 1,
       hook_summary_top_findings_present: Array.isArray(hookSummary.repair_layer_top_findings)
         && hookSummary.repair_layer_top_findings.length >= 1,
+      hook_summary_reason_matches_normalized: hookSummary.reason_code === normalizedWorkflowHook.reason_code,
+      warning_reason_preserved: warningSummary.reason_code === "L2_SIGNAL_TRIGGERED",
+      refusal_reason_preserved_despite_business_error: refusalSummary.reason_code === "L3_BLOCKING",
+      normalized_reason_fallback_preserved: normalizedOnlySummary.reason_code === "L2_SIGNAL_TRIGGERED",
+      command_failure_reason_takes_precedence: commandFailureSummary.reason_code === "HOOK_COMMAND_FAILED",
+      root_reason_takes_precedence: rootReasonSummary.reason_code === "L2_SIGNAL_TRIGGERED",
+      absent_reason_remains_null: noReasonSummary.reason_code === null,
+      unobserved_repair_status_remains_null: unobservedRepairSummary.repair_layer_status === null,
+      unobserved_repair_advice_remains_null: unobservedRepairSummary.repair_layer_advice === null,
+      unobserved_repair_primary_reason_remains_null: unobservedRepairSummary.repair_primary_reason === null,
+      explicit_repair_status_preserved: explicitRepairSummary.repair_layer_status === explicitRepair.repair_layer_status,
+      explicit_repair_advice_preserved: explicitRepairSummary.repair_layer_advice === explicitRepair.repair_layer_advice,
+      explicit_repair_primary_reason_preserved: explicitRepairSummary.repair_primary_reason === explicitRepair.repair_primary_reason,
+      observed_repair_status_matches_normalized: hookSummary.repair_layer_status === normalizedWorkflowHook.repair_layer_status,
+      explicit_unknown_summary_keeps_advice: explicitUnknownSummary.repair_layer_advice === explicitUnknownRepair.repair_layer_advice,
+      explicit_unknown_summary_keeps_primary_reason: explicitUnknownSummary.repair_primary_reason === explicitUnknownRepair.repair_primary_reason,
+      absent_checkpoint_cannot_claim_clean: noRepairDiagnostic(absentCheckpoint),
+      failed_workflow_cannot_claim_clean: noRepairDiagnostic(failedWorkflow),
+      failed_workflow_preserves_refusal: failedWorkflow.result === "stop" && failedWorkflow.reason_code === "HOOK_CHECKPOINT_FAILED",
+      unknown_checkpoint_workflow_cannot_claim_clean: noRepairDiagnostic(unknownCheckpointWorkflow),
+      partial_checkpoint_cannot_claim_clean: noRepairDiagnostic(partialCheckpoint),
+      malformed_checkpoint_cannot_claim_clean: noRepairDiagnostic(malformedCheckpoint),
+      observed_checkpoint_keeps_clean: observedCleanCheckpoint.repair_layer_status === "clean",
+      explicit_unknown_workflow_keeps_diagnostics: explicitUnknownWorkflow.repair_layer_status === null
+        && explicitUnknownWorkflow.repair_layer_advice === explicitUnknownRepair.repair_layer_advice
+        && explicitUnknownWorkflow.repair_primary_reason === explicitUnknownRepair.repair_primary_reason,
+      normalization_does_not_upgrade_unknown_workflow: noRepairDiagnostic(normalizedFailedWorkflow),
+      normalization_does_not_upgrade_unknown_checkpoint: noRepairDiagnostic(normalizedUnknownCheckpoint),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {
@@ -143,6 +236,12 @@ function main() {
         checkpoint_open_count: normalizedCheckpoint.repair_layer_open_count ?? null,
         workflow_hook_open_count: normalizedWorkflowHook.repair_layer_open_count ?? null,
         hook_summary_open_count: hookSummary.repair_layer_open_count ?? null,
+        workflow_hook_reason_code: normalizedWorkflowHook.reason_code,
+        hook_summary_reason_code: hookSummary.reason_code,
+        warning_reason_code: warningSummary.reason_code,
+        refusal_reason_code: refusalSummary.reason_code,
+        unobserved_repair_status: unobservedRepairSummary.repair_layer_status,
+        explicit_repair_status: explicitRepairSummary.repair_layer_status,
       },
       pass,
     };
