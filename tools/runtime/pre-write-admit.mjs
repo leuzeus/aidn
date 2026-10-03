@@ -26,7 +26,8 @@ import { validateSharedRuntimeContext } from "../../src/application/runtime/shar
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
-import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
+import { readAidnProjectConfig, normalizeStateMode, resolveConfigStateMode, resolveConfigRuntimePersistence } from "../../src/lib/config/aidn-config-lib.mjs";
+import { parseSessionMetadata } from "../../src/lib/workflow/session-context-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
 import {
   loadDbIndexPayloadSafe,
@@ -281,14 +282,40 @@ function relativePath(root, filePath) {
   return path.relative(root, filePath).replace(/\\/g, "/");
 }
 
-async function loadRuntimeIndexPayloadSafe(targetRoot) {
+async function loadRuntimeIndexPayloadSafe(targetRoot, options = {}) {
   return await loadDbIndexPayloadSafe(targetRoot, {
     includePayload: true,
+    ...options,
   });
 }
 
 function findArtifactByPath(sqlitePayload, artifactPath) {
   return findUniqueAuditArtifact(sqlitePayload, artifactPath);
+}
+
+function findCanonicalEntityArtifact(payload, id, kind) {
+  if (!payload || canonicalNone(id) || canonicalUnknown(id) || !id) return null;
+  const session = kind === "session";
+  const idField = session ? "session_id" : "cycle_id";
+  const pattern = session ? /^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/i : /^cycles\/(C\d+)[^/]*\/status\.md$/i;
+  const normalizedId = normalizeScalar(id).toUpperCase();
+  const matches = (payload.artifacts ?? []).filter(artifact =>
+    normalizeRelativeArtifactPath(artifact.path).match(pattern)?.[1].toUpperCase() === normalizedId);
+  const rows = (payload[session ? "sessions" : "cycles"] ?? []).filter(row => normalizeScalar(row[idField]).toUpperCase() === normalizedId);
+  if (matches.length > 1) throw new Error("RUNTIME_CONTINUITY_ARTIFACT_AMBIGUOUS");
+  if (rows.length > 1) throw new Error("RUNTIME_CONTINUITY_ENTITY_AMBIGUOUS");
+  const row = rows[0];
+  const artifact = row?.source_artifact_path ? findArtifactByPath(payload, row.source_artifact_path) : matches[0];
+  if (!artifact) return null;
+  const text = decodeArtifactContent(artifact);
+  const map = parseSimpleMap(text);
+  const pathId = normalizeRelativeArtifactPath(artifact.path).match(pattern)?.[1].toUpperCase();
+  const declaredId = normalizeScalar(map.get(idField)).toUpperCase();
+  const artifactId = normalizeScalar(artifact[idField]).toUpperCase();
+  const branch = session ? parseSessionMetadata(text).session_branch : map.get("branch_name");
+  if (pathId !== normalizedId || (declaredId && declaredId !== normalizedId) || (artifactId && artifactId !== normalizedId)
+      || (row?.branch_name && branch && row.branch_name !== branch)) throw new Error("RUNTIME_CONTINUITY_ARTIFACT_IDENTITY_MISMATCH");
+  return artifact;
 }
 
 function resolveAuditArtifactText({
@@ -299,12 +326,13 @@ function resolveAuditArtifactText({
   sqliteRuntimeHeads = null,
   dbSource = "sqlite",
   preferDb = false,
+  allowFileFallback = true,
 } = {}) {
   const absolutePath = resolveTargetPath(targetRoot, candidatePath);
   if (dbBacked && preferDb) {
     const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath, sqlitePayload);
     const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
-    if (runtimeHeadArtifact && runtimeHeadText) {
+    if (runtimeHeadArtifact && (runtimeHeadText || !allowFileFallback)) {
       return {
         exists: true,
         source: dbSource,
@@ -327,7 +355,7 @@ function resolveAuditArtifactText({
       };
     }
   }
-  if (exists(absolutePath)) {
+  if (allowFileFallback && exists(absolutePath)) {
     return {
       exists: true,
       source: "file",
@@ -349,7 +377,7 @@ function resolveAuditArtifactText({
   }
   const runtimeHeadArtifact = findRuntimeHeadArtifact(sqliteRuntimeHeads, candidatePath, sqlitePayload);
   const runtimeHeadText = decodeArtifactContent(runtimeHeadArtifact);
-  if (runtimeHeadArtifact && runtimeHeadText) {
+  if (runtimeHeadArtifact && (runtimeHeadText || !allowFileFallback)) {
     return {
       exists: true,
       source: dbSource,
@@ -391,7 +419,8 @@ function resolveAuditArtifactText({
   };
 }
 
-function findSessionArtifact(sqlitePayload, sessionId) {
+function findSessionArtifact(sqlitePayload, sessionId, canonicalRequired = false) {
+  if (canonicalRequired) return findCanonicalEntityArtifact(sqlitePayload, sessionId, "session");
   if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts) || !sessionId || canonicalNone(sessionId) || canonicalUnknown(sessionId)) {
     return null;
   }
@@ -401,7 +430,8 @@ function findSessionArtifact(sqlitePayload, sessionId) {
   }) ?? null;
 }
 
-function findCycleStatusArtifact(sqlitePayload, cycleId) {
+function findCycleStatusArtifact(sqlitePayload, cycleId, canonicalRequired = false) {
+  if (canonicalRequired) return findCanonicalEntityArtifact(sqlitePayload, cycleId, "cycle");
   if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts) || !cycleId || canonicalNone(cycleId) || canonicalUnknown(cycleId)) {
     return null;
   }
@@ -413,7 +443,7 @@ function findCycleStatusArtifact(sqlitePayload, cycleId) {
   }) ?? null;
 }
 
-function findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusArtifactPath = "") {
+function findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusArtifactPath = "", canonicalRequired = false) {
   if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts)) {
     return null;
   }
@@ -425,6 +455,7 @@ function findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusArtifactPath =
       return direct;
     }
   }
+  if (canonicalRequired) return null;
   if (!cycleId || canonicalNone(cycleId) || canonicalUnknown(cycleId)) {
     return null;
   }
@@ -434,9 +465,9 @@ function findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusArtifactPath =
   }) ?? null;
 }
 
-function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {
+function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false, allowFileFallback = true } = {}) {
   if (dbBacked && preferDb) {
-    const artifact = findSessionArtifact(sqlitePayload, sessionId);
+    const artifact = findSessionArtifact(sqlitePayload, sessionId, !allowFileFallback);
     const text = decodeArtifactContent(artifact);
     if (artifact && text) {
       return {
@@ -448,7 +479,7 @@ function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = f
       };
     }
   }
-  const filePath = findSessionFile(auditRoot, sessionId, targetRoot);
+  const filePath = allowFileFallback ? findSessionFile(auditRoot, sessionId, targetRoot) : null;
   if (filePath) {
     return {
       exists: true,
@@ -467,7 +498,7 @@ function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = f
       text: "",
     };
   }
-  const artifact = findSessionArtifact(sqlitePayload, sessionId);
+  const artifact = findSessionArtifact(sqlitePayload, sessionId, !allowFileFallback);
   const text = decodeArtifactContent(artifact);
   if (!artifact || !text) {
     return {
@@ -487,9 +518,9 @@ function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = f
   };
 }
 
-function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {
+function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false, allowFileFallback = true } = {}) {
   if (dbBacked && preferDb) {
-    const artifact = findCycleStatusArtifact(sqlitePayload, cycleId);
+    const artifact = findCycleStatusArtifact(sqlitePayload, cycleId, !allowFileFallback);
     const text = decodeArtifactContent(artifact);
     if (artifact && text) {
       return {
@@ -502,7 +533,7 @@ function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked =
       };
     }
   }
-  const filePath = findCycleStatus(auditRoot, cycleId, targetRoot);
+  const filePath = allowFileFallback ? findCycleStatus(auditRoot, cycleId, targetRoot) : null;
   if (filePath) {
     return {
       exists: true,
@@ -523,7 +554,7 @@ function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked =
       text: "",
     };
   }
-  const artifact = findCycleStatusArtifact(sqlitePayload, cycleId);
+  const artifact = findCycleStatusArtifact(sqlitePayload, cycleId, !allowFileFallback);
   const text = decodeArtifactContent(artifact);
   if (!artifact || !text) {
     return {
@@ -553,9 +584,10 @@ function resolveCyclePlanArtifact({
   sqlitePayload = null,
   dbSource = "sqlite",
   preferDb = false,
+  allowFileFallback = true,
 } = {}) {
   if (dbBacked && preferDb) {
-    const artifact = findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusResolution?.artifactPath);
+    const artifact = findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusResolution?.artifactPath, !allowFileFallback);
     const text = decodeArtifactContent(artifact);
     if (artifact && text) {
       return {
@@ -567,7 +599,7 @@ function resolveCyclePlanArtifact({
       };
     }
   }
-  if (cycleStatusResolution?.filePath) {
+  if (allowFileFallback && cycleStatusResolution?.filePath) {
     const filePath = path.join(path.dirname(cycleStatusResolution.filePath), "plan.md");
     if (exists(filePath)) {
       return {
@@ -588,7 +620,7 @@ function resolveCyclePlanArtifact({
       text: "",
     };
   }
-  const artifact = findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusResolution?.artifactPath);
+  const artifact = findCyclePlanArtifact(sqlitePayload, cycleId, cycleStatusResolution?.artifactPath, !allowFileFallback);
   const text = decodeArtifactContent(artifact);
   if (!artifact || !text) {
     return {
@@ -658,21 +690,50 @@ export async function preWriteAdmit({
     workspace,
   });
   const auditRoot = path.join(absoluteTargetRoot, "docs", "audit");
-  const effectiveStateMode = resolveEffectiveStateMode({
-    targetRoot: absoluteTargetRoot,
-    stateMode: "files",
-  });
-  const dbBackedMode = effectiveStateMode === "dual" || effectiveStateMode === "db-only";
-  const sqliteFallback = dbBackedMode ? await loadRuntimeIndexPayloadSafe(absoluteTargetRoot) : {
+  const configData = readAidnProjectConfig(absoluteTargetRoot).data;
+  const stateModeEnv = String(process.env.AIDN_STATE_MODE ?? "").trim();
+  const effectiveStateMode = stateModeEnv ? normalizeStateMode(stateModeEnv) ?? "files" : resolveConfigStateMode(configData) ?? "files";
+  const configuredPostgres = resolveConfigRuntimePersistence(configData)?.backend === "postgres";
+  const canonicalRequired = configuredPostgres || effectiveStateMode === "db-only";
+  const dbBackedMode = canonicalRequired || effectiveStateMode === "dual";
+  let sqliteFallback = {
     exists: false,
     sqliteFile: "",
     payload: null,
     runtimeHeads: {},
     warning: "",
   };
+  if (dbBackedMode) {
+    try {
+      sqliteFallback = await loadRuntimeIndexPayloadSafe(absoluteTargetRoot, configuredPostgres
+        ? { backend: "postgres", configData, localProjectionPolicy: "none" }
+        : { configData });
+    } catch (error) {
+      if (!canonicalRequired) throw error;
+      sqliteFallback.warning = "canonical runtime snapshot load failed";
+    }
+  }
+  if (configuredPostgres && sqliteFallback.exists && sqliteFallback.backend?.projection_backend_kind !== "postgres") {
+    sqliteFallback = { ...sqliteFallback, exists: false, payload: null, runtimeHeads: {},
+      warning: "configured canonical PostgreSQL backend did not provide a PostgreSQL snapshot" };
+  }
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = effectiveStateMode === "db-only" || (nativeRequest !== undefined || skill === "cycle-create") && dbBackedMode;
-  const currentStateResolution = resolveAuditArtifactText({
+  const preferDb = canonicalRequired || (nativeRequest !== undefined || skill === "cycle-create") && dbBackedMode;
+  const canonicalResolutionErrors = [];
+  const resolveSelection = resolve => {
+    try {
+      const selected = resolve();
+      if (canonicalRequired && selected.exists && !selected.text.trim()) throw new Error("RUNTIME_CONTINUITY_ARTIFACT_EMPTY");
+      return selected;
+    } catch (error) {
+      if (!canonicalRequired) throw error;
+      const reason = /^RUNTIME_[A-Z_]+$/.test(String(error.message)) ? error.message : "RUNTIME_CANONICAL_ARTIFACT_UNREADABLE";
+      canonicalResolutionErrors.push(reason);
+      return { exists: false, source: "missing", absolutePath: "", filePath: null,
+        logicalPath: "none", artifactPath: "", text: "" };
+    }
+  };
+  const currentStateResolution = resolveSelection(() => resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
     dbBacked: dbBackedMode,
@@ -680,8 +741,9 @@ export async function preWriteAdmit({
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
     preferDb,
-  });
-  const runtimeStateResolution = resolveAuditArtifactText({
+    allowFileFallback: !canonicalRequired,
+  }));
+  const runtimeStateResolution = resolveSelection(() => resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: runtimeStateFile,
     dbBacked: dbBackedMode,
@@ -689,7 +751,8 @@ export async function preWriteAdmit({
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
     preferDb,
-  });
+    allowFileFallback: !canonicalRequired,
+  }));
   const currentStatePath = currentStateResolution.absolutePath;
   const runtimeStatePath = runtimeStateResolution.absolutePath;
   const currentStateText = currentStateResolution.text;
@@ -718,8 +781,11 @@ export async function preWriteAdmit({
   if (sqliteFallback.warning) {
     warnings.push(sqliteFallback.warning);
   }
-  if (skill === "context-reload" && dbBackedMode && (!sqliteFallback.exists || sqliteFallback.warning)) {
-    blockingReasons.push("canonical runtime backend is unavailable for context reload");
+  if ((canonicalRequired || skill === "context-reload" && dbBackedMode)
+      && (!sqliteFallback.exists || !sqliteFallback.payload || sqliteFallback.warning)) {
+    blockingReasons.push(skill === "context-reload"
+      ? "canonical runtime backend is unavailable for context reload"
+      : "canonical runtime backend is unavailable for pre-write admission");
   }
 
   const currentStateExists = currentStateResolution.exists;
@@ -746,7 +812,7 @@ export async function preWriteAdmit({
 
   const rawActiveSession = normalizeScalar(currentMap.get("active_session") ?? "none") || "none";
   const rawActiveCycle = normalizeScalar(currentMap.get("active_cycle") ?? "none") || "none";
-  const sessionResolution = resolveSessionArtifact({
+  const sessionResolution = resolveSelection(() => resolveSessionArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
     sessionId: rawActiveSession,
@@ -754,8 +820,9 @@ export async function preWriteAdmit({
     sqlitePayload: sqliteFallback.payload,
     dbSource,
     preferDb,
-  });
-  const cycleStatusResolution = resolveCycleStatusArtifact({
+    allowFileFallback: !canonicalRequired,
+  }));
+  const cycleStatusResolution = resolveSelection(() => resolveCycleStatusArtifact({
     targetRoot: absoluteTargetRoot,
     auditRoot,
     cycleId: rawActiveCycle,
@@ -763,12 +830,13 @@ export async function preWriteAdmit({
     sqlitePayload: sqliteFallback.payload,
     dbSource,
     preferDb,
-  });
+    allowFileFallback: !canonicalRequired,
+  }));
   const sessionFile = sessionResolution.filePath;
   const cycleStatusFile = cycleStatusResolution.filePath;
   const cycleStatusText = cycleStatusResolution.text;
   const cycleStatusMap = parseSimpleMap(cycleStatusText);
-  const planResolution = resolveCyclePlanArtifact({
+  const planResolution = resolveSelection(() => resolveCyclePlanArtifact({
     targetRoot: absoluteTargetRoot,
     cycleStatusResolution,
     cycleId: rawActiveCycle,
@@ -776,7 +844,16 @@ export async function preWriteAdmit({
     sqlitePayload: sqliteFallback.payload,
     dbSource,
     preferDb,
-  });
+    allowFileFallback: !canonicalRequired,
+  }));
+  if (canonicalRequired) {
+    blockingReasons.push(...canonicalResolutionErrors.map(reason => `canonical runtime artifact unavailable: ${reason}`));
+    if (!runtimeStateResolution.exists) blockingReasons.push("canonical runtime digest is missing");
+    if (!canonicalNone(rawActiveSession) && !canonicalUnknown(rawActiveSession) && !sessionResolution.exists) blockingReasons.push("active session file is missing");
+    if (!canonicalNone(rawActiveCycle) && !canonicalUnknown(rawActiveCycle)) {
+      if (!cycleStatusResolution.exists) blockingReasons.push("active cycle status file is missing");
+    }
+  }
   const planFile = planResolution.filePath;
   const planText = planResolution.text;
   const derivedFirstPlanStep = deriveFirstPlanStep(planText);

@@ -281,6 +281,19 @@ without changing content. Both status inspection and cycle admission must leave
 every file byte unchanged, including `.git/index` and the canonical local store;
 read-only Git calls disable optional index refreshes.
 
+`perf:verify-state-mode-parity` also runs configuration-cache freshness and
+ordinary gating source fixtures. They reproduce same-size/restored-mtime config
+updates, bounded read races and errors, conflicting canonical/projection intent,
+missing/ambiguous canonical identities and heads, unavailable PostgreSQL, and
+one fresh snapshot per evaluation including an empty repair collection. Controlled
+snapshot fixtures are distinct from live PostgreSQL proof. Generic pre-write
+fixtures assert configured PostgreSQL authority in all visible state modes,
+refusal without per-artifact fallback (including an empty historical head with
+a valid alternative), and retained optional files/SQLite behavior.
+The dedicated PostgreSQL artifact-store smoke additionally checks generic
+admission in `dual` and `files`, with all rows, another scope, projections and
+the Git index preserved.
+
 Runtime projector fixtures cover live SQLite repair findings overriding misleading
 hook caches, absent/malformed evidence, errors beyond the display limit and
 byte-for-byte read-only output. The dedicated project-artifact-store PostgreSQL

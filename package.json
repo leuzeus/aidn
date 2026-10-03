@@ -323,7 +323,7 @@
     "perf:verify-aidn-config-cache": "node tools/perf/verify-aidn-config-cache-fixtures.mjs",
     "perf:verify-workspace-resolution": "node tools/perf/verify-workspace-resolution-fixtures.mjs",
     "perf:verify-selfhost-workspace": "node tools/perf/verify-selfhost-workspace-fixtures.mjs",
-    "perf:verify-state-mode-parity": "node tools/perf/verify-state-mode-parity-fixtures.mjs",
+    "perf:verify-state-mode-parity": "node tools/perf/verify-state-mode-parity-fixtures.mjs && node tools/perf/verify-aidn-config-cache-fixtures.mjs && node tools/perf/verify-gating-source-fixtures.mjs",
     "perf:verify-reanchor-artifacts": "node tools/perf/verify-reanchor-artifacts-fixtures.mjs",
     "perf:verify-reanchor-template": "node tools/perf/verify-reanchor-template.mjs",
     "perf:verify-handoff-packet": "node tools/perf/verify-handoff-packet-fixtures.mjs",

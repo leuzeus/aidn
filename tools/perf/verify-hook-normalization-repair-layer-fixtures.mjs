@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { normalizeHookPayload } from "../../src/application/codex/normalize-hook-payload.mjs";
 import {
   buildRunJsonHookSummary,
+  buildGatingSummary,
   buildCheckpointSummary,
   buildWorkflowHookSummary,
 } from "../../src/core/workflow/workflow-output-factory.mjs";
@@ -184,6 +185,16 @@ function main() {
     const explicitUnknownWorkflow = buildWorkflowHookSummary({ checkpoint: { summary: explicitUnknownRepair } });
     const normalizedFailedWorkflow = normalizeHookPayload(failedWorkflow);
     const normalizedUnknownCheckpoint = normalizeHookPayload({ summary: absentCheckpoint });
+    const compatibleEmptyLevels = {
+      level2: { repair_layer_open_count: 0, repair_layer_top_findings: [] },
+      level3: { repair_layer_blocking: false },
+    };
+    const unavailableGateSummary = buildGatingSummary({ levels: compatibleEmptyLevels }, { repairLayerObserved: false });
+    const emptyObservedGateSummary = buildGatingSummary({ levels: compatibleEmptyLevels }, { repairLayerObserved: true });
+    const unavailableGateCheckpoint = buildCheckpointSummary({ gate: {
+      levels: compatibleEmptyLevels, summary: unavailableGateSummary,
+    } });
+    const unavailableGateNormalized = normalizeHookPayload({ levels: compatibleEmptyLevels, summary: unavailableGateSummary });
     const noRepairDiagnostic = (summary) => summary.repair_layer_status === null
       && summary.repair_layer_advice === null && summary.repair_primary_reason === null;
 
@@ -225,6 +236,10 @@ function main() {
         && explicitUnknownWorkflow.repair_primary_reason === explicitUnknownRepair.repair_primary_reason,
       normalization_does_not_upgrade_unknown_workflow: noRepairDiagnostic(normalizedFailedWorkflow),
       normalization_does_not_upgrade_unknown_checkpoint: noRepairDiagnostic(normalizedUnknownCheckpoint),
+      unobserved_gate_cannot_claim_clean: noRepairDiagnostic(unavailableGateSummary),
+      observed_empty_gate_keeps_clean: emptyObservedGateSummary.repair_layer_status === "clean",
+      checkpoint_preserves_unobserved_gate: noRepairDiagnostic(unavailableGateCheckpoint),
+      normalization_preserves_unobserved_gate: noRepairDiagnostic(unavailableGateNormalized),
     };
     const pass = Object.values(checks).every((value) => value === true);
     const output = {

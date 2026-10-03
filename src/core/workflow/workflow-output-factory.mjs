@@ -75,7 +75,9 @@ function buildObservedRepairSummary({ openCount, blocking, topFindings, status, 
   };
 }
 
-export function buildGatingSummary(result) {
+export function buildGatingSummary(result, { repairLayerObserved } = {}) {
+  const level2 = result.levels?.level2 ?? {};
+  const level3 = result.levels?.level3 ?? {};
   return {
     action: result.action,
     result: result.result,
@@ -83,6 +85,12 @@ export function buildGatingSummary(result) {
     gates_triggered_count: Array.isArray(result.gates_triggered) ? result.gates_triggered.length : 0,
     level2_required: result.levels?.level2?.required === true,
     level3_required: result.levels?.level3?.required === true,
+    ...buildObservedRepairSummary({
+      openCount: level2.repair_layer_open_count,
+      blocking: level3.repair_layer_blocking,
+      topFindings: Array.isArray(level2.repair_layer_top_findings) ? level2.repair_layer_top_findings : [],
+      unknownStatus: repairLayerObserved === false,
+    }),
   };
 }
 
@@ -90,8 +98,10 @@ export function buildCheckpointSummary(result) {
   const gateLevels = result.gate?.levels ?? {};
   const level2 = gateLevels.level2 ?? {};
   const level3 = gateLevels.level3 ?? {};
-  const repairLayerTopFindings = Array.isArray(level2.repair_layer_top_findings)
-    ? level2.repair_layer_top_findings
+  const gateSummary = result.gate?.summary ?? {};
+  const repairLayerTopFindings = Array.isArray(gateSummary.repair_layer_top_findings)
+    ? gateSummary.repair_layer_top_findings
+    : Array.isArray(level2.repair_layer_top_findings) ? level2.repair_layer_top_findings
     : [];
   return {
     result: result.gate?.result === "stop" ? "stop" : "ok",
@@ -104,9 +114,13 @@ export function buildCheckpointSummary(result) {
     index_sync_check_enabled: result.index_sync_check?.enabled === true,
     index_sync_in_sync: result.index_sync_check?.in_sync ?? null,
     ...buildObservedRepairSummary({
-      openCount: level2.repair_layer_open_count,
-      blocking: level3.repair_layer_blocking,
+      openCount: gateSummary.repair_layer_open_count ?? level2.repair_layer_open_count,
+      blocking: gateSummary.repair_layer_blocking ?? level3.repair_layer_blocking,
       topFindings: repairLayerTopFindings,
+      status: gateSummary.repair_layer_status,
+      advice: gateSummary.repair_layer_advice,
+      primaryReason: gateSummary.repair_primary_reason,
+      unknownStatus: Object.hasOwn(gateSummary, "repair_layer_status") && gateSummary.repair_layer_status == null,
     }),
   };
 }

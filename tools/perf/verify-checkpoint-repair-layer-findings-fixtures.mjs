@@ -95,12 +95,17 @@ function main() {
     const target = path.join(tempRoot, "repo");
     fs.cpSync(sourceTarget, target, { recursive: true });
     fs.rmSync(path.join(target, ".aidn"), { recursive: true, force: true });
+    // Preserve the ambiguous S102 repair case while making the current
+    // canonical session/cycle selection explicit for the parity comparison.
+    fs.writeFileSync(path.join(target, "docs/audit/CURRENT-STATE.md"),
+      "# Current State\nactive_session: S101\nactive_cycle: C101\nmode: COMMITTING\n");
 
     runJson("tools/perf/index-sync.mjs", [
       "--target",
       target,
       "--store",
       "sqlite",
+      "--with-content",
       "--json",
     ]);
 
