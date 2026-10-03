@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry, initGitRepo } from "./test-git-fixture-lib.mjs";
 import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
+import { deriveGatingAction } from "../../src/core/gating/gating-policy.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -94,6 +95,79 @@ function main() {
     const verbose = JSON.parse(verboseText);
     const includeRaw = runJson("tools/codex/run-json-hook.mjs", [...baseArgs, "--include-raw"]);
 
+    const reasonCases = [
+      {
+        name: "warning",
+        payload: {
+          ok: true,
+          ...deriveGatingAction({ level2: { required: true }, level3: { required: false } }),
+        },
+        expectedReason: "L2_SIGNAL_TRIGGERED",
+      },
+      {
+        name: "refusal",
+        payload: {
+          ok: false,
+          ...deriveGatingAction({
+            level2: { required: false },
+            level3: { required: true, reason: "blocking_l1_reason" },
+          }),
+          error: { message: "A business refusal is not a command execution failure." },
+        },
+        expectedReason: "L3_BLOCKING",
+      },
+      {
+        name: "no_gate_signal",
+        payload: {
+          ok: true,
+          ...deriveGatingAction({ level2: { required: false }, level3: { required: false } }),
+        },
+        expectedReason: null,
+      },
+    ];
+    const reasonChecks = {};
+    for (const testCase of reasonCases) {
+      for (const [mode, flags] of [["compact", []], ["verbose", ["--verbose"]], ["include_raw", ["--include-raw"]]]) {
+        const output = runJson("tools/codex/run-json-hook.mjs", [
+          ...baseArgs,
+          ...flags,
+          "--no-force-json",
+          "--",
+          process.execPath,
+          "-e",
+          `process.stdout.write(${JSON.stringify(JSON.stringify(testCase.payload))})`,
+        ]);
+        reasonChecks[`${testCase.name}_${mode}_reason_preserved`] = output.reason_code === testCase.expectedReason
+          && output.normalized.reason_code === testCase.expectedReason
+          && output.summary.reason_code === testCase.expectedReason;
+        reasonChecks[`${testCase.name}_${mode}_result_preserved`] = output.result === testCase.payload.result
+          && output.normalized.result === testCase.payload.result
+          && output.summary.result === testCase.payload.result;
+        reasonChecks[`${testCase.name}_${mode}_unobserved_repair_stays_null`] = output.summary.repair_layer_status === null
+          && output.summary.repair_layer_advice === null
+          && output.summary.repair_primary_reason === null
+          && output.normalized.repair_layer_status === null;
+      }
+    }
+    for (const [mode, flags] of [["compact", []], ["verbose", ["--verbose"]]]) {
+      const output = runJson("tools/codex/run-json-hook.mjs", [
+        ...baseArgs,
+        ...flags,
+        "--no-force-json",
+        "--",
+        process.execPath,
+        "-e",
+        "process.exitCode = 1",
+      ]);
+      reasonChecks[`command_failure_${mode}_reason_preserved`] = output.summary.reason_code === "HOOK_COMMAND_FAILED"
+        && output.normalized.error != null
+        && output.result === null
+        && output.command_status === 1;
+      reasonChecks[`command_failure_${mode}_unobserved_repair_stays_null`] = output.summary.repair_layer_status === null
+        && output.summary.repair_layer_advice === null
+        && output.summary.repair_primary_reason === null;
+    }
+
     runJson("tools/perf/index-sync.mjs", [
       "--target",
       target,
@@ -111,6 +185,7 @@ function main() {
     });
 
     const checks = {
+      ...reasonChecks,
       compact_mode_default: compact.output_mode === "compact",
       compact_keeps_summary: compact.summary && typeof compact.summary === "object",
       compact_keeps_normalized_without_raw: compact.normalized

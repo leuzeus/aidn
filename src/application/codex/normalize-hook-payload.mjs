@@ -1,3 +1,9 @@
+import {
+  deriveRepairLayerStatus,
+  deriveRepairLayerAdvice,
+  deriveRepairPrimaryReason,
+} from "../../core/workflow/workflow-output-factory.mjs";
+
 function firstDefined(...values) {
   for (const value of values) {
     if (value !== undefined && value !== null) {
@@ -52,6 +58,55 @@ function normalizeError(input) {
   };
 }
 
+function objectOrEmpty(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function resolveObservedLevels(input, payload) {
+  const candidates = [
+    input.levels, payload.levels,
+    input.gate?.levels, payload.gate?.levels,
+    input.gating?.levels, payload.gating?.levels,
+    input.checkpoint?.gate?.levels, payload.checkpoint?.gate?.levels,
+    input.workflow_hook?.checkpoint?.gate?.levels, payload.workflow_hook?.checkpoint?.gate?.levels,
+  ];
+  // Keep one gate's observations together; an incomplete gate does not borrow
+  // repair evidence from another nested execution.
+  return candidates.find((value) => value && typeof value === "object" && !Array.isArray(value)
+    && ["level1", "level2", "level3"].some((key) => Object.hasOwn(value, key))) ?? {};
+}
+
+function projectRepairEvidence(input, payload, summaries, levels) {
+  const level2 = objectOrEmpty(levels.level2);
+  const level3 = objectOrEmpty(levels.level3);
+  const summaryField = (key) => firstDefined(...summaries.map((summary) => summary[key]));
+  const explicitStatus = firstDefined(summaryField("repair_layer_status"), input.repair_layer_status, payload.repair_layer_status);
+  const observedCount = firstDefined(summaryField("repair_layer_open_count"), level2.repair_layer_open_count,
+    input.repair_layer_open_count, payload.repair_layer_open_count);
+  const observedBlocking = toBooleanOrNull(firstDefined(summaryField("repair_layer_blocking"), level3.repair_layer_blocking,
+    input.repair_layer_blocking, payload.repair_layer_blocking));
+  const count = observedCount == null || typeof observedCount === "string" && observedCount.trim() === ""
+    ? null : Number(observedCount);
+  const measured = Number.isFinite(count) && count >= 0 && observedBlocking != null;
+  const topFindings = firstDefined(summaryField("repair_layer_top_findings"), level2.repair_layer_top_findings,
+    input.repair_layer_top_findings, payload.repair_layer_top_findings, []);
+  const measuredStatus = measured ? deriveRepairLayerStatus({ openCount: count, blocking: observedBlocking }) : null;
+  const status = explicitStatus ?? measuredStatus;
+  const canDeriveAdvice = measured && (explicitStatus == null || explicitStatus === measuredStatus);
+  const advice = firstDefined(summaryField("repair_layer_advice"), input.repair_layer_advice, payload.repair_layer_advice,
+    canDeriveAdvice ? deriveRepairLayerAdvice({ openCount: count, blocking: observedBlocking, topFindings }) : null);
+  const primaryReason = firstDefined(summaryField("repair_primary_reason"), input.repair_primary_reason, payload.repair_primary_reason,
+    canDeriveAdvice ? deriveRepairPrimaryReason({ status, advice, topFindings }) : null);
+  return {
+    repair_layer_open_count: Number.isFinite(count) && count >= 0 ? count : 0,
+    repair_layer_blocking: observedBlocking === true,
+    repair_layer_top_findings: topFindings,
+    repair_layer_status: status,
+    repair_layer_advice: advice,
+    repair_primary_reason: primaryReason,
+  };
+}
+
 export function normalizeHookPayload(rawInput, options = {}) {
   const now = new Date().toISOString();
   const input = rawInput && typeof rawInput === "object" ? rawInput : {};
@@ -64,8 +119,13 @@ export function normalizeHookPayload(rawInput, options = {}) {
     : {};
   const gate = input.gate && typeof input.gate === "object" ? input.gate : {};
   const reload = input.reload && typeof input.reload === "object" ? input.reload : {};
-  const levels = input.levels && typeof input.levels === "object" ? input.levels : {};
+  const levels = resolveObservedLevels(input, payload);
   const level1 = levels.level1 && typeof levels.level1 === "object" ? levels.level1 : {};
+  const repair = projectRepairEvidence(input, payload, [
+    payloadSummary, payloadCheckpointSummary, inputSummary,
+    objectOrEmpty(input.checkpoint?.summary),
+    objectOrEmpty(payload.workflow_hook?.summary), objectOrEmpty(input.workflow_hook?.summary),
+  ], levels);
   const error = normalizeError(firstDefined(input.error, payload.error, null));
 
   const stateMode = firstDefined(
@@ -120,6 +180,11 @@ export function normalizeHookPayload(rawInput, options = {}) {
       payload.reason_codes,
       input.reason_codes,
       reload.reason_codes,
+      payload.reload?.reason_codes,
+      input.checkpoint?.reload?.reason_codes,
+      payloadCheckpoint.reload?.reason_codes,
+      input.workflow_hook?.checkpoint?.reload?.reason_codes,
+      payload.workflow_hook?.checkpoint?.reload?.reason_codes,
       level1.reason_codes,
       null,
     )),
@@ -161,42 +226,7 @@ export function normalizeHookPayload(rawInput, options = {}) {
     )),
     mapping: firstDefined(payload.mapping, input.mapping, null),
     target: firstDefined(input.target, input.target_root, payload.target_root, options.targetRoot, null),
-    repair_layer_open_count: Number(firstDefined(
-      payloadSummary.repair_layer_open_count,
-      payloadCheckpointSummary.repair_layer_open_count,
-      inputSummary.repair_layer_open_count,
-      0,
-    )),
-    repair_layer_blocking: toBooleanOrNull(firstDefined(
-      payloadSummary.repair_layer_blocking,
-      payloadCheckpointSummary.repair_layer_blocking,
-      inputSummary.repair_layer_blocking,
-      false,
-    )) === true,
-    repair_layer_top_findings: firstDefined(
-      payloadSummary.repair_layer_top_findings,
-      payloadCheckpointSummary.repair_layer_top_findings,
-      inputSummary.repair_layer_top_findings,
-      [],
-    ),
-    repair_layer_status: firstDefined(
-      payloadSummary.repair_layer_status,
-      payloadCheckpointSummary.repair_layer_status,
-      inputSummary.repair_layer_status,
-      null,
-    ),
-    repair_layer_advice: firstDefined(
-      payloadSummary.repair_layer_advice,
-      payloadCheckpointSummary.repair_layer_advice,
-      inputSummary.repair_layer_advice,
-      null,
-    ),
-    repair_primary_reason: firstDefined(
-      payloadSummary.repair_primary_reason,
-      payloadCheckpointSummary.repair_primary_reason,
-      inputSummary.repair_primary_reason,
-      null,
-    ),
+    ...repair,
     error,
     raw: input,
   };

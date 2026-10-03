@@ -158,40 +158,25 @@ export function buildWorkflowHookSummary(result) {
 export function buildRunJsonHookSummary(result) {
   const repairLayerOpenCount = Number(result.normalized?.repair_layer_open_count ?? 0);
   const repairLayerBlocking = result.normalized?.repair_layer_blocking === true;
+  const repairLayerStatus = result.normalized?.repair_layer_status ?? null;
   const repairLayerTopFindings = Array.isArray(result.normalized?.repair_layer_top_findings)
     ? result.normalized.repair_layer_top_findings
     : [];
   const executionFailed = Boolean(result.error?.message) && result.result == null && result.action == null;
   return {
     result: result.result,
-    reason_code: executionFailed ? "HOOK_COMMAND_FAILED" : null,
+    reason_code: executionFailed
+      ? "HOOK_COMMAND_FAILED"
+      : (result.reason_code ?? result.normalized?.reason_code ?? null),
     state_mode: result.state_mode,
     db_sync_enabled: result.db_sync?.enabled === true,
     db_sync_ok: result.db_sync?.enabled !== true || !result.db_sync?.error,
     command_status: result.command_status,
     repair_layer_open_count: repairLayerOpenCount,
     repair_layer_blocking: repairLayerBlocking,
-    repair_layer_status: deriveRepairLayerStatus({
-      openCount: repairLayerOpenCount,
-      blocking: repairLayerBlocking,
-    }),
-    repair_layer_advice: deriveRepairLayerAdvice({
-      openCount: repairLayerOpenCount,
-      blocking: repairLayerBlocking,
-      topFindings: repairLayerTopFindings,
-    }),
-    repair_primary_reason: deriveRepairPrimaryReason({
-      status: deriveRepairLayerStatus({
-        openCount: repairLayerOpenCount,
-        blocking: repairLayerBlocking,
-      }),
-      advice: deriveRepairLayerAdvice({
-        openCount: repairLayerOpenCount,
-        blocking: repairLayerBlocking,
-        topFindings: repairLayerTopFindings,
-      }),
-      topFindings: repairLayerTopFindings,
-    }),
+    repair_layer_status: repairLayerStatus,
+    repair_layer_advice: repairLayerStatus == null ? null : (result.normalized?.repair_layer_advice ?? null),
+    repair_primary_reason: repairLayerStatus == null ? null : (result.normalized?.repair_primary_reason ?? null),
     repair_layer_top_findings: repairLayerTopFindings,
   };
 }
