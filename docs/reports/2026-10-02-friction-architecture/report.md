@@ -76,9 +76,11 @@ L’[inventaire détaillé par famille et chemin JSON](reason-inventory.md) ne s
 | Codes de niveau 1 | reason_codes vide malgré des motifs présents dans payload.levels.level1 | Défaut de normalisation confirmé |
 | État des réparations | Diagnostic normalisé absent, résumé affirmant clean depuis 0/false par défaut | Incohérence de preuve ; absence d’observation ne prouve pas clean |
 | Motifs de succès, skip ou fallback | Certains champs null alors qu’aucune erreur/exception n’est active | À conserver si le producteur ne donne aucun code ; ne pas inventer une explication |
-| artifact.classification_reason | Null dans la lecture d’un artefact hérité | À distinguer d’une nouvelle classification manquée ; reproduction dédiée nécessaire avant correction |
+| artifact.classification_reason | Null sur la session normative créée explicitement, sans origine legacy | Hint optionnel pour les artefacts support ; ce null est attendu |
 
 Le premier lot conserve les codes existants dans le résumé, avec priorité au véritable HOOK_COMMAND_FAILED. La normalisation sélectionne les niveaux d’un seul gate parmi les enveloppes observées, récupère les raisons et preuves présentes, puis conserve les diagnostics inconnus à null. Elle ne mélange pas des niveaux de deux exécutions et ne transforme pas un compteur de compatibilité par défaut en observation de succès.
+
+La reproduction dédiée distingue un autre cas : une raison de classification support effectivement stockée est conservée par le mapping et SQLite, puis perdue lors d’une réécriture DB-first qui omet ce champ. La même perte existe dans le package testé et le source actuel. Elle ne prouve pas que le null de la session observée est erroné ; l’effet opérationnel reste à qualifier avant de définir le correctif de métadonnées.
 
 ## Workflow : objectif, phase, scope et handoff
 
@@ -93,6 +95,8 @@ Le handoff est d’abord refusé sur la branche du cycle clos puis admis après 
 Une reproduction exécute le vrai core et l’activation, avec un lecteur canonique injecté. En dual PostgreSQL, projection locale THINKING et snapshot canonique EXPLORING : context-reload/start-session génériques annoncent le mode local et la source file, tandis que cycle-create et le patch spécifique lisent PostgreSQL. Avec snapshot indisponible, start-session et cycle-create génériques peuvent encore annoncer admitted_with_warnings depuis les fichiers. Le patch spécifique reste refusé : cette reproduction ne démontre pas une écriture native autorisée hors canonique.
 
 Les six admissions génériques actives des traces annoncent effectivement le backend PostgreSQL et des sources de current/runtime state file. Elles corroborent le mélange de couches, sans prouver à elles seules une divergence de contenu. Les résolveurs locaux et partagés n’ont pas tous les mêmes règles de préférence/repli.
+
+Une reproduction du vrai CLI, avec snapshot canonique contrôlé et niveau 1 explicite pour isoler le niveau 2, confirme une seconde sélection de source incohérente : le gating ordinaire lit l’intention dans les projections, tandis que la clôture la lit dans le canonique. Des projections divergentes peuvent créer objective_delta lorsque le canonique est aligné ; des projections alignées peuvent masquer une divergence canonique. Sans projection détaillée, une intention canonique disponible est signalée comme incertaine. Cette preuve à frontière injectée n’est pas une qualification PostgreSQL live.
 
 Correction attendue : dériver l’obligation canonique du backend configuré, distinguer préférence et obligation, ne pas déclarer une observation canonique depuis une projection en cas d’absence ou outage. Préserver les politiques SQLite dual existantes, la non-mutation des appels génériques, et l’évaluation complète du patch spécifique. Tester projections contradictoires, manque d’artefact, outage, ambiguïté de heads, scopes durable/legacy et conservation des fichiers/rows.
 
