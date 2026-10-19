@@ -3,3 +3,9 @@
 
 # Local Codex ownership receipts and recovery pre-images
 .aidn/install/
+
+# Derived hook observations and context bundles (never workflow authority)
+.aidn/runtime/cache/
+.aidn/runtime/context/
+.aidn/runtime/perf/current-run-id.txt
+.aidn/runtime/perf/workflow-events.ndjson
