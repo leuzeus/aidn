@@ -279,6 +279,12 @@ registry removal, read-only cleanup inventories, wizard cancellation and npm
 interruption/resume. Package installation and removal are injected; native Codex
 discovery, actual PostgreSQL, native secret entry and OS reboot recovery are not
 qualified by these fixtures.
+On Windows the inventory checks each existing entry's native physical path and
+leaf type/link count without caching observations. Regression cases retain full
+hidden/binary hashing, fresh changes, hard-link and ancestor-junction refusals,
+and denial before observation. Cold native SessionStart timing remains a separate
+manual qualification with the unchanged connector and native deadlines; a warm
+admission preflight is not evidence of cold startup.
 The management fixture inventories each directory explicitly and hashes every
 file, including hidden and binary files. Its oracle checks stable enumeration
 and detection of additions, deletions and content changes before testing preview
