@@ -144,3 +144,141 @@ It is an integrity link to a local result, not authenticated execution, a live
 lease or shared-coordination admission. `execution_authenticated: false` and
 `requires_fresh_execution_admission: true` remain explicit. No transcripts are
 concatenated and no shared relay is written.
+
+## Conditional lifecycle candidate
+
+`src/application/codex/context-lifecycle-service.mjs` composes explicit checkpoint,
+read-only resume and native window-request ports. A host can bind its qualified
+`PreCompact`, `PostCompact`, `SessionStart` and `SubagentStop` events to those
+ports. Capture must finish before any `new_context` request; failed capture
+prevents dispatch. A lost acknowledgement blocks retries in that service instance
+until reconciliation. This is not cross-process exactly-once window dispatch.
+
+The default capability policy stays in `harness` mode with no qualified native
+events or window requests. A trusted host registry must supply a unique,
+unexpired native qualification for exact provider/model/model revision/client
+version, all nine ContextBench cases and invariant/task/continuation success.
+Memory input and telemetry cannot supply this registry. Schema inventory and
+fixture ports cannot qualify a client. No distributed compaction hook or active
+`new_context` adapter is installed into a user's profile by this source candidate.
+The manual qualifier below exercises a separate native bridge without granting
+production autonomy. Full native CLM remains unavailable without an exact model
+revision, verified tokenizer and supported transcript-editing interface.
+
+## Manual native qualification and research
+
+`tools/verify/qualify-context-native.mjs` is a manual test driver, outside public
+CLI dispatch and PR admission. Without `--execute` it only prints usage. An
+explicit run requires absolute binary/home paths and a new output directory
+outside this source checkout. It inherits the existing account's configured
+root OpenAI model, copies authentication into its temporary home for the run, then removes
+that copy and checks the original config/auth bytes. Configured profiles and
+custom providers are refused before effects; there is no provider/model fallback.
+Retained evidence can
+contain native account metadata and stays local-only.
+
+The isolated native runtime exposes test-only checkpoint, resume, exact retrieval
+and bounded TODO-edit tools. A reviewed `notes.thread_hint` MCP bridge restores
+fresh capsules after real `new_context` calls. Native event order must show a
+completed checkpoint before dispatch, its acknowledgement, fresh resume, exact
+retrieval and submission. Three windows in one test thread verify TODO retention.
+This small synthetic corpus cannot establish general model quality.
+
+`--only-ledger` selects the bounded TODO/three-window experiment.
+`--only-compaction --execute-reviewed-test-hooks` selects classical compaction,
+temporary hook probes, ordinary-untrusted and core-admission-denial controls,
+and resume in a fresh native process. The qualifier forwards reviewed hook intent
+through the native per-thread config, as the official exec client does; a
+process-level TUI flag on standalone app-server does not do this. It never
+persists hook trust. `--integrated-hooks --execute-reviewed-test-hooks` also
+enables these reviewed probes during the model's actual new-context trials.
+Inventory,
+entry receipts, completed hook actions and compaction completion are separate
+observations. A compacted item or idle notification alone does not complete the
+compact turn. Every turn completion is correlated with its exact native ID.
+Exit statuses are 0 for selected probes passed, 1 for failure, and 2 for partial
+or unavailable required evidence. Native hook absence must remain explicit.
+
+`tools/verify/qualify-context-selection-native.mjs` is the separate explicit
+manual consumption probe. It builds a declared synthetic consultation corpus,
+uses the real hydration CLI for a complete selection and a fresh mandatory
+closure plus optional references, and verifies the model's exact answers in two
+fresh native threads. It snapshots consultation files and records client-reported
+usage without inferring monetary cost. It shares the qualifier's absolute-path,
+root-provider, isolated-home and temporary-credential cleanup requirements.
+
+The telemetry adapter consumes the native last-response context usage, effective
+capacity and a separately observed window ID. It rejects missing window identity
+and stale/impossible counts; lifetime usage never becomes window pressure.
+Unmeasured attribution and monetary cost remain unknown.
+
+`createEditableContextExperiment` is an opt-in research primitive with immutable
+prefix, host edit gate, complete-input tokenizer/budget, freshness checks,
+snapshots and rollback. It edits an isolated in-memory input, not the live Codex
+transcript. Its synthetic-tokenizer tests and native TODO experiment establish
+different claims. See [the native record](qualification/CONTEXT_CONTROL_PLANE.md)
+for observed results and remaining external dependencies.
+
+### Dedicated local input research host
+
+`tools/verify/qualify-context-local-clm.mjs --help` describes the opt-in local
+alternative. It requires a reviewed manifest containing absolute model/runtime
+paths and SHA-256 hashes for the GGUF and every executable/DLL, an explicit
+Python executable and a new output outside the source checkout. It downloads
+nothing and changes no global model service, user profile or credentials.
+The manual manifest is an operator input, not model-supplied trust.
+
+The CPU runner is confined by a Windows Job before its suspended process starts:
+4 GiB committed-memory cap, one process, kill-on-close, deadline and a separate
+4 GiB available physical-memory reserve. Mapped model pages and committed memory
+are different measurements; the reserve guard remains necessary. Parent EOF
+stops the process. Host/runtime/model bytes are verified before execution and
+again before any successful qualification record is emitted.
+
+The native tokenizer receives the complete host-rendered prompt, including a
+declared model template, protected rules and task. The completion endpoint takes
+those exact token IDs with no hidden template, implicit context shift or cached
+conversation. Its evaluated-token count must match; input plus the 1,024-token
+output reserve must fit 4,096 tokens. Failed or incomplete raw exchanges are
+retained before parsing. No automatic model or inference retry is performed.
+
+The small synthetic corpus tests three native continuations, model-proposed
+input pruning, exact nine-answer retention, immutable critical data, an audited
+rollback, fresh admitted checkpoints and restoration in a newly started runner.
+The unchanged equality verifier must pass every answer. Only then, after
+successful resource cleanup, can a candidate-specific 24-hour qualification
+enable the dedicated input port. The trusted host must recompute the exact
+identity before later use. This does not edit the live Codex transcript or
+register production autonomy. See the qualification record for actual outcomes;
+availability of this driver is not proof that any candidate passed.
+
+An explicit `--pilot <absolute-reviewed-pilot.json>` replaces the synthetic
+client with an existing, independently activated PostgreSQL project. The
+operator-reviewed local manifest supplies `reviewed_external_pilot: true`,
+`target_root`, bounded `objective`, `raw`, `decision`, `next_step`, `task`,
+hash-bound target-relative `sources`, and the nine exact expected `answers`.
+Expected answers are held by the verifier, never encoded in the model's output
+schema. The host supplies a fresh unique agent label and verifies the declared
+cycle against current canonical state. Model data never authorizes this run.
+
+Fresh context and session admissions precede run-owned writes. Explicit normal
+checkpoints retain input, proof and capsules in unique ignored context paths;
+checkpoint cache/event paths are redirected into that same owned directory.
+No activation, configuration, branch, application source or canonical DB import
+is performed. Actual evidence corruption before an edit and during native
+tokenization must refuse reuse/edit and expose no resumable claims; original
+owned evidence bytes are restored in `finally`. This control does not mutate
+canonical pilot data. The final fence verifies source hashes, HEAD, branch,
+staged/unstaged/nonignored state, preexisting runtime files and a fresh canonical
+revision. Any difference prevents qualification, including a concurrent writer.
+The manifest hash also participates in the dedicated host identity.
+
+This proves continuity of the selected real task with adversarial controls.
+Application tests retain their own outcomes; diagnostic continuity cannot turn
+a failing application test into a pass. Local paths, branches, raw logs and
+business-specific code remain in private evidence outside tracked source.
+
+Run `npm run perf:smoke-agent-working-memory-postgres` manually with a dedicated
+configured smoke connection. It verifies real PostgreSQL CLI capture/resume in
+dual/db-only, canonical-only changes, stale refusal and cleanup of its own
+temporary scopes. This optional live run stays outside pull-request admission.

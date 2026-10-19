@@ -18,6 +18,77 @@ The same gate runs `verify-context-metrics-fixtures.mjs`: nullable unknown token
 measured bytes, bounded reported attribution, stale/future/inconsistent telemetry
 refusals and the closed diagnostic contract. Counters are observation deltas,
 not lifetime totals. No cost or native consumption benefit is inferred.
+The same gate includes `verify-context-lifecycle-fixtures.mjs`: default/expired
+capability fallback, exact model/client identity, checkpoint-before-rollover,
+failed capture refusal, read-only restore, typed handoff and uncertain-dispatch
+retry refusal. The injected native qualification is fixture data, not a real
+native execution record. The gate also runs eight editable-input research cases:
+opt-in/host requirements, prefix/role protection, atomic preimages/audit,
+complete-input hard limits, stale source/preimage, asynchronous revision change,
+overlapping edits and rollback. Its tokenizer is synthetic, not an OpenAI
+tokenizer. Two additional lifecycle cases check native telemetry ingestion and
+native checkpoint/dispatch/restore event order. A third checks that the manual
+qualifier preserves root model settings and refuses unsupported provider/profile
+configuration before effects. Further regressions bind reviewed hook intent to
+the per-thread port, reject late completion from another turn, validate actual
+hook outcome order/session and require parseable stop responses on malformed or
+oversized input and unavailable binding. Full native CLM and automatic hook
+distribution remain unqualified.
+
+Native context qualification is manual via
+`node tools/verify/qualify-context-native.mjs --help`; `--execute` is required
+before any files, authentication copy or model turn. Use a new absolute output
+outside the source checkout. The driver records native model/client identity,
+raw local events, exact answers, checkpoints, repeated windows, tokens and
+configuration/credential cleanup. Optional compaction hook probes retain
+`UNAVAILABLE` separately from compaction success; a partial required probe exits
+2. Their invocation-only hook option cannot establish persistent human trust.
+The driver additionally proves ordinary untrusted hooks do not dispatch, denied
+core admission prevents native history replacement and preserves the latest
+capsule, and a fresh process dispatches SessionStart(resume).
+See [observed native results](qualification/CONTEXT_CONTROL_PLANE.md). These
+manual results are outside PR admission and do not populate the capability
+registry automatically.
+
+`node tools/verify/qualify-context-selection-native.mjs --help` describes the
+manual paired consultation probe. Explicit execution verifies real CLI output
+consumption, exact mandatory rule/dependency/revision answers, read-only checkout
+behavior and native reported usage for complete versus differential input. This
+is a small synthetic native comparison, not a statistical benchmark or a new
+public CLI surface.
+
+The required working-memory gate also imports five local-input fixture groups:
+loopback/auth/binding refusal, chat-delimiter isolation, complete native input
+tokenization and exact token-ID dispatch, invalid counters/truncation/budget
+refusal, and dedicated-host qualification scope. Fixture records cannot enable
+a real model. Unknown templates, remote providers, Codex clients, invented
+native hooks or `new_context` and incomplete native evidence are refused.
+
+`node tools/verify/qualify-context-local-clm.mjs --help` is the separate manual
+local-model research driver. It verifies reviewed artifact hashes, native
+tokenization/inference, model-proposed input changes, three continuations,
+rollback, checkpoint freshness, fresh-process restoration and owned-process
+cleanup. A resource-compatible candidate can still fail exact answer checks.
+Its raw failed exchanges remain outside the source checkout. A qualification
+record is emitted only after all assertions, cleanup and final host/artifact
+verification pass. Windows Job memory/EOF and host-reserve negative controls
+are separate native resource evidence, not model-quality fixtures.
+
+The same required gate imports two external-pilot fixture groups: reviewed
+manifest/source binding and path refusal; preservation of preexisting runtime
+and staged checkout state versus explicitly owned ignored output. These are
+fixture checks, separate from the manual `--pilot` native run on an admitted
+existing PostgreSQL project. That run must pass the unchanged nine-answer,
+freshness, protected-input, rollback, budget and process controls, then prove
+pilot preservation. A real application's baseline failures remain failures.
+Only neutral findings belong in tracked qualification records.
+
+`npm run perf:smoke-agent-working-memory-postgres` is a separate optional live
+run against the dedicated smoke database. Its own temporary canonical scopes
+are removed and verified empty even on failure. It is outside PR admission.
+It also executes the deterministic memory corpus before the two live CLI cases.
+No credentials or pilot identifiers belong in tracked evidence.
+
 Config freshness tests also cover Windows reporting `ENOENT` for a child of a
 regular `.aidn` file: this must refuse as `ENOTDIR`, never cache optional absence
 or select default persistence. The fixture injects that Windows observation on
