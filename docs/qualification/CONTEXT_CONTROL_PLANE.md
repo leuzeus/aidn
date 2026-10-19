@@ -211,6 +211,13 @@ preparation, explicitly seeds its temporary SQLite authority, and only then
 checks reconstruction. No runtime fallback or refusal was changed; failed
 clean-candidate reports remain retained for attribution.
 
+The complete coordination gate then identified eight Windows CLI fixture cases
+that never reached admission: Node rejected a drive path supplied to `--import`
+as `ERR_UNSUPPORTED_ESM_URL_SCHEME`. The preloader now uses a file URL on all
+platforms, with unchanged canonical/JSON/exit-status assertions. Failed case IDs,
+check names and error codes survive the default family output. This is a test
+transport correction, not a production admission exception.
+
 Final source verification after the hook corrections: the required
 `codex-agent-working-memory` gate PASS, including 27 memory, five metrics,
 14 lifecycle/evidence and eight editable-input scenarios. Docs (three gates),

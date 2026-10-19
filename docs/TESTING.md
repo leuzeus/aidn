@@ -95,6 +95,12 @@ case first proves missing SQLite state refuses preparation, then explicitly
 seeds the temporary canonical fixture and proves fresh reconstruction. The
 production refusal and admission requirements remain unchanged.
 
+Canonical pre-write CLI fixtures pass their Node `--import` preloader as a
+`file://` URL on every platform. A Windows drive path is not an ESM URL and
+would prevent the test from reaching admission at all. Failed canonical/JSON
+cases also retain their IDs, failed check names and bounded error codes in the
+family summary; existing admission assertions and deadlines stay unchanged.
+
 Config freshness tests also cover Windows reporting `ENOENT` for a child of a
 regular `.aidn` file: this must refuse as `ENOTDIR`, never cache optional absence
 or select default persistence. The fixture injects that Windows observation on
