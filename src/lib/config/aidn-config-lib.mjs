@@ -88,6 +88,23 @@ function getConfigFileSignature(filePath, fsImpl) {
     if (error?.code !== "ENOENT") {
       throw error;
     }
+    // Windows can report ENOENT for a child of a regular file. That is an
+    // invalid config parent, not optional absence or permission to use defaults.
+    let parent = path.dirname(filePath);
+    for (;;) {
+      try {
+        const parentStat = fsImpl.statSync(parent, { bigint: true });
+        if (!parentStat.isDirectory()) {
+          throw Object.assign(new Error(`ENOTDIR: invalid config parent in ${filePath}`), { code: "ENOTDIR" });
+        }
+        break;
+      } catch (parentError) {
+        if (parentError?.code !== "ENOENT") throw parentError;
+        const next = path.dirname(parent);
+        if (next === parent) break;
+        parent = next;
+      }
+    }
     return { exists: false };
   }
 }
