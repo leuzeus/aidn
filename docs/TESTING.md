@@ -89,6 +89,12 @@ are removed and verified empty even on failure. It is outside PR admission.
 It also executes the deterministic memory corpus before the two live CLI cases.
 No credentials or pilot identifiers belong in tracked evidence.
 
+The memory fixture copies only Git-tracked corpus inputs. Ignored local indexes
+must not turn an absent canonical database into a false pass. Its mode-change
+case first proves missing SQLite state refuses preparation, then explicitly
+seeds the temporary canonical fixture and proves fresh reconstruction. The
+production refusal and admission requirements remain unchanged.
+
 Config freshness tests also cover Windows reporting `ENOENT` for a child of a
 regular `.aidn` file: this must refuse as `ENOTDIR`, never cache optional absence
 or select default persistence. The fixture injects that Windows observation on

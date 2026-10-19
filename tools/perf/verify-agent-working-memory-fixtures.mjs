@@ -38,7 +38,13 @@ function snapshot() {
     .map(entry => { const file = path.join(entry.parentPath, entry.name); return [path.relative(root, file), sha(fs.readFileSync(file))]; }).sort());
 }
 try {
-  fs.cpSync(path.join(repo, "tests/fixtures/perf-handoff/ready"), root, { recursive: true });
+  const fixture = path.join(repo, "tests/fixtures/perf-handoff/ready");
+  const trackedFixtureFiles = new Set(execFileSync("git", ["-C", repo, "ls-files", "-z", "--", "tests/fixtures/perf-handoff/ready"],
+    { encoding: "utf8", windowsHide: true }).split("\0").filter(Boolean));
+  // A warm source checkout can contain ignored indexes/caches in this corpus.
+  // Copy only tracked inputs so a clean worktree exercises the same scenario.
+  fs.cpSync(fixture, root, { recursive: true, filter: source => fs.statSync(source).isDirectory()
+    || trackedFixtureFiles.has(path.relative(repo, source).replaceAll("\\", "/")) });
   prepareWorkflowDocumentsFixture(root);
   const currentFile = path.join(root, "docs/audit/CURRENT-STATE.md");
   fs.writeFileSync(currentFile, fs.readFileSync(currentFile, "utf8").replace("runtime_state_mode: dual", "runtime_state_mode: files"));
@@ -150,6 +156,12 @@ try {
     const file = path.join(root, ".aidn/config.json"); const original = fs.readFileSync(file);
     fs.writeFileSync(file, JSON.stringify({ runtime: { stateMode: "db-only" } }));
     assert.equal((await resumeAgentWorkingMemory({ targetRoot: root, agentId: "agent-1" })).status, "stale");
+    const sqliteFile = path.join(root, ".aidn/runtime/index/workflow-index.sqlite");
+    assert.equal(fs.existsSync(sqliteFile), false, "Untracked warm fixture databases must not be copied");
+    await assert.rejects(() => prepareAgentWorkingMemory({ targetRoot: root, inputFile: inputRef }), /WORKING_MEMORY_REVISION_UNAVAILABLE/);
+    const { payload } = createArtifactProjectorAdapter().projectArtifacts({ targetRoot: root,
+      auditRoot: path.join(root, "docs/audit"), embedContent: true });
+    await createSqliteRuntimeArtifactStore({ sqliteFile }).writeIndexProjection({ payload });
     const prepared = await prepareAgentWorkingMemory({ targetRoot: root, inputFile: inputRef });
     assert.equal(prepared.canonical.backend, "sqlite");
     fs.writeFileSync(file, original);

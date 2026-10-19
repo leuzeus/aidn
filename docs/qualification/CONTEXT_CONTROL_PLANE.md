@@ -204,6 +204,13 @@ are unchanged. A successful native pilot result never overrides this separate
 package refusal. Final delivery must repeat the affected checks on the corrected
 exact commit, with the original failed report retained.
 
+Clean-worktree memory verification also exposed a fixture precondition hidden
+by an ignored SQLite index in a warm source corpus. Fixture copying now includes
+only tracked inputs. The mode-change case proves the missing database refuses
+preparation, explicitly seeds its temporary SQLite authority, and only then
+checks reconstruction. No runtime fallback or refusal was changed; failed
+clean-candidate reports remain retained for attribution.
+
 Final source verification after the hook corrections: the required
 `codex-agent-working-memory` gate PASS, including 27 memory, five metrics,
 14 lifecycle/evidence and eight editable-input scenarios. Docs (three gates),
