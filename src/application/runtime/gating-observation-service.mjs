@@ -490,7 +490,9 @@ export async function collectGatingObservations({ targetRoot, eventFile, indexSy
   const noChangeFastPath = buildNoChangeFastPath(reloadResult, changedFiles);
   const eventStats = readEventSignalStats(eventFile, {
     branch: gitAdapter.getCurrentBranch(targetRoot),
-    includeDrift: !noChangeFastPath && mode === "COMMITTING",
+    // Closure always evaluates drift, even on a clean incremental reload.
+    // Keep its real branch-bound proof available to that evaluation.
+    includeDrift: (Boolean(completionContext) || !noChangeFastPath) && mode === "COMMITTING",
     includeFallback: true,
   });
   const indexSyncCheck = readJsonOptional(indexSyncCheckFile);

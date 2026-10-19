@@ -12,6 +12,9 @@ import { readRuntimeSnapshotSync } from '../../src/application/runtime/runtime-s
 import { runDbFirstArtifactUseCase } from '../../src/application/runtime/db-first-artifact-use-case.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..');
+const corpus = path.join(repo, 'tests/fixtures/perf-current-state/active');
+const trackedCorpus = new Set(execFileSync('git', ['-C', repo, 'ls-files', '-z', '--', 'tests/fixtures/perf-current-state/active'],
+  { encoding: 'utf8', windowsHide: true }).split('\0').filter(Boolean));
 const roots = [];
 function run(root, script, args = []) {
   const child = spawnSync(process.execPath, [path.join(repo, script), '--target', root, ...args, '--json'],
@@ -35,7 +38,9 @@ function sync(root) {
   assert.equal(result.status, 0);
 }
 function fixture(mode = 'files') {
-  const root = copyFixtureToTmp(path.join(repo, 'tests/fixtures/perf-current-state/active'), os.tmpdir(), 'aidn-close-completion');
+  const root = copyFixtureToTmp(corpus, os.tmpdir(), 'aidn-close-completion', {
+    filter: source => fs.statSync(source).isDirectory() || trackedCorpus.has(path.relative(repo, source).replaceAll('\\', '/')),
+  });
   roots.push(root);
   prepareWorkflowDocumentsFixture(root);
   fs.renameSync(path.join(root, 'docs/audit/cycles/C101-feature-alpha'), path.join(root, 'docs/audit/cycles/C101-migration-alpha'));
@@ -134,6 +139,46 @@ try {
     assert.equal(drift(root).result.ok, false);
     assert.equal(completed(root), proofCount);
     console.log(`PASS ${kind}: refusal propagated through hook and Codex wrapper`);
+  }
+  for (const mode of ['files', 'dual', 'db-only']) {
+    const root = fixture(mode);
+    put(root, statusPath, status('DONE'));
+    const current = path.join(root, 'docs/audit/CURRENT-STATE.md');
+    fs.writeFileSync(current, fs.readFileSync(current, 'utf8').replace('active_cycle: C101', 'active_cycle: none'));
+    if (mode !== 'files') sync(root);
+    execFileSync('git', ['-C', root, 'add', 'docs/audit'], { stdio: 'pipe' });
+    execFileSync('git', ['-C', root, 'commit', '-m', 'docs: close fixture cycle'], { stdio: 'pipe' });
+    assert.equal(execFileSync('git', ['-C', root, 'status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }).trim(), '');
+    assert.equal(drift(root).result.ok, true);
+    const forcedClose = () => run(root, 'tools/perf/cycle-close-hook.mjs', ['--mode', 'COMMITTING', '--no-auto-skip-gate']).result;
+    const cold = forcedClose();
+    assert.equal(cold.result, 'ok', JSON.stringify(cold));
+    const warm = forcedClose();
+    assert.equal(warm.checkpoint.reload.decision, 'incremental');
+    assert.deepEqual(warm.checkpoint.reload.reason_codes, []);
+    assert.equal(warm.checkpoint.gate.skipped, false);
+    assert.equal(warm.checkpoint.gate.result, 'ok', JSON.stringify(warm));
+    const history = fs.readFileSync(eventPath(root), 'utf8');
+    for (const proofChange of ['expired', 'foreign-branch', 'wrong-mode', 'future']) {
+      fs.writeFileSync(eventPath(root), history.trim().split('\n').map(line => {
+        const event = JSON.parse(line);
+        if (event.event === 'drift_check_completed') {
+          if (proofChange === 'expired') event.ts = new Date(Date.now() - 46 * 60000).toISOString();
+          if (proofChange === 'foreign-branch') event.branch = 'feature/C999-other';
+          if (proofChange === 'wrong-mode') event.mode = 'THINKING';
+          if (proofChange === 'future') event.ts = new Date(Date.now() + 60000).toISOString();
+        }
+        return JSON.stringify(event);
+      }).join('\n') + '\n');
+      const refused = forcedClose();
+      assert.equal(refused.result, 'warn', proofChange);
+      assert(refused.checkpoint.gate.levels.level2.active_signals.includes('time_since_last_drift_check'), proofChange);
+    }
+    fs.writeFileSync(eventPath(root), history);
+    assert.equal(forcedClose().checkpoint.gate.result, 'ok');
+    assert.equal(run(root, 'tools/perf/reload-check.mjs').result.decision, 'stop');
+    assert.match(fs.readFileSync(path.join(root, statusPath), 'utf8'), /^state: DONE$/m);
+    console.log(`PASS ${mode}: clean warm closure reads real recent drift proof; expired, foreign, wrong-mode and future proofs still warn`);
   }
   for (const mode of ['files', 'dual', 'db-only']) {
     const root = fixture(mode);

@@ -1,5 +1,12 @@
 # Testing Guide
 
+The cycle-close completion fixtures exercise clean, cached terminal branches in
+`files`, `dual` and `db-only` with gate evaluation forced. A successful recent
+COMMITTING drift check on the same branch must remain visible on that path;
+expired, foreign-branch, wrong-mode and future observations still require a new
+drift check. Terminal ownership does not reactivate the cycle or admit ordinary
+implementation.
+
 ## Explicit agent working memory
 
 `node tools/perf/verify-agent-working-memory-fixtures.mjs` checks real fixture
