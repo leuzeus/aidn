@@ -20,6 +20,7 @@ import {
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "../runtime/runtime-snapshot-service.mjs";
 import { readWorkflowAdapterConfig } from "../../lib/config/workflow-adapter-config-lib.mjs";
 import { selectScopedContext, finalizeScopedContextBudget } from "./scoped-context-selection.mjs";
+import { projectContextDelta } from "./context-delta-projection.mjs";
 import { resolveRuntimeProjectContext } from "../runtime/runtime-project-context-service.mjs";
 
 function resolveTargetPath(targetRoot, candidate) {
@@ -874,6 +875,11 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
 
   if (scopedRequested) {
     scopedSelection ??= selectScopedContext({ payload: null, request: args.contextRequest, adoption, backend: null });
+    if (args.contextBaselineFile || args.contextBaseline !== undefined) {
+      scopedSelection = projectContextDelta(scopedSelection, args.contextBaseline);
+      hydrated.context_delta = scopedSelection.delta;
+      delete scopedSelection.delta;
+    }
     hydrated.source_revision = scopedSelection.source_revision;
     hydrated.visible_projection_policy = { mode: "consultative-read-only", materialize_visible_artifacts: false };
     finalizeScopedContextBudget(hydrated, scopedSelection, args);

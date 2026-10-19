@@ -43,6 +43,7 @@ function parseArgs(argv) {
     handoffNote: "",
     json: false,
     contextSelectionFile: "",
+    contextBaselineFile: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -58,6 +59,10 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--skill") {
       args.skill = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--context-baseline-file") {
+      args.contextBaselineFile = String(argv[i + 1] ?? "").trim();
+      if (!args.contextBaselineFile || args.contextBaselineFile.startsWith("--")) throw new Error("Missing value for --context-baseline-file");
       i += 1;
     } else if (token === "--context-selection-file") {
       args.contextSelectionFile = String(argv[i + 1] ?? "").trim();
@@ -158,6 +163,7 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
+  if (args.contextBaselineFile && !args.contextSelectionFile) throw new Error("Context baseline requires consultative --context-selection-file");
   if (args.contextSelectionFile) {
     const effects = ["--out", "--materialize-visible-artifacts", "--project-runtime-state", "--project-handoff-packet", "--project-agent-health-summary", "--project-agent-selection-summary", "--project-multi-agent-status"];
     if (effects.some((flag) => argv.includes(flag))) throw new Error("Consultative context selection refuses output and projection writes");
@@ -305,6 +311,14 @@ async function main() {
     if (args.contextSelectionFile) {
       const requestFile = path.resolve(targetRoot, args.contextSelectionFile);
       args.contextRequest = JSON.parse(fs.readFileSync(requestFile, "utf8"));
+    }
+    if (args.contextBaselineFile) {
+      const baselineFile = path.resolve(targetRoot, args.contextBaselineFile);
+      const stat = fs.lstatSync(baselineFile);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 2 * 1024 * 1024) throw new Error("Invalid context baseline file");
+      const bytes = fs.readFileSync(baselineFile);
+      if (bytes.length > 2 * 1024 * 1024) throw new Error("Context baseline exceeds limit");
+      args.contextBaseline = JSON.parse(bytes.toString("utf8"));
     }
     const hydrated = await runHydrateContextUseCase({
       args,

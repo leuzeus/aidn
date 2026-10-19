@@ -17,6 +17,9 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "agent_working_memory", source_of_truth_concept: "agent_working_memory", metadata_concept: "agent_working_memory",
+    cli_contract: "runtime-project-handoff-packet.v1.schema.json", required: ["source_of_truth", "metadata", "cli_contract"],
+    coverage_note: "Explicit revision-bound checkpoint and read-only resume; advisory derived context and diagnostic metrics require independent fresh admission." },
   { concept: "workflow_selection", source_of_truth_concept: "workflow_selection", metadata_concept: "workflow_selection",
     cli_contract: "runtime-workflow-inspect.v1.schema.json", required: ["source_of_truth", "metadata", "cli_contract"], coverage_kind: "opt_in_candidate",
     coverage_note: "Reviewed selection and common CLI/dashboard projection for future instances; no generated permission or native authority." },
@@ -290,7 +293,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-coordinator-suggest-arbitration", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
   { id: "runtime-coordinator-record-arbitration", linked_concepts: ["coordination_record", "user_arbitration", "coordination_summary"] },
   { id: "runtime-project-runtime-state", linked_concepts: ["runtime_state", "current_state"] },
-  { id: "runtime-project-handoff-packet", linked_concepts: ["handoff_packet", "session", "cycle"] },
+  { id: "runtime-project-handoff-packet", linked_concepts: ["handoff_packet", "session", "cycle", "agent_working_memory"] },
   { id: "runtime-shared-coordination-projects", linked_concepts: ["runtime_project_context", "workspace", "coordination_record"] },
   { id: "runtime-list-agent-adapters", linked_concepts: ["agent_roster", "workspace"] },
   { id: "runtime-verify-agent-roster", linked_concepts: ["agent_roster"] },

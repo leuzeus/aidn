@@ -14,6 +14,9 @@ function parseArgs(argv) {
   const envStateMode = String(process.env.AIDN_STATE_MODE ?? "").trim().toLowerCase();
   const args = {
     target: ".",
+    workingMemory: "",
+    contextTelemetry: "",
+    write: false,
     cache: ".aidn/runtime/cache/reload-state.json",
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     indexOutput: ".aidn/runtime/index/workflow-index.json",
@@ -39,7 +42,17 @@ function parseArgs(argv) {
 
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
-    if (token === "--target") {
+    if (token === "--context-telemetry") {
+      args.contextTelemetry = argv[i + 1] ?? "";
+      if (!args.contextTelemetry || args.contextTelemetry.startsWith("--")) throw new Error("Missing --context-telemetry input");
+      i += 1;
+    } else if (token === "--working-memory") {
+      args.workingMemory = argv[i + 1] ?? "";
+      if (!args.workingMemory || args.workingMemory.startsWith("--")) throw new Error("Missing --working-memory input");
+      i += 1;
+    } else if (token === "--write") {
+      args.write = true;
+    } else if (token === "--target") {
       args.target = argv[i + 1] ?? "";
       i += 1;
     } else if (token === "--cache") {
@@ -136,6 +149,8 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --working-memory memory.json --write --json");
+  console.log("  node tools/perf/checkpoint.mjs --target ../client --working-memory memory.json --context-telemetry telemetry.json --write --json");
   console.log("  node tools/perf/checkpoint.mjs --target ../client");
   console.log("  AIDN_INDEX_STORE_MODE=sqlite node tools/perf/checkpoint.mjs --target ../client");
   console.log("  AIDN_STATE_MODE=dual node tools/perf/checkpoint.mjs --target ../client");

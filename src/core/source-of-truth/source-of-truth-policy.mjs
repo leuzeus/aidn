@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  agent_working_memory: {
+    owner: "checkpointing agent",
+    lifecycle: "captured -> current|stale|invalid -> explicitly recaptured",
+    scope: "one agent in one worktree; local advisory context only",
+    retention: "five checkpoint observations per agent; raw evidence retained by the existing hook store",
+    migration: "reconstruct by explicit checkpoint from typed agent input and current evidence; no database migration",
+    replacement: "a new admitted checkpoint replaces the latest pointer; stale capsules never supply actionable context",
+    evidence_targets: ["src/application/runtime/agent-working-memory-service.mjs", "tools/perf/verify-agent-working-memory-fixtures.mjs"],
+  },
   workflow_selection: {
     owner: "project workflow maintainer",
     lifecycle: "proposed -> reviewed -> explicitly selected -> superseded; existing instances remain pinned",
@@ -321,6 +330,14 @@ function policy({
 }
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
+  policy({
+    concept: "agent_working_memory", label: "Derived agent working memory",
+    files: "referenced checkout evidence and agent-authored checkpoint input",
+    dual: "configured canonical runtime snapshot and referenced checkout evidence; fresh revision binding required",
+    dbOnly: "configured canonical runtime snapshot and referenced checkout evidence; fresh revision binding required",
+    projection: ".aidn/runtime/context/agents/* hook store and explicit handoff resume_capsule",
+    notes: "Advisory and reconstructible. Never permission, admission, canonical decisions or shared coordination. DB reuse binds to fresh coherent canonical payload and heads; PostgreSQL unavailability refuses without fallback. Metrics remain diagnostic.",
+  }),
   policy({
     concept: "workflow_selection", label: "Reviewed workflow definition selection",
     files: "docs/audit/workflows/definitions/<workflow-id>.json; configured PostgreSQL remains canonical",

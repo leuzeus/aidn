@@ -691,7 +691,7 @@ function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
     if (testCase.visibleCurrentMissing) fs.unlinkSync(visibleCurrent);
     const before = snapshotFixtureBytes(root);
     const canonicalBefore = fs.readFileSync(recordFile, "utf8");
-    const childArgs = testCase.cli ? ["--import", initializerFile, path.join(repoRoot, "tools/runtime/pre-write-admit.mjs"),
+    const childArgs = testCase.cli ? ["--import", pathToFileURL(initializerFile).href, path.join(repoRoot, "tools/runtime/pre-write-admit.mjs"),
       "--target", root, "--skill", testCase.skill, ...(testCase.strict ? ["--strict"] : []), "--json"]
       : ["--input-type=module", "--eval", runner];
     const child = spawnSync(process.execPath, childArgs, {
@@ -1131,7 +1131,14 @@ function main() {
       console.log(`Fixtures root: ${fixturesRoot}`);
       console.log(`Result: ${output.pass ? "PASS" : "FAIL"}`);
     }
-    if (!output.pass) process.exitCode = 1;
+    if (!output.pass) {
+      for (const testCase of [...canonicalSourceEvidence, ...losslessJsonEvidence].filter(item => !item.pass)) {
+        const failed = Object.entries(testCase.checks).filter(([, value]) => !value).map(([key]) => key);
+        const code = String(testCase.error ?? "").match(/ERR_[A-Z_]+/)?.[0];
+        console.error(`FAIL ${testCase.id}: ${failed.join(", ")}${code ? ` (${code})` : ""}`);
+      }
+      process.exitCode = 1;
+    }
   } catch (error) {
     primaryError = error;
     console.error(`ERROR: ${error.message}`);

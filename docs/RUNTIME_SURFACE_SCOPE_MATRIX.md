@@ -58,6 +58,13 @@ Purpose:
 
 ## Concept Source-Of-Truth Overlay
 
+`.aidn/runtime/context/agents/*` is worktree-local derived working memory. It
+reuses the existing hook context store, is never shared by default, and cannot
+replace canonical decisions or fresh admission. Capture/reuse verifies input,
+evidence and checkout revision, plus a fresh coherent canonical payload/head
+observation in DB-backed or configured PostgreSQL mode. Backend unavailability
+refuses reuse. See [working memory](AGENT_WORKING_MEMORY.md).
+
 This overlay names the logical owner of key information concepts. It complements the physical path matrix above.
 
 | Concept | `files` mode source | `dual` mode source | `db-only` mode source | Projection / cache |

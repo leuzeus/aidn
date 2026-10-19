@@ -216,6 +216,14 @@ function verifyFreshConfigReads(tempRoot) {
   fs.writeFileSync(path.join(invalidParent, ".aidn"), "not a directory");
   const parentError = expectReadFailure(invalidParent, "invalid_parent_is_not_optional_absence", /ENOTDIR/);
   check("invalid_parent_error_code_preserved", parentError.code === "ENOTDIR");
+  const windowsParentFs = { ...fs, statSync(filePath, options) {
+    if (filePath === path.join(invalidParent, ".aidn", "config.json")) {
+      throw Object.assign(new Error("injected Windows child ENOENT"), { code: "ENOENT" });
+    }
+    return fs.statSync(filePath, options);
+  } };
+  const windowsParentError = expectReadFailure(invalidParent, "windows_parent_enoent_is_not_optional_absence", /ENOTDIR/, { fsImpl: windowsParentFs });
+  check("windows_parent_enoent_normalizes_invalid_directory", windowsParentError.code === "ENOTDIR");
 
   resetAidnProjectConfigCache();
   const fsIdentityRoot = path.join(tempRoot, "filesystem-identity");

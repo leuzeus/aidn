@@ -1,5 +1,133 @@
 # Testing Guide
 
+The cycle-close completion fixtures exercise clean, cached terminal branches in
+`files`, `dual` and `db-only` with gate evaluation forced. A successful recent
+COMMITTING drift check on the same branch must remain visible on that path;
+expired, foreign-branch, wrong-mode and future observations still require a new
+drift check. Terminal ownership does not reactivate the cycle or admit ordinary
+implementation.
+
+## Explicit agent working memory
+
+`node tools/perf/verify-agent-working-memory-fixtures.mjs` checks real fixture
+checkpoint/handoff CLI, explicit write intent, fresh admission refusal, revision
+changes, missing/changed evidence, capsule integrity, per-agent isolation,
+canonical DB revision binding/unavailability, five-checkpoint decision retention,
+typed optional claims, client telemetry and reconstruction. Real SQLite and an
+injected PostgreSQL adapter cover canonical changes during capture and before
+reuse; the latter is not a live isolation test. This is fixture evidence; native hooks and
+model/token comparisons require separate native qualification. See
+[the lifecycle](AGENT_WORKING_MEMORY.md). The existing handoff v1 contract accepts
+`shared_state_backend: null` for the normal files-mode output with no shared backend.
+The required `codex-agent-working-memory` gate uses this suite through the existing
+family runner; the 43 historical context-resilience invocations remain unchanged.
+The same gate runs `verify-context-metrics-fixtures.mjs`: nullable unknown tokens,
+measured bytes, bounded reported attribution, stale/future/inconsistent telemetry
+refusals and the closed diagnostic contract. Counters are observation deltas,
+not lifetime totals. No cost or native consumption benefit is inferred.
+The same gate includes `verify-context-lifecycle-fixtures.mjs`: default/expired
+capability fallback, exact model/client identity, checkpoint-before-rollover,
+failed capture refusal, read-only restore, typed handoff and uncertain-dispatch
+retry refusal. The injected native qualification is fixture data, not a real
+native execution record. The gate also runs eight editable-input research cases:
+opt-in/host requirements, prefix/role protection, atomic preimages/audit,
+complete-input hard limits, stale source/preimage, asynchronous revision change,
+overlapping edits and rollback. Its tokenizer is synthetic, not an OpenAI
+tokenizer. Two additional lifecycle cases check native telemetry ingestion and
+native checkpoint/dispatch/restore event order. A third checks that the manual
+qualifier preserves root model settings and refuses unsupported provider/profile
+configuration before effects. Further regressions bind reviewed hook intent to
+the per-thread port, reject late completion from another turn, validate actual
+hook outcome order/session and require parseable stop responses on malformed or
+oversized input and unavailable binding. Full native CLM and automatic hook
+distribution remain unqualified.
+
+Native context qualification is manual via
+`node tools/verify/qualify-context-native.mjs --help`; `--execute` is required
+before any files, authentication copy or model turn. Use a new absolute output
+outside the source checkout. The driver records native model/client identity,
+raw local events, exact answers, checkpoints, repeated windows, tokens and
+configuration/credential cleanup. Optional compaction hook probes retain
+`UNAVAILABLE` separately from compaction success; a partial required probe exits
+2. Their invocation-only hook option cannot establish persistent human trust.
+The driver additionally proves ordinary untrusted hooks do not dispatch, denied
+core admission prevents native history replacement and preserves the latest
+capsule, and a fresh process dispatches SessionStart(resume).
+See [observed native results](qualification/CONTEXT_CONTROL_PLANE.md). These
+manual results are outside PR admission and do not populate the capability
+registry automatically.
+
+`node tools/verify/qualify-context-selection-native.mjs --help` describes the
+manual paired consultation probe. Explicit execution verifies real CLI output
+consumption, exact mandatory rule/dependency/revision answers, read-only checkout
+behavior and native reported usage for complete versus differential input. This
+is a small synthetic native comparison, not a statistical benchmark or a new
+public CLI surface.
+
+The required working-memory gate also imports five local-input fixture groups:
+loopback/auth/binding refusal, chat-delimiter isolation, complete native input
+tokenization and exact token-ID dispatch, invalid counters/truncation/budget
+refusal, and dedicated-host qualification scope. Fixture records cannot enable
+a real model. Unknown templates, remote providers, Codex clients, invented
+native hooks or `new_context` and incomplete native evidence are refused.
+
+`node tools/verify/qualify-context-local-clm.mjs --help` is the separate manual
+local-model research driver. It verifies reviewed artifact hashes, native
+tokenization/inference, model-proposed input changes, three continuations,
+rollback, checkpoint freshness, fresh-process restoration and owned-process
+cleanup. A resource-compatible candidate can still fail exact answer checks.
+Its raw failed exchanges remain outside the source checkout. A qualification
+record is emitted only after all assertions, cleanup and final host/artifact
+verification pass. Windows Job memory/EOF and host-reserve negative controls
+are separate native resource evidence, not model-quality fixtures.
+
+On Windows, `python -B -m unittest discover -s tests/native -p
+test_context_local_runner.py -v` independently checks native exit before owner
+EOF (including a nonzero child status), owner EOF cleanup, deadline and the hard
+memory cap. Keep the parent pipe open for the native-exit cases: closing it via
+`communicate()` would hide the shutdown race. The lifetime watcher uses raw
+descriptor reads so an early native exit cannot leave a buffered stdin lock
+held at Python shutdown. The Job limits, host reserve and termination controls
+remain unchanged. These manual checks require Python and sufficient free memory;
+on other platforms they report `SKIP`, never Windows qualification.
+
+The same required gate imports two external-pilot fixture groups: reviewed
+manifest/source binding and path refusal; preservation of preexisting runtime
+and staged checkout state versus explicitly owned ignored output. These are
+fixture checks, separate from the manual `--pilot` native run on an admitted
+existing PostgreSQL project. That run must pass the unchanged nine-answer,
+freshness, protected-input, rollback, budget and process controls, then prove
+pilot preservation. A real application's baseline failures remain failures.
+Only neutral findings belong in tracked qualification records.
+
+`npm run perf:smoke-agent-working-memory-postgres` is a separate optional live
+run against the dedicated smoke database. Its own temporary canonical scopes
+are removed and verified empty even on failure. It is outside PR admission.
+It also executes the deterministic memory corpus before the two live CLI cases.
+No credentials or pilot identifiers belong in tracked evidence.
+
+The memory fixture copies only Git-tracked corpus inputs. Ignored local indexes
+must not turn an absent canonical database into a false pass. Its mode-change
+case first proves missing SQLite state refuses preparation, then explicitly
+seeds the temporary canonical fixture and proves fresh reconstruction. The
+production refusal and admission requirements remain unchanged.
+
+Canonical pre-write CLI fixtures pass their Node `--import` preloader as a
+`file://` URL on every platform. A Windows drive path is not an ESM URL and
+would prevent the test from reaching admission at all. Failed canonical/JSON
+cases also retain their IDs, failed check names and bounded error codes in the
+family summary; existing admission assertions and deadlines stay unchanged.
+
+Config freshness tests also cover Windows reporting `ENOENT` for a child of a
+regular `.aidn` file: this must refuse as `ENOTDIR`, never cache optional absence
+or select default persistence. The fixture injects that Windows observation on
+all platforms as well as testing the actual filesystem behavior.
+
+The scoped-selection fixture also exercises differential consultation through
+the service and the real CLI: full mandatory dependency closure, exact optional
+references, incompatible/corrupt baseline fallback, public JSON contract,
+complete-response byte budget, read-only effect and unchanged input files.
+
 ## Targeted canonical artifact writes
 
 `perf:verify-runtime-persistence-parity` includes deterministic artifact command
@@ -176,6 +304,16 @@ provider returning no tool calls. A negative control removes one temporary
 definition and requires that it disappear from the advertised agents. This
 proves discovery, not agent execution. Neither command qualifies server
 installation or trusted native hook execution. Those remain separate checks.
+
+`tools/verify/verify-codex-client-install.mjs` retains bounded SessionStart
+observations before deleting its exclusive temporary client: exit code, signal,
+process error code, elapsed milliseconds, output sizes and an allowlisted
+degradation reason. Raw context and stderr are omitted to avoid disclosing
+project data. Its diagnostic regression checks distinguish runtime unavailability,
+binding changes, Git resolution, malformed output and unknown context. A passing
+rerun does not identify the cause of an older failure whose output was not retained.
+Admission assertions, the seven-second runtime budget and native trust remain
+unchanged; direct command invocation does not qualify automatic native dispatch.
 
 For bounded hook summaries, `verify-codex-native-integration-fixtures.mjs` checks
 real admitted and blocked CLI values, complete JSON parsing, the whole 2400-byte
@@ -749,6 +887,9 @@ the unique merged PR's `merge_commit_sha` to equal `GITHUB_SHA`. Comments,
 dormant shell blocks, wildcard hotfix routes, associated-but-different merge
 commits, or weakened unique-PR assertions cannot satisfy the gate.
 The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
+Package topology also requires the dedicated local research qualifier and its
+external-pilot/resource helpers to remain outside distributed packages. They
+are source-checkout test tools; the release input detector remains unchanged.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.

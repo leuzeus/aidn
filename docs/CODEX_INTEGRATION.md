@@ -17,6 +17,17 @@ and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIE
 
 ## Opt-in scoped context consultation
 
+The explicit selection variant also accepts `--context-baseline-file <prior.json>`
+with a previous complete selected response. It freshly validates the current
+selection, always returns mandatory units and their dependency closure, and
+replaces only unchanged optional bodies with exact references in `context_delta`.
+Changed/new optional units remain complete; removed units are listed. A foreign,
+malformed or incompatible baseline falls back to the full fresh selection. A
+previous differential response is not a full baseline. The baseline cannot grant
+authority, substitute old content or bypass current admission. The complete JSON
+budget includes delta metadata. This option requires `--context-selection-file`
+and retains its read-only effect and output/projection-write refusals.
+
 Installed `WORKFLOW-KERNEL.md` includes a procedure routing table and recovery
 references. `context-reload` may consult the selection variant below only when
 explicitly requested; mandatory startup reads, session admission and fresh

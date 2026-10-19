@@ -123,6 +123,23 @@ Rollback removes the opt-in consumer and retains client adoption history.
 
 ## Options Compared
 
+### Derived agent continuation memory (2026-10-07)
+
+An explicit checkpoint may retain typed agent working memory: objective,
+evidence-linked decisions and next step. The existing hook context store holds
+a local derived capsule bound to checkpoint provenance and observed
+workspace/worktree, Git/content/rule revision. Explicit handoff reads return
+claims only when input and evidence hashes still match. Stale or invalid capsules
+return diagnostics without claims. Fresh workflow and native admissions remain
+independent; agent claims cannot replace canonical decisions or authorize effects.
+No new shared coordination surface is introduced.
+
+The first slice supports files only. Database-backed continuity requires a
+verified canonical revision binding before reuse can be extended. Input and proofs
+reconstruct the capsule through a new admitted checkpoint. No automatic rollover
+or native compaction qualification is implied. See
+[working memory](../AGENT_WORKING_MEMORY.md) for lifecycle and limits.
+
 | Option | Result |
 |---|---|
 | Documentation-only model | Easy to read, but quickly diverges from code. |
