@@ -196,6 +196,14 @@ binding and preservation detection; their results are not the native pilot proof
 
 ## Completion boundary
 
+The first clean-candidate release check correctly refused a source-only local
+pilot helper included by the broad package allowlist. The local qualifier and
+its pilot/resource helpers are now explicitly excluded together; package topology
+requires their absence. The release input detector and its forbidden-path rule
+are unchanged. A successful native pilot result never overrides this separate
+package refusal. Final delivery must repeat the affected checks on the corrected
+exact commit, with the original failed report retained.
+
 Final source verification after the hook corrections: the required
 `codex-agent-working-memory` gate PASS, including 27 memory, five metrics,
 14 lifecycle/evidence and eight editable-input scenarios. Docs (three gates),

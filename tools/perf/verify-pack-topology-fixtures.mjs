@@ -390,6 +390,9 @@ function main() {
     assert(fs.existsSync(path.join(extendedTarget, ".github", "workflows", "branch-prune.yml")), "extended should restore branch pruning automation");
     assert(packageLeakGuard.pass, `npm pack leak guard failed: ${packageLeakGuard.violations.slice(0, 20).join(", ")}`);
     assert(packageDocsAllowlist.pass, `package docs allowlist failed: ${packageDocsAllowlist.violations.slice(0, 20).join(", ")}`);
+    for (const internal of ["tools/verify/qualify-context-local-clm.mjs", "tools/verify/context-local-pilot-lib.mjs", "tools/verify/context-local-runner.py"]) {
+      assert(!packageLeakGuard.files.some(file => file.path === internal), `source-only local research tool leaked: ${internal}`);
+    }
     for (const asset of ["dashboard.html", "dashboard.css", "dashboard.js"]) {
       assert(packageLeakGuard.files.some(file => file.path === `src/adapters/workflow-console/${asset}`), `workflow dashboard package asset missing: ${asset}`);
     }

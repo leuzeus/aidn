@@ -848,6 +848,9 @@ the unique merged PR's `merge_commit_sha` to equal `GITHUB_SHA`. Comments,
 dormant shell blocks, wildcard hotfix routes, associated-but-different merge
 commits, or weakened unique-PR assertions cannot satisfy the gate.
 The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
+Package topology also requires the dedicated local research qualifier and its
+external-pilot/resource helpers to remain outside distributed packages. They
+are source-checkout test tools; the release input detector remains unchanged.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.

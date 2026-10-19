@@ -222,8 +222,12 @@ for observed results and remaining external dependencies.
 ### Dedicated local input research host
 
 `tools/verify/qualify-context-local-clm.mjs --help` describes the opt-in local
-alternative. It requires a reviewed manifest containing absolute model/runtime
-paths and SHA-256 hashes for the GGUF and every executable/DLL, an explicit
+alternative.
+The local driver, external-pilot helper and Windows resource helper are
+source-checkout research tools excluded from distributed ZIP/npm packages.
+Run this manual research from the package source checkout. The driver requires
+a reviewed manifest containing absolute model/runtime paths and SHA-256 hashes
+for the GGUF and every executable/DLL, an explicit
 Python executable and a new output outside the source checkout. It downloads
 nothing and changes no global model service, user profile or credentials.
 The manual manifest is an operator input, not model-supplied trust.
