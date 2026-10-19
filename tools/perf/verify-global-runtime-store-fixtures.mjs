@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import {
   sealRuntimeGeneration, planGlobalSwitch, applyGlobalSwitch, resolveGlobalRuntime,
   acquireGlobalRuntime, readGlobalState, resumeGlobalSwitch, resolveGlobalRecoveryRuntime,
-  assertGlobalHomeVisibility,
+  assertGlobalHomeVisibility, inventoryRuntime,
 } from '../../src/application/install/global-runtime-store.mjs';
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-global-store-'));
@@ -37,6 +37,40 @@ function snapshot(root) {
     .sort().map(name => [name, digest(fs.readFileSync(path.join(root, name)))]);
 }
 try {
+  const corpus = path.join(temporary, 'inventory été');
+  const outside = path.join(temporary, 'outside');
+  fs.mkdirSync(path.join(corpus, 'nested', 'empty'), { recursive: true });
+  fs.mkdirSync(outside);
+  fs.writeFileSync(path.join(corpus, '.hidden'), Buffer.from([0, 255, 13, 10]));
+  fs.writeFileSync(path.join(corpus, 'nested', 'file'), 'original');
+  fs.writeFileSync(path.join(outside, 'file'), 'foreign');
+  const inventory = inventoryRuntime(corpus);
+  assert.deepEqual(inventory, { '.hidden': digest(Buffer.from([0, 255, 13, 10])), 'nested/file': digest('original') });
+  fs.writeFileSync(path.join(corpus, 'nested', 'file'), 'changed');
+  assert.equal(inventoryRuntime(corpus)['nested/file'], digest('changed'), 'every call hashes fresh bytes');
+  fs.linkSync(path.join(outside, 'file'), path.join(corpus, 'hardlink'));
+  assert.throws(() => inventoryRuntime(corpus), /GLOBAL_UNSAFE_PATH/);
+  fs.unlinkSync(path.join(corpus, 'hardlink'));
+  fs.symlinkSync(outside, path.join(corpus, 'redirect'), process.platform === 'win32' ? 'junction' : 'dir');
+  assert.throws(() => inventoryRuntime(corpus), /GLOBAL_UNSAFE_PATH/);
+  fs.unlinkSync(path.join(corpus, 'redirect'));
+  const redirected = path.join(temporary, 'redirected');
+  fs.symlinkSync(corpus, redirected, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.throws(() => inventoryRuntime(path.join(redirected, 'nested')), /GLOBAL_UNSAFE_PATH/);
+  fs.unlinkSync(redirected);
+  let observed = false;
+  assert.throws(() => inventoryRuntime(corpus, { beforeObserve(file) {
+    if (file === path.join(corpus, 'nested', 'file')) { observed = true; throw new Error('OBSERVATION_DENIED'); }
+  } }), /OBSERVATION_DENIED/);
+  assert(observed, 'denial port precedes each leaf observation');
+  assert.throws(() => inventoryRuntime(corpus, { beforeObserve(file) {
+    if (file === path.join(corpus, 'nested', 'file')) {
+      fs.renameSync(path.join(corpus, 'nested'), path.join(corpus, 'retained'));
+      fs.symlinkSync(outside, path.join(corpus, 'nested'), process.platform === 'win32' ? 'junction' : 'dir');
+    }
+  } }), /GLOBAL_UNSAFE_PATH/, 'fresh physical-path check refuses an ancestor redirected during observation');
+  fs.unlinkSync(path.join(corpus, 'nested'));
+
   const empty = snapshot(temporary);
   assert.throws(() => assertGlobalHomeVisibility(home, { platform: 'win32',
     realpath: ancestor => path.join(ancestor, 'redirected-container') }), /GLOBAL_HOME_REDIRECTED/);
