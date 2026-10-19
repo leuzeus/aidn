@@ -74,6 +74,16 @@ record is emitted only after all assertions, cleanup and final host/artifact
 verification pass. Windows Job memory/EOF and host-reserve negative controls
 are separate native resource evidence, not model-quality fixtures.
 
+On Windows, `python -B -m unittest discover -s tests/native -p
+test_context_local_runner.py -v` independently checks native exit before owner
+EOF (including a nonzero child status), owner EOF cleanup, deadline and the hard
+memory cap. Keep the parent pipe open for the native-exit cases: closing it via
+`communicate()` would hide the shutdown race. The lifetime watcher uses raw
+descriptor reads so an early native exit cannot leave a buffered stdin lock
+held at Python shutdown. The Job limits, host reserve and termination controls
+remain unchanged. These manual checks require Python and sufficient free memory;
+on other platforms they report `SKIP`, never Windows qualification.
+
 The same required gate imports two external-pilot fixture groups: reviewed
 manifest/source binding and path refusal; preservation of preexisting runtime
 and staged checkout state versus explicitly owned ignored output. These are

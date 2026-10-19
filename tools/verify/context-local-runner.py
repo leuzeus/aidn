@@ -90,7 +90,11 @@ def main():
             raise c.WinError(c.get_last_error())
         print(json.dumps({"pid": pi.pid, "status": "RUNNING"}), flush=True)
         def eof():
-            sys.stdin.buffer.read(); stop.set()
+            # A native exit can finish main while this daemon is still waiting.
+            # Avoid BufferedReader's lock during Python interpreter shutdown.
+            while os.read(sys.stdin.fileno(), 4096):
+                pass
+            stop.set()
         threading.Thread(target=eof, daemon=True).start()
         deadline = time.monotonic() + spec["deadline_seconds"]
         while k.WaitForSingleObject(pi.process, 200) == 258:
