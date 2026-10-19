@@ -409,6 +409,33 @@ function collectReanchorArtifactDetails(target) {
   };
 }
 
+function checkCaseHookObservationIgnores(repoRoot, tmpRoot, codexStubBin) {
+  const target = fs.mkdtempSync(path.join(tmpRoot, "hook-observation-ignores-"));
+  const custom = "/custom-output/\n!keep-me.txt\n";
+  fs.writeFileSync(path.join(target, ".gitignore"), custom);
+  const first = runInstall(repoRoot, target, codexStubBin, ["--init-defaults", "--skip-artifact-import"]);
+  const ignore = fs.readFileSync(path.join(target, ".gitignore"), "utf8");
+  const second = runInstall(repoRoot, target, codexStubBin, ["--init-defaults", "--skip-artifact-import"]);
+  const git = (...args) => spawnSync("git", ["-C", target, ...args], { encoding: "utf8", windowsHide: true });
+  const initialized = git("init");
+  const paths = [".aidn/runtime/cache/reload-state.json", ".aidn/runtime/context/codex-context.json",
+    ".aidn/runtime/context/raw/start-session.json", ".aidn/runtime/perf/current-run-id.txt",
+    ".aidn/runtime/perf/workflow-events.ndjson", "src/product.mjs", ".aidn/config.json",
+    ".aidn/project/workflow.adapter.json", "docs/audit/CURRENT-STATE.md", ".aidn/runtime/agents/roster.json",
+    ".aidn/runtime/perf/constraints-report.json"];
+  const ignored = paths.map(file => git("check-ignore", "--no-index", "--quiet", "--", file).status);
+  const checks = {
+    installed: first.status === 0 && second.status === 0,
+    custom_preserved: ignore.startsWith(custom),
+    idempotent: fs.readFileSync(path.join(target, ".gitignore"), "utf8") === ignore,
+    git_initialized: initialized.status === 0,
+    derived_only: ignored.every((status, index) => status === (index < 5 ? 0 : 1)),
+  };
+  return { name: "hook_observations_do_not_dirty_the_checkout", ok: Object.values(checks).every(Boolean), checks,
+    first_exit: first.status, second_exit: second.status, ignored_statuses: ignored,
+    stderr_tail: tail(first.stderr || second.stderr) };
+}
+
 function checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin) {
   const target = prepareTmp(repoRoot, sourceTarget, tmpRoot, "default");
   const out = runInstall(repoRoot, target, codexStubBin);
@@ -734,6 +761,7 @@ function main() {
     codexStubBin = makeCodexStub(tmpRoot);
 
     const cases = [
+      checkCaseHookObservationIgnores(repoRoot, tmpRoot, codexStubBin),
       checkCaseDefault(repoRoot, sourceTarget, tmpRoot, codexStubBin),
       checkCaseDbOnly(repoRoot, sourceTarget, tmpRoot, codexStubBin),
       checkCaseEnvPrecedence(repoRoot, sourceTarget, tmpRoot, codexStubBin),
