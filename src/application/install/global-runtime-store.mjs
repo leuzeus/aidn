@@ -92,6 +92,19 @@ function put(file, value) {
 }
 const at = (home, name) => inside(assertGlobalHomeVisibility(home), name);
 
+// Inventory entries exist. On Windows the native physical-path query checks
+// all ancestors in one OS traversal, rather than issuing one lstat per ancestor
+// for every file. Keep the leaf type/link check and never cache observations.
+function checkedInventoryPath(root, relative) {
+  if (process.platform !== 'win32') return inside(root, relative);
+  if (relative.includes('\\') || relative.includes(':') || relative.split('/').some(part => !part || part === '.' || part === '..')) fail('GLOBAL_INVALID_RELATIVE_PATH');
+  const file = path.resolve(root, ...relative.split('/'));
+  const stat = fs.lstatSync(file);
+  if (stat.isSymbolicLink() || (!stat.isDirectory() && (!stat.isFile() || stat.nlink !== 1))) fail('GLOBAL_UNSAFE_PATH');
+  if (fs.realpathSync.native(file).toLowerCase() !== file.toLowerCase()) fail('GLOBAL_UNSAFE_PATH');
+  return file;
+}
+
 // Optional synchronous denial port for supervised readers. It must run before
 // metadata/content access; absence preserves the historical inventory behavior.
 export function inventoryRuntime(root, { beforeObserve } = {}) {
@@ -102,7 +115,7 @@ export function inventoryRuntime(root, { beforeObserve } = {}) {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const relative = prefix + entry.name;
       beforeObserve?.(path.join(root, ...relative.split('/')));
-      const file = inside(root, relative);
+      const file = checkedInventoryPath(root, relative);
       if (entry.isDirectory()) walk(file, relative + '/');
       else {
         if (!entry.isFile()) fail('GLOBAL_UNSAFE_PACKAGE_ENTRY');
