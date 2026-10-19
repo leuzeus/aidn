@@ -192,16 +192,9 @@ For `dual` / `db-only` projects, the runtime chain is authoritative for mutating
 - Repair mutations require a reviewed source-maintenance procedure; repair-layer tools are internal and have no public runtime alias.
 
 Runtime hooks are infrastructure:
-- `aidn-start-session` admission decides `resume | choose | create | stop`, then delegates to generic `session-start` runtime work only when admitted
-- `aidn-branch-cycle-audit` admission validates owned branch mapping, then delegates to generic gating/perf evaluation only when mapping is valid
-- `aidn-close-session` admission resolves open-cycle close decisions before generic `session-close` runtime work
-- `aidn-pr-orchestrate` is the PR lifecycle bridge after `aidn-close-session`: push session branch, open/recover PR, track review, then enforce post-merge sync before any new session/cycle branch
-- `aidn-cycle-create` admission resolves continuity plus mode-gate compatibility before generic checkpoint work
-- `aidn-requirements-delta` admission stops medium/high-impact ownership ambiguity before artifact mutation
-- `aidn-promote-baseline` admission blocks promotion when target cycle selection, traceability, or open-gap validation is incomplete
-- `aidn-convert-to-spike` admission reuses cycle continuity logic in `EXPLORING` mode before spike creation work
-- `aidn-handoff-close` uses generic checkpoint evaluation, but the runtime hook now exposes the actual blocking result instead of a masked success wrapper
-- `aidn-drift-check` continues to use generic gating as the drift source of truth; treat hook `stop|warn|ok` as authoritative
+- Load `docs/audit/WORKFLOW_SUMMARY.md` → `Mandatory Gates by Phase` for the skill admission and delegation responsibilities. This is part of the mandatory startup read above.
+- Follow `docs/audit/WORKFLOW-KERNEL.md` → `Procedure Routing` for task-triggered expansion. Missing or ambiguous context requires the recovery path; a compact hook summary does not discharge a required read.
+- Treat hook `stop|warn|ok` as authoritative; no summary or selected context grants write permission.
 
 When work is likely to continue in another agent, the agent SHOULD:
 

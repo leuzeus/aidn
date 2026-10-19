@@ -2,6 +2,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { projectGovernanceDiagnostics } from "../../src/application/runtime/governance-diagnostics-use-case.mjs";
+import { verifyGovernanceAdoptionFixtures } from "./verify-governance-adoption-fixtures.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -43,6 +44,15 @@ function main() {
     workspace: null,
     includeObservedArtifacts: false,
   });
+  const adoption = verifyGovernanceAdoptionFixtures();
+  output.adoption_declaration_validation = adoption;
+  if (adoption.status !== "PASS") {
+    output.issues.push(`governance adoption: ${adoption.failure?.stage ?? "cleanup"}: ${adoption.failure?.message ?? "fixture cleanup failed"}`);
+    output.ok = false;
+    console.error(JSON.stringify({ status: adoption.status,
+      failed_checks: adoption.checks.filter((check) => !check.pass),
+      failure: adoption.failure, cleanup: adoption.cleanup }));
+  }
   for (const conceptId of ["execution_run", "delegated_task", "execution_attempt"]) {
     const concept = output.concepts.find((item) => item.concept === conceptId);
     if (!isSupervisionCandidateCoverage(concept)) {
@@ -69,6 +79,7 @@ function main() {
     console.log(`- complete=${output.summary.complete}`);
     console.log(`- partial=${output.summary.partial}`);
     console.log(`- missing=${output.summary.missing}`);
+    console.log(`- adoption_declaration=${adoption.status} checks=${adoption.checks.length} native_client=${adoption.native_client_qualification}`);
     for (const concept of output.concepts) {
       console.log(`- ${concept.concept}: ${concept.status}`);
     }

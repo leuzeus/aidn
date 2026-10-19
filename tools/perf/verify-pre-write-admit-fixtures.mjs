@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
@@ -79,6 +80,66 @@ function runNodeJson(repoRoot, script, args, env = {}, expectStatus = 0) {
     throw new Error(`Command failed (${script} ${args.join(" ")}): ${String(result.stderr ?? result.stdout ?? "").trim()}`);
   }
   return JSON.parse(String(result.stdout ?? "{}"));
+}
+
+function snapshotFixtureBytes(root) {
+  return JSON.stringify(fs.readdirSync(root, { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile()).map(entry => {
+      const file = path.join(entry.parentPath, entry.name);
+      return [path.relative(root, file), fs.readFileSync(file).toString("base64")];
+    }).sort(([a], [b]) => a.localeCompare(b)));
+}
+
+function verifyLosslessJsonOutput(repoRoot, { readyTarget, blockedTarget, warningTarget }) {
+  const runtimeFile = pathToFileURL(path.join(repoRoot, "tools/runtime/pre-write-admit.mjs")).href;
+  const cliFile = path.join(repoRoot, "bin/aidn.mjs");
+  const cases = [];
+  for (const strict of [false, true]) {
+    for (const [id, target, admission] of [["ready", readyTarget, "admitted"], ["blocked", blockedTarget, "blocked"],
+      ["warning", warningTarget, "admitted_with_warnings"]])
+      cases.push({ id: `${id}-${strict ? "strict" : "default"}`, target, strict, admission });
+    cases.push({ id: `native-invalid-${strict ? "strict" : "default"}`, target: readyTarget, strict, admission: "blocked",
+      nativeRequest: { cwd: readyTarget, tool_name: "apply_patch", tool_input: { command: "invalid patch é😀\n\t\"quoted\"" } } });
+  }
+  cases.push({ id: "native-note-unicode", target: readyTarget, admission: "admitted", nativeRequest: {
+    cwd: readyTarget, tool_name: "apply_patch", tool_input: { command:
+      "*** Begin Patch\n*** Add File: docs/audit/notes/é😀.md\n+é😀\t\"quoted\"\n*** End Patch" } } });
+  cases.push({ id: "native-malformed-stdin", target: readyTarget, strict: true, admission: "blocked", nativeRequest: null, stdin: "{invalid" });
+  return cases.map(testCase => {
+    const before = snapshotFixtureBytes(testCase.target);
+    const request = { targetRoot: testCase.target, skill: "requirements-delta",
+      ...(testCase.nativeRequest === undefined ? {} : { nativeRequest: testCase.nativeRequest }) };
+    // Compare the entire public response with the producer, including nested
+    // diagnostics, nulls and native evidence; formatting must not project fields.
+    const reference = spawnSync(process.execPath, ["--input-type=module", "--eval",
+      `const { preWriteAdmit } = await import(${JSON.stringify(runtimeFile)}); console.log(JSON.stringify(await preWriteAdmit(${JSON.stringify(request)})));`],
+    { cwd: repoRoot, encoding: "utf8", timeout: 30000, maxBuffer: 10 * 1024 * 1024 });
+    assert(reference.status === 0 && !reference.error && reference.stderr === "", `JSON producer failed: ${reference.stderr}`);
+    const expected = JSON.parse(reference.stdout);
+    const child = spawnSync(process.execPath, [cliFile, "runtime", "pre-write-admit", "--target", testCase.target,
+      "--skill", "requirements-delta", ...(testCase.strict ? ["--strict"] : []),
+      ...(testCase.nativeRequest === undefined ? [] : ["--native-request-stdin"]), "--json"], {
+      cwd: repoRoot, encoding: "utf8", timeout: 30000, maxBuffer: 10 * 1024 * 1024,
+      input: testCase.stdin ?? (testCase.nativeRequest === undefined ? undefined : JSON.stringify(testCase.nativeRequest)),
+    });
+    assert(!child.error && child.status !== null, `JSON CLI failed: ${child.stderr}`);
+    let actual;
+    try { actual = JSON.parse(child.stdout); } catch { actual = null; }
+    const stdoutBytes = Buffer.byteLength(child.stdout, "utf8");
+    const previousPrettyBytes = Buffer.byteLength(`${JSON.stringify(expected, null, 2)}\n`, "utf8");
+    const checks = {
+      complete_producer_object_preserved: isDeepStrictEqual(actual, expected),
+      admission_expected: actual?.admission_status === testCase.admission,
+      denial_reasons_preserved: testCase.admission !== "blocked" || actual?.blocking_reasons?.length > 0,
+      exit_code_preserved: child.status === (testCase.strict && testCase.admission === "blocked" ? 1 : 0),
+      stderr_empty: child.stderr === "",
+      compact_document_only: child.stdout === `${JSON.stringify(expected)}\n`,
+      output_bytes_reduced: stdoutBytes < previousPrettyBytes,
+      checkout_and_git_index_unchanged: snapshotFixtureBytes(testCase.target) === before,
+    };
+    return { id: testCase.id, checks, stdout_bytes: stdoutBytes, previous_pretty_bytes: previousPrettyBytes,
+      whitespace_bytes_removed: previousPrettyBytes - stdoutBytes, pass: Object.values(checks).every(Boolean) };
+  });
 }
 
 function installSharedPlanningFixture(targetRoot, { selectedExecutionScope = "none" } = {}) {
@@ -504,6 +565,173 @@ function verifyInitialCycleAdmission(repoRoot, tempRoot, source) {
   return evidence;
 }
 
+function verifyCanonicalSourceSelection(repoRoot, tempRoot, source) {
+  // Inject only the snapshot transport. Configuration, activation, canonical
+  // artifact selection and admission policies execute from the source module.
+  const readerFile = path.join(tempRoot, "canonical-reader.mjs");
+  const loaderFile = path.join(tempRoot, "canonical-loader.mjs");
+  const recordFile = path.join(tempRoot, "canonical-record.json");
+  const initializerFile = path.join(tempRoot, "canonical-register.mjs");
+  const runtimeFile = pathToFileURL(path.join(repoRoot, "tools/runtime/pre-write-admit.mjs")).href;
+  const realReader = pathToFileURL(path.join(repoRoot, "tools/runtime/db-first-runtime-view-lib.mjs")).href;
+  fs.writeFileSync(readerFile, `
+    import fs from 'node:fs';
+    export { resolveDbArtifactSourceName } from ${JSON.stringify(realReader)};
+    export const calls = [];
+    export async function loadDbIndexPayloadSafe(targetRoot, options = {}) {
+      const record = JSON.parse(fs.readFileSync(process.env.AIDN_CANONICAL_FIXTURE_RECORD, 'utf8'));
+      calls.push({ backend: options.backend ?? null, config_backend: options.configData?.runtime?.persistence?.backend ?? null });
+      return { exists: record.available, payload: record.available ? record.payload : null,
+        runtimeHeads: record.runtimeHeads ?? {}, sqliteFile: '',
+        warning: record.available ? '' : 'controlled canonical backend unavailable',
+        backend: { projection_backend_kind: options.backend || process.env.AIDN_RUNTIME_PERSISTENCE_BACKEND || record.backend,
+          projection_scope: 'runtime-canonical' } };
+    }
+  `);
+  fs.writeFileSync(loaderFile, `
+    export async function resolve(specifier, context, nextResolve) {
+      if (context.parentURL === ${JSON.stringify(runtimeFile)} && specifier === './db-first-runtime-view-lib.mjs')
+        return { url: ${JSON.stringify(pathToFileURL(readerFile).href)}, shortCircuit: true };
+      return nextResolve(specifier, context);
+    }
+  `);
+  fs.writeFileSync(initializerFile, `import { register } from 'node:module'; register(${JSON.stringify(pathToFileURL(loaderFile).href)}, import.meta.url);`);
+  const runner = `
+    import { register } from 'node:module';
+    register(${JSON.stringify(pathToFileURL(loaderFile).href)}, import.meta.url);
+    const { preWriteAdmit } = await import(${JSON.stringify(runtimeFile)});
+    const { calls } = await import(${JSON.stringify(pathToFileURL(readerFile).href)});
+    try { console.log(JSON.stringify({ result: await preWriteAdmit({ targetRoot: process.env.AIDN_CANONICAL_FIXTURE_TARGET,
+      skill: process.env.AIDN_CANONICAL_FIXTURE_SKILL }), calls })); }
+    catch (error) { console.log(JSON.stringify({ error: error.message, calls })); }
+  `;
+  const artifacts = root => ["CURRENT-STATE.md", "RUNTIME-STATE.md", "sessions/S101-alpha.md",
+    "cycles/C101-feature-alpha/status.md", "cycles/C101-feature-alpha/plan.md"].map(relative => ({
+    path: relative, content_format: "utf8", content: fs.readFileSync(path.join(root, "docs/audit", relative), "utf8"),
+  }));
+  const targets = new Map();
+  function fixture(backend, stateMode) {
+    const key = `${backend}-${stateMode}`;
+    if (targets.has(key)) return targets.get(key);
+    const root = path.join(tempRoot, `canonical-${key}`);
+    fs.cpSync(source, root, { recursive: true });
+    fs.mkdirSync(path.join(root, ".aidn"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode,
+      ...(backend === "postgres" ? { persistence: { backend, localProjectionPolicy: "none", connectionRef: "env:CONTROLLED_TEST_ONLY" } } : {}) } }));
+    installDbOnlyReadyRuntimeFixture(root, stateMode);
+    const current = path.join(root, "docs/audit/CURRENT-STATE.md");
+    fs.writeFileSync(current, upsertScalarLine(fs.readFileSync(current, "utf8"), "mode", "THINKING"));
+    fs.writeFileSync(path.join(root, "docs/audit/cycles/C101-feature-alpha/plan.md"), "## Tasks\n1. implement alpha feature validation\n");
+    initGitRepo(root, { workingBranch: "feature/C101-alpha" });
+    prepareActivationFixture(root, repoRoot);
+    runGit(root, ["add", "."]); runGit(root, ["commit", "-m", "canonical selection fixture"]);
+    const payload = { sessions: [], cycles: [], artifacts: artifacts(root), migration_findings: [] };
+    payload.artifacts[0].content = upsertScalarLine(payload.artifacts[0].content, "mode", "EXPLORING");
+    const value = { root, payload }; targets.set(key, value); return value;
+  }
+  const cases = [];
+  const genericSkills = ["context-reload", "start-session", "cycle-create", "requirements-delta", "close-session", "handoff-close"];
+  for (const stateMode of ["files", "dual", "db-only"]) {
+    for (const skill of genericSkills) cases.push({ id: `postgres-${stateMode}-${skill}`, backend: "postgres", stateMode, skill, source: "postgres", mode: "EXPLORING" });
+    for (const skill of ["context-reload", "start-session", "cycle-create"]) cases.push({ id: `postgres-${stateMode}-unavailable-${skill}`, backend: "postgres", stateMode, skill, unavailable: true, blocked: true });
+    for (const missing of ["CURRENT-STATE.md", "RUNTIME-STATE.md", "sessions/S101-alpha.md", "cycles/C101-feature-alpha/status.md", "cycles/C101-feature-alpha/plan.md"])
+      cases.push({ id: `postgres-${stateMode}-missing-${missing}`, backend: "postgres", stateMode, skill: "start-session", missing,
+        blocked: !missing.endsWith("/plan.md"), ...(missing.endsWith("/plan.md") ? { source: "postgres", mode: "EXPLORING" } : {}) });
+  }
+  for (const skill of ["aidn-context-reload", "aidn-start-session", "aidn-cycle-create"])
+    cases.push({ id: `postgres-dual-${skill}`, backend: "postgres", stateMode: "dual", skill, source: "postgres", mode: "EXPLORING" });
+  cases.push({ id: "postgres-config-defeats-env-sqlite", backend: "postgres", stateMode: "dual", skill: "start-session", source: "postgres", mode: "EXPLORING", envBackend: "sqlite" });
+  for (const defect of ["head-mismatch", "session-ambiguous", "cycle-ambiguous", "session-row-ambiguous", "session-row-path-mismatch", "session-row-branch-mismatch", "session-prefix", "cycle-prefix", "session-id-mismatch", "runtime-empty"])
+    cases.push({ id: `postgres-${defect}`, backend: "postgres", stateMode: "dual", skill: "start-session", defect, blocked: true });
+  cases.push({ id: "postgres-historical-current-head", backend: "postgres", stateMode: "dual", skill: "start-session", defect: "historical-head", source: "postgres", mode: "EXPLORING" });
+  for (const strict of [false, true]) cases.push({ id: `postgres-head-cli-${strict ? "strict" : "default"}`, backend: "postgres", stateMode: "dual", skill: "start-session", defect: "head-mismatch", cli: true, strict, blocked: true });
+  for (const stateMode of ["files", "dual", "db-only"]) for (const strict of [false, true])
+    cases.push({ id: `postgres-${stateMode}-empty-head-cli-${strict ? "strict" : "default"}`, backend: "postgres", stateMode,
+      skill: "start-session", defect: "empty-historical-head", cli: true, strict, blocked: true, mode: "unknown" });
+  for (const skill of ["context-reload", "start-session", "cycle-create"])
+    cases.push({ id: `sqlite-dual-${skill}`, backend: "sqlite", stateMode: "dual", skill, source: skill === "cycle-create" ? "sqlite" : "file", mode: skill === "cycle-create" ? "EXPLORING" : "THINKING" });
+  cases.push({ id: "sqlite-dual-unavailable-compatible", backend: "sqlite", stateMode: "dual", skill: "start-session", unavailable: true, source: "file", mode: "THINKING" });
+  cases.push({ id: "sqlite-dual-empty-head-db-preference-compatible", backend: "sqlite", stateMode: "dual", skill: "cycle-create", defect: "empty-historical-head", source: "sqlite", mode: "EXPLORING" });
+  cases.push({ id: "sqlite-dual-empty-head-fileless-current-compatible", backend: "sqlite", stateMode: "dual", skill: "start-session", defect: "empty-historical-head", visibleCurrentMissing: true, source: "file", currentSource: "sqlite", mode: "EXPLORING" });
+  cases.push({ id: "sqlite-db-only-unavailable", backend: "sqlite", stateMode: "db-only", skill: "start-session", unavailable: true, blocked: true });
+  cases.push({ id: "sqlite-db-only-missing-current", backend: "sqlite", stateMode: "db-only", skill: "start-session", missing: "CURRENT-STATE.md", blocked: true });
+  cases.push({ id: "files-optional-no-backend-read", backend: "sqlite", stateMode: "files", skill: "start-session", source: "file", mode: "THINKING", noRead: true });
+  return cases.map(testCase => {
+    const { root, payload: initial } = fixture(testCase.backend, testCase.stateMode);
+    const payload = structuredClone(initial);
+    const runtimeHeads = {};
+    if (testCase.missing) payload.artifacts = payload.artifacts.filter(row => row.path !== testCase.missing);
+    if (testCase.defect === "head-mismatch") {
+      payload.artifacts[0].sha256 = "actual";
+      runtimeHeads.current_state = { head_key: "current_state", artifact_path: "CURRENT-STATE.md", artifact_sha256: "different" };
+    }
+    if (testCase.defect === "historical-head") {
+      payload.artifacts.push({ ...payload.artifacts[0], path: "history/CURRENT-STATE-S009.md", sha256: "pinned" });
+      payload.artifacts[0].content = upsertScalarLine(payload.artifacts[0].content, "mode", "THINKING");
+      runtimeHeads.current_state = { head_key: "current_state", artifact_path: "history/CURRENT-STATE-S009.md", artifact_sha256: "pinned" };
+    }
+    if (testCase.defect === "empty-historical-head") {
+      payload.artifacts.push({ path: "history/CURRENT-STATE-S009.md", content_format: "utf8", content: "", sha256: "pinned-empty" });
+      runtimeHeads.current_state = { head_key: "current_state", artifact_path: "history/CURRENT-STATE-S009.md", artifact_sha256: "pinned-empty" };
+    }
+    const session = payload.artifacts.find(row => row.path.startsWith("sessions/"));
+    const cycle = payload.artifacts.find(row => row.path.endsWith("/status.md"));
+    if (testCase.defect === "session-ambiguous") payload.artifacts.push({ ...session, path: "sessions/S101-other.md" });
+    if (testCase.defect === "cycle-ambiguous") payload.artifacts.push({ ...cycle, path: "cycles/C101-feature-other/status.md" });
+    if (testCase.defect === "session-row-ambiguous") payload.sessions = [{ session_id: "S101" }, { session_id: "S101" }];
+    if (testCase.defect === "session-row-path-mismatch") payload.sessions = [{ session_id: "S101", source_artifact_path: cycle.path }];
+    if (testCase.defect === "session-row-branch-mismatch") payload.sessions = [{ session_id: "S101", branch_name: "S101-other" }];
+    if (testCase.defect === "session-prefix") payload.artifacts[0].content = upsertScalarLine(payload.artifacts[0].content, "active_session", "S10");
+    if (testCase.defect === "cycle-prefix") payload.artifacts[0].content = upsertScalarLine(payload.artifacts[0].content, "active_cycle", "C10");
+    if (testCase.defect === "session-id-mismatch") session.content += "\nsession_id: S999\n";
+    if (testCase.defect === "runtime-empty") payload.artifacts.find(row => row.path === "RUNTIME-STATE.md").content = " \n";
+    fs.writeFileSync(recordFile, JSON.stringify({ backend: testCase.backend, available: !testCase.unavailable, payload, runtimeHeads }));
+    const visibleCurrent = path.join(root, "docs/audit/CURRENT-STATE.md");
+    const visibleCurrentText = testCase.visibleCurrentMissing ? fs.readFileSync(visibleCurrent) : null;
+    if (testCase.visibleCurrentMissing) fs.unlinkSync(visibleCurrent);
+    const before = snapshotFixtureBytes(root);
+    const canonicalBefore = fs.readFileSync(recordFile, "utf8");
+    const childArgs = testCase.cli ? ["--import", pathToFileURL(initializerFile).href, path.join(repoRoot, "tools/runtime/pre-write-admit.mjs"),
+      "--target", root, "--skill", testCase.skill, ...(testCase.strict ? ["--strict"] : []), "--json"]
+      : ["--input-type=module", "--eval", runner];
+    const child = spawnSync(process.execPath, childArgs, {
+      cwd: repoRoot, encoding: "utf8", timeout: 30000,
+      env: { ...process.env, AIDN_STATE_MODE: testCase.stateMode, AIDN_RUNTIME_PERSISTENCE_BACKEND: testCase.envBackend ?? "",
+        AIDN_CANONICAL_FIXTURE_RECORD: recordFile, AIDN_CANONICAL_FIXTURE_TARGET: root, AIDN_CANONICAL_FIXTURE_SKILL: testCase.skill },
+    });
+    assert(child.status !== null && !child.error, `controlled admission child failed: ${child.stderr}`);
+    let observed;
+    try { observed = testCase.cli ? { result: JSON.parse(child.stdout), calls: [] } : JSON.parse(child.stdout); }
+    catch { observed = { error: child.stderr.trim(), calls: [] }; }
+    const result = observed.result;
+    const sources = result?.source_of_truth?.observed_sources ?? {};
+    const missingKey = { "CURRENT-STATE.md": "current_state", "RUNTIME-STATE.md": "runtime_state",
+      "sessions/S101-alpha.md": "session_artifact", "cycles/C101-feature-alpha/status.md": "cycle_status",
+      "cycles/C101-feature-alpha/plan.md": "plan_artifact" }[testCase.missing];
+    const checks = {
+      structured_result: Boolean(result) && !observed.error,
+      exit_status_expected: child.status === (testCase.cli && testCase.strict && testCase.blocked ? 1 : 0),
+      admission_expected: result?.ok === !testCase.blocked,
+      source_expected: !testCase.source || Object.entries(sources).every(([key, value]) => value === (key === missingKey ? "missing" : key === "current_state" && testCase.currentSource ? testCase.currentSource : testCase.source)),
+      missing_source_observed: !missingKey || sources[missingKey] === "missing",
+      mode_expected: !testCase.mode || result?.context?.mode === testCase.mode,
+      required_canonical_no_file_fallback: !(testCase.backend === "postgres" || testCase.stateMode === "db-only") || !Object.values(sources).includes("file"),
+      blocking_reason_present: !testCase.blocked || result?.blocking_reasons?.length > 0,
+      diagnostic_reason_expected: testCase.defect === "head-mismatch"
+        ? result?.blocking_reasons?.some(reason => reason.includes("RUNTIME_HEAD_ARTIFACT_IDENTITY_MISMATCH"))
+        : testCase.defect === "empty-historical-head" && testCase.blocked
+          ? result?.blocking_reasons?.some(reason => reason.includes("RUNTIME_CONTINUITY_ARTIFACT_EMPTY")) : true,
+      backend_pinned: testCase.cli || testCase.backend !== "postgres" || observed.calls[0]?.backend === "postgres" && observed.calls[0]?.config_backend === "postgres",
+      optional_files_no_read: !testCase.noRead || observed.calls.length === 0,
+      checkout_and_git_index_unchanged: snapshotFixtureBytes(root) === before,
+      canonical_snapshot_unchanged: fs.readFileSync(recordFile, "utf8") === canonicalBefore,
+    };
+    if (testCase.visibleCurrentMissing) fs.writeFileSync(visibleCurrent, visibleCurrentText);
+    return { id: testCase.id, checks, error: observed.error ?? null, observed_sources: sources,
+      blocking_reasons: result?.blocking_reasons ?? [], pass: Object.values(checks).every(Boolean) };
+  });
+}
+
 function main() {
   let tempRoot = "";
   let primaryError = null;
@@ -522,6 +750,7 @@ function main() {
     const exitPolicyEvidence = verifyExitPolicy(repoRoot);
     const contextReloadEvidence = verifyInitialContextReload(repoRoot, tempRoot, readyTarget);
     const initialCycleEvidence = verifyInitialCycleAdmission(repoRoot, tempRoot, readyTarget);
+    const canonicalSourceEvidence = verifyCanonicalSourceSelection(repoRoot, tempRoot, readyTarget);
     const injectedFailureCleanup = verifyInjectedFailureCleanup(repoRoot);
     const cycleCreateTarget = path.join(tempRoot, "cycle-create");
     const warningTarget = path.join(tempRoot, "repair-warning");
@@ -866,6 +1095,7 @@ function main() {
     assert(dbOnlyCloseSession.context.current_state_source === "sqlite", "db-only fileless close-session admission should load CURRENT-STATE from SQLite");
     assert(dbOnlyCloseSession.context.session_artifact_source === "sqlite", "db-only fileless close-session admission should load the session artifact from SQLite");
 
+    const losslessJsonEvidence = verifyLosslessJsonOutput(repoRoot, { readyTarget, blockedTarget, warningTarget });
     const output = {
       ts: new Date().toISOString(),
       fixtures_root: fixturesRoot,
@@ -889,15 +1119,25 @@ function main() {
       exit_policy: exitPolicyEvidence,
       initial_context_reload: contextReloadEvidence,
       initial_cycle_admission: initialCycleEvidence,
+      canonical_source_selection: canonicalSourceEvidence,
+      lossless_json_output: losslessJsonEvidence,
       injected_failure_cleanup: injectedFailureCleanup,
-      pass: true,
+      pass: [...canonicalSourceEvidence, ...losslessJsonEvidence].every(testCase => testCase.pass),
     };
 
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));
     } else {
       console.log(`Fixtures root: ${fixturesRoot}`);
-      console.log("Result: PASS");
+      console.log(`Result: ${output.pass ? "PASS" : "FAIL"}`);
+    }
+    if (!output.pass) {
+      for (const testCase of [...canonicalSourceEvidence, ...losslessJsonEvidence].filter(item => !item.pass)) {
+        const failed = Object.entries(testCase.checks).filter(([, value]) => !value).map(([key]) => key);
+        const code = String(testCase.error ?? "").match(/ERR_[A-Z_]+/)?.[0];
+        console.error(`FAIL ${testCase.id}: ${failed.join(", ")}${code ? ` (${code})` : ""}`);
+      }
+      process.exitCode = 1;
     }
   } catch (error) {
     primaryError = error;

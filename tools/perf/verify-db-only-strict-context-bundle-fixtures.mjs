@@ -11,6 +11,8 @@ import {
 import { buildArtifactSourceDescriptor } from "../../src/application/codex/hydrate-context-use-case.mjs";
 import { movePath } from "../../src/application/runtime/visible-artifacts-cleanup-service.mjs";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { planInstallation } from "../../src/application/install/installation-service.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -80,7 +82,7 @@ function verifyStrictInstall(tempRoot) {
   assert(fs.existsSync(path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite")), "strict install should prepare hidden sqlite runtime store");
   assert(fs.existsSync(path.join(target, ".aidn", "runtime", "agents", "example-external-auditor.mjs")), "strict install should copy hidden runtime agent scaffold");
   assert(fs.existsSync(path.join(target, "AGENTS.md")), "strict install should write visible AGENTS workflow bootstrap");
-  assert(fs.existsSync(path.join(target, ".codex", "skills.yaml")), "strict install should write visible Codex skill bootstrap");
+  assert(fs.existsSync(path.join(target, ".codex", "hooks.json")), "strict install should write the current visible Codex hook connector");
   assert(fs.existsSync(path.join(target, "docs", "audit", "SPEC.md")), "strict install should write visible SPEC bootstrap");
   assert(fs.existsSync(path.join(target, "docs", "audit", "WORKFLOW.md")), "strict install should write visible WORKFLOW bootstrap");
   assert(fs.existsSync(path.join(target, "docs", "audit", "WORKFLOW-KERNEL.md")), "strict install should write visible workflow kernel");
@@ -130,7 +132,7 @@ function verifyStrictPostgresConfigBuilder() {
   assert(config.runtime?.dbOnly?.artifactImport?.canonicalBackendWins === true, "strict postgres config should make runtime.persistence.backend win");
 }
 
-function verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot) {
+async function verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot) {
   const target = path.join(tempRoot, "strict-postgres-install");
   fs.mkdirSync(path.join(target, ".aidn"), { recursive: true });
   fs.writeFileSync(path.join(target, ".aidn", "config.json"), JSON.stringify({
@@ -147,6 +149,15 @@ function verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot) {
       },
     },
   }, null, 2), "utf8");
+  const configBefore = fs.readFileSync(path.join(target, ".aidn/config.json"), "utf8");
+  const plan = await planInstallation({ repoRoot: process.cwd(), targetRoot: target, args: {
+    pack: "core", dryRun: true, skipArtifactImport: true, codexMigrateCustom: false,
+    initDefaults: true, projectName: "strict-postgres-install",
+  } });
+  assert(plan.ok === true, "strict postgres installation preview must succeed");
+  assert(!plan.external_effects.some((effect) => effect.id === "sqlite-schema"), "strict postgres plan must exclude hidden sqlite preparation");
+  assert(plan.external_effects.some((effect) => effect.id === "persistence-adoption" && effect.state === "deferred"), "postgres readiness remains deferred in preview");
+  assert(!plan.operations.some((operation) => operation.path === ".aidn/runtime/index/workflow-index.sqlite"), "strict postgres plan must not create a hidden sqlite file");
   const out = runText("tools/install.mjs", [
     "--target",
     target,
@@ -159,10 +170,10 @@ function verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot) {
     "--project-name",
     "strict-postgres-install",
   ]);
-  assert(out.includes("skip hidden sqlite runtime store in db-only strict: runtime.persistence.backend=postgres"), "strict postgres install should skip hidden sqlite preparation");
-  assert(out.includes("hidden_runtime_store_prepared: 0"), "strict postgres install should not prepare hidden sqlite");
+  assert(out.includes("[dry-run]"), "strict postgres CLI must report planned operations");
   assert(!out.includes("prepare hidden sqlite runtime store:"), "strict postgres install should not log sqlite preparation");
   assertNotExists(path.join(target, ".aidn", "runtime", "index", "workflow-index.sqlite"), "strict postgres dry-run should not create hidden sqlite");
+  assert(fs.readFileSync(path.join(target, ".aidn/config.json"), "utf8") === configBefore, "strict postgres dry-run preserves exact config bytes");
 }
 
 function verifyStrictPostgresSkipsImplicitArtifactImport(tempRoot) {
@@ -195,7 +206,9 @@ function verifyStrictPostgresSkipsImplicitArtifactImport(tempRoot) {
 function verifyHydrateBundle(tempRoot) {
   const sourceTarget = path.resolve(process.cwd(), "tests/fixtures/repo-installed-core");
   const target = path.join(tempRoot, "hydrate-target");
-  fs.cpSync(sourceTarget, target, { recursive: true });
+  fs.cpSync(sourceTarget, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceTarget, source, { freshContext: true }) });
+  prepareActivationFixture(target);
+  runJson("tools/perf/index-sync.mjs", ["--target", target, "--store", "sqlite", "--json"]);
   const visibleOutputs = [
     "RUNTIME-STATE.md",
     "HANDOFF-PACKET.md",
@@ -399,12 +412,12 @@ function verifyCleanupMoveFallback(tempRoot) {
   assert(fs.existsSync(path.join(destination, "locked.txt")), "move fallback should copy destination content");
 }
 
-function main() {
+async function main() {
   let tempRoot = "";
   try {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-db-only-strict-"));
     verifyStrictPostgresConfigBuilder();
-    verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot);
+    await verifyStrictPostgresInstallSkipsHiddenSqlite(tempRoot);
     verifyStrictPostgresSkipsImplicitArtifactImport(tempRoot);
     verifyStrictInstall(tempRoot);
     verifyArtifactSourceDescriptor();
@@ -423,4 +436,4 @@ function main() {
   }
 }
 
-main();
+await main();

@@ -2,6 +2,10 @@
 
 Purpose: fast operational reload after the minimal re-anchor path.
 
+`WORKFLOW-KERNEL.md` → `Procedure Routing` is the entry point for conditional
+expansion. Keep its default read and recovery route until native qualification;
+the phase gates below apply regardless of the volume of selected context.
+
 Canonical precedence:
 - `docs/audit/SPEC.md` (canonical mechanics)
 - `docs/audit/WORKFLOW.md` (project adapter, local extensions)
@@ -58,6 +62,7 @@ Committing execution:
 - `requirements-delta` stops on medium/high-impact ownership ambiguity before addendum mutation
 - `promote-baseline` stops on missing traceability, open gaps, or ambiguous DONE-cycle selection
 - `convert-to-spike` reuses cycle continuity admission under the `EXPLORING` mode gate before spike creation
+- Generic evaluation is the `drift-check` source of truth; hook `stop|warn|ok` remains authoritative.
 
 Session close:
 - Resolve each open attached cycle explicitly (`integrate-to-session` | `report` | `close-non-retained` | `cancel-close`) (`SPEC-R07`)

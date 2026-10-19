@@ -46,6 +46,11 @@ export function renderGovernanceDiagnosticsText(result) {
   lines.push(`- missing=${result.summary?.missing ?? 0}`);
   lines.push(`- source_of_truth_coverage=${result.operations?.source_of_truth_coverage_status ?? "unknown"}`);
   lines.push(`- metadata_coverage=${result.operations?.metadata_coverage_status ?? "unknown"}`);
+  if (result.governance_adoption) {
+    lines.push(`- package_gfd_adoption=${result.governance_adoption.package_source.status}`);
+    lines.push(`- client_gfd_adoption=${result.governance_adoption.client.status}`);
+    lines.push("- gfd_conformance=not_evaluated; control references are declarations, not execution evidence");
+  }
   lines.push(`- cli_contract_coverage=${result.operations?.cli_contract_coverage_status ?? "unknown"}`);
   lines.push(`- projection_freshness=${result.operations?.projection_freshness_status ?? "unknown"}`);
   lines.push(`- stale_projection_count=${result.operations?.stale_projection_count ?? 0}`);

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { listCliEffectPolicies } from "../../core/cli/effect-policy.mjs";
 import { evaluateMetadataPolicy, getMetadataPolicy, listMetadataPolicies } from "../../core/metadata/metadata-policy.mjs";
 import { listGovernanceCoverageExceptions } from "../../core/governance/concept-coverage.mjs";
+import { projectGovernanceAdoptionCoverage } from "./governance-adoption-coverage.mjs";
 import { evaluateSourceOfTruthPolicy, getSourceOfTruthPolicy, listSourceOfTruthPolicies } from "../../core/source-of-truth/source-of-truth-policy.mjs";
 import {
   loadSqliteIndexPayloadSafe,
@@ -16,6 +17,9 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "agent_working_memory", source_of_truth_concept: "agent_working_memory", metadata_concept: "agent_working_memory",
+    cli_contract: "runtime-project-handoff-packet.v1.schema.json", required: ["source_of_truth", "metadata", "cli_contract"],
+    coverage_note: "Explicit revision-bound checkpoint and read-only resume; advisory derived context and diagnostic metrics require independent fresh admission." },
   { concept: "workflow_selection", source_of_truth_concept: "workflow_selection", metadata_concept: "workflow_selection",
     cli_contract: "runtime-workflow-inspect.v1.schema.json", required: ["source_of_truth", "metadata", "cli_contract"], coverage_kind: "opt_in_candidate",
     coverage_note: "Reviewed selection and common CLI/dashboard projection for future instances; no generated permission or native authority." },
@@ -289,7 +293,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-coordinator-suggest-arbitration", linked_concepts: ["coordination_record", "handoff_packet", "runtime_state"] },
   { id: "runtime-coordinator-record-arbitration", linked_concepts: ["coordination_record", "user_arbitration", "coordination_summary"] },
   { id: "runtime-project-runtime-state", linked_concepts: ["runtime_state", "current_state"] },
-  { id: "runtime-project-handoff-packet", linked_concepts: ["handoff_packet", "session", "cycle"] },
+  { id: "runtime-project-handoff-packet", linked_concepts: ["handoff_packet", "session", "cycle", "agent_working_memory"] },
   { id: "runtime-shared-coordination-projects", linked_concepts: ["runtime_project_context", "workspace", "coordination_record"] },
   { id: "runtime-list-agent-adapters", linked_concepts: ["agent_roster", "workspace"] },
   { id: "runtime-verify-agent-roster", linked_concepts: ["agent_roster"] },
@@ -801,6 +805,7 @@ function summarizeObservedArtifacts(items) {
 }
 
 export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = null, includeObservedArtifacts = true } = {}) {
+  const governanceAdoption = projectGovernanceAdoptionCoverage({ targetRoot, packageRoot: REPO_ROOT });
   const concepts = GOVERNED_CONCEPTS.map(evaluateGovernedConcept);
   const conceptIndex = new Map(concepts.map((item) => [item.concept, item]));
   const runtimeSurfaces = GOVERNANCE_RUNTIME_SURFACES.map((entry) => evaluateGovernanceRuntimeSurface(entry, conceptIndex));
@@ -813,6 +818,8 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     ? OBSERVED_GOVERNANCE_ARTIFACTS.map((entry) => evaluateObservedGovernanceArtifact(entry, targetRoot, resolveObservedArtifactText))
     : [];
   const issues = [
+    ...[governanceAdoption.package_source, governanceAdoption.client].flatMap((entry) =>
+      entry.issues.map((issue) => `governance_adoption:${entry.scope}:${issue}`)),
     ...concepts.flatMap((item) => item.issues),
     ...runtimeSurfaces.flatMap((item) => item.issues),
     ...commandCoverage.flatMap((item) => item.linked_concepts
@@ -839,6 +846,7 @@ export function projectGovernanceDiagnostics({ targetRoot = ".", workspace = nul
     ts: new Date().toISOString(),
     target_root: targetRoot,
     workspace,
+    governance_adoption: governanceAdoption,
     ok: issues.length === 0,
     governed_concepts: concepts.length,
     coverage_exceptions: coverageExceptions,

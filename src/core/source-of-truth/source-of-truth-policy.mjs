@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  agent_working_memory: {
+    owner: "checkpointing agent",
+    lifecycle: "captured -> current|stale|invalid -> explicitly recaptured",
+    scope: "one agent in one worktree; local advisory context only",
+    retention: "five checkpoint observations per agent; raw evidence retained by the existing hook store",
+    migration: "reconstruct by explicit checkpoint from typed agent input and current evidence; no database migration",
+    replacement: "a new admitted checkpoint replaces the latest pointer; stale capsules never supply actionable context",
+    evidence_targets: ["src/application/runtime/agent-working-memory-service.mjs", "tools/perf/verify-agent-working-memory-fixtures.mjs"],
+  },
   workflow_selection: {
     owner: "project workflow maintainer",
     lifecycle: "proposed -> reviewed -> explicitly selected -> superseded; existing instances remain pinned",
@@ -73,11 +82,11 @@ const CONCEPT_GOVERNANCE = freezeDeep({
   project_policy: {
     owner: "project policy maintainer",
     lifecycle: "initialized -> active -> migrated -> archived",
-    scope: "one installed project's workflow adapter policy",
-    retention: "retain while the project is governed and archive with project policy history",
+    scope: "one installed project's workflow adapter policy; package source adoption has its own explicitly scoped declaration",
+    retention: "retain while the project is governed and archive with project policy history; retain adoption revisions and immutable predecessor references without automatic purge",
     migration: "use project config migration with explicit --write",
     replacement: "a successor adapter file replaces the prior version through an explicit migration",
-    evidence_targets: ["src/lib/config/workflow-adapter-config-lib.mjs"],
+    evidence_targets: ["src/lib/config/workflow-adapter-config-lib.mjs", "src/core/governance/adoption-policy.mjs", "package/governance/gfd-adoption.v1.json"],
   },
   runtime_defaults: {
     owner: "runtime configuration maintainer",
@@ -322,6 +331,14 @@ function policy({
 
 const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   policy({
+    concept: "agent_working_memory", label: "Derived agent working memory",
+    files: "referenced checkout evidence and agent-authored checkpoint input",
+    dual: "configured canonical runtime snapshot and referenced checkout evidence; fresh revision binding required",
+    dbOnly: "configured canonical runtime snapshot and referenced checkout evidence; fresh revision binding required",
+    projection: ".aidn/runtime/context/agents/* hook store and explicit handoff resume_capsule",
+    notes: "Advisory and reconstructible. Never permission, admission, canonical decisions or shared coordination. DB reuse binds to fresh coherent canonical payload and heads; PostgreSQL unavailability refuses without fallback. Metrics remain diagnostic.",
+  }),
+  policy({
     concept: "workflow_selection", label: "Reviewed workflow definition selection",
     files: "docs/audit/workflows/definitions/<workflow-id>.json; configured PostgreSQL remains canonical",
     dual: "configured runtime artifact store; visible JSON is derived",
@@ -383,7 +400,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: ".aidn/project/workflow.adapter.json",
     dbOnly: ".aidn/project/workflow.adapter.json",
     projection: "WORKFLOW.md, CODEX_ONLINE.md and index.md",
-    notes: "Project policy may be versioned by the installed client repository.",
+    notes: "Project policy may be versioned by the installed client repository. Optional governanceAdoption remains explicit, scoped and locally canonical in every mode; no detection, install default or source declaration accepts it for a client. Package-source adoption is scoped separately in package/governance/gfd-adoption.v1.json under ADR-0010. Read-only governance diagnostics project the two declarations separately; optional controlCoverage classifies declared references without executing controls, resolving semantic authority conflicts or establishing conformance. Declaration validity grants no runtime permission.",
   }),
   policy({
     concept: "runtime_defaults",

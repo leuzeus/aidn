@@ -21,7 +21,7 @@ async function main() {
   } });
   if (isNeutralAdmission(admission)) return {};
   if (admission.activation.active !== true) return deny("activation degraded; diagnose the local installation before editing.");
-  if (!admission.ok) return deny(`admission blocked. ${compactAdmission(admission)}`);
+  if (!admission.ok) return deny(`admission blocked. ${compactAdmission(admission, { maxBytes: 1000 })}`);
   return { hookSpecificOutput: { hookEventName: "PreToolUse",
     additionalContext: `AIDN specific scope admission rechecked for this patch only: ${compactAdmission(admission)}` } };
 }

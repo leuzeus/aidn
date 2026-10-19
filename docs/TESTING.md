@@ -1,5 +1,133 @@
 # Testing Guide
 
+The cycle-close completion fixtures exercise clean, cached terminal branches in
+`files`, `dual` and `db-only` with gate evaluation forced. A successful recent
+COMMITTING drift check on the same branch must remain visible on that path;
+expired, foreign-branch, wrong-mode and future observations still require a new
+drift check. Terminal ownership does not reactivate the cycle or admit ordinary
+implementation.
+
+## Explicit agent working memory
+
+`node tools/perf/verify-agent-working-memory-fixtures.mjs` checks real fixture
+checkpoint/handoff CLI, explicit write intent, fresh admission refusal, revision
+changes, missing/changed evidence, capsule integrity, per-agent isolation,
+canonical DB revision binding/unavailability, five-checkpoint decision retention,
+typed optional claims, client telemetry and reconstruction. Real SQLite and an
+injected PostgreSQL adapter cover canonical changes during capture and before
+reuse; the latter is not a live isolation test. This is fixture evidence; native hooks and
+model/token comparisons require separate native qualification. See
+[the lifecycle](AGENT_WORKING_MEMORY.md). The existing handoff v1 contract accepts
+`shared_state_backend: null` for the normal files-mode output with no shared backend.
+The required `codex-agent-working-memory` gate uses this suite through the existing
+family runner; the 43 historical context-resilience invocations remain unchanged.
+The same gate runs `verify-context-metrics-fixtures.mjs`: nullable unknown tokens,
+measured bytes, bounded reported attribution, stale/future/inconsistent telemetry
+refusals and the closed diagnostic contract. Counters are observation deltas,
+not lifetime totals. No cost or native consumption benefit is inferred.
+The same gate includes `verify-context-lifecycle-fixtures.mjs`: default/expired
+capability fallback, exact model/client identity, checkpoint-before-rollover,
+failed capture refusal, read-only restore, typed handoff and uncertain-dispatch
+retry refusal. The injected native qualification is fixture data, not a real
+native execution record. The gate also runs eight editable-input research cases:
+opt-in/host requirements, prefix/role protection, atomic preimages/audit,
+complete-input hard limits, stale source/preimage, asynchronous revision change,
+overlapping edits and rollback. Its tokenizer is synthetic, not an OpenAI
+tokenizer. Two additional lifecycle cases check native telemetry ingestion and
+native checkpoint/dispatch/restore event order. A third checks that the manual
+qualifier preserves root model settings and refuses unsupported provider/profile
+configuration before effects. Further regressions bind reviewed hook intent to
+the per-thread port, reject late completion from another turn, validate actual
+hook outcome order/session and require parseable stop responses on malformed or
+oversized input and unavailable binding. Full native CLM and automatic hook
+distribution remain unqualified.
+
+Native context qualification is manual via
+`node tools/verify/qualify-context-native.mjs --help`; `--execute` is required
+before any files, authentication copy or model turn. Use a new absolute output
+outside the source checkout. The driver records native model/client identity,
+raw local events, exact answers, checkpoints, repeated windows, tokens and
+configuration/credential cleanup. Optional compaction hook probes retain
+`UNAVAILABLE` separately from compaction success; a partial required probe exits
+2. Their invocation-only hook option cannot establish persistent human trust.
+The driver additionally proves ordinary untrusted hooks do not dispatch, denied
+core admission prevents native history replacement and preserves the latest
+capsule, and a fresh process dispatches SessionStart(resume).
+See [observed native results](qualification/CONTEXT_CONTROL_PLANE.md). These
+manual results are outside PR admission and do not populate the capability
+registry automatically.
+
+`node tools/verify/qualify-context-selection-native.mjs --help` describes the
+manual paired consultation probe. Explicit execution verifies real CLI output
+consumption, exact mandatory rule/dependency/revision answers, read-only checkout
+behavior and native reported usage for complete versus differential input. This
+is a small synthetic native comparison, not a statistical benchmark or a new
+public CLI surface.
+
+The required working-memory gate also imports five local-input fixture groups:
+loopback/auth/binding refusal, chat-delimiter isolation, complete native input
+tokenization and exact token-ID dispatch, invalid counters/truncation/budget
+refusal, and dedicated-host qualification scope. Fixture records cannot enable
+a real model. Unknown templates, remote providers, Codex clients, invented
+native hooks or `new_context` and incomplete native evidence are refused.
+
+`node tools/verify/qualify-context-local-clm.mjs --help` is the separate manual
+local-model research driver. It verifies reviewed artifact hashes, native
+tokenization/inference, model-proposed input changes, three continuations,
+rollback, checkpoint freshness, fresh-process restoration and owned-process
+cleanup. A resource-compatible candidate can still fail exact answer checks.
+Its raw failed exchanges remain outside the source checkout. A qualification
+record is emitted only after all assertions, cleanup and final host/artifact
+verification pass. Windows Job memory/EOF and host-reserve negative controls
+are separate native resource evidence, not model-quality fixtures.
+
+On Windows, `python -B -m unittest discover -s tests/native -p
+test_context_local_runner.py -v` independently checks native exit before owner
+EOF (including a nonzero child status), owner EOF cleanup, deadline and the hard
+memory cap. Keep the parent pipe open for the native-exit cases: closing it via
+`communicate()` would hide the shutdown race. The lifetime watcher uses raw
+descriptor reads so an early native exit cannot leave a buffered stdin lock
+held at Python shutdown. The Job limits, host reserve and termination controls
+remain unchanged. These manual checks require Python and sufficient free memory;
+on other platforms they report `SKIP`, never Windows qualification.
+
+The same required gate imports two external-pilot fixture groups: reviewed
+manifest/source binding and path refusal; preservation of preexisting runtime
+and staged checkout state versus explicitly owned ignored output. These are
+fixture checks, separate from the manual `--pilot` native run on an admitted
+existing PostgreSQL project. That run must pass the unchanged nine-answer,
+freshness, protected-input, rollback, budget and process controls, then prove
+pilot preservation. A real application's baseline failures remain failures.
+Only neutral findings belong in tracked qualification records.
+
+`npm run perf:smoke-agent-working-memory-postgres` is a separate optional live
+run against the dedicated smoke database. Its own temporary canonical scopes
+are removed and verified empty even on failure. It is outside PR admission.
+It also executes the deterministic memory corpus before the two live CLI cases.
+No credentials or pilot identifiers belong in tracked evidence.
+
+The memory fixture copies only Git-tracked corpus inputs. Ignored local indexes
+must not turn an absent canonical database into a false pass. Its mode-change
+case first proves missing SQLite state refuses preparation, then explicitly
+seeds the temporary canonical fixture and proves fresh reconstruction. The
+production refusal and admission requirements remain unchanged.
+
+Canonical pre-write CLI fixtures pass their Node `--import` preloader as a
+`file://` URL on every platform. A Windows drive path is not an ESM URL and
+would prevent the test from reaching admission at all. Failed canonical/JSON
+cases also retain their IDs, failed check names and bounded error codes in the
+family summary; existing admission assertions and deadlines stay unchanged.
+
+Config freshness tests also cover Windows reporting `ENOENT` for a child of a
+regular `.aidn` file: this must refuse as `ENOTDIR`, never cache optional absence
+or select default persistence. The fixture injects that Windows observation on
+all platforms as well as testing the actual filesystem behavior.
+
+The scoped-selection fixture also exercises differential consultation through
+the service and the real CLI: full mandatory dependency closure, exact optional
+references, incompatible/corrupt baseline fallback, public JSON contract,
+complete-response byte budget, read-only effect and unchanged input files.
+
 ## Targeted canonical artifact writes
 
 `perf:verify-runtime-persistence-parity` includes deterministic artifact command
@@ -8,6 +136,12 @@ rollback and read-only transactions. Scope selection covers canonical/legacy
 coexistence in either database result order, legacy-only compatibility and
 missing canonical artifacts without per-artifact fallback. They do not prove a
 running PostgreSQL server.
+
+The same parity fixture checks fresh repeatable-read read-only snapshot
+transactions, canonical/legacy priority, payload/head options, and refusal of
+partial results after requested-query errors. Rollback and client-close failures
+must preserve the primary error. Fake clients verify decisions and query order;
+they do not establish PostgreSQL isolation.
 
 Run `node tools/perf/verify-project-artifact-store-live-smoke.mjs` separately with
 `AIDN_RUNTIME_PG_SMOKE_URL` pointing to a dedicated test database. It creates two
@@ -21,6 +155,18 @@ used or removed by this smoke.
 It removes only its own scopes and verifies cleanup. Missing credentials are
 `UNAVAILABLE`, not `PASS`. This is source/CLI integration proof, not native Codex
 hook execution or qualification of a PostgreSQL server installer.
+
+Run `node tools/perf/verify-postgres-runtime-snapshot-live-smoke.mjs` separately
+with that dedicated binding for snapshot isolation proof. A deterministic barrier
+lets a second connection commit a targeted artifact update between the reader's
+head and payload queries: the first snapshot must remain entirely on the old
+generation and the next call must see the new generation. Real missing-relation
+errors fail closed without another SELECT or candidate fallback; injected
+rollback/close errors preserve their original cause. PostgreSQL itself refuses
+a write in the read-only transaction. The smoke preserves checkout files, the
+Git index and unrelated rows, then removes only its own temporary scopes and
+verifies cleanup. Missing credentials remain `UNAVAILABLE`; this manual smoke
+is separate from required PR admission and native hook qualification.
 
 Initial-cycle admission is covered by the pre-write use-case and CLI fixtures:
 canonical initial session, missing/unknown/stale cycle, mismatched session and
@@ -80,6 +226,14 @@ journal bytes. The live artifact-store smoke additionally exercises automatic
 PostgreSQL selection, misleading local projections, normal reload history and a
 real repeated-anomaly stop through the standard hook and Codex JSON wrapper.
 These subprocess tests do not qualify native hook approval or client execution.
+
+The same routed branch-admission suite checks session objective extraction:
+canonical `session_objective` priority and last valid value, legacy keys/bullets,
+bounded Markdown paragraphs, placeholders, comments, fenced/indented examples,
+CRLF and real divergence. Valid key text, including backticks, is preserved.
+Preview preserves checkout and journal bytes. Terminal closure uses the same
+parser while ordinary reads retain active-cycle selection. These are source/CLI
+fixtures; they do not establish DB source parity or native client execution.
 
 The branch-admission verifier also executes the actual `drift-check` skill via
 the Codex JSON wrapper and proves that its event clears only the age signal on
@@ -150,6 +304,55 @@ provider returning no tool calls. A negative control removes one temporary
 definition and requires that it disappear from the advertised agents. This
 proves discovery, not agent execution. Neither command qualifies server
 installation or trusted native hook execution. Those remain separate checks.
+
+`tools/verify/verify-codex-client-install.mjs` retains bounded SessionStart
+observations before deleting its exclusive temporary client: exit code, signal,
+process error code, elapsed milliseconds, output sizes and an allowlisted
+degradation reason. Raw context and stderr are omitted to avoid disclosing
+project data. Its diagnostic regression checks distinguish runtime unavailability,
+binding changes, Git resolution, malformed output and unknown context. A passing
+rerun does not identify the cause of an older failure whose output was not retained.
+Admission assertions, the seven-second runtime budget and native trust remain
+unchanged; direct command invocation does not qualify automatic native dispatch.
+
+For bounded hook summaries, `verify-codex-native-integration-fixtures.mjs` checks
+real admitted and blocked CLI values, complete JSON parsing, the whole 2400-byte
+UTF-8 budget, escaping, explicit omissions, expansion and unchanged inputs.
+Installed procedure references retain the default read/recovery path; opt-in
+scoped consultation is covered by the scoped-selection gate. Fixture PASS does
+not qualify native routing or token consumption.
+
+`verify-governance-adoption-fixtures.mjs` also exercises the real read-only
+coverage CLI, source/client separation, declared automatic/human/native controls,
+unclassified/invalid bindings, proposals, withdrawals, future authorities,
+external conflicts and whole-tree preservation. The v1 contract rejects false
+conformance claims. `verify-client-adoption-install-fixtures.mjs` checks fresh
+generation, update previews, divergent managed files, exact adapter/history and
+outside-block preservation, idempotence and owned-generation rollback in
+files/dual/db-only. Its optional `--package-root` and `--baseline-package-root`
+allow exact installed package candidates; source defaults alone are fixture proof.
+
+For final context qualification, build with `tools/build-release.mjs
+--source-ref HEAD --require-clean --output-root <owned-external-dir> --json`,
+install that exact tarball, compare its files to the manifest's tracked inputs,
+then run the installed package's `tools/perf/verify-scoped-context-selection-fixtures.mjs`.
+Its 100 named criteria retain the eight scenarios and reserved refusals. Five
+alternating legacy/scoped service pairs per scenario measure whole compact JSON
+bytes and local min/median/max milliseconds, with repeated scope/closure,
+complete-unit and admission checks. Stable logical corpus and implementation
+hashes identify comparisons independently of temporary physical scope pins.
+These figures do not measure startup/session context presented to a model,
+tokens, native latency, or global file-size reduction; no timing threshold is
+introduced by the measurements.
+
+Run the installed client's adoption verifier separately for strict candidate
+fresh installation and for a pinned historical package update. The historical
+L3 first-generation defect remains FAIL in `baseline_observations`; a supported
+reinstall prepares only the update comparison. It cannot qualify candidate
+fresh installation or replace that independent run. Build output is a local
+candidate, never a published release. Native approval/execution requires the
+candidate-bound human review step in CODEX_NATIVE_QUALIFICATION.md; unavailable
+native or live PostgreSQL evidence stays separate from source/package PASS.
 
 For native write scope, first run
 `node tools/perf/verify-native-write-admission-fixtures.mjs`, then the existing
@@ -233,6 +436,24 @@ The pre-write admission fixtures also invalidate tracked file stat metadata
 without changing content. Both status inspection and cycle admission must leave
 every file byte unchanged, including `.git/index` and the canonical local store;
 read-only Git calls disable optional index refreshes.
+
+`perf:verify-state-mode-parity` also runs configuration-cache freshness and
+ordinary gating source fixtures. They reproduce same-size/restored-mtime config
+updates, bounded read races and errors, conflicting canonical/projection intent,
+missing/ambiguous canonical identities and heads, unavailable PostgreSQL, and
+one fresh snapshot per evaluation including an empty repair collection. Controlled
+snapshot fixtures are distinct from live PostgreSQL proof. Generic pre-write
+fixtures assert configured PostgreSQL authority in all visible state modes,
+refusal without per-artifact fallback (including an empty historical head with
+a valid alternative), and retained optional files/SQLite behavior.
+The same pre-write fixture compares the complete real CLI JSON response with
+the producer for admitted, warned, refused, strict and native-request cases.
+Unindented serialization must retain nested evidence, nulls, reasons, exit
+status, empty diagnostic output and byte-for-byte unchanged checkout/Git state.
+Reported whitespace-byte savings are not token or latency measurements.
+The dedicated PostgreSQL artifact-store smoke additionally checks generic
+admission in `dual` and `files`, with all rows, another scope, projections and
+the Git index preserved.
 
 Runtime projector fixtures cover live SQLite repair findings overriding misleading
 hook caches, absent/malformed evidence, errors beyond the display limit and
@@ -666,6 +887,9 @@ the unique merged PR's `merge_commit_sha` to equal `GITHUB_SHA`. Comments,
 dormant shell blocks, wildcard hotfix routes, associated-but-different merge
 commits, or weakened unique-PR assertions cannot satisfy the gate.
 The pack topology verifier checks the package tarball surface, the published docs allowlist, and the leak guard for guarded terms in package paths and contents. The tracked-sensitivity verifier separately scans the complete Git-tracked tree, including historical planning documents and fixtures. It uses exact negative probes so weakening or bypassing the detector fails the gate. Current tracked content is neutralized, but older Git objects can retain prior pilot names and local paths; history cleanup may therefore still be required before wider archival or publication.
+Package topology also requires the dedicated local research qualifier and its
+external-pilot/resource helpers to remain outside distributed packages. They
+are source-checkout test tools; the release input detector remains unchanged.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.
@@ -681,6 +905,55 @@ invocations in order, but its aggregate is not selected by admission.
 The gate-catalog verifier proves exact coverage and rejects missing commands,
 changed arguments, duplicates, or weakened obligations. See
 [the context verification guide](./VERIFY_CONTEXT_RESILIENCE.md) for each group.
+
+For the L0 baseline of context selection, run
+`node tools/perf/verify-context-selection-baseline-fixtures.mjs` directly. There
+is no npm alias or admission gate for this observational fixture. Its frozen
+[synthetic corpus](../tests/fixtures/context-selection-baseline/corpus.json)
+records the reference commit, read-only guarantees, and deliberately late rule.
+The fixture invokes the source hydration service with an empty output path and
+the scaffold's pure compact-admission formatter. It emits one JSON report with
+named assertions, expected/observed values, input hashes, and cleanup status.
+`PASS` applies to those assertions; it does not qualify task-specific selection
+or native Codex behavior.
+
+The observations keep complete service JSON bytes (compact and formatted)
+separate from the reported artifact budget. They also report selected cycles,
+late-unit completeness, compact diagnostic omissions, and routing-asset sizes
+and anchor references. Routing sizes are proxies, not model reads or tokens.
+The stress formatter input is synthetic and not validated as a native admission;
+`additionalContext` remains text. Three timings distinguish the first call from
+repetitions without claiming a cold system cache. A missing index must not reuse
+the stale derived bundle; source revision and artifact-count omissions are
+checked separately. Known scope and truncation limitations are observations,
+not desired acceptance criteria. No selector, runtime admission, GFD adoption,
+or existing context-resilience gate changes as part of this baseline.
+
+The required `codex-scoped-context-selection` gate runs
+`npm run perf:verify-scoped-context-selection`. Its eight acceptance scenarios
+and reserved controls cover accepted dependency closure, ambiguous and absent
+rules, historical hypotheses, explicit cross-worktree coordination, late UTF-8
+exceptions and complete JSON byte budgets. It exercises the real consultation
+CLI in files/dual/db-only mode environments and the real SQLite store, verifies
+no output/projection write, changed authority/source/backend fingerprints,
+refusal of caller-removed obligations and local overrides of configured
+PostgreSQL. A live files-mode change invalidates an unchanged index. The existing
+L0 observation fixture remains unchanged for comparison. These are source and
+disposable-fixture proofs; native Codex reads/tokens remain UNAVAILABLE.
+
+The existing governance-completeness gate runs the L1 adoption fixtures.
+For a focused replay use
+`node tools/perf/verify-governance-adoption-fixtures.mjs`. The fixtures validate
+the pinned source declaration, its section/reference closure and each row's
+human responsibility. They prove that detection remains proposed, effective
+claims require an explicit date, invalid or unsupported declarations fail
+before writing, and nested extensions and historical references survive.
+Preview, explicit write and read-only list preserve a client-owned adoption in
+all three state-mode environments and satisfy the existing extensible v1 JSON
+roots. Adapter migration preserves the declaration from durable policy instead
+of inferring it from generated Markdown. All writes use owned temporary clients
+with cleanup; these checks do not qualify native install/upgrade or full GFD.
+See [the adoption guide](./GFD_ADOPTION.md) for scope and omissions.
 
 The local-daemon fixture prepares its temporary client with the canonical
 activation helper before starting the daemon. It filters copied installation
@@ -713,6 +986,9 @@ redacted exit/stdout/stderr diagnostics. Command failures likewise retain the
 exit code, signal, and bounded redacted stdout/stderr tails in both the JSON
 result and text summary. An unmet required condition is `FAIL`; only an unmet
 optional condition or an explicit catalog `skip` remains `SKIP`.
+The runner fixture counts product-command calls for an absent required
+PostgreSQL precondition: zero calls, an admission `FAIL`, and no process exit
+code. That result supplies no verdict about an unexecuted product command.
 `cleanliness-worktree` executes in `dev`, `main`, and `release` instead of using
 cleanliness as its own precondition. When changing this behavior, run:
 

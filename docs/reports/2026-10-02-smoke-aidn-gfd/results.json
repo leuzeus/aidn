@@ -1,0 +1,313 @@
+{
+  "status": "completed",
+  "generated_at": "2026-10-02T22:55:07.756482+00:00",
+  "source_commit": "89a709b9ccc3a1effb91356c654cb9fc3b5e4650",
+  "source_tree": "fc5800ba46c82cd4a19aff3c157a55d1985135c4",
+  "package_sha256": "5cec528f1a7fe4afc5a10decd1be94750165c84f738fc23a2fab1692563d9236",
+  "runs": {
+    "aidn": {
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "model_confirmed": true,
+      "model_rerouted": false,
+      "model_evidence": [
+        {
+          "phase": 1,
+          "thread_id": "01a0fe99-55b1-76c0-9b49-3f45aeaa6e31",
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        },
+        {
+          "phase": 3,
+          "thread_id": "01a0feb3-d56a-7fa2-8829-86240d12bf89",
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        }
+      ],
+      "scores": {
+        "functional": 60,
+        "maintainability": 17,
+        "tests": 9,
+        "operations": 9
+      },
+      "review_evidence": [
+        "X/src/app.js:5,13,60 and X/src/store.js:10: HTTP/validation grouped in app; persistence/migration grouped in store; small modules but HttpError couples storage to HTTP.",
+        "X/src/app.js:92: URI/domain/internal errors are separated and SQL details hidden; X/src/store.js:61 cleans up failed migration.",
+        "X/src/store.js:65: direct SQLite TEXT read leaves the confirmed NUL-title defect; no score alteration of the frozen behavioral oracle.",
+        "X/test/api.test.js:91,117,215,249,265: real rollback, migration, two-process concurrency/restart tests; eight executed, all passed.",
+        "X/src/server.js:11: graceful close and idle-connection cleanup, without bounded forced close; README clearly documents migration and backup.",
+        "Phase-3 own validation used Node 24 and acknowledged it; independent final rerun on Node 22 passed."
+      ],
+      "review_subcriteria": {
+        "maintainability": {
+          "separation": 4,
+          "errors": 4,
+          "readability": 4.5,
+          "duplication": 4.5
+        },
+        "operations": {
+          "reproduction": 2.5,
+          "migration_rollback": 2.5,
+          "configuration_shutdown": 2,
+          "limits_handoff": 2
+        }
+      },
+      "tokens": {
+        "status": "PASS",
+        "threads": 2,
+        "input_tokens": 7961138,
+        "cached_input_tokens": 7704832,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 56457,
+        "reasoning_output_tokens": 6081,
+        "total_tokens": 8017595,
+        "new_input_tokens": 256306,
+        "non_reasoning_output_tokens": 50376,
+        "cache_hit_fraction": 0.967805356470394,
+        "tokens_per_validated_requirement": 381790.2380952381,
+        "tokens_per_quality_point": 84395.73684210527,
+        "validated_requirements": 21,
+        "quality_score": 95
+      },
+      "passed_requirements": 21,
+      "total_requirements": 21,
+      "productive_seconds": 2164.054277058,
+      "phase_seconds": [
+        1060.206327594,
+        676.316019673,
+        427.53192979100004
+      ],
+      "native_commands": 120,
+      "failed_native_commands": 9,
+      "native_hooks": 131,
+      "native_hook_seconds": 7.303,
+      "own_final_test_count": 8,
+      "head_commit": "56282443205167d807aecfea7060e2b9a3c1dee4"
+    },
+    "baseline": {
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "model_confirmed": true,
+      "model_rerouted": false,
+      "model_evidence": [
+        {
+          "phase": 1,
+          "thread_id": "01a0feba-ee62-7b70-b357-71111090ded7",
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        },
+        {
+          "phase": 3,
+          "thread_id": "01a0fec8-659b-7ed0-b07f-904db0857a75",
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        }
+      ],
+      "scores": {
+        "functional": 60,
+        "maintainability": 17.5,
+        "tests": 10,
+        "operations": 10
+      },
+      "review_evidence": [
+        "Y/src/validation.mjs:15,46, Y/src/app.mjs:28 and Y/src/database.mjs:122: validation, HTTP and persistence separated; HttpError remains shared with storage.",
+        "Y/src/database.mjs:9 and Y/src/app.mjs:70: bounded WAL retry, sanitized errors and Retry-After; transaction scaffolding repeated in open/create/cancel.",
+        "Y/src/database.mjs:125: stored title bytes decoded explicitly; Y/src/validation.mjs:18 rejects malformed Unicode.",
+        "Y/test/api.test.mjs:176,227,289,346,395,426,448,464,492: rollback, forced restart, locks, migration and text regression; fifteen executed, all passed.",
+        "Y/src/server.mjs:18: guarded shutdown with five-second forced connection close; README and HANDOFF record Node 22 validation and limitations."
+      ],
+      "review_subcriteria": {
+        "maintainability": {
+          "separation": 4.5,
+          "errors": 4.5,
+          "readability": 4.5,
+          "duplication": 4
+        },
+        "operations": {
+          "reproduction": 2.5,
+          "migration_rollback": 2.5,
+          "configuration_shutdown": 2.5,
+          "limits_handoff": 2.5
+        }
+      },
+      "tokens": {
+        "status": "PASS",
+        "threads": 2,
+        "input_tokens": 1663954,
+        "cached_input_tokens": 1556352,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 32920,
+        "reasoning_output_tokens": 4037,
+        "total_tokens": 1696874,
+        "new_input_tokens": 107602,
+        "non_reasoning_output_tokens": 28883,
+        "cache_hit_fraction": 0.9353335488841639,
+        "tokens_per_validated_requirement": 80803.52380952382,
+        "tokens_per_quality_point": 17403.835897435896,
+        "validated_requirements": 21,
+        "quality_score": 97.5
+      },
+      "passed_requirements": 21,
+      "total_requirements": 21,
+      "productive_seconds": 1190.541822315,
+      "phase_seconds": [
+        508.665569623,
+        373.58181131499987,
+        308.2944413770001
+      ],
+      "native_commands": 49,
+      "failed_native_commands": 9,
+      "native_hooks": 0,
+      "native_hook_seconds": 0,
+      "own_final_test_count": 15,
+      "head_commit": "aad8c2ca19d2ff0735a4d873b0f7c19ce12fc6c7"
+    }
+  },
+  "criteria_rows": [
+    [
+      "health",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "room_creation",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "reservation_creation",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "reservation_lookup",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "unknown_resources",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "input_validation",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "timestamp_validation",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "overlap_rejected",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "adjacent_allowed",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "rooms_independent",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "idempotency_replay",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "idempotency_conflict",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "concurrent_collisions",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "concurrent_idempotency",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "restart_persistence",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "cancellation_history",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "cancel_frees_slot",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "cancelled_creation_replay",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "http_errors",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "sql_input_safety",
+      "PASS",
+      "PASS"
+    ],
+    [
+      "phase1_upgrade_preservation",
+      "PASS",
+      "PASS"
+    ]
+  ],
+  "conclusion": "Sur cette paire exploratoire, aucun gain de qualité du code avec AID’N n’est démontré. Les deux produits passent les 21 critères préselectionnés. Le contrôle complémentaire du titre contenant NUL échoue uniquement avec AID’N; le bras sans AID’N a découvert et corrigé ce défaut dans son budget. AID’N apporte une gouvernance et une traçabilité observables, au prix de 1.82 fois le temps et 4.72 fois les tokens natifs de développement. Cela ne préjuge pas de sa valeur sur un projet plus vaste ou une collaboration longue.",
+  "native_access": "Connexion native réussie; deux bras et leurs nouveaux threads terminés",
+  "model_identity": "gpt-6.1-sol / medium confirmé par thread/start; aucun reroutage observé",
+  "hook_review_evidence": "Revue humaine explicite, contrôles TUI officiels, hooks/list : 2 enabled/trusted; fichiers inchangés",
+  "preparation_cost": "Préparation et installation AID’N/PostgreSQL hors budgets. Leur durée complète et les tokens de l’expérimentateur n’ont pas été mesurés exhaustivement : coût total de première utilisation UNAVAILABLE. Un préflight natif réussi fournit 12 707 tokens partagés, affichés séparément et non attribués à un bras. Les tentatives échouées sans compteur final restent UNAVAILABLE.",
+  "time_and_friction": "AID’N : 36.07 min; sans AID’N : 19.84 min. Même plafond de 40 min, phases de 20/12/8 min et arrêt dur à 45 min. Le bras sans AID’N a terminé en moins de 30 min; aucune attente artificielle n’a été ajoutée. AID’N : 120 commandes natives, 131 hooks (7,30 s de durée cumulée), dont un refus effectif d’édition pour état/scope invalides. Sans AID’N : 49 commandes, aucun hook. Chaque bras a 9 commandes affichées comme failed; ce nombre mêle erreurs et refus et ne mesure pas seul des défauts. Les métadonnées, reanchors, branches, audits et clôtures expliquent une friction observée, sans attribuer tout le délai à GFD. Des contraintes du sandbox et le shell démarrant en Node 24 influencent également le coût.",
+  "token_interpretation": "Totals natifs AID’N / sans : 8,017,595 / 1,696,874. Cache entrée : 96.78 % / 93.53 %. Entrée neuve + sortie : 312,763 / 140,522, soit 2.23 fois. Ce dernier volume n’est pas une facture. Le cache et le raisonnement sont des sous-ensembles; jamais ajoutés une deuxième fois. Dernier total du thread partagé phases 1–2 plus total du nouveau thread phase 3. Les snapshots JSON-RPC natifs complets sont conservés; native-usage.jsonl est leur normalisation pour le calcul. Coûts des modèles de revue automatique non isolés; aucune estimation en euros. Ordre fixe A puis B et cache partiellement partagé limitent l’attribution.",
+  "review_summary": "Revue sur exports X/Y sans assets AID’N, par le même observateur ayant piloté les essais : anonymisation documentaire, pas double aveugle indépendant. Les notes 95/100 et 97,5/100 incluent 40 points de jugement qualitatif; leur petit écart ne constitue pas une preuve statistique. Le défaut de titre est plus informatif que ces décimales. Aucun double booking, perte de réservation ou échec de migration n’a été observé par l’oracle commun.",
+  "review_details": {
+    "Maintenabilité, 17/20 et 17,5/20": "Les deux produits séparent HTTP et persistance, utilisent des paramètres SQL, des transactions et des triggers. AID’N : app.js regroupe validation et routage; store.js contient migration et stockage, et fournit HttpError au HTTP. Sans : validation.mjs séparé, database.mjs plus long, boilerplate transactionnel répété. Lire les mappings et justifications détaillés dans quality-review.json. Le bras sans dispose d’un retry borné pour la création WAL et d’une conversion explicite des octets du titre; ce ne sont pas des points gagnés pour du vocabulaire de gouvernance.",
+    "Tests utiles, 9/10 et 10/10": "Huit tests AID’N et quinze sans passent dans la vérification indépendante finale Node 22.13.0. Les deux suites utilisent des bases réelles, injections d’échec, migrations, concurrence entre processus et redémarrage. Le bras sans ajoute arrêts forcés, contention de locks, annulation rollback et régression NUL. Les nombres ne sont pas le barème : c’est la couverture utile et réellement exécutée qui est jugée.",
+    "Exploitation, 9/10 et 10/10": "Les deux README documentent configuration, migration, sauvegarde après arrêt des writers, rollback par restauration et limitations. Sans : arrêt borné à cinq secondes et handoff sur Node 22. AID’N : arrêt gracieux sans borne forcée; la reprise a validé sur Node 24 en le déclarant honnêtement. Le contrôle final commun sur Node 22 réussit. Pas de downgrade ni certification de production dans aucun bras.",
+    "Défaut reproductible hors grille : conservation du texte": "Même requête dans les deux produits sur Node 22.13.0 : title = Before<caractère NUL>After. Avec AID’N, création et rejeu conservent le titre, mais GET et DELETE retournent Before. Sans AID’N, les quatre réponses conservent le titre intégral. Cause visible : store.js:65–81 lit directement le TEXT du driver Node 22; database.mjs:125–129 dans le bras sans lit les octets et les décode. Aucun produit n’a été réparé après budget. Le cas a été ajouté après découverte par le bras sans et appliqué aux deux : résultat complémentaire, pas modification rétroactive des 60 points figés."
+  },
+  "gfd_analysis": "Le diagnostic initial et final déclare l’adoption partielle effective du package source, mais l’adoption cliente GFD reste absente, sans héritage automatique. Conformité et certification GFD ne sont pas évaluées. Avec AID’N, session/cycles S001-C001-C002, DoR, matrice d’usage, périmètre gelé, blocage natif d’une édition et artefacts PostgreSQL sont réellement observés. Le handoff a d’abord été bloqué sur la branche du cycle clos, puis a passé après fast-forward vers la branche de session; la reprise a rafraîchi des ancres incohérentes. Cette traçabilité n’a pas évité le défaut NUL. Les hooks d’édition couvrent apply_patch/Edit/Write, pas une validation sémantique universelle de toutes les commandes shell. Avec deux bras, pas d’effet causal GFD isolé, pas de tokens précisément attribuables à GFD. Recommandation : simplifier l’initialisation, rendre explicites les transitions de clôture/handoff et réduire le contexte répété, en conservant les admissions utiles; ne pas généraliser à la gouvernance d’un gros projet.",
+  "harness_limitations": "Le lanceur initial supposait src/server.mjs alors que le contrat public demande npm start. Corrigé pour les deux produits sans modifier les critères; version précédente et six tests du harnais conservés. La base A de phase 1 a été capturée pendant la phase 1, après implémentation; B à sa clôture. Les hashes du code et données d’origine sont conservés, et les deux migrations passent. Le binaire Node téléchargé par B est vérifié avec le checksum officiel et identique au binaire partagé. L’oracle ne couvre pas exhaustivement l’Unicode, tous les ISO 8601, les pannes d’alimentation ou la charge prolongée. Le cas NUL est post-hoc et marqué comme tel. N=1 par bras, ordre A puis B, même observateur, absence de troisième bras GFD : aucune causalité générale ni significativité statistique.",
+  "ratios": {
+    "development_time": 1.8177053812775867,
+    "primary_native_total_tokens": 4.724920648203697,
+    "new_input_plus_output": 2.2257226626435718
+  },
+  "posthoc_text_check": "evidence/text-roundtrip-comparison.json",
+  "review_mapping": {
+    "X": "with-aidn",
+    "Y": "without-aidn"
+  },
+  "proof_hashes": {
+    "PROTOCOL.md": "5eaa8b67b1d482c3f63cb61a78a53fea2a4a56f421f87d8828c46d2bcf478dcc",
+    "evaluator.mjs": "d362bfbf754254453a06cec3bdfab00473eccea52735d02282b6edf1e648d7dd",
+    "metrics.mjs": "f69fbe0558bd4398b0e9f75ee1366fad166f30e458d7529a4c72e6263c3c2d33",
+    "run-smoke.py": "6e33d54d3779655c844fac8b1cd9965561740cce8fc65830a19389a0d72d29bd",
+    "native_client.py": "6bc865b693ed19dab4b0bf2cc4d614ae0ef0ff85a4f698074719b6bb330f6d07",
+    "evidence/final-native-evidence.json": "bbaf16c4c174196a4fd9ff0a7f3411acc44c36d6a106a698f64acc22d1548a1f",
+    "review/quality-review.json": "eeac0e4b1076bf1399f2444d6e7d54bdab5df64032ec819aebf06948ac41c4f2",
+    "evidence/evaluation-aidn/result.json": "fbdf4e241194609c6ec5e859c1affb43daba92d3d0e4f6c1cc9cdd7586412e98",
+    "evidence/evaluation-baseline/result.json": "04b1170f747addf041e9a54e4f92b1903d0b6aabcceb754871eeb24cb0357a52",
+    "evidence/text-roundtrip-comparison.json": "0ed66644a6a013cca51c6ea1c890ac2100c1b6069d6a592614ad5a1b7d7abfd6",
+    "evidence/run-aidn/native-events.jsonl": "ce060deecf02d768a92e31f9e715a13a8825c8ab8f203c252bcf3c02985e526b",
+    "evidence/run-baseline/native-events.jsonl": "fb489488b92d9dd198016633eff3fe675376e9b0ec84ffbf60efce5d8eccb126"
+  }
+}

@@ -98,6 +98,16 @@ semantic-validation claim or hook/application atomicity. The
 defines scope and conservative path/parser limitations.
 
 The native client remains responsible for project/hook trust and execution.
+
+2026-10-02 bounded context amendment: hook summaries encode one complete JSON
+document within 2400 UTF-8 bytes, with omitted fields/blockers, truncated values
+and a read-only expansion reference. They always state that they grant no write
+authorization. Full admission still controls denial. Installed procedural
+responsibilities may be referenced from the already-required workflow summary;
+the kernel retains the default startup and recovery read order. Complete-unit
+consultation remains explicit and client-bound. Replacing default startup reads
+or claiming native context/token benefits requires separate native evidence.
+
 Upstream command-hook errors, timeouts, disabled hooks and unavailable handlers
 can fail open. A valid deny from a running adapter is narrower evidence than
 universal prevention. Concurrent handlers cannot depend on ordering. Post-tool

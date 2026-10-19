@@ -194,7 +194,8 @@ export function createRuntimePersistenceFakePgClientFactory({
             sql,
             values: clone(values),
           });
-          if (!sql || sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") {
+          if (!sql || sql === "BEGIN" || sql === "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"
+            || sql === "COMMIT" || sql === "ROLLBACK") {
             return { rows: [] };
           }
           if (sql === "LOCK TABLE aidn_runtime.artifacts IN SHARE ROW EXCLUSIVE MODE") {

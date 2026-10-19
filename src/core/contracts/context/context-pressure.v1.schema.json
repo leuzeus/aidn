@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/context/context-pressure.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {"const":"context-pressure.v1"},
+    "pressure": {"enum":["unknown","normal","elevated","urgent"]},
+    "window_id": {"type":["string","null"]},
+    "remaining_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+    "recommended_action": {"enum":["refresh_client_telemetry","continue","checkpoint_at_semantic_boundary"]},
+    "telemetry_source": {"enum":["unknown","client-reported"]},
+    "reason": {"type":"string"},
+    "write_authorization": {"const":false}
+  },
+  "required": ["contract_version","pressure","window_id","remaining_tokens","recommended_action","telemetry_source","reason","write_authorization"]
+}

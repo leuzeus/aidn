@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/postgres-runtime-artifact-store.mjs";
 import { createPostgresRuntimePersistenceAdmin } from "../../src/adapters/runtime/postgres-runtime-persistence-admin.mjs";
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from "../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
+import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -12,15 +15,20 @@ function assert(condition, message) {
 }
 
 async function main() {
+  let tempRoot = "";
+  let pass = false;
   try {
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-pg-runtime-store-"));
+    const targetRoot = path.join(tempRoot, "runtime-store");
+    const legacyTargetRoot = path.join(tempRoot, "legacy-runtime-store");
     const fake = createRuntimePersistenceFakePgClientFactory();
     const admin = createPostgresRuntimePersistenceAdmin({
-      targetRoot: "/tmp/runtime-store",
+      targetRoot,
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       clientFactory: fake.factory,
     });
     const store = createPostgresRuntimeArtifactStore({
-      targetRoot: "/tmp/runtime-store",
+      targetRoot,
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       clientFactory: fake.factory,
     });
@@ -110,13 +118,13 @@ async function main() {
     assert(backupPayload.storage_policy === "relational-canonical", "backup should declare relational canonical storage policy");
     assert(backupPayload.snapshot?.payload?.summary?.artifacts_count === 2, "backup should materialize the canonical payload snapshot");
 
-    const staleLegacyTargetRoot = "C:\\fixtures\\runtime-store-stale-legacy";
+    const staleLegacyTargetRoot = path.join(tempRoot, "stale-legacy-runtime-store");
     const staleLegacyFake = createRuntimePersistenceFakePgClientFactory({
       initialTables: ["schema_migrations", "runtime_snapshots", "runtime_heads", "adoption_events", "index_meta", "artifacts"],
       initialSchemaMigrations: [1, 2],
       initialSnapshots: [{
         scope_key: staleLegacyTargetRoot,
-        project_root_ref: staleLegacyTargetRoot,
+        project_root_ref: "C:\\fixtures\\runtime-store-stale-legacy",
         source_backend: "sqlite",
         adoption_status: "transferred",
         payload: {
@@ -156,7 +164,7 @@ async function main() {
       initialTables: ["schema_migrations", "runtime_snapshots", "runtime_heads", "adoption_events"],
       initialSchemaMigrations: [1],
       initialSnapshots: [{
-        scope_key: "C:\\fixtures\\runtime-store-legacy",
+        scope_key: legacyTargetRoot,
         project_root_ref: "C:\\fixtures\\runtime-store-legacy",
         source_backend: "sqlite",
         adoption_status: "transferred",
@@ -180,12 +188,12 @@ async function main() {
       }],
     });
     const legacyAdmin = createPostgresRuntimePersistenceAdmin({
-      targetRoot: "C:\\fixtures\\runtime-store-legacy",
+      targetRoot: legacyTargetRoot,
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       clientFactory: legacyOnlyFake.factory,
     });
     const legacyStore = createPostgresRuntimeArtifactStore({
-      targetRoot: "C:\\fixtures\\runtime-store-legacy",
+      targetRoot: legacyTargetRoot,
       connectionString: "postgres://aidn:test@localhost:5432/aidn",
       clientFactory: legacyOnlyFake.factory,
     });
@@ -211,7 +219,7 @@ async function main() {
     const postMigrationBackup = await legacyAdmin.backupPersistence();
     assert(postMigrationBackup.compatibility_fallback_used === false, "post-migration backup should no longer require legacy compatibility fallback");
 
-    const legacyScopeRoot = "C:\\fixtures\\runtime-store-legacy-scope";
+    const legacyScopeRoot = path.join(tempRoot, "legacy-scope-runtime-store");
     const legacyScopeFake = createRuntimePersistenceFakePgClientFactory();
     const legacyScopeSeedStore = createPostgresRuntimeArtifactStore({
       targetRoot: legacyScopeRoot,
@@ -257,11 +265,21 @@ async function main() {
     assert(legacyScopeMigrated.migration.backfill?.legacy_scope_backfill === true, "migrate should backfill canonical rows from legacy absolute scope");
     assert(legacyScopeMigrated.status.canonical_payload_rows === 1, "legacy scope backfill should materialize canonical project-scoped rows");
 
-    console.log("PASS");
+    pass = true;
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    if (tempRoot) {
+      const cleanup = removePathWithRetry(tempRoot);
+      if (!cleanup.ok) {
+        pass = false;
+        process.exitCode = 1;
+        console.error(`CLEANUP ERROR: ${cleanup.error.message}`);
+      }
+    }
   }
+  if (pass) console.log("PASS");
 }
 
 await main();

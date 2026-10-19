@@ -305,6 +305,32 @@
       "obligation": { "dev": "required", "main": "required", "release": "required" }
     },
     {
+      "id": "codex-scoped-context-selection",
+      "family": "codex",
+      "script": "perf:verify-scoped-context-selection",
+      "job": "governance-admission/gates",
+      "surfaces": [
+        "opt-in scoped context consultation",
+        "complete mandatory Markdown units",
+        "whole JSON budget and canonical identity"
+      ],
+      "condition": "always",
+      "obligation": {
+        "dev": "required",
+        "main": "required",
+        "release": "required"
+      }
+    },
+    {
+      "id": "codex-agent-working-memory",
+      "family": "codex",
+      "script": "perf:verify-agent-working-memory",
+      "job": "governance-admission/gates",
+      "surfaces": ["explicit checkpoint memory", "read-only handoff continuation", "canonical revision and evidence invalidation", "diagnostic context metrics and pressure", "conditional context lifecycle and capability fallback"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "codex-context-admission",
       "family": "codex",
       "script": "perf:verify-context-admission",

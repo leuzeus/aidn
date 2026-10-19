@@ -118,6 +118,9 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime agent-run-cancel --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-cleanup --configuration <file> --run <id> --json`
 - `aidn runtime governance-diagnostics --json`
+  - Additive `governance_adoption` separates package/client declarations, dated
+    applicability, declared control kinds, human responsibilities and omissions;
+    conformance, execution and native qualification remain unevaluated.
 - `aidn runtime list-agent-adapters --json`
 - `aidn runtime verify-agent-roster --json`
 - `aidn runtime handoff-admit --json`
@@ -132,6 +135,9 @@ finalization; `--verify` retains its read-only verification behavior.
     specific scope admission. It remains read-only; generic admission is not
     universal write permission. See [specific admission](CODEX_INTEGRATION.md#specific-native-write-admission).
 - `aidn codex hydrate-context --json`
+  - `--context-selection-file <request.json>` is an opt-in read-only consultation
+    with complete scoped units; it refuses output/projection writes and returns
+    exit 2 with a complete JSON response when required knowledge is unavailable
   - hidden bundle output defaults to `.aidn/runtime/context/hydrated-context.json`
   - strict `db-only` does not auto-project visible files
   - use `--materialize-visible-artifacts` to intentionally write managed visible exports
@@ -326,6 +332,7 @@ separate DB-first write operation; a successful admission does not create them.
     aliases coexist. An inconsistent pointer or ambiguous unheaded alias is a
     diagnostic requiring repair; consultation never deletes or merges the history.
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
+  - optional `--resume-agent <id>` verifies advisory working memory against checkout evidence and the configured canonical revision without changing the command's read-only effect or handoff readiness; see [working memory](AGENT_WORKING_MEMORY.md)
 - `aidn runtime state-reanchor --json` and `--write` for explicit repair of `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` from the active runtime backend
 
 ## Repository-internal aliases
@@ -337,6 +344,14 @@ they are classified explicitly as internal/non-public in the machine-readable
 surface catalog. In particular, this includes:
 
 - `aidn perf checkpoint`
+  - optional `--working-memory <target-relative-json> --write` captures advisory agent context after checkpoint, unchanged checkout/canonical revision and fresh admission succeed
+  - optional `--context-telemetry <target-relative-json>` binds recent client-reported token/window measurements to that explicit memory capture; unavailable categories remain unknown
+
+Consultative `aidn codex hydrate-context --context-selection-file <request.json>`
+also accepts `--context-baseline-file <prior-complete-response.json>`. It sends
+fresh mandatory authority/dependencies and changed optional units; unchanged
+optional bodies become exact references. Incompatible baselines fall back to
+full selection. The option is read-only and requires the selection variant.
 - `aidn perf session-start`
 - `aidn perf session-close`
 - `aidn perf delivery-start`
@@ -356,6 +371,11 @@ These are currently implemented as package scripts, tools, or internal wrappers,
     in the resolved target directory and records that directory in its command
     provenance. Relative child paths are resolved there, including through the
     daemon adapter. Existing effect and explicit-execution requirements remain.
+  - its summary preserves the existing workflow reason code; an actual command
+    failure retains `HOOK_COMMAND_FAILED`. Normalization reads reasons and repair
+    observations from one selected nested gate, including checkpoint and workflow
+    wrappers. Missing repair evidence remains unknown: a null diagnostic is not
+    evidence that the repair layer is clean.
 - `aidn runtime local-daemon` (public, experimental)
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`

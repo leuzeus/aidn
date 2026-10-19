@@ -1,0 +1,80 @@
+{
+  "schema": "aidn.smoke-publication-manifest.v1",
+  "status": "FINAL",
+  "pdf_local_only": true,
+  "raw_traces_published": false,
+  "presentation_only_after_both_final": true,
+  "native_or_model_calls": 0,
+  "generated_report_sha256": "e8b25ddf92d5fc7d0e771d196be61f428c59adb7d018e12d9ec5c349bd015a4c",
+  "neutralization": "Named campaigns and analysis IDs replace local workspace prefixes; no factual values removed. Generated client session qualified as A:S001, not a source-package projection. Full observer appendices appended. Clarified completed native checks and weight normalization. Figure1 title names C1/C2; all chart values unchanged. Trailing whitespace and extra EOF blanks removed from Markdown/SVG exports; no coding experiment change.",
+  "files": {
+    "report.md": {
+      "sha256": "af6713dbaecbc61324dc818f9beaae0f29646c759da66fb6c2c5c011c5beb508",
+      "bytes": 207012
+    },
+    "results.json": {
+      "sha256": "c9f6fdd624a61f8a9cf3fbf5b22f4d6fbf7593acfce344d26a4aaae009c7fd94",
+      "bytes": 102097
+    },
+    "reason-inventory.md": {
+      "sha256": "f7e1ed164a12e4f183e0afb86983d30901aea130a14a1415d9f0e424478f2deb",
+      "bytes": 55321
+    },
+    "invalid-pair-reason-inventory.md": {
+      "sha256": "a9cc3226ccf6c0a20178e6f0137e2f4ce7b3e68c07fc903dbc7c65d410c7a98a",
+      "bytes": 20762
+    },
+    "aidn-gfd-workflow-note.md": {
+      "sha256": "b866b3a3ab38c9f0b9e3d0226b852836f4b3201979e7281d23c276f1a0fe6cb7",
+      "bytes": 24031
+    },
+    "baseline-review.md": {
+      "sha256": "3749d0770ddd044eab457578d7899371cdad72ce030cd8ccb7c9a6cee9833150",
+      "bytes": 14689
+    },
+    "latency-inventory.md": {
+      "sha256": "eb1beb5d11408cc66b0a6f77d28bae1a74979756492758d78a2f80b4706f04b4",
+      "bytes": 12042
+    },
+    "static-architecture-followup.md": {
+      "sha256": "b3070041aa562e7135ab3e78d5db3920a2113e00766cc38fdd2df5e1c1b67f8a",
+      "bytes": 14419
+    },
+    "DELIVERED_FIXES_PR130_133.md": {
+      "sha256": "aed0775d1c5e90a5e1f32e5f5c61dce165c74292c173e08c7e5e0e16759801b5",
+      "bytes": 4154
+    },
+    "figures/development-time.png": {
+      "sha256": "155cc8718e0dc8240e54538553efabe9e39aadb86ebb9aa434fd838a9a4589fa",
+      "bytes": 29263
+    },
+    "figures/development-time.svg": {
+      "sha256": "7ff96680cbc6621125fa06e9216ac4470d38a0af9b799fdcbe35a62a9c883f6b",
+      "bytes": 27320
+    },
+    "figures/native-tokens.png": {
+      "sha256": "2132c9f9b4a14690fb71c10005f363abcf25143373e49665ca9d4495b4f771d5",
+      "bytes": 37274
+    },
+    "figures/native-tokens.svg": {
+      "sha256": "6a7234ae0a574661ebacc4569671ad9094beccb8f4afa1a2382e0398e2e74edc",
+      "bytes": 37037
+    },
+    "figures/new-input-output.png": {
+      "sha256": "e1e8621f3819852ab34bc7c91a2aa8a4ca374bbb41f7a8fba2bc305cea340968",
+      "bytes": 39392
+    },
+    "figures/new-input-output.svg": {
+      "sha256": "a52f614a96deaae041017d1e019caefc8f94b1829dcba78ca72f1715682421e7",
+      "bytes": 32325
+    },
+    "figures/visible-interval-unions.png": {
+      "sha256": "3690c5e0dba39816ba9ad4cd7b890f15afc5d8242b619948331ef42c715d703b",
+      "bytes": 39190
+    },
+    "figures/visible-interval-unions.svg": {
+      "sha256": "7d870b91de3f9ffad36234e7992b1dcd49db008b7e698d7d2969c5f0cccb8e33",
+      "bytes": 37563
+    }
+  }
+}

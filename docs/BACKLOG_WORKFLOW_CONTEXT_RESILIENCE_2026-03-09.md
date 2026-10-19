@@ -245,6 +245,62 @@ Progress note:
 - `AGENTS.md`, `REANCHOR_PROMPT.md`, `README_CodexOnline.md`, and troubleshooting now treat `apply_patch` as a durable write
 - the guidance is framed as workflow drift and re-anchor discipline, not as a tool-specific blame model
 
+### WCR-11 - Record The Source Context-Selection Baseline
+
+Status: baseline implemented; routing reduction and native qualification pending
+Priority: medium
+
+Files:
+
+- `tools/perf/verify-context-selection-baseline-fixtures.mjs`
+- `tests/fixtures/context-selection-baseline/corpus.json`
+- `tools/verify/verify-gate-runner-fixtures.mjs`
+
+The L0 fixture measures routing-asset sizes and references, whole hydration
+output, synthetic neighboring cycles, late-rule truncation and compact
+diagnostic omissions. Assertions protect read-only inputs, source revision,
+visible omissions and absence of stale-bundle reuse. The runner separately
+proves zero product execution when a required precondition is unavailable.
+
+This extends the evidence for WCR-02/WCR-03 without changing their reload path
+or the four context-resilience gates. See the L0 section in
+[TESTING.md](./TESTING.md) and the related
+[strict bundle backlog](./BACKLOG_AIDN_DB_ONLY_STRICT_CONTEXT_BUNDLE_2026-06-01.md).
+Complete-unit selection, task/worktree routing, GFD adoption and native
+qualification remain follow-up work; fixture `PASS` does not close them.
+
+### WCR-12 - Bind Scoped GFD Adoption To Durable Policy
+
+Status: source adoption and client preservation implemented; native qualification pending
+Priority: medium
+
+L1 pins a partial source adoption in `package/governance/gfd-adoption.v1.json`
+under ADR-0010. Each section names local authorities, controls, human
+responsibility and explicit omissions. Clients opt in through their own optional
+`governanceAdoption` in durable adapter policy; defaults and detection do not
+accept it. Normalization, preview, explicit writes and adapter migration preserve
+accepted/proposed records and historical references. The existing
+governance-completeness gate includes the focused fixtures.
+
+See [GFD_ADOPTION.md](./GFD_ADOPTION.md) for precedence, attempt-evidence limits,
+compatibility and rollback. Complete-unit selection and native installation,
+upgrade and model-token qualification remain subsequent lots.
+
+### WCR-13 - Consult Scoped Complete Units Before Default Routing
+
+Status: opt-in consultative selector implemented; default routing and native proof pending
+Priority: medium
+
+L2 adds an explicit read-only selection request to the existing hydrator. It
+checks accepted client unit bindings, declared mandatory dependencies, scope,
+lifecycle, exact source hashes and complete ATX sections before relevance or
+budget. Optional units are omitted whole; missing or oversized mandatory units
+refuse with expansion references. Files mode checks live files; DB-backed modes
+retain canonical-backend resolution. The entire compact JSON response is
+measured. Existing admissions and default routing are retained; source fixture
+measurements do not establish native model tokens. See
+[the consultation contract](./CODEX_INTEGRATION.md#opt-in-scoped-context-consultation).
+
 ## Sequencing Recommendation
 
 1. WCR-01

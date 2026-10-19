@@ -2,9 +2,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { readEventSignalStats } from "../../src/application/runtime/gating-observation-service.mjs";
+import { collectGatingObservations, readEventSignalStats } from "../../src/application/runtime/gating-observation-service.mjs";
+import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import { resolveWorkflowSnapshotBackend } from "../../src/application/runtime/runtime-snapshot-service.mjs";
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
@@ -288,7 +290,117 @@ function verifyDriftCompletion(tmpRoot, onCreated) {
   assert.equal(events().filter(event => event.event === 'drift_check_completed').length, 1);
 }
 
-function main() {
+async function verifySessionObjectives(tmpRoot, onCreated) {
+  const source = path.resolve('tests/fixtures/perf-current-state/active');
+  const root = copyFixtureToTmp(source, tmpRoot, 'tmp-session-objectives', {
+    onDestinationCreated: onCreated,
+    filter: file => isActivationFixtureSource(source, file, { freshContext: true }),
+  });
+  initGitRepo(root, { workingBranch: 'feature/C101-alpha' });
+  prepareActivationFixture(root);
+  prepareWorkflowDocumentsFixture(root);
+  const sessionFile = path.join(root, 'docs/audit/sessions/S101-alpha.md');
+  const statusFile = path.join(root, 'docs/audit/cycles/C101-feature-alpha/status.md');
+  const status = fs.readFileSync(statusFile, 'utf8');
+  const goal = 'finalize alpha feature';
+  const other = 'replace the unrelated payment system';
+  const section = body => `## SESSION OBJECTIVE (1 clear sentence)\n\n${body}\n\n------------------------------------------------------------\n## TIME BUDGET\n- 30 min | 1h | 2h | other:\n`;
+  const cases = [
+    { id: 'empty_template_section', text: section(''), objective: null },
+    { id: 'source_session_template_unprepared', text: fs.readFileSync(path.resolve('scaffold/docs_audit/sessions/TEMPLATE_SESSION_SXXX.md'), 'utf8'), objective: null },
+    { id: 'valid_key_before_template_placeholder', text: `session_objective: ${goal}\n${fs.readFileSync(path.resolve('scaffold/docs_audit/sessions/TEMPLATE_SESSION_SXXX.md'), 'utf8')}`, objective: goal },
+    { id: 'empty_section_bounded_before_heading', text: `## SESSION OBJECTIVE\n\n## PLANNED OUTPUTS\n- ${other}\n`, objective: null },
+    { id: 'empty_section_bounded_before_setext_heading', text: `## SESSION OBJECTIVE\n\nPLANNED OUTPUTS\n==============\n- ${other}\n`, objective: null },
+    { id: 'plain_paragraph', text: section(goal), objective: goal },
+    { id: 'wrapped_paragraph', text: section('finalize alpha\nfeature'), objective: goal },
+    { id: 'paragraph_bounded_before_blank', text: section(`${goal}\n\n${other}`), objective: goal },
+    { id: 'paragraph_bounded_before_setext_heading', text: `## SESSION OBJECTIVE\n\n${goal}\nPLANNED OUTPUTS\n==============\n- ${other}\n`, objective: goal },
+    { id: 'paragraph_bounded_before_code', text: section(`${goal}\n\`\`\`text\n${other}\n\`\`\`\n${other}`), objective: goal },
+    { id: 'legacy_bullet', text: section(`- ${goal}`), objective: goal },
+    { id: 'legacy_numbered_line', text: section(`1. ${goal}`), objective: goal },
+    { id: 'crlf_paragraph', text: section(goal).replaceAll('\n', '\r\n'), objective: goal },
+    { id: 'session_key_priority', text: `session_objective: ${other}\nobjective: ${goal}\n${section(goal)}`, objective: other, drift: true },
+    { id: 'last_valid_session_key', text: `session_objective: ${other}\nsession_objective: ${goal}\nsession_objective: unknown\n`, objective: goal },
+    { id: 'last_valid_legacy_key', text: `objective: ${goal}\nobjective: TO_DEFINE\n`, objective: goal },
+    { id: 'legacy_key_priority', text: `objective: ${goal}\n${section(other)}`, objective: goal },
+    { id: 'numbered_key_value_preserved', text: `session_objective: 1. ${goal}\n`, objective: `1. ${goal}` },
+    { id: 'quoted_keys_identical', text: 'session_objective: `Keep identifiers`\n', objective: '`Keep identifiers`', cycleGoal: '`Keep identifiers`' },
+    { id: 'quoted_placeholder', text: 'session_objective: `TO_DEFINE`\n', objective: null },
+    { id: 'placeholder_key_legacy_fallback', text: `session_objective: TO_DEFINE\nobjective: ${goal}\n`, objective: goal },
+    { id: 'placeholder_key_section_fallback', text: section(`session_objective: TO_DEFINE\n<!-- Replace the placeholder with the session goal. -->\n${goal}`), objective: goal },
+    ...['none', '(none)', 'unknown', 'TO_DEFINE', 'TBD', 'TODO', '(1 clear sentence)', '(1 phrase)']
+      .map(value => ({ id: `placeholder_${value.replace(/[^a-z0-9]+/gi, '_')}`, text: section(value), objective: null })),
+    { id: 'checkbox_is_not_objective', text: section('[ ] Code'), objective: null },
+    { id: 'indented_code_is_not_objective', text: section(`    ${other}`), objective: null },
+    { id: 'tab_indented_code_is_not_objective', text: section(`\t${other}`), objective: null },
+    { id: 'indented_comment_example_ignored', text: section(`    <!--\n    session_objective: ${other}\n${goal}`), objective: goal },
+    { id: 'backtick_example_ignored', text: `\`\`\`markdown\nsession_objective: ${other}\n## SESSION OBJECTIVE\n- ${other}\n\`\`\`\n${section(goal)}`, objective: goal },
+    { id: 'tilde_example_ignored', text: `~~~~markdown\nobjective: ${other}\n## SESSION OBJECTIVE\n- ${other}\n~~~~\n${section(goal)}`, objective: goal },
+    { id: 'comment_example_ignored', text: `<!--\nsession_objective: ${other}\n## SESSION OBJECTIVE\n- ${other}\n-->\n${section(goal)}`, objective: goal },
+    { id: 'fences_inside_comment_ignored', text: `<!--\n\`\`\`\nsession_objective: ${other}\n-->\n${section(goal)}`, objective: goal },
+    { id: 'comment_inside_fence_ignored', text: `\`\`\`markdown\n<!--\nsession_objective: ${other}\n\`\`\`\n${section(goal)}`, objective: goal },
+    { id: 'unterminated_comment_ignored', text: `## SESSION OBJECTIVE\n<!--\nsession_objective: ${other}\n`, objective: null },
+    { id: 'unterminated_fence_ignored', text: `## SESSION OBJECTIVE\n\`\`\`markdown\nsession_objective: ${other}\n`, objective: null },
+    { id: 'valid_parenthetical_goal', text: section(`(${goal})`), objective: `(${goal})` },
+    { id: 'real_divergence_preserved', text: section(other), objective: other, drift: true },
+  ];
+  const snapshot = () => {
+    const files = {};
+    const visit = dir => { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === '.git') continue;
+      const file = path.join(dir, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else files[path.relative(root, file)] = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+    } };
+    visit(root);
+    return files;
+  };
+  const observations = completionContext => collectGatingObservations({
+    targetRoot: root,
+    eventFile: path.join(root, '.aidn/runtime/perf/workflow-events.ndjson'),
+    indexSyncCheckFile: path.join(root, '.aidn/runtime/index/index-sync-check.json'),
+    indexFile: path.join(root, '.aidn/runtime/index/workflow-index.sqlite'),
+    indexBackend: 'sqlite', stateMode: 'files', mode: 'COMMITTING',
+    reloadResult: { decision: 'full', fallback: false, reason_codes: ['BRANCH_CHANGED'] },
+    gitAdapter: createLocalGitAdapter(), completionContext,
+  });
+  const runs = [];
+  for (const testCase of cases) {
+    const cycleGoal = testCase.cycleGoal ?? goal;
+    const caseStatus = status.replace(`current goal: ${goal}`, `current goal: ${cycleGoal}`);
+    fs.writeFileSync(statusFile, caseStatus);
+    fs.writeFileSync(sessionFile, testCase.text);
+    const before = snapshot();
+    const observed = await observations(null);
+    const gate = runJson('tools/perf/gating-evaluate.mjs', [
+      '--target', root, '--state-mode', 'files', '--mode', 'COMMITTING',
+      '--reload-decision', 'full', '--reload-fallback', 'false',
+      '--reload-reason-codes', 'BRANCH_CHANGED', '--no-emit-event', '--json',
+    ]);
+    assert.deepEqual(snapshot(), before, `${testCase.id}: preview must preserve checkout and journal`);
+    // The same parser must read explicitly selected terminal closure intent,
+    // while ordinary observations must keep the active-only cycle rule.
+    fs.writeFileSync(statusFile, caseStatus.replace(/^state: IMPLEMENTING$/m, 'state: DONE'));
+    const terminalBefore = snapshot();
+    const closed = await observations({ cycle_dir: 'C101-feature-alpha', session_id: 'S101' });
+    const ordinaryTerminal = await observations(null);
+    assert.deepEqual(snapshot(), terminalBefore, `${testCase.id}: closure observation must be read-only`);
+    fs.writeFileSync(statusFile, caseStatus);
+    const signals = gate.levels.level2.active_signals;
+    const checks = {
+      objective_expected: observed.sessionObjective === testCase.objective,
+      uncertain_intent_expected: signals.includes('uncertain_intent') === (testCase.objective === null),
+      objective_delta_expected: signals.includes('objective_delta') === (testCase.drift === true),
+      terminal_closure_objective_expected: closed.sessionObjective === testCase.objective,
+      terminal_closure_goal_expected: closed.cycleGoal === cycleGoal,
+      ordinary_terminal_goal_absent: ordinaryTerminal.cycleGoal === null,
+    };
+    runs.push({ id: testCase.id, checks, pass: Object.values(checks).every(Boolean) });
+  }
+  return runs;
+}
+
+async function main() {
   const createdTargets = [];
   let args;
   try {
@@ -298,14 +410,16 @@ function main() {
     verifyObservationBoundaries(observationsRoot);
     const hookExitPolicy = verifyHookExitPolicy();
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
+    const objectiveRuns = await verifySessionObjectives(tmpRoot, target => createdTargets.push(target));
     verifyDriftCompletion(tmpRoot, target => createdTargets.push(target));
     const runs = CASES.map((testCase) => {
       return runCase(tmpRoot, testCase, (target) => createdTargets.push(target));
     });
-    const pass = runs.every((run) => run.pass === true);
+    const pass = [...runs, ...objectiveRuns].every((run) => run.pass === true);
     const output = {
       ts: new Date().toISOString(),
       runs,
+      session_objectives: objectiveRuns,
       hook_exit_policy: hookExitPolicy,
       pass,
     };
@@ -314,6 +428,7 @@ function main() {
       console.log(JSON.stringify(output, null, 2));
     } else {
       console.log('PASS drift completion: real skill event, subsequent admission, preview, age/branch boundaries and unresolved warning/stop');
+      for (const run of objectiveRuns) console.log(`${run.pass ? "PASS" : "FAIL"} session objective: ${run.id}`);
       for (const run of runs) {
         console.log(`${run.pass ? "PASS" : "FAIL"} ${run.id}`);
       }
@@ -335,4 +450,4 @@ function main() {
   }
 }
 
-main();
+await main();

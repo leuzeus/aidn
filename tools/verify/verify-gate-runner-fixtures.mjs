@@ -332,14 +332,26 @@ function main() {
     fs.rmSync(path.join(tempRoot, "initial-dirty.txt"), { force: true });
     assertClean(tempRoot, "initial dirty fixture cleanup should restore the checkout");
 
+    let requiredProductCalls = 0;
     const requiredCondition = runFixtureGate(tempRoot, {
       id: "required-condition-not-met",
       condition: "postgres-smoke-url-available",
+    }, {
+      commandRunner() {
+        requiredProductCalls += 1;
+        throw new Error("product command must not execute without its prerequisite");
+      },
     });
     assert(
       requiredCondition.results[0].status === "FAIL"
       && requiredCondition.results[0].condition_evaluation.failure_kind === "condition-not-met",
       "unmet required condition must fail diagnostically",
+    );
+    assert(requiredProductCalls === 0, "missing prerequisite must block before product execution");
+    assert(!requiredCondition.ok, "missing required prerequisite must still block admission");
+    assert(
+      !Object.hasOwn(requiredCondition.results[0], "exit_code"),
+      "unexecuted product command must not acquire a synthetic process exit code",
     );
 
     const optionalCondition = runFixtureGate(tempRoot, {
@@ -382,6 +394,8 @@ function main() {
         tracked_and_untracked_paths_reported: true,
         git_status_error_distinct_from_dirty_checkout: true,
         required_condition_not_met_failed: true,
+        missing_required_precondition_product_calls: requiredProductCalls,
+        missing_required_precondition_has_no_process_exit_code: true,
         optional_condition_not_met_skipped: true,
         manual_only_live_smoke_deferred_from_admission: true,
         cleanliness_script_executed_clean_and_dirty: true,

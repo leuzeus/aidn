@@ -15,6 +15,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [Architecture cockpit](./ARCHITECTURE_COCKPIT.md)
 - [CI gate families](./CI_GATE_FAMILIES.md)
 - [Testing guide](./TESTING.md)
+- [Scoped GFD adoption and client policy](./GFD_ADOPTION.md)
 - [Runtime surface scope matrix](./RUNTIME_SURFACE_SCOPE_MATRIX.md)
 - [Agent instruction index](./agents/README.md)
 

@@ -76,6 +76,12 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter, complet
     gitAdapter,
     completionContext,
   });
+  const observedReload = observations.canonicalIntentFailureReason ? {
+    ...reloadResult,
+    decision: "stop",
+    fallback: false,
+    reason_codes: [...new Set([...(reloadResult.reason_codes ?? []), observations.canonicalIntentFailureReason])],
+  } : reloadResult;
   const signal = detectGatingSignals({
     sessionObjective: observations.sessionObjective,
     cycleGoal: observations.cycleGoal,
@@ -84,7 +90,7 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter, complet
     thresholdFiles: args.thresholdFiles,
     thresholdMinutes: args.thresholdMinutes,
     latestDriftMs: observations.latestDriftMs,
-    reloadReasonCodes: reloadResult.reason_codes ?? [],
+    reloadReasonCodes: observedReload.reason_codes ?? [],
     indexSyncCheckExists: observations.indexSyncCheckExists,
     indexSyncTargetMatch: observations.indexSyncTargetMatch,
     indexSyncInSync: observations.indexSyncInSync,
@@ -94,6 +100,7 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter, complet
     repairLayerOpenCount: observations.repairLayerOpenCount,
   });
   if (completionContext && !observations.cycleGoal) signal.uncertain_intent = true;
+  if (observations.canonicalIntentUncertain && !observations.noChangeFastPath) signal.uncertain_intent = true;
   // The explicit drift skill is performing this check now. Only its own age
   // prerequisite is discharged; objective, scope, integrity and repair remain.
   // A no-event preview cannot complete or refresh the check.
@@ -101,8 +108,8 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter, complet
     signal.time_since_last_drift_check = false;
   }
 
-  return deriveGatingLevels({
-    reloadResult,
+  const levels = deriveGatingLevels({
+    reloadResult: observedReload,
     signal,
     changedFiles: observations.changedFiles,
     indexSyncCheckAbsolute: observations.indexSyncCheckAbsolute,
@@ -117,6 +124,7 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter, complet
     repairLayerTopFindings: observations.repairLayerTopFindings,
     mode: args.mode,
   });
+  return { levels, repairLayerObserved: observations.repairLayerObserved };
 }
 
 function compactRunStamp() {
@@ -193,7 +201,7 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, c
       args.indexBackend,
     );
   }
-  const levels = await detectSignals(targetRoot, args, reload, gitAdapter, completionContext);
+  const { levels, repairLayerObserved } = await detectSignals(targetRoot, args, reload, gitAdapter, completionContext);
   if (completionRefusal) {
     levels.level1.decision = "stop";
     levels.level1.reason_codes = [...new Set([...levels.level1.reason_codes, completionRefusal])];
@@ -217,7 +225,7 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, c
     duration_ms: Date.now() - started,
     summary: null,
   };
-  result.summary = buildGatingSummary(result);
+  result.summary = buildGatingSummary(result, { repairLayerObserved });
 
   if (args.emitEvent) {
     const eventPayload = {

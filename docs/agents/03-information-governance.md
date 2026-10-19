@@ -52,6 +52,7 @@ Do not introduce a new information concept until you have checked:
 | artifact | governed | Artifact inventory and scope are governed. |
 | runtime_state | governed | Runtime state is a governed digest surface. |
 | handoff_packet | governed | Handoff packet is a governed digest surface. |
+| agent_working_memory | governed, derived | Local typed checkpoint claims with revision/evidence invalidation; never permission or canonical decisions. |
 | decision | governed | Decision and arbitration records are explicitly governed. |
 | incident | governed | Incidents carry lifecycle and ownership rules. |
 | coordination_record | governed | Coordination records are a first-class governed family. |
@@ -71,6 +72,14 @@ Do not introduce a new information concept until you have checked:
 If a concept already has a parent surface or an orthogonal telemetry layer, do not promote it without an explicit policy update and an ADR check.
 
 Keep the source-of-truth policy, metadata policy, and governance diagnostics in sync with the information model.
+
+GFD adoption is scoped project policy, not a new runtime concept. The package
+source declaration and client opt-in compatibility boundary are documented in
+[GFD_ADOPTION.md](../GFD_ADOPTION.md). Proposed detection cannot become an
+effective authority, and structural declaration validity grants no permission.
+Preserve earlier adoption references and distinguish material claim changes
+from editorial or observational additions. `gate_result` remains excluded CI
+telemetry; its failure alone supplies no verdict about an unexecuted product.
 
 ADR-0014 introduces internal contracts, transactional persistence and an injected
 supervisor candidate. `supervision_candidate` marks complete policy coverage

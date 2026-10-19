@@ -52,7 +52,8 @@ Delivery lanes are ordered and upward-only:
   invariants and the families implicated by the changed paths.
 - `ASSURED` applies to `main`, public surfaces, authority, contracts, effects,
   persistence, migrations, shared coordination, security, permissions, CI,
-  release, and other critical paths. It selects all 42 required obligations.
+  release, and other critical paths. It selects every currently required
+  obligation in the executable catalog.
 - `EMERGENCY` is an overlay for an exact `hotfix/vX.Y.Z` pull request to `main`.
   It retains `ASSURED` gates, permits only non-blocking observability evidence to
   be deferred, expires when the pull request closes, rolls back by revert or
@@ -79,6 +80,29 @@ The package-source repository does not adopt complete installed-client
 dogfooding in its root. `scaffold/*` remains source, `tests/fixtures/*` remains
 test corpus, and any ignored root `.aidn/` state remains non-canonical local
 debt outside this reform.
+
+## GFD adoption amendment (2026-10-02)
+
+The project owner accepts the partial GFD `0.1-draft` adoption pinned in
+`package/governance/gfd-adoption.v1.json` at upstream commit
+`0eec798a5270ba6de51f31708b3dbc5b6147d9fb`. The declaration maps all method
+sections, including the principles of 7.1, to effective local authorities,
+automatic controls, human responsibilities and explicit omissions.
+[GFD_ADOPTION.md](../GFD_ADOPTION.md) explains the local precedence and
+source/client boundary. The existing catalog, contracts, non-negotiable
+invariants and concept-specific canonical policies remain their authorities.
+
+This decision records the approved L1 scope: cumulative authority hats,
+prospective claim-specific evidence and materiality, preserved history and
+explicit client acceptance. It does not claim full GFD or addendum-schema
+conformance, introduce general attempt storage, weaken source FAST/ASSURED,
+automate business judgment or migrate client policy. Work modes, method
+profiles and source delivery lanes remain distinct. A valid declaration grants
+no activation, workflow, shared-runtime or publication permission.
+
+The deciding authority reviews changed obligations, omissions and affected
+evidence before a new method revision becomes effective. Rollback withdraws or
+supersedes this adoption with retained prior records; it never purges history.
 
 ## Consequences
 

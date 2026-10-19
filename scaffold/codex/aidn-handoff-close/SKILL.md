@@ -35,6 +35,14 @@ Before the first durable write in this skill, run:
 - active session file when present
 - active cycle `status.md` when present
 
+After a terminal cycle (`DONE`, `NO_GO` or `DROPPED`), finish its bounded
+`cycle-close` checkpoint first. Prepare a session relay on the owning session
+branch after the explicit integration/report decision and its applicable
+workflow steps. A terminal cycle is not an active mapping for ordinary handoff;
+do not reactivate it to clear `MAPPING_MISSING`. `NO_GO`/`DROPPED` work must not
+be integrated as retained implementation. This skill does not switch branches
+or merge automatically; report the concrete next workflow action when blocked.
+
 2) Confirm the relay intent:
 - next agent role: `coordinator | executor | auditor | repair`
 - next agent action: `reanchor | implement | audit | analyze | repair | relay | close | coordinate`

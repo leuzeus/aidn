@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.13.0 (2026-10-19)
+
+- Add derived agent working memory and checkpoint/resume capsules with explicit
+  capture, provenance, freshness and owned-evidence checks. Canonical project
+  state retains authority; a capsule never grants permission to write.
+- Consult accepted scoped context units without truncation, route installed
+  procedure consultation and bound hook summaries. Qualify complete context
+  selection and verified package updates with disposable fixtures.
+- Report client governance adoption and declared control coverage, distinguish
+  unavailable carriers from invalid declarations, and render workflow extensions
+  on first installation.
+- Keep PostgreSQL canonical reads, snapshots and configuration freshness coherent;
+  preserve workflow refusal reasons and observed repair diagnostics while reducing
+  redundant reads and JSON whitespace.
+- Retain real drift evidence when a completed cycle uses the clean-index fast
+  path. Keep stale, foreign, future and wrong-mode evidence refusals intact.
+- Harden Windows configuration-parent refusals and local native runner shutdown.
+  Add guarded native hook/new_context and local-model qualification tools;
+  local research tools remain outside distributed packages. Qualification is
+  candidate-specific and does not enable persistent native trust or autonomy.
+- Preserve optional PostgreSQL, explicit writes and shared synchronization,
+  historical workflow-instance version pins, and separate engine-update,
+  client-migration and native-qualification admission.
+
 ## 0.12.0 (2026-10-02)
 
 - Accept named Codex skill preferences without changing user configuration.

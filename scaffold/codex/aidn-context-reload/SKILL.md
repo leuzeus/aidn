@@ -94,8 +94,20 @@ Keep report concise.
 - In dual/db-only, the configured canonical backend must be available. A cached bundle or visible projection does not prove freshness.
 - Read `repair_layer_status` and `repair_layer_advice` from admission. Treat `docs/audit/RUNTIME-STATE.md` as a derived anchor.
 - If repair signals require diagnosis, use `npx aidn runtime project-runtime-state --target . --json`; blocking findings stop further workflow actions.
-- Do not run run-json-hook or hydrate-context as part of this read-only skill: those paths can write hook history or derived caches.
+- Do not run run-json-hook or hydrate-context as part of this read-only skill in their ordinary forms: those paths can write hook history or derived caches. The explicit read-only selection variant is described separately below.
 - This admission is not write authorization. Run start-session admission next; each durable write requires its own current admission.
+
+## Explicit scoped consultation
+
+Only when explicitly requested, consult accepted complete units with
+`aidn codex hydrate-context --target . --context-selection-file request.json --json`.
+This selection variant is read-only and does not refresh a cache. Use
+`WORKFLOW-KERNEL.md` → `Procedure Routing` to locate the applicable procedures;
+the request must match the client's accepted authority and dependency bindings.
+Keep the startup reads above and start-session admission. A blocked or incomplete
+selection requires canonical expansion, never guessing or a cached fallback.
+Report selected units, omissions, triggers and expansion references. This opt-in
+consultation does not establish native routing or token savings.
 
 ## Separate authorized cache refresh
 

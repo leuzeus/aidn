@@ -83,7 +83,62 @@ completeness. The schemas remain in the internal `agent-execution` namespace,
 outside the public CLI output registry. Native activation and termination
 qualification remain separate from persistence fixture evidence.
 
+## Scoped method adoption extension (2026-10-02)
+
+GFD references are governed within `project_policy`, not a separate concept or
+runtime store. Package-source adoption lives in the explicitly scoped
+`package/governance/gfd-adoption.v1.json`; a client's optional
+`governanceAdoption` remains in its existing durable workflow adapter. Owner,
+scope, pinned method, explicit acceptance, lifecycle, section bindings, omissions,
+review triggers and immutable prior-record references have a versioned validator.
+Proposed detection is never promoted to an effective rule. Source acceptance is
+not inherited by clients, and metadata validity cannot grant runtime authority.
+The complete GFD attempt/outcome schemas and retrospective migration are not
+adopted. `gate_result` remains excluded telemetry and supervised
+`execution_attempt` retains its existing contracts. See ADR-0010 and
+[the adoption guide](../GFD_ADOPTION.md) for the accepted scope and limits.
+
+## Scoped consultation extension (2026-10-02)
+
+The opt-in context selector reuses `artifact`, `project_policy` and
+`runtime_project_context`. Its request describes a consultation, not a new
+source of policy or permission. Client-owned adoption authorities bind exact
+paths; full-source hashes, lifecycle and project/workspace/worktree identities
+are checked before section extraction. Effective and historical consultation
+are distinct. Effective unit descriptors must exactly match the client's
+accepted `governanceAdoption.extensions.contextUnits`; a query cannot remove
+their mandatory dependencies or promote detected rules. Dependencies carry
+explicit reasons; cross-worktree and
+cross-workspace dependencies require explicit query bindings and remain inside
+the already readable snapshot. In files mode the current file is checked;
+in DB-backed modes the selected backend is read without projection fallback.
+SQLite local identity uses the existing resolver plus its recorded checkout.
+Missing identity or required content refuses consultation rather than guessing.
+Complete ATX sections, including subordinate conditions and exceptions, are
+the smallest supported unit. Unrecognized/ambiguous headings refuse selection.
+The complete compact JSON payload is measured; optional units may be omitted
+whole, while an oversized mandatory closure refuses with expansion references.
+No new canonical store, runtime admission or default installed route is added.
+Rollback removes the opt-in consumer and retains client adoption history.
+
 ## Options Compared
+
+### Derived agent continuation memory (2026-10-07)
+
+An explicit checkpoint may retain typed agent working memory: objective,
+evidence-linked decisions and next step. The existing hook context store holds
+a local derived capsule bound to checkpoint provenance and observed
+workspace/worktree, Git/content/rule revision. Explicit handoff reads return
+claims only when input and evidence hashes still match. Stale or invalid capsules
+return diagnostics without claims. Fresh workflow and native admissions remain
+independent; agent claims cannot replace canonical decisions or authorize effects.
+No new shared coordination surface is introduced.
+
+The first slice supports files only. Database-backed continuity requires a
+verified canonical revision binding before reuse can be extended. Input and proofs
+reconstruct the capsule through a new admitted checkpoint. No automatic rollover
+or native compaction qualification is implied. See
+[working memory](../AGENT_WORKING_MEMORY.md) for lifecycle and limits.
 
 | Option | Result |
 |---|---|
@@ -100,6 +155,16 @@ qualification remain separate from persistence fixture evidence.
 - contracts are testable without requiring a cloud service
 
 ## Consequences
+
+2026-10-02 client coverage amendment: the existing read-only governance diagnostic
+may project the package-source declaration and client-owned adoption separately.
+Control classification is an optional declaration under project_policy, not a
+gate_result or runtime admission. Human responsibilities, deferred/omitted scope,
+unclassified controls and unavailable evidence remain visible. No fetched method,
+generated document or source declaration accepts a client or resolves a semantic
+authority conflict. The first generated workflow includes canonical adapter
+extensions without requiring an earlier file; updates and rollback retain policy
+and history under the existing installation ownership boundary.
 
 Positive:
 

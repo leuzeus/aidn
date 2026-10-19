@@ -18,6 +18,7 @@ import {
 import { resolvePromotedSharedPlanningContext } from "../../src/application/runtime/shared-planning-resolution-service.mjs";
 import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
+import { resumeAgentWorkingMemory } from "../../src/application/runtime/agent-working-memory-service.mjs";
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { writeUtf8IfChanged } from "../../src/lib/index/io-lib.mjs";
@@ -43,6 +44,7 @@ import {
 function parseArgs(argv) {
   const args = {
     target: ".",
+    resumeAgent: "",
     currentStateFile: "docs/audit/CURRENT-STATE.md",
     runtimeStateFile: "docs/audit/RUNTIME-STATE.md",
     out: "docs/audit/HANDOFF-PACKET.md",
@@ -58,7 +60,11 @@ function parseArgs(argv) {
 
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
-    if (token === "--target") {
+    if (token === "--resume-agent") {
+      args.resumeAgent = String(argv[i + 1] ?? "").trim();
+      if (!/^[a-zA-Z0-9._-]{1,80}$/.test(args.resumeAgent)) throw new Error("Invalid --resume-agent");
+      i += 1;
+    } else if (token === "--target") {
       args.target = String(argv[i + 1] ?? "").trim();
       i += 1;
     } else if (token === "--current-state-file") {
@@ -106,6 +112,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
+  console.log("  node tools/runtime/project-handoff-packet.mjs --target . --resume-agent agent-1 --json");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target .");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target . --write");
   console.log("  node tools/runtime/project-handoff-packet.mjs --target . --write --sync-relay");
@@ -396,6 +403,7 @@ export async function projectHandoffPacket({
   dryRun = false,
   write = false,
   syncRelay = false,
+  resumeAgent = "",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const workspace = resolveWorkspaceContext({
@@ -669,6 +677,7 @@ export async function projectHandoffPacket({
       };
   return {
     target_root: absoluteTargetRoot,
+    ...(resumeAgent ? { resume_capsule: await resumeAgentWorkingMemory({ targetRoot: absoluteTargetRoot, agentId: resumeAgent }) } : {}),
     dry_run: Boolean(dryRun),
     write: shouldWrite,
     sync_relay: Boolean(syncRelay),
@@ -699,6 +708,7 @@ function main() {
       dryRun: args.dryRun,
       write: args.write,
       syncRelay: args.syncRelay,
+      resumeAgent: args.resumeAgent,
     });
     if (args.json) {
       console.log(JSON.stringify(output, null, 2));

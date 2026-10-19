@@ -10,6 +10,16 @@ function freezeDeep(value) {
 
 const GOVERNANCE_COVERAGE_EXCEPTIONS = freezeDeep([
   {
+    concept: "context_metrics",
+    coverage_kind: "subsumed",
+    governed_by: "agent_working_memory",
+    source_of_truth_relation: "local checkpoint observation and explicitly supplied client telemetry; never canonical workflow state",
+    metadata_relation: "context-metrics.v1, with measured bytes, client-reported tokens, unknowns and observation-delta counters",
+    lifecycle_status: "observed -> retained with capsule -> historical",
+    scope: "worktree-local-agent-observation",
+    rationale: "Context metrics describe disposable memory and cannot admit writes, qualify a model or infer native execution.",
+  },
+  {
     concept: "setup_project_registry",
     coverage_kind: "excluded",
     governed_by: "host user preferences",

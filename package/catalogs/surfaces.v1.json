@@ -879,7 +879,17 @@
             "role": "format-only"
           }
         ],
-        "variants": []
+        "variants": [
+          {
+            "id": "codex-hydrate-context/consultative-selection",
+            "when_args": [
+              "--context-selection-file"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "codex-hydrate-context/consultative-selection"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -10072,6 +10082,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn codex hydrate-context:--context-baseline-file",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/codex/hydrate-context.mjs",
+      "entrypoint": "aidn codex hydrate-context --context-baseline-file",
+      "implementation": "tools/codex/hydrate-context.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/codex/hydrate-context.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn codex hydrate-context:--context-file",
       "kind": "option",
       "status": "active",
@@ -10084,6 +10118,40 @@
       "effects": {
         "role": "effect-neutral",
         "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/codex/hydrate-context.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn codex hydrate-context:--context-selection-file",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/codex/hydrate-context.mjs",
+      "entrypoint": "aidn codex hydrate-context --context-selection-file",
+      "implementation": "tools/codex/hydrate-context.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "projector",
+        "variants": [
+          {
+            "when_args": [
+              "--context-selection-file"
+            ],
+            "unless_args": [],
+            "effect_class": "read-only",
+            "policy": "codex-hydrate-context/consultative-selection"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -14809,6 +14877,27 @@
       "migration": ""
     },
     {
+      "id": "option:aidn perf checkpoint:--context-telemetry",
+      "kind": "option",
+      "status": "active",
+      "visibility": "internal",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/perf/checkpoint.mjs",
+      "entrypoint": "aidn perf checkpoint --context-telemetry",
+      "implementation": "tools/perf/checkpoint.mjs",
+      "effects": "internal/non-public",
+      "consumer": "repository maintainers",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/perf/checkpoint.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn perf checkpoint:--event-file",
       "kind": "option",
       "status": "active",
@@ -15237,6 +15326,48 @@
       "owner": "CLI maintainer",
       "source": "tools/perf/checkpoint.mjs",
       "entrypoint": "aidn perf checkpoint --target",
+      "implementation": "tools/perf/checkpoint.mjs",
+      "effects": "internal/non-public",
+      "consumer": "repository maintainers",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/perf/checkpoint.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn perf checkpoint:--working-memory",
+      "kind": "option",
+      "status": "active",
+      "visibility": "internal",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/perf/checkpoint.mjs",
+      "entrypoint": "aidn perf checkpoint --working-memory",
+      "implementation": "tools/perf/checkpoint.mjs",
+      "effects": "internal/non-public",
+      "consumer": "repository maintainers",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/perf/checkpoint.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn perf checkpoint:--write",
+      "kind": "option",
+      "status": "active",
+      "visibility": "internal",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/perf/checkpoint.mjs",
+      "entrypoint": "aidn perf checkpoint --write",
       "implementation": "tools/perf/checkpoint.mjs",
       "effects": "internal/non-public",
       "consumer": "repository maintainers",
@@ -37305,6 +37436,30 @@
       "owner": "CLI maintainer",
       "source": "tools/runtime/project-handoff-packet.mjs",
       "entrypoint": "aidn runtime project-handoff-packet --out",
+      "implementation": "tools/runtime/project-handoff-packet.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/project-handoff-packet.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn runtime project-handoff-packet:--resume-agent",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/project-handoff-packet.mjs",
+      "entrypoint": "aidn runtime project-handoff-packet --resume-agent",
       "implementation": "tools/runtime/project-handoff-packet.mjs",
       "effects": {
         "role": "effect-neutral",

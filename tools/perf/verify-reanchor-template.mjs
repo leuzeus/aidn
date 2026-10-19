@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import { getPublicSkillName } from "../../src/core/skills/skill-policy.mjs";
 import path from "node:path";
+import { completeMarkdownUnit } from "../../src/application/codex/scoped-context-selection.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -83,9 +84,24 @@ function main() {
     const runtimeStateText = exists(files.runtimeState) ? readText(files.runtimeState) : "";
     const reanchorPromptText = exists(files.reanchorPrompt) ? readText(files.reanchorPrompt) : "";
     const crashRecoveryRunbookText = exists(files.crashRecoveryRunbook) ? readText(files.crashRecoveryRunbook) : "";
+    const kernelText = exists(files.kernel) ? readText(files.kernel) : "";
+    const routing = completeMarkdownUnit(kernelText, "## Procedure Routing")?.content ?? "";
+    const routingRows = routing.split("\n").filter((line) => line.startsWith("| ") && !line.startsWith("| Trigger"));
 
     const checks = {
       workflow_kernel_present: exists(files.kernel),
+      routing_retains_default_and_native_boundary: routing.includes("Keep the Read Order above as the default and recovery route")
+        && routing.includes("Native qualification is required before replacing the default startup route"),
+      complete_routing_unit_contains_triggers_and_expansion: routingRows.length === 7
+        && routing.includes("A trigger becoming true invalidates the previous selection")
+        && routing.includes("Missing bindings, units, dependencies or stale"),
+      routing_keeps_read_only_session_admission: routingRows.some((line) => line.includes("including read-only work") && line.includes("aidn-start-session")),
+      routing_keeps_cycle_scope_and_plan: routingRows.some((line) => line.includes("COMMITTING") && line.includes("plan.md") && line.includes("never choose a competing cycle by recency")),
+      routing_keeps_repair_stop: routingRows.some((line) => line.includes("repair warn/block") && line.includes("canonical backend") && line.includes("block stops")),
+      routing_keeps_handoff_admission: routingRows.some((line) => line.includes("relay") && line.includes("handoff-admit") && line.includes("blocked/stale")),
+      routing_keeps_coordination_and_precision: routingRows.some((line) => line.includes("usage_matrix") && line.includes("coordination dependencies"))
+        && routingRows.some((line) => line.includes("SPEC > WORKFLOW > AGENTS") && line.includes("contradictions")),
+      routing_keeps_lost_context_read_only: routingRows.some((line) => line.includes("Lost, missing or contradictory") && line.includes("Read-only until")),
       current_state_present: exists(files.currentState),
       runtime_state_present: exists(files.runtimeState),
       integration_risk_present: exists(files.integrationRisk),

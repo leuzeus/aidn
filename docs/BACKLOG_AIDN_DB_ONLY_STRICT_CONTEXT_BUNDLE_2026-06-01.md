@@ -256,6 +256,50 @@ Gates cibles:
 - `npm run perf:verify-codex-db-only-skill-readiness`
 - `npm run perf:verify-skill-hooks`
 
+## Baseline complementaire L0 - 2026-10-02
+
+Statut: baseline source implementee; evolution du selecteur non realisee.
+
+La fixture `tools/perf/verify-context-selection-baseline-fixtures.mjs` complete
+les criteres de budget et de non-mutation avec un corpus synthetique fige. Elle
+mesure le JSON complet du service et le compare au budget d'artefacts rapporte;
+elle observe la presence de deux cycles actifs et d'une regle situee apres la
+limite d'extrait. Ces observations ne qualifient ni le routage par tache ni les
+lectures natives d'un client installe.
+
+Les assertions preservent les entrees en lecture seule, la revision des sources,
+les omissions visibles et l'absence de reutilisation d'un ancien bundle lorsque
+l'index manque. Aucun backend, mode `files`/`dual`/`db-only`, fallback canonique,
+contrat ou gate n'est modifie. L'adoption GFD et la selection d'unites completes
+restent des lots ulterieurs. Rejeu et interpretation: [TESTING.md](./TESTING.md).
+Suivi du routage: WCR-11 dans le
+[backlog de resilience](./BACKLOG_WORKFLOW_CONTEXT_RESILIENCE_2026-03-09.md).
+
+## Adoption explicite L1 - 2026-10-02
+
+Statut: adoption source partielle et preservation cliente implementees.
+
+La declaration source epingle GFD et les bindings locaux sous ADR-0010; les
+omissions et responsabilites humaines restent explicites. Le champ optionnel
+`governanceAdoption` de l'adaptateur client est valide et preserve sans adoption
+par defaut ni promotion d'une proposition. Il reste une politique projet locale
+dans les trois modes, sans migration DB ou changement d'admission.
+Rejeu: `node tools/perf/verify-governance-adoption-fixtures.mjs`, egalement inclus
+dans le gate existant de completude. Guide: [GFD_ADOPTION.md](./GFD_ADOPTION.md).
+Selection d'unites completes et qualification native restent a realiser.
+
+## L2 consultation incrementale — 2026-10-02
+
+Selection opt-in de sections ATX completes livree dans l'hydrateur existant.
+Le client accepte ses unit bindings dans son adaptateur durable; la requete
+ne peut retirer leurs dependances. Portee projet/workspace/worktree et
+session/cycle, lifecycle, hash de source et identite locale SQLite sont verifies.
+Le mode files lit le fichier actuel. Une source obligatoire absente ou trop
+grande refuse avec expansion; les unites optionnelles sont omises entieres.
+Le budget mesure le JSON compact complet. Le routage installe par defaut,
+l'admission runtime et la qualification native restent distincts.
+Voir [le contrat consultatif](./CODEX_INTEGRATION.md#opt-in-scoped-context-consultation).
+
 ## P2 - Application pilote External Pilot
 
 ### P2-01 - Migrer `external-pilot` apres validation AIDN

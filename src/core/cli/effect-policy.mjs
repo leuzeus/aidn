@@ -1086,12 +1086,13 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     jsonContract: "runtime-project-handoff-packet.v1.schema.json",
     safeArgs: ["runtime", "project-handoff-packet", "--json"],
     noMutationPaths: ["docs/audit/HANDOFF-PACKET.md"],
-    notes: "Historical projector; the default path is read-only, --write updates the Markdown projection, and --sync-relay explicitly appends the shared relay.",
+    notes: "Historical projector; the default path including --resume-agent is read-only, --write updates the Markdown projection, and --sync-relay explicitly appends the shared relay. Resume capsules are advisory and require independent fresh admission.",
   }),
   commandPolicy({
     id: "codex-hydrate-context",
     command: "aidn codex hydrate-context --json",
     effectClass: "projector",
+    effectVariants: [{ id: "consultative-selection", whenArgs: ["--context-selection-file"], effectClass: "read-only" }],
     jsonContract: "codex-hydrate-context.v1.schema.json",
     safeArgs: [
       "codex",
@@ -1105,7 +1106,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
       "--no-project-multi-agent-status",
       "--json",
     ],
-    notes: "Hydrates the hidden context bundle; db-only does not auto-project visible files unless --materialize-visible-artifacts is supplied.",
+    notes: "Hydrates the hidden context bundle; db-only does not auto-project visible files unless --materialize-visible-artifacts is supplied. --context-selection-file is an opt-in read-only consultation and refuses output/projection writes.",
   }),
   commandPolicy({
     id: "codex-workflow-step",

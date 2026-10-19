@@ -29,6 +29,8 @@ import {
 import { resolveEffectiveRuntimeMode } from "./runtime-mode-service.mjs";
 import { runReloadCheckUseCase } from "./reload-check-use-case.mjs";
 import { resolveEffectiveRuntimePersistence } from './runtime-persistence-service.mjs';
+import { prepareAgentWorkingMemory, checkpointAgentWorkingMemory } from "./agent-working-memory-service.mjs";
+import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { runGatingEvaluateUseCase } from "./gating-evaluate-use-case.mjs";
 import {
   appendRuntimeNdjsonEvent,
@@ -51,6 +53,9 @@ function toIsoNowCompact() {
 }
 
 export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, completionCycleId = null }) {
+  // Validate explicit memory intent and evidence before any checkpoint effects.
+  if (args.workingMemory && args.write !== true) throw new Error("WORKING_MEMORY_WRITE_REQUIRED");
+  if (args.contextTelemetry && !args.workingMemory) throw new Error("CONTEXT_TELEMETRY_REQUIRES_WORKING_MEMORY");
   const processAdapter = createLocalProcessAdapter();
   const gitAdapter = createLocalGitAdapter();
   const started = Date.now();
@@ -62,6 +67,9 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
   });
   args.stateMode = runtimeMode.stateMode;
   args.indexStore = runtimeMode.indexStore;
+  const workingMemory = args.workingMemory
+    ? await prepareAgentWorkingMemory({ targetRoot, inputFile: args.workingMemory, stateMode: args.stateMode,
+      telemetryFile: args.contextTelemetry }) : null;
   const canonicalPostgres = resolveEffectiveRuntimePersistence({ targetRoot }).backend === 'postgres';
   const cachePath = resolveRuntimeTargetPath(targetRoot, args.cache);
   const eventFilePath = resolveRuntimeTargetPath(targetRoot, args.eventFile);
@@ -330,5 +338,10 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
     result.summary_run_id = checkpointRunId;
   }
 
+  if (workingMemory) {
+    const admission = await preWriteAdmit({ targetRoot, skill: "context-reload" });
+    result.working_memory = await checkpointAgentWorkingMemory({ targetRoot, prepared: workingMemory,
+      checkpoint: result, admission, write: args.write });
+  }
   return result;
 }

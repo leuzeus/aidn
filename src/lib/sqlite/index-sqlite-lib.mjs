@@ -176,14 +176,14 @@ function buildArtifactPayloadQueryParts(db, artifactAlias = "a", blobAlias = "ab
   };
 }
 
-export function readRuntimeHeadArtifactsFromSqlite(sqliteFile) {
+export function readRuntimeHeadArtifactsFromSqlite(sqliteFile, options = {}) {
   const DatabaseSync = getDatabaseSync();
   const absolute = path.resolve(process.cwd(), sqliteFile);
   if (!fs.existsSync(absolute)) {
     throw new Error(`SQLite index file not found: ${absolute}`);
   }
 
-  const db = new DatabaseSync(absolute, { readOnly: true });
+  const db = options.database ?? new DatabaseSync(absolute, { readOnly: true });
   try {
     if (!hasTable(db, "runtime_heads")) {
       return { absolute, heads: {} };
@@ -238,7 +238,7 @@ export function readRuntimeHeadArtifactsFromSqlite(sqliteFile) {
     }
     return { absolute, heads };
   } finally {
-    db.close();
+    if (!options.database) db.close();
   }
 }
 
@@ -249,7 +249,7 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
     throw new Error(`SQLite index file not found: ${absolute}`);
   }
 
-  const db = new DatabaseSync(absolute, { readOnly: true });
+  const db = options.database ?? new DatabaseSync(absolute, { readOnly: true });
   try {
     const meta = readMetaMap(db);
     const artifactQuery = buildArtifactPayloadQueryParts(db, "a", "ab");
@@ -453,6 +453,31 @@ export function readIndexFromSqlite(sqliteFile, options = {}) {
     payload.summary = buildSummary(payload, structureKind);
     return { absolute, payload, meta };
   } finally {
-    db.close();
+    if (!options.database) db.close();
+  }
+}
+
+// Payload and heads must describe one committed observation. Separate read-only
+// connections can otherwise straddle a concurrent canonical writer.
+export function readRuntimeSnapshotFromSqlite(sqliteFile, {
+  includePayload = true, includeRuntimeHeads = true, generatedAt,
+} = {}) {
+  const absolute = path.resolve(sqliteFile);
+  if (!fs.existsSync(absolute)) throw new Error("SQLite canonical snapshot unavailable");
+  const DatabaseSync = getDatabaseSync();
+  const database = new DatabaseSync(absolute, { readOnly: true });
+  let primaryError;
+  try {
+    database.exec("BEGIN");
+    const payload = includePayload ? readIndexFromSqlite(absolute, { database, generatedAt }).payload : null;
+    const runtimeHeads = includeRuntimeHeads ? readRuntimeHeadArtifactsFromSqlite(absolute, { database }).heads : {};
+    database.exec("COMMIT");
+    return { payload, runtimeHeads };
+  } catch (error) {
+    primaryError = error;
+    try { database.exec("ROLLBACK"); } catch { /* Preserve the primary failure. */ }
+    throw error;
+  } finally {
+    try { database.close(); } catch (error) { if (!primaryError) throw error; }
   }
 }

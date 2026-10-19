@@ -75,6 +75,14 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "agent_working_memory", label: "Derived agent working memory",
+    required: ["contract_version", "memory", "checkpoint", "observed_revision", "input_ref", "input_sha256", "source_of_truth", "source_mode", "lifecycle_status", "requires_fresh_admission"],
+    sourceOfTruthConcept: "agent_working_memory",
+    evidenceTargets: ["src/core/contracts/context/agent-working-memory.v1.schema.json", "src/application/runtime/agent-working-memory-service.mjs", "tools/perf/verify-agent-working-memory-fixtures.mjs"],
+    lifecycle: "captured -> current|stale|invalid -> explicitly recaptured",
+    notes: "Bounded agent claims linked to exact ref/bytes/sha256 evidence. Provenance binds checkpoint input, workspace/worktree, HEAD, content and rules hashes, plus fresh canonical backend/scope/revision in DB modes. Per-observation metrics distinguish measured bytes, client-reported tokens and unknowns. Fresh admissions remain independent.",
+  }),
+  policy({
     concept: "workflow_selection", label: "Reviewed workflow definition selection",
     required: ["contract_version", "workflow_id", "revision", "scope", "seed", "activations", "selection_sha256"],
     sourceOfTruthConcept: "workflow_selection",
@@ -150,9 +158,10 @@ const METADATA_POLICIES = freezeDeep([
     label: "Project",
     required: ["project_id", "owner", "source_of_truth", "updated_at", "lifecycle_status"],
     sourceOfTruthConcept: "project_policy",
-    evidenceTargets: ["src/lib/config/workflow-adapter-config-lib.mjs"],
-    recommended: ["steward", "privacy_classification", "retention_policy"],
+    evidenceTargets: ["src/lib/config/workflow-adapter-config-lib.mjs", "src/core/governance/adoption-policy.mjs", "package/governance/gfd-adoption.v1.json"],
+    recommended: ["steward", "privacy_classification", "retention_policy", "governance_adoption"],
     lifecycle: "draft -> active -> archived",
+    notes: "Optional governanceAdoption has an explicit owner, scope, pinned method, proposed/accepted/deprecated/superseded/revoked lifecycle, acceptance decision, section dispositions and review triggers. Its versioned validator preserves extensions and history references; unknown versions or malformed records fail before writing. Source adoption and installed-project acceptance remain distinct; gate_result stays CI telemetry. Optional controlCoverage classifies bound references as automatic, human or native declarations; diagnostics retain unclassified, deferred and omitted scope with execution and conformance not evaluated.",
   }),
   policy({
     concept: "workspace",

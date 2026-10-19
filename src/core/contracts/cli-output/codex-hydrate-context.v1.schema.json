@@ -14,6 +14,85 @@
     "artifacts"
   ],
   "properties": {
+    "context_delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "context-delta.v1"
+        },
+        "mode": {
+          "enum": [
+            "full",
+            "differential"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "baseline_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "unchanged_optional_refs": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "required": [
+              "unit_id",
+              "path",
+              "sha256",
+              "unit_sha256"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "unit_id": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "unit_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "removed_unit_ids": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "string"
+          }
+        },
+        "write_authorization": {
+          "const": false
+        }
+      },
+      "required": [
+        "contract_version",
+        "mode",
+        "reason",
+        "baseline_revision",
+        "source_revision",
+        "unchanged_optional_refs",
+        "removed_unit_ids",
+        "write_authorization"
+      ]
+    },
     "target_root": { "type": "string" },
     "state_mode": { "type": "string" },
     "output_file": { "type": "string" },
@@ -22,6 +101,9 @@
     "bundle_budget": {
       "type": ["object", "null"],
       "properties": {
+        "budget_scope": { "type": "string" },
+        "serialization": { "type": "string" },
+        "fits_hard_limit": { "type": "boolean" },
         "budget_status": { "type": "string" },
         "selected_count": { "type": "number" },
         "metadata_only_count": { "type": "number" },
@@ -83,6 +165,95 @@
         },
         "additionalProperties": true
       }
+    },
+    "context_selection": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "mode",
+        "status",
+        "write_authorization",
+        "purpose",
+        "scope",
+        "errors",
+        "omissions",
+        "expansions",
+        "source_revision"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "mode": {
+          "type": "string",
+          "const": "consultative"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "blocked"
+          ]
+        },
+        "write_authorization": {
+          "type": "boolean",
+          "const": false
+        },
+        "purpose": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "unit_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "omissions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "expansions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "source_revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": true
     },
     "runtime_state": { "type": "object", "additionalProperties": true },
     "handoff_packet": { "type": "object", "additionalProperties": true },
