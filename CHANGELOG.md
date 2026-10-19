@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.1 (2026-10-19)
+
+- Keep derived hook caches, context bundles and workflow telemetry out of Git
+  dirt checks on installed clients. Preserve visibility of product files,
+  configuration, canonical state and constraint reports; verify custom ignore
+  rules and repeated installation remain intact.
+- Document canonical first-cycle readiness recovery for PostgreSQL-backed
+  clients: complete the session template, refresh the canonical projection and
+  persist the generated digest before strict re-admission. Preserve malformed,
+  stale and unreconciled-product refusals.
+
 ## 0.13.0 (2026-10-19)
 
 - Add derived agent working memory and checkpoint/resume capsules with explicit
