@@ -150,7 +150,8 @@ try {
     execFileSync('git', ['-C', root, 'commit', '-m', 'docs: close fixture cycle'], { stdio: 'pipe' });
     assert.equal(execFileSync('git', ['-C', root, 'status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }).trim(), '');
     assert.equal(drift(root).result.ok, true);
-    const forcedClose = () => run(root, 'tools/perf/cycle-close-hook.mjs', ['--mode', 'COMMITTING', '--no-auto-skip-gate']).result;
+    const forcedClose = () => run(root, 'tools/perf/cycle-close-hook.mjs', ['--mode', 'COMMITTING', '--no-auto-skip-gate',
+      '--index-store', mode === 'files' ? 'file' : 'sqlite']).result;
     const cold = forcedClose();
     assert.equal(cold.result, 'ok', JSON.stringify(cold));
     const warm = forcedClose();
