@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.2 (2026-10-19)
+
+- Reduce Windows generation-inventory overhead during native hook startup by
+  resolving each existing entry's physical path natively while checking its
+  type and link count. Keep full enumeration and fresh file hashes on every
+  invocation, without caching integrity or admission verdicts.
+- Preserve the existing hook deadlines, generation leases, switching barriers
+  and canonical admission. Cover hidden/binary content, fresh changes, hard
+  links, ancestor junctions, redirection during observation and observation
+  denial with regression fixtures.
+
 ## 0.13.1 (2026-10-19)
 
 - Keep derived hook caches, context bundles and workflow telemetry out of Git
