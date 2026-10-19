@@ -1,8 +1,10 @@
 # Context control plane: native qualification record
 
-Date: 2026-10-18. Package source: 0.12.0, uncommitted candidate based on
-`b59bf5a5b638b1d95a2f97a3420b569ed4f043a5`. This is local synthetic native
-evidence, not release or installed-client rollout qualification.
+Date: 2026-10-18. Package source: 0.12.0, candidate based on
+`b59bf5a5b638b1d95a2f97a3420b569ed4f043a5`. Implementation is committed as
+`8ef5b4c` (derived memory/consultation) and `0cbcaae` (native research hosts).
+The original synthetic native evidence and the later real-project pilot below
+remain distinct from release admission and installed-client rollout.
 
 ## Observed results
 
@@ -146,6 +148,52 @@ topology. Gates left the checkout unchanged; `git diff --check` also passed.
 The final route remains ASSURED. Manual native model and resource evidence is
 separate from these PR gate results and from release admission.
 
+## Real-project P3 pilot
+
+The explicit external-pilot path qualified continuity of an actual application
+diagnostic in an existing activated PostgreSQL/db-only project. It reused its
+real branch and canonical state, with fresh context/session admissions in
+THINKING mode. Four actual source/test files were hash-bound alongside a bounded
+diagnostic record. Only unique ignored evidence, cache, events and per-agent
+capsules were written; no source, configuration, activation or DB import occurred.
+
+The unchanged application tests failed independently before the experiment.
+A separately retained in-memory timing probe preserved their assertions and
+showed asynchronous cleanup completing after an additional event-loop turn.
+The task was to retain that diagnostic, original failures, cited proof and next
+step across pruning and restart. Diagnostic continuity is not application-test
+acceptance, a shipped application fix or broad model quality.
+
+| Pilot check | Final observation |
+| --- | --- |
+| Nine exact retained answers | PASS in all three native continuations |
+| Full native input tokens | 1,095, then 490 and 490 after model-proposed pruning |
+| Output tokens | 439 each; 1,024-token reserve unchanged |
+| Protected rules / critical evidence | Exact preservation; prefix replacement and critical deletion refused |
+| Source freshness | Actual checkpoint/resume; changed owned evidence before edit and during native tokenization refused |
+| Rollback and restart | Exact preimage/audit retained; third continuation in newly started runner PASS |
+| Hard limits and preimages | Oversized complete edit and inference refused; stale preimage and partial edit refused |
+| Pilot preservation | Source hashes, HEAD, branch, staged/unstaged/nonignored state, preexisting runtime files and fresh canonical revision unchanged |
+| Resource controls | Same suspended Windows Job, one process, 4 GiB committed cap and separate physical reserve; both processes stopped |
+| Peak committed Job memory | 2,791,051,264 and 2,564,231,168 bytes for the two processes |
+| Host/runtime/model integrity | PASS before execution and after cleanup |
+
+The first pilot attempt stopped before inference: the negative control correctly
+returned `invalid_evidence`, while the qualifier expected the synthetic checkout
+control's `stale` status. The expectation now matches the evidence control and
+also requires a null capsule. No refusal criterion or model-answer verifier was
+weakened. That failed report and its preserved project-state proof remain intact.
+
+The final native evidence SHA-256 is
+`45368c732755637d182dbc04d7fdefa2a75b3634a71e0f2760f380cc3311f268`.
+Its local host identity includes the reviewed pilot-manifest hash; the earlier
+synthetic qualification is not reused. The emitted record expires at
+`2026-10-20T00:50:44.682Z` and enables only this dedicated local input port.
+It grants no writes, native Codex events, `new_context` or global registration.
+Raw reports, logs, model exchanges, pilot identifiers and code remain local-only.
+Two required fixture groups additionally cover pilot admission-input/source
+binding and preservation detection; their results are not the native pilot proof.
+
 ## Completion boundary
 
 Final source verification after the hook corrections: the required
@@ -172,4 +220,4 @@ loaded. The later admitted small local host resolves model identity, tokenizer
 and input-editing dependencies for the bounded P3 research path above. Its local
 qualification does not install a global registry entry or qualify other clients,
 providers, production rollout, unrestricted CLM or a release. No whole-plan
-production-completion claim follows from this synthetic research.
+production-completion claim follows from the bounded synthetic and pilot research.

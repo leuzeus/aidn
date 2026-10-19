@@ -45,7 +45,7 @@ or publication follows automatically from package-source implementation.
 | Priority | Work | Source/fixture outcome | Remaining qualification |
 | --- | --- | --- | --- |
 | P1 | Typed memory, facts/questions/blockers/dead ends/tests, exact evidence and resume | Implemented; 27 memory scenarios PASS; native model resume and exact retrieval observed | General model quality remains unestablished by the small native corpus |
-| P1 | Canonical DB binding | Real SQLite plus PostgreSQL adapter fixtures PASS; live PostgreSQL CLI capture/resume and concurrent canonical-change rejection PASS in dual/db-only; own scopes and temporary files cleaned | Broader external-pilot qualification remains separate |
+| P1 | Canonical DB binding | Real SQLite plus PostgreSQL adapter fixtures PASS; live PostgreSQL CLI capture/resume and concurrent canonical-change rejection PASS in dual/db-only; real PostgreSQL/db-only pilot continuity and preservation PASS | Broader deployment qualification remains separate |
 | P1 | Context metrics | Five metrics scenarios and native collector refusal cases PASS; real native window usage persisted and resumed | Per-part attribution, monetary cost and comparable general efficiency benefit unknown |
 | P1 | Reference continuity corpus | Native nine-answer corpus, integrated hooks, three consecutive ledger windows and real scoped/delta consumption PASS | Larger independent ContextBench and cross-provider comparison remain separate |
 | P2 | Pressure | Implemented consultative thresholds/reserve and expiry; unknown when client telemetry is absent/stale | Host hard-limit enforcement is not established by these tests |
@@ -53,7 +53,7 @@ or publication follows automatically from package-source implementation.
 | P2 | Large observations and per-agent handoff | Exact raw proof plus bounded summaries; result identity linkage and explicit unauthenticated execution status tested | No automatic interception of every tool or shared transcript relay |
 | P2 | Checkpoint/rollover/restore | Native startup/PreCompact/PostCompact/compact/resume hooks, integrated new-context trials and negative trust/admission controls PASS | No automatic distribution or persistent user-profile trust qualification |
 | P3 | Provider/model autonomy | Exact identity/expiry policy and a dedicated local native qualification PASS: all nine cases over three continuations, with no fixture promotion | Record is candidate-specific research; Codex/OpenAI alias and other providers remain unqualified; no global registry installation |
-| P3 research | Editable native context / full CLM | Guarded local input pruning with exact native token IDs, protected evidence, real freshness, rollback and fresh-process restoration PASS | Bounded synthetic research; unrestricted CLM, live Codex transcript editing and production rollout remain unqualified |
+| P3 research | Editable native context / full CLM | Guarded local input pruning with exact native token IDs, protected evidence, real freshness, rollback and fresh-process restoration PASS on synthetic and real-project diagnostic corpora | Bounded research; unrestricted CLM, live Codex transcript editing and production rollout remain unqualified |
 
 ### Observed checks and corrective work
 
@@ -202,3 +202,26 @@ or publication follows automatically from package-source implementation.
   Codex native events or `new_context` capability crosses this boundary.
   The [qualification record](qualification/CONTEXT_CONTROL_PLANE.md) describes
   what passed and the remaining production/generalization limits.
+
+### Real-project pilot and delivery preparation
+
+- PASS: existing activated PostgreSQL/db-only pilot, fresh context and session
+  admissions, normal explicit working-memory checkpoints and read-only resume.
+  No fixture conversion, canonical import, source edit or branch change.
+- PASS: three native continuations of an actual application diagnostic; all
+  nine exact answers each time. Full input tokens: 1,095, 490, 490; output:
+  439 each. Critical facts, raw evidence, failure statuses, decision and next
+  step survived model-proposed pruning and a newly started process.
+- PASS: unchanged prefix/evidence/tokenizer/budget/preimage/rollback controls,
+  real evidence invalidation before and during counting, two owned processes
+  stopped, host/runtime/model integrity and final pilot preservation. Original
+  application tests remain FAIL; diagnostic continuity is a separate outcome.
+- An initial pre-inference pilot attempt correctly returned `invalid_evidence`;
+  the qualifier's synthetic `stale` expectation was corrected and a null capsule
+  is now required. The failed report remains retained. No model answer or
+  admission criterion was relaxed.
+- Atomic implementation commits separate the Windows configuration refusal,
+  derived memory/canonical consultation and opt-in native research hosts.
+  Release preparation uses an isolated clean checkout of the exact committed
+  candidate and the existing ASSURED gates. Qualification does not publish,
+  install globally, change the product version or grant production autonomy.

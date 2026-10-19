@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed; explicit working-memory implementation under qualification.
+Accepted for derived working memory and explicit opt-in research. Production
+native lifecycle distribution and unrestricted model autonomy remain unqualified.
 
 ## Date
 
