@@ -1,5 +1,33 @@
 # Testing Guide
 
+## Explicit agent working memory
+
+`node tools/perf/verify-agent-working-memory-fixtures.mjs` checks real fixture
+checkpoint/handoff CLI, explicit write intent, fresh admission refusal, revision
+changes, missing/changed evidence, capsule integrity, per-agent isolation,
+canonical DB revision binding/unavailability, five-checkpoint decision retention,
+typed optional claims, client telemetry and reconstruction. Real SQLite and an
+injected PostgreSQL adapter cover canonical changes during capture and before
+reuse; the latter is not a live isolation test. This is fixture evidence; native hooks and
+model/token comparisons require separate native qualification. See
+[the lifecycle](AGENT_WORKING_MEMORY.md). The existing handoff v1 contract accepts
+`shared_state_backend: null` for the normal files-mode output with no shared backend.
+The required `codex-agent-working-memory` gate uses this suite through the existing
+family runner; the 43 historical context-resilience invocations remain unchanged.
+The same gate runs `verify-context-metrics-fixtures.mjs`: nullable unknown tokens,
+measured bytes, bounded reported attribution, stale/future/inconsistent telemetry
+refusals and the closed diagnostic contract. Counters are observation deltas,
+not lifetime totals. No cost or native consumption benefit is inferred.
+Config freshness tests also cover Windows reporting `ENOENT` for a child of a
+regular `.aidn` file: this must refuse as `ENOTDIR`, never cache optional absence
+or select default persistence. The fixture injects that Windows observation on
+all platforms as well as testing the actual filesystem behavior.
+
+The scoped-selection fixture also exercises differential consultation through
+the service and the real CLI: full mandatory dependency closure, exact optional
+references, incompatible/corrupt baseline fallback, public JSON contract,
+complete-response byte budget, read-only effect and unchanged input files.
+
 ## Targeted canonical artifact writes
 
 `perf:verify-runtime-persistence-parity` includes deterministic artifact command

@@ -88,6 +88,18 @@ async function main() {
       bundleTargetBytes: 8192, bundleHardLimitBytes: 65536, historyLimit: 20, skill: "context-reload", contextFile: "", out: "" };
     const hydrate = (req, extra = {}) => runHydrateContextUseCase({ targetRoot: temporary, hookContextStore: store, args: { ...args, contextRequest: req, ...extra } });
     const before = hash(fs.readFileSync(index));
+    const deltaRequest = request(["local"], { optional: ["optional"] });
+    const fullBaseline = await hydrate(deltaRequest, { bundleHardLimitBytes: 262144 });
+    const delta = await hydrate(deltaRequest, { contextBaseline: fullBaseline });
+    check("delta_retains_mandatory_authority_and_dependency", delta.artifacts.map(unit => unit.unit_id), ["invariants", "local"]);
+    check("delta_optional_reference_replaces_unchanged_body", delta.context_delta.unchanged_optional_refs.map(unit => unit.unit_id), ["optional"]);
+    check("delta_full_response_budget_includes_projection", delta.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(delta)));
+    const foreignBaseline = structuredClone(fullBaseline); foreignBaseline.context_selection.scope.workspace_id = "foreign";
+    const fallback = await hydrate(deltaRequest, { contextBaseline: foreignBaseline, bundleHardLimitBytes: 262144 });
+    check("delta_scope_mismatch_returns_full_current_context", fallback.context_delta.mode, "full");
+    check("delta_scope_mismatch_does_not_use_old_content", fallback.artifacts.map(unit => unit.unit_id), ["invariants", "local", "optional"]);
+    const corruptBaseline = structuredClone(fullBaseline); corruptBaseline.artifacts[0].content_excerpt += "injected";
+    check("delta_corrupt_baseline_refuses_omission", (await hydrate(deltaRequest, { contextBaseline: corruptBaseline, bundleHardLimitBytes: 262144 })).context_delta.mode, "full");
     const scenarios = [
       ["S01-local", request(["local"]), "complete", ["invariants", "local"]],
       ["S02-migration", request(["migration"]), "complete", ["invariants", "dor", "migration"]],
@@ -243,6 +255,26 @@ async function main() {
       check(`${mode}_cli_exact_byte_counter`, result.bundle_budget.total_bytes, Buffer.byteLength(child.stdout.trim()));
       check(`${mode}_cli_scope`, result.artifacts.map((row) => row.unit_id), ["invariants"]);
     }
+    fs.writeFileSync(requestFile, JSON.stringify(request(["local"], { optional: ["optional"] })));
+    const cliBaseline = JSON.parse(cli([], 0, { AIDN_STATE_MODE: "files" }).stdout);
+    const baselineFile = path.join(temporary, "prior-complete-selection.json");
+    fs.writeFileSync(baselineFile, JSON.stringify(cliBaseline));
+    const inputSnapshot = () => JSON.stringify(fs.readdirSync(temporary, { recursive: true, withFileTypes: true })
+      .filter(entry => entry.isFile()).map(entry => {
+        const file = path.join(entry.parentPath, entry.name);
+        return [path.relative(temporary, file), hash(fs.readFileSync(file))];
+      }).sort());
+    const beforeDeltaCli = inputSnapshot();
+    const deltaChild = cli(["--context-baseline-file", baselineFile], 0, { AIDN_STATE_MODE: "files" });
+    const cliDelta = JSON.parse(deltaChild.stdout);
+    check("delta_cli_current_public_contract", validateJsonSchema(cliDelta, schema).length, 0);
+    check("delta_cli_retains_fresh_mandatory_closure", cliDelta.artifacts.map(unit => unit.unit_id), ["invariants", "local"]);
+    check("delta_cli_omits_only_unchanged_optional_body", cliDelta.context_delta.unchanged_optional_refs.map(unit => unit.unit_id), ["optional"]);
+    check("delta_cli_complete_byte_budget", cliDelta.bundle_budget.total_bytes, Buffer.byteLength(deltaChild.stdout.trim()));
+    check("delta_cli_all_checkout_inputs_unchanged", inputSnapshot(), beforeDeltaCli);
+    check("delta_cli_effect_read_only", resolveCliEffectClass("aidn codex hydrate-context",
+      ["--context-selection-file", requestFile, "--context-baseline-file", baselineFile, "--json"]), "read-only");
+    fs.writeFileSync(requestFile, JSON.stringify(request(["invariants"])));
     const sqliteFile = path.join(temporary, "canonical.sqlite");
     const sqlite = createRuntimeArtifactStore({ targetRoot: temporary, backend: "sqlite", sqliteFile });
     await sqlite.writeIndexProjection({ payload });

@@ -52,6 +52,7 @@ Do not introduce a new information concept until you have checked:
 | artifact | governed | Artifact inventory and scope are governed. |
 | runtime_state | governed | Runtime state is a governed digest surface. |
 | handoff_packet | governed | Handoff packet is a governed digest surface. |
+| agent_working_memory | governed, derived | Local typed checkpoint claims with revision/evidence invalidation; never permission or canonical decisions. |
 | decision | governed | Decision and arbitration records are explicitly governed. |
 | incident | governed | Incidents carry lifecycle and ownership rules. |
 | coordination_record | governed | Coordination records are a first-class governed family. |

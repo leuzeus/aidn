@@ -332,6 +332,7 @@ separate DB-first write operation; a successful admission does not create them.
     aliases coexist. An inconsistent pointer or ambiguous unheaded alias is a
     diagnostic requiring repair; consultation never deletes or merges the history.
 - `aidn runtime project-handoff-packet --json`, `--write` for projection writes, and `--sync-relay` for shared relay sync writes
+  - optional `--resume-agent <id>` verifies advisory working memory against checkout evidence and the configured canonical revision without changing the command's read-only effect or handoff readiness; see [working memory](AGENT_WORKING_MEMORY.md)
 - `aidn runtime state-reanchor --json` and `--write` for explicit repair of `CURRENT-STATE.md`, `RUNTIME-STATE.md`, and `HANDOFF-PACKET.md` from the active runtime backend
 
 ## Repository-internal aliases
@@ -343,6 +344,14 @@ they are classified explicitly as internal/non-public in the machine-readable
 surface catalog. In particular, this includes:
 
 - `aidn perf checkpoint`
+  - optional `--working-memory <target-relative-json> --write` captures advisory agent context after checkpoint, unchanged checkout/canonical revision and fresh admission succeed
+  - optional `--context-telemetry <target-relative-json>` binds recent client-reported token/window measurements to that explicit memory capture; unavailable categories remain unknown
+
+Consultative `aidn codex hydrate-context --context-selection-file <request.json>`
+also accepts `--context-baseline-file <prior-complete-response.json>`. It sends
+fresh mandatory authority/dependencies and changed optional units; unchanged
+optional bodies become exact references. Incompatible baselines fall back to
+full selection. The option is read-only and requires the selection variant.
 - `aidn perf session-start`
 - `aidn perf session-close`
 - `aidn perf delivery-start`

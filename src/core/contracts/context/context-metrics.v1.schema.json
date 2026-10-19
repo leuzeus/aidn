@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/context/context-metrics.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {"const":"context-metrics.v1"},
+    "run_id": {"type":"string","minLength":1,"maxLength":200},
+    "observed_at": {"type":"string","format":"date-time"},
+    "agent_id": {"type":"string","minLength":1,"maxLength":200},
+    "window_id": {"type":["string","null"]},
+    "model": {"type":["string","null"]},
+    "provider": {"type":["string","null"]},
+    "source_revision": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "token_source": {"enum":["client-reported","unknown"]},
+    "telemetry": {"type":["object","null"],"additionalProperties":true},
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "capacity_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "remaining_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "pinned_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "working_memory_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "retrieved_artifact_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "recent_tail_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "tool_output_tokens": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991}
+      },
+      "required": [
+        "input_tokens",
+        "capacity_tokens",
+        "remaining_tokens",
+        "pinned_tokens",
+        "working_memory_tokens",
+        "retrieved_artifact_tokens",
+        "recent_tail_tokens",
+        "tool_output_tokens"
+      ]
+    },
+    "bytes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "working_memory": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "evidence_descriptors": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "referenced_evidence": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "pinned": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "retrieved_artifacts": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "recent_tail": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "tool_outputs": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "externalized_tool_outputs": {"type":"integer","minimum":0,"maximum":9007199254740991}
+      },
+      "required": [
+        "working_memory",
+        "evidence_descriptors",
+        "referenced_evidence",
+        "pinned",
+        "retrieved_artifacts",
+        "recent_tail",
+        "tool_outputs",
+        "externalized_tool_outputs"
+      ]
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint_count": {"const":1},
+        "compact_count": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "new_context_count": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "retrieval_count": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "source_revision_changes": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991},
+        "stale_rejection_count": {"type":["integer","null"],"minimum":0,"maximum":9007199254740991}
+      },
+      "required": ["checkpoint_count","compact_count","new_context_count","retrieval_count","source_revision_changes","stale_rejection_count"]
+    },
+    "count_scope": {"const":"observation-delta"},
+    "admission_evidence": {"const":false}
+  },
+  "required": [
+    "contract_version",
+    "run_id",
+    "observed_at",
+    "agent_id",
+    "window_id",
+    "model",
+    "provider",
+    "source_revision",
+    "token_source",
+    "telemetry",
+    "tokens",
+    "bytes",
+    "counts",
+    "count_scope",
+    "admission_evidence"
+  ]
+}

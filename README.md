@@ -420,6 +420,13 @@ npx aidn build-release
 
 ## Product vs Installed vs Self-Host
 
+For explicit continuation, checkpoints can retain small derived memory per agent
+and the handoff reader can verify its capsule before returning claims. See
+[agent working memory](docs/AGENT_WORKING_MEMORY.md); fresh admission remains
+required. Files mode and fresh canonical SQLite/PostgreSQL observations are
+supported; native lifecycle and model-owned input editing have separate
+qualification boundaries.
+
 - Product repository assets live under `docs/`, `src/`, `tools/`, `packs/`, and `scaffold/`.
 - Installed client assets live under `docs/audit/*`, `.codex/*`, and `.aidn/*`.
 - The canonical self-host workspace lives under `tests/workspaces/selfhost-product/`.

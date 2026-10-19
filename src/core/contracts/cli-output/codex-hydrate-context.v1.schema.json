@@ -14,6 +14,85 @@
     "artifacts"
   ],
   "properties": {
+    "context_delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "context-delta.v1"
+        },
+        "mode": {
+          "enum": [
+            "full",
+            "differential"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "baseline_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "unchanged_optional_refs": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "required": [
+              "unit_id",
+              "path",
+              "sha256",
+              "unit_sha256"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "unit_id": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "unit_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "removed_unit_ids": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "string"
+          }
+        },
+        "write_authorization": {
+          "const": false
+        }
+      },
+      "required": [
+        "contract_version",
+        "mode",
+        "reason",
+        "baseline_revision",
+        "source_revision",
+        "unchanged_optional_refs",
+        "removed_unit_ids",
+        "write_authorization"
+      ]
+    },
     "target_root": { "type": "string" },
     "state_mode": { "type": "string" },
     "output_file": { "type": "string" },

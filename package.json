@@ -19,6 +19,7 @@
     "bin/",
     "docs/INSTALL.md",
     "docs/CODEX_INTEGRATION.md",
+    "docs/AGENT_WORKING_MEMORY.md",
     "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
     "docs/WINDOWS_PROJECT_SETUP.md",
@@ -400,6 +401,8 @@
     "perf:verify-workflow-instance": "node tools/perf/verify-workflow-instance-fixtures.mjs",
     "perf:verify-workflow-segment": "node tools/perf/verify-workflow-segment-fixtures.mjs",
     "perf:verify-scoped-context-selection": "node tools/perf/verify-scoped-context-selection-fixtures.mjs",
-    "perf:verify-client-adoption-install": "node tools/perf/verify-client-adoption-install-fixtures.mjs"
+    "perf:verify-client-adoption-install": "node tools/perf/verify-client-adoption-install-fixtures.mjs",
+    "perf:verify-agent-working-memory": "node tools/perf/verify-agent-working-memory-fixtures.mjs && node tools/perf/verify-context-metrics-fixtures.mjs",
+    "perf:smoke-agent-working-memory-postgres": "node tools/perf/verify-agent-working-memory-fixtures.mjs --live-postgres"
   }
 }
