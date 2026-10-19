@@ -62,6 +62,7 @@ function makeInstallerPrerequisiteStub(tempRoot) {
 }
 
 function runHookCommand(command, { cwd, env, input }) {
+  const started = performance.now();
   const result = spawnSync(command, {
     cwd,
     env,
@@ -73,15 +74,69 @@ function runHookCommand(command, { cwd, env, input }) {
     windowsHide: true,
   });
   spawnSyncEvidence.recordReturn();
-  if (result.status !== 0) {
-    throw new Error([
-      `hook command failed from ${cwd} with ${result.status}`,
-      command,
-      String(result.stdout ?? "").trim(),
-      String(result.stderr ?? "").trim(),
-    ].filter(Boolean).join("\n"));
+  const observed = { ...result, duration_ms: Math.round(performance.now() - started) };
+  if (result.error || result.signal || result.status !== 0) {
+    throw new Error(`hook command failed: ${JSON.stringify(hookDiagnostic(observed))}`);
   }
-  return result;
+  return observed;
+}
+
+// Retain the reason before the owned client is removed, without echoing native
+// context, command text, project paths or arbitrary stderr into gate summaries.
+function hookDiagnostic(result) {
+  const knownReasons = new Set([
+    "admission_activation_degraded", "admission_invalid_output", "admission_runtime_unavailable",
+    "admission_specific_output_invalid", "admission_summary_budget_invalid",
+    "runtime_authority_invalid", "runtime_binding_changed", "runtime_binding_missing",
+    "runtime_git_resolution_failed", "runtime_global_generation_changed", "runtime_global_launcher_required",
+    "runtime_installation_incomplete", "runtime_installation_pending", "runtime_project_root_mismatch",
+    "runtime_receipt_invalid", "runtime_receipt_missing", "runtime_receipt_path_invalid",
+    "runtime_record_integrity_invalid", "runtime_record_invalid", "runtime_record_too_large",
+    "runtime_unsafe_path", "runtime_worktree_backlink_mismatch",
+  ]);
+  let reason = "invalid_json", envelope = false;
+  try {
+    const payload = JSON.parse(String(result.stdout ?? "").trim());
+    const context = payload?.hookSpecificOutput?.additionalContext;
+    envelope = payload?.hookSpecificOutput?.hookEventName === "SessionStart";
+    const degraded = typeof context === "string" ? /^AIDN resume is degraded \(([a-z_]+)\)\./.exec(context)?.[1] : null;
+    reason = knownReasons.has(degraded) ? degraded
+      : typeof context !== "string" ? "missing_context"
+      : context.startsWith("AIDN canonical admission (read-only):") ? "canonical_admission"
+      : context.startsWith("AIDN delegated task:") ? "delegated_context"
+      : context === "AIDN resume is degraded: invalid hook input or project binding. Remain read-only and diagnose the installation."
+        ? "invalid_hook_input_or_project_binding" : "unrecognized_context";
+  } catch { /* Preserve the JSON failure without copying the untrusted output. */ }
+  return {
+    exit_code: Number.isInteger(result.status) ? result.status : null,
+    signal: ["SIGTERM", "SIGKILL", "SIGINT"].includes(result.signal) ? result.signal : null,
+    error_code: ["ETIMEDOUT", "ENOENT", "EACCES", "ENOBUFS"].includes(result.error?.code) ? result.error.code : null,
+    duration_ms: Number.isFinite(result.duration_ms) ? result.duration_ms : null,
+    stdout_bytes: Buffer.byteLength(String(result.stdout ?? "")),
+    stderr_bytes: Buffer.byteLength(String(result.stderr ?? "")),
+    session_start_envelope: envelope, reason,
+  };
+}
+
+function verifyHookDiagnosticPolicy() {
+  const payload = context => JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } });
+  const cases = [
+    [payload('AIDN canonical admission (read-only): {"admission":"blocked"}'), "canonical_admission"],
+    [payload("AIDN resume is degraded (admission_runtime_unavailable). private payload"), "admission_runtime_unavailable"],
+    [payload("AIDN resume is degraded (runtime_binding_changed). private payload"), "runtime_binding_changed"],
+    [payload("AIDN resume is degraded (runtime_git_resolution_failed). private payload"), "runtime_git_resolution_failed"],
+    [payload("AIDN resume is degraded (private_secret). private payload"), "unrecognized_context"],
+    ["{}", "missing_context"], ["private malformed payload", "invalid_json"],
+  ];
+  for (const [stdout, reason] of cases) {
+    const observed = hookDiagnostic({ status: 0, stdout, stderr: "private stderr" });
+    assert(observed.reason === reason, `SessionStart diagnostic reason lost: ${reason}`);
+    assert(!JSON.stringify(observed).includes("private"), "SessionStart diagnostic leaked untrusted output");
+  }
+  const timeout = hookDiagnostic({ status: null, signal: "SIGTERM", error: { code: "ETIMEDOUT" }, duration_ms: 7000 });
+  assert(timeout.error_code === "ETIMEDOUT" && timeout.signal === "SIGTERM" && timeout.exit_code === null
+    && timeout.duration_ms === 7000, "SessionStart process timeout diagnostic lost");
+  return { status: "PASS", cases: cases.length + 1, raw_context_retained: false };
 }
 
 function assert(condition, message) {
@@ -107,6 +162,7 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const diagnosticRegression = verifyHookDiagnosticPolicy();
   const oracleRegression = verifySpawnSyncOraclePolicy({
     source: fs.readFileSync(import.meta.filename, "utf8"),
     label: "verify-codex-client-install",
@@ -190,6 +246,7 @@ async function main() {
       path.join(clientRoot, "src"),
       path.join(clientRoot, "src", "nested", "deeper"),
     ];
+    const hookObservations = [];
     for (const invocationRoot of invocationRoots) {
       fs.mkdirSync(invocationRoot, { recursive: true });
       const hookResult = runHookCommand(exactHookCommand, {
@@ -197,24 +254,30 @@ async function main() {
         env,
         input: `${JSON.stringify({ hook_event_name: "SessionStart", cwd: invocationRoot })}\n`,
       });
-      const hookPayload = JSON.parse(hookResult.stdout);
-      assert(Object.keys(hookPayload).length === 1 && Object.hasOwn(hookPayload, "hookSpecificOutput"),
-        "packed SessionStart must emit only native-supported root fields");
+      const diagnostic = hookDiagnostic(hookResult);
+      hookObservations.push(diagnostic);
+      const detail = JSON.stringify(diagnostic);
+      let hookPayload;
+      try { hookPayload = JSON.parse(hookResult.stdout); }
+      catch { throw new Error(`SessionStart hook output is not complete JSON: ${detail}`); }
+      assert(hookPayload !== null && typeof hookPayload === "object" && !Array.isArray(hookPayload)
+        && Object.keys(hookPayload).length === 1 && Object.hasOwn(hookPayload, "hookSpecificOutput"),
+        `packed SessionStart must emit only native-supported root fields: ${detail}`);
       assert(
         hookPayload?.hookSpecificOutput?.hookEventName === "SessionStart",
-        `SessionStart hook output contract mismatch from ${invocationRoot}`,
+        `SessionStart hook output contract mismatch: ${detail}`,
       );
       assert(
         /AIDN canonical admission \(read-only\):/.test(hookPayload.hookSpecificOutput.additionalContext),
-        `SessionStart hook did not reach canonical admission from ${invocationRoot}`,
+        `SessionStart hook did not reach canonical admission: ${detail}`,
       );
       assert(
         /"admission":"(?:admitted|admitted_with_warnings|blocked)"/.test(hookPayload.hookSpecificOutput.additionalContext),
-        `SessionStart hook admission status missing from ${invocationRoot}`,
+        `SessionStart hook admission status missing: ${detail}`,
       );
       assert(
         !hookPayload.hookSpecificOutput.additionalContext.includes("Missing installed assets:"),
-        `SessionStart hook reported missing installed assets from ${invocationRoot}`,
+        `SessionStart hook reported missing installed assets: ${detail}`,
       );
     }
     assert(fs.existsSync(path.join(clientRoot, "AGENTS.md")), "client policy layer missing");
@@ -248,6 +311,8 @@ async function main() {
       native_tool_qualification: "SKIP: no native hook trust or Codex tool execution",
       exact_hook_command: exactHookCommand,
       hook_invocation_roots: invocationRoots.length,
+      hook_observations: hookObservations,
+      diagnostic_regression: diagnosticRegression,
       codex_discovery: codexDiscovery.status === "PASS"
         ? {
           status: "PASS",

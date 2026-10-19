@@ -288,6 +288,16 @@ definition and requires that it disappear from the advertised agents. This
 proves discovery, not agent execution. Neither command qualifies server
 installation or trusted native hook execution. Those remain separate checks.
 
+`tools/verify/verify-codex-client-install.mjs` retains bounded SessionStart
+observations before deleting its exclusive temporary client: exit code, signal,
+process error code, elapsed milliseconds, output sizes and an allowlisted
+degradation reason. Raw context and stderr are omitted to avoid disclosing
+project data. Its diagnostic regression checks distinguish runtime unavailability,
+binding changes, Git resolution, malformed output and unknown context. A passing
+rerun does not identify the cause of an older failure whose output was not retained.
+Admission assertions, the seven-second runtime budget and native trust remain
+unchanged; direct command invocation does not qualify automatic native dispatch.
+
 For bounded hook summaries, `verify-codex-native-integration-fixtures.mjs` checks
 real admitted and blocked CLI values, complete JSON parsing, the whole 2400-byte
 UTF-8 budget, escaping, explicit omissions, expansion and unchanged inputs.
