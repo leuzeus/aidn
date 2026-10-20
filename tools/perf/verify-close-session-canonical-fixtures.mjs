@@ -80,8 +80,8 @@ export async function verifyCanonicalSessionClose() {
       await store.writeIndexProjection({ payload: original }); const result = await admit();
       assert.equal(result.ok, false); assert.equal(result.action, "blocked_open_cycles_require_resolution");
     });
-    await check("sqlite_db_only_preserves_canonical_close_admission", async () => {
-      config("sqlite"); const sqlite = createRuntimeArtifactStore({ targetRoot: root, backend: "sqlite" });
+    for (const mode of ["db-only", "dual"]) await check(`sqlite_${mode}_preserves_canonical_close_admission`, async () => {
+      config("sqlite", mode); const sqlite = createRuntimeArtifactStore({ targetRoot: root, backend: "sqlite" });
       await sqlite.writeIndexProjection({ payload }); assert.equal((await admit()).ok, true);
     });
     await check("files_preserve_visible_authority", async () => {
