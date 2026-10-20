@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.13.3 (2026-10-20)
+
+- Read handoff admission and its dependent checks from the configured canonical
+  backend. Prefer PostgreSQL over stale visible bootstrap anchors and refuse
+  unavailable or ambiguous canonical context without silently falling back.
+  Preserve file and SQLite behavior, freshness, transition and artifact checks.
+- Validate final session closure against one canonical runtime context and the
+  explicitly selected session. Keep terminal cycle branch ownership available
+  after active focus is cleared, and prevent a refused closure from implicitly
+  synchronizing derived state back into the database.
+- Clarify the final cycle and session closure sequence and add regressions for
+  stale anchors, terminal ownership, nested hook failures and explicit repair
+  synchronization. Ordinary cycle admission still requires an active cycle.
+
 ## 0.13.2 (2026-10-19)
 
 - Reduce Windows generation-inventory overhead during native hook startup by
