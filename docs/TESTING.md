@@ -1351,3 +1351,6 @@ Template discovery uses the existing artifact-store list surface with
 complete canonical batch reads, wrong-name refusal, required missing models,
 ambiguous references, unavailable PostgreSQL and files/SQLite authority. Package,
 installed-client, real CLI and native session/cycle/admission evidence are distinct.
+The retained conditional-read regression also preserves a grouped read's exit2
+for an absent optional artifact, then uses the existing canonical list surface
+to establish presence before constructing the next complete required read set.

@@ -44,6 +44,17 @@ Before the first durable write in this skill, run:
 - (optional) gap-report.md
 - (optional) hypotheses.md
 
+Before reading conditional artifacts in database-backed modes, establish their
+current presence with `aidn runtime artifact-store list --limit 10000 --target .
+--json`. Use the returned exact paths; a list with fewer than the requested
+10000 rows establishes the complete selected scope at that observation. A full
+limit is inconclusive: stop rather than infer absence. Require the configured
+canonical backend; visible projections cannot establish presence in its place.
+In files mode without canonical PostgreSQL, use the authoritative file inventory.
+Batch required documents and positively present conditional documents only.
+A later missing/read/backend failure still stops; inventory is not admission
+or a guarantee that a later revision exists.
+
 2) Exit Checklist (produce a short report):
 
 ### Requirements & Acceptance

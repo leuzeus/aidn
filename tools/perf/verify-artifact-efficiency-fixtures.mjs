@@ -237,6 +237,20 @@ try {
     assert.equal(result.status,2); const data=JSON.parse(result.stdout);assert.equal(data.found,false);
     assert(data.artifacts[0].found);assert(data.artifacts.slice(1).every(entry=>!entry.found));
   });
+  check('real conditional grouped-read refusal remains hard; official inventory precedes correct read set', () => {
+    const prefix='cycles/C001-feature-pilot/';
+    const required=['audit-spec.md','brief.md','decisions.md','change-requests.md','hypotheses.md'];
+    const store=createProjectArtifactStore({targetRoot:temp});
+    try {for(const name of required)store.upsertArtifact({path:prefix+name,content:'# Required cycle artifact\n'+name+'\n',content_format:'utf8',kind:'other',family:'normative'});}finally{store.close();}
+    const actual=[prefix+'audit-spec.md',prefix+'brief.md',prefix+'decisions.md',prefix+'change-requests.md',prefix+'gap-report.md',prefix+'hypotheses.md','sessions/TEMPLATE_SESSION_SXXX.md','cycles/TEMPLATE_STATUS.md','cycles/TEMPLATE_traceability.md','cycles/TEMPLATE_decisions.md'];
+    const failed=cli('artifact-fetch',['--paths-json',JSON.stringify(actual),'--view','agent']);assert.equal(failed.status,2);assert.equal(JSON.parse(failed.stdout).found,false);
+    const listed=cli('artifact-store',['list','--limit','10000']);assert.equal(listed.status,0,listed.stderr);
+    const inventory=JSON.parse(listed.stdout);assert.equal(inventory.backend,'sqlite');assert(inventory.artifacts.length<10000);
+    const available=new Set(inventory.artifacts.map(a=>a.path));assert(!available.has(prefix+'gap-report.md'));
+    assert(required.every(name=>available.has(prefix+name)));
+    const selected=actual.filter(p=>p!==prefix+'gap-report.md'||available.has(p));
+    const read=cli('artifact-fetch',['--paths-json',JSON.stringify(selected),'--view','agent']);assert.equal(read.status,0,read.stderr);assert(JSON.parse(read.stdout).artifacts.every(a=>a.found&&typeof a.artifact.content==='string'));
+  });
   const filesTarget=path.join(temp,'template-files');fs.mkdirSync(filesTarget);
   fs.cpSync(path.join(root,'scaffold/docs_audit'),path.join(filesTarget,'docs/audit'),{recursive:true});
   prepareActivationFixture(filesTarget, root);

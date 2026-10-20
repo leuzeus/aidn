@@ -283,6 +283,14 @@ does not authorize an upsert or materialization; their existing effect rules
 remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
 implicit index imports with reason `postgres_canonical_backend`.
 
+For conditional project artifacts, `artifact-store list --limit 10000 --json`
+returns the selected canonical scope up to the existing supported PostgreSQL
+limit. Fewer than 10000 returned rows establishes completeness for that read;
+a full limit is inconclusive, never evidence of absence. Use exact returned
+paths and read every required or positively present conditional artifact. This
+does not downgrade a later missing read, authorize a write or establish future
+freshness. Standard models use the dedicated complete `--templates` selector.
+
 `artifact-store list --templates` derives its complete standard asset membership
 from the executing package's `scaffold/docs_audit` distribution (ADR-0013), without
 a parallel name mapping. It returns exact audit-relative `path`, contextual title,

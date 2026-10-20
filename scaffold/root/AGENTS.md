@@ -87,6 +87,8 @@ instead of fetching it solely to recover that preimage. The writer still checks
 the current revision and metadata transactionally; re-read after a conflict or
 when current authoritative context is required. Do not carry that assumption
 across a handoff or use it to bypass fresh admission.
+For conditional artifacts, establish current presence through the official
+canonical inventory before batching; owning skills define which reads are required.
 Discover exact template references through `runtime artifact-store list
 --templates --target . --json` before reading the required complete models.
 
