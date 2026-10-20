@@ -11,6 +11,28 @@ function runGit(target, args) {
   });
 }
 
+// Reference corpora are the tracked source, not a previously exercised local
+// client. Never import ignored stores, cached observations or untracked files.
+export function createTrackedFixtureFilter(sourceRoot, repoRoot = process.cwd()) {
+  const root = path.resolve(repoRoot);
+  const source = path.resolve(sourceRoot);
+  const relative = path.relative(root, source).replaceAll("\\", "/");
+  if (!relative || relative === ".." || relative.startsWith("../") || path.isAbsolute(relative)) {
+    throw new Error("Fixture source must be inside its repository");
+  }
+  const files = execFileSync("git", ["-C", root, "ls-files", "-z", "--", relative], {
+    encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
+  }).split("\0").filter(Boolean);
+  if (!files.length) throw new Error("Tracked fixture source is empty");
+  const key = value => process.platform === "win32" ? value.toLowerCase() : value;
+  const admitted = new Set(files.map(key));
+  for (const file of files) {
+    const parts = file.split("/");
+    while (parts.length > 1) { parts.pop(); admitted.add(key(parts.join("/"))); }
+  }
+  return candidate => admitted.has(key(path.relative(root, path.resolve(candidate)).replaceAll("\\", "/")));
+}
+
 export function copyFixtureToTmp(source, tmpRoot, prefix, options = {}) {
   const stamp = new Date().toISOString().replace(/[-:.]/g, "");
   const destination = path.resolve(tmpRoot, `${prefix}-${stamp}-${randomUUID().slice(0, 8)}`);

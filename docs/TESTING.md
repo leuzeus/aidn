@@ -1120,6 +1120,13 @@ inventories verify these admission reads leave projections and stores unchanged.
 These adapter fixtures are separate from real CLI/PostgreSQL and native MXC
 pilot evidence; they do not qualify a native `new_context` call.
 
+Admission, coordinator-next and runtime-repair fixtures copy their tracked
+reference corpus rather than ignored stores or observations left by earlier
+local runs. The tracked-copy regression retains visible bootstrap content and
+explicitly tracked hidden assets while excluding stale ignored SQLite/context
+files and untracked local material. It leaves the source corpus untouched;
+canonical stores required by a scenario must still be initialized explicitly.
+
 ### 4. Documentation / Generated Output Verifications
 
 Examples:

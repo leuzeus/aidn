@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { initGitRepo, removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
 import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
 import { deriveRuntimeStateRepairSummary } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 
@@ -86,7 +86,8 @@ function observePayload(payload, identity) {
 
 function verifyScenario(tempRoot, name, payload, expectations, options = {}) {
   const repo = path.join(tempRoot, name);
-  fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/repo-installed-core"), repo, { recursive: true });
+  const sourceRoot = path.resolve(process.cwd(), "tests/fixtures/repo-installed-core");
+  fs.cpSync(sourceRoot, repo, { recursive: true, filter: createTrackedFixtureFilter(sourceRoot) });
   if (options.observe) {
     const configPath = path.join(repo, ".aidn", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
