@@ -124,6 +124,12 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime list-agent-adapters --json`
 - `aidn runtime verify-agent-roster --json`
 - `aidn runtime handoff-admit --json`
+  - configured PostgreSQL is the canonical admission source, including with
+    visible bootstrap anchors; db-only SQLite also selects the canonical store.
+    The packet, current/runtime heads, cycle consistency and required audit
+    artifacts share that source priority. Unavailable or ambiguous canonical
+    state stops admission without falling back to visible files or local SQLite.
+    Files mode without PostgreSQL and dual SQLite retain visible-file precedence.
 - `aidn runtime pre-write-admit --json`
 
   `cycle-create` resolves canonical DB-backed context. A verified session with an
@@ -289,6 +295,19 @@ wrapper. No public skip flag or alias is added for this closure context.
 The wrapper skips post-hook DB synchronization on closure warning/refusal with
 reason `cycle_close_not_completed`; it must not replace the canonical evidence
 that prevented completion with local projections.
+
+The final `close-session` hook reads current state, session close decisions and
+cycle ownership from one canonical snapshot in db-backed or configured
+PostgreSQL mode. Stale bootstrap projections cannot satisfy admission. On the
+terminal cycle branch, its checkpoint verifies that cycle's session owner using
+the same bounded completion mapping as cycle closure. Keep the session reference
+selected until its final hook has confirmed closure; a cleared reference on a
+cycle branch must not select an arbitrary historical session. Backend failure
+or ambiguous ownership stops the hook. Overall
+and nested success remain required; this final check grants no ordinary write
+admission and does not reactivate a cycle.
+The wrapper also skips post-hook DB synchronization on session closure warning
+or refusal (`session_close_not_completed`), preserving the canonical refusal evidence.
 
 The `pr-orchestrate` hook diagnoses delivery from canonical session artifacts in
 dual/db-only and configured PostgreSQL modes, including review and post-merge

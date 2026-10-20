@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { evaluateHandoffAdmission } from "../../src/application/runtime/handoff-admit-use-case.mjs";
+import { resolveEffectiveRuntimePersistence } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { readLatestSharedHandoffRelay, resolveSharedCoordinationStore } from "../../src/application/runtime/shared-coordination-store-service.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { validateSharedRuntimeContext } from "../../src/application/runtime/shared-runtime-validation-service.mjs";
@@ -115,7 +116,14 @@ export async function admitHandoff({
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const sqliteFallback = dbBackedMode ? await loadDbIndexPayloadSafe(absoluteTargetRoot, sharedStateOptions) : {
+  const persistence = resolveEffectiveRuntimePersistence({ targetRoot: absoluteTargetRoot, ...sharedStateOptions });
+  const canonicalPostgres = persistence.backend === "postgres";
+  const useDb = dbBackedMode || canonicalPostgres;
+  // An explicitly configured canonical backend must not be replaced by a
+  // compatibility projection, including when visible bootstrap anchors remain.
+  const sqliteFallback = useDb ? await loadDbIndexPayloadSafe(absoluteTargetRoot, canonicalPostgres
+    ? { ...sharedStateOptions, localProjectionPolicy: "none" }
+    : sharedStateOptions) : {
     exists: false,
     sqliteFile: "",
     payload: null,
@@ -123,10 +131,15 @@ export async function admitHandoff({
     warning: "",
   };
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
+  const preferDb = useDb && (effectiveStateMode === "db-only" || canonicalPostgres);
+  if (preferDb && (!sqliteFallback.exists || sqliteFallback.warning)) {
+    throw new Error("canonical runtime backend is unavailable for handoff admission");
+  }
   const packetResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: packetFile,
-    dbBacked: dbBackedMode,
+    dbBacked: useDb,
+    preferDb,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
@@ -134,7 +147,8 @@ export async function admitHandoff({
   const currentStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: currentStateFile,
-    dbBacked: dbBackedMode,
+    dbBacked: useDb,
+    preferDb,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
@@ -142,7 +156,8 @@ export async function admitHandoff({
   const runtimeStateResolution = resolveAuditArtifactText({
     targetRoot: absoluteTargetRoot,
     candidatePath: runtimeStateFile,
-    dbBacked: dbBackedMode,
+    dbBacked: useDb,
+    preferDb,
     sqlitePayload: sqliteFallback.payload,
     sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
     dbSource,
@@ -202,7 +217,8 @@ export async function admitHandoff({
     targetRoot: absoluteTargetRoot,
     auditRoot: path.join(absoluteTargetRoot, "docs", "audit"),
     cycleId: normalizeScalar(current.get("active_cycle") ?? "none") || "none",
-    dbBacked: dbBackedMode,
+    dbBacked: useDb,
+    preferDb,
     sqlitePayload: sqliteFallback.payload,
     dbSource,
   });
@@ -245,11 +261,13 @@ export async function admitHandoff({
     runtimeStateSource: runtimeStateResolution.source,
     artifactExists(item) {
       const normalizedItem = String(item).replace(/\\/g, "/");
-      if (String(item).replace(/\\/g, "/").startsWith("docs/audit/")) {
+      const auditRelative = path.relative(path.join(absoluteTargetRoot, "docs", "audit"), resolveTargetPath(absoluteTargetRoot, normalizedItem));
+      if (auditRelative && !auditRelative.startsWith(`..${path.sep}`) && auditRelative !== ".." && !path.isAbsolute(auditRelative)) {
         return resolveAuditArtifactText({
           targetRoot: absoluteTargetRoot,
-          candidatePath: normalizedItem,
-          dbBacked: dbBackedMode,
+          candidatePath: `docs/audit/${auditRelative.replace(/\\/g, "/")}`,
+          dbBacked: useDb,
+          preferDb,
           sqlitePayload: sqliteFallback.payload,
           sqliteRuntimeHeads: sqliteFallback.runtimeHeads,
           dbSource,

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { copyFixtureToTmp, initGitRepo, removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 import { verifyCanonicalStartSession } from "./verify-start-session-canonical-fixtures.mjs";
 import {
@@ -378,11 +378,12 @@ function listMatchingDirectories(root, prefix) {
 
 function runCase(tmpRoot, testCase, onTargetCreated) {
   const sourceTarget = path.resolve(REPO_ROOT, testCase.fixture);
+  const trackedSource = createTrackedFixtureFilter(sourceTarget, REPO_ROOT);
   const targetRoot = copyFixtureToTmp(
     sourceTarget,
     tmpRoot,
     `tmp-start-session-${testCase.id}`,
-    { onDestinationCreated: onTargetCreated, filter: (source) => isActivationFixtureSource(sourceTarget, source, { freshContext: true }) },
+    { onDestinationCreated: onTargetCreated, filter: (source) => trackedSource(source) && isActivationFixtureSource(sourceTarget, source, { freshContext: true }) },
   );
   if (typeof testCase.mutate === "function") {
     testCase.mutate(targetRoot);

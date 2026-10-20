@@ -1107,6 +1107,26 @@ These are fixture results, not real PostgreSQL or native Codex qualification.
 Changes to the shared reader also require cycle-create and branch-cycle-audit
 admission checks; checkpoint changes require the checkpoint backend checks.
 
+`perf:verify-handoff-admit` also runs the canonical admission fixtures in
+`tools/perf/verify-handoff-admit-canonical-fixtures.mjs`. They retain stale
+visible bootstrap heads and cycle projections while reading injected PostgreSQL
+through the actual persistence adapter. Default admission must select PostgreSQL
+for the packet, current/runtime heads and dependent audit artifacts. Unavailable
+authority, ambiguous artifacts, invalid heads and missing canonical context
+cannot fall back to those files or an existing SQLite index. Canonical cycle
+freshness and required-artifact refusals remain enforced. Temporary SQLite
+stores exercise db-only priority and dual/file compatibility. Full filesystem
+inventories verify these admission reads leave projections and stores unchanged.
+These adapter fixtures are separate from real CLI/PostgreSQL and native MXC
+pilot evidence; they do not qualify a native `new_context` call.
+
+Admission, coordinator-next and runtime-repair fixtures copy their tracked
+reference corpus rather than ignored stores or observations left by earlier
+local runs. The tracked-copy regression retains visible bootstrap content and
+explicitly tracked hidden assets while excluding stale ignored SQLite/context
+files and untracked local material. It leaves the source corpus untouched;
+canonical stores required by a scenario must still be initialized explicitly.
+
 ### 4. Documentation / Generated Output Verifications
 
 Examples:
@@ -1244,6 +1264,20 @@ When adding a new verification:
 - if a test can legitimately skip, make the skip condition explicit and deterministic
 
 ## Recommended Reporting
+
+`verify-close-session-admission-fixtures.mjs` also runs the canonical session
+closure regressions. A single PostgreSQL snapshot must supply current state,
+session decisions and cycle ownership despite stale visible bootstrap files.
+Unavailable, ambiguous or inconsistent canonical context must stop admission;
+open-cycle decisions remain mandatory. SQLite db-only and files authority are
+checked separately. A final session checkpoint on a terminal cycle branch uses
+that validated owner's completion context and must pass its nested checks.
+These adapter fixtures do not prove native execution or `new_context`.
+The Codex repair-context fixture separately proves that a refused session close
+skips synchronization and preserves the canonical SQLite store byte for byte.
+Repair-summary propagation and hydration retain their existing assertions on a
+reload hook with explicit `--db-sync`, rather than depending on a refused close
+to import local projections.
 
 When closing a lot, report:
 
