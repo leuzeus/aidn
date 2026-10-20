@@ -139,6 +139,11 @@ function main() {
 
     const readySummary = runJson(summaryScript, ["--target", readyTarget, "--json"], repoRoot, 0);
     const blockedSummary = runJson(summaryScript, ["--target", blockedTarget, "--json"], repoRoot, 0);
+    // Entering db-only requires canonical workflow state, not merely a newly
+    // persisted coordination digest plus still-visible bootstrap projections.
+    runJson(path.resolve(repoRoot, "tools", "perf", "index-sync.mjs"), [
+      "--target", dbOnlyTarget, "--store", "sqlite", "--with-content", "--json",
+    ], repoRoot, 0);
     const dbOnlySummary = runJson(summaryScript, ["--target", dbOnlyTarget, "--json"], repoRoot, 0, {
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",
