@@ -1346,5 +1346,8 @@ Configured PostgreSQL failure must emit no partial batch or stale-file fallback.
 Native benchmarks must distinguish model round trips and cumulative item
 residency from unique document bytes; moving a rule read from shell to CLI must
 not be misreported as a new rule or a causal token saving.
-The installed cycle-create template mapping is checked against the actual
-scaffold assets so output filenames cannot silently become invented read paths.
+Template discovery uses the existing artifact-store list surface with
+`--templates`. Its regression gate checks distribution-derived exact references,
+complete canonical batch reads, wrong-name refusal, required missing models,
+ambiguous references, unavailable PostgreSQL and files/SQLite authority. Package,
+installed-client, real CLI and native session/cycle/admission evidence are distinct.

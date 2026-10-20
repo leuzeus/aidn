@@ -261,6 +261,7 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime session-plan --json`
 - `aidn runtime db-first-artifact --json`
 - `aidn runtime artifact-store list --json`
+- `aidn runtime artifact-store list --templates --json` discovers exact standard model references
 - `aidn runtime artifact-store get --json`
 - `aidn runtime artifact-store upsert --json`
 - `aidn runtime artifact-store materialize --json`
@@ -281,6 +282,19 @@ no implicit merge, deletion or migration of either scope occurs.
 does not authorize an upsert or materialization; their existing effect rules
 remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
 implicit index imports with reason `postgres_canonical_backend`.
+
+`artifact-store list --templates` derives its complete standard asset membership
+from the executing package's `scaffold/docs_audit` distribution (ADR-0013), without
+a parallel name mapping. It returns exact audit-relative `path`, contextual title,
+distribution and current source hashes, `read_method` and `projection_path`.
+Project template contents remain governed artifacts: files in files mode,
+canonical SQLite in dual/db-only, and configured PostgreSQL regardless of visible
+anchors. This inventory reads one fresh database snapshot without list truncation;
+it never imports, repairs, aliases or materializes. Missing distributed project
+models, duplicate references, unavailable scope/backend and unsafe links fail.
+The returned observation is consultative: obtain the required complete models via
+batch `artifact-fetch` in database modes or grouped file reads in files mode.
+Admission, freshness, revision and closure checks remain separate and mandatory.
 Artifact consultation and writes support an explicit `--view agent`. This v1
 view keeps the existing result envelope, backend, identity, SHA256, verdict and
 materialization evidence. Fetch retains text while omitting duplicate canonical

@@ -30,6 +30,12 @@ runtime pointers, leases or locks. An explicit non-redirected `AIDN_HOME` is
 supported. Recovery of an existing redirected installation is a reviewed
 same-version transfer and project rebinding, separate from ordinary update.
 
+Standard model discovery through `runtime artifact-store list --templates`
+uses this generation's distributed scaffold to determine exact membership.
+Project content and revisions remain owned by the configured project authority;
+visible projections and package model bytes never substitute for an unavailable
+canonical artifact. The inventory is a read-only observation, not admission.
+
 Preview is read-only. Application requires an exact confirmed plan, an unchanged
 registry and fresh compatibility checks for every remembered project. Unavailable,
 inconsistent or incompatible projects block the switch. No project is silently

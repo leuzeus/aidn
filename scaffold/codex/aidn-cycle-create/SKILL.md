@@ -65,28 +65,11 @@ docs/audit/cycles/CXXX-[type]-<short-title>/
 
 2) Create minimal required files using templates:
 
-Use the exact installed template paths below (audit-relative canonical keys in
-DB-backed modes). Do not derive template names from output filenames or invent
-a `TEMPLATE_CYCLE_*` naming convention. Discover any additional template through
-the installed inventory before requesting it. A missing required template still
-blocks the operation; do not substitute bootstrap text or a partial scaffold.
-
-| Output | Template |
-| --- | --- |
-| status.md | `cycles/TEMPLATE_STATUS.md` |
-| brief.md | `cycles/TEMPLATE_brief.md` |
-| plan.md | `cycles/TEMPLATE_plan.md` |
-| hypotheses.md | `cycles/TEMPLATE_hypotheses.md` |
-| audit-spec.md | `cycles/TEMPLATE_audit-spec.md` |
-| traceability.md | `cycles/TEMPLATE_traceability.md` |
-| decisions.md | `cycles/TEMPLATE_decisions.md` |
-| change-requests.md | `cycles/TEMPLATE_change-requests.md` |
-| gap-report.md (optional) | `cycles/TEMPLATE_gap-report.md` |
-
-Read the known required set in one `artifact-fetch --paths-json ... --view agent
---json` consultation when canonical DB reads apply; require every needed entry.
-In files mode read the corresponding installed `docs/audit/` files. Neither path
-resolution nor consultation replaces the pre-write admission above.
+Discover exact references with `aidn runtime artifact-store list --templates
+--target . --json`, then read the complete required models using the returned
+`path` and `read_method` (batch `artifact-fetch --paths-json ... --view agent
+--json` for database artifacts; `projection_path` for files). Require successful
+discovery and every required read. Consultation never replaces admission.
 
 - status.md (required)
 - brief.md

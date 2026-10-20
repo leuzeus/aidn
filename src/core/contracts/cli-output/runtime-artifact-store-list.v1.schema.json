@@ -12,7 +12,20 @@
     "artifact_store_diagnostic"
   ],
   "properties": {
-    "backend": { "type": "string", "enum": ["sqlite", "postgres"] },
+    "backend": { "type": "string", "enum": ["sqlite", "postgres", "files"] },
+    "template_inventory": {
+      "type": "object",
+      "required": ["consultative_only", "distribution", "runtime_state_mode", "complete", "content_included", "note"],
+      "properties": {
+        "consultative_only": { "const": true },
+        "distribution": { "const": "package:scaffold/docs_audit" },
+        "runtime_state_mode": { "enum": ["files", "dual", "db-only"] },
+        "complete": { "const": true },
+        "content_included": { "const": false },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "action": { "type": "string" },
     "sqlite_file": { "type": "string" },
     "artifacts": { "type": "array" },

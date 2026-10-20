@@ -10,6 +10,7 @@ import { createProjectArtifactStore } from '../../src/application/runtime/projec
 import { artifactContentHash, artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
 import { prepareActivationFixture } from './test-activation-fixture-lib.mjs';
+import { distributedTemplates, discoverProjectTemplates } from '../../src/application/runtime/template-inventory-service.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const isolatedEnvKeys = ['AIDN_RUNTIME_PERSISTENCE_BACKEND', 'AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF', 'AIDN_STATE_MODE', 'AIDN_EFFICIENCY_UNAVAILABLE'];
@@ -28,11 +29,11 @@ const initial = { path: 'cycles/C001-feature/status.md', kind: 'cycle_status', f
   canonical: { duplicate: content } };
 const sha256 = artifactContentHash(content);
 try {
-  check('installed cycle template read guidance resolves actual scaffold assets', () => {
-    const guide = fs.readFileSync(path.join(root, 'scaffold/codex/aidn-cycle-create/SKILL.md'), 'utf8');
-    const references = [...guide.matchAll(/`(cycles\/TEMPLATE_[A-Za-z0-9_.-]+\.md)`/g)].map(match => match[1]);
-    assert.equal(new Set(references).size, 9);
-    for (const reference of references) assert(fs.statSync(path.join(root, 'scaffold/docs_audit', reference)).isFile(), reference);
+  check('installed skills use official discovery without parallel model names', () => {
+    for (const skill of ['aidn-cycle-create', 'aidn-start-session']) {
+      const guide = fs.readFileSync(path.join(root, 'scaffold/codex', skill, 'SKILL.md'), 'utf8');
+      assert.match(guide, /artifact-store list --templates/); assert(!guide.includes('TEMPLATE_'));
+    }
   });
   check('bounded explicit batch paths reject malformed, empty and duplicate aliases', () => {
     assert.deepEqual(parseArtifactPaths('["notes.md","sessions/S001.md"]'), ['notes.md','sessions/S001.md']);
@@ -213,6 +214,50 @@ try {
     const after = JSON.parse(cli('artifact-fetch', argv).stdout).artifacts[0].artifact;
     assert.notEqual(after.sha256, before.sha256);assert.equal(after.content, before.content+'\nFresh revision\n');
   });
+  const templates = distributedTemplates();
+  check('real CLI discovers exact distribution references then reads complete batch', () => {
+    const store = createProjectArtifactStore({ targetRoot: temp });
+    try { for (const asset of templates) store.upsertArtifact({path:asset.path, content:fs.readFileSync(path.join(root,'scaffold/docs_audit',asset.path),'utf8'), content_format:'utf8', kind:'other', family:'normative'}); } finally { store.close(); }
+    const before = fs.readFileSync(path.join(temp,'.aidn/runtime/index/workflow-index.sqlite'));
+    const result = cli('artifact-store', ['list','--templates']);
+    assert.equal(result.status, 0, result.stderr);
+    const inventory = JSON.parse(result.stdout);
+    assert.deepEqual(inventory.artifacts.map(a => a.path), templates.map(a => a.path));
+    assert(inventory.template_inventory.consultative_only);
+    assert.deepEqual(validateJsonSchema(inventory, JSON.parse(fs.readFileSync(path.join(root,'src/core/contracts/cli-output/runtime-artifact-store-list.v1.schema.json')))), []);
+    const batch = cli('artifact-fetch', ['--paths-json', JSON.stringify(inventory.artifacts.map(a=>a.path)), '--view','agent']);
+    assert.equal(batch.status, 0, batch.stderr);
+    const entries = JSON.parse(batch.stdout).artifacts;
+    for (let i=0;i<entries.length;i++) { assert(entries[i].found);assert.equal(entries[i].artifact.content, fs.readFileSync(path.join(root,'scaffold/docs_audit',templates[i].path),'utf8')); }
+    assert.deepEqual(fs.readFileSync(path.join(temp,'.aidn/runtime/index/workflow-index.sqlite')), before);
+  });
+  check('actual failed guessed-name sequence retains missing entries and exit 2', () => {
+    const wrong = ['STATUS','BRIEF','PLAN','HYPOTHESES','AUDIT_SPEC','TRACEABILITY','DECISIONS','CHANGE_REQUESTS'].map(name=>`cycles/TEMPLATE_CYCLE_${name}.md`);
+    const result = cli('artifact-fetch',['--paths-json',JSON.stringify(['sessions/TEMPLATE_SESSION_SXXX.md',...wrong]),'--view','agent']);
+    assert.equal(result.status,2); const data=JSON.parse(result.stdout);assert.equal(data.found,false);
+    assert(data.artifacts[0].found);assert(data.artifacts.slice(1).every(entry=>!entry.found));
+  });
+  const filesTarget=path.join(temp,'template-files');fs.mkdirSync(filesTarget);
+  fs.cpSync(path.join(root,'scaffold/docs_audit'),path.join(filesTarget,'docs/audit'),{recursive:true});
+  prepareActivationFixture(filesTarget, root);
+  check('files discovery reads project authority without creating SQLite', () => {
+    const result=cli('artifact-store',['list','--templates'],filesTarget);assert.equal(result.status,0,result.stderr);
+    const data=JSON.parse(result.stdout);assert.equal(data.backend,'files');
+    for(const asset of data.artifacts) { assert.equal(asset.read_method,'file'); assert.equal(artifactContentHash(fs.readFileSync(path.join(filesTarget,asset.projection_path),'utf8')),asset.sha256); }
+    assert(!fs.existsSync(path.join(filesTarget,'.aidn/runtime/index/workflow-index.sqlite')));
+  });
+  check('required distributed model absent is a hard failure without replacement', () => {
+    fs.unlinkSync(path.join(filesTarget,'docs/audit',templates[0].path));
+    const result=cli('artifact-store',['list','--templates'],filesTarget);assert.notEqual(result.status,0);assert.match(result.stderr,/TEMPLATE_REQUIRED_UNAVAILABLE/);assert.equal(result.stdout.trim(),'');
+  });
+  await assert.rejects(discoverProjectTemplates({targetRoot:temp,snapshotReader:async()=>({backend:'sqlite',payload:{artifacts:[{path:templates[0].path},{path:templates[0].path}]}})}),/TEMPLATE_REFERENCE_AMBIGUOUS/);checks++;
+  check('dual mode discovery ignores stale visible projection', () => {
+    fs.writeFileSync(path.join(temp,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'dual',persistence:{backend:'sqlite'}}}));
+    const asset=templates[0];fs.mkdirSync(path.dirname(path.join(temp,'docs/audit',asset.path)),{recursive:true});fs.writeFileSync(path.join(temp,'docs/audit',asset.path),'# Stale projection\n');
+    const result=cli('artifact-store',['list','--templates']);assert.equal(result.status,0,result.stderr);
+    assert.equal(JSON.parse(result.stdout).artifacts[0].sha256,asset.distribution_sha256);
+    assert.equal(fs.readFileSync(path.join(temp,'docs/audit',asset.path),'utf8'),'# Stale projection\n');
+  });
   check('configured unavailable PG cannot fall back to local SQLite or visible files', () => {
     fs.mkdirSync(path.join(temp, '.aidn'), { recursive: true });
     fs.writeFileSync(path.join(temp, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'db-only', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
@@ -221,6 +266,7 @@ try {
     assert.equal(fs.readFileSync(path.join(temp, 'docs/audit/notes.md'), 'utf8'), '# File\n');
     const batch = cli('artifact-fetch', ['--paths-json','["notes.md"]','--view','agent']);
     assert.notEqual(batch.status, 0); assert.equal(batch.stdout.trim().startsWith('{'), false);
+    const discovery=cli('artifact-store',['list','--templates']);assert.notEqual(discovery.status,0);assert.equal(discovery.stdout.trim(),'');
   });
   console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements }));
 } finally {
