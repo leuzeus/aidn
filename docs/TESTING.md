@@ -1273,6 +1273,11 @@ open-cycle decisions remain mandatory. SQLite db-only and files authority are
 checked separately. A final session checkpoint on a terminal cycle branch uses
 that validated owner's completion context and must pass its nested checks.
 These adapter fixtures do not prove native execution or `new_context`.
+The Codex repair-context fixture separately proves that a refused session close
+skips synchronization and preserves the canonical SQLite store byte for byte.
+Repair-summary propagation and hydration retain their existing assertions on a
+reload hook with explicit `--db-sync`, rather than depending on a refused close
+to import local projections.
 
 When closing a lot, report:
 
