@@ -45,10 +45,10 @@ Before the first durable write in this skill, run:
 - (optional) hypotheses.md
 
 Before reading conditional artifacts in database-backed modes, establish their
-current presence with `aidn runtime artifact-store list --limit 10000 --target .
---json`. Use the returned exact paths; a list with fewer than the requested
-10000 rows establishes the complete selected scope at that observation. A full
-limit is inconclusive: stop rather than infer absence. Require the configured
+current presence with `aidn runtime artifact-store list --view agent --limit 10000 --target .
+--json`. Use the returned exact paths and require `inventory.complete: true`
+before inferring absence. An incomplete inventory is inconclusive: stop rather
+than infer absence. Require the configured
 canonical backend; visible projections cannot establish presence in its place.
 In files mode without canonical PostgreSQL, use the authoritative file inventory.
 Batch required documents and positively present conditional documents only.

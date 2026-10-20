@@ -89,6 +89,9 @@ when current authoritative context is required. Do not carry that assumption
 across a handoff or use it to bypass fresh admission.
 For conditional artifacts, establish current presence through the official
 canonical inventory before batching; owning skills define which reads are required.
+Use `runtime artifact-store list --view agent --limit 10000 --target . --json`
+for compact references; infer absence only when `inventory.complete` is true.
+This view contains no document bodies and never replaces required reads.
 Discover exact template references through `runtime artifact-store list
 --templates --target . --json` before reading the required complete models.
 

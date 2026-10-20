@@ -11,6 +11,7 @@ import { artifactContentHash, artifactMetadataHash } from '../../src/core/workfl
 import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
 import { prepareActivationFixture } from './test-activation-fixture-lib.mjs';
 import { distributedTemplates, discoverProjectTemplates } from '../../src/application/runtime/template-inventory-service.mjs';
+import { discoverProjectArtifacts } from '../../src/application/runtime/artifact-inventory-service.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const isolatedEnvKeys = ['AIDN_RUNTIME_PERSISTENCE_BACKEND', 'AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF', 'AIDN_STATE_MODE', 'AIDN_EFFICIENCY_UNAVAILABLE'];
@@ -272,6 +273,37 @@ try {
     assert.equal(JSON.parse(result.stdout).artifacts[0].sha256,asset.distribution_sha256);
     assert.equal(fs.readFileSync(path.join(temp,'docs/audit',asset.path),'utf8'),'# Stale projection\n');
   });
+  check('compact inventory has complete canonical references without bodies and leaves SQLite unchanged', () => {
+    const index = path.join(temp,'.aidn/runtime/index/workflow-index.sqlite'), before = fs.readFileSync(index);
+    const full = cli('artifact-store',['list','--limit','10000']);
+    const result = cli('artifact-store',['list','--view','agent','--limit','10000']);
+    assert.equal(result.status,0,result.stderr);const inventory = JSON.parse(result.stdout);
+    assert.equal(inventory.backend,'sqlite');assert.equal(inventory.inventory.complete,true);
+    assert.equal(inventory.inventory.total_count,inventory.artifacts.length);
+    assert(inventory.artifacts.every(a => a.sha256 && !('content' in a) && !('canonical' in a)));
+    const schema = JSON.parse(fs.readFileSync(path.join(root,'src/core/contracts/cli-output/runtime-artifact-store-list.v1.schema.json')));
+    assert.deepEqual(validateJsonSchema(inventory,schema),[]);
+    assert(fs.readFileSync(index).equals(before));
+    measurements.full_inventory_bytes=Buffer.byteLength(full.stdout);measurements.compact_inventory_bytes=Buffer.byteLength(result.stdout);
+    assert(measurements.compact_inventory_bytes < measurements.full_inventory_bytes / 2);
+    const limited=JSON.parse(cli('artifact-store',['list','--view','agent','--limit','1']).stdout);
+    assert.equal(limited.inventory.complete,false);assert.equal(limited.artifacts.length,1);
+    for(const flags of [['--limit','10001'],['--limit','0'],['--limit','1.5'],['--templates'],['--sqlite-file','other']]) {
+      const refused=cli('artifact-store',['list','--view','agent',...flags]);assert.notEqual(refused.status,0);assert.equal(refused.stdout.trim(),'');
+    }
+  });
+  check('compact file inventory ignores stale index and preserves authoritative file', () => {
+    const target=path.join(temp,'file-primary'),file=path.join(target,'docs/audit/sessions/S009.md'),before=fs.readFileSync(file);
+    const result=cli('artifact-store',['list','--view','agent','--limit','10000'],target);
+    assert.equal(result.status,0,result.stderr);const inventory=JSON.parse(result.stdout);
+    assert.equal(inventory.backend,'files');assert.equal(inventory.inventory.complete,true);
+    assert.equal(inventory.artifacts.find(a=>a.path==='sessions/S009.md').sha256,artifactContentHash(before));
+    assert(fs.readFileSync(file).equals(before));
+  });
+  for (const rows of [[{path:'same.md',sha256}], [{path:'same.md',sha256},{path:'SAME.md',sha256}], [{path:'../escape.md',sha256}]]) {
+    if(rows.length===1 && rows[0].path==='same.md') continue;
+    await assert.rejects(discoverProjectArtifacts({targetRoot:temp,snapshotReader:async()=>({backend:'sqlite',payload:{artifacts:rows}})}),/AMBIGUOUS/);checks++;
+  }
   check('configured unavailable PG cannot fall back to local SQLite or visible files', () => {
     fs.mkdirSync(path.join(temp, '.aidn'), { recursive: true });
     fs.writeFileSync(path.join(temp, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'db-only', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
@@ -281,6 +313,7 @@ try {
     const batch = cli('artifact-fetch', ['--paths-json','["notes.md"]','--view','agent']);
     assert.notEqual(batch.status, 0); assert.equal(batch.stdout.trim().startsWith('{'), false);
     const discovery=cli('artifact-store',['list','--templates']);assert.notEqual(discovery.status,0);assert.equal(discovery.stdout.trim(),'');
+    const inventory=cli('artifact-store',['list','--view','agent']);assert.notEqual(inventory.status,0);assert.equal(inventory.stdout.trim(),'');
   });
   console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements }));
 } finally {

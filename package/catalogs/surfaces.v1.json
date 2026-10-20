@@ -31125,6 +31125,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn runtime artifact-store:--view",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/artifact-store.mjs",
+      "entrypoint": "aidn runtime artifact-store --view",
+      "implementation": "tools/runtime/artifact-store.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/artifact-store.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn runtime artifact-store:-h",
       "kind": "option",
       "status": "active",

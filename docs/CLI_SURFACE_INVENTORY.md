@@ -1,5 +1,13 @@
 # CLI Surface Inventory
 
+`runtime artifact-store list --view agent --limit 10000 --json` is an opt-in
+compact project inventory. It resolves configured canonical authority (files,
+SQLite or PostgreSQL), exposes references/revisions without bodies or canonical
+duplicates, and explicitly reports `inventory.complete`, total count and limit.
+Only a complete observation supports conditional absence. Alternate audit roots,
+SQLite overrides and template-selector combinations are rejected for this view.
+Default full list output is unchanged. Inventory is consultative, not admission.
+
 Date: 2026-05-23
 Status: current codebase inventory
 
