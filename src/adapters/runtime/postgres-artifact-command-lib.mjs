@@ -90,7 +90,7 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
       await upsert(client, 'artifact_blobs', Object.fromEntries([
         'scope_key', 'artifact_id', 'content_format', 'content', 'canonical_format', 'canonical_json', 'sha256', 'size_bytes', 'updated_at',
       ].map(key => [key, row[key]])), ['scope_key', 'artifact_id']);
-      for (const head of buildRuntimeHeadRows([{ ...row, canonical_json: options.artifact.canonical }], { scopeKey: scope })) {
+      for (const head of buildRuntimeHeadRows([{ ...row, canonical_json: (replacement ?? options.artifact).canonical }], { scopeKey: scope })) {
         const previous = await client.query('SELECT artifact_path FROM aidn_runtime.runtime_heads WHERE scope_key=$1 AND head_key=$2', [scope, head.head_key]);
         if (previous.rows[0] && previous.rows[0].artifact_path !== artifactPath) throw new Error('ARTIFACT_HEAD_PATH_CONFLICT');
         await upsert(client, 'runtime_heads', head, ['scope_key', 'head_key']);

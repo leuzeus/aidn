@@ -12,6 +12,8 @@ import { validateJsonSchema } from '../../src/core/contracts/json-schema-validat
 import { prepareActivationFixture } from './test-activation-fixture-lib.mjs';
 import { distributedTemplates, discoverProjectTemplates } from '../../src/application/runtime/template-inventory-service.mjs';
 import { discoverProjectArtifacts } from '../../src/application/runtime/artifact-inventory-service.mjs';
+import { executePostgresArtifactCommand } from '../../src/adapters/runtime/postgres-artifact-command-lib.mjs';
+import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from '../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const isolatedEnvKeys = ['AIDN_RUNTIME_PERSISTENCE_BACKEND', 'AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF', 'AIDN_STATE_MODE', 'AIDN_EFFICIENCY_UNAVAILABLE'];
@@ -114,6 +116,22 @@ try {
       store.upsertArtifact({...current,family:observed.family});
     } finally {store.close();}
   });
+  for (const reserved of [false,true]) {
+    const queries=[];
+    const client={async query(sql){queries.push(sql);
+      if(sql.includes('MAX(schema_version)'))return {rows:[{version:POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION}]};
+      if(sql.includes('SELECT DISTINCT scope_key'))return {rows:[{scope_key:'fixture-scope'}]};
+      if(sql.includes('to_regclass'))return {rows:[{execution_runs:'aidn_shared.execution_runs'}]};
+      if(sql.includes('SELECT run_id'))return {rows:reserved?[{run_id:'reserved'}]:[]};
+      if(sql.includes('v_materializable_artifacts'))return {rows:[{...initial,path:'notes.md',sha256,canonical_json:{duplicate:content}}]};
+      if(sql.includes('SELECT artifact_id'))return {rows:[{artifact_id:1}]};
+      return {rows:[]};
+    }};
+    const request={path:'notes.md',replacements,expectedSha256:sha256};
+    if(reserved){await assert.rejects(executePostgresArtifactCommand(client,['fixture-scope'],'replace',request),/EXECUTION_SCOPE_RESERVED/);assert(!queries.some(q=>q.startsWith('INSERT')));assert.equal(queries.at(-1),'ROLLBACK');}
+    else {const result=await executePostgresArtifactCommand(client,['fixture-scope'],'replace',request);assert(result.content.includes('VERIFYING'));assert.equal(queries.filter(q=>q.includes('v_materializable_artifacts')).length,1);assert.equal(queries.at(-1),'COMMIT');}
+    assert(queries.indexOf('LOCK TABLE aidn_runtime.artifacts IN SHARE ROW EXCLUSIVE MODE')<queries.findIndex(q=>q.includes('pg_advisory_xact_lock')));checks++;
+  }
   check('overlapping occurrences and oversized replacement sets fail closed', () => {
     assert.throws(() => applyArtifactReplacements({ content_format: 'utf8', content: 'aaa' }, [{ old: 'aa', new: 'b' }], artifactContentHash('aaa')), /NOT_UNIQUE/);
     assert.throws(() => applyArtifactReplacements(initial, Array(33).fill({ old: 'state', new: 'mode' }), sha256), /INVALID/);
