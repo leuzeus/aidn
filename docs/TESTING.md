@@ -1265,6 +1265,15 @@ When adding a new verification:
 
 ## Recommended Reporting
 
+`verify-close-session-admission-fixtures.mjs` also runs the canonical session
+closure regressions. A single PostgreSQL snapshot must supply current state,
+session decisions and cycle ownership despite stale visible bootstrap files.
+Unavailable, ambiguous or inconsistent canonical context must stop admission;
+open-cycle decisions remain mandatory. SQLite db-only and files authority are
+checked separately. A final session checkpoint on a terminal cycle branch uses
+that validated owner's completion context and must pass its nested checks.
+These adapter fixtures do not prove native execution or `new_context`.
+
 When closing a lot, report:
 
 - which commands passed

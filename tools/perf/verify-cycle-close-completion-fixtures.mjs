@@ -79,9 +79,20 @@ try {
   for (const mode of ['files', 'dual', 'db-only']) for (const finalState of ['DONE', 'NO_GO', 'DROPPED']) {
     const root = fixture(mode);
     put(root, statusPath, status(finalState));
+    if (mode === "db-only" && finalState === "DONE") {
+      sync(root);
+      const initial = run(root, 'tools/runtime/pre-write-admit.mjs', ['--skill', 'cycle-close', '--strict']);
+      assert.equal(initial.result.admitted, true, JSON.stringify(initial));
+    }
     const current = path.join(root, 'docs/audit/CURRENT-STATE.md');
     fs.writeFileSync(current, fs.readFileSync(current, 'utf8').replace('active_cycle: C101', 'active_cycle: none'));
     if (mode !== 'files') sync(root);
+    if (mode === "db-only" && finalState === "DONE") {
+      const ordinary = run(root, 'tools/runtime/pre-write-admit.mjs', ['--skill', 'cycle-close', '--strict']);
+      assert.equal(ordinary.result.admitted, false, JSON.stringify(ordinary));
+      assert.notEqual(ordinary.status, 0);
+      console.log('PASS observed 011 sequence: DONE while focused admits; focus cleared refuses ordinary cycle-close');
+    }
     const generic = run(root, 'tools/perf/reload-check.mjs').result;
     assert.equal(generic.decision, 'stop');
     assert(generic.reason_codes.includes('MAPPING_MISSING'));

@@ -296,6 +296,18 @@ The wrapper skips post-hook DB synchronization on closure warning/refusal with
 reason `cycle_close_not_completed`; it must not replace the canonical evidence
 that prevented completion with local projections.
 
+The final `close-session` hook reads current state, session close decisions and
+cycle ownership from one canonical snapshot in db-backed or configured
+PostgreSQL mode. Stale bootstrap projections cannot satisfy admission. On the
+terminal cycle branch, its checkpoint verifies that cycle's session owner using
+the same bounded completion mapping as cycle closure. If both focus references
+were cleared, only the unique CLOSED owner with checked close gate and snapshot
+can be selected. Backend failure or ambiguous ownership stops the hook. Overall
+and nested success remain required; this final check grants no ordinary write
+admission and does not reactivate a cycle.
+The wrapper also skips post-hook DB synchronization on session closure warning
+or refusal (`session_close_not_completed`), preserving the canonical refusal evidence.
+
 The `pr-orchestrate` hook diagnoses delivery from canonical session artifacts in
 dual/db-only and configured PostgreSQL modes, including review and post-merge
 sync. An unavailable, ambiguous or inconsistent canonical session produces
