@@ -1,9 +1,7 @@
 import path from "node:path";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { createProjectArtifactStore } from './project-artifact-store-service.mjs';
-import { applyArtifactReplacements } from './artifact-efficiency-service.mjs';
-import { assertProjectArtifactCompareSwap } from '../../core/ports/project-artifact-store-port.mjs';
-import { artifactMetadataHash } from '../../core/workflow/artifact-compare-swap.mjs';
+import { assertProjectArtifactReplacements } from '../../core/ports/project-artifact-store-port.mjs';
 import { resolveEffectiveRuntimePersistence } from './runtime-persistence-service.mjs';
 import { readAidnProjectConfig, resolveConfigStateMode, resolveConfigRuntimePersistence } from '../../lib/config/aidn-config-lib.mjs';
 import {
@@ -14,7 +12,7 @@ import {
   shouldMaterialize,
 } from "./db-first-artifact-lib.mjs";
 
-export function runDbFirstArtifactUseCase(options = {}) {
+export function runDbFirstArtifactUseCase(options = {}, { storeFactory = createProjectArtifactStore } = {}) {
   const targetRoot = path.resolve(process.cwd(), options.target ?? ".");
   const stateMode = resolveStateMode(targetRoot, options.stateMode);
   const relPath = String(options.path ?? "").replace(/\\/g, "/");
@@ -44,7 +42,7 @@ export function runDbFirstArtifactUseCase(options = {}) {
   const pathSessionId = relPath.match(/^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/i)?.[1]?.toUpperCase();
   if ((pathCycleId && options.cycleId && options.cycleId !== pathCycleId)
       || (pathSessionId && options.sessionId && options.sessionId !== pathSessionId)) throw new Error("ARTIFACT_IDENTITY_CONFLICT");
-  const store = createProjectArtifactStore({
+  const store = storeFactory({
     targetRoot,
     auditRoot: options.auditRoot,
     sqliteFile: path.isAbsolute(options.sqliteFile ?? "")
@@ -52,38 +50,39 @@ export function runDbFirstArtifactUseCase(options = {}) {
       : path.resolve(targetRoot, options.sqliteFile ?? ".aidn/runtime/index/workflow-index.sqlite"),
   });
   try {
-    const previous = replacing ? store.getArtifact(relPath) : null;
-    const content = replacing ? applyArtifactReplacements(previous, options.replacements, options.expectedSha256)
-      : fullContent;
-    const kind = previous?.kind ?? inferKind(relPath, options.kind ?? "other");
-    const family = previous?.family ?? inferFamily(relPath, options.family ?? "unknown");
-    const canonical = relPath.toLowerCase().endsWith(".md")
-      ? buildCanonicalFromMarkdown(content, {
-        relativePath: relPath,
-        kind,
-      })
-      : null;
+    let artifact;
+    if (replacing) {
+      artifact = assertProjectArtifactReplacements(store).replaceArtifact({ path: relPath,
+        replacements: options.replacements, expectedSha256: options.expectedSha256 });
+    } else {
+      const content = fullContent;
+      const kind = inferKind(relPath, options.kind ?? "other");
+      const family = inferFamily(relPath, options.family ?? "unknown");
+      const canonical = relPath.toLowerCase().endsWith(".md")
+        ? buildCanonicalFromMarkdown(content, {
+          relativePath: relPath,
+          kind,
+        })
+        : null;
 
-    const input = {
-      ...(previous ?? {}),
-      path: relPath,
-      kind,
-      family,
-      subtype: previous?.subtype ?? (options.subtype || (pathCycleId ? "status" : null)),
-      content,
-      content_format: "utf8",
-      canonical_format: canonical ? "markdown-canonical-v1" : null,
-      canonical,
-      session_id: previous?.session_id ?? (options.sessionId || pathSessionId || null),
-      cycle_id: previous?.cycle_id ?? (options.cycleId || pathCycleId || null),
-      sha256: undefined,
-      size_bytes: undefined,
-      updated_at: undefined,
-      mtime_ns: undefined,
-    };
-    const artifact = replacing ? assertProjectArtifactCompareSwap(store).compareAndSwapArtifact({
-      artifact: input, expectedSha256: options.expectedSha256, expectedMetadataSha256: artifactMetadataHash(previous),
-    }) : store.upsertArtifact(input);
+      const input = {
+        path: relPath,
+        kind,
+        family,
+        subtype: (options.subtype || (pathCycleId ? "status" : null)),
+        content,
+        content_format: "utf8",
+        canonical_format: canonical ? "markdown-canonical-v1" : null,
+        canonical,
+        session_id: (options.sessionId || pathSessionId || null),
+        cycle_id: (options.cycleId || pathCycleId || null),
+        sha256: undefined,
+        size_bytes: undefined,
+        updated_at: undefined,
+        mtime_ns: undefined,
+      };
+      artifact = store.upsertArtifact(input);
+    }
     const materialize = shouldMaterialize(stateMode, options.materialize ?? "");
     let materializeResult = null;
     if (materialize) {

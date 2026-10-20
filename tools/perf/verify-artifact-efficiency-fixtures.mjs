@@ -80,6 +80,7 @@ try {
     try { assert.equal(store.getArtifact(initial.path).sha256, changed.artifact.sha256); } finally { store.close(); }
   });
   check('transactional CAS rejects an intervening writer after the patch read', () => {
+    // The ordinary full-content capability remains independently protected.
     const store = createProjectArtifactStore({ targetRoot: temp });
     try {
       const observed = store.getArtifact(initial.path);
@@ -88,6 +89,30 @@ try {
       assert.throws(() => store.compareAndSwapArtifact({ artifact: { ...initial, content: candidate }, expectedSha256: observed.sha256 }), /REVISION_CONFLICT/);
       assert.equal(store.getArtifact(initial.path).sha256, winner.artifact.sha256);
     } finally { store.close(); }
+  });
+  check('delta uses one locked store operation without a detached preimage read', () => {
+    const store = createProjectArtifactStore({targetRoot:temp});let calls=0;
+    const observed=store.getArtifact(initial.path);
+    const result=runDbFirstArtifactUseCase({...options,replacements:[{old:'VERIFYING',new:'IMPLEMENTING'}],expectedSha256:observed.sha256},{storeFactory:()=>({
+      ...store, getArtifact(){throw new Error('DETACHED_PREIMAGE_READ');},
+      replaceArtifact(request){calls++;return store.replaceArtifact(request);}
+    })});
+    assert.equal(calls,1);assert(result.artifact.content.includes('IMPLEMENTING'));
+    runDbFirstArtifactUseCase({...options,replacements,expectedSha256:result.artifact.sha256});
+  });
+  check('locked replacement preserves current metadata and rolls back stale or ambiguous deltas', () => {
+    const store=createProjectArtifactStore({targetRoot:temp});
+    try {
+      const observed=store.getArtifact(initial.path);
+      store.upsertArtifact({...observed,family:'support'});
+      assert.throws(()=>store.replaceArtifact({path:initial.path,replacements:[{old:'VERIFYING',new:'DONE'}],expectedSha256:observed.sha256,expectedMetadataSha256:artifactMetadataHash(observed)}),/REVISION_CONFLICT/);
+      assert.equal(store.getArtifact(initial.path).content,observed.content);
+      assert.throws(()=>store.replaceArtifact({path:initial.path,replacements:[{old:'VERIFYING',new:'DONE'},{old:'absent',new:'x'}],expectedSha256:observed.sha256}),/NOT_UNIQUE/);
+      assert.equal(store.getArtifact(initial.path).content,observed.content);
+      const current=store.replaceArtifact({path:initial.path,replacements:[{old:'VERIFYING',new:'VERIFYING'}],expectedSha256:observed.sha256});
+      assert.equal(current.family,'support');assert.equal(current.cycle_id,'C001');
+      store.upsertArtifact({...current,family:observed.family});
+    } finally {store.close();}
   });
   check('overlapping occurrences and oversized replacement sets fail closed', () => {
     assert.throws(() => applyArtifactReplacements({ content_format: 'utf8', content: 'aaa' }, [{ old: 'aa', new: 'b' }], artifactContentHash('aaa')), /NOT_UNIQUE/);

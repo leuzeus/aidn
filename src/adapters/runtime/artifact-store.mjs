@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { assertArtifactCompareSwap } from "../../core/workflow/artifact-compare-swap.mjs";
+import { prepareLockedArtifactReplacement } from '../../lib/workflow/artifact-replacement-lib.mjs';
 import {
   cleanupOrphanArtifactBlobs,
   ensureWorkflowDbSchema,
@@ -333,6 +334,16 @@ export function createArtifactStore(options = {}) {
     sqlite_file: sqliteFile,
     read_only: readOnly,
     exists: true,
+    replaceArtifact(request) {
+      if (readOnly) throw new Error('Artifact store is read-only');
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const artifact = prepareLockedArtifactReplacement(store.getArtifact(request.path), request);
+        const result = store.upsertArtifact(artifact);
+        db.exec('COMMIT');
+        return result;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    },
     compareAndSwapArtifact(request) {
       if (readOnly) throw new Error("Artifact store is read-only");
       db.exec("BEGIN IMMEDIATE");

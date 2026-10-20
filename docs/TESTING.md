@@ -1339,6 +1339,11 @@ The compact project inventory additionally checks metadata-only exact references
 complete/truncated observations, bounded limits, canonical files over stale
 indexes, duplicate/unsafe references, unchanged SQLite bytes and unavailable
 configured PostgreSQL without partial output. Default full list remains available.
+Locked differential writes additionally prove one adapter operation without a
+detached preimage read, rollback of a partially applicable replacement list,
+preservation of current ownership/classification and explicit metadata conflict
+refusal. Full-content CAS retains its independent content/metadata conflict tests.
+Real PostgreSQL and native qualification remain separate from these fixtures.
 The same gate refuses deltas built from stale indexes in configured `files`
 mode, projection-mode authority overrides, and SQLite overrides of canonical
 PostgreSQL. It verifies that the authoritative file and index remain untouched.

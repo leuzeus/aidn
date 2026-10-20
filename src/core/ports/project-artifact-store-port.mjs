@@ -13,3 +13,13 @@ export function assertProjectArtifactCompareSwap(store) {
   if (typeof store.compareAndSwapArtifact !== 'function') throw new TypeError('ProjectArtifactStore requires compareAndSwapArtifact');
   return store;
 }
+
+// Locked read/replace/write, with the same revision and metadata guarantees.
+// request = { path, replacements, expectedSha256, expectedMetadataSha256? }.
+// Replacement requests cannot supply stale ownership/classification to restore.
+// Never emulate this capability using an unlocked read followed by an upsert.
+export function assertProjectArtifactReplacements(store) {
+  assertProjectArtifactStore(store);
+  if (typeof store.replaceArtifact !== 'function') throw new TypeError('ProjectArtifactStore requires replaceArtifact');
+  return store;
+}

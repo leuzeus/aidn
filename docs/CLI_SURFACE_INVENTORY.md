@@ -8,6 +8,13 @@ Only a complete observation supports conditional absence. Alternate audit roots,
 SQLite overrides and template-selector combinations are rejected for this view.
 Default full list output is unchanged. Inventory is consultative, not admission.
 
+Canonical `db-first-artifact --replace ... --expect-sha256 ...` performs the
+preimage read, exact replacement, metadata preservation, canonical reconstruction
+and write inside one existing adapter transaction. PostgreSQL uses one worker
+exchange rather than a detached get plus CAS. The public command/output and
+ordinary full-content CAS capability remain unchanged. Scope reservation fences,
+revision conflicts and explicit projection policy remain enforced.
+
 Date: 2026-05-23
 Status: current codebase inventory
 
