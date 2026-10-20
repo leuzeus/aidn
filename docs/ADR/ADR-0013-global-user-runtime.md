@@ -1,4 +1,4 @@
-# ADR-0013 — One user-level AIDN runtime
+# ADR-0013 â€” One user-level AIDN runtime
 
 ## Status
 
@@ -9,6 +9,20 @@ This decision supersedes independent per-project engine versions for projects
 explicitly migrated to the global installation. Existing local installations
 continue working until migrated. It does not supersede project activation,
 native client trust, optional PostgreSQL, or the local-first data boundary.
+
+## Compact observations and locked differential writes
+
+The opt-in project inventory exposes only exact references, classifications and
+revisions from the configured authority, with explicit completeness. It is a
+consultative projection, never a freshness or write grant. Distributed template
+membership remains separate from this current project-artifact inventory.
+
+Differential artifact writes read and rebuild the current preimage inside the
+existing adapter write transaction. PostgreSQL retains table/scope lock order,
+reservation fencing, revision refusal and current metadata; SQLite retains its
+immediate transaction. No detached read or fallback upsert implements this port.
+The ordinary full-content CAS contract remains independently available. No new
+canonical concept, shared surface, migration or authority transfer is introduced.
 
 ## Decision
 
@@ -29,6 +43,12 @@ refuse a redirected home rather than publishing a launcher backed by split
 runtime pointers, leases or locks. An explicit non-redirected `AIDN_HOME` is
 supported. Recovery of an existing redirected installation is a reviewed
 same-version transfer and project rebinding, separate from ordinary update.
+
+Standard model discovery through `runtime artifact-store list --templates`
+uses this generation's distributed scaffold to determine exact membership.
+Project content and revisions remain owned by the configured project authority;
+visible projections and package model bytes never substitute for an unavailable
+canonical artifact. The inventory is a read-only observation, not admission.
 
 Preview is read-only. Application requires an exact confirmed plan, an unchanged
 registry and fresh compatibility checks for every remembered project. Unavailable,

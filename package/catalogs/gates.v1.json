@@ -493,6 +493,23 @@
       "obligation": {"dev": "required", "main": "required", "release": "required"}
     },
     {
+      "id": "runtime-artifact-efficiency",
+      "family": "runtime",
+      "script": "perf:verify-artifact-efficiency",
+      "job": "governance-admission/gates",
+      "surfaces": [
+        "opt-in artifact agent views",
+        "complete canonical Markdown consultation",
+        "atomic revision-checked artifact replacements"
+      ],
+      "condition": "always",
+      "obligation": {
+        "dev": "required",
+        "main": "required",
+        "release": "required"
+      }
+    },
+    {
       "id": "runtime-db-runtime-cli",
       "family": "runtime",
       "script": "perf:verify-db-runtime-cli",

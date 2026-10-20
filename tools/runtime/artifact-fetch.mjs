@@ -6,6 +6,7 @@ import {
   resolveConfigRuntimePersistence,
 } from "../../src/lib/config/aidn-config-lib.mjs";
 import { readRuntimeSnapshot } from "../../src/application/runtime/runtime-snapshot-service.mjs";
+import { artifactAgentView, parseArtifactPaths } from "../../src/application/runtime/artifact-efficiency-service.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -42,6 +43,15 @@ function parseArgs(argv) {
     } else if (token === "--cycle-id") {
       args.cycleId = String(argv[i + 1] ?? "").trim();
       i += 1;
+    } else if (token === "--view") {
+      args.view = argv[++i];
+      if (args.view !== "agent") throw new Error("Invalid --view. Expected agent");
+    } else if (token === "--paths-json") {
+      if (args.pathsJson !== undefined) throw new Error('ARTIFACT_PATHS_DUPLICATE_OPTION');
+      args.pathsJson = argv[++i];
+    } else if (token === "--heading") {
+      args.heading = argv[++i];
+      if (!args.heading || args.heading.startsWith('--')) throw new Error("Missing --heading value");
     } else if (token === "--metadata-only") {
       args.metadataOnly = true;
     } else if (token === "--json") {
@@ -56,10 +66,15 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
+  if (args.pathsJson !== undefined) {
+    args.paths = parseArtifactPaths(args.pathsJson);
+    if (args.view !== 'agent' || !args.json || args.path || args.artifactId || args.sessionId || args.cycleId || args.heading) throw new Error('--paths-json requires --view agent --json and no other selector or heading');
+  }
+  if (args.heading && (args.view !== 'agent' || args.metadataOnly || !args.path || args.artifactId || args.sessionId || args.cycleId)) throw new Error('--heading requires one --path selector, --view agent and complete canonical text');
   if (!["auto", "json", "sqlite", "postgres"].includes(args.backend)) {
     throw new Error("Invalid --backend. Expected auto|json|sqlite|postgres");
   }
-  if (!args.artifactId && !args.path && !args.sessionId && !args.cycleId) {
+  if (!args.paths && !args.artifactId && !args.path && !args.sessionId && !args.cycleId) {
     throw new Error("Provide one selector: --artifact-id, --path, --session-id, or --cycle-id.");
   }
   return args;
@@ -67,7 +82,9 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
+  console.log('  --view agent omits duplicate canonical rendering; --heading "## Exact heading" reads one complete consultative Markdown unit with source/excerpt hashes. Omit --heading to expand.');
   console.log("  npx aidn runtime artifact-fetch --target . --path CURRENT-STATE.md --json");
+  console.log('  --paths-json ["path-a.md","path-b.md"] --view agent --json reads 1-32 explicit complete documents in one fresh canonical snapshot. Missing entries keep found:false and exit 2.');
   console.log("  npx aidn runtime artifact-fetch --target . --artifact-id 42 --json");
   console.log("  npx aidn runtime artifact-fetch --target . --session-id S001 --metadata-only --json");
 }
@@ -151,6 +168,12 @@ async function main() {
       configData: config.data,
     });
     const artifact = findArtifact(snapshot.payload, args);
+    const selections = args.paths?.map(selectedPath => {
+      const selected = findArtifact(snapshot.payload, { path: selectedPath });
+      return { path: selectedPath, found: selected != null,
+        source_revision: selected ? sourceDigest(snapshot.payload, selected) : null,
+        ...artifactAgentView(artifactForOutput(selected, false), { includeContent: !args.metadataOnly }) };
+    });
     const result = {
       kind: "runtime-artifact-fetch",
       target_root: targetRoot,
@@ -159,16 +182,21 @@ async function main() {
         path: args.path || null,
         session_id: args.sessionId || null,
         cycle_id: args.cycleId || null,
+        ...(args.paths ? { paths: args.paths } : {}),
       },
-      found: artifact != null,
+      found: selections ? selections.every(entry => entry.found) : artifact != null,
       source_backend: snapshot.backend,
       source_file: snapshot.absolute,
       source_revision: artifact ? sourceDigest(snapshot.payload, artifact) : null,
       project_context: snapshot.payload?.project_context ?? null,
       artifact: artifactForOutput(artifact, args.metadataOnly),
+      ...(args.view === "agent" ? { ...artifactAgentView(artifactForOutput(artifact, false), {
+        includeContent: !args.metadataOnly, heading: args.heading,
+      }), view: "agent-v1" } : {}),
+      ...(selections ? { artifacts: selections } : {}),
     };
     if (args.json) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(result, null, args.view === 'agent' ? 0 : 2));
     } else if (result.found) {
       console.log(`Artifact: ${result.artifact.path} (${result.source_backend})`);
     } else {

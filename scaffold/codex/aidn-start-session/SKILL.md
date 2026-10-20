@@ -66,7 +66,10 @@ Before the first durable write in this skill, run:
 - If a previous session closed with reported cycles, ask whether to import them into this session.
 - Never create a new session or cycle while runtime admission says continuity must resume existing workflow state first.
 
-Use TEMPLATE_SESSION_SXXX.md structure.
+Discover the session model with `aidn runtime artifact-store list --templates
+--target . --json`, then read its complete contents using the returned `path`
+and `read_method` (`projection_path` in files mode). Require success before
+creation; discovery does not replace pre-write admission.
 
 4) Fill:
 - Auto-detected mode

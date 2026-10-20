@@ -16,6 +16,8 @@
     "db_first_artifact_diagnostic"
   ],
   "properties": {
+    "view": { "const": "agent-v1" },
+    "mutation": {"type": "object", "required": ["kind", "expected_sha256", "replacements"], "properties": {"kind": {"const": "compare-and-swap-replacements"}, "expected_sha256": {"type": "string"}, "replacements": {"type": "integer"}}, "additionalProperties": false},
     "backend": { "type": "string", "enum": ["sqlite", "postgres"] },
     "ts": { "type": "string" },
     "ok": { "type": "boolean" },

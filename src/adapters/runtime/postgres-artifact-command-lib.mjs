@@ -4,6 +4,7 @@ import { analyzeStructuredArtifact, extractStructuredField } from '../../lib/wor
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from '../../application/runtime/postgres-runtime-persistence-contract-service.mjs';
 import { guardCanonicalMutation } from './agent-execution-fence.mjs';
 import { assertArtifactCompareSwap } from '../../core/workflow/artifact-compare-swap.mjs';
+import { prepareLockedArtifactReplacement } from '../../lib/workflow/artifact-replacement-lib.mjs';
 
 // All identifiers below are internal constants; values always use parameters.
 async function upsert(client, table, row, keys) {
@@ -33,10 +34,10 @@ export function validateArtifactPath(value, auditRoot = 'docs/audit') {
 
 // Uses an existing schema and scope only. No adoption, DDL or projection rebuild.
 export async function executePostgresArtifactCommand(client, scopes, action, options = {}) {
-  const writing = action === 'upsert' || action === 'compare-and-swap';
-  if (!['upsert', 'compare-and-swap', 'get', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
+  const writing = ['upsert', 'compare-and-swap', 'replace'].includes(action);
+  if (!['upsert', 'compare-and-swap', 'replace', 'get', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
   const artifactPath = action === 'list' ? null
-    : validateArtifactPath(writing ? options.artifact?.path : options.path, options.auditRoot);
+    : validateArtifactPath(writing && action !== 'replace' ? options.artifact?.path : options.path, options.auditRoot);
   await client.query(writing ? 'BEGIN' : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   try {
     await client.query("SET LOCAL statement_timeout = '15000ms'");
@@ -66,11 +67,16 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
     } else if (action === 'get') {
       result = mapped((await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath])).rows[0]);
     } else {
+      let replacement;
+      if (action === 'replace') {
+        const current = mapped((await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath])).rows[0]);
+        replacement = prepareLockedArtifactReplacement(current, options);
+      }
       if (action === 'compare-and-swap') {
         const current = mapped((await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath])).rows[0]);
         assertArtifactCompareSwap(options, current);
       }
-      const artifact = normalizeArtifact({ ...options.artifact, path: artifactPath });
+      const artifact = normalizeArtifact({ ...(replacement ?? options.artifact), path: artifactPath });
       const sessionId = artifactPath.match(/^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/i)?.[1]?.toUpperCase();
       const cycleId = artifactPath.match(/^cycles\/(C\d+)[^/]*\/status\.md$/i)?.[1]?.toUpperCase();
       if ((sessionId && artifact.session_id && artifact.session_id !== sessionId)
@@ -84,7 +90,7 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
       await upsert(client, 'artifact_blobs', Object.fromEntries([
         'scope_key', 'artifact_id', 'content_format', 'content', 'canonical_format', 'canonical_json', 'sha256', 'size_bytes', 'updated_at',
       ].map(key => [key, row[key]])), ['scope_key', 'artifact_id']);
-      for (const head of buildRuntimeHeadRows([{ ...row, canonical_json: options.artifact.canonical }], { scopeKey: scope })) {
+      for (const head of buildRuntimeHeadRows([{ ...row, canonical_json: (replacement ?? options.artifact).canonical }], { scopeKey: scope })) {
         const previous = await client.query('SELECT artifact_path FROM aidn_runtime.runtime_heads WHERE scope_key=$1 AND head_key=$2', [scope, head.head_key]);
         if (previous.rows[0] && previous.rows[0].artifact_path !== artifactPath) throw new Error('ARTIFACT_HEAD_PATH_CONFLICT');
         await upsert(client, 'runtime_heads', head, ['scope_key', 'head_key']);

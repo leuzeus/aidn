@@ -2,6 +2,11 @@
 
 This folder tracks workflow performance rollout artifacts.
 
+The [2026-10-20 context efficiency benchmark reports](../qualification/benchmarks/README.md)
+retain completed comparisons 034/036, incomplete attempt 035, candidate
+provenance and unfavorable time/token results. Native continuation is reported
+separately from the unobserved `new_context` call.
+
 Execution model:
 - Perf scripts live in the common aidn package (`tools/perf/*`) and are executed
   through the global `aidn` launcher in migrated clients. Legacy `npx` examples

@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.14.0 (2026-10-20)
+
+- Discover exact required template references through the official
+  `runtime artifact-store list --templates` surface. Package distribution owns
+  membership; the configured canonical backend owns project content. Preserve
+  missing-reference, ambiguity and backend-outage refusals without aliases.
+- Add opt-in compact canonical artifact inventories, complete grouped reads
+  and explicitly selected complete heading units without duplicated bodies.
+  Inventory completeness is explicit; consultation never grants admission or
+  freshness, and mandatory document reads remain required.
+- Apply bounded exact canonical replacements against an expected full-source
+  revision, preserving metadata, scope, reservation fences and atomic rollback.
+  PostgreSQL now reconstructs content and heads inside the existing locked
+  transaction using one worker exchange per unmaterialized delta. Full-content
+  compare-and-swap and files/SQLite authority behavior remain covered.
+- Publish the [context efficiency benchmark reports](https://github.com/leuzeus/aidn/tree/v0.14.0/docs/qualification/benchmarks)
+  for distinct attempts 034, 035 and 036. Retain incomplete 035 and unfavorable
+  end-to-end time/token results alongside component byte/latency observations.
+  Native evidence belongs to the recorded candidate, with zero actual
+  `new_context` calls; scheduled continuation does not qualify that call.
+
 ## 0.13.3 (2026-10-20)
 
 - Read handoff admission and its dependent checks from the configured canonical

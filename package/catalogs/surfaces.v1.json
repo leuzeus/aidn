@@ -30527,6 +30527,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn runtime artifact-fetch:--heading",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/artifact-fetch.mjs",
+      "entrypoint": "aidn runtime artifact-fetch --heading",
+      "implementation": "tools/runtime/artifact-fetch.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/artifact-fetch.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn runtime artifact-fetch:--help",
       "kind": "option",
       "status": "active",
@@ -30645,6 +30669,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn runtime artifact-fetch:--paths-json",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/artifact-fetch.mjs",
+      "entrypoint": "aidn runtime artifact-fetch --paths-json",
+      "implementation": "tools/runtime/artifact-fetch.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/artifact-fetch.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn runtime artifact-fetch:--session-id",
       "kind": "option",
       "status": "active",
@@ -30677,6 +30725,30 @@
       "owner": "CLI maintainer",
       "source": "tools/runtime/artifact-fetch.mjs",
       "entrypoint": "aidn runtime artifact-fetch --target",
+      "implementation": "tools/runtime/artifact-fetch.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/artifact-fetch.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn runtime artifact-fetch:--view",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/artifact-fetch.mjs",
+      "entrypoint": "aidn runtime artifact-fetch --view",
       "implementation": "tools/runtime/artifact-fetch.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -31013,6 +31085,54 @@
       "owner": "CLI maintainer",
       "source": "tools/runtime/artifact-store.mjs",
       "entrypoint": "aidn runtime artifact-store --target",
+      "implementation": "tools/runtime/artifact-store.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/artifact-store.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn runtime artifact-store:--templates",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/artifact-store.mjs",
+      "entrypoint": "aidn runtime artifact-store --templates",
+      "implementation": "tools/runtime/artifact-store.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/artifact-store.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn runtime artifact-store:--view",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/artifact-store.mjs",
+      "entrypoint": "aidn runtime artifact-store --view",
       "implementation": "tools/runtime/artifact-store.mjs",
       "effects": {
         "role": "effect-neutral",
@@ -33666,6 +33786,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn runtime db-first-artifact:--expect-sha256",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/db-first-artifact.mjs",
+      "entrypoint": "aidn runtime db-first-artifact --expect-sha256",
+      "implementation": "tools/runtime/db-first-artifact.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/db-first-artifact.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn runtime db-first-artifact:--family",
       "kind": "option",
       "status": "active",
@@ -33832,6 +33976,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn runtime db-first-artifact:--replace",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/db-first-artifact.mjs",
+      "entrypoint": "aidn runtime db-first-artifact --replace",
+      "implementation": "tools/runtime/db-first-artifact.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/db-first-artifact.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn runtime db-first-artifact:--session-id",
       "kind": "option",
       "status": "active",
@@ -33960,6 +34128,30 @@
       "owner": "CLI maintainer",
       "source": "tools/runtime/db-first-artifact.mjs",
       "entrypoint": "aidn runtime db-first-artifact --target",
+      "implementation": "tools/runtime/db-first-artifact.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/db-first-artifact.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn runtime db-first-artifact:--view",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/runtime/db-first-artifact.mjs",
+      "entrypoint": "aidn runtime db-first-artifact --view",
       "implementation": "tools/runtime/db-first-artifact.mjs",
       "effects": {
         "role": "effect-neutral",
