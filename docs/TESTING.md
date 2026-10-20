@@ -1323,3 +1323,15 @@ excluded destination. These checks change no user permissions and do not prove
 a Windows read denial, native hook execution or universal shell interception.
 This suite is already part of `runtime-agent-run-lifecycle`; do not rerun it as a
 second admission invocation.
+
+## Artifact efficiency intent
+
+Run `npm run perf:verify-artifact-efficiency` for opt-in agent views, complete
+Markdown consultation and exact revision-checked replacements. This required
+runtime gate distinguishes pure fixtures and real CLI executions from native
+qualification. It covers refusal of ambiguous text and stale revisions, unchanged
+metadata/identity, SQLite canonical writes, file projections and unavailable
+PostgreSQL without fallback. Existing scoped-context, persistence parity, effect
+and JSON contract gates remain required. Local PostgreSQL and native MXC runs
+must retain independent evidence; byte savings on fixtures do not prove model
+latency or token improvements in a real benchmark.

@@ -6,6 +6,7 @@ import {
   resolveConfigRuntimePersistence,
 } from "../../src/lib/config/aidn-config-lib.mjs";
 import { readRuntimeSnapshot } from "../../src/application/runtime/runtime-snapshot-service.mjs";
+import { artifactAgentView } from "../../src/application/runtime/artifact-efficiency-service.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -42,6 +43,12 @@ function parseArgs(argv) {
     } else if (token === "--cycle-id") {
       args.cycleId = String(argv[i + 1] ?? "").trim();
       i += 1;
+    } else if (token === "--view") {
+      args.view = argv[++i];
+      if (args.view !== "agent") throw new Error("Invalid --view. Expected agent");
+    } else if (token === "--heading") {
+      args.heading = argv[++i];
+      if (!args.heading || args.heading.startsWith('--')) throw new Error("Missing --heading value");
     } else if (token === "--metadata-only") {
       args.metadataOnly = true;
     } else if (token === "--json") {
@@ -56,6 +63,7 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
+  if (args.heading && (args.view !== 'agent' || args.metadataOnly || !args.path || args.artifactId || args.sessionId || args.cycleId)) throw new Error('--heading requires one --path selector, --view agent and complete canonical text');
   if (!["auto", "json", "sqlite", "postgres"].includes(args.backend)) {
     throw new Error("Invalid --backend. Expected auto|json|sqlite|postgres");
   }
@@ -67,6 +75,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
+  console.log('  --view agent omits duplicate canonical rendering; --heading "## Exact heading" reads one complete consultative Markdown unit with source/excerpt hashes. Omit --heading to expand.');
   console.log("  npx aidn runtime artifact-fetch --target . --path CURRENT-STATE.md --json");
   console.log("  npx aidn runtime artifact-fetch --target . --artifact-id 42 --json");
   console.log("  npx aidn runtime artifact-fetch --target . --session-id S001 --metadata-only --json");
@@ -166,9 +175,12 @@ async function main() {
       source_revision: artifact ? sourceDigest(snapshot.payload, artifact) : null,
       project_context: snapshot.payload?.project_context ?? null,
       artifact: artifactForOutput(artifact, args.metadataOnly),
+      ...(args.view === "agent" ? { ...artifactAgentView(artifactForOutput(artifact, false), {
+        includeContent: !args.metadataOnly, heading: args.heading,
+      }), view: "agent-v1" } : {}),
     };
     if (args.json) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(result, null, args.view === 'agent' ? 0 : 2));
     } else if (result.found) {
       console.log(`Artifact: ${result.artifact.path} (${result.source_backend})`);
     } else {

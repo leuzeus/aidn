@@ -1,0 +1,131 @@
+#!/usr/bin/env node
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { artifactAgentView, applyArtifactReplacements } from '../../src/application/runtime/artifact-efficiency-service.mjs';
+import { runDbFirstArtifactUseCase } from '../../src/application/runtime/db-first-artifact-use-case.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
+import { artifactContentHash, artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
+import { prepareActivationFixture } from './test-activation-fixture-lib.mjs';
+
+const root = path.resolve(import.meta.dirname, '../..');
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-artifact-efficiency-'));
+let checks = 0;
+const measurements = {};
+const check = (name, fn) => {
+  try { fn(); checks++; } catch (error) { error.message = `${name}: ${error.message}`; throw error; }
+};
+const content = '# Context\n\n## Active\nstate: IMPLEMENTING\n### Exception\nKeep the guard.\n\n## History\n' + 'Historical detail.\n'.repeat(500);
+const initial = { path: 'cycles/C001-feature/status.md', kind: 'cycle_status', family: 'normative', content_format: 'utf8', content,
+  canonical: { duplicate: content } };
+const sha256 = artifactContentHash(content);
+try {
+  check('view preserves content and provenance without duplicate rendering', () => {
+    const view = artifactAgentView({ ...initial, sha256 }, { includeContent: true });
+    assert.equal(view.artifact.content, content); assert.equal(view.artifact.sha256, sha256);
+    assert(!('canonical' in view.artifact)); assert(Buffer.byteLength(JSON.stringify(view)) < Buffer.byteLength(JSON.stringify(initial)) * 0.6);
+  });
+  check('complete nested unit and distinct source/excerpt hashes', () => {
+    const view = artifactAgentView(initial, { heading: '## Active' });
+    assert(view.context_excerpt.content.includes('### Exception\nKeep the guard.'));
+    assert(!view.context_excerpt.content.includes('## History'));
+    assert.equal(view.context_excerpt.source_sha256, sha256);
+    assert.equal(view.context_excerpt.excerpt_sha256, artifactContentHash(view.context_excerpt.content));
+    assert.equal(view.context_excerpt.consultative_only, true); assert(!('content' in view.artifact));
+  });
+  for (const heading of ['## Missing', '## Active']) check('unavailable or duplicate heading refused: ' + heading, () => {
+    assert.throws(() => artifactAgentView({ ...initial, content: content + '\n## Active\nDuplicate\n' }, { heading }), /MISSING_OR_AMBIGUOUS/);
+  });
+  const replacements = [{ old: 'state: IMPLEMENTING', new: 'state: VERIFYING' }];
+  check('patch has exact expected result', () => assert.equal(applyArtifactReplacements(initial, replacements, sha256), content.replace('IMPLEMENTING', 'VERIFYING')));
+  for (const changes of [[{ old: '', new: 'x' }], [{ old: 'absent', new: 'x' }], [{ old: 'Historical', new: 'x' }], [{ old: 'state:', new: 'x', extra: true }]]) {
+    check('malformed or nonunique patch refused', () => assert.throws(() => applyArtifactReplacements(initial, changes, sha256), /ARTIFACT_/));
+  }
+  check('stale expected bytes refused', () => assert.throws(() => applyArtifactReplacements(initial, replacements, '0'.repeat(64)), /REVISION_CONFLICT/));
+  const options = { target: temp, path: initial.path, stateMode: 'db-only', materialize: 'false' };
+  const original = runDbFirstArtifactUseCase({ ...options, content, kind: 'cycle_status', family: 'normative' });
+  const changed = runDbFirstArtifactUseCase({ ...options, replacements, expectedSha256: sha256 });
+  check('real SQLite CAS rebuilds canonical and keeps identity/metadata', () => {
+    assert.equal(changed.artifact.content, content.replace('IMPLEMENTING', 'VERIFYING'));
+    assert.equal(changed.artifact.cycle_id, 'C001'); assert.equal(changed.artifact.subtype, 'status');
+    assert.equal(changed.artifact.family, 'normative'); assert.equal(changed.artifact.sha256, artifactContentHash(changed.artifact.content));
+    assert.notDeepEqual(changed.artifact.canonical, original.artifact.canonical);
+    assert(!fs.existsSync(path.join(temp, 'docs/audit')));
+  });
+  check('stale revision refuses and preserves committed winner', () => {
+    assert.throws(() => runDbFirstArtifactUseCase({ ...options, replacements, expectedSha256: sha256 }), /REVISION_CONFLICT/);
+    const store = createProjectArtifactStore({ targetRoot: temp });
+    try { assert.equal(store.getArtifact(initial.path).sha256, changed.artifact.sha256); } finally { store.close(); }
+  });
+  check('transactional CAS rejects an intervening writer after the patch read', () => {
+    const store = createProjectArtifactStore({ targetRoot: temp });
+    try {
+      const observed = store.getArtifact(initial.path);
+      const candidate = applyArtifactReplacements(observed, [{ old: 'VERIFYING', new: 'DONE' }], observed.sha256);
+      const winner = runDbFirstArtifactUseCase({ ...options, content: observed.content + '\nConcurrent note\n' });
+      assert.throws(() => store.compareAndSwapArtifact({ artifact: { ...initial, content: candidate }, expectedSha256: observed.sha256 }), /REVISION_CONFLICT/);
+      assert.equal(store.getArtifact(initial.path).sha256, winner.artifact.sha256);
+    } finally { store.close(); }
+  });
+  check('overlapping occurrences and oversized replacement sets fail closed', () => {
+    assert.throws(() => applyArtifactReplacements({ content_format: 'utf8', content: 'aaa' }, [{ old: 'aa', new: 'b' }], artifactContentHash('aaa')), /NOT_UNIQUE/);
+    assert.throws(() => applyArtifactReplacements(initial, Array(33).fill({ old: 'state', new: 'mode' }), sha256), /INVALID/);
+  });
+  check('transactional CAS detects changed metadata with identical content', () => {
+    const store = createProjectArtifactStore({ targetRoot: temp });
+    try {
+      const observed = store.getArtifact(initial.path);
+      store.upsertArtifact({ ...observed, family: 'support' });
+      assert.throws(() => store.compareAndSwapArtifact({ artifact: { ...observed, content: observed.content + '\nPatch\n', sha256: undefined },
+        expectedSha256: observed.sha256, expectedMetadataSha256: artifactMetadataHash(observed) }), /REVISION_CONFLICT/);
+      assert.equal(store.getArtifact(initial.path).family, 'support');
+    } finally { store.close(); }
+  });
+  check('ordinary full writes still materialize in files mode', () => {
+    runDbFirstArtifactUseCase({ target: temp, path: 'notes.md', content: '# File\n', stateMode: 'files' });
+    assert.equal(fs.readFileSync(path.join(temp, 'docs/audit/notes.md'), 'utf8'), '# File\n');
+  });
+  prepareActivationFixture(temp, root);
+  function cli(tool, args) {
+    return spawnSync(process.execPath, [path.join(root, 'bin/aidn.mjs'), 'runtime', tool, '--target', temp, ...args, '--json'], { encoding: 'utf8', windowsHide: true,
+      env: { ...process.env, AIDN_EFFICIENCY_UNAVAILABLE: '', AIDN_RUNTIME_PERSISTENCE_BACKEND: '', AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF: '' } });
+  }
+  check('real CLI compact write/read and contracts', () => {
+    const fullWrite = cli('db-first-artifact', ['--path', 'notes.md', '--content', content, '--no-materialize']);
+    assert.equal(fullWrite.status, 0, fullWrite.stderr);
+    const write = cli('db-first-artifact', ['--path', 'notes.md', '--content', content, '--no-materialize', '--view', 'agent']);
+    assert.equal(write.status, 0, write.stderr);
+    const output = JSON.parse(write.stdout); assert(!('content' in output.artifact));
+    const schema = JSON.parse(fs.readFileSync(path.join(root, 'src/core/contracts/cli-output/runtime-db-first-artifact.v1.schema.json')));
+    assert.deepEqual(validateJsonSchema(output, schema), []);
+    const indexFile = path.join(temp, '.aidn/runtime/index/workflow-index.sqlite');
+    const beforeRead = fs.readFileSync(indexFile);
+    const full = cli('artifact-fetch', ['--path', 'notes.md']);
+    assert.equal(full.status, 0, full.stderr); assert.equal(JSON.parse(full.stdout).artifact.content, content);
+    assert(JSON.parse(full.stdout).artifact.canonical);
+    const read = cli('artifact-fetch', ['--path', 'notes.md', '--view', 'agent', '--heading', '## Active']);
+    assert.equal(read.status, 0, read.stderr); const result = JSON.parse(read.stdout);
+    assert.equal(result.context_excerpt.source_sha256, sha256); assert.equal(result.source_backend, 'sqlite');
+    assert.deepEqual(validateJsonSchema(result, JSON.parse(fs.readFileSync(path.join(root, 'src/core/contracts/cli-output/runtime-artifact-fetch.v1.schema.json')))), []);
+    assert(Buffer.byteLength(read.stdout) < Buffer.byteLength(content) / 2);
+    assert(fs.readFileSync(indexFile).equals(beforeRead), 'consultation must preserve canonical database bytes');
+    const invalid = cli('artifact-fetch', ['--path', 'notes.md', '--view', 'agent', '--heading', '## Missing']);
+    assert.notEqual(invalid.status, 0); assert(fs.readFileSync(indexFile).equals(beforeRead));
+    const delta = cli('db-first-artifact', ['--path', 'notes.md', '--replace', JSON.stringify(replacements), '--expect-sha256', sha256, '--view', 'agent', '--no-materialize']);
+    assert.equal(delta.status, 0, delta.stderr); assert.equal(JSON.parse(delta.stdout).mutation.replacements, 1);
+    Object.assign(measurements, { full_write_bytes: Buffer.byteLength(fullWrite.stdout), agent_write_bytes: Buffer.byteLength(write.stdout),
+      full_fetch_bytes: Buffer.byteLength(full.stdout), section_fetch_bytes: Buffer.byteLength(read.stdout),
+      full_content_input_bytes: Buffer.byteLength(content), replacement_input_bytes: Buffer.byteLength(JSON.stringify(replacements)) + 64 });
+  });
+  check('configured unavailable PG cannot fall back to local SQLite or visible files', () => {
+    fs.mkdirSync(path.join(temp, '.aidn'), { recursive: true });
+    fs.writeFileSync(path.join(temp, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'db-only', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
+    const failed = cli('db-first-artifact', ['--path', 'notes.md', '--replace', JSON.stringify(replacements), '--expect-sha256', sha256, '--no-materialize']);
+    assert.notEqual(failed.status, 0); assert.match(failed.stderr, /ARTIFACT_POSTGRES_/);
+    assert.equal(fs.readFileSync(path.join(temp, 'docs/audit/notes.md'), 'utf8'), '# File\n');
+  });
+  console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements }));
+} finally { fs.rmSync(temp, { recursive: true, force: true }); }

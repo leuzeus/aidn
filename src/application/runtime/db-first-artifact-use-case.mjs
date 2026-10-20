@@ -1,6 +1,9 @@
 import path from "node:path";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { createProjectArtifactStore } from './project-artifact-store-service.mjs';
+import { applyArtifactReplacements } from './artifact-efficiency-service.mjs';
+import { assertProjectArtifactCompareSwap } from '../../core/ports/project-artifact-store-port.mjs';
+import { artifactMetadataHash } from '../../core/workflow/artifact-compare-swap.mjs';
 import {
   inferFamily,
   inferKind,
@@ -16,25 +19,17 @@ export function runDbFirstArtifactUseCase(options = {}) {
   if (!relPath) {
     throw new Error("Missing path for upsertDbFirstArtifact");
   }
-  const content = loadContent(targetRoot, options.sourceFile ?? "", options.content ?? "");
-  const kind = inferKind(relPath, options.kind ?? "other");
-  const family = inferFamily(relPath, options.family ?? "unknown");
-  // Selective synchronization must retain path-defined ownership just like a
-  // full index projection. Otherwise a status write clears its cycle_id and
-  // makes the very next canonical closure/repair read inconsistent on SQLite.
+  const replacing = options.replacements !== undefined;
+  if (replacing && (options.sourceFile || options.content || options.kind && options.kind !== 'other'
+      || options.family && options.family !== 'unknown' || options.subtype || options.sessionId || options.cycleId)) {
+    throw new Error('ARTIFACT_REPLACEMENTS_OPTIONS_CONFLICT');
+  }
+  if (!replacing && options.expectedSha256 !== undefined) throw new Error('ARTIFACT_REPLACEMENTS_REQUIRED');
+  const fullContent = replacing ? null : loadContent(targetRoot, options.sourceFile ?? "", options.content ?? "");
   const pathCycleId = relPath.match(/^cycles\/(C\d+)[^/]*\/status\.md$/i)?.[1]?.toUpperCase();
   const pathSessionId = relPath.match(/^sessions\/(S\d+)(?:[-_.][^/]*)?\.md$/i)?.[1]?.toUpperCase();
   if ((pathCycleId && options.cycleId && options.cycleId !== pathCycleId)
-      || (pathSessionId && options.sessionId && options.sessionId !== pathSessionId)) {
-    throw new Error("ARTIFACT_IDENTITY_CONFLICT");
-  }
-  const canonical = relPath.toLowerCase().endsWith(".md")
-    ? buildCanonicalFromMarkdown(content, {
-      relativePath: relPath,
-      kind,
-    })
-    : null;
-
+      || (pathSessionId && options.sessionId && options.sessionId !== pathSessionId)) throw new Error("ARTIFACT_IDENTITY_CONFLICT");
   const store = createProjectArtifactStore({
     targetRoot,
     auditRoot: options.auditRoot,
@@ -43,18 +38,38 @@ export function runDbFirstArtifactUseCase(options = {}) {
       : path.resolve(targetRoot, options.sqliteFile ?? ".aidn/runtime/index/workflow-index.sqlite"),
   });
   try {
-    const artifact = store.upsertArtifact({
+    const previous = replacing ? store.getArtifact(relPath) : null;
+    const content = replacing ? applyArtifactReplacements(previous, options.replacements, options.expectedSha256)
+      : fullContent;
+    const kind = previous?.kind ?? inferKind(relPath, options.kind ?? "other");
+    const family = previous?.family ?? inferFamily(relPath, options.family ?? "unknown");
+    const canonical = relPath.toLowerCase().endsWith(".md")
+      ? buildCanonicalFromMarkdown(content, {
+        relativePath: relPath,
+        kind,
+      })
+      : null;
+
+    const input = {
+      ...(previous ?? {}),
       path: relPath,
       kind,
       family,
-      subtype: options.subtype || (pathCycleId ? "status" : null),
+      subtype: previous?.subtype ?? (options.subtype || (pathCycleId ? "status" : null)),
       content,
       content_format: "utf8",
       canonical_format: canonical ? "markdown-canonical-v1" : null,
       canonical,
-      session_id: options.sessionId || pathSessionId || null,
-      cycle_id: options.cycleId || pathCycleId || null,
-    });
+      session_id: previous?.session_id ?? (options.sessionId || pathSessionId || null),
+      cycle_id: previous?.cycle_id ?? (options.cycleId || pathCycleId || null),
+      sha256: undefined,
+      size_bytes: undefined,
+      updated_at: undefined,
+      mtime_ns: undefined,
+    };
+    const artifact = replacing ? assertProjectArtifactCompareSwap(store).compareAndSwapArtifact({
+      artifact: input, expectedSha256: options.expectedSha256, expectedMetadataSha256: artifactMetadataHash(previous),
+    }) : store.upsertArtifact(input);
     const materialize = shouldMaterialize(stateMode, options.materialize ?? "");
     let materializeResult = null;
     if (materialize) {
@@ -74,6 +89,8 @@ export function runDbFirstArtifactUseCase(options = {}) {
       backend: store.backend,
       materialized: materialize,
       artifact,
+      ...(replacing ? { mutation: { kind: 'compare-and-swap-replacements', expected_sha256: options.expectedSha256,
+        replacements: options.replacements.length } } : {}),
       materialize_result: materializeResult,
     };
   } finally {

@@ -14,6 +14,8 @@
     "artifact"
   ],
   "properties": {
+    "view": { "const": "agent-v1" },
+    "context_excerpt": {"type": "object", "required": ["content", "heading", "source_sha256", "excerpt_sha256", "start_line", "end_line", "consultative_only"], "properties": {"content": {"type": "string"}, "heading": {"type": "string"}, "source_sha256": {"type": "string"}, "excerpt_sha256": {"type": "string"}, "start_line": {"type": "integer"}, "end_line": {"type": "integer"}, "consultative_only": {"const": true}}, "additionalProperties": false},
     "kind": { "const": "runtime-artifact-fetch" },
     "target_root": { "type": "string" },
     "selector": { "type": "object", "additionalProperties": true },

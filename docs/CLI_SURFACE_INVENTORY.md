@@ -281,6 +281,39 @@ no implicit merge, deletion or migration of either scope occurs.
 does not authorize an upsert or materialization; their existing effect rules
 remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
 implicit index imports with reason `postgres_canonical_backend`.
+Artifact consultation and writes support an explicit `--view agent`. This v1
+view keeps the existing result envelope, backend, identity, SHA256, verdict and
+materialization evidence. Fetch retains text while omitting duplicate canonical
+rendering; writes return metadata without either document body. The default JSON
+remains complete. Expand a receipt with `runtime artifact-fetch --path <path>
+--json`; a receipt is an observation, not a stored snapshot of a future revision.
+
+`runtime artifact-fetch --path <path> --view agent --heading "## Exact heading"
+returns `context_excerpt` separately from artifact metadata: the complete ATX
+section includes nested headings and exceptions, with line range, full-source
+SHA256 and excerpt SHA256. Missing/duplicate headings and non-text content stop
+the request. Omit `--heading` to expand. This is consultative, without dependency
+closure or write authorization; the governed `codex hydrate-context
+--context-selection-file` path remains required when accepted authority bindings,
+scope and dependency closure are needed. Never substitute an excerpt for a
+mandatory complete authority. Re-read when the source hash changes.
+
+`runtime db-first-artifact --path <path> --replace '[{"old":"unique exact text",
+"new":"replacement"}]' --expect-sha256 <full-content-sha256> --no-materialize
+--view agent --json` changes an existing canonical UTF-8 artifact without
+re-emitting it. Replacements run in order; every old string must match exactly
+once, including overlapping occurrences. At most 32 replacements and 128 KiB of
+replacement JSON are accepted. They cannot be mixed with content/source or
+identity/classification flags. Metadata is preserved; canonical rendering and
+relational projections are rebuilt through the ordinary writer. SQLite and
+PostgreSQL commit with the existing atomic compare-and-swap capability, binding
+both content and observed metadata to reject concurrent changes, including
+metadata-only changes. A missing source, unavailable backend or ambiguous
+scope never falls back to visible projections. The write remains mutating;
+`--json` and `--view` do not authorize anything. Existing workflow admissions,
+phase, transition and final closure checks remain required. Multiple edits to
+one artifact may share one replacement call after the required admission.
+
 Selective DB-first writes preserve cycle/session identity derived from standard
 artifact paths and the cycle status subtype; contradictory explicit identity
 is rejected before mutation on either backend.
