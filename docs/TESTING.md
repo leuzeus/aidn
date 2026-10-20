@@ -1107,6 +1107,19 @@ These are fixture results, not real PostgreSQL or native Codex qualification.
 Changes to the shared reader also require cycle-create and branch-cycle-audit
 admission checks; checkpoint changes require the checkpoint backend checks.
 
+`perf:verify-handoff-admit` also runs the canonical admission fixtures in
+`tools/perf/verify-handoff-admit-canonical-fixtures.mjs`. They retain stale
+visible bootstrap heads and cycle projections while reading injected PostgreSQL
+through the actual persistence adapter. Default admission must select PostgreSQL
+for the packet, current/runtime heads and dependent audit artifacts. Unavailable
+authority, ambiguous artifacts, invalid heads and missing canonical context
+cannot fall back to those files or an existing SQLite index. Canonical cycle
+freshness and required-artifact refusals remain enforced. Temporary SQLite
+stores exercise db-only priority and dual/file compatibility. Full filesystem
+inventories verify these admission reads leave projections and stores unchanged.
+These adapter fixtures are separate from real CLI/PostgreSQL and native MXC
+pilot evidence; they do not qualify a native `new_context` call.
+
 ### 4. Documentation / Generated Output Verifications
 
 Examples:

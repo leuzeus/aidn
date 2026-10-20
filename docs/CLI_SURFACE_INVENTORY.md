@@ -124,6 +124,12 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime list-agent-adapters --json`
 - `aidn runtime verify-agent-roster --json`
 - `aidn runtime handoff-admit --json`
+  - configured PostgreSQL is the canonical admission source, including with
+    visible bootstrap anchors; db-only SQLite also selects the canonical store.
+    The packet, current/runtime heads, cycle consistency and required audit
+    artifacts share that source priority. Unavailable or ambiguous canonical
+    state stops admission without falling back to visible files or local SQLite.
+    Files mode without PostgreSQL and dual SQLite retain visible-file precedence.
 - `aidn runtime pre-write-admit --json`
 
   `cycle-create` resolves canonical DB-backed context. A verified session with an

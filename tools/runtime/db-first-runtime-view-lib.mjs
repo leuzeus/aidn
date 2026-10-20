@@ -392,12 +392,14 @@ function findCycleStatusArtifact(sqlitePayload, cycleId) {
   if (!sqlitePayload || !Array.isArray(sqlitePayload.artifacts) || !cycleId || canonicalNone(cycleId) || canonicalUnknown(cycleId)) {
     return null;
   }
-  return sqlitePayload.artifacts.find((artifact) => {
+  const matches = sqlitePayload.artifacts.filter((artifact) => {
     const rel = normalizeRelativeArtifactPath(artifact?.path);
     return String(artifact?.cycle_id ?? "") === cycleId
       ? rel.endsWith("/status.md")
       : new RegExp(`^cycles/${cycleId}[^/]*/status\\.md$`, "i").test(rel);
-  }) ?? null;
+  });
+  if (matches.length > 1) throw new Error("RUNTIME_CYCLE_STATUS_ARTIFACT_AMBIGUOUS");
+  return matches[0] ?? null;
 }
 
 export function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {

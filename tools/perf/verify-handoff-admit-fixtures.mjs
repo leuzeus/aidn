@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { verifyCanonicalHandoffAdmission } from "./verify-handoff-admit-canonical-fixtures.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -110,7 +111,7 @@ function installSharedRuntimeLocator(targetRoot, {
   }, null, 2)}\n`, "utf8");
 }
 
-function main() {
+async function main() {
   let tempRoot = "";
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -311,6 +312,7 @@ function main() {
     assert(invalidSharedRuntimeAdmit.admitted === false, "invalid shared runtime handoff should be rejected");
     assert(invalidSharedRuntimeAdmit.issues.some((item) => String(item).includes("overlaps versioned workflow artifacts")), "invalid shared runtime handoff should expose root overlap");
 
+    const canonical = await verifyCanonicalHandoffAdmission();
     const output = {
       ts: new Date().toISOString(),
       fixtures_root: fixturesRoot,
@@ -321,6 +323,7 @@ function main() {
       tampered: tamperedAdmit,
       transition_rejected: transitionRejectedAdmit,
       invalid_shared_runtime: invalidSharedRuntimeAdmit,
+      canonical,
       pass: true,
     };
 
