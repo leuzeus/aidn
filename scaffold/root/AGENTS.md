@@ -66,6 +66,23 @@ Optional recovery skill:
 
 ## Session Start Responsibilities
 
+For canonical artifact consultation, prefer `runtime artifact-fetch --path <path>
+--view agent --json` to avoid duplicate rendering. After mandatory startup and
+authority reads, use `--heading "## Exact heading"` for a complete relevant
+Markdown section, including nested exceptions; expand if dependencies or context
+are unclear. Check `context_excerpt.source_sha256` when reusing a section.
+Consultation never replaces current admission or accepted dependency closure.
+
+For an admitted update to an existing canonical document, use `runtime
+db-first-artifact --path <path> --replace '[{"old":"unique exact text","new":
+"replacement"}]' --expect-sha256 <full-content-sha256> --view agent --json`
+instead of re-emitting unchanged text. Preserve the configured projection policy
+(use `--no-materialize` in strict DB-only). Combine edits to that document in one
+call when their admission permits it. A revision conflict requires a fresh read
+and admission; never retry by overwriting. Initial creation and structural
+rewrites still use the complete content. Views and patches do not skip hooks,
+transition, freshness, consistency, artifact or final closure controls.
+
 At the beginning of a session, the agent MUST:
 
 1. Run skill: `aidn-context-reload`
