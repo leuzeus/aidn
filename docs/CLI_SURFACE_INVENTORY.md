@@ -314,6 +314,14 @@ scope never falls back to visible projections. The write remains mutating;
 phase, transition and final closure checks remain required. Multiple edits to
 one artifact may share one replacement call after the required admission.
 
+Replacements require a configured canonical database: SQLite in `dual` or
+`db-only`, or canonical PostgreSQL. In `files`, SQLite is only an index and a
+delta must not overwrite a newer authoritative file. The new option therefore
+refuses this case before opening a writable store. Ordinary complete-source
+writes and materialization retain their existing behavior. A projection-mode
+override cannot transfer authority, and a conflicting SQLite backend override
+cannot replace configured PostgreSQL for a replacement.
+
 Selective DB-first writes preserve cycle/session identity derived from standard
 artifact paths and the cycle status subtype; contradictory explicit identity
 is rejected before mutation on either backend.

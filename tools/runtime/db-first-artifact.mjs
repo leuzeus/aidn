@@ -94,6 +94,7 @@ function parseArgs(argv) {
 function printUsage() {
   console.log("Usage:");
   console.log('  --view agent returns metadata and SHA256 without duplicate document bodies; default JSON remains complete.');
+  console.log('  Replacements require canonical SQLite (dual/db-only) or PostgreSQL; files use complete sources.');
   console.log('  --replace \'[{"old":"unique exact text","new":"replacement"}]\' --expect-sha256 <canonical-content-sha256> uses atomic compare-and-swap; no content or identity flags.');
   console.log("  npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --kind snapshot --family normative --json");
   console.log("  npx aidn runtime db-first-artifact --target . --path sessions/S001.md --content \"# Session\" --kind session --family normative --materialize --json");

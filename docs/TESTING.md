@@ -1335,3 +1335,6 @@ PostgreSQL without fallback. Existing scoped-context, persistence parity, effect
 and JSON contract gates remain required. Local PostgreSQL and native MXC runs
 must retain independent evidence; byte savings on fixtures do not prove model
 latency or token improvements in a real benchmark.
+The same gate refuses deltas built from stale indexes in configured `files`
+mode, projection-mode authority overrides, and SQLite overrides of canonical
+PostgreSQL. It verifies that the authoritative file and index remain untouched.

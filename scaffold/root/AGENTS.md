@@ -66,14 +66,14 @@ Optional recovery skill:
 
 ## Session Start Responsibilities
 
-For canonical artifact consultation, prefer `runtime artifact-fetch --path <path>
+In DB-backed modes, for canonical artifact consultation prefer `runtime artifact-fetch --path <path>
 --view agent --json` to avoid duplicate rendering. After mandatory startup and
 authority reads, use `--heading "## Exact heading"` for a complete relevant
 Markdown section, including nested exceptions; expand if dependencies or context
 are unclear. Check `context_excerpt.source_sha256` when reusing a section.
 Consultation never replaces current admission or accepted dependency closure.
 
-For an admitted update to an existing canonical document, use `runtime
+For an admitted update to an existing canonical database document, use `runtime
 db-first-artifact --path <path> --replace '[{"old":"unique exact text","new":
 "replacement"}]' --expect-sha256 <full-content-sha256> --view agent --json`
 instead of re-emitting unchanged text. Preserve the configured projection policy
@@ -82,6 +82,10 @@ call when their admission permits it. A revision conflict requires a fresh read
 and admission; never retry by overwriting. Initial creation and structural
 rewrites still use the complete content. Views and patches do not skip hooks,
 transition, freshness, consistency, artifact or final closure controls.
+In `files` mode, read authoritative files and use the ordinary complete-source
+write procedure. An index cannot supply the canonical preimage for a delta;
+`--state-mode` cannot change that authority. Configured PostgreSQL remains
+canonical even when visible files exist.
 
 At the beginning of a session, the agent MUST:
 

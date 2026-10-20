@@ -12,7 +12,12 @@ import { validateJsonSchema } from '../../src/core/contracts/json-schema-validat
 import { prepareActivationFixture } from './test-activation-fixture-lib.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
+const isolatedEnvKeys = ['AIDN_RUNTIME_PERSISTENCE_BACKEND', 'AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF', 'AIDN_STATE_MODE', 'AIDN_EFFICIENCY_UNAVAILABLE'];
+const previousEnv = new Map(isolatedEnvKeys.map(key => [key, process.env[key]]));
+for (const key of isolatedEnvKeys) delete process.env[key];
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-artifact-efficiency-'));
+fs.mkdirSync(path.join(temp, '.aidn'));
+fs.writeFileSync(path.join(temp, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'db-only', persistence: { backend: 'sqlite' } } }));
 let checks = 0;
 const measurements = {};
 const check = (name, fn) => {
@@ -84,13 +89,55 @@ try {
       assert.equal(store.getArtifact(initial.path).family, 'support');
     } finally { store.close(); }
   });
-  check('ordinary full writes still materialize in files mode', () => {
+  check('ordinary full writes still support explicit files projection', () => {
     runDbFirstArtifactUseCase({ target: temp, path: 'notes.md', content: '# File\n', stateMode: 'files' });
     assert.equal(fs.readFileSync(path.join(temp, 'docs/audit/notes.md'), 'utf8'), '# File\n');
   });
+  check('configured files remain authoritative over a stale SQLite index', () => {
+    const target = path.join(temp, 'file-primary');fs.mkdirSync(path.join(target, '.aidn'), { recursive: true });
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files', persistence: { backend: 'sqlite' } } }));
+    const original = '# Session\nmode: THINKING\n', edited = '# Session\nmode: EXPLORING\n';
+    const first = runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', content: original });
+    assert.equal(first.materialized, true);
+    prepareActivationFixture(target, root);
+    const file = path.join(target, 'docs/audit/sessions/S009.md');fs.writeFileSync(file, edited);
+    const index = path.join(target, '.aidn/runtime/index/workflow-index.sqlite'), before = fs.readFileSync(index);
+    assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', replacements: [{ old: 'THINKING', new: 'COMMITTING' }], expectedSha256: first.artifact.sha256 }), /CANONICAL_DATABASE_REQUIRED/);
+    const rejected = cli('db-first-artifact', ['--path', 'sessions/S009.md', '--replace', JSON.stringify([{ old: 'THINKING', new: 'COMMITTING' }]), '--expect-sha256', first.artifact.sha256, '--state-mode', 'db-only', '--no-materialize'], target);
+    assert.notEqual(rejected.status, 0);assert.match(rejected.stderr, /ARTIFACT_REPLACEMENTS_CANONICAL_DATABASE_REQUIRED/);
+    assert.equal(fs.readFileSync(file, 'utf8'), edited);assert(fs.readFileSync(index).equals(before));
+  });
+  check('projection-mode override cannot turn an index into canonical state', () => {
+    const target = path.join(temp, 'file-primary');
+    assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', stateMode: 'db-only', replacements: [{ old: 'THINKING', new: 'COMMITTING' }], expectedSha256: artifactContentHash('# Session\nmode: THINKING\n') }), /CANONICAL_DATABASE_REQUIRED/);
+    assert.equal(fs.readFileSync(path.join(target, 'docs/audit/sessions/S009.md'), 'utf8'), '# Session\nmode: EXPLORING\n');
+  });
+  check('configured PostgreSQL cannot be replaced by an environment-selected SQLite index', () => {
+    const target = path.join(temp, 'canonical-pg');fs.mkdirSync(path.join(target, '.aidn'), { recursive: true });
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'db-only', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
+    const previous = process.env.AIDN_RUNTIME_PERSISTENCE_BACKEND;
+    try { process.env.AIDN_RUNTIME_PERSISTENCE_BACKEND = 'sqlite';
+      assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'sessions/S009.md', replacements: [{ old: 'a', new: 'b' }], expectedSha256: '0'.repeat(64) }), /CANONICAL_BACKEND_CONFLICT/);
+      assert(!fs.existsSync(path.join(target, '.aidn/runtime/index/workflow-index.sqlite')));
+    } finally { if (previous === undefined) delete process.env.AIDN_RUNTIME_PERSISTENCE_BACKEND;else process.env.AIDN_RUNTIME_PERSISTENCE_BACKEND = previous; }
+  });
+  check('configured dual SQLite replacements preserve canonical and materialized text', () => {
+    const target = path.join(temp, 'dual-primary');fs.mkdirSync(path.join(target, '.aidn'), { recursive: true });
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'dual', persistence: { backend: 'sqlite' } } }));
+    const first = runDbFirstArtifactUseCase({ target, path: 'notes.md', content: '# Canonical\nvalue: before\n' });
+    const result = runDbFirstArtifactUseCase({ target, path: 'notes.md', replacements: [{ old: 'value: before', new: 'value: after' }], expectedSha256: first.artifact.sha256 });
+    assert.equal(result.backend, 'sqlite');assert.equal(result.materialized, true);
+    assert.equal(fs.readFileSync(path.join(target, 'docs/audit/notes.md'), 'utf8'), result.artifact.content);
+  });
+  check('configured PostgreSQL remains canonical in files presentation mode', () => {
+    const target = path.join(temp, 'pg-files');fs.mkdirSync(path.join(target, '.aidn'), { recursive: true });
+    fs.writeFileSync(path.join(target, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
+    assert.throws(() => runDbFirstArtifactUseCase({ target, path: 'notes.md', replacements: [{ old: 'a', new: 'b' }], expectedSha256: '0'.repeat(64) }), /ARTIFACT_POSTGRES_/);
+    assert(!fs.existsSync(path.join(target, '.aidn/runtime/index/workflow-index.sqlite')));
+  });
   prepareActivationFixture(temp, root);
-  function cli(tool, args) {
-    return spawnSync(process.execPath, [path.join(root, 'bin/aidn.mjs'), 'runtime', tool, '--target', temp, ...args, '--json'], { encoding: 'utf8', windowsHide: true,
+  function cli(tool, args, commandTarget = temp) {
+    return spawnSync(process.execPath, [path.join(root, 'bin/aidn.mjs'), 'runtime', tool, '--target', commandTarget, ...args, '--json'], { encoding: 'utf8', windowsHide: true,
       env: { ...process.env, AIDN_EFFICIENCY_UNAVAILABLE: '', AIDN_RUNTIME_PERSISTENCE_BACKEND: '', AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF: '' } });
   }
   check('real CLI compact write/read and contracts', () => {
@@ -128,4 +175,7 @@ try {
     assert.equal(fs.readFileSync(path.join(temp, 'docs/audit/notes.md'), 'utf8'), '# File\n');
   });
   console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements }));
-} finally { fs.rmSync(temp, { recursive: true, force: true }); }
+} finally {
+  for (const [key, value] of previousEnv) { if (value === undefined) delete process.env[key];else process.env[key] = value; }
+  fs.rmSync(temp, { recursive: true, force: true });
+}
