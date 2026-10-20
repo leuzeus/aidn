@@ -111,6 +111,9 @@ function main() {
     assert(!("agent_selection_summary" in noProject), "agent_selection_summary should be absent when --no-project-agent-selection-summary is set");
     assert(!("multi_agent_status" in noProject), "multi_agent_status should be absent when --no-project-multi-agent-status is set");
 
+    // Preserve the complete authoritative workflow before exercising the
+    // explicit transition to db-only and its projection/materialization paths.
+    runJson("tools/perf/index-sync.mjs", ["--target", target, "--store", "sqlite", "--with-content", "--json"]);
     fs.rmSync(path.join(target, "docs", "audit", "RUNTIME-STATE.md"), { force: true });
     fs.rmSync(path.join(target, "docs", "audit", "HANDOFF-PACKET.md"), { force: true });
     fs.rmSync(path.join(target, "docs", "audit", "AGENT-HEALTH-SUMMARY.md"), { force: true });
