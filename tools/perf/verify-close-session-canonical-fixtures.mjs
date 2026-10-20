@@ -56,9 +56,9 @@ export async function verifyCanonicalSessionClose() {
       assert.equal(result.mapped_session.session_id, "S101");
       assert.equal(result.mapped_cycle.state, "DONE"); assert.equal(result.active_cycle, "none");
     });
-    await check("cleared_session_focus_resolves_only_explicit_closed_terminal_owner", async () => {
+    await check("cleared_session_focus_does_not_guess_a_terminal_session", async () => {
       const data = structuredClone(payload); edit(data, /CURRENT-STATE\.md$/, text => text.replace(/active_session:.*$/m, "active_session: none"));
-      await store.writeIndexProjection({ payload: data }); assert.equal((await admit()).ok, true);
+      await store.writeIndexProjection({ payload: data }); assert.equal((await admit()).ok, false);
       edit(data, /sessions\/S101.*\.md$/, text => text.replace("state: CLOSED", "state: OPEN"));
       await store.writeIndexProjection({ payload: data }); assert.equal((await admit()).ok, false);
     });

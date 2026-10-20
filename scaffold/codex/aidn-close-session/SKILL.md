@@ -115,8 +115,9 @@ Update:
   preparatory write or a recorded CLOSED state alone is not closure evidence.
 - after cycle focus is cleared, the final hook may validate the terminal cycle
   owning the current branch and its session owner. It does not reactivate the
-  cycle or authorize ordinary product writes. When session focus is also cleared,
-  the unique owner must already be CLOSED with its close gate and snapshot checked.
+  cycle or authorize ordinary product writes. Keep the owner session selected
+  until this final hook has confirmed its closure; do not clear its reference
+  before the check or guess a historical session after a refusal.
 - in files, this hook remains non-blocking by default.
 - DB runtime sync (mandatory in dual/db-only; optional in files):
 - run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).

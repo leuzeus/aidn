@@ -14,7 +14,6 @@ import {
   listCycleStatuses,
   listSessionArtifacts,
   parseSessionCloseCycleDecisions,
-  parseSimpleMap,
   readCurrentState,
   readSourceBranch,
   readTextIfExists,
@@ -100,25 +99,13 @@ export async function runCloseSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN"
   const activeSessionId = String(currentState.active_session ?? "none");
   const activeCycleId = String(currentState.active_cycle ?? "none");
   const activeSessionArtifact = sessions.find(session => session.session_id === activeSessionId.toUpperCase()) ?? null;
-  let targetSession = resolveTargetSessionArtifact({
+  const targetSession = resolveTargetSessionArtifact({
     activeSessionArtifact,
     mapping,
     branchKind,
     sessions,
     currentState,
   });
-  // The final hook may run after the focus was cleared. Resolve only the
-  // terminal cycle owning this branch and its explicitly closed owner session;
-  // never guess the latest session or reactivate an implementation context.
-  if (!targetSession && /^none$/i.test(activeSessionId) && /^none$/i.test(activeCycleId)
-      && !mapping.ambiguous && mapping.mapped_cycle
-      && ["DONE", "NO_GO", "DROPPED"].includes(mapping.mapped_cycle.state)) {
-    const owners = sessions.filter(session => session.session_id === mapping.mapped_cycle.session_owner);
-    const owner = owners.length === 1 ? owners[0] : null;
-    const ownerText = owner ? owner.canonical_text ?? readTextIfExists(owner.file_path) : "";
-    if (owner && String(parseSimpleMap(ownerText).get("state")).toUpperCase() === "CLOSED"
-        && owner.metadata.close_gate_satisfied === true && owner.metadata.snapshot_updated === true) targetSession = owner;
-  }
   const targetSessionText = targetSession ? targetSession.canonical_text ?? readTextIfExists(targetSession.file_path) : "";
   const {
     cycleDecisions,
