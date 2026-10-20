@@ -87,6 +87,11 @@ instead of fetching it solely to recover that preimage. The writer still checks
 the current revision and metadata transactionally; re-read after a conflict or
 when current authoritative context is required. Do not carry that assumption
 across a handoff or use it to bypass fresh admission.
+Resolve exact template names from the owning installed skill or scaffold
+inventory before batching; output names are not a template naming convention.
+In particular cycle templates use `cycles/TEMPLATE_STATUS.md`,
+`cycles/TEMPLATE_plan.md`, etc., as mapped by `aidn-cycle-create`. Never guess
+`TEMPLATE_CYCLE_STATUS.md` or replace a missing required template with an anchor.
 
 For an admitted update to an existing canonical database document, use `runtime
 db-first-artifact --path <path> --replace '[{"old":"unique exact text","new":

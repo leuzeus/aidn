@@ -28,6 +28,12 @@ const initial = { path: 'cycles/C001-feature/status.md', kind: 'cycle_status', f
   canonical: { duplicate: content } };
 const sha256 = artifactContentHash(content);
 try {
+  check('installed cycle template read guidance resolves actual scaffold assets', () => {
+    const guide = fs.readFileSync(path.join(root, 'scaffold/codex/aidn-cycle-create/SKILL.md'), 'utf8');
+    const references = [...guide.matchAll(/`(cycles\/TEMPLATE_[A-Za-z0-9_.-]+\.md)`/g)].map(match => match[1]);
+    assert.equal(new Set(references).size, 9);
+    for (const reference of references) assert(fs.statSync(path.join(root, 'scaffold/docs_audit', reference)).isFile(), reference);
+  });
   check('bounded explicit batch paths reject malformed, empty and duplicate aliases', () => {
     assert.deepEqual(parseArtifactPaths('["notes.md","sessions/S001.md"]'), ['notes.md','sessions/S001.md']);
     for (const value of ['null','{}','[]','[1]','[""]','[" x"]','["x","x"]','["docs/audit/x","x"]','["a\\\\b","a/b"]', JSON.stringify(Array(33).fill('x')), JSON.stringify(['x'.repeat(16384)])]) {
