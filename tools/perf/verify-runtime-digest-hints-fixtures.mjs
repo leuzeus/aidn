@@ -233,7 +233,7 @@ function main() {
     ], env);
     assert(skillHookOut.includes("Skill hook: WARN (close-session -> close-session-hook.mjs)"), "skill-hook missing warning summary");
 
-    const runJsonHookOut = runText("tools/codex/run-json-hook.mjs", [
+    const refusedCloseOut = runText("tools/codex/run-json-hook.mjs", [
       "--skill",
       "close-session",
       "--mode",
@@ -244,6 +244,14 @@ function main() {
       "db-only",
       "--no-auto-skip-gate",
     ], env, 1);
+    assert(refusedCloseOut.includes("Hook context WARN: skill=close-session"), "session closure refusal must remain visible");
+
+    // Refused closure must not synchronize local projections. Exercise the
+    // repair/digest hints through an explicit synchronization on a reload.
+    const runJsonHookOut = runText("tools/codex/run-json-hook.mjs", [
+      "--skill", "context-reload", "--mode", "COMMITTING", "--target", target,
+      "--state-mode", "db-only", "--db-sync", "--no-auto-skip-gate",
+    ], env);
     assert(runJsonHookOut.includes("Repair status: "), "run-json-hook missing repair status");
     assert(runJsonHookOut.includes("Runtime digest: docs/audit/RUNTIME-STATE.md"), "run-json-hook missing runtime digest hint");
     assert(runJsonHookOut.includes("Current state stale: docs/audit/CURRENT-STATE.md"), "run-json-hook missing stale current-state hint");
