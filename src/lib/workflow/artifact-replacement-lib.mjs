@@ -13,6 +13,6 @@ export function prepareLockedArtifactReplacement(current, request) {
     canonical: current.path.toLowerCase().endsWith('.md')
       ? buildCanonicalFromMarkdown(content, { relativePath: current.path, kind: current.kind }) : null };
   assertArtifactCompareSwap({ artifact, expectedSha256: request.expectedSha256,
-    expectedMetadataSha256: request.expectedMetadataSha256 ?? artifactMetadataHash(current) }, current);
+    expectedMetadataSha256: request.expectedMetadataSha256 === undefined ? artifactMetadataHash(current) : request.expectedMetadataSha256 }, current);
   return artifact;
 }

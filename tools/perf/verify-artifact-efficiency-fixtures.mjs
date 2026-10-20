@@ -107,6 +107,7 @@ try {
     try {
       const observed=store.getArtifact(initial.path);
       store.upsertArtifact({...observed,family:'support'});
+      assert.throws(()=>store.replaceArtifact({path:initial.path,replacements:[{old:'VERIFYING',new:'DONE'}],expectedSha256:observed.sha256,expectedMetadataSha256:null}),/COMPARE_SWAP_INVALID/);
       assert.throws(()=>store.replaceArtifact({path:initial.path,replacements:[{old:'VERIFYING',new:'DONE'}],expectedSha256:observed.sha256,expectedMetadataSha256:artifactMetadataHash(observed)}),/REVISION_CONFLICT/);
       assert.equal(store.getArtifact(initial.path).content,observed.content);
       assert.throws(()=>store.replaceArtifact({path:initial.path,replacements:[{old:'VERIFYING',new:'DONE'},{old:'absent',new:'x'}],expectedSha256:observed.sha256}),/NOT_UNIQUE/);
