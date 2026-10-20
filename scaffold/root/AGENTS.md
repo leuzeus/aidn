@@ -73,6 +73,21 @@ Markdown section, including nested exceptions; expand if dependencies or context
 are unclear. Check `context_excerpt.source_sha256` when reusing a section.
 Consultation never replaces current admission or accepted dependency closure.
 
+When several known documents are required together, use one `runtime
+artifact-fetch --paths-json '["CURRENT-STATE.md","RUNTIME-STATE.md"]' --view
+agent --json` request (1-32 explicit paths). It reads complete texts from one
+fresh canonical snapshot; inspect every entry and require `found:true` for each
+required document. Missing documents remain visible and return exit 2. Do not
+turn a required read into an optional one. Group the known startup/authority
+set after routing instead of spending one model exchange per document; do not
+omit required authorities or guess a reduced set. Batch consultation is not an
+admission or a dependency-closure certificate. For an already observed unchanged
+document in this conversation, reuse its exact text and SHA for an exact delta
+instead of fetching it solely to recover that preimage. The writer still checks
+the current revision and metadata transactionally; re-read after a conflict or
+when current authoritative context is required. Do not carry that assumption
+across a handoff or use it to bypass fresh admission.
+
 For an admitted update to an existing canonical database document, use `runtime
 db-first-artifact --path <path> --replace '[{"old":"unique exact text","new":
 "replacement"}]' --expect-sha256 <full-content-sha256> --view agent --json`

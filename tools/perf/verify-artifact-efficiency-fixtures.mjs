@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { artifactAgentView, applyArtifactReplacements } from '../../src/application/runtime/artifact-efficiency-service.mjs';
+import { artifactAgentView, applyArtifactReplacements, parseArtifactPaths } from '../../src/application/runtime/artifact-efficiency-service.mjs';
 import { runDbFirstArtifactUseCase } from '../../src/application/runtime/db-first-artifact-use-case.mjs';
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { artifactContentHash, artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
@@ -28,6 +28,12 @@ const initial = { path: 'cycles/C001-feature/status.md', kind: 'cycle_status', f
   canonical: { duplicate: content } };
 const sha256 = artifactContentHash(content);
 try {
+  check('bounded explicit batch paths reject malformed, empty and duplicate aliases', () => {
+    assert.deepEqual(parseArtifactPaths('["notes.md","sessions/S001.md"]'), ['notes.md','sessions/S001.md']);
+    for (const value of ['null','{}','[]','[1]','[""]','[" x"]','["x","x"]','["docs/audit/x","x"]','["a\\\\b","a/b"]', JSON.stringify(Array(33).fill('x')), JSON.stringify(['x'.repeat(16384)])]) {
+      assert.throws(() => parseArtifactPaths(value), /ARTIFACT_PATHS_/);
+    }
+  });
   check('view preserves content and provenance without duplicate rendering', () => {
     const view = artifactAgentView({ ...initial, sha256 }, { includeContent: true });
     assert.equal(view.artifact.content, content); assert.equal(view.artifact.sha256, sha256);
@@ -167,12 +173,48 @@ try {
       full_fetch_bytes: Buffer.byteLength(full.stdout), section_fetch_bytes: Buffer.byteLength(read.stdout),
       full_content_input_bytes: Buffer.byteLength(content), replacement_input_bytes: Buffer.byteLength(JSON.stringify(replacements)) + 64 });
   });
+  check('real CLI batch preserves complete ordered documents, provenance and canonical bytes', () => {
+    const paths = ['notes.md', initial.path];
+    const before = fs.readFileSync(path.join(temp, '.aidn/runtime/index/workflow-index.sqlite'));
+    const batch = cli('artifact-fetch', ['--paths-json', JSON.stringify(paths), '--view', 'agent']);
+    assert.equal(batch.status, 0, batch.stderr); const output = JSON.parse(batch.stdout);
+    assert.equal(output.found, true); assert.equal(output.artifact, null); assert.equal(output.source_revision, null);
+    assert.deepEqual(output.selector.paths, paths); assert.deepEqual(output.artifacts.map(a => a.path), paths);
+    const schema = JSON.parse(fs.readFileSync(path.join(root, 'src/core/contracts/cli-output/runtime-artifact-fetch.v1.schema.json')));
+    assert.deepEqual(validateJsonSchema(output, schema), []);
+    for (const entry of output.artifacts) {
+      const single = JSON.parse(cli('artifact-fetch', ['--path', entry.path, '--view', 'agent']).stdout);
+      assert.deepEqual(entry.artifact, single.artifact);assert.equal(entry.found, true);assert.match(entry.source_revision, /^[a-f0-9]{64}$/);
+    }
+    assert(fs.readFileSync(path.join(temp, '.aidn/runtime/index/workflow-index.sqlite')).equals(before));
+    const metadata = JSON.parse(cli('artifact-fetch', ['--paths-json', JSON.stringify(paths), '--view', 'agent', '--metadata-only']).stdout);
+    assert(metadata.artifacts.every(e => !('content' in e.artifact) && !('canonical' in e.artifact)));
+  });
+  check('real CLI batch retains missing entries and never claims global completeness', () => {
+    const batch = cli('artifact-fetch', ['--paths-json', '["notes.md","absent.md"]', '--view', 'agent']);
+    assert.equal(batch.status, 2); const output = JSON.parse(batch.stdout);
+    assert.equal(output.found, false); assert.equal(output.artifacts[0].found, true);
+    assert.deepEqual(output.artifacts[1], { path:'absent.md', found:false, source_revision:null, artifact:null });
+    for (const extra of [['--path','notes.md'], ['--heading','## Active'], ['--session-id','S001']]) {
+      assert.notEqual(cli('artifact-fetch', ['--paths-json','["notes.md"]','--view','agent',...extra]).status, 0);
+    }
+    assert.notEqual(cli('artifact-fetch', ['--paths-json','["notes.md"]']).status, 0);
+  });
+  check('real CLI batch observes a later revision and does not cache earlier reads', () => {
+    const argv = ['--paths-json','["notes.md"]','--view','agent'];
+    const before = JSON.parse(cli('artifact-fetch', argv).stdout).artifacts[0].artifact;
+    runDbFirstArtifactUseCase({target:temp, path:'notes.md', content: before.content+'\nFresh revision\n', materialize:'false'});
+    const after = JSON.parse(cli('artifact-fetch', argv).stdout).artifacts[0].artifact;
+    assert.notEqual(after.sha256, before.sha256);assert.equal(after.content, before.content+'\nFresh revision\n');
+  });
   check('configured unavailable PG cannot fall back to local SQLite or visible files', () => {
     fs.mkdirSync(path.join(temp, '.aidn'), { recursive: true });
     fs.writeFileSync(path.join(temp, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'db-only', persistence: { backend: 'postgres', connectionRef: 'env:AIDN_EFFICIENCY_UNAVAILABLE' } } }));
     const failed = cli('db-first-artifact', ['--path', 'notes.md', '--replace', JSON.stringify(replacements), '--expect-sha256', sha256, '--no-materialize']);
     assert.notEqual(failed.status, 0); assert.match(failed.stderr, /ARTIFACT_POSTGRES_/);
     assert.equal(fs.readFileSync(path.join(temp, 'docs/audit/notes.md'), 'utf8'), '# File\n');
+    const batch = cli('artifact-fetch', ['--paths-json','["notes.md"]','--view','agent']);
+    assert.notEqual(batch.status, 0); assert.equal(batch.stdout.trim().startsWith('{'), false);
   });
   console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements }));
 } finally {

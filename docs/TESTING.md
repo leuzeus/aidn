@@ -1338,3 +1338,11 @@ latency or token improvements in a real benchmark.
 The same gate refuses deltas built from stale indexes in configured `files`
 mode, projection-mode authority overrides, and SQLite overrides of canonical
 PostgreSQL. It verifies that the authoritative file and index remain untouched.
+Batch consultation additionally checks bounded explicit selectors, alias
+duplicates and selector conflicts, complete ordered texts and per-entry
+provenance through the real public CLI, metadata-only output, missing entries
+with nonzero status, unchanged database bytes, and a fresh later revision.
+Configured PostgreSQL failure must emit no partial batch or stale-file fallback.
+Native benchmarks must distinguish model round trips and cumulative item
+residency from unique document bytes; moving a rule read from shell to CLI must
+not be misreported as a new rule or a causal token saving.

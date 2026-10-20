@@ -298,6 +298,21 @@ closure or write authorization; the governed `codex hydrate-context
 scope and dependency closure are needed. Never substitute an excerpt for a
 mandatory complete authority. Re-read when the source hash changes.
 
+`runtime artifact-fetch --paths-json '["CURRENT-STATE.md","RUNTIME-STATE.md"]'
+--view agent --json` consults 1-32 explicitly named documents from one fresh
+canonical snapshot, preserving complete text, per-entry identity, content SHA,
+source revision and request order. Backend and project context are shared in the
+envelope. Each `artifacts` entry reports its requested `path`, `found`,
+`source_revision` and `artifact`; root `artifact`/`source_revision` are null and
+root `found` requires every entry. Missing entries retain null artifact/revision
+and exit 2; backend/scope errors return no partial result or silent fallback.
+The bounded JSON input rejects duplicates (including audit-prefix/slash aliases),
+empty paths and mixed selectors/headings. `--metadata-only` omits every body.
+This is read-only consultation, not write admission or dependency closure.
+Single-selector behavior and default complete output remain compatible. Batching
+avoids one model round trip per known required document; it neither omits required
+reads nor caches future canonical observations.
+
 `runtime db-first-artifact --path <path> --replace '[{"old":"unique exact text",
 "new":"replacement"}]' --expect-sha256 <full-content-sha256> --no-materialize
 --view agent --json` changes an existing canonical UTF-8 artifact without
