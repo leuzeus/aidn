@@ -583,7 +583,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     jsonContract: "runtime-artifact-fetch.v1.schema.json",
     safeArgs: ["runtime", "artifact-fetch", "--path", "CURRENT-STATE.md", "--json"],
     allowNonZero: true,
-    notes: "Reads one canonical runtime artifact from the active backend without materializing visible files; exits non-zero when the selector is absent.",
+    notes: "Reads one canonical runtime artifact, optionally an agent view or complete consultative heading, without materializing files; absent selectors exit non-zero.",
   }),
   commandPolicy({
     id: "runtime-artifact-store-list",
@@ -1038,7 +1038,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
       "normative",
       "--json",
     ],
-    notes: "Upserts one artifact into the configured canonical backend and can explicitly materialize its audit projection. PostgreSQL never falls back to SQLite.",
+    notes: "Upserts one artifact or applies explicit revision-checked replacements through atomic compare-and-swap; agent views only format the receipt. Projection intent and backend authority remain unchanged.",
   }),
   commandPolicy({
     id: "runtime-coordinator-loop",

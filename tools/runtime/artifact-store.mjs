@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
+import { discoverProjectTemplates } from '../../src/application/runtime/template-inventory-service.mjs';
+import { discoverProjectArtifacts } from '../../src/application/runtime/artifact-inventory-service.mjs';
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -84,6 +86,11 @@ function parseArgs(argv) {
     const token = argv[i];
     if (token === "upsert" || token === "get" || token === "list" || token === "materialize") {
       args.action = token;
+    } else if (token === "--templates") {
+      args.templates = true;
+    } else if (token === '--view') {
+      args.view = argv[++i];
+      if (args.view !== 'agent') throw new Error('Invalid --view. Expected agent');
     } else if (token === "--target") {
       args.target = argv[i + 1] ?? "";
       i += 1;
@@ -132,22 +139,40 @@ function parseArgs(argv) {
   if (!args.action) {
     throw new Error("Missing action. Expected upsert|get|list|materialize");
   }
+  if (args.templates && (args.action !== 'list' || args.path || args.onlyPaths.length || args.dryRun || args.sqliteFile !== '.aidn/runtime/index/workflow-index.sqlite' || args.auditRoot !== 'docs/audit')) throw new Error('--templates requires list with the configured project authority and default audit root');
+  if (args.view && (args.action !== 'list' || args.templates || args.path || args.onlyPaths.length || args.dryRun || args.sqliteFile !== '.aidn/runtime/index/workflow-index.sqlite' || args.auditRoot !== 'docs/audit')) throw new Error('--view agent requires ordinary list with the configured project authority and default audit root');
   if (args.action === 'upsert' && args.dryRun) throw new Error('Artifact upsert does not support --dry-run; use get/list to inspect existing state');
   return args;
 }
 
 function printUsage() {
   console.log("Usage:");
+  console.log('  npx aidn runtime artifact-store list --view agent --limit 10000 --target . --json  # compact canonical presence; inventory.complete must be true before inferring absence');
+  console.log('  npx aidn runtime artifact-store list --templates --target . --json  # exact standard template references from the configured project authority');
   console.log("  npx aidn runtime artifact-store list --target . --sqlite-file .aidn/runtime/index/workflow-index.sqlite --json");
   console.log("  npx aidn runtime artifact-store get --target . --path snapshots/context-snapshot.md --json");
   console.log("  npx aidn runtime artifact-store upsert --target . --path snapshots/context-snapshot.md --kind snapshot --family normative --content-file docs/audit/snapshots/context-snapshot.md --json");
   console.log("  npx aidn runtime artifact-store materialize --target . --audit-root docs/audit --only-path snapshots/context-snapshot.md --json");
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target || ".");
+    if (args.view === 'agent') {
+      const inventory = await discoverProjectArtifacts({ targetRoot, limit: args.limit });
+      const payload = { action: 'list', sqlite_file: inventory.backend === 'sqlite' ? path.join(targetRoot, args.sqliteFile) : '', ...inventory };
+      payload.artifact_store_diagnostic = buildArtifactStoreDiagnostic('list', payload, args);
+      console.log(args.json ? JSON.stringify(payload) : payload.artifacts.map(asset => asset.path).join('\n'));
+      return;
+    }
+    if (args.templates) {
+      const inventory = await discoverProjectTemplates({ targetRoot });
+      const payload = { action: 'list', sqlite_file: inventory.backend === 'sqlite' ? path.join(targetRoot, args.sqliteFile) : '', ...inventory };
+      payload.artifact_store_diagnostic = buildArtifactStoreDiagnostic('list', payload, args);
+      console.log(args.json ? JSON.stringify(payload, null, 2) : payload.artifacts.map(asset => `${asset.path}\t${asset.title}`).join('\n'));
+      return;
+    }
     const store = createProjectArtifactStore({
       targetRoot,
       auditRoot: args.auditRoot,

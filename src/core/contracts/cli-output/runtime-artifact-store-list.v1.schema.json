@@ -12,7 +12,32 @@
     "artifact_store_diagnostic"
   ],
   "properties": {
-    "backend": { "type": "string", "enum": ["sqlite", "postgres"] },
+    "view": { "const": "agent-v1" },
+    "inventory": {
+      "type": "object",
+      "required": ["consultative_only", "content_included", "complete", "total_count", "limit", "runtime_state_mode", "note"],
+      "properties": {
+        "consultative_only": { "const": true }, "content_included": { "const": false },
+        "complete": { "type": "boolean" }, "total_count": { "type": "integer", "minimum": 0 },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "runtime_state_mode": { "enum": ["files", "dual", "db-only"] }, "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "backend": { "type": "string", "enum": ["sqlite", "postgres", "files"] },
+    "template_inventory": {
+      "type": "object",
+      "required": ["consultative_only", "distribution", "runtime_state_mode", "complete", "content_included", "note"],
+      "properties": {
+        "consultative_only": { "const": true },
+        "distribution": { "const": "package:scaffold/docs_audit" },
+        "runtime_state_mode": { "enum": ["files", "dual", "db-only"] },
+        "complete": { "const": true },
+        "content_included": { "const": false },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "action": { "type": "string" },
     "sqlite_file": { "type": "string" },
     "artifacts": { "type": "array" },

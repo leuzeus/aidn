@@ -64,6 +64,13 @@ Mode gate:
 docs/audit/cycles/CXXX-[type]-<short-title>/
 
 2) Create minimal required files using templates:
+
+Discover exact references with `aidn runtime artifact-store list --templates
+--target . --json`, then read the complete required models using the returned
+`path` and `read_method` (batch `artifact-fetch --paths-json ... --view agent
+--json` for database artifacts; `projection_path` for files). Require successful
+discovery and every required read. Consultation never replaces admission.
+
 - status.md (required)
 - brief.md
 - plan.md

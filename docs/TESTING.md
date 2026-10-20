@@ -1323,3 +1323,43 @@ excluded destination. These checks change no user permissions and do not prove
 a Windows read denial, native hook execution or universal shell interception.
 This suite is already part of `runtime-agent-run-lifecycle`; do not rerun it as a
 second admission invocation.
+
+## Artifact efficiency intent
+
+Run `npm run perf:verify-artifact-efficiency` for opt-in agent views, complete
+Markdown consultation and exact revision-checked replacements. This required
+runtime gate distinguishes pure fixtures and real CLI executions from native
+qualification. It covers refusal of ambiguous text and stale revisions, unchanged
+metadata/identity, SQLite canonical writes, file projections and unavailable
+PostgreSQL without fallback. Existing scoped-context, persistence parity, effect
+and JSON contract gates remain required. Local PostgreSQL and native MXC runs
+must retain independent evidence; byte savings on fixtures do not prove model
+latency or token improvements in a real benchmark.
+The compact project inventory additionally checks metadata-only exact references,
+complete/truncated observations, bounded limits, canonical files over stale
+indexes, duplicate/unsafe references, unchanged SQLite bytes and unavailable
+configured PostgreSQL without partial output. Default full list remains available.
+Locked differential writes additionally prove one adapter operation without a
+detached preimage read, rollback of a partially applicable replacement list,
+preservation of current ownership/classification and explicit metadata conflict
+refusal. Full-content CAS retains its independent content/metadata conflict tests.
+Real PostgreSQL and native qualification remain separate from these fixtures.
+The same gate refuses deltas built from stale indexes in configured `files`
+mode, projection-mode authority overrides, and SQLite overrides of canonical
+PostgreSQL. It verifies that the authoritative file and index remain untouched.
+Batch consultation additionally checks bounded explicit selectors, alias
+duplicates and selector conflicts, complete ordered texts and per-entry
+provenance through the real public CLI, metadata-only output, missing entries
+with nonzero status, unchanged database bytes, and a fresh later revision.
+Configured PostgreSQL failure must emit no partial batch or stale-file fallback.
+Native benchmarks must distinguish model round trips and cumulative item
+residency from unique document bytes; moving a rule read from shell to CLI must
+not be misreported as a new rule or a causal token saving.
+Template discovery uses the existing artifact-store list surface with
+`--templates`. Its regression gate checks distribution-derived exact references,
+complete canonical batch reads, wrong-name refusal, required missing models,
+ambiguous references, unavailable PostgreSQL and files/SQLite authority. Package,
+installed-client, real CLI and native session/cycle/admission evidence are distinct.
+The retained conditional-read regression also preserves a grouped read's exit2
+for an absent optional artifact, then uses the existing canonical list surface
+to establish presence before constructing the next complete required read set.

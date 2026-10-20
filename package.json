@@ -82,6 +82,7 @@
     "verify:release": "node tools/verify/run-gate-family.mjs obligations",
     "verify:cleanliness": "node tools/verify/run-gate-family.mjs cleanliness",
     "verify:all": "node tools/verify/run-gate-family.mjs all",
+    "perf:verify-artifact-efficiency": "node tools/perf/verify-artifact-efficiency-fixtures.mjs",
     "perf:verify-surface-catalog": "node tools/verify/verify-surface-catalog.mjs",
     "perf:verify-doc-references": "node tools/verify/verify-doc-references.mjs",
     "perf:verify-gate-catalog": "node tools/verify/verify-gate-catalog.mjs",

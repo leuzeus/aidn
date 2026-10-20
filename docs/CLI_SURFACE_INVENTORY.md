@@ -1,5 +1,20 @@
 # CLI Surface Inventory
 
+`runtime artifact-store list --view agent --limit 10000 --json` is an opt-in
+compact project inventory. It resolves configured canonical authority (files,
+SQLite or PostgreSQL), exposes references/revisions without bodies or canonical
+duplicates, and explicitly reports `inventory.complete`, total count and limit.
+Only a complete observation supports conditional absence. Alternate audit roots,
+SQLite overrides and template-selector combinations are rejected for this view.
+Default full list output is unchanged. Inventory is consultative, not admission.
+
+Canonical `db-first-artifact --replace ... --expect-sha256 ...` performs the
+preimage read, exact replacement, metadata preservation, canonical reconstruction
+and write inside one existing adapter transaction. PostgreSQL uses one worker
+exchange rather than a detached get plus CAS. The public command/output and
+ordinary full-content CAS capability remain unchanged. Scope reservation fences,
+revision conflicts and explicit projection policy remain enforced.
+
 Date: 2026-05-23
 Status: current codebase inventory
 
@@ -261,6 +276,7 @@ These surfaces are public and contract-backed, but they are more operational or 
 - `aidn runtime session-plan --json`
 - `aidn runtime db-first-artifact --json`
 - `aidn runtime artifact-store list --json`
+- `aidn runtime artifact-store list --templates --json` discovers exact standard model references
 - `aidn runtime artifact-store get --json`
 - `aidn runtime artifact-store upsert --json`
 - `aidn runtime artifact-store materialize --json`
@@ -281,6 +297,83 @@ no implicit merge, deletion or migration of either scope occurs.
 does not authorize an upsert or materialization; their existing effect rules
 remain unchanged. PostgreSQL checkpoints read the canonical backend and skip
 implicit index imports with reason `postgres_canonical_backend`.
+
+For conditional project artifacts, `artifact-store list --limit 10000 --json`
+returns the selected canonical scope up to the existing supported PostgreSQL
+limit. Fewer than 10000 returned rows establishes completeness for that read;
+a full limit is inconclusive, never evidence of absence. Use exact returned
+paths and read every required or positively present conditional artifact. This
+does not downgrade a later missing read, authorize a write or establish future
+freshness. Standard models use the dedicated complete `--templates` selector.
+
+`artifact-store list --templates` derives its complete standard asset membership
+from the executing package's `scaffold/docs_audit` distribution (ADR-0013), without
+a parallel name mapping. It returns exact audit-relative `path`, contextual title,
+distribution and current source hashes, `read_method` and `projection_path`.
+Project template contents remain governed artifacts: files in files mode,
+canonical SQLite in dual/db-only, and configured PostgreSQL regardless of visible
+anchors. This inventory reads one fresh database snapshot without list truncation;
+it never imports, repairs, aliases or materializes. Missing distributed project
+models, duplicate references, unavailable scope/backend and unsafe links fail.
+The returned observation is consultative: obtain the required complete models via
+batch `artifact-fetch` in database modes or grouped file reads in files mode.
+Admission, freshness, revision and closure checks remain separate and mandatory.
+Artifact consultation and writes support an explicit `--view agent`. This v1
+view keeps the existing result envelope, backend, identity, SHA256, verdict and
+materialization evidence. Fetch retains text while omitting duplicate canonical
+rendering; writes return metadata without either document body. The default JSON
+remains complete. Expand a receipt with `runtime artifact-fetch --path <path>
+--json`; a receipt is an observation, not a stored snapshot of a future revision.
+
+`runtime artifact-fetch --path <path> --view agent --heading "## Exact heading"
+returns `context_excerpt` separately from artifact metadata: the complete ATX
+section includes nested headings and exceptions, with line range, full-source
+SHA256 and excerpt SHA256. Missing/duplicate headings and non-text content stop
+the request. Omit `--heading` to expand. This is consultative, without dependency
+closure or write authorization; the governed `codex hydrate-context
+--context-selection-file` path remains required when accepted authority bindings,
+scope and dependency closure are needed. Never substitute an excerpt for a
+mandatory complete authority. Re-read when the source hash changes.
+
+`runtime artifact-fetch --paths-json '["CURRENT-STATE.md","RUNTIME-STATE.md"]'
+--view agent --json` consults 1-32 explicitly named documents from one fresh
+canonical snapshot, preserving complete text, per-entry identity, content SHA,
+source revision and request order. Backend and project context are shared in the
+envelope. Each `artifacts` entry reports its requested `path`, `found`,
+`source_revision` and `artifact`; root `artifact`/`source_revision` are null and
+root `found` requires every entry. Missing entries retain null artifact/revision
+and exit 2; backend/scope errors return no partial result or silent fallback.
+The bounded JSON input rejects duplicates (including audit-prefix/slash aliases),
+empty paths and mixed selectors/headings. `--metadata-only` omits every body.
+This is read-only consultation, not write admission or dependency closure.
+Single-selector behavior and default complete output remain compatible. Batching
+avoids one model round trip per known required document; it neither omits required
+reads nor caches future canonical observations.
+
+`runtime db-first-artifact --path <path> --replace '[{"old":"unique exact text",
+"new":"replacement"}]' --expect-sha256 <full-content-sha256> --no-materialize
+--view agent --json` changes an existing canonical UTF-8 artifact without
+re-emitting it. Replacements run in order; every old string must match exactly
+once, including overlapping occurrences. At most 32 replacements and 128 KiB of
+replacement JSON are accepted. They cannot be mixed with content/source or
+identity/classification flags. Metadata is preserved; canonical rendering and
+relational projections are rebuilt through the ordinary writer. SQLite and
+PostgreSQL commit with the existing atomic compare-and-swap capability, binding
+both content and observed metadata to reject concurrent changes, including
+metadata-only changes. A missing source, unavailable backend or ambiguous
+scope never falls back to visible projections. The write remains mutating;
+`--json` and `--view` do not authorize anything. Existing workflow admissions,
+phase, transition and final closure checks remain required. Multiple edits to
+one artifact may share one replacement call after the required admission.
+
+Replacements require a configured canonical database: SQLite in `dual` or
+`db-only`, or canonical PostgreSQL. In `files`, SQLite is only an index and a
+delta must not overwrite a newer authoritative file. The new option therefore
+refuses this case before opening a writable store. Ordinary complete-source
+writes and materialization retain their existing behavior. A projection-mode
+override cannot transfer authority, and a conflicting SQLite backend override
+cannot replace configured PostgreSQL for a replacement.
+
 Selective DB-first writes preserve cycle/session identity derived from standard
 artifact paths and the cycle status subtype; contradictory explicit identity
 is rejected before mutation on either backend.

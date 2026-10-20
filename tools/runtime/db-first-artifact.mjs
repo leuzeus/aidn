@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runDbFirstArtifactUseCase } from "../../src/application/runtime/db-first-artifact-use-case.mjs";
+import { artifactAgentView } from "../../src/application/runtime/artifact-efficiency-service.mjs";
 import {
   normalizeStateMode,
   readAidnProjectConfig,
@@ -43,6 +44,13 @@ function parseArgs(argv) {
     } else if (token === "--content") {
       args.content = argv[i + 1] ?? "";
       i += 1;
+    } else if (token === "--replace") {
+      args.replacements = JSON.parse(argv[++i] ?? "");
+    } else if (token === "--expect-sha256") {
+      args.expectedSha256 = argv[++i] ?? "";
+    } else if (token === "--view") {
+      args.view = argv[++i];
+      if (args.view !== "agent") throw new Error("Invalid --view. Expected agent");
     } else if (token === "--kind") {
       args.kind = argv[i + 1] ?? "";
       i += 1;
@@ -85,6 +93,9 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
+  console.log('  --view agent returns metadata and SHA256 without duplicate document bodies; default JSON remains complete.');
+  console.log('  Replacements require canonical SQLite (dual/db-only) or PostgreSQL; files use complete sources.');
+  console.log('  --replace \'[{"old":"unique exact text","new":"replacement"}]\' --expect-sha256 <canonical-content-sha256> uses atomic compare-and-swap; no content or identity flags.');
   console.log("  npx aidn runtime db-first-artifact --target . --path snapshots/context-snapshot.md --source-file docs/audit/snapshots/context-snapshot.md --kind snapshot --family normative --json");
   console.log("  npx aidn runtime db-first-artifact --target . --path sessions/S001.md --content \"# Session\" --kind session --family normative --materialize --json");
 }
@@ -202,9 +213,10 @@ export function upsertDbFirstArtifact(options = {}) {
 function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
-    const out = upsertDbFirstArtifact(args);
+    let out = upsertDbFirstArtifact(args);
+    if (args.view === "agent") out = { ...out, ...artifactAgentView(out.artifact), view: "agent-v1" };
     if (args.json) {
-      console.log(JSON.stringify(out, null, 2));
+      console.log(JSON.stringify(out, null, args.view === 'agent' ? 0 : 2));
     } else {
       console.log(`DB-first artifact upsert OK: ${out.artifact.path} (state_mode=${out.state_mode}, materialized=${out.materialized ? "yes" : "no"})`);
     }
