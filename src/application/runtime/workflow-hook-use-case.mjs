@@ -30,7 +30,7 @@ import {
   resolveRuntimeTargetPath,
 } from "./runtime-path-service.mjs";
 
-export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
+export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot, completedCheckpoint = null }) {
   const gitAdapter = createLocalGitAdapter();
   const processAdapter = createLocalProcessAdapter();
   const started = Date.now();
@@ -69,7 +69,7 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
   let constraintLoopError = null;
 
   try {
-    checkpointResult = runWorkflowCheckpoint({
+    checkpointResult = completedCheckpoint ?? runWorkflowCheckpoint({
       processAdapter,
       runtimeDir,
       targetRoot,
@@ -90,6 +90,10 @@ export function runWorkflowHookUseCase({ args, runtimeDir, targetRoot }) {
         autoSkipGateOnNoSignal: args.autoSkipGateOnNoSignal,
       },
     });
+    if (completedCheckpoint && (completedCheckpoint.ok !== true || completedCheckpoint.gate?.result !== "ok"
+        || completedCheckpoint.summary?.result !== "ok")) {
+      throw new Error("Final session checkpoint did not pass all nested checks");
+    }
   } catch (error) {
     checkpointError = error;
     if (args.strict) {

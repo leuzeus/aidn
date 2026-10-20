@@ -2,6 +2,8 @@ import path from "node:path";
 import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
+import { resolveEffectiveRuntimePersistence } from "./runtime-persistence-service.mjs";
+import { readCanonicalCloseSessionContext } from "./close-session-context-service.mjs";
 import {
   resolveBranchMapping,
   toCycleSummary,
@@ -9,7 +11,6 @@ import {
 } from "../../lib/workflow/branch-mapping-lib.mjs";
 import {
   collectOpenCycles,
-  findSessionFile,
   listCycleStatuses,
   listSessionArtifacts,
   parseSessionCloseCycleDecisions,
@@ -54,11 +55,11 @@ function makeResult(base, overrides = {}) {
   };
 }
 
-export function runCloseSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
+export async function runCloseSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN", persistenceOptions = {} }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const currentState = readCurrentState(absoluteTargetRoot);
+  let currentState = readCurrentState(absoluteTargetRoot);
   const auditRoot = currentState.audit_root;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
@@ -66,8 +67,28 @@ export function runCloseSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     sourceBranch,
     includeSource: true,
   });
-  const sessions = listSessionArtifacts(auditRoot);
-  const cycles = listCycleStatuses(auditRoot);
+  const canonical = dbBackedMode || resolveEffectiveRuntimePersistence({ targetRoot: absoluteTargetRoot }).backend === "postgres";
+  let sessions = canonical ? [] : listSessionArtifacts(auditRoot);
+  let cycles = canonical ? [] : listCycleStatuses(auditRoot);
+  let canonicalError = null;
+  if (canonical) {
+    try {
+      const context = await readCanonicalCloseSessionContext({ targetRoot: absoluteTargetRoot, auditRoot, persistenceOptions });
+      currentState = { ...currentState, ...context.currentState };
+      sessions = context.sessions;
+      cycles = context.cycles;
+      for (const [value, rows, key] of [[currentState.active_session, sessions, "session_id"],
+        [currentState.active_cycle, cycles, "cycle_id"]]) {
+        if (!/^none$/i.test(value) && rows.filter(row => row[key] === String(value).toUpperCase()).length !== 1) {
+          throw new Error("Canonical active identity missing or ambiguous");
+        }
+      }
+    } catch {
+      canonicalError = "Canonical session closure context is unavailable, ambiguous or inconsistent; diagnose the backend without falling back to Markdown.";
+      sessions = [];
+      cycles = [];
+    }
+  }
   const openCycles = collectOpenCycles(cycles);
   const mapping = resolveBranchMapping({
     branch,
@@ -77,10 +98,7 @@ export function runCloseSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
   });
   const activeSessionId = String(currentState.active_session ?? "none");
   const activeCycleId = String(currentState.active_cycle ?? "none");
-  const activeSessionFile = findSessionFile(auditRoot, activeSessionId);
-  const activeSessionArtifact = activeSessionFile
-    ? sessions.find((session) => session.file_path === activeSessionFile) ?? null
-    : null;
+  const activeSessionArtifact = sessions.find(session => session.session_id === activeSessionId.toUpperCase()) ?? null;
   const targetSession = resolveTargetSessionArtifact({
     activeSessionArtifact,
     mapping,
@@ -88,7 +106,7 @@ export function runCloseSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     sessions,
     currentState,
   });
-  const targetSessionText = targetSession ? readTextIfExists(targetSession.file_path) : "";
+  const targetSessionText = targetSession ? targetSession.canonical_text ?? readTextIfExists(targetSession.file_path) : "";
   const {
     cycleDecisions,
     cycleTopology,
@@ -123,6 +141,15 @@ export function runCloseSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
     mapped_cycle: mapping.mapped_cycle ? toCycleSummary(mapping.mapped_cycle) : null,
     open_cycles: sessionOpenCycles.map((cycle) => toCycleSummary(cycle)),
   };
+
+  if (canonicalError) return makeResult(base, { action: "blocked_canonical_runtime",
+    reason_code: "CLOSE_SESSION_CANONICAL_RUNTIME_INVALID", blocking_reasons: [canonicalError],
+    recommended_next_action: "Diagnose the canonical backend before closing the session." });
+  if (mapping.ambiguous || (targetSession && mapping.mapped_cycle
+      && mapping.mapped_cycle.session_owner !== targetSession.session_id)) {
+    return makeResult(base, { action: "blocked_ambiguous_topology", reason_code: "CLOSE_SESSION_OWNERSHIP_INVALID",
+      blocking_reasons: ["Session closure requires unambiguous branch and session ownership."] });
+  }
 
   return makeResult(base, evaluateCloseSessionTransition({
     branchKind,

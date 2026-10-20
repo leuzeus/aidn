@@ -110,6 +110,14 @@ Update:
 - in dual/db-only, use the hydrated payload to read `repair_layer_status`, `repair_layer_advice`, prioritized artifacts, and continuity hints before acting.
 - prefer `docs/audit/RUNTIME-STATE.md` as the short runtime digest when it has just been refreshed by hydration.
 - in dual/db-only, this hook is mandatory and must be run in strict mode (`--strict`).
+- require overall hook success and successful nested checkpoint, gate and
+  required constraint-loop checks before announcing session closure. An admitted
+  preparatory write or a recorded CLOSED state alone is not closure evidence.
+- after cycle focus is cleared, the final hook may validate the terminal cycle
+  owning the current branch and its session owner. It does not reactivate the
+  cycle or authorize ordinary product writes. Keep the owner session selected
+  until this final hook has confirmed its closure; do not clear its reference
+  before the check or guess a historical session after a refusal.
 - in files, this hook remains non-blocking by default.
 - DB runtime sync (mandatory in dual/db-only; optional in files):
 - run `npx aidn runtime sync-db-first-selective --target . --json` (falls back to full sync when needed).

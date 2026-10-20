@@ -5,7 +5,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { redactDiagnostic } from "../verify/git-worktree-state-lib.mjs";
-import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
+import { verifyTrackedFixtureCopy } from "./verify-tracked-fixture-copy-fixtures.mjs";
 
 const FAILURE_INJECTION_ENV = "AIDN_COORDINATOR_NEXT_FIXTURE_INJECT_FAILURE";
 const FAILURE_PROBE_TOKEN_ENV = "AIDN_COORDINATOR_NEXT_FIXTURE_PROBE_TOKEN";
@@ -318,13 +319,16 @@ function main() {
     const fallbackTarget = path.join(tempRoot, "fallback");
     const dbOnlyFilelessTarget = path.join(tempRoot, "db-only-fileless");
 
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), readyTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "warn"), warnTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "blocked"), blockedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), tamperedTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), transitionRejectedTarget, { recursive: true });
-    fs.cpSync(path.join(currentStateFixturesRoot, "active"), fallbackTarget, { recursive: true });
-    fs.cpSync(path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget, { recursive: true });
+    verifyTrackedFixtureCopy();
+    for (const [source, destination] of [
+      [path.join(handoffFixturesRoot, "ready"), readyTarget],
+      [path.join(handoffFixturesRoot, "warn"), warnTarget],
+      [path.join(handoffFixturesRoot, "blocked"), blockedTarget],
+      [path.join(handoffFixturesRoot, "ready"), tamperedTarget],
+      [path.join(handoffFixturesRoot, "ready"), transitionRejectedTarget],
+      [path.join(currentStateFixturesRoot, "active"), fallbackTarget],
+      [path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget],
+    ]) fs.cpSync(source, destination, { recursive: true, filter: createTrackedFixtureFilter(source, repoRoot) });
     installSharedPlanningFixture(readyTarget);
     installSharedPlanningFixture(dbOnlyFilelessTarget);
 

@@ -502,25 +502,39 @@ export function main(argv = process.argv.slice(2)) {
       AIDN_INDEX_STORE_MODE: "sqlite",
     };
 
+    // A refused close must preserve canonical evidence. Repair propagation is
+    // then tested through an explicit sync intent on the reload path, rather
+    // than relying on a refused closure to import Markdown over the database.
+    const indexFile = path.join(target, ".aidn/runtime/index/workflow-index.sqlite");
+    const canonicalBeforeClose = fs.readFileSync(indexFile);
+    const closeRun = runJsonStage("refused-session-close", "tools/codex/run-json-hook.mjs", [
+      "--skill", "close-session", "--mode", "COMMITTING", "--target", target,
+      "--state-mode", "db-only", "--no-auto-skip-gate", "--verbose", "--json",
+    ], env, { expectedStatuses: [1], redactedPaths });
+    stageDiagnostics.push(publicStageSummary(closeRun.process));
+    const closeOutput = closeRun.payload;
+    const closePreservedCanonical = canonicalBeforeClose.equals(fs.readFileSync(indexFile));
+
     const hookRun = runJsonStage(
-      "close-session-hook",
+      "repair-context-hook",
       "tools/codex/run-json-hook.mjs",
       [
         "--skill",
-        "close-session",
+        "context-reload",
         "--mode",
         "COMMITTING",
         "--target",
         target,
         "--state-mode",
         "db-only",
+        "--db-sync",
         "--no-auto-skip-gate",
         "--verbose",
         "--json",
       ],
       env,
       {
-        expectedStatuses: [1],
+        expectedStatuses: [0],
         redactedPaths,
       },
     );
@@ -532,7 +546,7 @@ export function main(argv = process.argv.slice(2)) {
       ?? path.resolve(target, ".aidn/runtime/context/codex-context.json"),
     );
     const stored = readJson(contextFile);
-    const latestEntry = stored?.latest?.["close-session"] ?? {};
+    const latestEntry = stored?.latest?.["context-reload"] ?? {};
 
     const hydrateRun = runJsonStage(
       "hydrate-context",
@@ -545,7 +559,7 @@ export function main(argv = process.argv.slice(2)) {
         "--backend",
         "sqlite",
         "--skill",
-        "close-session",
+        "context-reload",
         "--materialize-visible-artifacts",
         "--json",
       ],
@@ -559,21 +573,26 @@ export function main(argv = process.argv.slice(2)) {
       ? fs.readFileSync(runtimeStateFile, "utf8")
       : "";
 
-    const decision = hydrated?.decisions?.["close-session"] ?? {};
+    const decision = hydrated?.decisions?.["context-reload"] ?? {};
     const recentHistory = Array.isArray(hydrated?.recent_history) ? hydrated.recent_history : [];
     const closeHistory = recentHistory.filter(
-      (entry) => String(entry?.skill ?? "") === "close-session",
+      (entry) => String(entry?.skill ?? "") === "context-reload",
     );
     const latestHistory = closeHistory[closeHistory.length - 1] ?? {};
     const decisionTopFinding = decision?.repair_layer_top_findings?.[0] ?? null;
     const decisionTopFindingText = formatRepairFinding(decisionTopFinding);
 
     const checks = {
-      hook_process_contract_status_one: hookRun.process.status === 1,
-      hook_output_contract_block_expected: hookOutput?.ok === false
-        && hookOutput?.strict === true
-        && String(hookOutput?.action ?? "").startsWith("blocked_")
-        && hookOutput?.result === "stop",
+      hook_process_contract_status_one: closeRun.process.status === 1,
+      hook_output_contract_block_expected: closeOutput?.ok === false
+        && closeOutput?.strict === true
+        && String(closeOutput?.action ?? "").startsWith("blocked_")
+        && closeOutput?.result === "stop",
+      refused_close_skips_db_sync: closeOutput?.db_sync?.skipped === true
+        && closeOutput?.db_sync?.reason === "session_close_not_completed"
+        && closeOutput?.db_sync?.payload == null,
+      refused_close_preserves_canonical_store: closePreservedCanonical,
+      explicit_reload_sync_succeeds: hookRun.process.status === 0 && hookOutput?.ok === true,
       hook_internal_command_status_success: hookOutput?.command_status === 0,
       hook_internal_error_absent: hookOutput?.error == null,
       hook_db_sync_error_absent: hookOutput?.db_sync?.error == null,
@@ -607,7 +626,7 @@ export function main(argv = process.argv.slice(2)) {
       hydrate_history_open_count_present: Number(
         latestHistory?.repair_layer_open_count ?? 0,
       ) >= 1,
-      hydrate_requested_skill_matches_decision: hydrated?.requested_skill === "close-session",
+      hydrate_requested_skill_matches_decision: hydrated?.requested_skill === "context-reload",
       parity_context_hydrate_count: Number(latestEntry?.repair_layer_open_count ?? -1)
         === Number(decision?.repair_layer_open_count ?? -2),
       hydrate_runtime_state_present: hydrated?.runtime_state

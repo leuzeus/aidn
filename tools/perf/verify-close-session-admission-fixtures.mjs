@@ -2,7 +2,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { copyFixtureToTmp, createTrackedFixtureFilter, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
+import { verifyCanonicalSessionClose } from "./verify-close-session-canonical-fixtures.mjs";
 
 function runGit(target, args) {
   execFileSync("git", ["-C", target, ...args], {
@@ -107,7 +109,9 @@ function runJson(script, scriptArgs, env = {}) {
 
 function runCase(tmpRoot, testCase) {
   const sourceTarget = path.resolve(process.cwd(), testCase.fixture);
-  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-close-session-${testCase.id}`);
+  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-close-session-${testCase.id}`, {
+    filter: createTrackedFixtureFilter(sourceTarget),
+  });
   if (typeof testCase.mutate === "function") {
     testCase.mutate(targetRoot);
   }
@@ -117,6 +121,7 @@ function runCase(tmpRoot, testCase) {
   if (typeof testCase.configureGit === "function") {
     testCase.configureGit(targetRoot);
   }
+  prepareActivationFixture(targetRoot);
 
   const hook = runJson("tools/perf/close-session-hook.mjs", [
     "--target",
@@ -159,7 +164,7 @@ function runCase(tmpRoot, testCase) {
   };
 }
 
-function main() {
+async function main() {
   const createdTargets = [];
   try {
     const args = parseArgs(process.argv.slice(2));
@@ -169,6 +174,7 @@ function main() {
       createdTargets.push(run.target_root);
       return run;
     });
+    runs.push(...await verifyCanonicalSessionClose());
     const pass = runs.every((run) => run.pass === true);
     const output = {
       ts: new Date().toISOString(),
@@ -204,4 +210,4 @@ function main() {
   }
 }
 
-main();
+await main();

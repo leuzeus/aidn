@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCloseSessionAdmitUseCase } from "../../src/application/runtime/close-session-admit-use-case.mjs";
 import { runWorkflowHookUseCase } from "../../src/application/runtime/workflow-hook-use-case.mjs";
+import { runCheckpointUseCase } from "../../src/application/runtime/checkpoint-use-case.mjs";
 import { resolveDefaultIndexStore } from "../../src/core/state-mode/runtime-index-policy.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -18,6 +19,11 @@ function parseArgs(argv) {
     json: false,
     eventFile: ".aidn/runtime/perf/workflow-events.ndjson",
     runIdFile: ".aidn/runtime/perf/current-run-id.txt",
+    cache: ".aidn/runtime/cache/reload-state.json",
+    emitSummaryEvent: true,
+    skipIndexOnIncremental: true,
+    skipGateEvaluate: false,
+    autoSkipGateOnNoSignal: true,
     indexStore: envStore || "",
     indexStoreExplicit: false,
     stateMode: envStateMode || "files",
@@ -151,14 +157,22 @@ function buildSummary(result) {
   };
 }
 
-function main() {
+async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const admission = runCloseSessionAdmitUseCase({
+    const admission = await runCloseSessionAdmitUseCase({
       targetRoot,
       mode: args.mode,
     });
+
+    const completionCycleId = admission.ok === true
+      && ["DONE", "NO_GO", "DROPPED"].includes(admission.mapped_cycle?.state)
+      && admission.mapped_cycle?.session_owner === admission.mapped_session?.session_id
+      ? admission.mapped_cycle.cycle_id : null;
+    const completedCheckpoint = admission.ok === true && completionCycleId
+      ? await runCheckpointUseCase({ args: { ...args, autoSkipGateOnNoSignal: !args.noAutoSkipGate },
+        runtimeDir: PERF_DIR, targetRoot, completionCycleId }) : null;
 
     const workflowHook = admission.action === "close_session_allowed"
       ? runWorkflowHookUseCase({
@@ -188,6 +202,7 @@ function main() {
         },
         runtimeDir: PERF_DIR,
         targetRoot,
+        completedCheckpoint,
       })
       : null;
 
@@ -198,11 +213,11 @@ function main() {
       skill: "close-session",
       target_root: targetRoot,
       mode: args.mode,
-      state_mode: workflowHook?.state_mode ?? args.stateMode,
+      state_mode: workflowHook?.state_mode ?? admission.state_mode,
       strict: workflowHook?.strict ?? args.strict,
       action: admission.action,
-      result: admission.result,
-      reason_code: admission.reason_code,
+      result: workflowHook?.result ?? admission.result,
+      reason_code: workflowHook?.reason_code ?? admission.reason_code,
       branch: admission.branch,
       branch_kind: admission.branch_kind,
       admission,
@@ -246,4 +261,4 @@ function main() {
   }
 }
 
-main();
+await main();
