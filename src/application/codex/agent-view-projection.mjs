@@ -57,7 +57,11 @@ export function projectWorkflowAgentView(payload, receipt = null) {
     const refs = (hydrated.artifacts ?? []).map(artifact => {
       let projected = artifact;
       if (payload.selection_policy?.mode === "scoped" && artifact.canonical && typeof artifact.canonical === "object") {
-        const binding = { source, path: artifact.path, sha256: artifact.sha256, canonical: artifact.canonical };
+        // Parsed whole-document sections and inferred runtime/session fields are
+        // not additional selected units. Keep source identity once, without
+        // reinjecting unselected source bodies through derived metadata.
+        const binding = { source, path: artifact.path, sha256: artifact.sha256,
+          canonical: pick(artifact.canonical, ["schema_version", "format", "artifact_class", "title", "stats"]) };
         const reference = hash(JSON.stringify(binding));
         if (!metadata.has(reference)) metadata.set(reference, { id: reference, ...structuredClone(binding) });
         const { canonical, ...unit } = artifact;

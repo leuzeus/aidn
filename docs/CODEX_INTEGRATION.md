@@ -46,7 +46,7 @@ text and state references against the checkout. A disagreement refuses with
 stale diagnostic receipt. Refreshing an owned projection/index requires a
 separate explicit write from the appropriate canonical authority.
 
-Agent invocation failures after the common activation dispatch use
+Argument-validation or dispatch exceptions after common activation use
 `codex-workflow-step-agent-error.v1`: a refused
 diagnostic, repair actions, null source revision/receipt and no write
 authorization. The effect class retains the original invocation intent, including
@@ -54,6 +54,11 @@ authorization. The effect class retains the original invocation intent, includin
 write was attempted. Historical full-output defaults remain compatible.
 The common CLI activation boundary retains its existing activation-refusal
 contract and runs before workflow dispatch.
+A completed blocked admission retains the ordinary agent diagnostic contract,
+with `ok: false`, blockers and no rich context for the refused skill. Inspect the
+JSON decision: non-strict diagnosis can exit zero; `--strict` exits one when the
+workflow result is not OK. An unavailable backend never falls back to visible
+anchors or establishes a canonical source revision through those anchors.
 
 The additional `--context-profile token-efficiency.v1` selector automates the
 union of known admitted skills' needs using the client's existing accepted
@@ -96,11 +101,16 @@ bounds or an explicit expansion within that maximum. Legacy defaults remain
 262,144/1,048,576 bytes outside this profile. The counter includes admissions,
 complete selected units, history, scope, findings, actual receipt references and
 final daemon metadata; terminal framing/newlines are outside compact JSON.
-Scoped agent units reference one `artifact_metadata` entry for identical complete
-canonical source metadata, bound to path, source hash and observation scope.
+Scoped agent units reference one `artifact_metadata` entry for compact source
+identity (schema, format, class, title and statistics), bound to path, source hash
+and observation scope. Parsed whole-document sections and inferred runtime/session
+fields are excluded so unselected text cannot reappear through derived metadata.
 Each unit retains its complete selected text and authority/dependency provenance.
 The final budget removes unreferenced metadata with omitted units; a caller-held
 baseline with corrupt, missing or foreign metadata references reconstructs freshly.
+Full source metadata remains on the historical/full route and in explicitly
+retained full diagnostic receipts. An in-response identity entry is not a receipt
+or write authorization.
 Optional closure is omitted first. If the mandatory response cannot fit target,
 the result is blocked with measured expansion requirements, without incomplete
 mandatory bodies. Diagnostics themselves can exceed an impossible requested

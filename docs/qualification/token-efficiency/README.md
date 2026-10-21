@@ -175,10 +175,26 @@ within the explicitly expanded 65,536-byte target, but its host verifier expecte
 a private selection field absent from the public projection. The native semantic
 trial failed in the host; performance and adoption remain unevaluated. Its CLI
 diagnostic also exposed repeated complete canonical source metadata across units.
-The source candidate now factors this metadata into scope/path/hash-bound shared
-entries, keeps complete unit bodies, verifies baseline references and prunes
+The source candidate factors compact identity metadata into scope/path/hash-bound
+shared entries, keeps complete unit bodies, verifies baseline references and prunes
 unreferenced entries. The failed attempt remains attached to its original package;
 it is not upgraded by later source corrections.
+
+A fresh task-policy microtrial on `fd8ee35` passed public-unit and budget
+restatement: three responses, 87,601 input, 53,504 cached input, 34,097 uncached
+input and 342 output tokens. All selected units fit an explicit 65,536-byte
+target in 47,284 compact JSON bytes. This package shared full source metadata;
+later source work additionally removes unselected parsed bodies and inferred
+runtime/session fields from the agent metadata projection. The microtrial does
+not qualify that later correction or overall workflow gains.
+
+The installed grouped route also refused consultation against its actual stopped
+owned PostgreSQL, preserving deliberately stale visible anchors and returning no
+hydration or artifact bodies. Non-strict diagnosis returned `ok: false` with exit
+zero; strict diagnosis returned exit one. The first host probes incorrectly
+assumed a dispatch-error contract or exit two; their retained outputs already
+showed a blocked admission without fallback. Corrected checks preserve those
+attempts and the established CLI semantics rather than changing product behavior.
 
 ## Qualification rules
 

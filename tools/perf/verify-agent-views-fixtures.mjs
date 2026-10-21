@@ -104,8 +104,9 @@ try {
     payload.hydrations.a.target_root = "/client-a"; payload.hydrations.b.target_root = "/client-b";
     assert.equal(projectWorkflowAgentView(payload).artifacts.length, 2, "missing IDs never merge different target roots");
   });
-  check("scoped units share exact canonical metadata without merging source bindings or losing complete bodies", () => {
-    const canonical = { structured_sections: { rule: "Complete source metadata. ".repeat(400) } };
+  check("scoped units share compact source identity without reinjecting unselected document bodies", () => {
+    const canonical = { schema_version: 1, format: "markdown", title: "Source rule", stats: { sections: 2 },
+      structured_sections: { rule: "Unselected derived source text. ".repeat(400) }, derived_runtime_context: { must_not_be_current_authority: true } };
     const units = ["first", "second"].map(unit_id => ({ unit_id, path: "SPEC.md", sha256: "a".repeat(64),
       content_excerpt: `## ${unit_id}\nComplete rule.\n`, canonical, selection_reasons: ["task_obligation"] }));
     const payload = { selection_policy: { mode: "scoped" }, admissions: {}, hydrations: { a: { target_root: "/client", source_revision: "r1", artifacts: units } } };
@@ -115,11 +116,13 @@ try {
       const metadata = projected.artifact_metadata.find(entry => entry.id === row.artifact.canonical_ref);
       assert(metadata); assert.equal(metadata.path, row.artifact.path); assert.equal(metadata.sha256, row.artifact.sha256);
       const { canonical_ref, ...unit } = row.artifact;
-      assert.deepEqual({ ...unit, canonical: metadata.canonical }, units.find(entry => entry.unit_id === unit.unit_id));
+      const { canonical: originalCanonical, ...originalUnit } = units.find(entry => entry.unit_id === unit.unit_id);
+      assert.deepEqual(unit, originalUnit);
+      assert.deepEqual(metadata.canonical, { schema_version: 1, format: "markdown", title: "Source rule", stats: { sections: 2 } });
       assert.equal(row.id, hash(JSON.stringify({ source: row.source, artifact: row.artifact })));
     }
     assert(Buffer.byteLength(JSON.stringify(projected)) < Buffer.byteLength(before));
-    projected.artifact_metadata[0].canonical.structured_sections.rule = "changed derived result";
+    projected.artifact_metadata[0].canonical.stats.sections = 999;
     assert.equal(JSON.stringify(payload), before, "projection must not mutate retained evidence");
     payload.hydrations.b = { ...payload.hydrations.a, source_revision: "r2" };
     assert.equal(projectWorkflowAgentView(payload).artifact_metadata.length, 2);
