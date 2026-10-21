@@ -39,6 +39,9 @@ db-only admissions, blocked/global-stop hydration suppression, canonical-only
 resolution, clone isolation, fresh revision fences and PostgreSQL unavailability
 without fallback. It reports installed-package, native-token and live-PostgreSQL
 proof separately; source fixtures do not establish those qualifications.
+It also exercises an actual SQLite canonical mutation between shared consumers,
+stale files/dual rule copies, canonical dual digests over stale visible state,
+and the typed agent refusal without retaining a stale diagnostic receipt.
 
 `npm run perf:verify-task-context-profile` exercises accepted task policies and
 the real grouped source CLI: complete mandatory dependencies, additive operation
@@ -46,6 +49,11 @@ and affected-path needs, optional omission, insufficient budgets, foreign scope,
 unaccepted policy, explicit retained receipts and exact final UTF-8 JSON counters
 including transport metadata. Native tokens and installed-client qualification
 remain separate. The versioned byte target is experimental, not a token estimate.
+The same source suite checks workflow delta, malformed/missing/foreign baselines,
+body integrity independent of reference graph, missing current authority,
+distinct execution retention in typed history, unknown canonical history bindings
+and fresh reanchoring after context invalidation. It never edits retained audit
+history to obtain a smaller presented result.
 
 `npm run perf:verify-agent-views` exercises the real workflow/hook CLI on disposable
 activated clients, alongside pure duplicate/revision and directory-link refusal

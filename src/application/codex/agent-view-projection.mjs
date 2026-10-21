@@ -60,7 +60,8 @@ export function projectWorkflowAgentView(payload, receipt = null) {
     });
     return { skill, ...source, artifact_refs: refs, bundle_budget: hydrated.bundle_budget ?? null,
       decisions: Object.fromEntries(Object.entries(hydrated.decisions ?? {}).map(([name, entry]) => [name, pick(entry, DECISION_FIELDS)])),
-      recent_history: (hydrated.recent_history ?? []).map(entry => pick(entry, ["skill", "ts", "execution_id", ...DECISION_FIELDS])),
+      recent_history: payload.history_view === "transitions" ? structuredClone(hydrated.recent_history ?? [])
+        : (hydrated.recent_history ?? []).map(entry => pick(entry, ["skill", "ts", "execution_id", ...DECISION_FIELDS])),
       repair_layer: hydrated.repair_layer ?? null };
   });
   return {
@@ -75,11 +76,14 @@ export function projectWorkflowAgentView(payload, receipt = null) {
       admission_kind: admission.admission_kind ?? "generic", context: pick(admission.context, CONTEXT_FIELDS),
       blocking_reasons: admission.blocking_reasons ?? [], warnings: admission.warnings ?? [],
       blocking_findings: admission.blocking_findings ?? [],
-      source_of_truth: pick(admission.source_of_truth, ["state_mode", "runtime_state_mode", "issues", "repair_actions"]),
+      source_of_truth: pick(admission.source_of_truth, ["state_mode", "runtime_state_mode", "issues", "repair_actions",
+        ...(payload.observation ? ["observed_sources"] : [])]),
     })),
     contexts, artifacts: [...artifacts.values()], next_action: payload.next_action,
     ...(payload.selection_policy ? { selection_policy: payload.selection_policy } : {}),
-    ...(payload.context_selection ? { context_selection: payload.context_selection } : {}),
+    ...(payload.context_selection ? { context_selection: structuredClone(payload.context_selection) } : {}),
+    ...(payload.context_delta ? { context_delta: structuredClone(payload.context_delta) } : {}),
+    ...(payload.history_view ? { history_view: payload.history_view } : {}),
     receipt,
   };
 }

@@ -26,6 +26,16 @@ returns an explicit blocked result with expansion references. Refusal metadata
 can exceed a tiny requested limit and reports that fact. No authority is silently
 truncated, accepted or written by this selector.
 
+`--context-baseline-file` adds optional-unit differential consultation to that
+profile; invalid prior observations fall back to fresh complete selection and
+mandatory authority closure is always sent. `--history-view transitions` groups
+only well-bound identical typed decisions while retaining distinct execution
+references. Unknown canonical history revisions remain separate. Both remain
+read-only without explicit diagnostic retention. Agent invocation refusals use
+`codex-workflow-step-agent-error.v1`, with repair actions and no claimed source
+revision or admission. Grouped reads reject stale checkout-rule copies and use
+canonical dual-mode runtime state instead of stale visible digests.
+
 The internal `codex run-json-hook` wrapper also accepts `--view agent --json`:
 flat decisions, errors and refusal/sync/exit semantics remain intact, with the
 existing raw evidence available by hash and reference. Optional `--write` retains

@@ -37,6 +37,21 @@ available. PostgreSQL configuration selects the canonical backend even when a
 compatibility SQLite projection exists. The ordinary per-skill path remains the
 default, including when only `--view agent` is selected.
 
+In the grouped path, DB-backed admissions and coordinator reads use the same
+canonical snapshot in `dual` as well as `db-only`; stale visible runtime digests
+do not override it. Selected checkout rules (`SPEC.md`/`WORKFLOW.md`) must agree
+with their indexed/store copy. Legacy files-mode hydration also checks selected
+text and state references against the checkout. A disagreement refuses with
+`WORKFLOW_CONTEXT_SOURCE_MISMATCH`, without publishing a context or retaining a
+stale diagnostic receipt. Refreshing an owned projection/index requires a
+separate explicit write from the appropriate canonical authority.
+
+Agent invocation failures use `codex-workflow-step-agent-error.v1`: a refused
+diagnostic, repair actions, null source revision/receipt and no write
+authorization. The effect class retains the original invocation intent, including
+`mutating` when `--write` was requested. A refusal is not an attestation that no
+write was attempted. Historical full-output defaults remain compatible.
+
 The additional `--context-profile token-efficiency.v1` selector automates the
 union of known admitted skills' needs using the client's existing accepted
 `governanceAdoption`. The client owns `extensions.contextUnits` and the following
@@ -83,6 +98,25 @@ the result is blocked with measured expansion requirements, without incomplete
 mandatory bodies. Diagnostics themselves can exceed an impossible requested
 limit; `fits_hard_limit: false` reports it explicitly. A new, freshly admitted
 consultation is needed for expansion; no authority or permission is cached.
+
+With the profile, `--context-baseline-file <complete-prior-agent.json>` reuses
+the existing differential selector. The caller separately captures a complete
+prior agent response; requesting a delta never writes a baseline. Missing,
+corrupt, foreign, partial or incompatible baselines trigger complete fresh
+selection. All current mandatory authorities and dependency closure are returned
+again. Only exact unchanged optional bodies become references. A differential
+response is not itself a complete baseline for chaining. Removed-unit notices
+remain visible; optional references/provenance can be omitted explicitly to fit
+the final budget. No baseline can supply a missing current authority.
+
+`--history-view transitions` is an additional grouped presentation. It groups
+identical typed decisions with the same known files-context provenance, retaining
+each execution identity, timestamp and raw observation reference. Unknown
+canonical history revisions are kept separate; a file fingerprint does not
+establish a PostgreSQL revision. Stale history stays marked stale, and a fresh
+consultation independently admits and selects current authorities. These are
+unverified history references, not retained-receipt descriptors or permission.
+The view changes neither the stored history nor its retained raw files.
 
 `aidn codex workflow-step --skills context-reload,requirements-delta --view agent --json`
 projects the same per-skill admissions and hydration as the default full format.

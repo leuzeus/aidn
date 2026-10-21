@@ -10,6 +10,10 @@ import { withWorkflowObservation, observeWorkflowRead, workflowObservationActive
 import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
 import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 import schema from "../../src/core/contracts/cli-output/codex-workflow-step-agent.v1.schema.json" with { type: "json" };
+import errorSchema from "../../src/core/contracts/cli-output/codex-workflow-step-agent-error.v1.schema.json" with { type: "json" };
+import { loadSharedStateSnapshotAsync } from "../../src/application/runtime/shared-state-backend-service.mjs";
+import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
+import { createHash } from "node:crypto";
 
 const repo = path.resolve(import.meta.dirname, "../.."), root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-grouped-"));
 const target = path.join(root, "client"), source = path.join(repo, "tests/fixtures/repo-installed-core");
@@ -61,6 +65,40 @@ try {
     assert.equal(new Set(grouped.payload.artifacts.map(row => row.id)).size, grouped.payload.artifacts.length);
     checks.push(`${mode}: equivalent admissions, one hydration, blocked skill has no context`);
   }
+  for (const mode of ["files", "dual"]) {
+    fs.writeFileSync(configFile, JSON.stringify({ version: 1, runtime: { stateMode: mode, indexStoreMode: "dual-sqlite" } }));
+    for (const name of ["CURRENT-STATE.md", "RUNTIME-STATE.md"]) {
+      const file = path.join(target, "docs/audit", name);
+      fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^runtime_state_mode:.*$/m, `runtime_state_mode: ${mode}`).replace(/^mode:.*$/m, "mode: THINKING"));
+    }
+    assert.equal(cli(["perf", "index", "--store", "sqlite", "--with-content", "--json"]).status, 0);
+    const current = path.join(target, "docs/audit/CURRENT-STATE.md");
+    fs.writeFileSync(current, fs.readFileSync(current, "utf8").replace(/^mode: THINKING$/m, "mode: EXPLORING"));
+    const shadow = workflow(["--grouped"]);
+    if (mode === "files") {
+      assert.notEqual(shadow.status, 0); assert.equal(shadow.payload.code, "WORKFLOW_CONTEXT_SOURCE_MISMATCH");
+      assert.deepEqual(validateJsonSchema(shadow.payload, errorSchema, "$"), []);
+      fs.writeFileSync(current, fs.readFileSync(current, "utf8").replace(/^mode: EXPLORING$/m, "mode: THINKING"));
+    } else {
+      assert.equal(shadow.status, 0); assert.equal(shadow.payload.admissions[0].context.mode, "THINKING");
+      assert.equal(shadow.payload.admissions[0].source_of_truth.observed_sources.current_state, "sqlite");
+    }
+    const spec = path.join(target, "docs/audit/SPEC.md"), original = fs.readFileSync(spec);
+    fs.writeFileSync(spec, "# Current checkout rule marker\n" + original.toString());
+    const staleRule = workflow(["--grouped", "--write"]);
+    assert.notEqual(staleRule.status, 0); assert.equal(staleRule.payload.code, "WORKFLOW_CONTEXT_SOURCE_MISMATCH");
+    assert.equal(staleRule.payload.effect_class, "mutating"); assert.equal(staleRule.payload.receipt, null);
+    assert.deepEqual(validateJsonSchema(staleRule.payload, errorSchema, "$"), []);
+    assert(!fs.existsSync(path.join(target, ".aidn/runtime/context/agent-view-receipts")));
+    fs.writeFileSync(spec, original);
+    checks.push(`${mode}: stale rule projection refuses without publishing context or retaining a stale receipt`);
+  }
+  fs.writeFileSync(configFile, JSON.stringify({ version: 1, runtime: { stateMode: "db-only", indexStoreMode: "dual-sqlite" } }));
+  for (const name of ["CURRENT-STATE.md", "RUNTIME-STATE.md"]) {
+    const file = path.join(target, "docs/audit", name);
+    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^runtime_state_mode:.*$/m, "runtime_state_mode: db-only"));
+  }
+  assert.equal(cli(["perf", "index", "--store", "sqlite", "--with-content", "--json"]).status, 0);
   fs.writeFileSync(packetFile, packet);
   const staleLocal = workflow(["--grouped"]);
   assert.equal(staleLocal.payload.next_action.recommendation.stop_required, false);
@@ -94,6 +132,20 @@ try {
     await observeWorkflowRead({ targetRoot: target, key: "changing", load: async () => ({ revision: revision++ }) });
   }), /INVALIDATED/);
   checks.push("concurrent canonical change refuses publication");
+  const originalSnapshot = await loadSharedStateSnapshotAsync({ targetRoot: target });
+  const sqlite = createRuntimeArtifactStore({ targetRoot: target, backend: "sqlite" });
+  try {
+    await assert.rejects(withWorkflowObservation({ targetRoot: target, contextFile }, async () => {
+      const first = await loadSharedStateSnapshotAsync({ targetRoot: target }), changed = structuredClone(first.payload);
+      const artifact = changed.artifacts.find(row => row.path === "SPEC.md");
+      artifact.content += "\nConcurrent canonical fixture change\n";
+      artifact.sha256 = createHash("sha256").update(artifact.content).digest("hex");
+      await sqlite.writeIndexProjection({ payload: changed });
+      const second = await loadSharedStateSnapshotAsync({ targetRoot: target });
+      assert.deepEqual(second.payload.artifacts, first.payload.artifacts);
+    }), /INVALIDATED/);
+  } finally { await sqlite.writeIndexProjection({ payload: originalSnapshot.payload }); }
+  checks.push("real SQLite consumers share the first snapshot and a concurrent canonical write invalidates publication");
   await assert.rejects(withWorkflowObservation({ targetRoot: target, contextFile }, async () => {
     fs.appendFileSync(path.join(target, "docs/audit/CURRENT-STATE.md"), "\nmaterial change\n");
   }), /INVALIDATED/);

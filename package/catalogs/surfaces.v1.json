@@ -7356,6 +7356,27 @@
       "migration": ""
     },
     {
+      "id": "contract:codex-workflow-step-agent-error.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/codex-workflow-step-agent-error.v1.schema.json",
+      "entrypoint": "aidn codex workflow-step --view agent --json",
+      "implementation": "src/core/contracts/cli-output/codex-workflow-step-agent-error.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "contract:codex-workflow-step-agent.v1.schema.json",
       "kind": "contract",
       "status": "active",
@@ -11756,6 +11777,30 @@
       "migration": ""
     },
     {
+      "id": "option:aidn codex workflow-step:--context-baseline-file",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/codex/workflow-step.mjs",
+      "entrypoint": "aidn codex workflow-step --context-baseline-file",
+      "implementation": "tools/codex/workflow-step.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/codex/workflow-step.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "option:aidn codex workflow-step:--context-file",
       "kind": "option",
       "status": "active",
@@ -12017,6 +12062,30 @@
       "owner": "CLI maintainer",
       "source": "tools/codex/workflow-step.mjs",
       "entrypoint": "aidn codex workflow-step --history-limit",
+      "implementation": "tools/codex/workflow-step.mjs",
+      "effects": {
+        "role": "effect-neutral",
+        "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/codex/workflow-step.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn codex workflow-step:--history-view",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/codex/workflow-step.mjs",
+      "entrypoint": "aidn codex workflow-step --history-view",
       "implementation": "tools/codex/workflow-step.mjs",
       "effects": {
         "role": "effect-neutral",

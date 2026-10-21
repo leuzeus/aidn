@@ -22,6 +22,7 @@ import { readWorkflowAdapterConfig } from "../../lib/config/workflow-adapter-con
 import { selectScopedContext, finalizeScopedContextBudget } from "./scoped-context-selection.mjs";
 import { projectContextDelta } from "./context-delta-projection.mjs";
 import { resolveRuntimeProjectContext } from "../runtime/runtime-project-context-service.mjs";
+import { workflowObservationActive } from "../runtime/workflow-observation-service.mjs";
 
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
@@ -154,6 +155,26 @@ function readJsonIndex(indexFile) {
   }
   const payload = JSON.parse(fs.readFileSync(absolute, "utf8"));
   return { absolute, payload };
+}
+
+function verifyGroupedArtifactSources({ targetRoot, payload, selected, stateMode, scoped }) {
+  if (!workflowObservationActive(targetRoot)) return;
+  const paths = new Set(selected.map(row => row.path).filter(file => stateMode === "files" && !scoped
+    || ["SPEC.md", "WORKFLOW.md"].includes(file)));
+  if (stateMode === "files" && !scoped) for (const file of ["CURRENT-STATE.md", "RUNTIME-STATE.md"]) paths.add(file);
+  const fail = () => { throw Object.assign(new Error("WORKFLOW_CONTEXT_SOURCE_MISMATCH: refresh the owned index/projection from its canonical authority before retrying"), { code: "WORKFLOW_CONTEXT_SOURCE_MISMATCH" }); };
+  const root = fs.realpathSync(targetRoot);
+  for (const file of paths) {
+    const rows = (payload.artifacts ?? []).filter(row => row.path === file);
+    if (rows.length !== 1) fail();
+    try {
+      const physical = fs.realpathSync(path.resolve(targetRoot, "docs/audit", file)), relative = path.relative(root, physical);
+      if (relative.startsWith("..") || path.isAbsolute(relative)) fail();
+      const bytes = fs.readFileSync(physical), current = crypto.createHash("sha256").update(bytes).digest("hex");
+      const indexed = decodeArtifactContent(rows[0]);
+      if (rows[0].sha256 !== current || indexed && !indexed.equals(bytes)) fail();
+    } catch { fail(); }
+  }
 }
 
 function pushLimited(list, value, limit = 12) {
@@ -854,6 +875,8 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
       });
       scopedSelection = scopedRequested ? selection : null;
       selectedArtifacts = scopedRequested ? selection.units : selection.selected;
+      verifyGroupedArtifactSources({ targetRoot, payload: index.payload, selected: selectedArtifacts,
+        stateMode: effectiveStateMode, scoped: scopedRequested });
       repairLayer = scopedRequested ? null : summarizeRepairLayer(index.payload, selection);
       artifactSource.bundle_budget = selection.bundle_budget ?? null;
       artifactSource.source_revision = selection.source_revision;

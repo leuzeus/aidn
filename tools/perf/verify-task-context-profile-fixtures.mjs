@@ -12,6 +12,9 @@ import { createTrackedFixtureFilter, removePathWithRetry } from "./test-git-fixt
 import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
 import schema from "../../src/core/contracts/cli-output/codex-workflow-step-agent.v1.schema.json" with { type: "json" };
+import { persistHookContext } from "../../src/adapters/codex/context-store.mjs";
+import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
+import { projectHistoryTransitions } from "../../src/application/codex/context-history-transitions.mjs";
 
 const repo = path.resolve(import.meta.dirname, "../.."), root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-task-profile-"));
 const target = path.join(root, "client"), source = path.join(repo, "tests/fixtures/repo-installed-core"), checks = [];
@@ -99,6 +102,73 @@ try {
   const invalid = structuredClone(adoption); invalid.extensions.taskContextPolicies.skills["context-reload"].rules[0].when.unrecognized = true;
   assert.equal(build({ adoption: invalid }).mode, "blocked");
   checks.push("unknown/unconfigured skills preserve full fallback; invalid queries and unaccepted policy refuse");
+  const baseline = workflow(["--bundle-target-bytes", "65536"]);
+  assert.equal(baseline.payload.bundle_budget.status, "within-target");
+  assert(baseline.payload.artifacts.some(row => row.artifact.unit_id === "optional"));
+  const baselineRef = ".aidn/runtime/context/previous-workflow.json", baselineFile = path.join(target, baselineRef);
+  fs.mkdirSync(path.dirname(baselineFile), { recursive: true });
+  fs.writeFileSync(baselineFile, JSON.stringify(baseline.payload));
+  const delta = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", baselineRef]);
+  assert.deepEqual(validateJsonSchema(delta.payload, schema, "$"), []);
+  assert.equal(delta.payload.context_delta.mode, "differential");
+  assert.deepEqual(delta.payload.artifacts.map(row => row.artifact.unit_id), ["dependency", "invariant"]);
+  assert.deepEqual(delta.payload.context_delta.unchanged_optional_refs.map(row => row.unit_id), ["optional"]);
+  assert.equal(delta.payload.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(delta.payload)));
+  checks.push("workflow delta freshly returns mandatory closure and only references unchanged optional bodies");
+  for (const contents of ["{corrupt JSON", JSON.stringify({ ...baseline.payload,
+    context_selection: { ...baseline.payload.context_selection, scope: { ...scope, worktree_id: "foreign" } } })]) {
+    fs.writeFileSync(baselineFile, contents);
+    const fresh = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", baselineRef]);
+    assert.equal(fresh.payload.context_delta.mode, "full");
+    assert(fresh.payload.artifacts.some(row => row.artifact.unit_id === "optional"));
+  }
+  fs.unlinkSync(baselineFile);
+  const absent = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", baselineRef]);
+  assert.equal(absent.payload.context_delta.mode, "full"); assert(absent.payload.artifacts.length >= 3);
+  checks.push("missing, corrupt or foreign workflow baseline triggers complete fresh consultation");
+  const tampered = structuredClone(baseline.payload), changed = tampered.artifacts.find(row => row.artifact.unit_id === "optional"), oldId = changed.id;
+  changed.artifact.content_excerpt += "tampered"; changed.id = hash(JSON.stringify({ source: changed.source, artifact: changed.artifact }));
+  for (const context of tampered.contexts) context.artifact_refs = context.artifact_refs.map(id => id === oldId ? changed.id : id);
+  fs.writeFileSync(baselineFile, JSON.stringify(tampered));
+  const integrity = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", baselineRef]);
+  assert.equal(integrity.payload.context_delta.mode, "full"); assert.equal(integrity.payload.context_delta.reason, "baseline_integrity_invalid");
+  assert(!integrity.payload.artifacts.some(row => row.artifact.content_excerpt.includes("tampered")));
+  checks.push("baseline body integrity is checked independently of its artifact graph");
+  fs.writeFileSync(baselineFile, JSON.stringify(baseline.payload));
+  const mandatoryFile = path.join(target, "docs/audit/TOKEN-SPEC.md"); fs.unlinkSync(mandatoryFile);
+  const unavailableAuthority = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", baselineRef]);
+  assert.equal(unavailableAuthority.payload.ok, false); assert.equal(unavailableAuthority.payload.context_selection.status, "blocked");
+  assert.equal(unavailableAuthority.payload.context_delta.reason, "current_selection_blocked"); assert.deepEqual(unavailableAuthority.payload.artifacts, []);
+  fs.writeFileSync(mandatoryFile, documents["TOKEN-SPEC.md"]);
+  checks.push("a missing current mandatory authority never reuses the baseline authority");
+
+  const identity = captureContextIdentity({ targetRoot: target }); assert.equal(identity.status, "captured");
+  for (let i = 0; i < 3; i++) persistHookContext({ targetRoot: target, skill: "context-reload", rawPayload: { fixture_observation: i },
+    normalized: { ts: `2026-10-20T12:00:0${i}Z`, ok: i < 2, decision: i < 2 ? "allow" : "deny", mode: "THINKING", state_mode: "files", reason_codes: i < 2 ? [] : ["fixture-denial"] },
+    sourceMeta: { execution_id: `fixture-observation-${i}`, command: "synthetic fixture observer", command_status: i < 2 ? 0 : 1,
+      provenance: { kind: "hook-command-observation.v1", before: identity, after: identity, command_status: i < 2 ? 0 : 1, command_signal: null, command_error: false } } });
+  const historyFile = path.join(target, ".aidn/runtime/context/codex-context.json"), historyBefore = hash(fs.readFileSync(historyFile));
+  const transitioned = workflow(["--bundle-target-bytes", "65536", "--history-view", "transitions"]);
+  assert.equal(transitioned.payload.history_view, "transitions"); assert.deepEqual(validateJsonSchema(transitioned.payload, schema, "$"), []);
+  const transitions = transitioned.payload.contexts[0].recent_history;
+  assert.deepEqual(transitions.map(row => row.observation_count), [2, 1]);
+  assert.equal(new Set(transitions[0].observations.map(row => row.execution_id)).size, 2);
+  assert(transitions.every(row => row.write_authorization === false && row.requires_fresh_admission));
+  assert.equal(hash(fs.readFileSync(historyFile)), historyBefore); assert.equal(JSON.parse(fs.readFileSync(historyFile)).history.length, 3);
+  checks.push("decision transitions preserve distinct executions and leave retained audit history untouched");
+  const unknown = { skill: "context-reload", state_mode: "db-only", ok: true, reuse_status: "unknown",
+    provenance: { kind: "hook-command-observation.v1", before: { ...identity, state_mode: "db-only" }, after: { ...identity, state_mode: "db-only" } } };
+  const separate = projectHistoryTransitions([unknown, structuredClone(unknown)]);
+  assert.equal(separate.length, 2); assert(separate.every(row => row.binding_status === "unavailable"));
+  checks.push("unknown canonical history revisions are never collapsed into one observation");
+  const currentFile = path.join(target, "docs/audit/CURRENT-STATE.md"), currentBefore = fs.readFileSync(currentFile);
+  fs.appendFileSync(currentFile, "\nCurrent fixture context changed.\n");
+  const reanchored = workflow(["--bundle-target-bytes", "65536", "--history-view", "transitions"]);
+  assert.notEqual(reanchored.payload.observation.source_revision, transitioned.payload.observation.source_revision);
+  assert(reanchored.payload.contexts[0].recent_history.every(row => row.reusable === false && row.reuse_status === "stale"));
+  assert(reanchored.payload.admissions[0].ok); assert(reanchored.payload.artifacts.some(row => row.artifact.unit_id === "invariant"));
+  fs.writeFileSync(currentFile, currentBefore);
+  checks.push("context invalidation marks history stale and performs fresh independent admission and authority selection");
   const foreign = structuredClone(adoption); foreign.extensions.contextUnits[0].scope.project_id = "foreign";
   writeWorkflowAdapterConfig(target, { governanceAdoption: foreign });
   const denied = workflow([]);

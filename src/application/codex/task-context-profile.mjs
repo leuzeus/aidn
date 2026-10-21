@@ -90,8 +90,12 @@ export function finalizeWorkflowContextBudget(output, { targetBytes, hardLimitBy
   };
   if (measure() > targetBytes) {
     const optional = output.artifacts.filter(row => row.artifact.selection_reasons?.every(reason => reason === "optional_consultation"));
-    budget.omitted_optional_ids = unique([...budget.omitted_optional_ids, ...optional.map(row => row.artifact.unit_id)]);
+    const unchanged = output.context_delta?.unchanged_optional_refs ?? [];
+    budget.omitted_optional_ids = unique([...budget.omitted_optional_ids, ...optional.map(row => row.artifact.unit_id), ...unchanged.map(row => row.unit_id)]);
     remove(optional);
+    if (output.context_delta) output.context_delta.unchanged_optional_refs = [];
+    if (Array.isArray(output.context_selection?.expansions)) output.context_selection.expansions = output.context_selection.expansions
+      .filter(row => !budget.omitted_optional_ids.includes(row.unit_id));
   }
   if (measure() > targetBytes && budget.status !== "blocked") {
     budget.status = "blocked"; output.ok = false;

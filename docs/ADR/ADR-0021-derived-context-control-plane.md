@@ -80,6 +80,15 @@ independent fresh admission, CAS and reservation checks. Initialized Git and
 canonical runtime paths bound the initial opt-in implementation; unavailable
 revision capture refuses rather than claiming a coherent observation.
 
+Within grouped consultation, dual-mode runtime digests follow canonical DB
+authority consistently across admissions, coordinator and hydration. Checkout
+rules remain checkout-bound in every mode. A stale indexed/store rule copy, or
+stale selected files-mode text/state reference, refuses the consultation instead
+of presenting it as current. Repair is a separate explicitly authorized write;
+no automatic synchronization or canonical-authority change is implied. Refused
+agent invocations have their own compact versioned diagnostic contract and do
+not publish a source revision or admission receipt.
+
 The experimental `token-efficiency.v1` workflow profile derives the union of
 known admitted skills' context needs from client-owned accepted adoption data.
 Its `taskContextPolicies` extension declares a stable mandatory minimum and
@@ -103,6 +112,14 @@ Differential consultation uses a caller-held complete prior selection only as
 an optimization hint. All mandatory authorities and their dependency closure
 are freshly returned. Only unchanged optional bodies can be replaced by exact
 references; invalid scope or integrity falls back to complete current selection.
+The grouped CLI accepts only a bounded caller-held complete prior agent response
+as its baseline hint. Its body/reference graph is checked before the existing
+unit-integrity and fresh scope/dependency checks. Missing, corrupt or partial
+baselines reconstruct freshly; a cached authority never repairs a missing current
+one. Typed history transitions preserve distinct execution references and never
+change the audit store. Only identical decisions with known files-context bindings
+collapse; unavailable canonical revision data stays separate. Historical reuse
+labels never authorize a write, and current admission remains independent.
 Raw observations remain data. Typed execution handoffs bind local result
 identifiers without asserting authenticated execution or a current lease.
 

@@ -13,10 +13,10 @@ model revision. No previous benchmark arm is reused.
 | --- | --- | --- |
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
 | L1 Agent views | Source and local native semantic read verified | 13 fixture/real-CLI assertions and one fixed native diagnostic pair; complete provider-body residency and overall workflow savings remain unqualified |
-| L2 Shared workflow observation | Source candidate implemented | 12 source-CLI/fixture checks; grouped path is opt-in, native and live PostgreSQL qualification pending |
+| L2 Shared workflow observation | Source candidate implemented | Source-CLI/fixture checks including stale source rejection and actual SQLite concurrent mutation; grouped path is opt-in, native qualification pending |
 | L6 Procedures/kernel | Not started | Grouped required reads and deterministic controls; native adoption deferred until qualification |
 | L3 Task selection/budget | Source candidate implemented | Accepted client task policies, complete mandatory units, final serialized target and explicit expansion refusal; native qualification pending |
-| L4 Delta/history | Not started | Fresh mandatory closure, changed optional units and compatible baseline checks |
+| L4 Delta/history | Source candidate implemented | Fresh mandatory closure, invalid-baseline reconstruction, typed history with distinct executions and independent reanchoring; native qualification pending |
 | L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
 | L7 Native qualification/adoption | Not started | Three independent confirmation pairs, functional/governance equivalence, rollback and installed-client proof |
 

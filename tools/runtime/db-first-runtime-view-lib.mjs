@@ -236,7 +236,7 @@ export function resolveDbBackedMode(targetRoot, requestedStateMode = "files") {
 
 function requiresWorkflowCanonical(targetRoot) {
   return workflowObservationActive(targetRoot)
-    && (resolveDbBackedMode(targetRoot).effectiveStateMode === "db-only"
+    && (["dual", "db-only"].includes(resolveDbBackedMode(targetRoot).effectiveStateMode)
       || resolveEffectiveRuntimePersistence({ targetRoot }).backend === "postgres");
 }
 
