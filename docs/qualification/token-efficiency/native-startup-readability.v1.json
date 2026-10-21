@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "proof_class": "native-retained-data-readability",
+  "candidate_commit": "c0acac3ffba4cbcd18ae4903800320645320d539",
+  "native_binary_version": "codex-cli 0.163.0-alpha.11",
+  "native_binary_sha256": "00c0f1e4099246fddcd67ec620ca8ed50827c7d70e113b7224f7a2933cf2d67c",
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "cases": [
+    {
+      "status": "FAIL",
+      "case": "default",
+      "proof_class": "native-retained-data-readability",
+      "history_output_tokens": null,
+      "exec_output_tokens": 60000,
+      "retained_cli_json_bytes": 49675,
+      "retained_cli_sha256": "c712e5d11d11a7fde78918896f0128e80309594bb25855f64a41a35c249c5d8a",
+      "fresh_admission": false,
+      "write_authorization": false,
+      "live_workflow_qualification": false,
+      "expected_oracle_sha256": "b34e866b8cbe88cab06bdb74b932cca7da6d13fe011d7c77d120fc409c2ee0b1",
+      "turn_status": "completed",
+      "error": "The expression evaluated to a falsy value:\n\n  assert(returned && submitted)\n",
+      "usage": {
+        "contract_version": "response-usage-observation.v1",
+        "proof_class": "caller-supplied-events",
+        "observation_scope": "unique-completed-responses",
+        "model_responses": 2,
+        "duplicate_observations": 0,
+        "tokens": {
+          "input_tokens": 43736,
+          "cached_input_tokens": 14976,
+          "output_tokens": 131,
+          "reasoning_output_tokens": 12,
+          "uncached_input_tokens": 28760
+        },
+        "token_source": "client-reported",
+        "complete_counters": true,
+        "window_pressure": "not_evaluated",
+        "admission_evidence": false
+      },
+      "elapsed_seconds": 8.872
+    },
+    {
+      "status": "PASS",
+      "case": "expanded",
+      "proof_class": "native-retained-data-readability",
+      "history_output_tokens": 60000,
+      "exec_output_tokens": 60000,
+      "retained_cli_json_bytes": 49675,
+      "retained_cli_sha256": "c712e5d11d11a7fde78918896f0128e80309594bb25855f64a41a35c249c5d8a",
+      "fresh_admission": false,
+      "write_authorization": false,
+      "live_workflow_qualification": false,
+      "expected_oracle_sha256": "b34e866b8cbe88cab06bdb74b932cca7da6d13fe011d7c77d120fc409c2ee0b1",
+      "turn_status": "completed",
+      "usage": {
+        "contract_version": "response-usage-observation.v1",
+        "proof_class": "caller-supplied-events",
+        "observation_scope": "unique-completed-responses",
+        "model_responses": 3,
+        "duplicate_observations": 0,
+        "tokens": {
+          "input_tokens": 73359,
+          "cached_input_tokens": 43648,
+          "output_tokens": 425,
+          "reasoning_output_tokens": 18,
+          "uncached_input_tokens": 29711
+        },
+        "token_source": "client-reported",
+        "complete_counters": true,
+        "window_pressure": "not_evaluated",
+        "admission_evidence": false
+      },
+      "elapsed_seconds": 15.175
+    }
+  ],
+  "scope": "One exact historical CLI body, exec display budget 60000 in both cases; only history override differs. No live CLI, fresh admission, native SessionStart, product or whole-workflow performance qualification.",
+  "comparison_order": [
+    "default",
+    "expanded"
+  ],
+  "repeated_confirmation": false,
+  "default_case_classification": "semantic_restoration_unavailable_after_reported_clipping",
+  "default_case_safety_behavior": "Stopped without guessing, retrying or reading files",
+  "final_default_message": "The retained startup was read once with display budget 60000, but the `summary` body was clipped (`…457 tokens truncated…`), including its final content line.\n\nI cannot submit all four exact restatements. Stopping without retrying or accessing files.",
+  "event_sources": [
+    {
+      "case": "default",
+      "sha256": "291ea74e91aae4b89eb4dc955af46f4a5be0b4fb902a98fc420d3ff0f3c93dd0",
+      "bytes": 161569
+    },
+    {
+      "case": "expanded",
+      "sha256": "eedbcb17cdca6d8dc68e4f0dca4975c7b332e40141855c7afdabc2283bf2da11",
+      "bytes": 169479
+    }
+  ],
+  "cleanup": {
+    "owned_jobs_closed_with_zero_descendants": true,
+    "temporary_auth_removed": true,
+    "observed_personal_files_preserved": true
+  },
+  "interpretation": "Same exact retained body fails exact semantic restitution at native default history and passes at explicit 60000. This supports a transport-capacity explanation; it does not prove why every earlier workflow reread occurred, all provider-body residency, or global token savings."
+}

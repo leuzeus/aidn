@@ -1,5 +1,52 @@
 # CLI Surface Inventory
 
+`codex workflow-step --view agent --json` is an opt-in, versioned projection of
+the existing per-skill workflow. It retains admissions, blockers, scope, source
+revisions and complete selected excerpts, sharing exact duplicate artifact bodies
+without combining different revisions. Default full output remains unchanged.
+It keeps the existing hidden-projector effect. Adding `--write` explicitly stores
+a complete local diagnostic receipt with a `mutating` invocation rule;
+selecting a view alone adds no writes.
+
+Adding `--grouped` to the agent view selects invocation-local shared observation,
+separate admissions, coordinator-stop handling and one common hydration for the
+admitted skills. Blocked skills have no rich context. The result is fenced
+against fresh local, activation, canonical and shared-state revisions before
+publication. It currently requires initialized Git and canonical runtime paths.
+It never grants reusable write authorization or changes the legacy default.
+
+`--context-profile token-efficiency.v1` additionally selects client-accepted task
+policies and a binding final JSON target (16,384 bytes, maximum 65,536). Its optional
+`--context-task-file` contains additive operation/affected-path query data. It
+requires the grouped agent path. Known configured skills use complete sections
+and dependency closure; unknown/unconfigured skills retain historical selection.
+The final JSON includes refusals, history, provenance, transport and receipt
+metadata. Optional closure is omitted first; an insufficient mandatory target
+returns an explicit blocked result with expansion references. Refusal metadata
+can exceed a tiny requested limit and reports that fact. No authority is silently
+truncated, accepted or written by this selector.
+
+`--context-baseline-file` adds optional-unit differential consultation to that
+profile. It accepts a complete prior agent response or complete worktree-local
+workflow receipt previously retained with explicit `--write`; the receipt remains
+an untrusted hint and reading it adds no write. Invalid prior observations fall
+back to fresh complete selection and
+mandatory authority closure is always sent. `--history-view transitions` groups
+only well-bound identical typed decisions while retaining distinct execution
+references. Unknown canonical history revisions remain separate. Both remain
+read-only without explicit diagnostic retention. Argument-validation or dispatch
+exceptions after common CLI activation use
+`codex-workflow-step-agent-error.v1`, with repair actions and no claimed source
+revision or admission. Grouped reads reject stale checkout-rule copies and use
+canonical dual-mode runtime state instead of stale visible digests.
+
+The internal `codex run-json-hook` wrapper also accepts `--view agent --json`:
+flat decisions, errors and refusal/sync/exit semantics remain intact, with the
+existing raw evidence available by hash and reference. Optional `--write` retains
+the complete diagnostic outcome. `--verbose` and `--include-raw` conflict with
+this view. It remains a mutating hook wrapper; formatting never grants admission.
+Neither projection changes installed procedures or proves native token savings.
+
 `runtime artifact-store list --view agent --limit 10000 --json` is an opt-in
 compact project inventory. It resolves configured canonical authority (files,
 SQLite or PostgreSQL), exposes references/revisions without bodies or canonical

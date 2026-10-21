@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "decision": "REMAIN_EXPERIMENTAL",
+  "candidate_commit": "c0acac3ffba4cbcd18ae4903800320645320d539",
+  "package_sha256": "ce8e3d227d68a3145a505204a9b1862c484679f23244f839a6142393d5f7e171",
+  "functional_workflow": "PASS",
+  "application_oracle": "20/20",
+  "coordinator_and_terminal_governance": "PASS",
+  "native_process_cleanup": "PASS",
+  "current_runtime_screening_comparison": [
+    {
+      "metric": "model_responses",
+      "baseline": 113,
+      "candidate": 89,
+      "change_percent": -21.24
+    },
+    {
+      "metric": "input_tokens",
+      "baseline": 12119848,
+      "candidate": 10025233,
+      "change_percent": -17.28
+    },
+    {
+      "metric": "uncached_input_tokens",
+      "baseline": 464296,
+      "candidate": 340881,
+      "change_percent": -26.58
+    },
+    {
+      "metric": "output_tokens",
+      "baseline": 34685,
+      "candidate": 41174,
+      "change_percent": 18.71
+    },
+    {
+      "metric": "elapsed_seconds",
+      "baseline": 2066.486,
+      "candidate": 2041.775,
+      "change_percent": -1.2
+    }
+  ],
+  "comparison_baseline": {
+    "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+    "stage": "grouped-workflow",
+    "package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a"
+  },
+  "comparison_scope": "Descriptive current-runtime stages. Not an identical-package causal pair or a global qualification against the frozen old-runtime 759675e reference.",
+  "performance_objectives": [
+    {
+      "metric": "model_responses",
+      "required_reduction_percent": 50,
+      "observed_reduction_percent": 21.24,
+      "screening_status": "FAIL"
+    },
+    {
+      "metric": "uncached_input_tokens",
+      "required_reduction_percent": 50,
+      "observed_reduction_percent": 26.58,
+      "screening_status": "FAIL"
+    },
+    {
+      "metric": "input_tokens",
+      "required_reduction_percent": 70,
+      "observed_reduction_percent": 17.28,
+      "screening_status": "FAIL"
+    }
+  ],
+  "median_latency_status": "UNAVAILABLE",
+  "median_latency": null,
+  "native_confirmation": {
+    "status": "SKIP",
+    "pairs_executed": 0,
+    "reason": "No candidate passed the screening performance objectives; confirmation/adoption would be premature."
+  },
+  "whole_workflow_delta_stage": {
+    "status": "SKIP",
+    "reason": "Task screening does not qualify the candidate for confirmation. Both scoped startup consultations already omit every optional body; native receipt-delta behavior is separately proven, without claiming whole-workflow savings."
+  },
+  "lexical_retrieval": {
+    "status": "DEFERRED_PENDING_MATCHED_WORKFLOW",
+    "observed_trigger_candidate": "Seven complete static bodies reappear in artifact-fetch immediately after scoped hydration and before canonical writes; their raw body equality is established, model availability is not.",
+    "reason": "Bounded native delivery now passes fresh installed PostgreSQL and two retained-data component controls. Earlier positive readability claims affected by the host notification race are withdrawn. Establish complete delivery in fresh matched workflows before treating their recovery reads as avoidable or opening lexical retrieval.",
+    "proof": "native-output-fix.v1.json"
+  },
+  "optional_manual_postgres_smoke": {
+    "status": "SKIP",
+    "reason": "Separate manual smoke command not executed; actual native PostgreSQL workflow/component evidence is reported independently."
+  },
+  "provider_exact_model_revision": {
+    "status": "UNAVAILABLE",
+    "value": null
+  },
+  "full_body_provider_residency": "UNAVAILABLE",
+  "installation_scope": "Dedicated synthetic installed clients only; ordinary installed skills and observed personal files preserved",
+  "installed_mode_and_option_rollback_evidence": {
+    "status": "PASS",
+    "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+    "proof": "installed-modes.v1.json",
+    "scope": "Configured files/dual/db-only with fixture corpora and local SQLite; opt-out restores ordinary contract and procedures. Not a live-PG/model qualification in every mode."
+  },
+  "source_assured": {
+    "status": "PASS",
+    "commit": "c0acac3ffba4cbcd18ae4903800320645320d539",
+    "families": 9,
+    "url": "https://github.com/leuzeus/aidn/actions/runs/39626145227"
+  },
+  "default_adoption": false,
+  "merge_or_release": false,
+  "programme_fully_qualified": false,
+  "whole_workflow_complete_authority_readability": "UNAVAILABLE",
+  "next_qualification_action": "Use fresh matched complete native workflows with the frozen bounded-context.v1 display/history policy and acknowledged required-unit semantic restoration. The corrected native port is qualified as a component only. Earlier default-history trials remain unchanged; no personal profile mutation or retroactive qualification.",
+  "native_output_correction": {
+    "status": "PASS",
+    "candidate_commit": "f25b2753730c529c3c023429d7e6c905d364be7a",
+    "proof": "native-output-fix.v1.json",
+    "scope": "Installed PostgreSQL startup and bounded retained-data controls; no complete workflow or global performance qualification",
+    "prior_harness_semantic_claims_withdrawn": true
+  },
+  "latest_source_assured_before_procedure_clarification": {
+    "status": "PASS",
+    "commit": "fdebbdfbb5add52c56ae713cfeeee51950807300",
+    "families": 9,
+    "url": "https://github.com/leuzeus/aidn/actions/runs/39637434223"
+  }
+}

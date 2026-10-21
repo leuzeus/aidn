@@ -12,6 +12,10 @@ Use [doctor and recovery](docs/GLOBAL_SETUP.md) to diagnose an installation and
 [the qualification record](docs/qualification/GLOBAL_WINDOWS.md) to distinguish
 published capabilities from demonstrated native behavior and remaining cases.
 
+Experimental [compact agent views](docs/CODEX_INTEGRATION.md#opt-in-compact-agent-views)
+are explicit CLI options. Full output and installed workflow defaults remain
+compatible; diagnostic receipts require explicit writes and grant no permission.
+
 ## Philosophy
 
 - Scaffold distribution with runtime enforcement

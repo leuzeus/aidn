@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "proof_class": "native-staged-screening",
+  "baseline_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+  "baseline_package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a",
+  "candidate_commit": "c0acac3ffba4cbcd18ae4903800320645320d539",
+  "package_sha256": "ce8e3d227d68a3145a505204a9b1862c484679f23244f839a6142393d5f7e171",
+  "native_binary_sha256": "00c0f1e4099246fddcd67ec620ca8ed50827c7d70e113b7224f7a2933cf2d67c",
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "active_family": "Accepted fixture task policy and scoped startup selection with existing conditional SPEC precision routing; complete dynamic reads retained",
+  "source_changes_between_stages": "Budget ownership correction and receipt-baseline support; delta remains disabled. This is not an identical-package causal pair.",
+  "invariant_frozen_files_checked": 78,
+  "unchanged_research_procedure_hashes": {
+    "COMMON.md": "0752338971edb900047f2643b57f04fe7b56914edd230b5e02df473236c83a47",
+    "START.md": "0205e55e19fade36c5840d1cf2cd123db009267b6093cf46d80255080b2d90a6",
+    "WORK.md": "17a9a65395a10a0f087c937852af8d22830486500adc24e35daf7feb79d53a32",
+    "HANDOFF-CLOSE.md": "0092075d173d44da423d7932ef91c382746d0a365ff5849b2d705328519687ed"
+  },
+  "host_tool_description_adaptation": {
+    "before_sha256": "1471d612badadc2e97a5956b9e642a9f8b91807de0f2d9fdb18c463bb1aae76e",
+    "after_sha256": "90072e53f7d56c9518e995594eeda4dde0dcdb2a5dfaa12e68d31aca0643081d",
+    "exact_single_description_replacement": "PASS",
+    "executable_controls_unchanged": true
+  },
+  "stage_order": [
+    "grouped-procedures",
+    "task-context-kernel-routing"
+  ],
+  "application_oracle_both": "20/20",
+  "coordinator_and_terminal_gates_both": "PASS",
+  "observations": [
+    {
+      "metric": "model_responses",
+      "baseline": 99,
+      "candidate": 89,
+      "change_percent": -10.1
+    },
+    {
+      "metric": "input_tokens",
+      "baseline": 11290778,
+      "candidate": 10025233,
+      "change_percent": -11.21
+    },
+    {
+      "metric": "cached_input_tokens",
+      "baseline": 10970752,
+      "candidate": 9684352,
+      "change_percent": -11.73
+    },
+    {
+      "metric": "uncached_input_tokens",
+      "baseline": 320026,
+      "candidate": 340881,
+      "change_percent": 6.52
+    },
+    {
+      "metric": "output_tokens",
+      "baseline": 42371,
+      "candidate": 41174,
+      "change_percent": -2.83
+    },
+    {
+      "metric": "reasoning_output_tokens",
+      "baseline": 7463,
+      "candidate": 6624,
+      "change_percent": -11.24
+    },
+    {
+      "metric": "elapsed_seconds",
+      "baseline": 2320.535,
+      "candidate": 2041.775,
+      "change_percent": -12.01
+    }
+  ],
+  "comparison_scope": "One sequential staged screening on the current native runtime. No causal per-command attribution, old-runtime global comparison, repeated confirmation or median latency.",
+  "confirmation_pairs": 0,
+  "median_latency": null,
+  "global_performance_qualification": false,
+  "default_adoption": false
+}

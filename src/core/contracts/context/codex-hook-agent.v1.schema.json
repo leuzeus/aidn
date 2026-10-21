@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/context/codex-hook-agent.v1",
+  "type": "object",
+  "required": ["contract_version", "view", "write_authorization", "ok", "skill", "strict", "command_status", "db_sync", "evidence"],
+  "properties": {
+    "contract_version": { "const": "codex-hook-agent.v1" }, "view": { "const": "agent" }, "write_authorization": { "const": false },
+    "ok": { "type": "boolean" }, "skill": { "type": "string" }, "strict": { "type": "boolean" },
+    "command_status": { "type": ["integer", "null"] },
+    "db_sync": { "type": "object", "required": ["enabled", "skipped", "error"], "properties": {
+      "enabled": { "type": "boolean" }, "skipped": { "type": "boolean" }, "error": { "type": ["object", "null"], "additionalProperties": true }
+    }, "additionalProperties": true },
+    "evidence": { "type": "object", "required": ["raw", "full"], "properties": {
+      "raw": { "type": ["object", "null"], "required": ["path", "sha256", "bytes"], "additionalProperties": true },
+      "full": { "type": ["object", "null"], "required": ["path", "sha256", "bytes"], "additionalProperties": true }
+    }, "additionalProperties": false }
+  },
+  "additionalProperties": true
+}

@@ -48,10 +48,118 @@ and unknown values. Byte counts cannot establish token savings or window pressur
 No context autonomy may be inferred from a model name or hook schema inventory.
 Native rollover and editable transcripts require separate capability qualification.
 
+Response-usage observations are separate from window telemetry: only unique
+native completed-response records contribute to cumulative-work totals. Cached
+input and reasoning output remain subsets; missing counters remain unknown and
+conflicting duplicates refuse aggregation. Input log hashes bind observations,
+not authenticity, candidate qualification, admission, financial cost or causal
+performance improvements. Internal read-only analysis never changes the source
+logs, user installation, canonical state or window-pressure decisions.
+
+Opt-in agent projections retain decisions, refusal/exit semantics, scope and
+source revisions, while exact duplicate selected bodies may be shared by
+reference within the same response. Different observations are not merged by
+assumption. The default full workflow representation remains compatible.
+Existing hook raw evidence remains available. Additional full diagnostic
+observations require explicit `--write`, are retained as unique local files,
+and are described by actual path/hash/bytes only after successful readback.
+They have no canonical or admission role, are not automatically purged or shared,
+and do not replace fresh action-specific admission. No receipt or token saving
+may be inferred merely from an agent view or a content hash.
+
+An explicitly grouped workflow consultation can share one complete canonical
+snapshot and each needed shared planning/relay observation within its private
+asynchronous invocation. These internal values cannot be supplied through JSON,
+cross target roots, survive invocation closure or grant subsequent permission.
+Admissions remain distinct. Only admitted skills contribute to common hydration;
+a global coordinator stop prevents it. Fresh backend reads and the existing
+local context/activation revision fence refuse publication after material change.
+The hidden hydration cache is not written in this path; an explicitly requested
+diagnostic receipt is retained only after the fence. Native writes retain their
+independent fresh admission, CAS and reservation checks. Initialized Git and
+canonical runtime paths bound the initial opt-in implementation; unavailable
+revision capture refuses rather than claiming a coherent observation.
+
+Within grouped consultation, dual-mode runtime digests follow canonical DB
+authority consistently across admissions, coordinator and hydration. Checkout
+rules remain checkout-bound in every mode. A stale indexed/store rule copy, or
+stale selected files-mode text/state reference, refuses the consultation instead
+of presenting it as current. Repair is a separate explicitly authorized write;
+no automatic synchronization or canonical-authority change is implied. Refused
+agent invocations after common activation dispatch have their own compact
+versioned diagnostic contract and do not publish a source revision or admission
+receipt. Common activation refusals retain the existing CLI boundary contract.
+
+The experimental `token-efficiency.v1` workflow profile derives the union of
+known admitted skills' context needs from client-owned accepted adoption data.
+Its `taskContextPolicies` extension declares a stable mandatory minimum and
+additive per-skill/task obligations. Operation/path labels cannot remove that
+minimum, accept an authority or grant admission. Existing complete Markdown
+selection enforces the accepted unit bindings, scope and dependency closure.
+Unknown skills or missing mappings retain the full historical selection path;
+an invalid/effectively unaccepted declared policy refuses instead of inventing
+authority. Changing a client's effective policy requires its adoption revision
+and history procedure; no installed policy is silently populated.
+
+The profile budgets the final compact command JSON after transport metadata and
+actual retained-receipt references. It first omits optional closure, then refuses
+with measured expansion requirements if the mandatory response exceeds target.
+Internal scoped hydration delegates that budget to its owning workflow formatter
+after validating authority and dependency bindings. It does not reject an
+intermediate raw representation before compact projection. Standalone scoped
+hydration continues to budget its own returned JSON; no public bypass flag is
+introduced. Existing source/input extent guards remain in effect.
+No successful response silently splits a mandatory authority. Refusal diagnostics
+may themselves exceed the requested limit; that is explicitly reported rather
+than deleting an admission, blocker or stop. These experimental byte limits do
+not represent native tokens, window pressure or successful performance targets.
+Its agent projection factors compact source identity metadata into a
+scope/path/hash-bound table. Parsed whole-document bodies and derived runtime or
+session contexts do not bypass task selection through metadata. Complete selected unit bodies remain explicit;
+metadata references are checked when accepting a baseline and unused entries
+are removed during budget pruning. Full diagnostic receipts retain original data.
+
 Differential consultation uses a caller-held complete prior selection only as
 an optimization hint. All mandatory authorities and their dependency closure
 are freshly returned. Only unchanged optional bodies can be replaced by exact
 references; invalid scope or integrity falls back to complete current selection.
+The grouped CLI accepts a bounded caller-held complete prior agent response or
+complete workflow diagnostic receipt retained by explicit `--write` as its
+baseline hint. A worktree-local `agent-view-receipt.v1` must identify
+`workflow-step` and deny write authorization. Its observation is projected by
+the ordinary agent formatter; it gains no authority or authenticated-proof role.
+Its body/reference graph is checked before the existing
+unit-integrity and fresh scope/dependency checks. Missing, corrupt or partial
+baselines, including differential receipts, reconstruct freshly. Reading a
+baseline adds no persistence; a cached authority never repairs a missing current
+one. Typed history transitions preserve distinct execution references and never
+change the audit store. Only identical decisions with known files-context bindings
+collapse; unavailable canonical revision data stays separate. Historical reuse
+labels never authorize a write, and current admission remains independent.
+An experimental procedure pack shares a stable common instruction prefix and
+task routes for grouped consultation, admitted work and ordered closure. It is
+packaged outside the ordinary installed skill tree and requires explicit research
+host selection. Batching preserves actual control executions and stops dependent
+actions on refusal; no host observation becomes a reusable write authorization.
+Default procedures and user profiles remain unchanged until native qualification.
+The manual native qualification port uses a declared invocation-local
+`bounded-context.v1` output policy. It requests 60,000 history tokens independently
+of the code-mode display budget and refuses dynamic tool JSON above 131,072 UTF-8
+bytes before sending any fragment. This is an envelope bound, not an expansion of
+the canonical 65,536-byte context budget or a byte/token conversion. Conflicting
+thread overrides refuse rather than silently lowering or replacing the selected
+policy. A response refusal does not roll back or authorize retry of the action
+that produced it; its retained authoritative outcome must be inspected. Transport
+observations record requested settings and actual sent/refused bytes, never
+provider residency, authority or admission. Root user config, native permission
+and hook-trust rules stay unchanged. Exact later semantic restitution on a fresh
+native run qualifies readability; raising a limit cannot restore an earlier
+clipped response or transfer an old baseline to a changed profile.
+The shared projection keeps each admission's actual activation state so an
+unchanged grouped consultation need not be repeated merely to expose that field.
+Unknown state stays unknown. This does not replace installed first-write gates,
+fresh native scope checks or mutation-time CAS/fences, nor add a generic preflight
+before every artifact of an already prescribed multicommand procedure.
 Raw observations remain data. Typed execution handoffs bind local result
 identifiers without asserting authenticated execution or a current lease.
 

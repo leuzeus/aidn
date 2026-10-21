@@ -19,9 +19,10 @@ import {
 } from "../../core/workflow/repair-layer-policy.mjs";
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "../runtime/runtime-snapshot-service.mjs";
 import { readWorkflowAdapterConfig } from "../../lib/config/workflow-adapter-config-lib.mjs";
-import { selectScopedContext, finalizeScopedContextBudget } from "./scoped-context-selection.mjs";
+import { selectScopedContext, attachScopedContextSelection, finalizeScopedContextBudget } from "./scoped-context-selection.mjs";
 import { projectContextDelta } from "./context-delta-projection.mjs";
 import { resolveRuntimeProjectContext } from "../runtime/runtime-project-context-service.mjs";
+import { workflowObservationActive } from "../runtime/workflow-observation-service.mjs";
 
 function resolveTargetPath(targetRoot, candidate) {
   if (!candidate) {
@@ -154,6 +155,26 @@ function readJsonIndex(indexFile) {
   }
   const payload = JSON.parse(fs.readFileSync(absolute, "utf8"));
   return { absolute, payload };
+}
+
+function verifyGroupedArtifactSources({ targetRoot, payload, selected, stateMode, scoped }) {
+  if (!workflowObservationActive(targetRoot)) return;
+  const paths = new Set(selected.map(row => row.path).filter(file => stateMode === "files" && !scoped
+    || ["SPEC.md", "WORKFLOW.md"].includes(file)));
+  if (stateMode === "files" && !scoped) for (const file of ["CURRENT-STATE.md", "RUNTIME-STATE.md"]) paths.add(file);
+  const fail = () => { throw Object.assign(new Error("WORKFLOW_CONTEXT_SOURCE_MISMATCH: refresh the owned index/projection from its canonical authority before retrying"), { code: "WORKFLOW_CONTEXT_SOURCE_MISMATCH" }); };
+  const root = fs.realpathSync(targetRoot);
+  for (const file of paths) {
+    const rows = (payload.artifacts ?? []).filter(row => row.path === file);
+    if (rows.length !== 1) fail();
+    try {
+      const physical = fs.realpathSync(path.resolve(targetRoot, "docs/audit", file)), relative = path.relative(root, physical);
+      if (relative.startsWith("..") || path.isAbsolute(relative)) fail();
+      const bytes = fs.readFileSync(physical), current = crypto.createHash("sha256").update(bytes).digest("hex");
+      const indexed = decodeArtifactContent(rows[0]);
+      if (rows[0].sha256 !== current || indexed && !indexed.equals(bytes)) fail();
+    } catch { fail(); }
+  }
 }
 
 function pushLimited(list, value, limit = 12) {
@@ -735,7 +756,8 @@ function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
   };
 }
 
-export async function runHydrateContextUseCase({ args, hookContextStore, targetRoot }) {
+export async function runHydrateContextUseCase({ args, hookContextStore, targetRoot, scopedBudgetOwner = "hydrate-json" }) {
+  if (!["hydrate-json", "workflow-agent-json"].includes(scopedBudgetOwner)) throw new Error("Invalid internal scoped context budget owner");
   const context = hookContextStore.readContext({
     targetRoot,
     contextFile: args.contextFile,
@@ -743,10 +765,17 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
   const store = context.exists ? context.store : { latest: {}, history: [] };
   const latest = store.latest && typeof store.latest === "object" ? store.latest : {};
   const history = Array.isArray(store.history) ? store.history : [];
-  const filteredHistory = args.skill
+  const historyCounts = new Map();
+  const groupedHistory = args.historySkills ? history.toReversed().filter(entry => {
+    if (!args.historySkills.includes(entry?.skill)) return false;
+    const count = historyCounts.get(entry.skill) ?? 0;
+    historyCounts.set(entry.skill, count + 1);
+    return count < args.historyLimit;
+  }).reverse() : null;
+  const filteredHistory = groupedHistory ?? (args.skill
     ? history.filter((entry) => String(entry?.skill ?? "") === args.skill)
-    : history;
-  const recentHistory = filteredHistory.slice(Math.max(0, filteredHistory.length - args.historyLimit));
+    : history);
+  const recentHistory = args.historySkills ? filteredHistory : filteredHistory.slice(Math.max(0, filteredHistory.length - args.historyLimit));
 
   const skills = Object.keys(latest).sort((a, b) => a.localeCompare(b));
   const decisionBySkill = {};
@@ -847,6 +876,8 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
       });
       scopedSelection = scopedRequested ? selection : null;
       selectedArtifacts = scopedRequested ? selection.units : selection.selected;
+      verifyGroupedArtifactSources({ targetRoot, payload: index.payload, selected: selectedArtifacts,
+        stateMode: effectiveStateMode, scoped: scopedRequested });
       repairLayer = scopedRequested ? null : summarizeRepairLayer(index.payload, selection);
       artifactSource.bundle_budget = selection.bundle_budget ?? null;
       artifactSource.source_revision = selection.source_revision;
@@ -882,7 +913,11 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
     }
     hydrated.source_revision = scopedSelection.source_revision;
     hydrated.visible_projection_policy = { mode: "consultative-read-only", materialize_visible_artifacts: false };
-    finalizeScopedContextBudget(hydrated, scopedSelection, args);
+    // Internal composition delegates serialization to the owning workflow. The
+    // public standalone surface still measures its own complete hydration JSON.
+    // This is not an args/CLI option and never changes authority validation.
+    if (scopedBudgetOwner === "workflow-agent-json") attachScopedContextSelection(hydrated, scopedSelection);
+    else finalizeScopedContextBudget(hydrated, scopedSelection, args);
     return hydrated;
   }
 

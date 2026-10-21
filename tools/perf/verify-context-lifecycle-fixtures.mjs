@@ -8,7 +8,7 @@ import { contextBenchmarkCases, resolveContextCapabilities } from "../../src/cor
 import { createContextLifecycleService } from "../../src/application/codex/context-lifecycle-service.mjs";
 import { contextTelemetryFromNativeUsage } from "../../src/adapters/codex/context-native-telemetry.mjs";
 import { assessNativeContextRound, assessNativeHookLifecycle } from "../verify/context-native-evidence-lib.mjs";
-import { nativeProbeRootSettings, nativeProbeThreadParams, isNativeTurnCompletion } from "../verify/context-native-rpc-lib.mjs";
+import { nativeProbeRootSettings, nativeProbeThreadParams, nativeProbeToolResponse, NATIVE_CONTEXT_OUTPUT_POLICY, isNativeTurnCompletion } from "../verify/context-native-rpc-lib.mjs";
 
 const identity = { provider: "fixture", model: "fixture", model_revision: "fixture-r1", client: "fixture", client_version: "1" };
 // Injected qualification exercises policy decisions; it is not native proof.
@@ -108,10 +108,52 @@ try {
     assert.throws(() => nativeProbeRootSettings('model_provider = "custom"'), /NOT_SUPPORTED/);
     assert.throws(() => nativeProbeRootSettings('profile = "other"'), /NOT_SUPPORTED/);
   });
+  await check("native context transport negotiates history capacity without changing permissions", async () => {
+    const original = { cwd: "fixture", model: "fixture-model", approvalPolicy: "never", sandbox: "read-only",
+      config: { features: { hooks: true } }, allowProviderModelFallback: false, developerInstructions: "Keep canonical source and admission rules." };
+    const before = structuredClone(original), value = nativeProbeThreadParams(original);
+    assert.equal(value.config.tool_output_token_limit, 60000);
+    assert.equal(value.approvalPolicy, "never"); assert.equal(value.sandbox, "read-only");
+    assert.equal(value.allowProviderModelFallback, false); assert.equal(value.model, "fixture-model");
+    assert.equal(value.config.bypass_hook_trust, undefined); assert.deepEqual(original, before);
+    assert(value.developerInstructions.startsWith(original.developerInstructions));
+    assert(value.developerInstructions.includes('"max_output_tokens":60000'));
+    assert.equal(nativeProbeThreadParams(value).developerInstructions, value.developerInstructions);
+    assert.equal(nativeProbeThreadParams({ config: {} }).developerInstructions, undefined);
+    assert.deepEqual(nativeProbeThreadParams(original, false, null), before);
+    assert.throws(() => nativeProbeThreadParams(original, false, "unknown"), /OUTPUT_PROFILE_UNSUPPORTED/);
+    assert.throws(() => nativeProbeThreadParams({ ...original, config: { tool_output_token_limit: 1000 } }), /OUTPUT_PROFILE_CONFLICT/);
+    assert.throws(() => nativeProbeThreadParams({ ...original, config: [] }), /OUTPUT_CONFIG_INVALID/);
+    assert.equal(nativeProbeThreadParams({ ...original, config: { tool_output_token_limit: 60000 } }).config.tool_output_token_limit, 60000);
+  });
+  await check("native transport rejects oversized complete JSON before sending body fragments", async () => {
+    const max = NATIVE_CONTEXT_OUTPUT_POLICY.max_dynamic_tool_json_bytes;
+    const exact = { body: "a".repeat(max - Buffer.byteLength(JSON.stringify({ body: "" }))) };
+    const accepted = nativeProbeToolResponse(exact);
+    assert.equal(accepted.observation.json_bytes, max); assert.equal(accepted.response.success, true);
+    assert.deepEqual(JSON.parse(accepted.response.contentItems[0].text), exact);
+    for (const result of [{ body: exact.body + "x" }, { body: "é".repeat(max / 2) }]) {
+      const denied = nativeProbeToolResponse(result), diagnostic = JSON.parse(denied.response.contentItems[0].text);
+      assert.equal(denied.response.success, false); assert.equal(denied.observation.status, "refused");
+      assert(denied.observation.json_bytes > max); assert.equal(diagnostic.error, "NATIVE_PROBE_TOOL_OUTPUT_BYTES_EXCEEDED");
+      assert.equal(diagnostic.action_may_have_executed, true); assert.equal(diagnostic.retry_authorized, false);
+      assert.equal(diagnostic.write_authorization, false); assert(!("body" in diagnostic));
+    }
+    assert.equal(nativeProbeToolResponse({ body: exact.body + "x" }, null).response.success, true);
+    assert.throws(() => nativeProbeToolResponse({}, { history_token_limit: 999999 }), /OUTPUT_PROFILE_UNSUPPORTED/);
+  });
+  await check("unserializable native output fails without exposing source data or granting retries", async () => {
+    const circular = {}; circular.self = circular;
+    for (const result of [undefined, { value: 1n }, circular]) {
+      const denied = nativeProbeToolResponse(result), diagnostic = JSON.parse(denied.response.contentItems[0].text);
+      assert.equal(denied.response.success, false); assert.equal(denied.observation.json_bytes, null);
+      assert.equal(diagnostic.error, "NATIVE_PROBE_TOOL_OUTPUT_UNSERIALIZABLE"); assert.equal(diagnostic.retry_authorized, false);
+    }
+  });
   await check("reviewed hook intent crosses the native per-thread port without granting persistent trust", async () => {
     const original = { cwd: "fixture", approvalPolicy: "never", sandbox: "read-only", config: { features: { hooks: true } } };
     const before = structuredClone(original);
-    assert.deepEqual(nativeProbeThreadParams(original), before);
+    assert.deepEqual(nativeProbeThreadParams(original, false, null), before);
     const reviewed = nativeProbeThreadParams(original, true);
     assert.equal(reviewed.config.bypass_hook_trust, true);
     assert.equal(reviewed.approvalPolicy, "never"); assert.equal(reviewed.sandbox, "read-only");

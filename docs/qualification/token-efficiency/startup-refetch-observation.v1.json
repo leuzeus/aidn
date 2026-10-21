@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "proof_class": "native-receipt-observation",
+  "status": "PASS",
+  "observations": [
+    {
+      "phase": 1,
+      "receipts_sha256": "b36edfca0d3d9adc9885434ef5f4d06f4b9fadc50f1bbf67ec07e272b1d0b52d",
+      "scoped_command_ordinal": 2,
+      "complete_fetch_command_ordinal": 5,
+      "intervening_commands": "Readonly artifact-store inventories only",
+      "repeated": [
+        {
+          "unit_id": "workflow",
+          "path": "WORKFLOW.md",
+          "body_bytes": 11006,
+          "sha256": "257644c273ef840bce3d6bdf5e5c43351f40e48996ce4a8c44bb30c7718e00b8"
+        },
+        {
+          "unit_id": "summary",
+          "path": "WORKFLOW_SUMMARY.md",
+          "body_bytes": 7018,
+          "sha256": "19a468f3886af8ee7a5e4d62530c2358dbf0606c246747ecd68b3ef753ead1b3"
+        },
+        {
+          "unit_id": "baseline",
+          "path": "baseline/current.md",
+          "body_bytes": 505,
+          "sha256": "7922d0cf7fb151257f192f82b91acebdec062477f7a861fb2f947898be0508ff"
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "receipts_sha256": "e3b8cf3f97a5e75d326a19f381fa48f2b6d54a7f8a03658d01124851da90ed26",
+      "scoped_command_ordinal": 3,
+      "complete_fetch_command_ordinal": 5,
+      "intervening_commands": "Readonly artifact-store inventories only",
+      "repeated": [
+        {
+          "unit_id": "workflow",
+          "path": "WORKFLOW.md",
+          "body_bytes": 11006,
+          "sha256": "257644c273ef840bce3d6bdf5e5c43351f40e48996ce4a8c44bb30c7718e00b8"
+        },
+        {
+          "unit_id": "summary",
+          "path": "WORKFLOW_SUMMARY.md",
+          "body_bytes": 7018,
+          "sha256": "19a468f3886af8ee7a5e4d62530c2358dbf0606c246747ecd68b3ef753ead1b3"
+        },
+        {
+          "unit_id": "baseline",
+          "path": "baseline/current.md",
+          "body_bytes": 505,
+          "sha256": "7922d0cf7fb151257f192f82b91acebdec062477f7a861fb2f947898be0508ff"
+        },
+        {
+          "unit_id": "kernel",
+          "path": "WORKFLOW-KERNEL.md",
+          "body_bytes": 4439,
+          "sha256": "5fafb80bbd344ef623f8fa126f40407e13e0b96f71e9b4946180ee286cc308e2"
+        }
+      ]
+    }
+  ],
+  "repeated_static_body_deliveries": 7,
+  "repeated_body_bytes": 41497,
+  "cause": "UNAVAILABLE",
+  "avoidability": "UNAVAILABLE pending actual native readability; raw CLI body equality is not proof of model availability",
+  "causal_token_savings": null,
+  "original_workflow_regraded": false
+}

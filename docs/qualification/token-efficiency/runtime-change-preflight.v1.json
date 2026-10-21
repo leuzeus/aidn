@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+  "package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a",
+  "execution": "not_executed",
+  "classification": "native_binary_missing_after_environment_change",
+  "preparation": "PASS; 1024 installed package files checked",
+  "model_requests": 0,
+  "product_verdict": "not_evaluated",
+  "previous_binary_sha256": "f6dbf48cb70f62649c645f26c87dc9bf84cc36986202dfad8e12fb5b8ca70312",
+  "cleanup": {
+    "postgres_stopped": true,
+    "temporary_authentication_removed": true,
+    "observed_personal_files_preserved": true
+  },
+  "original_attempt_regraded": false,
+  "subsequent_native_runtime_qualification": "Separate fresh attempt; current-controls-004.v1.json"
+}

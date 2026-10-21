@@ -149,15 +149,22 @@ export function selectScopedContext({ payload, request, adoption, backend, readC
   return result;
 }
 
+// Attach the already validated complete selection before its containing surface
+// applies the budget for the representation it actually returns.
+export function attachScopedContextSelection(hydrated, selection) {
+  hydrated.context_selection = { ...selection };
+  delete hydrated.context_selection.units;
+  delete hydrated.context_selection.mandatory_ids;
+  hydrated.artifacts = selection.units;
+  return hydrated;
+}
+
 // Measure the complete compact JSON response, including provenance, diagnostics,
 // admissions and this counter. Metadata can itself exceed the limit: report that
 // explicitly rather than silently deleting an admission or splitting a rule.
 export function finalizeScopedContextBudget(hydrated, selection, args) {
   const mandatory = new Set(selection.mandatory_ids);
-  hydrated.context_selection = { ...selection };
-  delete hydrated.context_selection.units;
-  delete hydrated.context_selection.mandatory_ids;
-  hydrated.artifacts = selection.units;
+  attachScopedContextSelection(hydrated, selection);
   const budget = {
     budget_scope: "complete-json", serialization: "compact-utf8", budget_status: "within-target",
     selected_count: 0, metadata_only_count: 0, truncated_count: 0, omitted_count: selection.omissions.length,

@@ -25,6 +25,55 @@ The same gate runs `verify-context-metrics-fixtures.mjs`: nullable unknown token
 measured bytes, bounded reported attribution, stale/future/inconsistent telemetry
 refusals and the closed diagnostic contract. Counters are observation deltas,
 not lifetime totals. No cost or native consumption benefit is inferred.
+The same suite covers the separate response-usage observer: unique completed
+response identity, duplicate conflict refusal, unknown counters, safe integer
+sums and cached/reasoning subset checks. The read-only internal utility
+`node tools/perf/summarize-response-usage.mjs --events <native-events.jsonl>`
+hashes each input and reports provider response totals, without interpreting
+thread lifetime totals as individual responses or context-window pressure.
+Caller-supplied logs alone never qualify their source, workflow or candidate.
+
+`npm run perf:verify-grouped-workflow` covers the opt-in common observation on
+fresh tracked corpora with explicitly built indexes. It verifies files, dual and
+db-only admissions, blocked/global-stop hydration suppression, canonical-only
+resolution, clone isolation, fresh revision fences and PostgreSQL unavailability
+without fallback. It reports installed-package, native-token and live-PostgreSQL
+proof separately; source fixtures do not establish those qualifications.
+It also exercises an actual SQLite canonical mutation between shared consumers,
+stale files/dual rule copies, canonical dual digests over stale visible state,
+and the typed agent refusal without retaining a stale diagnostic receipt.
+
+`npm run perf:verify-task-context-profile` exercises accepted task policies and
+the real grouped source CLI: complete mandatory dependencies, additive operation
+and affected-path needs, optional omission, insufficient budgets, foreign scope,
+unaccepted policy, explicit retained receipts and exact final UTF-8 JSON counters
+including transport metadata. Native tokens and installed-client qualification
+remain separate. The versioned byte target is experimental, not a token estimate.
+The same source suite checks workflow delta, malformed/missing/foreign baselines,
+body integrity independent of reference graph, missing current authority,
+distinct execution retention in typed history, unknown canonical history bindings
+and fresh reanchoring after context invalidation. It never edits retained audit
+history to obtain a smaller presented result. Complete explicitly retained
+workflow receipts also supply optional-unit hints through the ordinary projection
+and integrity checks; foreign scope, forged authorization, wrong receipt kind,
+tampered bodies and differential receipts force fresh selection. Reading a
+receipt creates no new retained receipt and preserves the original bytes.
+The real SQLite-backed CLI regression also supplies large unselected canonical
+metadata: standalone hydration keeps its own JSON refusal, while the workflow
+accepts complete mandatory units when their final compact agent representation
+fits. The requested workflow limit remains unchanged.
+
+`npm run perf:verify-agent-views` exercises the real workflow/hook CLI on disposable
+activated clients, alongside pure duplicate/revision and directory-link refusal
+controls. It checks compatible full defaults, separate agent contracts, every
+refusal and strict/sync exit outcome, exact excerpt/provenance retention, no
+view-implied receipt writes and explicit complete receipt readback. The required
+Codex integration lifecycle gate includes it once. Its output-size observations
+are fixture bytes; native performance and installed-procedure adoption remain
+separate qualifications.
+The client corpus is copied through the tracked-file filter, then explicitly
+indexed in the disposable target. Ignored local fixture databases and caches
+are never inputs; excerpt-preservation checks require real selected text.
 The same gate includes `verify-context-lifecycle-fixtures.mjs`: default/expired
 capability fallback, exact model/client identity, checkpoint-before-rollover,
 failed capture refusal, read-only restore, typed handoff and uncertain-dispatch
@@ -56,6 +105,27 @@ capsule, and a fresh process dispatches SessionStart(resume).
 See [observed native results](qualification/CONTEXT_CONTROL_PLANE.md). These
 manual results are outside PR admission and do not populate the capability
 registry automatically.
+
+Both native context qualifiers use the invocation-local `bounded-context.v1`
+output policy: 60,000 history tokens and a separate 131,072-byte ceiling on the
+complete serialized dynamic-tool JSON. Code-mode display instructions also
+request 60,000 tokens. No personal config, permissions, model, hook trust or
+canonical byte budget is changed. A conflicting per-thread history override
+refuses before dispatch. Oversized or unserializable dynamic output returns a
+bounded failure without source fragments; the action may already have executed,
+so the diagnostic never authorizes retry. Reports retain requested policy,
+actual response bytes/hash and sent/refused observations. These observations do
+not establish provider-body residency; separate later exact native restitution
+is still required. Earlier default-history trials cannot be requalified by the
+new profile. The explicit internal `outputProfile: null` route is reserved for
+historical negative controls.
+
+The lifecycle fixture suite covers profile negotiation without permission/model
+changes, immutable caller config, conflicts, exact UTF-8 output boundaries,
+multibyte overflow, unserializable results and non-retry diagnostics. Native
+regression separately compares the retained startup response with the explicit
+historical control and the corrected port, including an actual oversized-output
+refusal. Fixture checks alone do not prove that the model received whole bodies.
 
 `node tools/verify/qualify-context-selection-native.mjs --help` describes the
 manual paired consultation probe. Explicit execution verifies real CLI output

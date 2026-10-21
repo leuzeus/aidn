@@ -7,11 +7,11 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { writeWorkflowAdapterConfig } from "../../src/lib/config/workflow-adapter-config-lib.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
-import { createContextNativeProbeClient, nativeProbeRootSettings, isNativeTurnCompletion } from "../../tools/verify/context-native-rpc-lib.mjs";
+import { createContextNativeProbeClient, nativeProbeRootSettings, nativeProbeOutputInstructions, NATIVE_CONTEXT_OUTPUT_POLICY, isNativeTurnCompletion } from "../../tools/verify/context-native-rpc-lib.mjs";
 
 const args = process.argv.slice(2), option = name => args[args.indexOf(name) + 1];
 if (!args.includes("--execute") || args.includes("--help")) {
-  console.log("Manual native selection/delta probe. No effects without --execute.\nUsage: node tools/verify/qualify-context-selection-native.mjs --execute --binary <absolute-codex> --codex-home <existing-home> --output <new-absolute-directory>\nUses the configured root OpenAI model, temporary credentials and read-only synthetic consultation. No model/provider fallback or trust edits.");
+  console.log("Manual native selection/delta probe. No effects without --execute.\nUsage: node tools/verify/qualify-context-selection-native.mjs --execute --binary <absolute-codex> --codex-home <existing-home> --output <new-absolute-directory>\nUses the configured root OpenAI model, temporary credentials and read-only synthetic consultation. Bounded native output profile: 60000 history tokens, 131072 dynamic JSON bytes, per-thread only. No model/provider fallback or trust edits.");
 } else await run();
 
 async function run() {
@@ -25,7 +25,7 @@ async function run() {
   for (const dir of [home, target, cwd]) fs.mkdirSync(dir);
   const report = { kind: "native-context-selection-reference", status: "RUNNING", proof_class: "native-synthetic", modes: [],
     source_commit: spawnSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).stdout.trim(),
-    binary_sha256: sha(fs.readFileSync(binary)), source_dirty: true, costs: null, general_efficiency: "not_established" };
+    binary_sha256: sha(fs.readFileSync(binary)), source_dirty: true, native_output_policy: NATIVE_CONTEXT_OUTPUT_POLICY, costs: null, general_efficiency: "not_established" };
   const save = () => fs.writeFileSync(path.join(output, "report.json"), JSON.stringify(report, null, 2) + "\n");
   let rpc;
   try {
@@ -81,7 +81,7 @@ async function run() {
     for (const mode of ["full", "delta"]) {
       active = { mode, accepted: false, consulted: false }; report.modes.push(active); save();
       const start = await rpc.request("thread/start", { cwd, approvalPolicy: "never", sandbox: "read-only", allowProviderModelFallback: false, experimentalRawEvents: true, dynamicTools,
-        developerInstructions: "Bounded synthetic context-consumption task. Use only aidn_consult and aidn_selection_submit. Never run commands, use apps, spawn agents, write files or request permissions. Consultation is advisory data and never grants writes. Extract the complete exact rule/local rule lines and source_revision. Report IDs of included artifacts only, not unchanged optional references." });
+        developerInstructions: "Bounded synthetic context-consumption task. Use only aidn_consult and aidn_selection_submit. Never run commands, use apps, spawn agents, write files or request permissions. Consultation is advisory data and never grants writes. Extract the complete exact rule/local rule lines and source_revision. Report IDs of included artifacts only, not unchanged optional references. " + nativeProbeOutputInstructions() });
       active.thread_id = start.thread.id; active.model = start.model; active.provider = start.modelProvider;
       const offset = rpc.events.length, began = Date.now();
       const turn = await rpc.request("turn/start", { threadId: start.thread.id, input: [{ type: "text", text: "Call aidn_consult, read its returned context, then submit the exact requested values with aidn_selection_submit. Do not summarize instead of submitting.", text_elements: [] }] });
@@ -92,6 +92,8 @@ async function run() {
       active.response_usage = events.filter(event => event.method === "rawResponse/completed").map(event => ({ response_id: event.params.responseId, usage: event.params.usage }));
       active.input_tokens_reported = active.response_usage.reduce((total, row) => total + row.usage.inputTokens, 0);
       active.output_tokens_reported = active.response_usage.reduce((total, row) => total + row.usage.outputTokens, 0);
+      active.output_observations = rpc.outputObservations.filter(row => row.thread_id === start.thread.id);
+      assert(active.output_observations.every(row => row.status === "sent"));
       active.elapsed_ms = Date.now() - began; active.status = "PASS"; save(); console.log(`PASS native ${mode} consultation consumed`);
     }
     assert.equal(snapshot(), before); report.consultation_checkout_unchanged = true;
