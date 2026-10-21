@@ -19,7 +19,7 @@ import {
 } from "../../core/workflow/repair-layer-policy.mjs";
 import { detectRuntimeSnapshotBackend, readRuntimeSnapshot } from "../runtime/runtime-snapshot-service.mjs";
 import { readWorkflowAdapterConfig } from "../../lib/config/workflow-adapter-config-lib.mjs";
-import { selectScopedContext, finalizeScopedContextBudget } from "./scoped-context-selection.mjs";
+import { selectScopedContext, attachScopedContextSelection, finalizeScopedContextBudget } from "./scoped-context-selection.mjs";
 import { projectContextDelta } from "./context-delta-projection.mjs";
 import { resolveRuntimeProjectContext } from "../runtime/runtime-project-context-service.mjs";
 import { workflowObservationActive } from "../runtime/workflow-observation-service.mjs";
@@ -756,7 +756,8 @@ function resolveEffectiveStateMode(targetRoot, latest, requestedSkill) {
   };
 }
 
-export async function runHydrateContextUseCase({ args, hookContextStore, targetRoot }) {
+export async function runHydrateContextUseCase({ args, hookContextStore, targetRoot, scopedBudgetOwner = "hydrate-json" }) {
+  if (!["hydrate-json", "workflow-agent-json"].includes(scopedBudgetOwner)) throw new Error("Invalid internal scoped context budget owner");
   const context = hookContextStore.readContext({
     targetRoot,
     contextFile: args.contextFile,
@@ -912,7 +913,11 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
     }
     hydrated.source_revision = scopedSelection.source_revision;
     hydrated.visible_projection_policy = { mode: "consultative-read-only", materialize_visible_artifacts: false };
-    finalizeScopedContextBudget(hydrated, scopedSelection, args);
+    // Internal composition delegates serialization to the owning workflow. The
+    // public standalone surface still measures its own complete hydration JSON.
+    // This is not an args/CLI option and never changes authority validation.
+    if (scopedBudgetOwner === "workflow-agent-json") attachScopedContextSelection(hydrated, scopedSelection);
+    else finalizeScopedContextBudget(hydrated, scopedSelection, args);
     return hydrated;
   }
 

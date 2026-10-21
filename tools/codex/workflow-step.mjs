@@ -360,6 +360,7 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
     }
     if (selectionPolicy?.mode !== "blocked") {
     const hydrated = await runHydrateContextUseCase({
+      scopedBudgetOwner: selectionPolicy?.request ? "workflow-agent-json" : "hydrate-json",
       args: { ...buildHydrateArgs(args, ""), out: "", historySkills: admittedSkills,
         ...(args.contextProfile && selectionPolicy?.mode === "legacy-full-fallback"
           ? { bundleTargetBytes: 262144, bundleHardLimitBytes: 1048576 } : {}),

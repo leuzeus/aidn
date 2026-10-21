@@ -104,6 +104,11 @@ and history procedure; no installed policy is silently populated.
 The profile budgets the final compact command JSON after transport metadata and
 actual retained-receipt references. It first omits optional closure, then refuses
 with measured expansion requirements if the mandatory response exceeds target.
+Internal scoped hydration delegates that budget to its owning workflow formatter
+after validating authority and dependency bindings. It does not reject an
+intermediate raw representation before compact projection. Standalone scoped
+hydration continues to budget its own returned JSON; no public bypass flag is
+introduced. Existing source/input extent guards remain in effect.
 No successful response silently splits a mandatory authority. Refusal diagnostics
 may themselves exceed the requested limit; that is explicitly reported rather
 than deleting an admission, blocker or stop. These experimental byte limits do

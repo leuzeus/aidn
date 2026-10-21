@@ -15,6 +15,7 @@ import schema from "../../src/core/contracts/cli-output/codex-workflow-step-agen
 import { persistHookContext } from "../../src/adapters/codex/context-store.mjs";
 import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
 import { projectHistoryTransitions } from "../../src/application/codex/context-history-transitions.mjs";
+import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
 
 const repo = path.resolve(import.meta.dirname, "../.."), root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-task-profile-"));
 const target = path.join(root, "client"), source = path.join(repo, "tests/fixtures/repo-installed-core"), checks = [];
@@ -244,6 +245,31 @@ try {
   assert(partialReceipt.payload.artifacts.some(row => row.artifact.unit_id === "optional"));
   assert.equal(hash(fs.readFileSync(receipt.path)), receipt.sha256, "the complete retained observation is immutable");
   checks.push("complete workflow receipts provide untrusted delta hints; invalid, foreign or differential receipts reanchor freshly without implicit writes");
+  const sqlite = createRuntimeArtifactStore({ targetRoot: target, backend: "sqlite" });
+  const originalIndex = await sqlite.loadSnapshot({ includePayload: true, includeRuntimeHeads: false });
+  assert(originalIndex.exists && originalIndex.payload);
+  try {
+    const inflated = structuredClone(originalIndex.payload);
+    const artifact = inflated.artifacts.find(row => row.path === "TOKEN-SPEC.md"); assert(artifact);
+    artifact.canonical = { schema_version: 1, format: "markdown", artifact_class: "spec", title: "Fixture source identity",
+      stats: { sections: 2 }, structured_sections: { unselected: "Unselected canonical source detail. ".repeat(4000) } };
+    await sqlite.writeIndexProjection({ payload: inflated });
+    const requestRef = ".aidn/runtime/context/large-metadata-selection.json";
+    fs.writeFileSync(path.join(target, requestRef), JSON.stringify({ schemaVersion: 1, purpose: "effective", asOf: "2026-10-20",
+      scope, roots: ["invariant"], optional: [], units: adoption.extensions.contextUnits }));
+    const standalone = cli(["codex", "hydrate-context", "--context-selection-file", requestRef,
+      "--bundle-target-bytes", "32768", "--bundle-hard-limit-bytes", "65536", "--json"]);
+    assert.equal(standalone.payload.context_selection.status, "blocked");
+    assert(standalone.payload.context_selection.errors.some(row => row.reason === "mandatory_budget_insufficient"));
+    const projected = workflow([]);
+    assert.equal(projected.payload.context_selection.status, "complete", "raw hydration size cannot refuse a smaller final agent representation");
+    assert.equal(projected.payload.bundle_budget.status, "within-target");
+    assert.equal(projected.payload.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(projected.payload)));
+    assert(projected.payload.artifacts.some(row => row.artifact.content_excerpt === documents["TOKEN-SPEC.md"]));
+    assert(!JSON.stringify(projected.payload).includes("Unselected canonical source detail."));
+    assert.deepEqual(validateJsonSchema(projected.payload, schema, "$"), []);
+  } finally { await sqlite.writeIndexProjection({ payload: originalIndex.payload }); }
+  checks.push("workflow budgets only its final agent JSON while standalone hydration keeps its own complete JSON budget");
   // Refusal metadata itself can exceed a tiny requested hard limit. It must
   // report that fact rather than delete the admission/stop diagnostic.
   const diagnostic = { ok: true, contexts: [], artifacts: [], admissions: [{ blocking_reasons: ["x".repeat(500)] }] };

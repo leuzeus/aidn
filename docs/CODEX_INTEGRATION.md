@@ -105,6 +105,11 @@ bounds or an explicit expansion within that maximum. Legacy defaults remain
 262,144/1,048,576 bytes outside this profile. The counter includes admissions,
 complete selected units, history, scope, findings, actual receipt references and
 final daemon metadata; terminal framing/newlines are outside compact JSON.
+The grouped profile owns this final serialization budget. Its internal scoped
+hydration validates complete units and defers budgeting to the agent formatter,
+so intermediate full source metadata cannot cause a false refusal before compact
+projection. The public standalone hydration selector keeps its own complete JSON
+budget. No public option delegates or disables that standalone limit.
 Scoped agent units reference one `artifact_metadata` entry for compact source
 identity (schema, format, class, title and statistics), bound to path, source hash
 and observation scope. Parsed whole-document sections and inferred runtime/session
