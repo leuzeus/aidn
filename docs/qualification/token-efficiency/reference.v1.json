@@ -1,6 +1,6 @@
 {
   "format": "context-efficiency-reference.v1",
-  "status": "reference_in_progress",
+  "status": "reference_recorded",
   "baseline": {
     "version": "0.14.0",
     "commit": "759675e18af4db59fcd04a3f173822e30d38edd4",
@@ -70,13 +70,133 @@
     "alternating_order": true
   },
   "budgets": {
-    "status": "not_calibrated",
+    "status": "experimental_fixture_calibration",
     "unit": "serialized_complete_json_utf8_bytes",
     "reason": "No optimized default until all three reference scenarios are measured",
     "unchanged_legacy_target": 262144,
-    "unchanged_legacy_hard_limit": 1048576
+    "unchanged_legacy_hard_limit": 1048576,
+    "complete_fixture_samples": [
+      5136,
+      6080,
+      5275,
+      4200,
+      4128,
+      4180
+    ],
+    "minimum_observed_complete_json_bytes": 4128,
+    "maximum_observed_complete_json_bytes": 6080,
+    "target_bytes": 16384,
+    "hard_limit_bytes": 65536,
+    "method": "next power of two of twice maximum complete fixture JSON; hard limit four times target",
+    "margin_factors_are_design_choices": true,
+    "blocked_cases_excluded": 2,
+    "production_default_changed": false,
+    "calibration_corpus_sha256": "8c27c961ba55f2ad4a584e5812fc985da23bdad87deac7b4beb1ada845cb99df",
+    "limitation": "Synthetic complete-JSON observations, not a universal mandatory minimum or native token budget. L3 must refuse/expand if mandatory units do not fit."
   },
-  "native_reference_status": "IN_PROGRESS",
-  "performance_verdict": "not_evaluated",
-  "installed_client_adoption": false
+  "native_reference_status": "PASS",
+  "performance_verdict": "reference_only",
+  "installed_client_adoption": false,
+  "read_refusal_repair_scope": "synthetic native canonical-read refusal and repair; no refused product-write repair or authorization",
+  "results": {
+    "format": "context-efficiency-reference-results.v1",
+    "source_commit": "759675e18af4db59fcd04a3f173822e30d38edd4",
+    "package_sha256": "a8ce81b6c86b2fe8f45e4d93c137a76c3e3f3bdcacbc92d8a19681cb880db9b3",
+    "proof_class": "native",
+    "performance_verdict": "reference_only",
+    "model_revision": null,
+    "arms": {
+      "aidn": {
+        "elapsed_seconds": 1708.642,
+        "model_responses": 114,
+        "tokens": {
+          "input_tokens": 12081890,
+          "cached_input_tokens": 11746560,
+          "output_tokens": 39586,
+          "reasoning_output_tokens": 5380,
+          "uncached_input_tokens": 335330
+        },
+        "application_oracle_passed": 20,
+        "workflow_passed": true,
+        "terminal_status": "PASS",
+        "event_sources": [
+          {
+            "input_index": 1,
+            "sha256": "9a8ec675747f2135322204b60ed8766f609454d4de8589a461a329c3b1210eb7",
+            "bytes": 5110220,
+            "lines": 4739
+          },
+          {
+            "input_index": 2,
+            "sha256": "8261800591da20fad1ac15e968da7f302b0bd8b8e4c135211c75c12199cf6806",
+            "bytes": 4758070,
+            "lines": 7210
+          }
+        ]
+      },
+      "baseline": {
+        "elapsed_seconds": 489.05,
+        "model_responses": 24,
+        "tokens": {
+          "input_tokens": 670235,
+          "cached_input_tokens": 577664,
+          "output_tokens": 22932,
+          "reasoning_output_tokens": 5920,
+          "uncached_input_tokens": 92571
+        },
+        "application_oracle_passed": 20,
+        "workflow_passed": true,
+        "terminal_status": "NOT_APPLICABLE",
+        "event_sources": [
+          {
+            "input_index": 1,
+            "sha256": "c762c7cf711ef2d65f832c81db5820f9f741bf410cee4ecd109afa38c73fcafa",
+            "bytes": 1080813,
+            "lines": 659
+          },
+          {
+            "input_index": 2,
+            "sha256": "5ca724843bed7f9156700758bbd3f04adb346e0d6e0db68385d675ab36c0f240",
+            "bytes": 829636,
+            "lines": 1637
+          }
+        ]
+      }
+    },
+    "read_refusal_repair": {
+      "status": "PASS",
+      "scope": "synthetic native canonical-read refusal and repair; no refused product-write repair or authorization",
+      "elapsed_seconds": 48.053,
+      "model_responses": 5,
+      "tokens": {
+        "input_tokens": 119545,
+        "cached_input_tokens": 89856,
+        "output_tokens": 303,
+        "reasoning_output_tokens": 0,
+        "uncached_input_tokens": 29689
+      },
+      "actual_cli_exit_codes": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "event_sources": [
+        {
+          "input_index": 1,
+          "sha256": "af189a73bd7467a6597e011407558f8aea4c47766247564c4494338e03096e1f",
+          "bytes": 193772,
+          "lines": 220
+        }
+      ],
+      "protocol_sha256": "6c12b16c606c3fbc5255da795df6646180b72984f5fee3be1c72d6c2fe0a8159"
+    },
+    "cleanup": {
+      "owned_processes_closed": true,
+      "postgres_stopped": true,
+      "temporary_authentication_removed": true,
+      "personal_files_preserved": true,
+      "historical_arm_reuse": false
+    }
+  }
 }

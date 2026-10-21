@@ -11,7 +11,7 @@ model revision. No previous benchmark arm is reused.
 
 | Lot | Status | Required exit evidence |
 | --- | --- | --- |
-| L0 Reference/instrumentation | In progress | Three reference scenarios measured; repeatable native evidence and calibrated experimental budgets |
+| L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
 | L1 Agent views | Not started | Separate opt-in contracts, equivalent decisions and retained full evidence |
 | L2 Shared workflow observation | Not started | Per-skill admissions, no blocked-skill hydration, coherent invocation-local observation and concurrent-change refusal |
 | L6 Procedures/kernel | Not started | Grouped required reads and deterministic controls; native adoption deferred until qualification |
@@ -20,7 +20,7 @@ model revision. No previous benchmark arm is reused.
 | L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
 | L7 Native qualification/adoption | Not started | Three independent confirmation pairs, functional/governance equivalence, rollback and installed-client proof |
 
-L0 must complete before engine optimization or procedure adoption. The legacy
+L0 precedes engine optimization or procedure adoption. The legacy
 output format, budget defaults and installed user configuration remain unchanged.
 The reference package is built from Git objects at the pinned commit, independently
 of the later instrumentation changes in this branch.
@@ -62,6 +62,47 @@ that historical report; it is not the new 0.14.0 reference or an efficiency resu
 The required working-memory gate includes the observer and real utility
 regressions through `verify-context-metrics-fixtures.mjs`. Native reference logs,
 credentials and local infrastructure paths stay outside the repository.
+
+## Fresh 0.14.0 reference results
+
+| Metric | AIDN | No-AIDN secondary reference |
+| --- | ---: | ---: |
+| Elapsed seconds including continuation | 1,708.642 | 489.050 |
+| Model responses | 114 | 24 |
+| Cumulative input | 12,081,890 | 670,235 |
+| Cached input subset | 11,746,560 | 577,664 |
+| Uncached input | 335,330 | 92,571 |
+| Output | 39,586 | 22,932 |
+| Reasoning subset of output | 5,380 | 5,920 |
+| Independent application oracle | 20/20 | 20/20 |
+
+The AIDN arm passed actual native development controls, coordinator relay,
+native continuation and ordered cycle/session closure including nested hook
+checks. Its 114 responses comprise 61 in the first phase and 53 in continuation;
+these are phases of one run, not independent trials. Actual native `new_context`
+calls were zero. The secondary reference has no AIDN governance obligations.
+Both owned process trees closed with zero descendants. PostgreSQL stopped,
+temporary authentication copies were removed and the observed personal files
+and immutable harness files were preserved. Local gate validation briefly
+overlapped early reference execution; timings are descriptive observations,
+not isolated causal latency estimates. No optimization has been measured yet.
+
+The separate synthetic native read-refusal/repair case passed four actual CLI
+calls with retained exit codes `[2, 0, 0, 0]`: deliberately wrong note reference,
+complete official inventory, exact complete repaired canonical read and fresh
+independent context-reload admission. It used five model responses, 119,545
+cumulative input and 29,689 uncached input tokens. It grants no write authority
+and does not prove repair of a refused product edit. That separate boundary
+remains part of later qualification.
+
+Six successful complete scoped-context fixture responses measured 4,128–6,080
+UTF-8 JSON bytes; two blocked cases are excluded from calibration. The initial
+experimental target is 16,384 bytes (next power of two above twice the observed
+maximum), with a 65,536-byte hard limit. The margins are engineering choices,
+not measured guarantees or native-token limits. The manifest retains these
+observations and corpus identity. Legacy 262,144/1,048,576-byte defaults are
+unchanged; mandatory units that exceed an experimental budget must cause an
+explicit refusal/expansion, never silent truncation.
 
 ## Qualification rules
 
