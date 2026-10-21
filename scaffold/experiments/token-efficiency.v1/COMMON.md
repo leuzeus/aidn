@@ -45,7 +45,15 @@ fresh observation. Do not silently retry a write.
 Select `--context-profile token-efficiency.v1` only with an accepted client-owned
 task policy. Include an additive task query when relevant. Inspect the complete
 JSON budget result: an expansion refusal is a decision point, never permission
-to omit a mandatory authority. A complete prior agent response or a complete
+to omit a mandatory authority. The byte budget covers CLI JSON, not the native
+host's display or history limits. `has_content`, byte counts and a retained
+receipt do not establish that a whole body reached the model. If the host clips
+a required body or its completeness is uncertain, keep dependent work read-only
+and retrieve the missing complete units through the ordinary official route in
+bounded calls. Do not repeat the same oversized batch or label its receipt a
+completed read. Native qualification freezes display/history settings and checks
+separate later semantic restatement; it never silently changes a personal profile.
+A complete prior agent response or a complete
 workflow receipt already retained with explicit `--write` can be supplied through
 `--context-baseline-file`. Keep the last complete baseline; a differential response
 or receipt is not a full replacement. Missing/incompatible hints reconstruct freshly. Keep

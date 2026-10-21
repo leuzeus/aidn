@@ -77,8 +77,10 @@
     "reason": "Task screening does not qualify the candidate for confirmation. Both scoped startup consultations already omit every optional body; native receipt-delta behavior is separately proven, without claiming whole-workflow savings."
   },
   "lexical_retrieval": {
-    "status": "NOT_TRIGGERED",
-    "reason": "No documented scope-filtered section-retrieval failure; repeated mandatory/fresh reads alone do not authorize opening L5."
+    "status": "DEFERRED_PENDING_TRANSPORT_VALIDATION",
+    "observed_trigger_candidate": "Seven complete static bodies reappear in artifact-fetch immediately after scoped hydration and before canonical writes; their raw body equality is established, model availability is not.",
+    "reason": "The retained startup readability test fails under default native history and passes with an explicit larger limit. Establish complete native delivery before treating recovery reads as avoidable or opening lexical retrieval.",
+    "proof": "native-startup-readability.v1.json"
   },
   "optional_manual_postgres_smoke": {
     "status": "SKIP",
@@ -104,5 +106,13 @@
   },
   "default_adoption": false,
   "merge_or_release": false,
-  "programme_fully_qualified": false
+  "programme_fully_qualified": false,
+  "whole_workflow_complete_authority_readability": "UNAVAILABLE",
+  "next_qualification_action": "Use a fresh matched native reference/candidate profile with explicitly frozen display/history settings and successful required-unit semantic restoration. Earlier default-history trials remain unchanged; no personal profile mutation or retroactive qualification.",
+  "latest_source_assured_before_procedure_clarification": {
+    "status": "PASS",
+    "commit": "fdebbdfbb5add52c56ae713cfeeee51950807300",
+    "families": 9,
+    "url": "https://github.com/leuzeus/aidn/actions/runs/39637434223"
+  }
 }

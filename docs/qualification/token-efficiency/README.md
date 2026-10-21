@@ -17,7 +17,7 @@ model revision. No previous benchmark arm is reused.
 | L6 Procedures/kernel | Experimental pack and one current-runtime functional pair PASS | Shared prefix and task routes remain separate from installed skills; global performance and adoption unqualified |
 | L3 Task selection/budget | Source, native components and one complete functional workflow PASS | Complete mandatory units and final JSON budget verified on an accepted synthetic client; global performance objectives fail screening |
 | L4 Delta/history | Source and native delta component checks PASS | Fresh mandatory closure, invalid-baseline reconstruction, typed history and independent reanchoring; native current delta restatement, whole-workflow gains pending |
-| L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
+| L5 Lexical retrieval | Deferred pending native readability | Qualify complete native delivery before classifying recovery reads as avoidable or opening lexical retrieval |
 | L7 Native qualification/adoption | Screening completed; adoption not qualified | Functional workflows pass; performance screening fails. Three confirmation pairs and the whole-workflow delta stage are not executed |
 
 L0 precedes engine optimization or procedure adoption. The legacy
@@ -478,9 +478,49 @@ The [decision](adoption-decision.v1.json) is **REMAIN_EXPERIMENTAL**. No candida
 passes screening, so the three confirmation pairs are `SKIP`, with no median or
 default adoption claim. The full-workflow delta stage is also `SKIP`; both scoped
 startup responses already omit all optional bodies. Its separate installed native
-receipt-delta check remains valid component evidence. L5 is not triggered by a
-documented retrieval failure. The optional manual PostgreSQL smoke command is
+receipt-delta check remains valid component evidence. L5 awaits the transport
+precondition described below. The optional manual PostgreSQL smoke command is
 reported separately as `SKIP`; actual PostgreSQL native execution is independently
 proven. Exact provider model revision and complete provider-body residency stay
 `UNAVAILABLE`. The programme is not fully qualified, and no merge, release or
 personal installation change is included.
+
+## Native readability boundary
+
+A subsequent [receipt observation](startup-refetch-observation.v1.json) finds
+seven complete static body deliveries repeated within the same native contexts
+(41,497 body bytes). Each follows a scoped consultation and only readonly
+inventories, before any canonical write. Whole bodies and hashes match exactly.
+This establishes repetition at the CLI boundary; its avoidability and causal
+token cost remain unavailable until model availability is established. Conditional
+SPEC reads are not counted as avoidable, and fresh-context required reloads are
+not treated as errors.
+
+The smallest [native readability check](native-startup-readability.v1.json)
+uses the exact retained 49,675-byte startup body in two isolated native contexts,
+with a 60,000-token exec display budget in both. With default history settings,
+the model reports `457 tokens truncated` in the summary and safely stops without
+guessing its missing final line. Exact four-unit semantic restitution is `FAIL`.
+With only the temporary history limit set explicitly to 60,000, separate later
+restitution of all four exact terminal lines and source hashes is `PASS`.
+Both owned jobs closed with zero descendants, temporary authentication copies
+were removed and observed personal files were preserved.
+
+This is one retained-data component comparison, without live CLI invocation,
+fresh admission, native SessionStart or product work. It supports a transport
+capacity explanation; it does not prove why every earlier reread occurred or
+establish full provider-body residency. Failure-run usage is retained separately
+and is not compared as a successful saving. The previous full workflows keep
+their functional/control verdicts and default-history usage. Complete authority
+readability for those workflows stays `UNAVAILABLE`.
+
+The experimental common procedure now distinguishes CLI byte completeness from
+native body availability. Clipped or uncertain required content keeps dependent
+work read-only and requires complete official units in bounded calls, rather
+than repeating an oversized batch or trusting its receipt as a completed read.
+No ordinary installed procedure, personal history setting or authority changes.
+The native trials above used the earlier frozen procedure texts; this clarification
+does not retroactively qualify them. A future whole-workflow comparison needs
+fresh matched reference/candidate profiles with explicitly frozen display/history
+settings and successful required-unit semantic restitution before considering
+L5 or adoption.
