@@ -198,6 +198,23 @@ attempts and the established CLI semantics rather than changing product behavior
 
 ## Qualification rules
 
+The first [whole-workflow agent-hook-view attempt](agent-view-workflow-attempt.v1.json)
+passed the independent application oracle (20/20), native development and actual
+coordinator relay, then stopped at terminal verification. The host incorrectly
+compared complete CLI output to a pure application projection and expected the
+compact-only raw alias on a full application receipt. It threw before retaining
+the last CLI stdout/exit, which remain unavailable. The session stayed open and
+the terminal gate failed. Its 109 responses and token/time counters are retained
+as failed-attempt cost, not qualified savings. Timing also overlapped independent
+fixture work. Owned processes, PostgreSQL and temporary auth copies were cleaned.
+
+A reduced regression preserves the actual retained complete hook observation
+and the CLI transport shape. It passes the unchanged nested hook oracle after
+validating transport, raw file binding/bytes/hash and exact domain projection.
+That fixture does not regrade the original native attempt. Future host code
+captures actual process results before checking them; a new fresh full workflow
+must still pass before continuing qualification or adopting procedures.
+
 The packaged research procedures live in
 [`scaffold/experiments/token-efficiency.v1`](../../../scaffold/experiments/token-efficiency.v1/README.md).
 They share one stable common prefix and route start, product work and ordered

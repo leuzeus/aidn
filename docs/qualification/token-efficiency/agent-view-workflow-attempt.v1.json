@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "proof_class": "native",
+  "candidate_commit": "ef54f65b6647c27fd6e62a66137b40754bc22ce2",
+  "package_sha256": "e069611db0fb1884c337509bcd26b850818cabf8d3fa3e3bcb398e2705005d6d",
+  "stage": "agent-hook-views-only",
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "execution": "completed_with_failed_workflow",
+  "application_oracle": {"passed": 20, "total": 20},
+  "coordinator_relay": "PASS",
+  "terminal_gate": "FAIL",
+  "workflow_verdict": "not_qualified",
+  "classification": "host_verification_adapter_failure",
+  "performance_verdict": "not_evaluated",
+  "elapsed_seconds": 1763.932,
+  "timing_isolation": false,
+  "usage": {
+    "model_responses": 109,
+    "input_tokens": 11153710,
+    "cached_input_tokens": 10843392,
+    "uncached_input_tokens": 310318,
+    "output_tokens": 39243,
+    "reasoning_output_tokens": 6058
+  },
+  "event_sources": [
+    {"phase": 1, "sha256": "acad203bc774be4f7d466d3f9264f18de66a9a994eb6c043c5a4de7b60ade68c", "bytes": 5267343},
+    {"phase": 2, "sha256": "46b585d847c3360e99ab041034e46aad82afdea65fd70d47e26f844c22f19401", "bytes": 3555511}
+  ],
+  "cause": "The host compared actual CLI agent output with a pure application projection without validating/separating appended daemon transport metadata. Its full receipt also uses raw_file rather than compact-only raw_payload_ref. The verifier threw before retaining the final process result.",
+  "last_cli_stdout": "UNAVAILABLE",
+  "last_cli_exit": "not independently retained; complete retained application observation has command_status zero",
+  "retained_cycle_hook_observation_sha256": "c035da5faf0b71f2cb319ca7503cc519c3ea0ce450c01f82df475fa25be50c48",
+  "correction": "Future host validates direct CLI transport, checks the exact domain projection and verified physical raw evidence, supplies its checked alias to the unchanged nested oracle, and retains process outputs before verification.",
+  "reduced_regression": {"status": "PASS", "proof_class": "retained-observation-and-source-CLI-shape-fixture", "original_attempt_regraded": false},
+  "cleanup": {"owned_processes_closed": true, "postgres_stopped": true, "temporary_authentication_removed": true, "observed_personal_files_preserved": true},
+  "adoption": false
+}
