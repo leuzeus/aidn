@@ -80,6 +80,25 @@ independent fresh admission, CAS and reservation checks. Initialized Git and
 canonical runtime paths bound the initial opt-in implementation; unavailable
 revision capture refuses rather than claiming a coherent observation.
 
+The experimental `token-efficiency.v1` workflow profile derives the union of
+known admitted skills' context needs from client-owned accepted adoption data.
+Its `taskContextPolicies` extension declares a stable mandatory minimum and
+additive per-skill/task obligations. Operation/path labels cannot remove that
+minimum, accept an authority or grant admission. Existing complete Markdown
+selection enforces the accepted unit bindings, scope and dependency closure.
+Unknown skills or missing mappings retain the full historical selection path;
+an invalid/effectively unaccepted declared policy refuses instead of inventing
+authority. Changing a client's effective policy requires its adoption revision
+and history procedure; no installed policy is silently populated.
+
+The profile budgets the final compact command JSON after transport metadata and
+actual retained-receipt references. It first omits optional closure, then refuses
+with measured expansion requirements if the mandatory response exceeds target.
+No successful response silently splits a mandatory authority. Refusal diagnostics
+may themselves exceed the requested limit; that is explicitly reported rather
+than deleting an admission, blocker or stop. These experimental byte limits do
+not represent native tokens, window pressure or successful performance targets.
+
 Differential consultation uses a caller-held complete prior selection only as
 an optimization hint. All mandatory authorities and their dependency closure
 are freshly returned. Only unchanged optional bodies can be replaced by exact

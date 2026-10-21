@@ -78,6 +78,8 @@ export function projectWorkflowAgentView(payload, receipt = null) {
       source_of_truth: pick(admission.source_of_truth, ["state_mode", "runtime_state_mode", "issues", "repair_actions"]),
     })),
     contexts, artifacts: [...artifacts.values()], next_action: payload.next_action,
+    ...(payload.selection_policy ? { selection_policy: payload.selection_policy } : {}),
+    ...(payload.context_selection ? { context_selection: payload.context_selection } : {}),
     receipt,
   };
 }

@@ -15,6 +15,17 @@ against fresh local, activation, canonical and shared-state revisions before
 publication. It currently requires initialized Git and canonical runtime paths.
 It never grants reusable write authorization or changes the legacy default.
 
+`--context-profile token-efficiency.v1` additionally selects client-accepted task
+policies and a binding final JSON target (16,384 bytes, maximum 65,536). Its optional
+`--context-task-file` contains additive operation/affected-path query data. It
+requires the grouped agent path. Known configured skills use complete sections
+and dependency closure; unknown/unconfigured skills retain historical selection.
+The final JSON includes refusals, history, provenance, transport and receipt
+metadata. Optional closure is omitted first; an insufficient mandatory target
+returns an explicit blocked result with expansion references. Refusal metadata
+can exceed a tiny requested limit and reports that fact. No authority is silently
+truncated, accepted or written by this selector.
+
 The internal `codex run-json-hook` wrapper also accepts `--view agent --json`:
 flat decisions, errors and refusal/sync/exit semantics remain intact, with the
 existing raw evidence available by hash and reference. Optional `--write` retains

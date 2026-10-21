@@ -37,6 +37,53 @@ available. PostgreSQL configuration selects the canonical backend even when a
 compatibility SQLite projection exists. The ordinary per-skill path remains the
 default, including when only `--view agent` is selected.
 
+The additional `--context-profile token-efficiency.v1` selector automates the
+union of known admitted skills' needs using the client's existing accepted
+`governanceAdoption`. The client owns `extensions.contextUnits` and the following
+extension shape (a draft example, not an acceptance or installation action):
+
+```json
+{
+  "taskContextPolicies": {
+    "schemaVersion": 1,
+    "mandatory": ["invariants"],
+    "skills": {
+      "context-reload": {
+        "mandatory": ["local-workflow"],
+        "optional": ["recent-decisions"],
+        "rules": [{
+          "when": {"operations": ["migrate"], "pathPrefixes": ["src/runtime"]},
+          "mandatory": ["migration-readiness"],
+          "optional": []
+        }]
+      }
+    }
+  }
+}
+```
+
+Each identifier must resolve through the accepted complete-unit bindings and
+their dependency closure. Changing effective client obligations follows that
+client's adoption revision/history process. A task query such as
+`{"operation":"migrate","paths":["src/runtime/change.mjs"]}` can be supplied
+with `--context-task-file <local.json>` (bounded local JSON, at most 64 KiB).
+Rules can also match canonical `modes`, `cycleStates` or the presence of a
+`blocked` skill. They only add obligations; the stable mandatory set remains.
+Unknown skills or missing mappings use historical full selection. Invalid or
+unaccepted declared policies refuse. No client policy is created automatically.
+
+The experimental final compact JSON target is 16,384 bytes with a maximum of
+65,536. `--bundle-target-bytes` and `--bundle-hard-limit-bytes` can select smaller
+bounds or an explicit expansion within that maximum. Legacy defaults remain
+262,144/1,048,576 bytes outside this profile. The counter includes admissions,
+complete selected units, history, scope, findings, actual receipt references and
+final daemon metadata; terminal framing/newlines are outside compact JSON.
+Optional closure is omitted first. If the mandatory response cannot fit target,
+the result is blocked with measured expansion requirements, without incomplete
+mandatory bodies. Diagnostics themselves can exceed an impossible requested
+limit; `fits_hard_limit: false` reports it explicitly. A new, freshly admitted
+consultation is needed for expansion; no authority or permission is cached.
+
 `aidn codex workflow-step --skills context-reload,requirements-delta --view agent --json`
 projects the same per-skill admissions and hydration as the default full format.
 It returns every blocker and warning, source revisions, context references and

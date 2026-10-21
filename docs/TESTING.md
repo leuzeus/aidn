@@ -40,6 +40,13 @@ resolution, clone isolation, fresh revision fences and PostgreSQL unavailability
 without fallback. It reports installed-package, native-token and live-PostgreSQL
 proof separately; source fixtures do not establish those qualifications.
 
+`npm run perf:verify-task-context-profile` exercises accepted task policies and
+the real grouped source CLI: complete mandatory dependencies, additive operation
+and affected-path needs, optional omission, insufficient budgets, foreign scope,
+unaccepted policy, explicit retained receipts and exact final UTF-8 JSON counters
+including transport metadata. Native tokens and installed-client qualification
+remain separate. The versioned byte target is experimental, not a token estimate.
+
 `npm run perf:verify-agent-views` exercises the real workflow/hook CLI on disposable
 activated clients, alongside pure duplicate/revision and directory-link refusal
 controls. It checks compatible full defaults, separate agent contracts, every

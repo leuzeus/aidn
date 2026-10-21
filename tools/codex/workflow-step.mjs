@@ -10,6 +10,9 @@ import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { computeCoordinatorNextAction } from "../runtime/coordinator-next-action.mjs";
 import { persistAgentViewReceipt, projectWorkflowAgentView, validateAgentViewOptions } from "../../src/application/codex/agent-view-projection.mjs";
 import { withWorkflowObservation } from "../../src/application/runtime/workflow-observation-service.mjs";
+import { readWorkflowAdapterConfig } from "../../src/lib/config/workflow-adapter-config-lib.mjs";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
+import { TOKEN_CONTEXT_PROFILE, buildTaskContextRequest, finalizeWorkflowContextBudget } from "../../src/application/codex/task-context-profile.mjs";
 
 const DEFAULT_DAEMON_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 
@@ -65,6 +68,8 @@ export function parseArgs(argv) {
     view: "full",
     write: false,
     grouped: false,
+    contextProfile: "",
+    contextTaskFile: "",
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -158,6 +163,12 @@ export function parseArgs(argv) {
       args.write = true;
     } else if (token === "--grouped") {
       args.grouped = true;
+    } else if (token === "--context-profile") {
+      args.contextProfile = String(argv[++i] ?? "").trim();
+      if (args.contextProfile !== TOKEN_CONTEXT_PROFILE.id) throw new Error("Unknown context profile");
+    } else if (token === "--context-task-file") {
+      args.contextTaskFile = String(argv[++i] ?? "").trim();
+      if (!args.contextTaskFile || args.contextTaskFile.startsWith("--")) throw new Error("Missing task query file");
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -168,6 +179,10 @@ export function parseArgs(argv) {
     }
   }
   args.skills = unique(args.skills);
+  if (args.contextProfile) {
+    if (!argv.includes("--bundle-target-bytes")) args.bundleTargetBytes = TOKEN_CONTEXT_PROFILE.target_bytes;
+    if (!argv.includes("--bundle-hard-limit-bytes")) args.bundleHardLimitBytes = TOKEN_CONTEXT_PROFILE.hard_limit_bytes;
+  }
   if (!["full", "agent"].includes(args.view)) throw new Error("Invalid --view. Expected full|agent");
   if (!args.target) {
     throw new Error("Missing value for --target");
@@ -197,6 +212,7 @@ function printUsage() {
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --json [--write]  (explicit complete diagnostic receipt)");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload,requirements-delta --view agent --grouped --json");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --grouped --context-profile token-efficiency.v1 --json");
 }
 
 function summarizeAdmission(payload) {
@@ -265,6 +281,7 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
   const steps = [];
   const admissions = {};
   const hydrations = {};
+  let selectionPolicy = null, commonSelection = null;
 
   for (const skill of args.skills) {
     const admission = await preWriteAdmit({
@@ -320,14 +337,29 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
 
   const admittedSkills = args.skills.filter(skill => admissions[skill]?.ok === true);
   if (grouped && admittedSkills.length && nextAction?.recommendation?.stop_required !== true) {
+    if (args.contextProfile) {
+      const task = args.contextTaskFile ? readTaskQuery(targetRoot, args.contextTaskFile) : {};
+      const context = admissions[admittedSkills[0]].context, resolved = resolveRuntimeProjectContext({ targetRoot });
+      const scope = Object.fromEntries(["project_id", "workspace_id", "worktree_id", "runtime_scope_id"].map(key => [key, resolved[key]]));
+      for (const [key, value] of [["session_id", context.active_session], ["cycle_id", context.active_cycle]])
+        if (value && !["none", "unknown"].includes(value)) scope[key] = value;
+      selectionPolicy = buildTaskContextRequest({ adoption: readWorkflowAdapterConfig(targetRoot).data.governanceAdoption,
+        scope, admissions, skills: admittedSkills, task, asOf: new Date().toISOString().slice(0, 10) });
+    }
+    if (selectionPolicy?.mode !== "blocked") {
     const hydrated = await runHydrateContextUseCase({
-      args: { ...buildHydrateArgs(args, ""), out: "", historySkills: admittedSkills },
+      args: { ...buildHydrateArgs(args, ""), out: "", historySkills: admittedSkills,
+        ...(args.contextProfile && selectionPolicy?.mode === "legacy-full-fallback"
+          ? { bundleTargetBytes: 262144, bundleHardLimitBytes: 1048576 } : {}),
+        ...(selectionPolicy?.request ? { contextRequest: selectionPolicy.request } : {}) },
       hookContextStore, targetRoot,
     });
+    commonSelection = hydrated.context_selection ?? null;
     for (const skill of admittedSkills) hydrations[skill] = { ...hydrated, requested_skill: skill,
       recent_history: hydrated.recent_history.filter(entry => entry.skill === skill) };
     steps.push({ id: "hydrate-context:common", kind: "hydrate-context", skills: admittedSkills,
-      skill: null, ok: true, status: "completed", summary: summarizeHydration(hydrated) });
+      skill: null, ok: commonSelection?.status !== "blocked", status: commonSelection?.status === "blocked" ? "blocked" : "completed", summary: summarizeHydration(hydrated) });
+    }
   }
 
   const blockedSkills = Object.entries(admissions)
@@ -361,6 +393,11 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
     admissions,
     hydrations,
     next_action: nextAction,
+    ...(args.contextProfile ? { context_budget_request: { profile: TOKEN_CONTEXT_PROFILE.id,
+      target_bytes: args.bundleTargetBytes, hard_limit_bytes: args.bundleHardLimitBytes },
+      selection_policy: selectionPolicy ? Object.fromEntries(Object.entries(selectionPolicy).filter(([key]) => key !== "request"))
+        : { mode: "not-attempted", reason: "no_admitted_continuation", write_authorization: false },
+      ...(commonSelection ? { context_selection: commonSelection } : {}) } : {}),
   };
   return output;
 }
@@ -368,6 +405,11 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
 export async function runWorkflowStep({ args, targetRoot }) {
   validateAgentViewOptions(args);
   if (args.grouped !== undefined && typeof args.grouped !== "boolean") throw new Error("Grouped workflow selector must be boolean");
+  if (args.contextProfile && (args.contextProfile !== TOKEN_CONTEXT_PROFILE.id || !args.grouped
+      || !Number.isSafeInteger(args.bundleTargetBytes) || !Number.isSafeInteger(args.bundleHardLimitBytes)
+      || args.bundleTargetBytes < 1 || args.bundleTargetBytes > args.bundleHardLimitBytes
+      || args.bundleHardLimitBytes > TOKEN_CONTEXT_PROFILE.hard_limit_bytes)) throw new Error("Invalid grouped context profile or budget");
+  if (args.contextTaskFile && !args.contextProfile) throw new Error("Task query requires a context profile");
   if (args.grouped && (args.view !== "agent" || !["auto", "sqlite", "postgres"].includes(args.backend)
       || args.indexFile !== ".aidn/runtime/index/workflow-index.sqlite"
       || args.currentStateFile !== "docs/audit/CURRENT-STATE.md" || args.runtimeStateFile !== "docs/audit/RUNTIME-STATE.md"
@@ -380,9 +422,20 @@ export async function runWorkflowStep({ args, targetRoot }) {
     output = { ...observed.value, observation: observed.observation };
   } else output = await computeWorkflowStep({ args, targetRoot });
   const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "workflow-step", payload: output });
-  if (args.view === "agent") return projectWorkflowAgentView(output, receipt);
+  if (args.view === "agent") {
+    const projected = projectWorkflowAgentView(output, receipt);
+    return args.contextProfile ? finalizeWorkflowContextBudget(projected,
+      { targetBytes: args.bundleTargetBytes, hardLimitBytes: args.bundleHardLimitBytes }) : projected;
+  }
   if (receipt) output.receipt = receipt;
   return output;
+}
+
+function readTaskQuery(targetRoot, ref) {
+  const file = fs.realpathSync(path.resolve(targetRoot, ref)), relative = path.relative(fs.realpathSync(targetRoot), file);
+  if (relative.startsWith("..") || path.isAbsolute(relative) || !fs.statSync(file).isFile() || fs.statSync(file).size > 65536)
+    throw new Error("Task query must be a bounded local JSON file");
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(fs.readFileSync(file)));
 }
 
 function resolveDaemonEndpointFile(targetRoot, endpointFile) {
@@ -523,6 +576,10 @@ async function main() {
         reason: "not_requested",
       };
     }
+    // Transport metadata is part of the final command JSON too. Reconcile the
+    // same budget without restoring an omitted unit or clearing a refusal.
+    if (args.contextProfile) finalizeWorkflowContextBudget(output,
+      { targetBytes: args.bundleTargetBytes, hardLimitBytes: args.bundleHardLimitBytes });
     if (args.json) {
       console.log(args.view === "agent" ? JSON.stringify(output) : JSON.stringify(output, null, 2));
     } else {

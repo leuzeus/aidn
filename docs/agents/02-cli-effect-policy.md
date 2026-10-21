@@ -60,6 +60,9 @@ The classification keeps automation from confusing output format with write perm
   projector effect. An additional complete local diagnostic receipt requires
   `--write`, whose invocation rule is `mutating`; view selection alone does not
   add persistence or write authority.
+- `aidn codex workflow-step --view agent --grouped --json` is a read-only
+  invocation: no hydration cache or visible projection is written. Adding
+  `--write` selects the mutating diagnostic-receipt variant.
 - `aidn runtime project-runtime-state --json --write` may project or write only when the command documents that behavior.
 - `aidn runtime project-handoff-packet --json` must be read-only by default.
 - `aidn runtime mode-migrate --json` must only preview config, schema, and projection changes; `--write` is required to apply them.

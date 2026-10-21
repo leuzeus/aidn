@@ -19,6 +19,19 @@
     "workspace": { "type": "object", "additionalProperties": true },
     "summary": { "type": "object", "required": ["skill_count", "admission_count", "blocked_skill_count", "hydrate_count"], "additionalProperties": true },
     "observation_scope": { "type": "string" },
+    "selection_policy": { "type": "object", "required": ["mode", "reason", "write_authorization"], "properties": {
+      "mode": { "enum": ["scoped", "legacy-full-fallback", "blocked", "not-attempted"] },
+      "reason": { "type": "string" }, "write_authorization": { "const": false },
+      "policy_revision": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+    }, "additionalProperties": false },
+    "context_selection": { "type": "object", "required": ["status", "scope", "errors", "omissions"], "additionalProperties": true },
+    "bundle_budget": { "type": "object", "required": ["profile", "scope", "serialization", "target_bytes", "hard_limit_bytes", "total_bytes", "status", "minimum_required_bytes", "fits_hard_limit", "omitted_optional_ids", "expansion_required"], "properties": {
+      "profile": { "const": "token-efficiency.v1" }, "scope": { "const": "complete-json" }, "serialization": { "const": "compact-utf8" },
+      "target_bytes": { "type": "integer", "minimum": 1, "maximum": 65536 }, "hard_limit_bytes": { "type": "integer", "minimum": 1, "maximum": 65536 },
+      "total_bytes": { "type": "integer", "minimum": 0 }, "status": { "enum": ["within-target", "blocked"] },
+      "minimum_required_bytes": { "type": ["integer", "null"], "minimum": 0 }, "fits_hard_limit": { "type": "boolean" },
+      "omitted_optional_ids": { "type": "array", "items": { "type": "string" } }, "expansion_required": { "type": "array" }
+    }, "additionalProperties": false },
     "observation": { "type": "object", "required": ["scope", "source_revision", "write_authorization", "fence_status", "distinct_reads"], "properties": {
       "scope": { "const": "invocation-common" }, "write_authorization": { "const": false },
       "source_revision": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "fence_status": { "const": "unchanged" },
