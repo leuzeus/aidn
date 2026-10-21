@@ -52,7 +52,7 @@ const DECISION_FIELDS = ["ok", "decision", "action", "result", "reason_codes", "
 export function projectWorkflowAgentView(payload, receipt = null) {
   const artifacts = new Map();
   const contexts = Object.entries(payload.hydrations ?? {}).map(([skill, hydrated]) => {
-    const source = pick(hydrated, ["source_revision", "source_backend", "runtime_scope_id", "project_id", "workspace_id", "state_mode"]);
+    const source = pick(hydrated, ["target_root", "source_revision", "source_backend", "runtime_scope_id", "project_id", "workspace_id", "state_mode"]);
     const refs = (hydrated.artifacts ?? []).map(artifact => {
       const id = hash(JSON.stringify({ source, artifact }));
       if (!artifacts.has(id)) artifacts.set(id, { id, source, artifact });

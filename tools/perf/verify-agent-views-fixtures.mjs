@@ -6,7 +6,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
-import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { createTrackedFixtureFilter, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { persistAgentViewReceipt, projectWorkflowAgentView, validateAgentViewOptions } from "../../src/application/codex/agent-view-projection.mjs";
 import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
 import workflowSchema from "../../src/core/contracts/cli-output/codex-workflow-step-agent.v1.schema.json" with { type: "json" };
@@ -29,8 +29,13 @@ const assertReceipt = receipt => {
   const record = JSON.parse(bytes); assert.equal(record.write_authorization, false); return record.observation;
 };
 try {
-  fs.cpSync(source, target, { recursive: true, filter: file => isActivationFixtureSource(source, file, { freshContext: true }) });
+  const tracked = createTrackedFixtureFilter(source, repo);
+  fs.cpSync(source, target, { recursive: true, filter: file => tracked(file) && isActivationFixtureSource(source, file, { freshContext: true }) });
   prepareActivationFixture(target, repo);
+  // Index only this fresh tracked corpus. A previous local fixture's ignored
+  // SQLite store is not input evidence for either CLI observation.
+  const indexed = command(["perf", "index", "--store", "sqlite", "--with-content", "--json"]);
+  assert.equal(indexed.status, 0, indexed.stderr);
   const visible = ["RUNTIME-STATE.md", "HANDOFF-PACKET.md"].map(name => path.join(target, "docs/audit", name));
   const before = visible.map(file => fs.existsSync(file) ? hash(fs.readFileSync(file)) : null);
   const full = workflow([]), agent = workflow(["--view", "agent"]);
@@ -57,6 +62,7 @@ try {
     assert.equal(persistAgentViewReceipt({ write: false, targetRoot: path.join(root, "absent") }), null);
   });
   check("shared artifact bodies retain exact text, provenance and truncation markers", () => {
+    assert(agent.payload.artifacts.some(row => typeof row.artifact.content_excerpt === "string"));
     for (const context of agent.payload.contexts) {
       const original = full.payload.hydrations[context.skill];
       assert.equal(context.artifact_refs.length, original.artifacts.length);
@@ -90,6 +96,8 @@ try {
     assert.equal(projected.artifacts.length, 1); assert.equal(projected.next_action.recommendation.stop_required, true);
     payload.hydrations.b.source_revision = "r2"; assert.equal(projectWorkflowAgentView(payload).artifacts.length, 2);
     payload.hydrations.b.source_revision = "r1"; assert.equal(JSON.stringify(payload), snapshot);
+    payload.hydrations.a.target_root = "/client-a"; payload.hydrations.b.target_root = "/client-b";
+    assert.equal(projectWorkflowAgentView(payload).artifacts.length, 2, "missing IDs never merge different target roots");
   });
   const hook = extra => {
     // The wrapped command is synthetic fixture data, not native execution proof.
@@ -121,7 +129,7 @@ try {
     assert.throws(() => persistAgentViewReceipt({ write: true, targetRoot: local, kind: "workflow-step", payload: {} }), /escapes/);
     assert.deepEqual(fs.readdirSync(outside), []);
   });
-  console.log(JSON.stringify({ status: "PASS", proof_class: "fixture-and-real-cli", assertions: checks.length, checks,
+  console.log(JSON.stringify({ status: "PASS", proof_class: "fixture-and-real-cli", fixture_source: "tracked-only-with-explicit-fresh-index", assertions: checks.length, checks,
     observations: { legacy_compact_json_bytes: Buffer.byteLength(JSON.stringify(full.payload)), agent_compact_json_bytes: Buffer.byteLength(JSON.stringify(agent.payload)), native_token_savings: "UNAVAILABLE" } }));
 } catch (error) { console.error(error.stack); process.exitCode = 1; }
 finally { removePathWithRetry(root); }

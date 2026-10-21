@@ -41,6 +41,9 @@ view-implied receipt writes and explicit complete receipt readback. The required
 Codex integration lifecycle gate includes it once. Its output-size observations
 are fixture bytes; native performance and installed-procedure adoption remain
 separate qualifications.
+The client corpus is copied through the tracked-file filter, then explicitly
+indexed in the disposable target. Ignored local fixture databases and caches
+are never inputs; excerpt-preservation checks require real selected text.
 The same gate includes `verify-context-lifecycle-fixtures.mjs`: default/expired
 capability fallback, exact model/client identity, checkpoint-before-rollover,
 failed capture refusal, read-only restore, typed handoff and uncertain-dispatch

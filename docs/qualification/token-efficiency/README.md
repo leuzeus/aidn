@@ -105,8 +105,11 @@ unchanged; mandatory units that exceed an experimental budget must cause an
 explicit refusal/expansion, never silent truncation.
 
 L1 adds explicit agent views without changing default per-skill execution.
-The same disposable workflow fixture produced 108,660 compact-serialized legacy
-JSON bytes and 80,455 agent JSON bytes. Exact different source revisions remain
+The tracked-only disposable workflow fixture, with an explicitly rebuilt index,
+produced 108,696 compact-serialized legacy JSON bytes and 81,371 agent JSON bytes.
+The earlier local 108,660/80,455-byte observation included an ignored fixture
+index; it remains a historical observation, not the reproducible corpus reference.
+Exact different source revisions and different target roots remain
 distinct and all original excerpt markers survive. These are representation
 observations, not native token savings. The internal hook projection keeps raw
 evidence and every refusal/strict/sync/exit outcome; new complete diagnostic
