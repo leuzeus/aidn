@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.15.0 (2026-10-21)
+
+- Add explicit opt-in agent JSON views for workflow and hooks, retaining
+  decisions, refusals and verifiable references without duplicated full bodies.
+- Group workflow admissions around one invocation-local canonical observation
+  and hydrate the union of admitted skills once. Blocked skills receive repair
+  diagnostics; material changes invalidate the observation. Fresh write admission,
+  compare-and-swap and existing reservation fences remain required.
+- Add an opt-in task context profile with complete Markdown units, mandatory
+  dependency closure and a final serialized JSON budget. Refuse an insufficient
+  mandatory budget; preserve the ordinary route for unknown skills. Reuse valid
+  optional-context baselines and present history by transitions with safe reanchor.
+- Ship an experimental procedure pack outside ordinary installed skills and
+  separate per-response usage counters from context-window observations.
+- Bound the native qualification port's history/display capacity and complete
+  dynamic-tool JSON output. Explicitly refuse oversized output without fragments
+  or authorization to repeat a possibly executed action. Preserve personal
+  configuration and native permissions. Fresh installed PostgreSQL and retained
+  data component checks pass; affected earlier harness claims are withdrawn.
+- Retain the [token-efficiency qualification record](https://github.com/leuzeus/aidn/tree/v0.15.0/docs/qualification/token-efficiency),
+  including functional results, incomplete attempts and descriptive reductions
+  below the initial performance objectives. New context paths remain opt-in;
+  publication does not establish global token savings. A benchmark of the
+  published package with the corrected native output profile is still pending.
+
 ## 0.14.0 (2026-10-20)
 
 - Discover exact required template references through the official
