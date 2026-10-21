@@ -27,7 +27,10 @@ can exceed a tiny requested limit and reports that fact. No authority is silentl
 truncated, accepted or written by this selector.
 
 `--context-baseline-file` adds optional-unit differential consultation to that
-profile; invalid prior observations fall back to fresh complete selection and
+profile. It accepts a complete prior agent response or complete worktree-local
+workflow receipt previously retained with explicit `--write`; the receipt remains
+an untrusted hint and reading it adds no write. Invalid prior observations fall
+back to fresh complete selection and
 mandatory authority closure is always sent. `--history-view transitions` groups
 only well-bound identical typed decisions while retaining distinct execution
 references. Unknown canonical history revisions remain separate. Both remain

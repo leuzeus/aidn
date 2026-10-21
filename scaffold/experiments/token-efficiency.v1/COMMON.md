@@ -45,8 +45,10 @@ fresh observation. Do not silently retry a write.
 Select `--context-profile token-efficiency.v1` only with an accepted client-owned
 task policy. Include an additive task query when relevant. Inspect the complete
 JSON budget result: an expansion refusal is a decision point, never permission
-to omit a mandatory authority. A complete prior response can be supplied through
-`--context-baseline-file`; missing/incompatible hints reconstruct freshly. Keep
+to omit a mandatory authority. A complete prior agent response or a complete
+workflow receipt already retained with explicit `--write` can be supplied through
+`--context-baseline-file`. Keep the last complete baseline; a differential response
+or receipt is not a full replacement. Missing/incompatible hints reconstruct freshly. Keep
 mandatory authorities on every consultation. `--history-view transitions` is a
 presentation of distinct retained executions, not current admission evidence.
 

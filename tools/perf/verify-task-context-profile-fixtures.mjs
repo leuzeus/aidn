@@ -211,6 +211,39 @@ try {
   assert.equal(written.payload.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(written.payload)));
   assert.deepEqual(validateJsonSchema(written.payload, schema, "$"), []);
   checks.push("explicit diagnostic receipt is real and included in the final serialized budget");
+  const receiptRef = path.relative(target, receipt.path);
+  const receiptCount = fs.readdirSync(path.dirname(receipt.path)).length;
+  const receiptDelta = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", receiptRef]);
+  assert.equal(receiptDelta.payload.context_delta.mode, "differential");
+  assert.deepEqual(receiptDelta.payload.artifacts.map(row => row.artifact.unit_id), ["dependency", "invariant"]);
+  assert.deepEqual(receiptDelta.payload.context_delta.unchanged_optional_refs.map(row => row.unit_id), ["optional"]);
+  assert.deepEqual(validateJsonSchema(receiptDelta.payload, schema, "$"), []);
+  assert.equal(fs.readdirSync(path.dirname(receipt.path)).length, receiptCount, "reading a receipt never retains another receipt");
+  const invalidReceiptRef = ".aidn/runtime/context/invalid-prior-receipt.json";
+  for (const change of [
+    value => { value.kind = "run-json-hook"; },
+    value => { value.scope = "foreign"; },
+    value => { value.write_authorization = true; },
+    value => { value.observation.context_selection.scope.worktree_id = "foreign"; },
+    value => {
+      const optional = Object.values(value.observation.hydrations).flatMap(row => row.artifacts ?? []).find(row => row.unit_id === "optional");
+      assert(optional); optional.content_excerpt += "tampered receipt hint";
+    },
+  ]) {
+    const invalidReceipt = JSON.parse(bytes); change(invalidReceipt);
+    fs.writeFileSync(path.join(target, invalidReceiptRef), JSON.stringify(invalidReceipt));
+    const fresh = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", invalidReceiptRef]);
+    assert.equal(fresh.payload.context_delta.mode, "full");
+    assert(fresh.payload.artifacts.some(row => row.artifact.unit_id === "optional"));
+    assert(!fresh.payload.artifacts.some(row => row.artifact.content_excerpt.includes("tampered receipt hint")));
+  }
+  const retainedDelta = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", receiptRef, "--write"]);
+  assert.equal(retainedDelta.payload.context_delta.mode, "differential");
+  const partialReceipt = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", path.relative(target, retainedDelta.payload.receipt.path)]);
+  assert.equal(partialReceipt.payload.context_delta.mode, "full", "a differential receipt is not a complete prior selection");
+  assert(partialReceipt.payload.artifacts.some(row => row.artifact.unit_id === "optional"));
+  assert.equal(hash(fs.readFileSync(receipt.path)), receipt.sha256, "the complete retained observation is immutable");
+  checks.push("complete workflow receipts provide untrusted delta hints; invalid, foreign or differential receipts reanchor freshly without implicit writes");
   // Refusal metadata itself can exceed a tiny requested hard limit. It must
   // report that fact rather than delete the admission/stop diagnostic.
   const diagnostic = { ok: true, contexts: [], artifacts: [], admissions: [{ blocking_reasons: ["x".repeat(500)] }] };

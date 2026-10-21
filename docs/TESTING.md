@@ -53,7 +53,11 @@ The same source suite checks workflow delta, malformed/missing/foreign baselines
 body integrity independent of reference graph, missing current authority,
 distinct execution retention in typed history, unknown canonical history bindings
 and fresh reanchoring after context invalidation. It never edits retained audit
-history to obtain a smaller presented result.
+history to obtain a smaller presented result. Complete explicitly retained
+workflow receipts also supply optional-unit hints through the ordinary projection
+and integrity checks; foreign scope, forged authorization, wrong receipt kind,
+tampered bodies and differential receipts force fresh selection. Reading a
+receipt creates no new retained receipt and preserves the original bytes.
 
 `npm run perf:verify-agent-views` exercises the real workflow/hook CLI on disposable
 activated clients, alongside pure duplicate/revision and directory-link refusal

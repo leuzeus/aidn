@@ -224,7 +224,7 @@ function printUsage() {
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --json [--write]  (explicit complete diagnostic receipt)");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload,requirements-delta --view agent --grouped --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --grouped --context-profile token-efficiency.v1 --json");
-  console.log("  Add --context-baseline-file <complete-prior-agent.json> for optional-unit delta; --history-view transitions preserves distinct execution references.");
+  console.log("  Add --context-baseline-file <complete-prior-agent-or-workflow-receipt.json> for optional-unit delta; --history-view transitions preserves distinct execution references.");
 }
 
 function summarizeAdmission(payload) {
@@ -464,7 +464,15 @@ function readWorkflowBaseline(targetRoot, ref) {
   try {
     const file = fs.realpathSync(path.resolve(targetRoot, ref)), relative = path.relative(fs.realpathSync(targetRoot), file);
     if (relative.startsWith("..") || path.isAbsolute(relative) || !fs.statSync(file).isFile() || fs.statSync(file).size > 4 * 1024 * 1024) return null;
-    const value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(fs.readFileSync(file)));
+    let value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(fs.readFileSync(file)));
+    if (value?.contract_version === "agent-view-receipt.v1") {
+      if (value.kind !== "workflow-step" || value.scope !== "worktree-local" || value.write_authorization !== false
+          || !value.observation || typeof value.observation !== "object" || Array.isArray(value.observation)) return null;
+      // A retained observation is caller-held data, not an attestation or an
+      // admission. Apply the ordinary projection, then all existing scope,
+      // metadata, graph and body-integrity checks before optional reuse.
+      value = projectWorkflowAgentView(value.observation);
+    }
     if (value.contract_version !== "codex-workflow-step-agent.v1" || value.bundle_budget?.status === "blocked"
         || !Array.isArray(value.contexts) || !value.contexts.length || !Array.isArray(value.artifacts) || value.artifacts.length > 128) return null;
     const revision = value.contexts[0].source_revision;

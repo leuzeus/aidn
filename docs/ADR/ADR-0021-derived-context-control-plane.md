@@ -118,10 +118,15 @@ Differential consultation uses a caller-held complete prior selection only as
 an optimization hint. All mandatory authorities and their dependency closure
 are freshly returned. Only unchanged optional bodies can be replaced by exact
 references; invalid scope or integrity falls back to complete current selection.
-The grouped CLI accepts only a bounded caller-held complete prior agent response
-as its baseline hint. Its body/reference graph is checked before the existing
+The grouped CLI accepts a bounded caller-held complete prior agent response or
+complete workflow diagnostic receipt retained by explicit `--write` as its
+baseline hint. A worktree-local `agent-view-receipt.v1` must identify
+`workflow-step` and deny write authorization. Its observation is projected by
+the ordinary agent formatter; it gains no authority or authenticated-proof role.
+Its body/reference graph is checked before the existing
 unit-integrity and fresh scope/dependency checks. Missing, corrupt or partial
-baselines reconstruct freshly; a cached authority never repairs a missing current
+baselines, including differential receipts, reconstruct freshly. Reading a
+baseline adds no persistence; a cached authority never repairs a missing current
 one. Typed history transitions preserve distinct execution references and never
 change the audit store. Only identical decisions with known files-context bindings
 collapse; unavailable canonical revision data stays separate. Historical reuse

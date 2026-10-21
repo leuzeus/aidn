@@ -121,13 +121,18 @@ mandatory bodies. Diagnostics themselves can exceed an impossible requested
 limit; `fits_hard_limit: false` reports it explicitly. A new, freshly admitted
 consultation is needed for expansion; no authority or permission is cached.
 
-With the profile, `--context-baseline-file <complete-prior-agent.json>` reuses
-the existing differential selector. The caller separately captures a complete
-prior agent response; requesting a delta never writes a baseline. Missing,
+With the profile, `--context-baseline-file <complete-prior.json>` reuses
+the existing differential selector. Supply a captured complete prior agent
+response or the actual complete workflow receipt returned by an earlier explicit
+`--write`. A receipt must be `agent-view-receipt.v1`, `kind: workflow-step`,
+worktree-local and marked `write_authorization: false`. Its observation is
+projected through the ordinary agent formatter and checked as an untrusted hint;
+reading it does not retain another receipt or authorize an action. Missing,
 corrupt, foreign, partial or incompatible baselines trigger complete fresh
 selection. All current mandatory authorities and dependency closure are returned
 again. Only exact unchanged optional bodies become references. A differential
-response is not itself a complete baseline for chaining. Removed-unit notices
+response or its receipt is not itself a complete baseline for chaining. Retain
+the last complete baseline instead. Removed-unit notices
 remain visible; optional references/provenance can be omitted explicitly to fit
 the final budget. No baseline can supply a missing current authority.
 
