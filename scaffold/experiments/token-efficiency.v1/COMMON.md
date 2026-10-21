@@ -53,6 +53,11 @@ and retrieve the missing complete units through the ordinary official route in
 bounded calls. Do not repeat the same oversized batch or label its receipt a
 completed read. Native qualification freezes display/history settings and checks
 separate later semantic restatement; it never silently changes a personal profile.
+The AIDN native qualification port declares `bounded-context.v1` (60,000 history
+tokens and 131,072 dynamic JSON bytes); use its code-mode display instruction of
+60,000 tokens and record that profile. Other hosts must establish their own
+bounded output capacity. An output refusal does not establish whether its
+producing action executed and never authorizes repeating that action.
 A complete prior agent response or a complete
 workflow receipt already retained with explicit `--write` can be supplied through
 `--context-baseline-file`. Keep the last complete baseline; a differential response

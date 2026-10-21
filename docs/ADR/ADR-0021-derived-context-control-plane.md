@@ -142,6 +142,19 @@ packaged outside the ordinary installed skill tree and requires explicit researc
 host selection. Batching preserves actual control executions and stops dependent
 actions on refusal; no host observation becomes a reusable write authorization.
 Default procedures and user profiles remain unchanged until native qualification.
+The manual native qualification port uses a declared invocation-local
+`bounded-context.v1` output policy. It requests 60,000 history tokens independently
+of the code-mode display budget and refuses dynamic tool JSON above 131,072 UTF-8
+bytes before sending any fragment. This is an envelope bound, not an expansion of
+the canonical 65,536-byte context budget or a byte/token conversion. Conflicting
+thread overrides refuse rather than silently lowering or replacing the selected
+policy. A response refusal does not roll back or authorize retry of the action
+that produced it; its retained authoritative outcome must be inspected. Transport
+observations record requested settings and actual sent/refused bytes, never
+provider residency, authority or admission. Root user config, native permission
+and hook-trust rules stay unchanged. Exact later semantic restitution on a fresh
+native run qualifies readability; raising a limit cannot restore an earlier
+clipped response or transfer an old baseline to a changed profile.
 The shared projection keeps each admission's actual activation state so an
 unchanged grouped consultation need not be repeated merely to expose that field.
 Unknown state stays unknown. This does not replace installed first-write gates,

@@ -106,6 +106,27 @@ See [observed native results](qualification/CONTEXT_CONTROL_PLANE.md). These
 manual results are outside PR admission and do not populate the capability
 registry automatically.
 
+Both native context qualifiers use the invocation-local `bounded-context.v1`
+output policy: 60,000 history tokens and a separate 131,072-byte ceiling on the
+complete serialized dynamic-tool JSON. Code-mode display instructions also
+request 60,000 tokens. No personal config, permissions, model, hook trust or
+canonical byte budget is changed. A conflicting per-thread history override
+refuses before dispatch. Oversized or unserializable dynamic output returns a
+bounded failure without source fragments; the action may already have executed,
+so the diagnostic never authorizes retry. Reports retain requested policy,
+actual response bytes/hash and sent/refused observations. These observations do
+not establish provider-body residency; separate later exact native restitution
+is still required. Earlier default-history trials cannot be requalified by the
+new profile. The explicit internal `outputProfile: null` route is reserved for
+historical negative controls.
+
+The lifecycle fixture suite covers profile negotiation without permission/model
+changes, immutable caller config, conflicts, exact UTF-8 output boundaries,
+multibyte overflow, unserializable results and non-retry diagnostics. Native
+regression separately compares the retained startup response with the explicit
+historical control and the corrected port, including an actual oversized-output
+refusal. Fixture checks alone do not prove that the model received whole bodies.
+
 `node tools/verify/qualify-context-selection-native.mjs --help` describes the
 manual paired consultation probe. Explicit execution verifies real CLI output
 consumption, exact mandatory rule/dependency/revision answers, read-only checkout
