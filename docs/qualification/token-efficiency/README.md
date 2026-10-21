@@ -364,3 +364,28 @@ The focused fixture/real-CLI suite passes 18 checks, including invalid/foreign
 receipts, body tampering, forged authorization, differential receipt rejection
 and no implicit retention. Its installed native qualification is separate from
 the earlier caller-held-agent-JSON delta check.
+
+That [direct receipt check](native-receipt-delta.v1.json) subsequently passed on
+the installed `cb3cdb9` package. The actual first CLI retained a complete 111,093-byte
+workflow receipt with explicit `--write`; the second consultation used that file
+directly. Five mandatory units remained fresh and two unchanged optional bodies
+became references. Exact semantics were restated in a later model response.
+This is a functional component check with explicit diagnostic writes, not product
+or canonical mutation, prior model recall or whole-workflow performance proof.
+
+A [full task-policy attempt](task-context-budget-attempt.v1.json) then stopped
+before any product edit: both startup admissions passed, but scoped hydration
+reported a 69,145-byte mandatory minimum against the unchanged 65,536-byte limit.
+It returned an 18,065-byte refusal diagnostic. The terminal gate stayed failed;
+the independent application oracle ran on the unchanged starter, not a delivered
+application. The attempt is not classified as a product failure and is not
+regraded by later corrections. Its owned resources were cleaned.
+
+Investigation found that the intermediate standalone hydration budget ran before
+the workflow's compact agent projection. A real SQLite/CLI regression reproduces
+a blocked raw representation whose complete final agent representation fits the
+same limit. The source correction delegates this internal budget to its owning
+workflow formatter. Standalone hydration keeps its own complete JSON budget;
+authority/dependency validation and the requested experimental limits are retained.
+The focused workflow suite passes 19 checks, including the reproduced regression.
+Fresh installed/native qualification of the correction is still required.

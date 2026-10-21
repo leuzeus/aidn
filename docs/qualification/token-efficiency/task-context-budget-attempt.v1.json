@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "proof_class": "native-with-source-regression",
+  "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+  "package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a",
+  "stage": "task-context-full-startup",
+  "execution": "completed_with_failed_workflow",
+  "classification": "premature_intermediate_budget_refusal",
+  "workflow_verdict": "not_qualified",
+  "product_verdict": "not_executed_due_context_refusal",
+  "actual_native_product_patches": 0,
+  "independent_application_oracle_on_unchanged_starter": {
+    "executed": true,
+    "passed": 0,
+    "total": 20
+  },
+  "admissions": [
+    {
+      "skill": "context-reload",
+      "admitted": true
+    },
+    {
+      "skill": "start-session",
+      "admitted": true
+    }
+  ],
+  "requested_target_bytes": 65536,
+  "hard_limit_bytes": 65536,
+  "intermediate_reported_required_bytes": 69145,
+  "final_refusal_json_bytes": 18065,
+  "elapsed_seconds": 58.374,
+  "usage": {
+    "model_responses": 3,
+    "input_tokens": 105754,
+    "cached_input_tokens": 61440,
+    "output_tokens": 551,
+    "reasoning_output_tokens": 32,
+    "uncached_input_tokens": 44314
+  },
+  "event_source": {
+    "sha256": "802929fecddf33302a6a310d1091f42cea023b7b149e26d2e29a18aba05bacb6",
+    "bytes": 593943
+  },
+  "cause": "The standalone hydration JSON budget ran on full intermediate canonical metadata before the owning workflow agent projection and final JSON budget.",
+  "source_regression_before_fix": "FAIL as expected: raw hydration blocks while the final compact agent representation would fit the same limit",
+  "correction_scope": "Delegate internal scoped hydration to the workflow final serializer; standalone hydration, requested limits, authority checks and mandatory closure remain unchanged",
+  "original_attempt_regraded": false,
+  "corrected_native_attempt": "pending; must use a new fresh client",
+  "performance_verdict": "not_evaluated",
+  "cleanup": {
+    "owned_processes_closed": true,
+    "postgres_stopped": true,
+    "temporary_authentication_removed": true,
+    "observed_personal_files_preserved": true
+  }
+}
