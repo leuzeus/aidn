@@ -569,3 +569,14 @@ without a new whole-workflow performance comparison or default adoption.
 Complete provider-body residency remains `UNAVAILABLE`. Earlier workflows retain
 their original settings, costs and functional verdicts; they gain no retrospective
 readability qualification from this fix.
+
+## Release 0.15.0 scope
+
+The 0.15.0 release packages the opt-in CLI capabilities and the corrected native
+qualification port. Publication keeps the experimental procedure pack separate
+from ordinary installed skills and does not adopt the new paths by default.
+The recorded performance objectives and earlier candidate verdicts are unchanged.
+Fields such as `merge_or_release: false` in historical attempt reports describe
+those recorded attempts; they do not qualify or forbid later source publication.
+A fresh benchmark of the published package with the bounded native output profile
+is pending. Component results are not transferred to that future workflow trial.
