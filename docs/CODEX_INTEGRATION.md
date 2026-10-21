@@ -46,11 +46,14 @@ text and state references against the checkout. A disagreement refuses with
 stale diagnostic receipt. Refreshing an owned projection/index requires a
 separate explicit write from the appropriate canonical authority.
 
-Agent invocation failures use `codex-workflow-step-agent-error.v1`: a refused
+Agent invocation failures after the common activation dispatch use
+`codex-workflow-step-agent-error.v1`: a refused
 diagnostic, repair actions, null source revision/receipt and no write
 authorization. The effect class retains the original invocation intent, including
 `mutating` when `--write` was requested. A refusal is not an attestation that no
 write was attempted. Historical full-output defaults remain compatible.
+The common CLI activation boundary retains its existing activation-refusal
+contract and runs before workflow dispatch.
 
 The additional `--context-profile token-efficiency.v1` selector automates the
 union of known admitted skills' needs using the client's existing accepted

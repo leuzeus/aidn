@@ -86,8 +86,9 @@ rules remain checkout-bound in every mode. A stale indexed/store rule copy, or
 stale selected files-mode text/state reference, refuses the consultation instead
 of presenting it as current. Repair is a separate explicitly authorized write;
 no automatic synchronization or canonical-authority change is implied. Refused
-agent invocations have their own compact versioned diagnostic contract and do
-not publish a source revision or admission receipt.
+agent invocations after common activation dispatch have their own compact
+versioned diagnostic contract and do not publish a source revision or admission
+receipt. Common activation refusals retain the existing CLI boundary contract.
 
 The experimental `token-efficiency.v1` workflow profile derives the union of
 known admitted skills' context needs from client-owned accepted adoption data.
@@ -120,6 +121,12 @@ one. Typed history transitions preserve distinct execution references and never
 change the audit store. Only identical decisions with known files-context bindings
 collapse; unavailable canonical revision data stays separate. Historical reuse
 labels never authorize a write, and current admission remains independent.
+An experimental procedure pack shares a stable common instruction prefix and
+task routes for grouped consultation, admitted work and ordered closure. It is
+packaged outside the ordinary installed skill tree and requires explicit research
+host selection. Batching preserves actual control executions and stops dependent
+actions on refusal; no host observation becomes a reusable write authorization.
+Default procedures and user profiles remain unchanged until native qualification.
 Raw observations remain data. Typed execution handoffs bind local result
 identifiers without asserting authenticated execution or a current lease.
 

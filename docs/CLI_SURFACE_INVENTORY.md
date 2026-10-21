@@ -31,7 +31,8 @@ profile; invalid prior observations fall back to fresh complete selection and
 mandatory authority closure is always sent. `--history-view transitions` groups
 only well-bound identical typed decisions while retaining distinct execution
 references. Unknown canonical history revisions remain separate. Both remain
-read-only without explicit diagnostic retention. Agent invocation refusals use
+read-only without explicit diagnostic retention. Agent invocation refusals after
+the common CLI activation dispatch use
 `codex-workflow-step-agent-error.v1`, with repair actions and no claimed source
 revision or admission. Grouped reads reject stale checkout-rule copies and use
 canonical dual-mode runtime state instead of stale visible digests.

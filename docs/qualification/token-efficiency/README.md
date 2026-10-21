@@ -14,7 +14,7 @@ model revision. No previous benchmark arm is reused.
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
 | L1 Agent views | Source and local native semantic read verified | 13 fixture/real-CLI assertions and one fixed native diagnostic pair; complete provider-body residency and overall workflow savings remain unqualified |
 | L2 Shared workflow observation | Source candidate implemented | Source-CLI/fixture checks including stale source rejection and actual SQLite concurrent mutation; grouped path is opt-in, native qualification pending |
-| L6 Procedures/kernel | Not started | Grouped required reads and deterministic controls; native adoption deferred until qualification |
+| L6 Procedures/kernel | Experimental procedure pack implemented | Shared stable prefix and task routes package separately from installed skills; native scheduling/adoption qualification pending |
 | L3 Task selection/budget | Source candidate implemented | Accepted client task policies, complete mandatory units, final serialized target and explicit expansion refusal; native qualification pending |
 | L4 Delta/history | Source candidate implemented | Fresh mandatory closure, invalid-baseline reconstruction, typed history with distinct executions and independent reanchoring; native qualification pending |
 | L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
@@ -154,6 +154,17 @@ trees closed, PostgreSQL stopped, temporary auth copies were removed and observe
 personal files were preserved. No user profile or installed procedure changed.
 
 ## Qualification rules
+
+The packaged research procedures live in
+[`scaffold/experiments/token-efficiency.v1`](../../../scaffold/experiments/token-efficiency.v1/README.md).
+They share one stable common prefix and route start, product work and ordered
+handoff/closure separately. A qualification host selects them explicitly; the
+ordinary installer still walks only its existing skill/agent/hook sources.
+The pack preserves initial activation, fresh action admissions, actual native
+controls, mandatory restatement and ordered closure. It batches known reads and
+deterministic controls only when the host supports their actual execution.
+No installed skill or user configuration has adopted it. Cache hits, fewer
+responses and overall native gains still require matched measurements.
 
 Keep each attempt's execution, gate evidence, product verdict and operational
 classification separate. Preserve refusals and incomplete runs. Complete app
