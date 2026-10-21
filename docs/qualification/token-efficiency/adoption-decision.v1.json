@@ -77,10 +77,10 @@
     "reason": "Task screening does not qualify the candidate for confirmation. Both scoped startup consultations already omit every optional body; native receipt-delta behavior is separately proven, without claiming whole-workflow savings."
   },
   "lexical_retrieval": {
-    "status": "DEFERRED_PENDING_TRANSPORT_VALIDATION",
+    "status": "DEFERRED_PENDING_MATCHED_WORKFLOW",
     "observed_trigger_candidate": "Seven complete static bodies reappear in artifact-fetch immediately after scoped hydration and before canonical writes; their raw body equality is established, model availability is not.",
-    "reason": "The retained startup readability test fails under default native history and passes with an explicit larger limit. Establish complete native delivery before treating recovery reads as avoidable or opening lexical retrieval.",
-    "proof": "native-startup-readability.v1.json"
+    "reason": "Bounded native delivery now passes fresh installed PostgreSQL and two retained-data component controls. Earlier positive readability claims affected by the host notification race are withdrawn. Establish complete delivery in fresh matched workflows before treating their recovery reads as avoidable or opening lexical retrieval.",
+    "proof": "native-output-fix.v1.json"
   },
   "optional_manual_postgres_smoke": {
     "status": "SKIP",
@@ -108,7 +108,14 @@
   "merge_or_release": false,
   "programme_fully_qualified": false,
   "whole_workflow_complete_authority_readability": "UNAVAILABLE",
-  "next_qualification_action": "Use a fresh matched native reference/candidate profile with explicitly frozen display/history settings and successful required-unit semantic restoration. Earlier default-history trials remain unchanged; no personal profile mutation or retroactive qualification.",
+  "next_qualification_action": "Use fresh matched complete native workflows with the frozen bounded-context.v1 display/history policy and acknowledged required-unit semantic restoration. The corrected native port is qualified as a component only. Earlier default-history trials remain unchanged; no personal profile mutation or retroactive qualification.",
+  "native_output_correction": {
+    "status": "PASS",
+    "candidate_commit": "f25b2753730c529c3c023429d7e6c905d364be7a",
+    "proof": "native-output-fix.v1.json",
+    "scope": "Installed PostgreSQL startup and bounded retained-data controls; no complete workflow or global performance qualification",
+    "prior_harness_semantic_claims_withdrawn": true
+  },
   "latest_source_assured_before_procedure_clarification": {
     "status": "PASS",
     "commit": "fdebbdfbb5add52c56ae713cfeeee51950807300",

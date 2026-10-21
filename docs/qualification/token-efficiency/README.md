@@ -17,7 +17,7 @@ model revision. No previous benchmark arm is reused.
 | L6 Procedures/kernel | Experimental pack and one current-runtime functional pair PASS | Shared prefix and task routes remain separate from installed skills; global performance and adoption unqualified |
 | L3 Task selection/budget | Source, native components and one complete functional workflow PASS | Complete mandatory units and final JSON budget verified on an accepted synthetic client; global performance objectives fail screening |
 | L4 Delta/history | Source and native delta component checks PASS | Fresh mandatory closure, invalid-baseline reconstruction, typed history and independent reanchoring; native current delta restatement, whole-workflow gains pending |
-| L5 Lexical retrieval | Deferred pending native readability | Qualify complete native delivery before classifying recovery reads as avoidable or opening lexical retrieval |
+| L5 Lexical retrieval | Deferred pending matched workflow evidence | Bounded native delivery is verified as a component; measure fresh complete workflows before classifying recovery reads as avoidable or opening lexical retrieval |
 | L7 Native qualification/adoption | Screening completed; adoption not qualified | Functional workflows pass; performance screening fails. Three confirmation pairs and the whole-workflow delta stage are not executed |
 
 L0 precedes engine optimization or procedure adoption. The legacy
@@ -496,19 +496,22 @@ token cost remain unavailable until model availability is established. Condition
 SPEC reads are not counted as avoidable, and fresh-context required reloads are
 not treated as errors.
 
-The smallest [native readability check](native-startup-readability.v1.json)
+The original [native readability check](native-startup-readability.v1.json)
 uses the exact retained 49,675-byte startup body in two isolated native contexts,
 with a 60,000-token exec display budget in both. With default history settings,
 the model reports `457 tokens truncated` in the summary and safely stops without
 guessing its missing final line. Exact four-unit semantic restitution is `FAIL`.
-With only the temporary history limit set explicitly to 60,000, separate later
-restitution of all four exact terminal lines and source hashes is `PASS`.
+With only the temporary history limit set explicitly to 60,000, the raw report
+announced `PASS`. A subsequent harness audit found that its acceptance flag was
+set before an unreliable notification-order assertion and before checking the
+oracle. The submission was refused; its semantic qualification is withdrawn and
+classified `UNAVAILABLE` due to a qualification harness error. The original
+report and events remain unchanged. The new proof below supersedes that claim.
 Both owned jobs closed with zero descendants, temporary authentication copies
 were removed and observed personal files were preserved.
 
 This is one retained-data component comparison, without live CLI invocation,
-fresh admission, native SessionStart or product work. It supports a transport
-capacity explanation; it does not prove why every earlier reread occurred or
+fresh admission, native SessionStart or product work. It does not prove why every earlier reread occurred or
 establish full provider-body residency. Failure-run usage is retained separately
 and is not compared as a successful saving. The previous full workflows keep
 their functional/control verdicts and default-history usage. Complete authority
@@ -524,3 +527,45 @@ does not retroactively qualify them. A future whole-workflow comparison needs
 fresh matched reference/candidate profiles with explicitly frozen display/history
 settings and successful required-unit semantic restitution before considering
 L5 or adoption.
+
+## Bounded native output correction
+
+The [native output correction proof](native-output-fix.v1.json) pins the fixed
+`f25b275` package and the actual installed/native runtime. The qualification port
+now selects invocation-local `tool_output_token_limit=60000`, supplies a matching
+exec display instruction, and bounds the complete serialized dynamic-tool JSON
+to 131,072 bytes. Token capacity and byte capacity are separate measurements.
+The public CLI context budgets and ordinary installed procedures keep their
+existing behavior. Selecting the profile adds no persistent configuration write.
+
+An oversized or unserializable result produces a bounded explicit refusal,
+without a body fragment. Because the requested operation may already have run,
+the diagnostic grants neither a retry nor write authorization. Required content
+that is clipped or missing keeps dependent work read-only and requires complete
+bounded official units. A larger limit cannot restore previously clipped history.
+
+The fresh native installed PostgreSQL component is `PASS`: actual SessionStart,
+two admissions, one common hydration and four complete required units totaling
+49,702 CLI JSON bytes. A separate later response exactly restitutes their final
+nonempty lines, hashes, admissions, budget and backend. Both dynamic results
+were sent and the host acknowledged oracle equality. The checkout is unchanged.
+
+Four retained-data controls use the corrected installed port without a test-side
+history override. With an explicit legacy profile the 49,675-byte input safely
+stops after reported clipping (`PASS_EXPECTED_TRUNCATION`). With the corrected
+default, 49,675-byte and 55,682-byte inputs both pass exact four-unit restitution.
+A 180,865-byte serialized result produces `PASS_EXPECTED_REFUSAL`, with one
+startup request, no restitution and no retry. Positive controls use two distinct
+completed user turns, set acceptance only after exact oracle equality, and require
+two successfully sent tool outputs. This avoids the earlier notification race.
+Two intermediate raw `PASS` claims affected by that same race are also retained
+and explicitly withdrawn in the new proof.
+
+The focused injected-port suite passes all 17 scenarios; the new negotiation
+assertion fails before the fix. All owned native jobs close with zero descendants,
+the owned PostgreSQL instance stops, temporary authentication copies are removed,
+and observed personal files are preserved. This is component qualification,
+without a new whole-workflow performance comparison or default adoption.
+Complete provider-body residency remains `UNAVAILABLE`. Earlier workflows retain
+their original settings, costs and functional verdicts; they gain no retrospective
+readability qualification from this fix.
