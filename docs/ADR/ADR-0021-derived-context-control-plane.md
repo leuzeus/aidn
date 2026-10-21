@@ -132,6 +132,11 @@ packaged outside the ordinary installed skill tree and requires explicit researc
 host selection. Batching preserves actual control executions and stops dependent
 actions on refusal; no host observation becomes a reusable write authorization.
 Default procedures and user profiles remain unchanged until native qualification.
+The shared projection keeps each admission's actual activation state so an
+unchanged grouped consultation need not be repeated merely to expose that field.
+Unknown state stays unknown. This does not replace installed first-write gates,
+fresh native scope checks or mutation-time CAS/fences, nor add a generic preflight
+before every artifact of an already prescribed multicommand procedure.
 Raw observations remain data. Typed execution handoffs bind local result
 identifiers without asserting authenticated execution or a current lease.
 

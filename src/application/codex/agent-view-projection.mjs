@@ -87,6 +87,8 @@ export function projectWorkflowAgentView(payload, receipt = null) {
     admissions: Object.entries(payload.admissions ?? {}).map(([skill, admission]) => ({
       skill, ok: admission.ok === true, admission_status: admission.admission_status ?? "unknown",
       admission_kind: admission.admission_kind ?? "generic", context: pick(admission.context, CONTEXT_FIELDS),
+      activation: { ...structuredClone(admission.activation ?? { state: "unknown" }),
+        active: typeof admission.activation?.active === "boolean" ? admission.activation.active : null },
       blocking_reasons: admission.blocking_reasons ?? [], warnings: admission.warnings ?? [],
       blocking_findings: admission.blocking_findings ?? [],
       source_of_truth: pick(admission.source_of_truth, ["state_mode", "runtime_state_mode", "issues", "repair_actions",

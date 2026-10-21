@@ -53,6 +53,7 @@ try {
     for (const [skill, observation] of Object.entries(full.payload.admissions)) {
       const selected = agent.payload.admissions.find(row => row.skill === skill);
       assert.equal(selected.ok, observation.ok); assert.equal(selected.admission_status, observation.admission_status);
+      assert.deepEqual(selected.activation, observation.activation);
       assert.deepEqual(selected.blocking_reasons, observation.blocking_reasons); assert.deepEqual(selected.warnings, observation.warnings);
     }
     assert.equal(agent.payload.next_action.recommendation.stop_required, full.payload.next_action.recommendation.stop_required);
@@ -103,6 +104,16 @@ try {
     payload.hydrations.b.source_revision = "r1"; assert.equal(JSON.stringify(payload), snapshot);
     payload.hydrations.a.target_root = "/client-a"; payload.hydrations.b.target_root = "/client-b";
     assert.equal(projectWorkflowAgentView(payload).artifacts.length, 2, "missing IDs never merge different target roots");
+  });
+  check("activation guards retain actual state and never infer activation from an admission boolean", () => {
+    const activation = { active: false, state: "inactive", error: { code: "fixture-inactive" } };
+    const payload = { admissions: { a: { ok: false, activation }, b: { ok: true }, c: { ok: true, activation: {} } }, hydrations: {} };
+    const projected = projectWorkflowAgentView(payload);
+    assert.deepEqual(projected.admissions[0].activation, activation);
+    assert.equal(projected.admissions[1].activation.active, null);
+    assert.equal(projected.admissions[2].activation.active, null);
+    projected.admissions[0].activation.error.code = "changed projection";
+    assert.equal(activation.error.code, "fixture-inactive");
   });
   check("scoped units share compact source identity without reinjecting unselected document bodies", () => {
     const canonical = { schema_version: 1, format: "markdown", title: "Source rule", stats: { sections: 2 },

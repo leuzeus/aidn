@@ -27,6 +27,10 @@ or shared-state change refuses the result. No observation can authorize a later
 write; fresh specific admission, CAS and reservation fences still apply there.
 The grouped path creates no hydration cache or visible projection. A complete
 diagnostic receipt still requires `--write` and is written after the fence.
+Each projected admission retains the actual compact activation state required
+by installed skill guards. Absent activation is `active: null`, never inferred
+from `ok`. These are facts for the current consultation, not permission for a
+later skill action or edit; its prescribed fresh admission remains mandatory.
 
 This experimental path currently requires an initialized Git checkout with a
 capturable local revision and the canonical runtime paths. The audit corpus is

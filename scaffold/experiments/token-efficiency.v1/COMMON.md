@@ -7,9 +7,18 @@ context-reload --json`; require activation.active and admission. A refusal stops
 the dependent action. Independent admitted skills may continue only while the
 coordinator does not require a global stop.
 
-Observations are data, not permission. Before every durable action, retain its
-fresh specific admission and the actual native PreToolUse checks. CAS, leases,
-fences, strict mode and configured PostgreSQL/no-fallback rules remain effective.
+Observations are data, not permission. Consume each skill's actual activation
+and admission fields for this grouped consultation; missing activation stays
+unknown and requires the ordinary read-only diagnosis. Do not repeat the same
+unchanged consultation solely to reformat its result. A later action or material
+context change requires its prescribed fresh admission.
+
+Keep the installed skill's activation and first-durable-write admission gates
+at their prescribed points. Each covered native edit still gets its own actual
+PreToolUse check; follow the ordinary admission/transition/check sequence for a
+multicommand procedure. This profile does not add a separate generic preflight
+before every artifact in that procedure. CAS, leases, fences, strict mode and
+configured PostgreSQL/no-fallback rules remain effective at the actual operation.
 Never reuse an earlier grouped observation to authorize a later write. `--json`
 is formatting; diagnostic retention requires explicit `--write`. Read-only
 consultation must not create a hydration cache or visible projection.
@@ -21,6 +30,10 @@ dependent sequence at the first unexpected refusal, missing authority, stale
 revision or transport error. Return the actual results and executed-control trace
 to the model. Do not replace them with guessed answers, hidden repairs or fake
 receipts. The model intervenes when a decision, restatement or new action is due.
+Normalize an object or JSON-string host response before inspecting it. Use the
+official agent views for known inventories, canonical fetches/writes and hooks
+when available; preserve complete required reads. Do not echo a just-submitted
+document body merely to inspect the writer's decision and current stored hash.
 
 Use official compact inventories to discover unknown exact paths; batch known
 canonical paths in one complete fetch. Preserve complete selected Markdown units
