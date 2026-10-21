@@ -25,6 +25,13 @@ The same gate runs `verify-context-metrics-fixtures.mjs`: nullable unknown token
 measured bytes, bounded reported attribution, stale/future/inconsistent telemetry
 refusals and the closed diagnostic contract. Counters are observation deltas,
 not lifetime totals. No cost or native consumption benefit is inferred.
+The same suite covers the separate response-usage observer: unique completed
+response identity, duplicate conflict refusal, unknown counters, safe integer
+sums and cached/reasoning subset checks. The read-only internal utility
+`node tools/perf/summarize-response-usage.mjs --events <native-events.jsonl>`
+hashes each input and reports provider response totals, without interpreting
+thread lifetime totals as individual responses or context-window pressure.
+Caller-supplied logs alone never qualify their source, workflow or candidate.
 The same gate includes `verify-context-lifecycle-fixtures.mjs`: default/expired
 capability fallback, exact model/client identity, checkpoint-before-rollover,
 failed capture refusal, read-only restore, typed handoff and uncertain-dispatch

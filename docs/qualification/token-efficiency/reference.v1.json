@@ -1,0 +1,82 @@
+{
+  "format": "context-efficiency-reference.v1",
+  "status": "reference_in_progress",
+  "baseline": {
+    "version": "0.14.0",
+    "commit": "759675e18af4db59fcd04a3f173822e30d38edd4",
+    "tree": "1c6f55cfdbfe7b0a71778fdc5d1bbb2c4bdbaca9",
+    "package_sha256": "a8ce81b6c86b2fe8f45e4d93c137a76c3e3f3bdcacbc92d8a19681cb880db9b3",
+    "package_files": 1007
+  },
+  "profile": {
+    "provider": "openai",
+    "model": "gpt-6.1-sol",
+    "exact_model_revision": null,
+    "reasoning_effort": "medium",
+    "native_binary_sha256": "f6dbf48cb70f62649c645f26c87dc9bf84cc36986202dfad8e12fb5b8ca70312",
+    "application_storage": "sqlite",
+    "aidn_governance": "postgres",
+    "state_mode": "db-only",
+    "per_arm_seconds": 2700,
+    "warmup": false
+  },
+  "scenarios": [
+    {
+      "id": "multi-skill",
+      "required": [
+        "distinct admissions",
+        "one result per current skill",
+        "independent functional oracle"
+      ]
+    },
+    {
+      "id": "refusal-repair",
+      "required": [
+        "actual refusal retained",
+        "repair independently admitted",
+        "fresh admission after repair"
+      ]
+    },
+    {
+      "id": "handoff-closure",
+      "required": [
+        "native continuation",
+        "cycle closure",
+        "session closure",
+        "owned process shutdown"
+      ]
+    }
+  ],
+  "harness": {
+    "basis": "036; new independent reference, no historical arm reuse",
+    "tests_passed": 291,
+    "pinned_files": {
+      "BRIEF.md": "74d1e797359ce6a5712a72cc2af92e430a4398ac87764cf09acc8b060acfcd72",
+      "oracle.mjs": "4bbbc2fe94e48cfbf0e96920cc03ccc8d85ad25beaf56156c40ccd95ec1b740e",
+      "QUALITATIVE-RUBRIC.md": "6008c738a08758adfa9ce3a2f5055f2bfefffd4486fea39ae6880b6614ef344c",
+      "native-phase.mjs": "dbac9f599c12d4ee9ed2d48d1d48377db1e08c790a3eabe9af359961b772af10",
+      "run-benchmark.mjs": "352de114f601b8423af3e43c61980a485b977a268627dbd795f4b31245ddc59e",
+      "phase-outcome.mjs": "d422fac29cbf4c233c6a2cdaa75191837c0f03c0f525887993dad1dc6457c9b2",
+      "terminal-sequence.mjs": "95a4a280ae264513aa86d24f7135e7fca237419807e97ea890e72397cdc2b05a"
+    }
+  },
+  "acceptance": {
+    "model_responses_max_ratio": 0.5,
+    "uncached_input_max_ratio": 0.5,
+    "cumulative_input_max_ratio": 0.3,
+    "elapsed_median_max_ratio": 1,
+    "application_and_governance_equivalence": true,
+    "confirmation_pairs": 3,
+    "alternating_order": true
+  },
+  "budgets": {
+    "status": "not_calibrated",
+    "unit": "serialized_complete_json_utf8_bytes",
+    "reason": "No optimized default until all three reference scenarios are measured",
+    "unchanged_legacy_target": 262144,
+    "unchanged_legacy_hard_limit": 1048576
+  },
+  "native_reference_status": "IN_PROGRESS",
+  "performance_verdict": "not_evaluated",
+  "installed_client_adoption": false
+}

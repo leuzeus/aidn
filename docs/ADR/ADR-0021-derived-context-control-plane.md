@@ -48,6 +48,14 @@ and unknown values. Byte counts cannot establish token savings or window pressur
 No context autonomy may be inferred from a model name or hook schema inventory.
 Native rollover and editable transcripts require separate capability qualification.
 
+Response-usage observations are separate from window telemetry: only unique
+native completed-response records contribute to cumulative-work totals. Cached
+input and reasoning output remain subsets; missing counters remain unknown and
+conflicting duplicates refuse aggregation. Input log hashes bind observations,
+not authenticity, candidate qualification, admission, financial cost or causal
+performance improvements. Internal read-only analysis never changes the source
+logs, user installation, canonical state or window-pressure decisions.
+
 Differential consultation uses a caller-held complete prior selection only as
 an optimization hint. All mandatory authorities and their dependency closure
 are freshly returned. Only unchanged optional bodies can be replaced by exact
