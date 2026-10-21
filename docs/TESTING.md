@@ -33,6 +33,13 @@ hashes each input and reports provider response totals, without interpreting
 thread lifetime totals as individual responses or context-window pressure.
 Caller-supplied logs alone never qualify their source, workflow or candidate.
 
+`npm run perf:verify-grouped-workflow` covers the opt-in common observation on
+fresh tracked corpora with explicitly built indexes. It verifies files, dual and
+db-only admissions, blocked/global-stop hydration suppression, canonical-only
+resolution, clone isolation, fresh revision fences and PostgreSQL unavailability
+without fallback. It reports installed-package, native-token and live-PostgreSQL
+proof separately; source fixtures do not establish those qualifications.
+
 `npm run perf:verify-agent-views` exercises the real workflow/hook CLI on disposable
 activated clients, alongside pure duplicate/revision and directory-link refusal
 controls. It checks compatible full defaults, separate agent contracts, every

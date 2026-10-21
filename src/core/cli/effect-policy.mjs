@@ -1112,10 +1112,13 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     id: "codex-workflow-step",
     command: "aidn codex workflow-step --json",
     effectClass: "projector",
-    effectVariants: [{ id: "retain-diagnostic", whenArgs: ["--write"], effectClass: "mutating" }],
+    effectVariants: [
+      { id: "grouped-consultation", whenArgs: ["--grouped"], unlessArgs: ["--write"], effectClass: "read-only" },
+      { id: "retain-diagnostic", whenArgs: ["--write"], effectClass: "mutating" },
+    ],
     jsonContract: "codex-workflow-step.v1.schema.json",
     safeArgs: ["codex", "workflow-step", "--skills", "context-reload", "--mode", "THINKING", "--json"],
-    notes: "Batches pre-write admission, hidden context hydration, and coordinator next-action computation. --view agent projects the same observations without additional writes; --write explicitly retains a complete local diagnostic receipt. No visible projections or write authority are implied.",
+    notes: "Batches pre-write admission, hidden context hydration, and coordinator next-action computation. --view agent projects the same observations without additional writes. --grouped is an opt-in read-only common consultation with a fresh publication fence and no hydration cache; --write explicitly retains a complete local diagnostic receipt. No visible projections or write authority are implied.",
   }),
 ]);
 

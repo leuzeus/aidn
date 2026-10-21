@@ -5,7 +5,15 @@ the existing per-skill workflow. It retains admissions, blockers, scope, source
 revisions and complete selected excerpts, sharing exact duplicate artifact bodies
 without combining different revisions. Default full output remains unchanged.
 It keeps the existing hidden-projector effect. Adding `--write` explicitly stores
-a complete local diagnostic receipt; selecting a view alone adds no writes.
+a complete local diagnostic receipt with a `mutating` invocation rule;
+selecting a view alone adds no writes.
+
+Adding `--grouped` to the agent view selects invocation-local shared observation,
+separate admissions, coordinator-stop handling and one common hydration for the
+admitted skills. Blocked skills have no rich context. The result is fenced
+against fresh local, activation, canonical and shared-state revisions before
+publication. It currently requires initialized Git and canonical runtime paths.
+It never grants reusable write authorization or changes the legacy default.
 
 The internal `codex run-json-hook` wrapper also accepts `--view agent --json`:
 flat decisions, errors and refusal/sync/exit semantics remain intact, with the

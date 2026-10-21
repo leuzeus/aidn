@@ -17,6 +17,26 @@ and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIE
 
 ## Opt-in compact agent views
 
+`workflow-step --view agent --grouped --json` additionally opts into one
+invocation-local observation. It evaluates separate admissions and the
+coordinator before hydrating the union of admitted skills once. Blocked skills
+receive diagnostics only; a coordinator stop prevents all hydration. Canonical
+snapshot and shared planning/relay reads are reused only inside that invocation,
+then read freshly to fence publication. A material local, activation, canonical
+or shared-state change refuses the result. No observation can authorize a later
+write; fresh specific admission, CAS and reservation fences still apply there.
+The grouped path creates no hydration cache or visible projection. A complete
+diagnostic receipt still requires `--write` and is written after the fence.
+
+This experimental path currently requires an initialized Git checkout with a
+capturable local revision and the canonical runtime paths. The audit corpus is
+also fenced independently of Git ignores (regular files, at most 64 MiB);
+symbolic audit inputs or incomplete capture refuse. Unsupported selectors
+or unavailable revision capture refuse explicitly; the legacy path remains
+available. PostgreSQL configuration selects the canonical backend even when a
+compatibility SQLite projection exists. The ordinary per-skill path remains the
+default, including when only `--view agent` is selected.
+
 `aidn codex workflow-step --skills context-reload,requirements-delta --view agent --json`
 projects the same per-skill admissions and hydration as the default full format.
 It returns every blocker and warning, source revisions, context references and

@@ -743,10 +743,17 @@ export async function runHydrateContextUseCase({ args, hookContextStore, targetR
   const store = context.exists ? context.store : { latest: {}, history: [] };
   const latest = store.latest && typeof store.latest === "object" ? store.latest : {};
   const history = Array.isArray(store.history) ? store.history : [];
-  const filteredHistory = args.skill
+  const historyCounts = new Map();
+  const groupedHistory = args.historySkills ? history.toReversed().filter(entry => {
+    if (!args.historySkills.includes(entry?.skill)) return false;
+    const count = historyCounts.get(entry.skill) ?? 0;
+    historyCounts.set(entry.skill, count + 1);
+    return count < args.historyLimit;
+  }).reverse() : null;
+  const filteredHistory = groupedHistory ?? (args.skill
     ? history.filter((entry) => String(entry?.skill ?? "") === args.skill)
-    : history;
-  const recentHistory = filteredHistory.slice(Math.max(0, filteredHistory.length - args.historyLimit));
+    : history);
+  const recentHistory = args.historySkills ? filteredHistory : filteredHistory.slice(Math.max(0, filteredHistory.length - args.historyLimit));
 
   const skills = Object.keys(latest).sort((a, b) => a.localeCompare(b));
   const decisionBySkill = {};

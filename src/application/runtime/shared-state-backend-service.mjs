@@ -7,6 +7,7 @@ import {
 } from "./runtime-persistence-service.mjs";
 import { assertSharedStateBackend } from "../../core/ports/shared-state-backend-port.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
+import { observeWorkflowRead, canonicalWorkflowRevision, workflowObservationActive } from "./workflow-observation-service.mjs";
 
 function resolveSharedProjectionSqliteFile(targetRoot, workspace) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? workspace?.target_root ?? ".");
@@ -66,7 +67,8 @@ export function resolveSharedStateBackend({
     env,
   });
   const effectiveLocalProjectionPolicy = resolveLocalProjectionPolicy(
-    localProjectionPolicy || runtimePersistence.config?.localProjectionPolicy,
+    workflowObservationActive(target) && runtimePersistence.backend === "postgres" ? "none"
+      : localProjectionPolicy || runtimePersistence.config?.localProjectionPolicy,
   );
 
   if (runtimePersistence.backend === "postgres" && effectiveLocalProjectionPolicy === "none") {
@@ -159,11 +161,12 @@ export async function loadSharedStateSnapshotAsync({
     clientFactory,
     moduleLoader,
   });
-  return {
-    backend: sharedBackend.describeBackend(),
-    ...await sharedBackend.loadSnapshot({
-      includePayload,
-      includeRuntimeHeads,
-    }),
-  };
+  const description = sharedBackend.describeBackend();
+  const grouped = workflowObservationActive(targetRoot);
+  return await observeWorkflowRead({ targetRoot, key: "runtime-canonical",
+    binding: description, revision: canonicalWorkflowRevision,
+    load: async () => ({ backend: description, ...await sharedBackend.loadSnapshot({
+      includePayload: grouped || includePayload, includeRuntimeHeads: grouped || includeRuntimeHeads,
+    }) }),
+  });
 }

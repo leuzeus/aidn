@@ -13,7 +13,7 @@ model revision. No previous benchmark arm is reused.
 | --- | --- | --- |
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
 | L1 Agent views | Source candidate implemented | 13 fixture/real-CLI assertions, public contracts/effect/catalog checks; native consumption and overall savings remain unqualified |
-| L2 Shared workflow observation | Not started | Per-skill admissions, no blocked-skill hydration, coherent invocation-local observation and concurrent-change refusal |
+| L2 Shared workflow observation | Source candidate implemented | 12 source-CLI/fixture checks; grouped path is opt-in, native and live PostgreSQL qualification pending |
 | L6 Procedures/kernel | Not started | Grouped required reads and deterministic controls; native adoption deferred until qualification |
 | L3 Task selection/budget | Not started | Complete mandatory units, final serialized budget and explicit expansion refusal |
 | L4 Delta/history | Not started | Fresh mandatory closure, changed optional units and compatible baseline checks |

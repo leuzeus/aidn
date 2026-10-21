@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveEffectiveStateMode } from "../../src/core/state-mode/state-mode-policy.mjs";
+import { workflowObservationActive } from "../../src/application/runtime/workflow-observation-service.mjs";
+import { resolveEffectiveRuntimePersistence } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
 import {
   loadSharedStateSnapshot,
@@ -227,8 +229,15 @@ export function resolveDbBackedMode(targetRoot, requestedStateMode = "files") {
   });
   return {
     effectiveStateMode,
-    dbBackedMode: effectiveStateMode === "dual" || effectiveStateMode === "db-only",
+    dbBackedMode: effectiveStateMode === "dual" || effectiveStateMode === "db-only"
+      || workflowObservationActive(targetRoot) && resolveEffectiveRuntimePersistence({ targetRoot }).backend === "postgres",
   };
+}
+
+function requiresWorkflowCanonical(targetRoot) {
+  return workflowObservationActive(targetRoot)
+    && (resolveDbBackedMode(targetRoot).effectiveStateMode === "db-only"
+      || resolveEffectiveRuntimePersistence({ targetRoot }).backend === "postgres");
 }
 
 export function resolveAuditArtifactText({
@@ -240,6 +249,9 @@ export function resolveAuditArtifactText({
   dbSource = "sqlite",
   preferDb = false,
 } = {}) {
+  if (requiresWorkflowCanonical(targetRoot)) {
+    preferDb = true; dbBacked = true;
+  }
   const absolutePath = resolveTargetPath(targetRoot, candidatePath);
   if (!preferDb && exists(absolutePath)) {
     return {
@@ -330,6 +342,7 @@ function findSessionArtifact(sqlitePayload, sessionId) {
 }
 
 export function resolveSessionArtifact({ targetRoot, auditRoot, sessionId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {
+  if (requiresWorkflowCanonical(targetRoot)) { preferDb = true; dbBacked = true; }
   const filePath = preferDb ? null : findSessionFile(auditRoot, sessionId);
   if (filePath) {
     return {
@@ -403,6 +416,7 @@ function findCycleStatusArtifact(sqlitePayload, cycleId) {
 }
 
 export function resolveCycleStatusArtifact({ targetRoot, auditRoot, cycleId, dbBacked = false, sqlitePayload = null, dbSource = "sqlite", preferDb = false } = {}) {
+  if (requiresWorkflowCanonical(targetRoot)) { preferDb = true; dbBacked = true; }
   const filePath = preferDb ? null : findCycleStatusFile(auditRoot, cycleId);
   if (filePath) {
     return {

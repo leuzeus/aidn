@@ -9,6 +9,7 @@ import { resolveWorkspaceContext } from "../../src/application/runtime/workspace
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { computeCoordinatorNextAction } from "../runtime/coordinator-next-action.mjs";
 import { persistAgentViewReceipt, projectWorkflowAgentView, validateAgentViewOptions } from "../../src/application/codex/agent-view-projection.mjs";
+import { withWorkflowObservation } from "../../src/application/runtime/workflow-observation-service.mjs";
 
 const DEFAULT_DAEMON_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 
@@ -63,6 +64,7 @@ export function parseArgs(argv) {
     json: false,
     view: "full",
     write: false,
+    grouped: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -154,6 +156,8 @@ export function parseArgs(argv) {
       i += 1;
     } else if (token === "--write") {
       args.write = true;
+    } else if (token === "--grouped") {
+      args.grouped = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -192,6 +196,7 @@ function printUsage() {
   console.log("  npx aidn codex workflow-step --target . --skill requirements-delta --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --json [--write]  (explicit complete diagnostic receipt)");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload,requirements-delta --view agent --grouped --json");
 }
 
 function summarizeAdmission(payload) {
@@ -254,8 +259,7 @@ function buildHydrateArgs(args, skill) {
   };
 }
 
-export async function runWorkflowStep({ args, targetRoot }) {
-  validateAgentViewOptions(args);
+async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
   const hookContextStore = createHookContextStoreAdapter();
   const workspace = resolveWorkspaceContext({ targetRoot });
   const steps = [];
@@ -280,6 +284,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
       summary: summarizeAdmission(admission),
     });
 
+    if (!grouped) {
     const hydrated = await runHydrateContextUseCase({
       args: buildHydrateArgs(args, skill),
       hookContextStore,
@@ -294,6 +299,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
       status: "completed",
       summary: summarizeHydration(hydrated),
     });
+    }
   }
 
   const nextAction = await computeCoordinatorNextAction({
@@ -312,15 +318,27 @@ export async function runWorkflowStep({ args, targetRoot }) {
     summary: summarizeNextAction(nextAction),
   });
 
+  const admittedSkills = args.skills.filter(skill => admissions[skill]?.ok === true);
+  if (grouped && admittedSkills.length && nextAction?.recommendation?.stop_required !== true) {
+    const hydrated = await runHydrateContextUseCase({
+      args: { ...buildHydrateArgs(args, ""), out: "", historySkills: admittedSkills },
+      hookContextStore, targetRoot,
+    });
+    for (const skill of admittedSkills) hydrations[skill] = { ...hydrated, requested_skill: skill,
+      recent_history: hydrated.recent_history.filter(entry => entry.skill === skill) };
+    steps.push({ id: "hydrate-context:common", kind: "hydrate-context", skills: admittedSkills,
+      skill: null, ok: true, status: "completed", summary: summarizeHydration(hydrated) });
+  }
+
   const blockedSkills = Object.entries(admissions)
     .filter(([, payload]) => payload?.ok !== true)
     .map(([skill]) => skill);
   const output = {
     ts: new Date().toISOString(),
-    ok: blockedSkills.length === 0,
+    ok: blockedSkills.length === 0 && (!grouped || nextAction?.recommendation?.stop_required !== true),
     contract_version: "codex-workflow-step.v1",
     command: "aidn codex workflow-step --json",
-    effect_class: args.write === true ? "mutating" : "projector",
+    effect_class: args.write === true ? "mutating" : grouped ? "read-only" : "projector",
     target_root: targetRoot,
     mode: args.mode || null,
     skills: args.skills,
@@ -336,14 +354,31 @@ export async function runWorkflowStep({ args, targetRoot }) {
       step_count: steps.length,
       admission_count: Object.keys(admissions).length,
       blocked_skill_count: blockedSkills.length,
-      hydrate_count: Object.keys(hydrations).length,
-      next_action_status: steps[steps.length - 1]?.status ?? "unknown",
+      hydrate_count: steps.filter(step => step.kind === "hydrate-context").length,
+      next_action_status: nextAction?.recommendation?.stop_required === true ? "stop_required" : "recommended",
     },
     steps,
     admissions,
     hydrations,
     next_action: nextAction,
   };
+  return output;
+}
+
+export async function runWorkflowStep({ args, targetRoot }) {
+  validateAgentViewOptions(args);
+  if (args.grouped !== undefined && typeof args.grouped !== "boolean") throw new Error("Grouped workflow selector must be boolean");
+  if (args.grouped && (args.view !== "agent" || !["auto", "sqlite", "postgres"].includes(args.backend)
+      || args.indexFile !== ".aidn/runtime/index/workflow-index.sqlite"
+      || args.currentStateFile !== "docs/audit/CURRENT-STATE.md" || args.runtimeStateFile !== "docs/audit/RUNTIME-STATE.md"
+      || args.packetFile !== "docs/audit/HANDOFF-PACKET.md" || args.contextFile !== ".aidn/runtime/context/codex-context.json"))
+    throw new Error("Grouped workflow requires agent view and canonical runtime paths/backend");
+  let output;
+  if (args.grouped) {
+    const observed = await withWorkflowObservation({ targetRoot, contextFile: args.contextFile },
+      () => computeWorkflowStep({ args, targetRoot, grouped: true }));
+    output = { ...observed.value, observation: observed.observation };
+  } else output = await computeWorkflowStep({ args, targetRoot });
   const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "workflow-step", payload: output });
   if (args.view === "agent") return projectWorkflowAgentView(output, receipt);
   if (receipt) output.receipt = receipt;

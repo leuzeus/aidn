@@ -988,6 +988,17 @@
         ],
         "variants": [
           {
+            "id": "codex-workflow-step/grouped-consultation",
+            "when_args": [
+              "--grouped"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "read-only",
+            "policy": "codex-workflow-step/grouped-consultation"
+          },
+          {
             "id": "codex-workflow-step/retain-diagnostic",
             "when_args": [
               "--write"
@@ -11877,6 +11888,42 @@
       "effects": {
         "role": "effect-neutral",
         "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/codex/workflow-step.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn codex workflow-step:--grouped",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/codex/workflow-step.mjs",
+      "entrypoint": "aidn codex workflow-step --grouped",
+      "implementation": "tools/codex/workflow-step.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "projector",
+        "variants": [
+          {
+            "when_args": [
+              "--grouped"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "read-only",
+            "policy": "codex-workflow-step/grouped-consultation"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",

@@ -67,6 +67,19 @@ They have no canonical or admission role, are not automatically purged or shared
 and do not replace fresh action-specific admission. No receipt or token saving
 may be inferred merely from an agent view or a content hash.
 
+An explicitly grouped workflow consultation can share one complete canonical
+snapshot and each needed shared planning/relay observation within its private
+asynchronous invocation. These internal values cannot be supplied through JSON,
+cross target roots, survive invocation closure or grant subsequent permission.
+Admissions remain distinct. Only admitted skills contribute to common hydration;
+a global coordinator stop prevents it. Fresh backend reads and the existing
+local context/activation revision fence refuse publication after material change.
+The hidden hydration cache is not written in this path; an explicitly requested
+diagnostic receipt is retained only after the fence. Native writes retain their
+independent fresh admission, CAS and reservation checks. Initialized Git and
+canonical runtime paths bound the initial opt-in implementation; unavailable
+revision capture refuses rather than claiming a coherent observation.
+
 Differential consultation uses a caller-held complete prior selection only as
 an optimization hint. All mandatory authorities and their dependency closure
 are freshly returned. Only unchanged optional bodies can be replaced by exact

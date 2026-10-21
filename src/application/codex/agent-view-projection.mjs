@@ -68,7 +68,8 @@ export function projectWorkflowAgentView(payload, receipt = null) {
     command: "aidn codex workflow-step --view agent --json", effect_class: payload.effect_class,
     view: "agent", target_root: payload.target_root, mode: payload.mode,
     skills: payload.skills, workspace: payload.workspace, summary: payload.summary,
-    observation_scope: "per-skill", write_authorization: false,
+    observation_scope: payload.observation?.scope ?? "per-skill", write_authorization: false,
+    ...(payload.observation ? { observation: payload.observation } : {}),
     admissions: Object.entries(payload.admissions ?? {}).map(([skill, admission]) => ({
       skill, ok: admission.ok === true, admission_status: admission.admission_status ?? "unknown",
       admission_kind: admission.admission_kind ?? "generic", context: pick(admission.context, CONTEXT_FIELDS),

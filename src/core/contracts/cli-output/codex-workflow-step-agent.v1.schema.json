@@ -11,7 +11,7 @@
     "ok": { "type": "boolean" },
     "contract_version": { "const": "codex-workflow-step-agent.v1" },
     "command": { "const": "aidn codex workflow-step --view agent --json" },
-    "effect_class": { "enum": ["projector", "mutating"] },
+    "effect_class": { "enum": ["read-only", "projector", "mutating"] },
     "view": { "const": "agent" },
     "target_root": { "type": "string" },
     "mode": { "type": ["string", "null"] },
@@ -19,6 +19,11 @@
     "workspace": { "type": "object", "additionalProperties": true },
     "summary": { "type": "object", "required": ["skill_count", "admission_count", "blocked_skill_count", "hydrate_count"], "additionalProperties": true },
     "observation_scope": { "type": "string" },
+    "observation": { "type": "object", "required": ["scope", "source_revision", "write_authorization", "fence_status", "distinct_reads"], "properties": {
+      "scope": { "const": "invocation-common" }, "write_authorization": { "const": false },
+      "source_revision": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "fence_status": { "const": "unchanged" },
+      "distinct_reads": { "type": "integer", "minimum": 0 }
+    }, "additionalProperties": false },
     "write_authorization": { "const": false },
     "admissions": {
       "type": "array",
