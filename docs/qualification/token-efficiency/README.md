@@ -243,6 +243,29 @@ procedure pack, so the active change is procedural scheduling/entry routing.
 Grouping's two-to-one hydration effect remains a separately bounded native
 component observation; it is not presented as a measured whole-workflow saving.
 
+That [procedure-pack attempt](procedure-workflow-attempt.v1.json), still on the
+fixed `7843919` engine, passed development, actual coordinator relay and the
+independent application oracle (20/20). The second native turn then failed with
+the provider's `serverOverloaded` capacity error. The terminal harness correctly
+fails without positive closure receipts; closure qualification is unavailable.
+This is an external provider interruption, not a demonstrated product failure.
+Its 75 completed responses consumed 8,505,148 input tokens, including 8,107,520
+cached input, and 36,046 output tokens. Usage for the failed provider request is
+unavailable. Incomplete-run counters cannot establish savings or latency goals.
+Owned processes closed, PostgreSQL stopped and temporary authentication was
+removed; observed personal files and frozen evidence stayed intact.
+
+The completed first phase also made 54 outer CLI calls and 11 prewrite calls,
+versus 42 and five in the earlier hook-view trial. A targeted procedure review
+found that the shared view omitted the activation field required by installed
+guards and the research common prefix described preflight more broadly than
+the installed first-write gates. The next source revision retains actual
+activation (unknown stays unknown) and follows those prescribed gates without
+adding a generic preflight before every artifact. Actual native checks,
+operation-specific admissions, CAS and fences remain mandatory. These focused
+changes have fixture/CLI evidence; this interrupted attempt does not qualify
+their later native behavior or attribute every extra call to them.
+
 The packaged research procedures live in
 [`scaffold/experiments/token-efficiency.v1`](../../../scaffold/experiments/token-efficiency.v1/README.md).
 They share one stable common prefix and route start, product work and ordered
