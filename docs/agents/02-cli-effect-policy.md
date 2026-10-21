@@ -58,7 +58,8 @@ The classification keeps automation from confusing output format with write perm
   its existing hidden-projector effect. Consultation never grants admission.
 - `aidn codex workflow-step --view agent --json` retains the existing hidden
   projector effect. An additional complete local diagnostic receipt requires
-  `--write`; view selection alone does not add persistence or write authority.
+  `--write`, whose invocation rule is `mutating`; view selection alone does not
+  add persistence or write authority.
 - `aidn runtime project-runtime-state --json --write` may project or write only when the command documents that behavior.
 - `aidn runtime project-handoff-packet --json` must be read-only by default.
 - `aidn runtime mode-migrate --json` must only preview config, schema, and projection changes; `--write` is required to apply them.

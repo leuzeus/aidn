@@ -986,7 +986,17 @@
             "role": "format-only"
           }
         ],
-        "variants": []
+        "variants": [
+          {
+            "id": "codex-workflow-step/retain-diagnostic",
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "codex-workflow-step/retain-diagnostic"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",
@@ -12367,8 +12377,18 @@
       "entrypoint": "aidn codex workflow-step --write",
       "implementation": "tools/codex/workflow-step.mjs",
       "effects": {
-        "role": "effect-neutral",
-        "rule": "invocation-profile"
+        "role": "effect-selector",
+        "default": "projector",
+        "variants": [
+          {
+            "when_args": [
+              "--write"
+            ],
+            "unless_args": [],
+            "effect_class": "mutating",
+            "policy": "codex-workflow-step/retain-diagnostic"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",

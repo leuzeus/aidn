@@ -9,6 +9,7 @@ import { isActivationFixtureSource, prepareActivationFixture } from "./test-acti
 import { createTrackedFixtureFilter, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { persistAgentViewReceipt, projectWorkflowAgentView, validateAgentViewOptions } from "../../src/application/codex/agent-view-projection.mjs";
 import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
+import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 import workflowSchema from "../../src/core/contracts/cli-output/codex-workflow-step-agent.v1.schema.json" with { type: "json" };
 import hookSchema from "../../src/core/contracts/context/codex-hook-agent.v1.schema.json" with { type: "json" };
 
@@ -72,6 +73,10 @@ try {
   const withReceipt = workflow(["--view", "agent", "--write"]), secondReceipt = workflow(["--view", "agent", "--write"]);
   check("explicit retained receipts bind complete observations and never overwrite a previous receipt", () => {
     assert.equal(withReceipt.status, 0); assert.equal(secondReceipt.status, 0);
+    assert.equal(withReceipt.payload.effect_class, "mutating");
+    assert.deepEqual(validateJsonSchema(withReceipt.payload, workflowSchema, "$"), []);
+    assert.equal(resolveCliEffectClass("aidn codex workflow-step", ["--view", "agent", "--json"]), "projector");
+    assert.equal(resolveCliEffectClass("aidn codex workflow-step", ["--view", "agent", "--write", "--json"]), "mutating");
     const retained = assertReceipt(withReceipt.payload.receipt); assertReceipt(secondReceipt.payload.receipt);
     assert.notEqual(withReceipt.payload.receipt.path, secondReceipt.payload.receipt.path);
     assert.equal(retained.contract_version, "codex-workflow-step.v1");

@@ -11,7 +11,7 @@
     "ok": { "type": "boolean" },
     "contract_version": { "const": "codex-workflow-step-agent.v1" },
     "command": { "const": "aidn codex workflow-step --view agent --json" },
-    "effect_class": { "const": "projector" },
+    "effect_class": { "enum": ["projector", "mutating"] },
     "view": { "const": "agent" },
     "target_root": { "type": "string" },
     "mode": { "type": ["string", "null"] },

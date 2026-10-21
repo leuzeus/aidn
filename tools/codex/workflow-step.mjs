@@ -320,7 +320,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
     ok: blockedSkills.length === 0,
     contract_version: "codex-workflow-step.v1",
     command: "aidn codex workflow-step --json",
-    effect_class: "projector",
+    effect_class: args.write === true ? "mutating" : "projector",
     target_root: targetRoot,
     mode: args.mode || null,
     skills: args.skills,
