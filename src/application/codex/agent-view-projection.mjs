@@ -51,11 +51,20 @@ const DECISION_FIELDS = ["ok", "decision", "action", "result", "reason_codes", "
 
 export function projectWorkflowAgentView(payload, receipt = null) {
   const artifacts = new Map();
+  const metadata = new Map();
   const contexts = Object.entries(payload.hydrations ?? {}).map(([skill, hydrated]) => {
     const source = pick(hydrated, ["target_root", "source_revision", "source_backend", "runtime_scope_id", "project_id", "workspace_id", "state_mode"]);
     const refs = (hydrated.artifacts ?? []).map(artifact => {
-      const id = hash(JSON.stringify({ source, artifact }));
-      if (!artifacts.has(id)) artifacts.set(id, { id, source, artifact });
+      let projected = artifact;
+      if (payload.selection_policy?.mode === "scoped" && artifact.canonical && typeof artifact.canonical === "object") {
+        const binding = { source, path: artifact.path, sha256: artifact.sha256, canonical: artifact.canonical };
+        const reference = hash(JSON.stringify(binding));
+        if (!metadata.has(reference)) metadata.set(reference, { id: reference, ...structuredClone(binding) });
+        const { canonical, ...unit } = artifact;
+        projected = { ...unit, canonical_ref: reference };
+      }
+      const id = hash(JSON.stringify({ source, artifact: projected }));
+      if (!artifacts.has(id)) artifacts.set(id, { id, source, artifact: projected });
       return id;
     });
     return { skill, ...source, artifact_refs: refs, bundle_budget: hydrated.bundle_budget ?? null,
@@ -80,6 +89,7 @@ export function projectWorkflowAgentView(payload, receipt = null) {
         ...(payload.observation ? ["observed_sources"] : [])]),
     })),
     contexts, artifacts: [...artifacts.values()], next_action: payload.next_action,
+    ...(metadata.size ? { artifact_metadata: [...metadata.values()] } : {}),
     ...(payload.selection_policy ? { selection_policy: payload.selection_policy } : {}),
     ...(payload.context_selection ? { context_selection: structuredClone(payload.context_selection) } : {}),
     ...(payload.context_delta ? { context_delta: structuredClone(payload.context_delta) } : {}),

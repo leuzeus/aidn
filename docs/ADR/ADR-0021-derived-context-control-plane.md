@@ -108,6 +108,10 @@ No successful response silently splits a mandatory authority. Refusal diagnostic
 may themselves exceed the requested limit; that is explicitly reported rather
 than deleting an admission, blocker or stop. These experimental byte limits do
 not represent native tokens, window pressure or successful performance targets.
+Its agent projection factors exact repeated canonical source metadata into a
+scope/path/hash-bound table. Complete selected unit bodies remain explicit;
+metadata references are checked when accepting a baseline and unused entries
+are removed during budget pruning. Full diagnostic receipts retain original data.
 
 Differential consultation uses a caller-held complete prior selection only as
 an optimization hint. All mandatory authorities and their dependency closure

@@ -70,6 +70,8 @@ try {
   assert.equal(result.payload.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(result.payload)));
   assert.deepEqual(result.payload.bundle_budget.omitted_optional_ids, ["optional"]);
   assert.deepEqual(result.payload.artifacts.map(row => row.artifact.unit_id), ["dependency", "invariant"]);
+  assert.deepEqual((result.payload.artifact_metadata ?? []).map(row => row.id).sort(),
+    [...new Set(result.payload.artifacts.map(row => row.artifact.canonical_ref).filter(Boolean))].sort());
   assert.equal(result.payload.artifacts.find(row => row.artifact.unit_id === "invariant").artifact.content_excerpt, documents["TOKEN-SPEC.md"]);
   checks.push("actual CLI uses accepted task policy, complete authority/dependency and final target budget");
   const insufficient = workflow(["--bundle-target-bytes", "1000"]);
@@ -115,6 +117,27 @@ try {
   assert.deepEqual(delta.payload.context_delta.unchanged_optional_refs.map(row => row.unit_id), ["optional"]);
   assert.equal(delta.payload.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(delta.payload)));
   checks.push("workflow delta freshly returns mandatory closure and only references unchanged optional bodies");
+  const metadataBaseline = structuredClone(baseline.payload);
+  if (!metadataBaseline.artifact_metadata?.length) {
+    // A caller-held baseline is a hint, not evidence. Exercise its metadata graph
+    // even when this fixture's SQLite adapter has no canonical metadata object.
+    const row = metadataBaseline.artifacts.find(row => row.artifact.unit_id === "optional"), old = row.id;
+    const binding = { source: row.source, path: row.artifact.path, sha256: row.artifact.sha256, canonical: { synthetic_fixture_metadata: true } };
+    const id = hash(JSON.stringify(binding)); metadataBaseline.artifact_metadata = [{ id, ...binding }];
+    delete row.artifact.canonical; row.artifact.canonical_ref = id; row.id = hash(JSON.stringify({ source: row.source, artifact: row.artifact }));
+    for (const context of metadataBaseline.contexts) context.artifact_refs = context.artifact_refs.map(ref => ref === old ? row.id : ref);
+  }
+  fs.writeFileSync(baselineFile, JSON.stringify(metadataBaseline));
+  assert.equal(workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", baselineRef]).payload.context_delta.mode, "differential");
+  for (const change of [value => { value.artifact_metadata[0].canonical.fixture_tampered = true; }, value => { value.artifact_metadata = []; }]) {
+    const metadataTampered = structuredClone(metadataBaseline); change(metadataTampered);
+    fs.writeFileSync(baselineFile, JSON.stringify(metadataTampered));
+    const freshMetadata = workflow(["--bundle-target-bytes", "65536", "--context-baseline-file", baselineRef]);
+    assert.equal(freshMetadata.payload.context_delta.mode, "full");
+    assert(freshMetadata.payload.artifacts.some(row => row.artifact.unit_id === "optional"));
+    assert.equal(freshMetadata.payload.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(freshMetadata.payload)));
+  }
+  checks.push("valid shared metadata is reusable as a hint; corrupt or missing metadata reconstructs the complete optional graph");
   for (const contents of ["{corrupt JSON", JSON.stringify({ ...baseline.payload,
     context_selection: { ...baseline.payload.context_selection, scope: { ...scope, worktree_id: "foreign" } } })]) {
     fs.writeFileSync(baselineFile, contents);

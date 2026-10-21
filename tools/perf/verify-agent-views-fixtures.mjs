@@ -104,6 +104,26 @@ try {
     payload.hydrations.a.target_root = "/client-a"; payload.hydrations.b.target_root = "/client-b";
     assert.equal(projectWorkflowAgentView(payload).artifacts.length, 2, "missing IDs never merge different target roots");
   });
+  check("scoped units share exact canonical metadata without merging source bindings or losing complete bodies", () => {
+    const canonical = { structured_sections: { rule: "Complete source metadata. ".repeat(400) } };
+    const units = ["first", "second"].map(unit_id => ({ unit_id, path: "SPEC.md", sha256: "a".repeat(64),
+      content_excerpt: `## ${unit_id}\nComplete rule.\n`, canonical, selection_reasons: ["task_obligation"] }));
+    const payload = { selection_policy: { mode: "scoped" }, admissions: {}, hydrations: { a: { target_root: "/client", source_revision: "r1", artifacts: units } } };
+    const before = JSON.stringify(payload), projected = projectWorkflowAgentView(payload);
+    assert.equal(projected.artifact_metadata.length, 1);
+    for (const row of projected.artifacts) {
+      const metadata = projected.artifact_metadata.find(entry => entry.id === row.artifact.canonical_ref);
+      assert(metadata); assert.equal(metadata.path, row.artifact.path); assert.equal(metadata.sha256, row.artifact.sha256);
+      const { canonical_ref, ...unit } = row.artifact;
+      assert.deepEqual({ ...unit, canonical: metadata.canonical }, units.find(entry => entry.unit_id === unit.unit_id));
+      assert.equal(row.id, hash(JSON.stringify({ source: row.source, artifact: row.artifact })));
+    }
+    assert(Buffer.byteLength(JSON.stringify(projected)) < Buffer.byteLength(before));
+    projected.artifact_metadata[0].canonical.structured_sections.rule = "changed derived result";
+    assert.equal(JSON.stringify(payload), before, "projection must not mutate retained evidence");
+    payload.hydrations.b = { ...payload.hydrations.a, source_revision: "r2" };
+    assert.equal(projectWorkflowAgentView(payload).artifact_metadata.length, 2);
+  });
   const hook = extra => {
     // The wrapped command is synthetic fixture data, not native execution proof.
     const code = "console.log(JSON.stringify({ok:false,decision:'deny',result:'error',reason_codes:['fixture-refusal'],blocking_reasons:['preserve refusal']}));process.exit(7)";

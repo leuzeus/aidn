@@ -12,13 +12,13 @@ model revision. No previous benchmark arm is reused.
 | Lot | Status | Required exit evidence |
 | --- | --- | --- |
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
-| L1 Agent views | Source and local native semantic read verified | 13 fixture/real-CLI assertions and one fixed native diagnostic pair; complete provider-body residency and overall workflow savings remain unqualified |
+| L1 Agent views | Source and local native semantic read verified | Projection fixtures, one fixed native diagnostic pair and an installed grouped diagnostic; complete provider-body residency and overall workflow savings remain unqualified |
 | L2 Shared workflow observation | Source candidate implemented | Source-CLI/fixture checks including stale source rejection and actual SQLite concurrent mutation; grouped path is opt-in, native qualification pending |
 | L6 Procedures/kernel | Experimental procedure pack implemented | Shared stable prefix and task routes package separately from installed skills; native scheduling/adoption qualification pending |
 | L3 Task selection/budget | Source candidate implemented | Accepted client task policies, complete mandatory units, final serialized target and explicit expansion refusal; native qualification pending |
 | L4 Delta/history | Source candidate implemented | Fresh mandatory closure, invalid-baseline reconstruction, typed history with distinct executions and independent reanchoring; native qualification pending |
 | L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
-| L7 Native qualification/adoption | Not started | Three independent confirmation pairs, functional/governance equivalence, rollback and installed-client proof |
+| L7 Native qualification/adoption | In progress | Staged whole-workflow trials, three independent confirmation pairs, functional/governance equivalence, rollback and installed-client proof |
 
 L0 precedes engine optimization or procedure adoption. The legacy
 output format, budget defaults and installed user configuration remain unchanged.
@@ -163,6 +163,22 @@ Positive item counters and complete raw events still do not independently expose
 complete provider-body residency; that proof remains `UNAVAILABLE`. Owned process
 trees closed, PostgreSQL stopped, temporary auth copies were removed and observed
 personal files were preserved. No user profile or installed procedure changed.
+
+An independent installed grouped diagnostic at the `ef54f65` package passed
+exact native semantic restatement with one hydration for the admitted skill and
+no hydration for its refused companion. It used three model responses, 86,268
+input, 52,864 cached input, 33,404 uncached input and 269 output tokens. It is a
+single fresh microtask, not a matched full-workflow or median comparison.
+
+A subsequent native task-policy attempt returned a complete scoped selection
+within the explicitly expanded 65,536-byte target, but its host verifier expected
+a private selection field absent from the public projection. The native semantic
+trial failed in the host; performance and adoption remain unevaluated. Its CLI
+diagnostic also exposed repeated complete canonical source metadata across units.
+The source candidate now factors this metadata into scope/path/hash-bound shared
+entries, keeps complete unit bodies, verifies baseline references and prunes
+unreferenced entries. The failed attempt remains attached to its original package;
+it is not upgraded by later source corrections.
 
 ## Qualification rules
 

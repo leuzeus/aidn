@@ -96,6 +96,11 @@ bounds or an explicit expansion within that maximum. Legacy defaults remain
 262,144/1,048,576 bytes outside this profile. The counter includes admissions,
 complete selected units, history, scope, findings, actual receipt references and
 final daemon metadata; terminal framing/newlines are outside compact JSON.
+Scoped agent units reference one `artifact_metadata` entry for identical complete
+canonical source metadata, bound to path, source hash and observation scope.
+Each unit retains its complete selected text and authority/dependency provenance.
+The final budget removes unreferenced metadata with omitted units; a caller-held
+baseline with corrupt, missing or foreign metadata references reconstructs freshly.
 Optional closure is omitted first. If the mandatory response cannot fit target,
 the result is blocked with measured expansion requirements, without incomplete
 mandatory bodies. Diagnostics themselves can exceed an impossible requested

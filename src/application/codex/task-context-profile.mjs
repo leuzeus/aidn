@@ -87,6 +87,10 @@ export function finalizeWorkflowContextBudget(output, { targetBytes, hardLimitBy
     const refs = new Set(omitted.map(row => row.id));
     output.artifacts = output.artifacts.filter(row => !refs.has(row.id));
     for (const context of output.contexts) context.artifact_refs = context.artifact_refs.filter(id => !refs.has(id));
+    if (output.artifact_metadata) {
+      const live = new Set(output.artifacts.map(row => row.artifact.canonical_ref).filter(Boolean));
+      output.artifact_metadata = output.artifact_metadata.filter(row => live.has(row.id));
+    }
   };
   if (measure() > targetBytes) {
     const optional = output.artifacts.filter(row => row.artifact.selection_reasons?.every(reason => reason === "optional_consultation"));

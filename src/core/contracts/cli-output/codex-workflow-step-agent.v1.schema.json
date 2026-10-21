@@ -83,6 +83,11 @@
       "id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "source": { "type": "object", "additionalProperties": true },
       "artifact": { "type": "object", "additionalProperties": true }
     }, "additionalProperties": false } },
+    "artifact_metadata": { "type": "array", "items": { "type": "object", "required": ["id", "source", "path", "sha256", "canonical"], "properties": {
+      "id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "source": { "type": "object", "additionalProperties": true },
+      "path": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "canonical": { "type": "object", "additionalProperties": true }
+    }, "additionalProperties": false } },
     "next_action": { "type": "object", "additionalProperties": true },
     "receipt": { "type": ["object", "null"], "required": ["path", "sha256", "bytes"], "properties": {
       "path": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 0 }

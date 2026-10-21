@@ -469,11 +469,30 @@ function readWorkflowBaseline(targetRoot, ref) {
         || !Array.isArray(value.contexts) || !value.contexts.length || !Array.isArray(value.artifacts) || value.artifacts.length > 128) return null;
     const revision = value.contexts[0].source_revision;
     if (!value.contexts.every(context => context.source_revision === revision && Array.isArray(context.artifact_refs))) return null;
-    const artifacts = new Map();
+    const artifacts = new Map(), metadata = new Map();
+    if (value.artifact_metadata !== undefined && (!Array.isArray(value.artifact_metadata) || value.artifact_metadata.length > 128)) return null;
+    for (const row of value.artifact_metadata ?? []) {
+      if (!row || typeof row !== "object" || Array.isArray(row) || metadata.has(row.id)
+          || Object.keys(row).length !== 5 || !["id", "source", "path", "sha256", "canonical"].every(key => Object.hasOwn(row, key))
+          || !row.source || typeof row.source !== "object" || Array.isArray(row.source)
+          || typeof row.path !== "string" || !/^[a-f0-9]{64}$/.test(row.sha256)
+          || !row.canonical || typeof row.canonical !== "object" || Array.isArray(row.canonical)) return null;
+      const { id, ...binding } = row;
+      if (id !== sha256(JSON.stringify(binding))) return null;
+      metadata.set(id, row);
+    }
+    const metadataRefs = new Set();
     for (const row of value.artifacts) {
       if (!row || artifacts.has(row.id) || row.id !== sha256(JSON.stringify({ source: row.source, artifact: row.artifact }))) return null;
+      if (row.artifact?.canonical_ref !== undefined) {
+        const bound = metadata.get(row.artifact.canonical_ref);
+        if (!bound || bound.path !== row.artifact.path || bound.sha256 !== row.artifact.sha256
+            || JSON.stringify(bound.source) !== JSON.stringify(row.source)) return null;
+        metadataRefs.add(bound.id);
+      }
       artifacts.set(row.id, row.artifact);
     }
+    if (metadataRefs.size !== metadata.size) return null;
     const refs = new Set(value.contexts.flatMap(context => context.artifact_refs));
     if (refs.size !== artifacts.size || [...refs].some(id => !artifacts.has(id))) return null;
     return { source_revision: revision, context_selection: value.context_selection,
