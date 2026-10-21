@@ -88,6 +88,17 @@ overlapped early reference execution; timings are descriptive observations,
 not isolated causal latency estimates. No end-to-end optimization comparison
 has been qualified yet.
 
+A later read-only analysis of the same frozen receipts records 84 outer canonical
+CLI calls: 44 in phase 1, five by the coordinator and 35 in phase 2. The
+[command analysis](reference-command-analysis.v1.json) binds each input and the
+analyzer hash. It records nine complete-fetch commands returning 56 complete
+artifact bodies, including 18 repeated path/content occurrences (91,580 UTF-8
+body bytes), and 37 repeated selected serialized diagnostic structures (88,468
+bytes). These byte equalities do not establish identical authority or proof,
+valid cache reuse or additive token savings. Outer CLI counts do not count all
+internal/native hook checks. Actual stdout totals 1,020,992 bytes, distinct from
+what reached model input; per-command causal token cost remains unavailable.
+
 The separate synthetic native read-refusal/repair case passed four actual CLI
 calls with retained exit codes `[2, 0, 0, 0]`: deliberately wrong note reference,
 complete official inventory, exact complete repaired canonical read and fresh

@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "scope": "Frozen reference AIDN arm outer canonical CLI receipts; executor phases and coordinator separately bound",
+  "analyzer_sha256": "a00916aea8e5436130f4e92498f2b5b3c194a208429e2e796ea9e52061e885ea",
+  "sources": [
+    {
+      "phase": "phase-1",
+      "sha256": "6c2651a216e27c73c6c6166ce86c28bcd0a998b19a74f8696659c2b61c5cc214",
+      "bytes": 574827,
+      "outer_cli_calls": 44,
+      "stdout_utf8_bytes": 438067
+    },
+    {
+      "phase": "coordinator-relay",
+      "sha256": "637415b5fab907d99611b700ef23f3144cc1a617928bc4fa30214c6b073abc58",
+      "bytes": 164516,
+      "outer_cli_calls": 5,
+      "stdout_utf8_bytes": 147933
+    },
+    {
+      "phase": "phase-2",
+      "sha256": "a7ad1bb7e026ca272d453aa4945441fe01a5b81214115f1488073dafbe5322e7",
+      "bytes": 536872,
+      "outer_cli_calls": 35,
+      "stdout_utf8_bytes": 434992
+    }
+  ],
+  "outer_cli_calls": 84,
+  "failed_outer_cli_calls": 0,
+  "stdout_utf8_bytes": 1020992,
+  "commands": {
+    "runtime pre-write-admit": {
+      "calls": 12,
+      "failed": 0,
+      "stdout_utf8_bytes": 199499
+    },
+    "runtime artifact-store list": {
+      "calls": 4,
+      "failed": 0,
+      "stdout_utf8_bytes": 39565
+    },
+    "runtime artifact-fetch": {
+      "calls": 9,
+      "failed": 0,
+      "stdout_utf8_bytes": 235850
+    },
+    "codex run-json-hook": {
+      "calls": 14,
+      "failed": 0,
+      "stdout_utf8_bytes": 94711
+    },
+    "runtime db-first-artifact": {
+      "calls": 36,
+      "failed": 0,
+      "stdout_utf8_bytes": 295219
+    },
+    "runtime project-runtime-state": {
+      "calls": 3,
+      "failed": 0,
+      "stdout_utf8_bytes": 24977
+    },
+    "runtime sync-db-first-selective": {
+      "calls": 2,
+      "failed": 0,
+      "stdout_utf8_bytes": 1926
+    },
+    "runtime project-handoff-packet": {
+      "calls": 1,
+      "failed": 0,
+      "stdout_utf8_bytes": 11536
+    },
+    "codex hydrate-context": {
+      "calls": 1,
+      "failed": 0,
+      "stdout_utf8_bytes": 94239
+    },
+    "runtime handoff-admit": {
+      "calls": 2,
+      "failed": 0,
+      "stdout_utf8_bytes": 23470
+    }
+  },
+  "complete_fetch_bodies": {
+    "count": 56,
+    "utf8_bytes": 193339,
+    "distinct_path_content_pairs": 38,
+    "repeated_path_content_pairs": 14,
+    "repeat_occurrences": 18,
+    "repeated_utf8_body_bytes": 91580
+  },
+  "repeated_serialized_diagnostic_structures": {
+    "selected_keys": [
+      "checks",
+      "source_of_truth",
+      "index_sync_check"
+    ],
+    "minimum_bytes": 256,
+    "distinct_repeated_structures": 7,
+    "repeat_occurrences": 37,
+    "repeated_utf8_bytes": 88468
+  },
+  "limitations": [
+    "These are actual outer CLI calls, not all internal/native hook checks.",
+    "Complete bodies require has_content=true and string content; excerpts are not full reads.",
+    "Path/content repeats can span different revisions; no authority or reuse is inferred.",
+    "Diagnostic structure equality is byte equality only, not identical proof or additive token savings.",
+    "Raw stdout and retained receipt bytes are not model-input bytes or causal command token costs.",
+    "Native usage is measured independently per completed response; unavailable per-command causal token cost remains null."
+  ],
+  "causal_tokens_per_command": null
+}
