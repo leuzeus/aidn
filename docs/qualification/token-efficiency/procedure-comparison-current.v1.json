@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "proof_class": "native-single-pair-staged-screening",
+  "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+  "package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a",
+  "native_binary_sha256": "00c0f1e4099246fddcd67ec620ca8ed50827c7d70e113b7224f7a2933cf2d67c",
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "active_change": "Explicit experimental procedure pack and serial scheduling; grouped engine, hooks, complete startup reads, oracles and task are unchanged.",
+  "stage_order": [
+    "grouped-workflow",
+    "grouped-procedures"
+  ],
+  "invariant_frozen_files_checked": 80,
+  "application_oracle_both": "20/20",
+  "coordinator_and_terminal_gates_both": "PASS",
+  "observations": [
+    {
+      "metric": "model_responses",
+      "baseline": 113,
+      "candidate": 99,
+      "change_percent": -12.39
+    },
+    {
+      "metric": "input_tokens",
+      "baseline": 12119848,
+      "candidate": 11290778,
+      "change_percent": -6.84
+    },
+    {
+      "metric": "cached_input_tokens",
+      "baseline": 11655552,
+      "candidate": 10970752,
+      "change_percent": -5.88
+    },
+    {
+      "metric": "uncached_input_tokens",
+      "baseline": 464296,
+      "candidate": 320026,
+      "change_percent": -31.07
+    },
+    {
+      "metric": "output_tokens",
+      "baseline": 34685,
+      "candidate": 42371,
+      "change_percent": 22.16
+    },
+    {
+      "metric": "reasoning_output_tokens",
+      "baseline": 3371,
+      "candidate": 7463,
+      "change_percent": 121.39
+    },
+    {
+      "metric": "elapsed_seconds",
+      "baseline": 2066.486,
+      "candidate": 2320.535,
+      "change_percent": 12.29
+    }
+  ],
+  "comparison_scope": "One sequential same-runtime selection pair. Not a global comparison to the old-runtime frozen reference, repeated confirmation, causal attribution per command or median latency.",
+  "confirmation_pairs": 0,
+  "median_latency": null,
+  "global_performance_qualification": false,
+  "default_adoption": false
+}

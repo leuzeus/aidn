@@ -14,7 +14,7 @@ model revision. No previous benchmark arm is reused.
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
 | L1 Agent views | Source and one whole-workflow functional trial PASS | Exact projection/receipt checks, local native diagnostics and complete development/relay/closure; global performance thresholds remain unqualified |
 | L2 Shared workflow observation | Source and installed component checks PASS | Stale source rejection, actual SQLite concurrent mutation, native one-hydration diagnosis and installed mode parity; whole-workflow gains pending |
-| L6 Procedures/kernel | Experimental procedure pack implemented | Shared stable prefix and task routes package separately from installed skills; native scheduling/adoption qualification pending |
+| L6 Procedures/kernel | Experimental pack and one current-runtime functional pair PASS | Shared prefix and task routes remain separate from installed skills; global performance and adoption unqualified |
 | L3 Task selection/budget | Source and native component checks PASS | Accepted synthetic client policy, complete mandatory units, final serialized target and explicit expansion refusal; whole-workflow gains pending |
 | L4 Delta/history | Source and native delta component checks PASS | Fresh mandatory closure, invalid-baseline reconstruction, typed history and independent reanchoring; native current delta restatement, whole-workflow gains pending |
 | L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
@@ -302,6 +302,9 @@ units remained fresh; two unchanged optional units became references. Its prior
 and current compact JSON measured 35,477 and 31,454 bytes. The prior optional
 bodies were caller-held, not previously recalled by the model; this proves that
 boundary without establishing workflow savings or complete provider residency.
+The delta component explicitly requested a 65,536-byte target. It does not
+qualify the experimental 16,384-byte default for this client; required minima
+and expansion decisions remain specific to the actual complete response.
 
 The product-write boundary check also passed: the actual native PreToolUse
 refused an out-of-plan path, the refused file remained absent, the complete
@@ -320,10 +323,44 @@ contract and three hydratations. Ordinary installed procedure hashes remain
 unchanged. This matrix is installed CLI evidence, not live PostgreSQL or model
 execution in all three modes.
 
-Current source code passed all nine ASSURED families in
+Candidate `ae018df` passed all nine ASSURED families in
 [run 39604235591](https://github.com/leuzeus/aidn/actions/runs/39604235591).
-A fresh current-runtime screening pair compares the same grouped engine and
-oracles with ordinary versus explicitly selected experimental procedures.
-Task-policy selection and delta stay disabled for that single-family comparison.
-No earlier-runtime performance result is transferred to it; repeated confirmation
-and default adoption remain unqualified.
+Its qualification-only successor `bae2e66` also passed
+[run 39607271719](https://github.com/leuzeus/aidn/actions/runs/39607271719).
+
+The [current grouped baseline](grouped-workflow-current.v1.json) and
+[explicit procedure candidate](procedure-workflow-current.v1.json) both pass
+application 20/20, actual coordinator relay and terminal cycle/session closure.
+Their [single-pair comparison](procedure-comparison-current.v1.json) binds the
+same package, executable, model settings and 80 unchanged frozen harness/oracle
+inputs. The experimental common prefix was present in both native contexts;
+their developer instructions were identical. Task-policy selection and delta
+stayed disabled. Owned resources were cleaned, ordinary personal files and
+stale visible anchors preserved, and announced complete hook receipts were read
+back and checked against actual CLI projections.
+
+| Observation | Ordinary procedures with grouped engine | Experimental procedures |
+| --- | ---: | ---: |
+| Model responses | 113 | 99 |
+| Cumulative input | 12,119,848 | 11,290,778 |
+| Cached input subset | 11,655,552 | 10,970,752 |
+| Uncached input | 464,296 | 320,026 |
+| Output | 34,685 | 42,371 |
+| Elapsed seconds | 2,066.486 | 2,320.535 |
+
+The observed differences are about -12.4% responses, -6.8% cumulative input,
+-31.1% uncached input and +12.3% elapsed time. They are smaller than the programme
+objectives and do not qualify adoption. In particular, the first phase's reduced
+exchanges did not establish the whole-workflow result. Actual application work
+also varied: nine native product patches in the baseline versus twelve in the
+candidate, each specifically admitted. This one sequential pair is not a causal
+per-command estimate, a median or repeated confirmation. No earlier-runtime
+performance result is transferred to it. Task selection, integrated delta,
+three-pair confirmation and default adoption remain unqualified.
+
+The source candidate now accepts complete explicitly retained workflow receipts
+directly as optional-context hints, eliminating a separate caller JSON copy.
+The focused fixture/real-CLI suite passes 18 checks, including invalid/foreign
+receipts, body tampering, forged authorization, differential receipt rejection
+and no implicit retention. Its installed native qualification is separate from
+the earlier caller-held-agent-JSON delta check.
