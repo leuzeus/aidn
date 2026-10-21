@@ -13,10 +13,10 @@ model revision. No previous benchmark arm is reused.
 | --- | --- | --- |
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
 | L1 Agent views | Source and one whole-workflow functional trial PASS | Exact projection/receipt checks, local native diagnostics and complete development/relay/closure; global performance thresholds remain unqualified |
-| L2 Shared workflow observation | Source candidate implemented | Source-CLI/fixture checks including stale source rejection and actual SQLite concurrent mutation; grouped path is opt-in, native qualification pending |
+| L2 Shared workflow observation | Source and installed component checks PASS | Stale source rejection, actual SQLite concurrent mutation, native one-hydration diagnosis and installed mode parity; whole-workflow gains pending |
 | L6 Procedures/kernel | Experimental procedure pack implemented | Shared stable prefix and task routes package separately from installed skills; native scheduling/adoption qualification pending |
-| L3 Task selection/budget | Source candidate implemented | Accepted client task policies, complete mandatory units, final serialized target and explicit expansion refusal; native qualification pending |
-| L4 Delta/history | Source candidate implemented | Fresh mandatory closure, invalid-baseline reconstruction, typed history with distinct executions and independent reanchoring; native qualification pending |
+| L3 Task selection/budget | Source and native component checks PASS | Accepted synthetic client policy, complete mandatory units, final serialized target and explicit expansion refusal; whole-workflow gains pending |
+| L4 Delta/history | Source and native delta component checks PASS | Fresh mandatory closure, invalid-baseline reconstruction, typed history and independent reanchoring; native current delta restatement, whole-workflow gains pending |
 | L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
 | L7 Native qualification/adoption | In progress | Staged whole-workflow trials, three independent confirmation pairs, functional/governance equivalence, rollback and installed-client proof |
 
@@ -284,3 +284,46 @@ must remain `not_evaluated` until the matching whole-workflow criteria pass.
 Later comparisons vary one optimization family at a time. Confirmation uses
 three independent pairs with alternating order; improvements must satisfy the
 manifest thresholds and preserve every applicable governance outcome.
+
+## Current-runtime component qualification
+
+The environment changed before a fresh delta attempt: the previously pinned
+Codex binary was absent. That [preflight](runtime-change-preflight.v1.json)
+stopped before a native worker or model request. Its installed package check
+passed; PostgreSQL stopped, temporary authentication was removed and observed
+personal files were preserved. The generic wrapper failure is not a product
+failure. The frozen reference and earlier attempts retain their original runtime.
+
+Separate [native boundary checks](native-boundaries.v1.json) freeze Codex
+`0.163.0-alpha.11`, its new executable hash and candidate `ae018df`. The delta
+check passed actual native SessionStart, two installed PostgreSQL consultations
+and exact semantic restatement in a later model response. Five complete mandatory
+units remained fresh; two unchanged optional units became references. Its prior
+and current compact JSON measured 35,477 and 31,454 bytes. The prior optional
+bodies were caller-held, not previously recalled by the model; this proves that
+boundary without establishing workflow savings or complete provider residency.
+
+The product-write boundary check also passed: the actual native PreToolUse
+refused an out-of-plan path, the refused file remained absent, the complete
+canonical plan stayed unchanged and a fresh specific admission preceded the
+corrected native patch on the already planned path. No plan, permission or scope
+expansion was used. This is a synthetic patch-boundary check, separate from the
+original read-lookup repair and from full application or closure qualification.
+Both native jobs closed without descendants and cleaned their owned resources.
+
+The [installed mode matrix](installed-modes.v1.json) separately passed on tracked
+fixture corpora with local SQLite in configured `files`, `dual` and `db-only`.
+Admissions and actual activation agree between views. Each grouped readonly
+consultation preserves all checkout bytes, hydrates once and omits the blocked
+skill's rich context. Removing experimental options restores the ordinary
+contract and three hydratations. Ordinary installed procedure hashes remain
+unchanged. This matrix is installed CLI evidence, not live PostgreSQL or model
+execution in all three modes.
+
+Current source code passed all nine ASSURED families in
+[run 39604235591](https://github.com/leuzeus/aidn/actions/runs/39604235591).
+A fresh current-runtime screening pair compares the same grouped engine and
+oracles with ordinary versus explicitly selected experimental procedures.
+Task-policy selection and delta stay disabled for that single-family comparison.
+No earlier-runtime performance result is transferred to it; repeated confirmation
+and default adoption remain unqualified.
