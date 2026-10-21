@@ -15,10 +15,10 @@ model revision. No previous benchmark arm is reused.
 | L1 Agent views | Source and one whole-workflow functional trial PASS | Exact projection/receipt checks, local native diagnostics and complete development/relay/closure; global performance thresholds remain unqualified |
 | L2 Shared workflow observation | Source and installed component checks PASS | Stale source rejection, actual SQLite concurrent mutation, native one-hydration diagnosis and installed mode parity; whole-workflow gains pending |
 | L6 Procedures/kernel | Experimental pack and one current-runtime functional pair PASS | Shared prefix and task routes remain separate from installed skills; global performance and adoption unqualified |
-| L3 Task selection/budget | Source and native component checks PASS | Accepted synthetic client policy, complete mandatory units, final serialized target and explicit expansion refusal; whole-workflow gains pending |
+| L3 Task selection/budget | Source, native components and one complete functional workflow PASS | Complete mandatory units and final JSON budget verified on an accepted synthetic client; global performance objectives fail screening |
 | L4 Delta/history | Source and native delta component checks PASS | Fresh mandatory closure, invalid-baseline reconstruction, typed history and independent reanchoring; native current delta restatement, whole-workflow gains pending |
 | L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
-| L7 Native qualification/adoption | In progress | Staged whole-workflow trials, three independent confirmation pairs, functional/governance equivalence, rollback and installed-client proof |
+| L7 Native qualification/adoption | Screening completed; adoption not qualified | Functional workflows pass; performance screening fails. Three confirmation pairs and the whole-workflow delta stage are not executed |
 
 L0 precedes engine optimization or procedure adoption. The legacy
 output format, budget defaults and installed user configuration remain unchanged.
@@ -388,4 +388,99 @@ same limit. The source correction delegates this internal budget to its owning
 workflow formatter. Standalone hydration keeps its own complete JSON budget;
 authority/dependency validation and the requested experimental limits are retained.
 The focused workflow suite passes 19 checks, including the reproduced regression.
-Fresh installed/native qualification of the correction is still required.
+The subsequent [final-budget attempt](task-context-final-budget-refusal.v1.json)
+uses a fresh installed `c0acac3` client. The corrected final serializer reports
+the actual 68,660-byte mandatory minimum against the same 65,536-byte limit.
+It refuses explicitly, with expansion references, before any product patch.
+Both optional units are omitted first. This confirms the corrected budget
+boundary; it does not qualify that overbroad whole-SPEC startup policy or
+application delivery. The first failed attempt remains unchanged.
+
+The fixture policy had made complete SPEC unconditional. The existing kernel's
+read order instead requires SPEC for precise canonical checks and conflicting
+instructions. A separate fresh screening follows that trigger: complete
+WORKFLOW, kernel, summary and baseline remain mandatory, and omitted SPEC retains
+an explicit expansion route before any action requiring canonical precision.
+Neither the 65,536-byte maximum nor canonical source authorities are changed.
+This is a disposable, explicitly accepted fixture policy, not production adoption.
+
+The [current direct-receipt component](native-receipt-delta-current.v1.json)
+also passes on the exact `c0acac3` package. It retains the complete diagnostic
+only with explicit `--write`, uses that actual receipt as the next consultation's
+hint, refreshes five mandatory units and references two unchanged optional units.
+Separate later semantic restatement passes. Its three completed responses and
+48.6 seconds describe this component only, with an explicit 60,000-token output
+history setting. They are not whole-workflow savings or a comparison with the
+full workflows' native default history setting.
+
+The `c0acac3` source and qualification evidence pass all nine ASSURED families in
+[run 39626145227](https://github.com/leuzeus/aidn/actions/runs/39626145227).
+
+## Completed task-policy screening and adoption decision
+
+The [fresh task-policy workflow](task-workflow-current.v1.json) subsequently
+passes application 20/20, actual coordinator relay and ordered cycle/session
+closure on the installed `c0acac3` package. Eleven native product patches have
+fresh specific admissions. The two workers executed 138 native hooks, including
+two actual SessionStart hooks; the 12 announced complete hook diagnostics were
+physically read back and verified. Owned jobs closed with zero descendants,
+PostgreSQL stopped, temporary authentication was removed and observed personal
+files, frozen harness inputs and stale visible anchors were preserved.
+
+The [startup-unit check](task-startup-units.v1.json) verifies both actual compact
+JSON responses, including transport fields: 49,675 bytes in phase 1 and 55,682
+in phase 2, against the unchanged 65,536-byte target/maximum. Each includes the
+complete four mandatory documents, with source/unit hashes and whole-body byte
+equality against unchanged static fixture seeds. Checkout equality is not used
+as canonical authority. Omitted SPEC remains conditional on canonical precision
+or conflict. Four other workflow consultations use their ordinary complete route
+because their skills are outside this explicitly accepted fixture policy.
+The 16,384-byte default is not qualified for this native client.
+
+The [stage comparison](task-comparison-current.v1.json) checks 78 unchanged
+frozen inputs, including the application, terminal, native scope and nested-hook
+oracles. All four research procedure texts remain byte-identical to the previous
+stage. The tool description changes by exactly the declared scoped-startup
+example; its remaining executable controls are byte-identical. Source packages
+differ by receipt-baseline support and the final-budget correction, while delta
+remains disabled. This is a sequential screening, not an identical-package causal
+pair or an old-runtime global comparison.
+
+| Observation | Current grouped baseline | Experimental procedures | Task policy and procedures |
+| --- | ---: | ---: | ---: |
+| Model responses | 113 | 99 | 89 |
+| Cumulative input | 12,119,848 | 11,290,778 | 10,025,233 |
+| Cached input subset | 11,655,552 | 10,970,752 | 9,684,352 |
+| Uncached input | 464,296 | 320,026 | 340,881 |
+| Output | 34,685 | 42,371 | 41,174 |
+| Elapsed seconds | 2,066.486 | 2,320.535 | 2,041.775 |
+| Outer canonical CLI calls, coordinator included | 88 | 95 | 89 |
+
+Against the preceding procedure stage, task selection observes 10.1% fewer model
+responses and 11.2% less cumulative input, but 6.5% more uncached input. Against
+the current grouped baseline, the final stage observes reductions of 21.2% in
+responses, 17.3% in cumulative input and 26.6% in uncached input. These fall short
+of the programme's 50%/70%/50% goals. Its single elapsed observation is 1.2% lower;
+median latency remains unavailable. Natural implementation/control-path variation
+is retained, not attributed to one command or optimization.
+
+The [command analysis](workflow-command-screening.v1.json) separately binds actual
+receipts and counts calls, complete artifact-fetch bodies and selected repeated
+serialized diagnostic structures. The task stage contains 41 complete fetch
+bodies, including five repeated path/content occurrences (37,366 body bytes).
+These counters exclude workflow hydration units and native shell reads; they
+are not a claim of all model-visible reads. Raw retained stdout grows even as
+native input falls, demonstrating why bytes and tokens stay separate. Diagnostic
+byte equality does not establish reusable authority, identical proof or causal
+token cost.
+
+The [decision](adoption-decision.v1.json) is **REMAIN_EXPERIMENTAL**. No candidate
+passes screening, so the three confirmation pairs are `SKIP`, with no median or
+default adoption claim. The full-workflow delta stage is also `SKIP`; both scoped
+startup responses already omit all optional bodies. Its separate installed native
+receipt-delta check remains valid component evidence. L5 is not triggered by a
+documented retrieval failure. The optional manual PostgreSQL smoke command is
+reported separately as `SKIP`; actual PostgreSQL native execution is independently
+proven. Exact provider model revision and complete provider-body residency stay
+`UNAVAILABLE`. The programme is not fully qualified, and no merge, release or
+personal installation change is included.

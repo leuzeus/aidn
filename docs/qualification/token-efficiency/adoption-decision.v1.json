@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "decision": "REMAIN_EXPERIMENTAL",
+  "candidate_commit": "c0acac3ffba4cbcd18ae4903800320645320d539",
+  "package_sha256": "ce8e3d227d68a3145a505204a9b1862c484679f23244f839a6142393d5f7e171",
+  "functional_workflow": "PASS",
+  "application_oracle": "20/20",
+  "coordinator_and_terminal_governance": "PASS",
+  "native_process_cleanup": "PASS",
+  "current_runtime_screening_comparison": [
+    {
+      "metric": "model_responses",
+      "baseline": 113,
+      "candidate": 89,
+      "change_percent": -21.24
+    },
+    {
+      "metric": "input_tokens",
+      "baseline": 12119848,
+      "candidate": 10025233,
+      "change_percent": -17.28
+    },
+    {
+      "metric": "uncached_input_tokens",
+      "baseline": 464296,
+      "candidate": 340881,
+      "change_percent": -26.58
+    },
+    {
+      "metric": "output_tokens",
+      "baseline": 34685,
+      "candidate": 41174,
+      "change_percent": 18.71
+    },
+    {
+      "metric": "elapsed_seconds",
+      "baseline": 2066.486,
+      "candidate": 2041.775,
+      "change_percent": -1.2
+    }
+  ],
+  "comparison_baseline": {
+    "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+    "stage": "grouped-workflow",
+    "package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a"
+  },
+  "comparison_scope": "Descriptive current-runtime stages. Not an identical-package causal pair or a global qualification against the frozen old-runtime 759675e reference.",
+  "performance_objectives": [
+    {
+      "metric": "model_responses",
+      "required_reduction_percent": 50,
+      "observed_reduction_percent": 21.24,
+      "screening_status": "FAIL"
+    },
+    {
+      "metric": "uncached_input_tokens",
+      "required_reduction_percent": 50,
+      "observed_reduction_percent": 26.58,
+      "screening_status": "FAIL"
+    },
+    {
+      "metric": "input_tokens",
+      "required_reduction_percent": 70,
+      "observed_reduction_percent": 17.28,
+      "screening_status": "FAIL"
+    }
+  ],
+  "median_latency_status": "UNAVAILABLE",
+  "median_latency": null,
+  "native_confirmation": {
+    "status": "SKIP",
+    "pairs_executed": 0,
+    "reason": "No candidate passed the screening performance objectives; confirmation/adoption would be premature."
+  },
+  "whole_workflow_delta_stage": {
+    "status": "SKIP",
+    "reason": "Task screening does not qualify the candidate for confirmation. Both scoped startup consultations already omit every optional body; native receipt-delta behavior is separately proven, without claiming whole-workflow savings."
+  },
+  "lexical_retrieval": {
+    "status": "NOT_TRIGGERED",
+    "reason": "No documented scope-filtered section-retrieval failure; repeated mandatory/fresh reads alone do not authorize opening L5."
+  },
+  "optional_manual_postgres_smoke": {
+    "status": "SKIP",
+    "reason": "Separate manual smoke command not executed; actual native PostgreSQL workflow/component evidence is reported independently."
+  },
+  "provider_exact_model_revision": {
+    "status": "UNAVAILABLE",
+    "value": null
+  },
+  "full_body_provider_residency": "UNAVAILABLE",
+  "installation_scope": "Dedicated synthetic installed clients only; ordinary installed skills and observed personal files preserved",
+  "installed_mode_and_option_rollback_evidence": {
+    "status": "PASS",
+    "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+    "proof": "installed-modes.v1.json",
+    "scope": "Configured files/dual/db-only with fixture corpora and local SQLite; opt-out restores ordinary contract and procedures. Not a live-PG/model qualification in every mode."
+  },
+  "source_assured": {
+    "status": "PASS",
+    "commit": "c0acac3ffba4cbcd18ae4903800320645320d539",
+    "families": 9,
+    "url": "https://github.com/leuzeus/aidn/actions/runs/39626145227"
+  },
+  "default_adoption": false,
+  "merge_or_release": false,
+  "programme_fully_qualified": false
+}

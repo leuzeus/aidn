@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "proof_class": "native",
+  "candidate_commit": "c0acac3ffba4cbcd18ae4903800320645320d539",
+  "package_sha256": "ce8e3d227d68a3145a505204a9b1862c484679f23244f839a6142393d5f7e171",
+  "stage": "task-context-final-agent-budget",
+  "execution": "completed_with_failed_workflow",
+  "classification": "declared_mandatory_final_budget_refusal",
+  "selection_validation": "complete",
+  "requested_target_bytes": 65536,
+  "hard_limit_bytes": 65536,
+  "minimum_required_bytes": 68660,
+  "final_refusal_json_bytes": 18043,
+  "optional_units_omitted": [
+    "optional-glossary",
+    "optional-parking"
+  ],
+  "actual_cli_calls": 4,
+  "actual_native_product_patches": 0,
+  "product_verdict": "not_executed_due_context_refusal",
+  "workflow_verdict": "not_qualified",
+  "performance_verdict": "not_evaluated",
+  "elapsed_seconds": 70.928,
+  "usage": {
+    "model_responses": 4,
+    "input_tokens": 151092,
+    "cached_input_tokens": 104704,
+    "output_tokens": 543,
+    "reasoning_output_tokens": 32,
+    "uncached_input_tokens": 46388
+  },
+  "event_source": {
+    "sha256": "74a8a47c97666b9ef80ee369cfaa2111ec08c6fd9942e625c2bb51e228136956",
+    "bytes": 454622
+  },
+  "interpretation": "Final serializer now reports the actual mandatory requirement. The fixture overdeclared whole SPEC as unconditionally mandatory; the kernel makes canonical precision conditional. No requested limit or source authority was changed inside this attempt.",
+  "cleanup": {
+    "owned_processes_closed": true,
+    "postgres_stopped": true,
+    "temporary_authentication_removed": true,
+    "observed_personal_files_preserved": true
+  },
+  "original_attempt_regraded": false,
+  "next_attempt": "New fresh synthetic client with explicit kernel-based conditional SPEC policy; no production adoption"
+}
