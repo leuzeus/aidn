@@ -9,6 +9,8 @@ import {
   resolvePostgresSharedCoordinationConnection,
 } from "./postgres-shared-coordination-contract-service.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
+import { observeWorkflowRead } from "./workflow-observation-service.mjs";
+import { sha256, stableContextJson } from "../../core/context/working-memory-policy.mjs";
 
 function normalizeScalar(value) {
   return String(value ?? "").trim();
@@ -672,7 +674,21 @@ export async function appendSharedCoordinationRecord(resolution, {
   };
 }
 
-export async function readSharedPlanningState(resolution, {
+const sharedReadRevision = value => sha256(stableContextJson({
+  ok: value.ok, status: value.status, reason: value.reason, operation: value.operation,
+  backend: value.backend, planning_state: value.planning_state, handoff_relay: value.handoff_relay,
+  registration_status: value.registration?.status, registration_ok: value.registration?.ok,
+}));
+
+export async function readSharedPlanningState(resolution, options = {}) {
+  const workspace = options.workspace ?? resolution?.workspace;
+  return await observeWorkflowRead({ targetRoot: workspace?.target_root ?? process.cwd(),
+    key: `shared-planning:${options.planningKey ?? ""}:${options.sessionId ?? ""}`,
+    binding: { project: workspace?.project_id, workspace: workspace?.workspace_id, backend: resolution?.backend_kind },
+    load: () => readSharedPlanningStateFresh(resolution, options), revision: sharedReadRevision });
+}
+
+async function readSharedPlanningStateFresh(resolution, {
   workspace = null,
   planningKey = "",
   sessionId = "",
@@ -736,7 +752,15 @@ export async function readSharedPlanningState(resolution, {
   };
 }
 
-export async function readLatestSharedHandoffRelay(resolution, {
+export async function readLatestSharedHandoffRelay(resolution, options = {}) {
+  const workspace = options.workspace ?? resolution?.workspace;
+  return await observeWorkflowRead({ targetRoot: workspace?.target_root ?? process.cwd(),
+    key: `shared-relay:${options.sessionId ?? ""}:${options.scopeType ?? ""}:${options.scopeId ?? ""}`,
+    binding: { project: workspace?.project_id, workspace: workspace?.workspace_id, backend: resolution?.backend_kind },
+    load: () => readLatestSharedHandoffRelayFresh(resolution, options), revision: sharedReadRevision });
+}
+
+async function readLatestSharedHandoffRelayFresh(resolution, {
   workspace = null,
   sessionId = "",
   scopeType = "",

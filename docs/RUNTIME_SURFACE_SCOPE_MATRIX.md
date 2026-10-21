@@ -58,6 +58,13 @@ Purpose:
 
 ## Concept Source-Of-Truth Overlay
 
+`.aidn/runtime/context/agent-view-receipts/*` contains explicit `--write`
+diagnostic observations for opt-in workflow/hook views. The worktree owns these
+unique local files and their retention; there is no automatic purge, shared
+storage or database schema. Their path/hash/bytes identify retained evidence,
+never canonical state or an admission lease. View selection alone creates no
+additional record; existing hidden context/hook writes keep their prior effects.
+
 `.aidn/runtime/context/agents/*` is worktree-local derived working memory. It
 reuses the existing hook context store, is never shared by default, and cannot
 replace canonical decisions or fresh admission. Capture/reuse verifies input,

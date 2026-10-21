@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+  "package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a",
+  "package_files_physically_verified": 1024,
+  "native_binary_version": "codex-cli 0.163.0-alpha.11",
+  "native_binary_sha256": "00c0f1e4099246fddcd67ec620ca8ed50827c7d70e113b7224f7a2933cf2d67c",
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "history_output_tokens": 60000,
+  "exec_output_tokens": 60000,
+  "scope": "Current-runtime functional component qualification only; binary differs from the frozen reference and whole-workflow trials. No old-runtime cost comparison or global savings inference.",
+  "observations": [
+    {
+      "scenario": "caller-held-delta",
+      "status": "PASS",
+      "proof_class": "native-installed-synthetic-client",
+      "session_start": "PASS",
+      "actual_cli_receipts": 2,
+      "model_responses": 3,
+      "usage": {
+        "input_tokens": 79340,
+        "cached_input_tokens": 49536,
+        "output_tokens": 246,
+        "reasoning_output_tokens": 0,
+        "uncached_input_tokens": 29804
+      },
+      "elapsed_seconds": 53.374,
+      "event_source": {
+        "sha256": "13e27d3ebe3269098f258778325b616b72e80e056cc4e34f75cfd66d0e9a5b2e",
+        "bytes": 155999
+      },
+      "fresh_mandatory_units": 5,
+      "unchanged_optional_references": 2,
+      "prior_json_bytes": 35477,
+      "current_json_bytes": 31454,
+      "semantic_restatement": "PASS; separate later model response",
+      "prior_optional_content_in_model_turn": false,
+      "receipt_physically_verified": true,
+      "cleanup": {
+        "owned_processes_closed": true,
+        "postgres_stopped": true,
+        "temporary_authentication_removed": true,
+        "observed_personal_files_preserved": true
+      },
+      "full_workflow_qualification": false,
+      "performance_qualification": false
+    },
+    {
+      "scenario": "native-product-path-refusal-repair",
+      "status": "PASS",
+      "proof_class": "native-installed-synthetic-client",
+      "session_start": "PASS",
+      "actual_cli_receipts": 5,
+      "model_responses": 5,
+      "usage": {
+        "input_tokens": 142637,
+        "cached_input_tokens": 106240,
+        "output_tokens": 659,
+        "reasoning_output_tokens": 34,
+        "uncached_input_tokens": 36397
+      },
+      "elapsed_seconds": 75.23,
+      "event_source": {
+        "sha256": "0d2ff2157c6a4a4df10e2d6d6487aef144ca8e7e4e374442da8dcb758cf60f96",
+        "bytes": 349607
+      },
+      "negative_native_patch": "REFUSED",
+      "corrected_native_patch": "COMPLETED",
+      "plan_unchanged": true,
+      "permissions_or_scope_extended": false,
+      "cleanup": {
+        "owned_processes_closed": true,
+        "postgres_stopped": true,
+        "temporary_authentication_removed": true,
+        "observed_personal_files_preserved": true
+      },
+      "full_workflow_qualification": false,
+      "performance_qualification": false
+    }
+  ],
+  "full_body_provider_residency": "UNAVAILABLE",
+  "default_adoption": false
+}

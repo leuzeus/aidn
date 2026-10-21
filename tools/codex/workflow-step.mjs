@@ -8,6 +8,14 @@ import { runHydrateContextUseCase } from "../../src/application/codex/hydrate-co
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { computeCoordinatorNextAction } from "../runtime/coordinator-next-action.mjs";
+import { persistAgentViewReceipt, projectWorkflowAgentView, validateAgentViewOptions } from "../../src/application/codex/agent-view-projection.mjs";
+import { withWorkflowObservation } from "../../src/application/runtime/workflow-observation-service.mjs";
+import { readWorkflowAdapterConfig } from "../../src/lib/config/workflow-adapter-config-lib.mjs";
+import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
+import { TOKEN_CONTEXT_PROFILE, buildTaskContextRequest, finalizeWorkflowContextBudget } from "../../src/application/codex/task-context-profile.mjs";
+import { projectHistoryTransitions } from "../../src/application/codex/context-history-transitions.mjs";
+import { sha256 } from "../../src/core/context/working-memory-policy.mjs";
+import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 
 const DEFAULT_DAEMON_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 
@@ -60,6 +68,13 @@ export function parseArgs(argv) {
     daemonEndpointFile: DEFAULT_DAEMON_ENDPOINT_FILE,
     daemonTimeoutMs: 30000,
     json: false,
+    view: "full",
+    write: false,
+    grouped: false,
+    contextProfile: "",
+    contextTaskFile: "",
+    contextBaselineFile: "",
+    historyView: "full",
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -146,6 +161,25 @@ export function parseArgs(argv) {
     } else if (token === "--daemon-timeout-ms") {
       args.daemonTimeoutMs = Number(argv[i + 1] ?? 1500);
       i += 1;
+    } else if (token === "--view") {
+      args.view = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--write") {
+      args.write = true;
+    } else if (token === "--grouped") {
+      args.grouped = true;
+    } else if (token === "--context-profile") {
+      args.contextProfile = String(argv[++i] ?? "").trim();
+      if (args.contextProfile !== TOKEN_CONTEXT_PROFILE.id) throw new Error("Unknown context profile");
+    } else if (token === "--context-task-file") {
+      args.contextTaskFile = String(argv[++i] ?? "").trim();
+      if (!args.contextTaskFile || args.contextTaskFile.startsWith("--")) throw new Error("Missing task query file");
+    } else if (token === "--context-baseline-file") {
+      args.contextBaselineFile = String(argv[++i] ?? "").trim();
+      if (!args.contextBaselineFile || args.contextBaselineFile.startsWith("--")) throw new Error("Missing context baseline file");
+    } else if (token === "--history-view") {
+      args.historyView = String(argv[++i] ?? "").trim();
+      if (!["full", "transitions"].includes(args.historyView)) throw new Error("Unknown history view");
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -156,6 +190,11 @@ export function parseArgs(argv) {
     }
   }
   args.skills = unique(args.skills);
+  if (args.contextProfile) {
+    if (!argv.includes("--bundle-target-bytes")) args.bundleTargetBytes = TOKEN_CONTEXT_PROFILE.target_bytes;
+    if (!argv.includes("--bundle-hard-limit-bytes")) args.bundleHardLimitBytes = TOKEN_CONTEXT_PROFILE.hard_limit_bytes;
+  }
+  if (!["full", "agent"].includes(args.view)) throw new Error("Invalid --view. Expected full|agent");
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
@@ -182,6 +221,10 @@ function printUsage() {
   console.log("  npx aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skill requirements-delta --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --json [--write]  (explicit complete diagnostic receipt)");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload,requirements-delta --view agent --grouped --json");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --grouped --context-profile token-efficiency.v1 --json");
+  console.log("  Add --context-baseline-file <complete-prior-agent-or-workflow-receipt.json> for optional-unit delta; --history-view transitions preserves distinct execution references.");
 }
 
 function summarizeAdmission(payload) {
@@ -244,12 +287,13 @@ function buildHydrateArgs(args, skill) {
   };
 }
 
-export async function runWorkflowStep({ args, targetRoot }) {
+async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
   const hookContextStore = createHookContextStoreAdapter();
   const workspace = resolveWorkspaceContext({ targetRoot });
   const steps = [];
   const admissions = {};
   const hydrations = {};
+  let selectionPolicy = null, commonSelection = null, commonDelta = null;
 
   for (const skill of args.skills) {
     const admission = await preWriteAdmit({
@@ -269,6 +313,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
       summary: summarizeAdmission(admission),
     });
 
+    if (!grouped) {
     const hydrated = await runHydrateContextUseCase({
       args: buildHydrateArgs(args, skill),
       hookContextStore,
@@ -283,6 +328,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
       status: "completed",
       summary: summarizeHydration(hydrated),
     });
+    }
   }
 
   const nextAction = await computeCoordinatorNextAction({
@@ -301,15 +347,46 @@ export async function runWorkflowStep({ args, targetRoot }) {
     summary: summarizeNextAction(nextAction),
   });
 
+  const admittedSkills = args.skills.filter(skill => admissions[skill]?.ok === true);
+  if (grouped && admittedSkills.length && nextAction?.recommendation?.stop_required !== true) {
+    if (args.contextProfile) {
+      const task = args.contextTaskFile ? readTaskQuery(targetRoot, args.contextTaskFile) : {};
+      const context = admissions[admittedSkills[0]].context, resolved = resolveRuntimeProjectContext({ targetRoot });
+      const scope = Object.fromEntries(["project_id", "workspace_id", "worktree_id", "runtime_scope_id"].map(key => [key, resolved[key]]));
+      for (const [key, value] of [["session_id", context.active_session], ["cycle_id", context.active_cycle]])
+        if (value && !["none", "unknown"].includes(value)) scope[key] = value;
+      selectionPolicy = buildTaskContextRequest({ adoption: readWorkflowAdapterConfig(targetRoot).data.governanceAdoption,
+        scope, admissions, skills: admittedSkills, task, asOf: new Date().toISOString().slice(0, 10) });
+    }
+    if (selectionPolicy?.mode !== "blocked") {
+    const hydrated = await runHydrateContextUseCase({
+      scopedBudgetOwner: selectionPolicy?.request ? "workflow-agent-json" : "hydrate-json",
+      args: { ...buildHydrateArgs(args, ""), out: "", historySkills: admittedSkills,
+        ...(args.contextProfile && selectionPolicy?.mode === "legacy-full-fallback"
+          ? { bundleTargetBytes: 262144, bundleHardLimitBytes: 1048576 } : {}),
+        ...(selectionPolicy?.request ? { contextRequest: selectionPolicy.request,
+          ...(args.contextBaselineFile ? { contextBaseline: readWorkflowBaseline(targetRoot, args.contextBaselineFile) } : {}) } : {}) },
+      hookContextStore, targetRoot,
+    });
+    commonSelection = hydrated.context_selection ?? null;
+    commonDelta = hydrated.context_delta ?? null;
+    for (const skill of admittedSkills) hydrations[skill] = { ...hydrated, requested_skill: skill,
+      recent_history: args.historyView === "transitions" ? projectHistoryTransitions(hydrated.recent_history.filter(entry => entry.skill === skill))
+        : hydrated.recent_history.filter(entry => entry.skill === skill) };
+    steps.push({ id: "hydrate-context:common", kind: "hydrate-context", skills: admittedSkills,
+      skill: null, ok: commonSelection?.status !== "blocked", status: commonSelection?.status === "blocked" ? "blocked" : "completed", summary: summarizeHydration(hydrated) });
+    }
+  }
+
   const blockedSkills = Object.entries(admissions)
     .filter(([, payload]) => payload?.ok !== true)
     .map(([skill]) => skill);
-  return {
+  const output = {
     ts: new Date().toISOString(),
-    ok: blockedSkills.length === 0,
+    ok: blockedSkills.length === 0 && (!grouped || nextAction?.recommendation?.stop_required !== true),
     contract_version: "codex-workflow-step.v1",
     command: "aidn codex workflow-step --json",
-    effect_class: "projector",
+    effect_class: args.write === true ? "mutating" : grouped ? "read-only" : "projector",
     target_root: targetRoot,
     mode: args.mode || null,
     skills: args.skills,
@@ -325,14 +402,111 @@ export async function runWorkflowStep({ args, targetRoot }) {
       step_count: steps.length,
       admission_count: Object.keys(admissions).length,
       blocked_skill_count: blockedSkills.length,
-      hydrate_count: Object.keys(hydrations).length,
-      next_action_status: steps[steps.length - 1]?.status ?? "unknown",
+      hydrate_count: steps.filter(step => step.kind === "hydrate-context").length,
+      next_action_status: nextAction?.recommendation?.stop_required === true ? "stop_required" : "recommended",
     },
     steps,
     admissions,
     hydrations,
     next_action: nextAction,
+    ...(args.contextProfile ? { context_budget_request: { profile: TOKEN_CONTEXT_PROFILE.id,
+      target_bytes: args.bundleTargetBytes, hard_limit_bytes: args.bundleHardLimitBytes },
+      selection_policy: selectionPolicy ? Object.fromEntries(Object.entries(selectionPolicy).filter(([key]) => key !== "request"))
+        : { mode: "not-attempted", reason: "no_admitted_continuation", write_authorization: false },
+      ...(commonSelection ? { context_selection: commonSelection } : {}) } : {}),
+    ...(args.contextBaselineFile ? { context_delta: commonDelta ?? { contract_version: "context-delta.v1", mode: "full",
+      reason: selectionPolicy?.mode === "legacy-full-fallback" ? "task_policy_full_fallback" : "no_admitted_continuation",
+      baseline_revision: null, source_revision: null, unchanged_optional_refs: [], removed_unit_ids: [], write_authorization: false } } : {}),
+    ...(args.historyView === "transitions" ? { history_view: "transitions" } : {}),
   };
+  return output;
+}
+
+export async function runWorkflowStep({ args, targetRoot }) {
+  validateAgentViewOptions(args);
+  if (args.grouped !== undefined && typeof args.grouped !== "boolean") throw new Error("Grouped workflow selector must be boolean");
+  if (args.contextProfile && (args.contextProfile !== TOKEN_CONTEXT_PROFILE.id || !args.grouped
+      || !Number.isSafeInteger(args.bundleTargetBytes) || !Number.isSafeInteger(args.bundleHardLimitBytes)
+      || args.bundleTargetBytes < 1 || args.bundleTargetBytes > args.bundleHardLimitBytes
+      || args.bundleHardLimitBytes > TOKEN_CONTEXT_PROFILE.hard_limit_bytes)) throw new Error("Invalid grouped context profile or budget");
+  if (args.contextTaskFile && !args.contextProfile) throw new Error("Task query requires a context profile");
+  if (args.contextBaselineFile && !args.contextProfile) throw new Error("Context baseline requires a context profile");
+  if (args.historyView !== undefined && !["full", "transitions"].includes(args.historyView)
+      || args.historyView === "transitions" && !args.grouped) throw new Error("History transitions require a grouped workflow");
+  if (args.grouped && (args.view !== "agent" || !["auto", "sqlite", "postgres"].includes(args.backend)
+      || args.indexFile !== ".aidn/runtime/index/workflow-index.sqlite"
+      || args.currentStateFile !== "docs/audit/CURRENT-STATE.md" || args.runtimeStateFile !== "docs/audit/RUNTIME-STATE.md"
+      || args.packetFile !== "docs/audit/HANDOFF-PACKET.md" || args.contextFile !== ".aidn/runtime/context/codex-context.json"))
+    throw new Error("Grouped workflow requires agent view and canonical runtime paths/backend");
+  let output;
+  if (args.grouped) {
+    const observed = await withWorkflowObservation({ targetRoot, contextFile: args.contextFile },
+      () => computeWorkflowStep({ args, targetRoot, grouped: true }));
+    output = { ...observed.value, observation: observed.observation };
+  } else output = await computeWorkflowStep({ args, targetRoot });
+  const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "workflow-step", payload: output });
+  if (args.view === "agent") {
+    const projected = projectWorkflowAgentView(output, receipt);
+    return args.contextProfile ? finalizeWorkflowContextBudget(projected,
+      { targetBytes: args.bundleTargetBytes, hardLimitBytes: args.bundleHardLimitBytes }) : projected;
+  }
+  if (receipt) output.receipt = receipt;
+  return output;
+}
+
+function readTaskQuery(targetRoot, ref) {
+  const file = fs.realpathSync(path.resolve(targetRoot, ref)), relative = path.relative(fs.realpathSync(targetRoot), file);
+  if (relative.startsWith("..") || path.isAbsolute(relative) || !fs.statSync(file).isFile() || fs.statSync(file).size > 65536)
+    throw new Error("Task query must be a bounded local JSON file");
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(fs.readFileSync(file)));
+}
+
+function readWorkflowBaseline(targetRoot, ref) {
+  try {
+    const file = fs.realpathSync(path.resolve(targetRoot, ref)), relative = path.relative(fs.realpathSync(targetRoot), file);
+    if (relative.startsWith("..") || path.isAbsolute(relative) || !fs.statSync(file).isFile() || fs.statSync(file).size > 4 * 1024 * 1024) return null;
+    let value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(fs.readFileSync(file)));
+    if (value?.contract_version === "agent-view-receipt.v1") {
+      if (value.kind !== "workflow-step" || value.scope !== "worktree-local" || value.write_authorization !== false
+          || !value.observation || typeof value.observation !== "object" || Array.isArray(value.observation)) return null;
+      // A retained observation is caller-held data, not an attestation or an
+      // admission. Apply the ordinary projection, then all existing scope,
+      // metadata, graph and body-integrity checks before optional reuse.
+      value = projectWorkflowAgentView(value.observation);
+    }
+    if (value.contract_version !== "codex-workflow-step-agent.v1" || value.bundle_budget?.status === "blocked"
+        || !Array.isArray(value.contexts) || !value.contexts.length || !Array.isArray(value.artifacts) || value.artifacts.length > 128) return null;
+    const revision = value.contexts[0].source_revision;
+    if (!value.contexts.every(context => context.source_revision === revision && Array.isArray(context.artifact_refs))) return null;
+    const artifacts = new Map(), metadata = new Map();
+    if (value.artifact_metadata !== undefined && (!Array.isArray(value.artifact_metadata) || value.artifact_metadata.length > 128)) return null;
+    for (const row of value.artifact_metadata ?? []) {
+      if (!row || typeof row !== "object" || Array.isArray(row) || metadata.has(row.id)
+          || Object.keys(row).length !== 5 || !["id", "source", "path", "sha256", "canonical"].every(key => Object.hasOwn(row, key))
+          || !row.source || typeof row.source !== "object" || Array.isArray(row.source)
+          || typeof row.path !== "string" || !/^[a-f0-9]{64}$/.test(row.sha256)
+          || !row.canonical || typeof row.canonical !== "object" || Array.isArray(row.canonical)) return null;
+      const { id, ...binding } = row;
+      if (id !== sha256(JSON.stringify(binding))) return null;
+      metadata.set(id, row);
+    }
+    const metadataRefs = new Set();
+    for (const row of value.artifacts) {
+      if (!row || artifacts.has(row.id) || row.id !== sha256(JSON.stringify({ source: row.source, artifact: row.artifact }))) return null;
+      if (row.artifact?.canonical_ref !== undefined) {
+        const bound = metadata.get(row.artifact.canonical_ref);
+        if (!bound || bound.path !== row.artifact.path || bound.sha256 !== row.artifact.sha256
+            || JSON.stringify(bound.source) !== JSON.stringify(row.source)) return null;
+        metadataRefs.add(bound.id);
+      }
+      artifacts.set(row.id, row.artifact);
+    }
+    if (metadataRefs.size !== metadata.size) return null;
+    const refs = new Set(value.contexts.flatMap(context => context.artifact_refs));
+    if (refs.size !== artifacts.size || [...refs].some(id => !artifacts.has(id))) return null;
+    return { source_revision: revision, context_selection: value.context_selection,
+      context_delta: value.context_delta, artifacts: [...artifacts.values()] };
+  } catch { return null; }
 }
 
 function resolveDaemonEndpointFile(targetRoot, endpointFile) {
@@ -438,9 +612,11 @@ function requestDaemonWorkflowStep({ args, targetRoot }) {
 }
 
 async function main() {
-  let outputJson = false;
+  const originalArgv = process.argv.slice(2);
+  let outputJson = originalArgv.includes("--json"), parsedArgs = null;
   try {
-    const args = parseArgs(process.argv.slice(2));
+    const args = parseArgs(originalArgv);
+    parsedArgs = args;
     outputJson = args.json;
     const targetRoot = path.resolve(process.cwd(), args.target);
     let output;
@@ -473,22 +649,41 @@ async function main() {
         reason: "not_requested",
       };
     }
+    // Transport metadata is part of the final command JSON too. Reconcile the
+    // same budget without restoring an omitted unit or clearing a refusal.
+    if (args.contextProfile) finalizeWorkflowContextBudget(output,
+      { targetBytes: args.bundleTargetBytes, hardLimitBytes: args.bundleHardLimitBytes });
     if (args.json) {
-      console.log(JSON.stringify(output, null, 2));
+      console.log(args.view === "agent" ? JSON.stringify(output) : JSON.stringify(output, null, 2));
     } else {
-      console.log(`Workflow step ${output.ok ? "OK" : "WARN"}: skills=${output.skills.join(",")} next=${output.steps.at(-1)?.summary?.action ?? "unknown"}`);
+      console.log(`Workflow step ${output.ok ? "OK" : "WARN"}: skills=${output.skills.join(",")} next=${output.next_action?.recommendation?.action ?? "unknown"}`);
     }
     if (args.strict && !output.ok) {
       process.exit(1);
     }
   } catch (error) {
-    const out = {
+    let out = {
       ts: new Date().toISOString(),
       ok: false,
       message: String(error.message ?? error),
     };
+    const viewIndex = originalArgv.lastIndexOf("--view");
+    if ((parsedArgs?.view ?? (viewIndex >= 0 ? originalArgv[viewIndex + 1] : "full")) === "agent") {
+      const targetIndex = originalArgv.lastIndexOf("--target"), candidate = targetIndex < 0 ? "." : originalArgv[targetIndex + 1];
+      const target = parsedArgs?.target ?? (candidate && !candidate.startsWith("--") ? candidate : ".");
+      const code = String(error.code ?? "").startsWith("WORKFLOW_") ? error.code
+        : parsedArgs ? "WORKFLOW_STEP_FAILED" : "WORKFLOW_ARGUMENT_INVALID";
+      out = { ...out, contract_version: "codex-workflow-step-agent-error.v1",
+        command: "aidn codex workflow-step --view agent --json", effect_class: resolveCliEffectClass("aidn codex workflow-step", originalArgv),
+        view: "agent", target_root: path.resolve(process.cwd(), target), status: "refused", code,
+        diagnostic_scope: "invocation-refused", source_revision: null, write_authorization: false,
+        repair_actions: [code === "WORKFLOW_CONTEXT_SOURCE_MISMATCH"
+          ? "Refresh the owned index/projection from its canonical authority through an explicitly authorized write, then run a fresh consultation."
+          : code === "WORKFLOW_ARGUMENT_INVALID" ? "Correct the workflow arguments and submit a fresh consultation."
+            : "Reanchor the reported context and retry a complete fresh consultation; prior observations grant no admission."], receipt: null };
+    }
     if (outputJson) {
-      console.log(JSON.stringify(out, null, 2));
+      console.log(out.view === "agent" ? JSON.stringify(out) : JSON.stringify(out, null, 2));
     } else {
       console.error(`ERROR: ${out.message}`);
       printUsage();

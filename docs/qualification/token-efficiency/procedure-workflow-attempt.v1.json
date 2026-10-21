@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "proof_class": "native",
+  "candidate_commit": "78439191136374e8ffc10677528e2422242d9f5e",
+  "package_sha256": "61d889fae3b53c8c1ee58c54ce8ea6a5b6ebb3c35a233be07b9545691210ee9c",
+  "stage": "experimental-procedures-on-fixed-engine",
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "history_output_limit": "native default; not explicitly overridden",
+  "execution": "interrupted_by_provider",
+  "classification": "external_provider_capacity",
+  "provider_error": {
+    "code": "serverOverloaded",
+    "message": "Selected model is at capacity. Please try a different model."
+  },
+  "application_oracle": {
+    "passed": 20,
+    "total": 20
+  },
+  "coordinator_relay": "PASS",
+  "phase_1": "PASS",
+  "phase_2": "incomplete",
+  "terminal_gate": {
+    "status": "UNAVAILABLE",
+    "observed_harness_status": "FAIL",
+    "reason": "No positive terminal receipts after failed provider turn; workflow cannot qualify."
+  },
+  "product_verdict": "application_oracle_passed_workflow_not_qualified",
+  "workflow_verdict": "not_qualified",
+  "performance_verdict": "not_evaluated",
+  "elapsed_seconds": 1779.154,
+  "usage": {
+    "scope": "unique-completed-responses-only",
+    "model_responses": 75,
+    "input_tokens": 8505148,
+    "cached_input_tokens": 8107520,
+    "output_tokens": 36046,
+    "reasoning_output_tokens": 7355,
+    "uncached_input_tokens": 397628,
+    "failed_provider_request_usage": "UNAVAILABLE"
+  },
+  "event_sources": [
+    {
+      "phase": 1,
+      "sha256": "d437576127f43533467c3918f0582b97d73d50228ef6eedcce162c885c3c3862",
+      "bytes": 5408252
+    },
+    {
+      "phase": 2,
+      "sha256": "ee7a1f67786e92c66817f24b818a81792e2d9776e566c45c4a2807eb56eb7ded",
+      "bytes": 2570050
+    }
+  ],
+  "first_phase_observation": {
+    "actual_outer_cli_calls": 54,
+    "prewrite_calls": 11,
+    "comparison_scope": "Descriptive versus 42 calls and 5 prewrite calls in the prior hook-view trial; no causal performance inference.",
+    "readiness_refusals_repaired": 1
+  },
+  "cleanup": {
+    "owned_processes_closed": true,
+    "postgres_stopped": true,
+    "temporary_authentication_removed": true,
+    "observed_personal_files_preserved": true,
+    "frozen_harness_preserved": true,
+    "stale_visible_anchors_preserved": true
+  },
+  "confirmation_pairs": 0,
+  "median_latency": null,
+  "adoption": false,
+  "full_body_provider_residency": "UNAVAILABLE",
+  "later_correction_scope": "Source activation projection and procedure wording are independent targeted corrections, not fixes for provider capacity and not qualified by this attempt."
+}

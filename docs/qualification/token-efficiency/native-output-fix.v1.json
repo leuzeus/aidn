@@ -1,0 +1,436 @@
+{
+  "schema_version": 1,
+  "proof_class": "native-context-output-component",
+  "status": "PASS",
+  "candidate_commit": "f25b2753730c529c3c023429d7e6c905d364be7a",
+  "package_version": "0.14.0",
+  "package_sha256": "bce05e5728b1f9cce28fc14f8d156f989a13c6cf2c1bbad82448fd1117025591",
+  "installed_package_files_verified": 1024,
+  "native_binary_version": "codex-cli 0.163.0-alpha.11",
+  "native_binary_sha256": "00c0f1e4099246fddcd67ec620ca8ed50827c7d70e113b7224f7a2933cf2d67c",
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "diagnosis": "The exec display allowance and native per-tool history capacity are distinct. Display capacity alone does not establish complete model availability. A separate host harness notification-order race could also report PASS before validating or acknowledging restitution.",
+  "output_policy": {
+    "id": "bounded-context.v1",
+    "history_token_limit": 60000,
+    "suggested_exec_output_tokens": 60000,
+    "max_dynamic_tool_json_bytes": 131072
+  },
+  "official_config_reference": "https://learn.chatgpt.com/docs/config-file/config-reference",
+  "direct_history_override_in_test_requests": false,
+  "focused_fixture_scenarios": 17,
+  "focused_fixtures": "PASS",
+  "regression_before_fix": {
+    "status": "FAIL",
+    "assertion": "thread/start did not select config.tool_output_token_limit=60000",
+    "log_sha256": "85b4e45bf977999d123caade69ccdea154816a2277b07af5c48fa508b43e8bb6"
+  },
+  "focused_after_fix_log_sha256": "99a0c8af0ba718e0fb868b9a1e8bfdd1a902d58cd3db9180670b60cc28411b62",
+  "live_installed_postgres": {
+    "schema_version": 1,
+    "proof_class": "native-installed-postgres-component",
+    "status": "PASS",
+    "candidate_commit": "f25b2753730c529c3c023429d7e6c905d364be7a",
+    "write_authorization": false,
+    "requested_target_bytes": 65536,
+    "direct_history_override_in_test_request": false,
+    "product_or_canonical_mutation": false,
+    "whole_workflow_qualification": false,
+    "native_output_policy": {
+      "id": "bounded-context.v1",
+      "history_token_limit": 60000,
+      "suggested_exec_output_tokens": 60000,
+      "max_dynamic_tool_json_bytes": 131072
+    },
+    "complete_cli_json_bytes": 49702,
+    "cli_json_sha256": "1511ad3b503797e07f0ae0240b1cf1ad7d374f2fc65ce372ba71fa35b9f5f82e",
+    "oracle_sha256": "bf5b78bb272bf6ff8a476102b5734f6154c2ec23664e610baa177823ae669ae3",
+    "mandatory_whole_units": 4,
+    "actual_native_session_start": "PASS",
+    "separate_later_exact_restitution": "PASS",
+    "output_observations": [
+      {
+        "output_profile": "bounded-context.v1",
+        "status": "sent",
+        "reason": null,
+        "json_bytes": 49743,
+        "sha256": "2d1a54a3476dd41369df587f2902021b9c6b6f3492845e636015cd174d9f05f9",
+        "max_dynamic_tool_json_bytes": 131072,
+        "requested_history_token_limit": 60000,
+        "provider_body_residency": "UNAVAILABLE",
+        "write_authorization": false
+      },
+      {
+        "output_profile": "bounded-context.v1",
+        "status": "sent",
+        "reason": null,
+        "json_bytes": 45,
+        "sha256": "64393aba9bbe092e220feb1eb7a1675013c5f204cd0949a3c5b4a7451c74a71f",
+        "max_dynamic_tool_json_bytes": 131072,
+        "requested_history_token_limit": 60000,
+        "provider_body_residency": "UNAVAILABLE",
+        "write_authorization": false
+      }
+    ],
+    "readonly_checkout_preserved": true,
+    "usage": {
+      "contract_version": "response-usage-observation.v1",
+      "proof_class": "caller-supplied-events",
+      "observation_scope": "unique-completed-responses",
+      "model_responses": 3,
+      "duplicate_observations": 0,
+      "tokens": {
+        "input_tokens": 88222,
+        "cached_input_tokens": 53760,
+        "output_tokens": 481,
+        "reasoning_output_tokens": 0,
+        "uncached_input_tokens": 34462
+      },
+      "token_source": "client-reported",
+      "complete_counters": true,
+      "window_pressure": "not_evaluated",
+      "admission_evidence": false
+    },
+    "elapsed_seconds": 39.288
+  },
+  "retained_controls": [
+    {
+      "status": "PASS_EXPECTED_TRUNCATION",
+      "case": "legacy-history",
+      "proof_class": "native-retained-data-readability",
+      "history_output_tokens": null,
+      "native_output_policy": null,
+      "direct_history_override_in_test_request": false,
+      "exec_output_tokens": 60000,
+      "retained_cli_json_bytes": 49675,
+      "retained_cli_sha256": "c712e5d11d11a7fde78918896f0128e80309594bb25855f64a41a35c249c5d8a",
+      "fresh_admission": false,
+      "write_authorization": false,
+      "live_workflow_qualification": false,
+      "expected_oracle_sha256": "b34e866b8cbe88cab06bdb74b932cca7da6d13fe011d7c77d120fc409c2ee0b1",
+      "separate_user_turns": {
+        "distinct": true,
+        "second_turn_executed": true
+      },
+      "turn_status": "completed",
+      "output_observations": [
+        {
+          "output_profile": null,
+          "status": "sent",
+          "reason": null,
+          "json_bytes": 49780,
+          "sha256": "c0f29533d02b334666d2cca8926ab6d4b5e3c1b34bd89f34734b0a57c75e42f6",
+          "max_dynamic_tool_json_bytes": null,
+          "requested_history_token_limit": null,
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "semantic_restitution": "not_attempted_after_missing_content",
+      "no_retry_or_extra_tool_calls": true,
+      "callback_errors": [],
+      "usage": {
+        "contract_version": "response-usage-observation.v1",
+        "proof_class": "caller-supplied-events",
+        "observation_scope": "unique-completed-responses",
+        "model_responses": 3,
+        "duplicate_observations": 0,
+        "tokens": {
+          "input_tokens": 72453,
+          "cached_input_tokens": 28416,
+          "output_tokens": 115,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 44037
+        },
+        "token_source": "client-reported",
+        "complete_counters": true,
+        "window_pressure": "not_evaluated",
+        "admission_evidence": false
+      },
+      "elapsed_seconds": 9.835
+    },
+    {
+      "status": "PASS",
+      "case": "bounded-phase1",
+      "proof_class": "native-retained-data-readability",
+      "history_output_tokens": 60000,
+      "native_output_policy": {
+        "id": "bounded-context.v1",
+        "history_token_limit": 60000,
+        "suggested_exec_output_tokens": 60000,
+        "max_dynamic_tool_json_bytes": 131072
+      },
+      "direct_history_override_in_test_request": false,
+      "exec_output_tokens": 60000,
+      "retained_cli_json_bytes": 49675,
+      "retained_cli_sha256": "c712e5d11d11a7fde78918896f0128e80309594bb25855f64a41a35c249c5d8a",
+      "fresh_admission": false,
+      "write_authorization": false,
+      "live_workflow_qualification": false,
+      "expected_oracle_sha256": "b34e866b8cbe88cab06bdb74b932cca7da6d13fe011d7c77d120fc409c2ee0b1",
+      "separate_user_turns": {
+        "distinct": true,
+        "second_turn_executed": true
+      },
+      "turn_status": "completed",
+      "output_observations": [
+        {
+          "output_profile": "bounded-context.v1",
+          "status": "sent",
+          "reason": null,
+          "json_bytes": 49780,
+          "sha256": "c0f29533d02b334666d2cca8926ab6d4b5e3c1b34bd89f34734b0a57c75e42f6",
+          "max_dynamic_tool_json_bytes": 131072,
+          "requested_history_token_limit": 60000,
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "output_profile": "bounded-context.v1",
+          "status": "sent",
+          "reason": null,
+          "json_bytes": 45,
+          "sha256": "64393aba9bbe092e220feb1eb7a1675013c5f204cd0949a3c5b4a7451c74a71f",
+          "max_dynamic_tool_json_bytes": 131072,
+          "requested_history_token_limit": 60000,
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "no_retry_or_extra_tool_calls": true,
+      "callback_errors": [],
+      "usage": {
+        "contract_version": "response-usage-observation.v1",
+        "proof_class": "caller-supplied-events",
+        "observation_scope": "unique-completed-responses",
+        "model_responses": 4,
+        "duplicate_observations": 0,
+        "tokens": {
+          "input_tokens": 102892,
+          "cached_input_tokens": 85504,
+          "output_tokens": 385,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 17388
+        },
+        "token_source": "client-reported",
+        "complete_counters": true,
+        "window_pressure": "not_evaluated",
+        "admission_evidence": false
+      },
+      "elapsed_seconds": 17.332
+    },
+    {
+      "status": "PASS",
+      "case": "bounded-phase2",
+      "proof_class": "native-retained-data-readability",
+      "history_output_tokens": 60000,
+      "native_output_policy": {
+        "id": "bounded-context.v1",
+        "history_token_limit": 60000,
+        "suggested_exec_output_tokens": 60000,
+        "max_dynamic_tool_json_bytes": 131072
+      },
+      "direct_history_override_in_test_request": false,
+      "exec_output_tokens": 60000,
+      "retained_cli_json_bytes": 55682,
+      "retained_cli_sha256": "7f1ee412de386899bbc537e0bcac92e9bca41cce7cfc300378c727776b9bc68b",
+      "fresh_admission": false,
+      "write_authorization": false,
+      "live_workflow_qualification": false,
+      "expected_oracle_sha256": "b34e866b8cbe88cab06bdb74b932cca7da6d13fe011d7c77d120fc409c2ee0b1",
+      "separate_user_turns": {
+        "distinct": true,
+        "second_turn_executed": true
+      },
+      "turn_status": "completed",
+      "output_observations": [
+        {
+          "output_profile": "bounded-context.v1",
+          "status": "sent",
+          "reason": null,
+          "json_bytes": 55787,
+          "sha256": "681dd3faa0b18d2a48a44f83a3017b48727b5d114ebfcd71a218d317e258d9e2",
+          "max_dynamic_tool_json_bytes": 131072,
+          "requested_history_token_limit": 60000,
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "output_profile": "bounded-context.v1",
+          "status": "sent",
+          "reason": null,
+          "json_bytes": 45,
+          "sha256": "64393aba9bbe092e220feb1eb7a1675013c5f204cd0949a3c5b4a7451c74a71f",
+          "max_dynamic_tool_json_bytes": 131072,
+          "requested_history_token_limit": 60000,
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "no_retry_or_extra_tool_calls": true,
+      "callback_errors": [],
+      "usage": {
+        "contract_version": "response-usage-observation.v1",
+        "proof_class": "caller-supplied-events",
+        "observation_scope": "unique-completed-responses",
+        "model_responses": 4,
+        "duplicate_observations": 0,
+        "tokens": {
+          "input_tokens": 107351,
+          "cached_input_tokens": 75904,
+          "output_tokens": 430,
+          "reasoning_output_tokens": 40,
+          "uncached_input_tokens": 31447
+        },
+        "token_source": "client-reported",
+        "complete_counters": true,
+        "window_pressure": "not_evaluated",
+        "admission_evidence": false
+      },
+      "elapsed_seconds": 15.05
+    },
+    {
+      "status": "PASS_EXPECTED_REFUSAL",
+      "case": "oversized",
+      "proof_class": "native-retained-data-readability",
+      "history_output_tokens": 60000,
+      "native_output_policy": {
+        "id": "bounded-context.v1",
+        "history_token_limit": 60000,
+        "suggested_exec_output_tokens": 60000,
+        "max_dynamic_tool_json_bytes": 131072
+      },
+      "direct_history_override_in_test_request": false,
+      "exec_output_tokens": 60000,
+      "retained_cli_json_bytes": 49675,
+      "retained_cli_sha256": "c712e5d11d11a7fde78918896f0128e80309594bb25855f64a41a35c249c5d8a",
+      "fresh_admission": false,
+      "write_authorization": false,
+      "live_workflow_qualification": false,
+      "expected_oracle_sha256": "b34e866b8cbe88cab06bdb74b932cca7da6d13fe011d7c77d120fc409c2ee0b1",
+      "separate_user_turns": {
+        "distinct": true,
+        "second_turn_executed": false
+      },
+      "turn_status": "completed",
+      "output_observations": [
+        {
+          "output_profile": "bounded-context.v1",
+          "status": "refused",
+          "reason": "NATIVE_PROBE_TOOL_OUTPUT_BYTES_EXCEEDED",
+          "json_bytes": 180865,
+          "sha256": "efcf80c119f0251b5f2c1390747bfb9309fe1b2ef23c8b872c07bd35539c1435",
+          "max_dynamic_tool_json_bytes": 131072,
+          "requested_history_token_limit": 60000,
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "semantic_restitution": "not_attempted_after_refusal",
+      "no_retry_or_extra_tool_calls": true,
+      "callback_errors": [],
+      "usage": {
+        "contract_version": "response-usage-observation.v1",
+        "proof_class": "caller-supplied-events",
+        "observation_scope": "unique-completed-responses",
+        "model_responses": 2,
+        "duplicate_observations": 0,
+        "tokens": {
+          "input_tokens": 30853,
+          "cached_input_tokens": 15232,
+          "output_tokens": 72,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 15621
+        },
+        "token_source": "client-reported",
+        "complete_counters": true,
+        "window_pressure": "not_evaluated",
+        "admission_evidence": false
+      },
+      "elapsed_seconds": 6.241
+    }
+  ],
+  "retained_protocol": "Two distinct completed user turns; callback accepted only after exact oracle equality; two successful output observations required for positive cases; one startup call and no retries.",
+  "prior_harness_audit": [
+    {
+      "reference": "native-startup-readability.v1.json",
+      "case": "expanded",
+      "original_reported_status": "PASS",
+      "later_validation_status": "UNAVAILABLE",
+      "classification": "qualification_harness_error",
+      "original_report_sha256": "a3d6647556d2717b96f841a2cde40d72cf03592e777f6a57679ef28a081d11c5",
+      "native_events_sha256": "eedbcb17cdca6d8dc68e4f0dca4975c7b332e40141855c7afdabc2283bf2da11",
+      "submission_acknowledged": false,
+      "original_files_preserved": true
+    },
+    {
+      "reference": "untracked intermediate retained control",
+      "case": "bounded-phase1",
+      "original_reported_status": "PASS",
+      "later_validation_status": "UNAVAILABLE",
+      "classification": "qualification_harness_error",
+      "original_report_sha256": "b3b4173cb92f75396a1fb01b270cf86be347f8c168a4ec88de5fc37f208b195e",
+      "native_events_sha256": "1a1b1e2c93fca162e9b30c042af5946541e4b2eb61a0a6bea8d8bb74482b9537",
+      "submission_acknowledged": false,
+      "original_files_preserved": true
+    },
+    {
+      "reference": "untracked intermediate retained control",
+      "case": "bounded-phase2",
+      "original_reported_status": "PASS",
+      "later_validation_status": "UNAVAILABLE",
+      "classification": "qualification_harness_error",
+      "original_report_sha256": "e7eb13124bf0750890b34e6d33aaf9bbe61f373408398db68d61cf8ef138f4ea",
+      "native_events_sha256": "fa258d8823111c4ddb34c01fd54e8dcee03fb6d301a14b76ea78a3f63bb28c22",
+      "submission_acknowledged": false,
+      "original_files_preserved": true
+    }
+  ],
+  "audit_interpretation": "Earlier raw PASS reports remain unchanged. Their claimed semantic qualification is withdrawn because the callback was refused before the oracle check. New two-turn controls and the independently acknowledged live installed test supply the current component evidence. This is not a product failure.",
+  "artifacts": [
+    {
+      "name": "frozen retained driver",
+      "sha256": "06addbfe3321f8eebee08025ffd8fa10857ad4e1248fda1176357dad54e9e48e"
+    },
+    {
+      "name": "frozen live driver",
+      "sha256": "6506105cba080e6b3c7c6f4b58fb50cf9b77ca8475efe534bfc9461ac2acfed8"
+    },
+    {
+      "name": "live native events",
+      "sha256": "d95c4b6e57e4803a68c36535408a7356aa3f5662303f941810db7c39f05c862e"
+    },
+    {
+      "name": "legacy-history native events",
+      "sha256": "614593cceb0ef28bd1b2252002af3ad20cf724bdc92c55dfb97ece1d12bf67dc"
+    },
+    {
+      "name": "bounded-phase1 native events",
+      "sha256": "195a070014ef1816292906f49a7239452132779e79ce664514139bf47732b138"
+    },
+    {
+      "name": "bounded-phase2 native events",
+      "sha256": "9cb96534dddc3f860e4e201fbc2ae836f31762987f2d65a7c40728595ea3f92b"
+    },
+    {
+      "name": "oversized native events",
+      "sha256": "05ffc9a7ee00809edd7f098c2ec66b46e6851b17203d221231b96659b956c88a"
+    }
+  ],
+  "cleanup": {
+    "owned_native_jobs_closed_with_zero_descendants": true,
+    "temporary_authentication_removed": true,
+    "owned_postgres_stopped": true,
+    "observed_personal_files_preserved": true,
+    "readonly_checkout_preserved": true
+  },
+  "whole_workflow_performance": "UNAVAILABLE",
+  "whole_workflow_authority_readability": "UNAVAILABLE",
+  "provider_body_residency": "UNAVAILABLE",
+  "ordinary_installed_skill_adoption": false,
+  "personal_configuration_changed": false,
+  "release_or_merge": false,
+  "interpretation": "The fixed installed native qualification port restores exact required-unit restitution in these bounded cases and refuses oversized output without fragments or action retries. This does not restore prior clipped history, qualify every output size/client, or establish whole-workflow token savings. Fresh matched complete workflows remain necessary for programme qualification."
+}

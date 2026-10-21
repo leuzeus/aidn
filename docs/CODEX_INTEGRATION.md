@@ -15,6 +15,164 @@ discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
 and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIES.md).
 
+## Opt-in compact agent views
+
+`workflow-step --view agent --grouped --json` additionally opts into one
+invocation-local observation. It evaluates separate admissions and the
+coordinator before hydrating the union of admitted skills once. Blocked skills
+receive diagnostics only; a coordinator stop prevents all hydration. Canonical
+snapshot and shared planning/relay reads are reused only inside that invocation,
+then read freshly to fence publication. A material local, activation, canonical
+or shared-state change refuses the result. No observation can authorize a later
+write; fresh specific admission, CAS and reservation fences still apply there.
+The grouped path creates no hydration cache or visible projection. A complete
+diagnostic receipt still requires `--write` and is written after the fence.
+Each projected admission retains the actual compact activation state required
+by installed skill guards. Absent activation is `active: null`, never inferred
+from `ok`. These are facts for the current consultation, not permission for a
+later skill action or edit; its prescribed fresh admission remains mandatory.
+
+This experimental path currently requires an initialized Git checkout with a
+capturable local revision and the canonical runtime paths. The audit corpus is
+also fenced independently of Git ignores (regular files, at most 64 MiB);
+symbolic audit inputs or incomplete capture refuse. Unsupported selectors
+or unavailable revision capture refuse explicitly; the legacy path remains
+available. PostgreSQL configuration selects the canonical backend even when a
+compatibility SQLite projection exists. The ordinary per-skill path remains the
+default, including when only `--view agent` is selected.
+
+In the grouped path, DB-backed admissions and coordinator reads use the same
+canonical snapshot in `dual` as well as `db-only`; stale visible runtime digests
+do not override it. Selected checkout rules (`SPEC.md`/`WORKFLOW.md`) must agree
+with their indexed/store copy. Legacy files-mode hydration also checks selected
+text and state references against the checkout. A disagreement refuses with
+`WORKFLOW_CONTEXT_SOURCE_MISMATCH`, without publishing a context or retaining a
+stale diagnostic receipt. Refreshing an owned projection/index requires a
+separate explicit write from the appropriate canonical authority.
+
+Argument-validation or dispatch exceptions after common activation use
+`codex-workflow-step-agent-error.v1`: a refused
+diagnostic, repair actions, null source revision/receipt and no write
+authorization. The effect class retains the original invocation intent, including
+`mutating` when `--write` was requested. A refusal is not an attestation that no
+write was attempted. Historical full-output defaults remain compatible.
+The common CLI activation boundary retains its existing activation-refusal
+contract and runs before workflow dispatch.
+A completed blocked admission retains the ordinary agent diagnostic contract,
+with `ok: false`, blockers and no rich context for the refused skill. Inspect the
+JSON decision: non-strict diagnosis can exit zero; `--strict` exits one when the
+workflow result is not OK. An unavailable backend never falls back to visible
+anchors or establishes a canonical source revision through those anchors.
+
+The additional `--context-profile token-efficiency.v1` selector automates the
+union of known admitted skills' needs using the client's existing accepted
+`governanceAdoption`. The client owns `extensions.contextUnits` and the following
+extension shape (a draft example, not an acceptance or installation action):
+
+```json
+{
+  "taskContextPolicies": {
+    "schemaVersion": 1,
+    "mandatory": ["invariants"],
+    "skills": {
+      "context-reload": {
+        "mandatory": ["local-workflow"],
+        "optional": ["recent-decisions"],
+        "rules": [{
+          "when": {"operations": ["migrate"], "pathPrefixes": ["src/runtime"]},
+          "mandatory": ["migration-readiness"],
+          "optional": []
+        }]
+      }
+    }
+  }
+}
+```
+
+Each identifier must resolve through the accepted complete-unit bindings and
+their dependency closure. Changing effective client obligations follows that
+client's adoption revision/history process. A task query such as
+`{"operation":"migrate","paths":["src/runtime/change.mjs"]}` can be supplied
+with `--context-task-file <local.json>` (bounded local JSON, at most 64 KiB).
+Rules can also match canonical `modes`, `cycleStates` or the presence of a
+`blocked` skill. They only add obligations; the stable mandatory set remains.
+Unknown skills or missing mappings use historical full selection. Invalid or
+unaccepted declared policies refuse. No client policy is created automatically.
+
+The experimental final compact JSON target is 16,384 bytes with a maximum of
+65,536. `--bundle-target-bytes` and `--bundle-hard-limit-bytes` can select smaller
+bounds or an explicit expansion within that maximum. Legacy defaults remain
+262,144/1,048,576 bytes outside this profile. The counter includes admissions,
+complete selected units, history, scope, findings, actual receipt references and
+final daemon metadata; terminal framing/newlines are outside compact JSON.
+The grouped profile owns this final serialization budget. Its internal scoped
+hydration validates complete units and defers budgeting to the agent formatter,
+so intermediate full source metadata cannot cause a false refusal before compact
+projection. The public standalone hydration selector keeps its own complete JSON
+budget. No public option delegates or disables that standalone limit.
+Scoped agent units reference one `artifact_metadata` entry for compact source
+identity (schema, format, class, title and statistics), bound to path, source hash
+and observation scope. Parsed whole-document sections and inferred runtime/session
+fields are excluded so unselected text cannot reappear through derived metadata.
+Each unit retains its complete selected text and authority/dependency provenance.
+The final budget removes unreferenced metadata with omitted units; a caller-held
+baseline with corrupt, missing or foreign metadata references reconstructs freshly.
+Full source metadata remains on the historical/full route and in explicitly
+retained full diagnostic receipts. An in-response identity entry is not a receipt
+or write authorization.
+Optional closure is omitted first. If the mandatory response cannot fit target,
+the result is blocked with measured expansion requirements, without incomplete
+mandatory bodies. Diagnostics themselves can exceed an impossible requested
+limit; `fits_hard_limit: false` reports it explicitly. A new, freshly admitted
+consultation is needed for expansion; no authority or permission is cached.
+
+With the profile, `--context-baseline-file <complete-prior.json>` reuses
+the existing differential selector. Supply a captured complete prior agent
+response or the actual complete workflow receipt returned by an earlier explicit
+`--write`. A receipt must be `agent-view-receipt.v1`, `kind: workflow-step`,
+worktree-local and marked `write_authorization: false`. Its observation is
+projected through the ordinary agent formatter and checked as an untrusted hint;
+reading it does not retain another receipt or authorize an action. Missing,
+corrupt, foreign, partial or incompatible baselines trigger complete fresh
+selection. All current mandatory authorities and dependency closure are returned
+again. Only exact unchanged optional bodies become references. A differential
+response or its receipt is not itself a complete baseline for chaining. Retain
+the last complete baseline instead. Removed-unit notices
+remain visible; optional references/provenance can be omitted explicitly to fit
+the final budget. No baseline can supply a missing current authority.
+
+`--history-view transitions` is an additional grouped presentation. It groups
+identical typed decisions with the same known files-context provenance, retaining
+each execution identity, timestamp and raw observation reference. Unknown
+canonical history revisions are kept separate; a file fingerprint does not
+establish a PostgreSQL revision. Stale history stays marked stale, and a fresh
+consultation independently admits and selects current authorities. These are
+unverified history references, not retained-receipt descriptors or permission.
+The view changes neither the stored history nor its retained raw files.
+
+`aidn codex workflow-step --skills context-reload,requirements-delta --view agent --json`
+projects the same per-skill admissions and hydration as the default full format.
+It returns every blocker and warning, source revisions, context references and
+one copy of each identical selected artifact body. Different source observations
+remain distinct. A compact view is not permission to perform a product edit.
+Legacy excerpt truncation markers remain visible; an old prefix is not promoted
+to a complete authority section by this projection.
+
+The internal `codex run-json-hook` wrapper has the same opt-in view selector;
+its command status, strict/repair/synchronization refusal behavior and existing
+raw context-store evidence remain intact. The agent view removes duplicated
+`normalized` and summary bodies; `--verbose` or `--include-raw` must use full view.
+The `full` selector preserves the historical output mode rather than forcing
+verbose output; the existing verbosity flags retain that role.
+
+Either command can add `--write` to retain its complete diagnostic observation
+in a unique `.aidn/runtime/context/agent-view-receipts/` file. Returned path,
+SHA-256 and byte length describe the actually retained file. No receipt is
+invented when storage was not requested. These files are local diagnostic data,
+not canonical state, current admission or a reusable permission. They are not
+shared or automatically purged. Existing output and procedure defaults remain
+unchanged; fixture byte observations do not establish native token gains.
+
 ## Opt-in scoped context consultation
 
 The explicit selection variant also accepts `--context-baseline-file <prior.json>`

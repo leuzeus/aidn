@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "proof_class": "installed-cli-with-tracked-fixture-corpus",
+  "status": "PASS",
+  "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+  "package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a",
+  "native_model": "not_executed",
+  "live_postgres": "not_executed",
+  "qualification_scope": "Installed package CLI, local SQLite in three configured modes, opt-in removal and ordinary procedure preservation. Not native workflow or live PostgreSQL qualification.",
+  "observations": [
+    {
+      "mode": "files",
+      "status": "PASS",
+      "admissions_equal": true,
+      "grouped_hydrations": 1,
+      "default_hydrations_after_opt_out": 3,
+      "blocked_skill_hydrated": false,
+      "grouped_readonly_checkout_preserved": true,
+      "ordinary_procedure_hashes_preserved": true
+    },
+    {
+      "mode": "dual",
+      "status": "PASS",
+      "admissions_equal": true,
+      "grouped_hydrations": 1,
+      "default_hydrations_after_opt_out": 3,
+      "blocked_skill_hydrated": false,
+      "grouped_readonly_checkout_preserved": true,
+      "ordinary_procedure_hashes_preserved": true
+    },
+    {
+      "mode": "db-only",
+      "status": "PASS",
+      "admissions_equal": true,
+      "grouped_hydrations": 1,
+      "default_hydrations_after_opt_out": 3,
+      "blocked_skill_hydrated": false,
+      "grouped_readonly_checkout_preserved": true,
+      "ordinary_procedure_hashes_preserved": true
+    }
+  ],
+  "actual_process_receipts": 17
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "proof_class": "native-installed-synthetic-client",
+  "status": "PASS",
+  "candidate_commit": "c0acac3ffba4cbcd18ae4903800320645320d539",
+  "package_sha256": "ce8e3d227d68a3145a505204a9b1862c484679f23244f839a6142393d5f7e171",
+  "native_binary_version": "codex-cli 0.163.0-alpha.11",
+  "native_binary_sha256": "00c0f1e4099246fddcd67ec620ca8ed50827c7d70e113b7224f7a2933cf2d67c",
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "history_output_tokens": 60000,
+  "exec_output_tokens": 60000,
+  "target_bytes": 65536,
+  "baseline": "Actual complete workflow receipt retained by explicit Core --write; no separate caller JSON copy",
+  "prior_receipt_bytes": 110571,
+  "prior_receipt_sha256": "731bcb19c4ef71d39411115736e4a8854c397b0ec2e8316ffa27a4844cfa30ea",
+  "prior_agent_json_bytes": 35448,
+  "current_agent_json_bytes": 31401,
+  "mandatory_units_fresh": 5,
+  "unchanged_optional_references": 2,
+  "separate_later_semantic_restatement": "PASS",
+  "write_authorization": false,
+  "product_or_canonical_mutation": false,
+  "explicit_diagnostic_writes": true,
+  "model_responses": 3,
+  "usage": {
+    "input_tokens": 79248,
+    "cached_input_tokens": 49280,
+    "output_tokens": 228,
+    "reasoning_output_tokens": 0,
+    "uncached_input_tokens": 29968
+  },
+  "elapsed_seconds": 48.6,
+  "event_source": {
+    "sha256": "db1bc876616f88d4e4c7d6e5308bc9c1222968543e9515ade42bf5df6dce95e1",
+    "bytes": 151776
+  },
+  "cleanup": {
+    "owned_processes_closed": true,
+    "postgres_stopped": true,
+    "temporary_authentication_removed": true,
+    "observed_personal_files_preserved": true
+  },
+  "full_body_provider_residency": "UNAVAILABLE",
+  "full_workflow_performance_qualified": false,
+  "adoption": false
+}

@@ -13,6 +13,7 @@ import {
   deriveRepairLayerStatus,
 } from "../../core/workflow/workflow-output-factory.mjs";
 import { normalizeHookPayload } from "./normalize-hook-payload.mjs";
+import { persistAgentViewReceipt, projectHookAgentView, validateAgentViewOptions } from "./agent-view-projection.mjs";
 
 const CODEX_DIR = path.dirname(fileURLToPath(import.meta.url));
 const AIDN_BIN_SCRIPT = path.resolve(CODEX_DIR, "..", "..", "..", "bin", "aidn.mjs");
@@ -263,6 +264,7 @@ function compactDbSync(dbSync) {
 }
 
 export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookContextStore }) {
+  validateAgentViewOptions(args, true);
   const absoluteTargetRoot = path.resolve(targetRoot);
   const stateMode = resolveEffectiveStateMode({
     targetRoot,
@@ -431,6 +433,9 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     normalized: effectiveNormalized,
   };
   output.summary = buildRunJsonHookSummary(output);
+  const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "run-json-hook", payload: output });
+  if (args.view === "agent") return projectHookAgentView(output, receipt);
+  if (receipt) output.receipt = receipt;
   if (args.verbose || args.includeRaw) {
     return output;
   }

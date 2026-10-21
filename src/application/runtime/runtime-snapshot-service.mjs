@@ -3,6 +3,8 @@ import path from "node:path";
 import { createRuntimeArtifactStore, createRuntimeCanonicalSnapshotReader } from "./runtime-persistence-service.mjs";
 import { openSqliteRuntimeQueryContext } from "../../adapters/runtime/sqlite-runtime-query-context.mjs";
 import { readAidnProjectConfig, resolveConfigRuntimePersistence } from "../../lib/config/aidn-config-lib.mjs";
+import { workflowObservationActive } from "./workflow-observation-service.mjs";
+import { loadSharedStateSnapshotAsync } from "./shared-state-backend-service.mjs";
 
 // Workflow reads must not infer SQLite from a legacy default filename when
 // the project has explicitly selected a canonical PostgreSQL backend.
@@ -100,6 +102,17 @@ export async function readRuntimeSnapshot({
   moduleLoader = null,
 } = {}) {
   const resolvedBackend = detectRuntimeSnapshotBackend(indexFile, backend);
+  if (targetRoot && workflowObservationActive(targetRoot)) {
+    if (resolvedBackend === "json") throw new Error("WORKFLOW_OBSERVATION_JSON_BACKEND_UNSUPPORTED");
+    const snapshot = await loadSharedStateSnapshotAsync({ targetRoot, backend: resolvedBackend,
+      connectionRef, connectionString, configData, env, clientFactory, moduleLoader,
+      localProjectionPolicy: resolvedBackend === "postgres" ? "none" : "" });
+    if (snapshot.warning || !snapshot.exists || !snapshot.payload) throw new Error("WORKFLOW_OBSERVATION_CANONICAL_UNAVAILABLE");
+    if (snapshot.backend.projection_backend_kind !== resolvedBackend
+      || resolvedBackend === "sqlite" && path.resolve(snapshot.sqliteFile) !== resolveRuntimeSnapshotAbsolute(indexFile))
+      throw new Error("WORKFLOW_OBSERVATION_SCOPE_MISMATCH");
+    return { backend: resolvedBackend, absolute: resolveRuntimeSnapshotAbsolute(indexFile), payload: snapshot.payload };
+  }
   if (resolvedBackend === "json") {
     return readJsonRuntimeSnapshot(indexFile);
   }

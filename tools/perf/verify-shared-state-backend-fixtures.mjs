@@ -13,7 +13,8 @@ import { createRuntimeArtifactStore } from "../../src/application/runtime/runtim
 import { writeSharedRuntimeLocator } from "../../src/lib/config/shared-runtime-locator-config-lib.mjs";
 import { projectRuntimeState } from "../runtime/project-runtime-state.mjs";
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
-import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { createTrackedFixtureFilter, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -31,6 +32,14 @@ function runJson(script, args, env = {}) {
     },
   });
   return JSON.parse(stdout);
+}
+
+function prepareClient(targetRoot) {
+  const repoRoot = process.cwd(), source = path.resolve(repoRoot, "tests/fixtures/perf-handoff/ready");
+  const tracked = createTrackedFixtureFilter(source, repoRoot);
+  fs.cpSync(source, targetRoot, { recursive: true,
+    filter: file => tracked(file) && isActivationFixtureSource(source, file, { freshContext: true }) });
+  prepareActivationFixture(targetRoot, repoRoot);
 }
 
 async function withEnv(overrides, fn) {
@@ -58,7 +67,7 @@ async function main() {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-shared-state-backend-"));
     const targetRoot = path.join(tempRoot, "repo");
     const sharedRoot = path.join(targetRoot, ".aidn-shared");
-    fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), targetRoot, { recursive: true });
+    prepareClient(targetRoot);
 
     runJson("tools/perf/index-sync.mjs", [
       "--target",
@@ -155,7 +164,7 @@ async function main() {
     assert(preWrite.context.current_state_source === "sqlite", "pre-write should resolve current state from shared sqlite");
 
     const postgresTarget = path.join(tempRoot, "postgres");
-    fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), postgresTarget, { recursive: true });
+    prepareClient(postgresTarget);
     runJson("tools/perf/index-sync.mjs", [
       "--target",
       postgresTarget,
@@ -186,7 +195,7 @@ async function main() {
     assert(postgresSnapshot.backend?.projection_scope === "local-compat", "postgres compatibility snapshot should expose local-compat projection scope");
 
     const postgresNoneTarget = path.join(tempRoot, "postgres-none");
-    fs.cpSync(path.resolve(process.cwd(), "tests/fixtures/perf-handoff/ready"), postgresNoneTarget, { recursive: true });
+    prepareClient(postgresNoneTarget);
     runJson("tools/perf/index-sync.mjs", [
       "--target",
       postgresNoneTarget,

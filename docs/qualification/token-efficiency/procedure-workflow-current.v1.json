@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "proof_class": "native",
+  "candidate_commit": "ae018df58afb20fb2cf18b42cd06aca9f449846c",
+  "package_sha256": "d980294a1cc8be0d99fbdf7faaeab1be1a241d8bf89203ffb9c4ec23f12d400a",
+  "stage": "grouped-procedures",
+  "pair": "current-runtime-procedure-screening-001",
+  "selection_order": 2,
+  "experimental_procedures_selected": true,
+  "task_policy_selection": false,
+  "delta": false,
+  "model": "gpt-6.1-sol",
+  "model_revision": null,
+  "reasoning_effort": "medium",
+  "native_binary_version": "codex-cli 0.163.0-alpha.11",
+  "native_binary_sha256": "00c0f1e4099246fddcd67ec620ca8ed50827c7d70e113b7224f7a2933cf2d67c",
+  "history_output_limit": "native default; not explicitly overridden",
+  "execution": "completed",
+  "application_oracle": {
+    "passed": 20,
+    "total": 20
+  },
+  "coordinator_relay": "PASS",
+  "terminal_gate": "PASS",
+  "workflow_verdict": "PASS",
+  "performance_verdict": "single_screening_observation_only",
+  "comparison_scope": "Fresh current-runtime staged screening; not repeated confirmation, median or comparison to the old-runtime frozen reference",
+  "elapsed_seconds": 2320.535,
+  "usage": {
+    "model_responses": 99,
+    "input_tokens": 11290778,
+    "cached_input_tokens": 10970752,
+    "output_tokens": 42371,
+    "reasoning_output_tokens": 7463,
+    "uncached_input_tokens": 320026
+  },
+  "event_sources": [
+    {
+      "phase": 1,
+      "sha256": "a7e243fa547f3355415182960f8f7c33aa390ff7ddd104ef9f5279088ce38234",
+      "bytes": 4434111
+    },
+    {
+      "phase": 2,
+      "sha256": "64e4e80b579b76746e65a13ed5b20f3e412ea5c9c4ab23cf854b4a5e6eeea0d4",
+      "bytes": 4907762
+    }
+  ],
+  "phases": [
+    {
+      "phase": 1,
+      "native_status": "PASS",
+      "actual_outer_cli_calls": 50,
+      "actual_specific_native_patch_admissions": 8,
+      "command_counts": {
+        "runtime pre-write-admit": 7,
+        "codex workflow-step": 2,
+        "runtime artifact-store": 2,
+        "runtime artifact-fetch": 2,
+        "runtime db-first-artifact": 25,
+        "codex run-json-hook": 7,
+        "runtime project-runtime-state": 3,
+        "runtime sync-db-first-selective": 2
+      },
+      "all_nested_and_transport_checks": "PASS"
+    },
+    {
+      "phase": 2,
+      "native_status": "PASS",
+      "actual_outer_cli_calls": 40,
+      "actual_specific_native_patch_admissions": 4,
+      "command_counts": {
+        "runtime pre-write-admit": 6,
+        "runtime handoff-admit": 1,
+        "codex workflow-step": 3,
+        "runtime artifact-store": 2,
+        "runtime artifact-fetch": 2,
+        "codex run-json-hook": 7,
+        "runtime db-first-artifact": 15,
+        "runtime project-runtime-state": 4
+      },
+      "all_nested_and_transport_checks": "PASS"
+    }
+  ],
+  "complete_hook_receipts_physically_verified": 14,
+  "cleanup": {
+    "owned_processes_closed": true,
+    "postgres_stopped": true,
+    "temporary_authentication_removed": true,
+    "observed_personal_files_preserved": true,
+    "frozen_harness_preserved": true,
+    "stale_visible_anchors_preserved": true
+  },
+  "confirmation_pairs": 0,
+  "median_latency": null,
+  "adoption": false,
+  "full_body_provider_residency": "UNAVAILABLE"
+}

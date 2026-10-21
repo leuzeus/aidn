@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/codex-workflow-step-agent-error.v1",
+  "title": "Agent workflow consultation refusal",
+  "x-aidn-command": "aidn codex workflow-step --view agent --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": ["ts", "ok", "contract_version", "command", "effect_class", "view", "target_root", "status", "code", "message", "diagnostic_scope", "source_revision", "write_authorization", "repair_actions", "receipt"],
+  "properties": {
+    "ts": { "type": "string" }, "ok": { "const": false },
+    "contract_version": { "const": "codex-workflow-step-agent-error.v1" },
+    "command": { "const": "aidn codex workflow-step --view agent --json" },
+    "effect_class": { "enum": ["read-only", "preview", "projector", "mutating"] },
+    "view": { "const": "agent" }, "target_root": { "type": "string" },
+    "status": { "const": "refused" }, "code": { "type": "string" }, "message": { "type": "string" },
+    "diagnostic_scope": { "const": "invocation-refused" }, "source_revision": { "type": "null" },
+    "write_authorization": { "const": false }, "repair_actions": { "type": "array", "items": { "type": "string" } },
+    "receipt": { "type": "null" }
+  },
+  "additionalProperties": false
+}

@@ -29,6 +29,7 @@ import { evaluateRepairRouting } from "../../src/application/runtime/workflow-tr
 import { readAidnProjectConfig, normalizeStateMode, resolveConfigStateMode, resolveConfigRuntimePersistence } from "../../src/lib/config/aidn-config-lib.mjs";
 import { parseSessionMetadata } from "../../src/lib/workflow/session-context-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
+import { workflowObservationActive } from "../../src/application/runtime/workflow-observation-service.mjs";
 import {
   loadDbIndexPayloadSafe,
   resolveDbArtifactSourceName,
@@ -694,7 +695,8 @@ export async function preWriteAdmit({
   const stateModeEnv = String(process.env.AIDN_STATE_MODE ?? "").trim();
   const effectiveStateMode = stateModeEnv ? normalizeStateMode(stateModeEnv) ?? "files" : resolveConfigStateMode(configData) ?? "files";
   const configuredPostgres = resolveConfigRuntimePersistence(configData)?.backend === "postgres";
-  const canonicalRequired = configuredPostgres || effectiveStateMode === "db-only";
+  const canonicalRequired = configuredPostgres || effectiveStateMode === "db-only"
+    || effectiveStateMode === "dual" && workflowObservationActive(absoluteTargetRoot);
   const dbBackedMode = canonicalRequired || effectiveStateMode === "dual";
   let sqliteFallback = {
     exists: false,
