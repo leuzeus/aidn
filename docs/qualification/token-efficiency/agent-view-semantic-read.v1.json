@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "qualification": "local-native-semantic-read-only",
+  "scope": "One fixed diagnostic observation plus exact semantic restatement; neither product workflow nor complete provider body residency is qualified",
+  "candidate": {
+    "kind": "experimental-agent-view",
+    "version": "0.14.0",
+    "commit": "3cd8a7fd981cf38de3552e30765259a34ea5763a",
+    "sha256": "4f51747eeeaffedd186136e0eb08459c5e5deca6c1b21694271ea91ab347ae9f",
+    "package_files": 1013,
+    "release_published": false
+  },
+  "driver_sha256": "ed34146bc503edf5668f146078d49031e125cd9dd6d921d3090d6ba0d2a1c4c1",
+  "model": "gpt-6.1-sol",
+  "exact_provider_revision": "UNAVAILABLE",
+  "reasoning_effort": "medium",
+  "history_output_token_limit": 60000,
+  "exec_output_token_limit": 60000,
+  "initial_order": [
+    "full",
+    "agent"
+  ],
+  "independent_pairs": 1,
+  "blinded": false,
+  "response_counts": {
+    "full": 3,
+    "agent": 3
+  },
+  "compact_json_bytes": {
+    "full": 112644,
+    "agent": 49845
+  },
+  "elapsed_seconds": {
+    "full": 30.554,
+    "agent": 33.673
+  },
+  "metrics": {
+    "input_tokens": {
+      "full": 117088,
+      "agent": 87595,
+      "change_percent": -25.18874692538945
+    },
+    "cached_input_tokens": {
+      "full": 68224,
+      "agent": 53504,
+      "change_percent": -21.575984990619133
+    },
+    "uncached_input_tokens": {
+      "full": 48864,
+      "agent": 34091,
+      "change_percent": -30.23289129011133
+    },
+    "output_tokens": {
+      "full": 243,
+      "agent": 285,
+      "change_percent": 17.28395061728396
+    }
+  },
+  "complete_provider_body_residency": "UNAVAILABLE",
+  "duration_caveat": "Some source fixture validation overlapped the semantic microtrial; timings are descriptive, not isolated causal or median evidence",
+  "previous_attempts_preserved": [
+    "full-001: presentation truncation",
+    "full-002: incomplete native history presentation",
+    "agent-001 and agent-002: not executed, superseded protocol"
+  ],
+  "reports_sha256": {
+    "full": "897932f7938c8aa3bb986bfb51ed13b87e0ae7109d35392da3037499fe261310",
+    "agent": "e7f52e29654e7a74165a9c04eb563bd8911cef8ea35cba4e0c2e6734862f1038"
+  },
+  "evidence_location": "local-only qualification corpus; raw logs, receipts, credentials and infrastructure paths are not tracked",
+  "adoption_qualified": false
+}

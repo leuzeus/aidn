@@ -12,10 +12,10 @@ model revision. No previous benchmark arm is reused.
 | Lot | Status | Required exit evidence |
 | --- | --- | --- |
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
-| L1 Agent views | Source candidate implemented | 13 fixture/real-CLI assertions, public contracts/effect/catalog checks; native consumption and overall savings remain unqualified |
+| L1 Agent views | Source and local native semantic read verified | 13 fixture/real-CLI assertions and one fixed native diagnostic pair; complete provider-body residency and overall workflow savings remain unqualified |
 | L2 Shared workflow observation | Source candidate implemented | 12 source-CLI/fixture checks; grouped path is opt-in, native and live PostgreSQL qualification pending |
 | L6 Procedures/kernel | Not started | Grouped required reads and deterministic controls; native adoption deferred until qualification |
-| L3 Task selection/budget | Not started | Complete mandatory units, final serialized budget and explicit expansion refusal |
+| L3 Task selection/budget | Source candidate implemented | Accepted client task policies, complete mandatory units, final serialized target and explicit expansion refusal; native qualification pending |
 | L4 Delta/history | Not started | Fresh mandatory closure, changed optional units and compatible baseline checks |
 | L5 Lexical retrieval | Conditional | Measured remaining retrieval failures after L3/L4; scope-first local lexical evaluation |
 | L7 Native qualification/adoption | Not started | Three independent confirmation pairs, functional/governance equivalence, rollback and installed-client proof |
@@ -85,7 +85,8 @@ Both owned process trees closed with zero descendants. PostgreSQL stopped,
 temporary authentication copies were removed and the observed personal files
 and immutable harness files were preserved. Local gate validation briefly
 overlapped early reference execution; timings are descriptive observations,
-not isolated causal latency estimates. No optimization has been measured yet.
+not isolated causal latency estimates. No end-to-end optimization comparison
+has been qualified yet.
 
 The separate synthetic native read-refusal/repair case passed four actual CLI
 calls with retained exit codes `[2, 0, 0, 0]`: deliberately wrong note reference,
@@ -113,8 +114,44 @@ Exact different source revisions and different target roots remain
 distinct and all original excerpt markers survive. These are representation
 observations, not native token savings. The internal hook projection keeps raw
 evidence and every refusal/strict/sync/exit outcome; new complete diagnostic
-receipts require explicit writes. Workflow grouping and task-aware budgets are
-still later lots.
+receipts require explicit writes. Grouping and task-aware budgets are separate
+source candidates whose native whole-workflow qualification remains pending.
+
+## L1 local native diagnostic comparison
+
+The [semantic-read record](agent-view-semantic-read.v1.json) binds a later L1-only
+package at `3cd8a7f` to one fresh full/agent pair. Each arm executes the actual
+installed CLI once and independently restates every admission/blocker and the
+coordinator decision. Their retained semantic oracle hashes match.
+
+| Observation | Full | Agent |
+| --- | ---: | ---: |
+| Model responses | 3 | 3 |
+| Cumulative input tokens | 117,088 | 87,595 |
+| Cached input subset | 68,224 | 53,504 |
+| Uncached input tokens | 48,864 | 34,091 |
+| Output tokens | 243 | 285 |
+| Compact command JSON bytes | 112,644 | 49,845 |
+| Worker elapsed seconds | 30.554 | 33.673 |
+
+This is a local semantic diagnostic with approximately 25.2% less cumulative
+input and 30.2% less uncached input, not the three reference workflows or a
+confirmation series. Both arms use the same model alias/medium reasoning and
+temporary 60,000-token exec/history output limits. The provider revision is
+unavailable. Source fixture validation overlapped part of the trial; durations
+are descriptive, not isolated causal or median evidence. Output grew and the
+response count did not decrease. No programme threshold or adoption is qualified.
+The result belongs to the L1 package only, not later grouping or task selection.
+
+Earlier full-view attempts are preserved: one truncated exec output; the next
+returned complete raw output but the model could not recover required blockers.
+The documented [history output limit](https://learn.chatgpt.com/docs/config-file/config-reference)
+is a separate control from exec display. Fresh matching arms passed exact
+semantic restatement after both were set identically through the test invocation.
+Positive item counters and complete raw events still do not independently expose
+complete provider-body residency; that proof remains `UNAVAILABLE`. Owned process
+trees closed, PostgreSQL stopped, temporary auth copies were removed and observed
+personal files were preserved. No user profile or installed procedure changed.
 
 ## Qualification rules
 
