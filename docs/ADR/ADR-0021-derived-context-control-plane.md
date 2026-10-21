@@ -56,6 +56,17 @@ not authenticity, candidate qualification, admission, financial cost or causal
 performance improvements. Internal read-only analysis never changes the source
 logs, user installation, canonical state or window-pressure decisions.
 
+Opt-in agent projections retain decisions, refusal/exit semantics, scope and
+source revisions, while exact duplicate selected bodies may be shared by
+reference within the same response. Different observations are not merged by
+assumption. The default full workflow representation remains compatible.
+Existing hook raw evidence remains available. Additional full diagnostic
+observations require explicit `--write`, are retained as unique local files,
+and are described by actual path/hash/bytes only after successful readback.
+They have no canonical or admission role, are not automatically purged or shared,
+and do not replace fresh action-specific admission. No receipt or token saving
+may be inferred merely from an agent view or a content hash.
+
 Differential consultation uses a caller-held complete prior selection only as
 an optimization hint. All mandatory authorities and their dependency closure
 are freshly returned. Only unchanged optional bodies can be replaced by exact

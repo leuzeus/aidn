@@ -15,6 +15,31 @@ discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
 and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIES.md).
 
+## Opt-in compact agent views
+
+`aidn codex workflow-step --skills context-reload,requirements-delta --view agent --json`
+projects the same per-skill admissions and hydration as the default full format.
+It returns every blocker and warning, source revisions, context references and
+one copy of each identical selected artifact body. Different source observations
+remain distinct. A compact view is not permission to perform a product edit.
+Legacy excerpt truncation markers remain visible; an old prefix is not promoted
+to a complete authority section by this projection.
+
+The internal `codex run-json-hook` wrapper has the same opt-in view selector;
+its command status, strict/repair/synchronization refusal behavior and existing
+raw context-store evidence remain intact. The agent view removes duplicated
+`normalized` and summary bodies; `--verbose` or `--include-raw` must use full view.
+The `full` selector preserves the historical output mode rather than forcing
+verbose output; the existing verbosity flags retain that role.
+
+Either command can add `--write` to retain its complete diagnostic observation
+in a unique `.aidn/runtime/context/agent-view-receipts/` file. Returned path,
+SHA-256 and byte length describe the actually retained file. No receipt is
+invented when storage was not requested. These files are local diagnostic data,
+not canonical state, current admission or a reusable permission. They are not
+shared or automatically purged. Existing output and procedure defaults remain
+unchanged; fixture byte observations do not establish native token gains.
+
 ## Opt-in scoped context consultation
 
 The explicit selection variant also accepts `--context-baseline-file <prior.json>`

@@ -1,5 +1,19 @@
 # CLI Surface Inventory
 
+`codex workflow-step --view agent --json` is an opt-in, versioned projection of
+the existing per-skill workflow. It retains admissions, blockers, scope, source
+revisions and complete selected excerpts, sharing exact duplicate artifact bodies
+without combining different revisions. Default full output remains unchanged.
+It keeps the existing hidden-projector effect. Adding `--write` explicitly stores
+a complete local diagnostic receipt; selecting a view alone adds no writes.
+
+The internal `codex run-json-hook` wrapper also accepts `--view agent --json`:
+flat decisions, errors and refusal/sync/exit semantics remain intact, with the
+existing raw evidence available by hash and reference. Optional `--write` retains
+the complete diagnostic outcome. `--verbose` and `--include-raw` conflict with
+this view. It remains a mutating hook wrapper; formatting never grants admission.
+Neither projection changes installed procedures or proves native token savings.
+
 `runtime artifact-store list --view agent --limit 10000 --json` is an opt-in
 compact project inventory. It resolves configured canonical authority (files,
 SQLite or PostgreSQL), exposes references/revisions without bodies or canonical

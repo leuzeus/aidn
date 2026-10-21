@@ -1114,7 +1114,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "projector",
     jsonContract: "codex-workflow-step.v1.schema.json",
     safeArgs: ["codex", "workflow-step", "--skills", "context-reload", "--mode", "THINKING", "--json"],
-    notes: "Batches pre-write admission, hidden context hydration, and coordinator next-action computation in one process without visible projection writes.",
+    notes: "Batches pre-write admission, hidden context hydration, and coordinator next-action computation. --view agent projects the same observations without additional writes; --write explicitly retains a complete local diagnostic receipt. No visible projections or write authority are implied.",
   }),
 ]);
 

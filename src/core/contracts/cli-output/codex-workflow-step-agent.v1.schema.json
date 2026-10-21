@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/codex-workflow-step-agent.v1",
+  "title": "aidn codex workflow-step --view agent --json",
+  "x-aidn-command": "aidn codex workflow-step --view agent --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": ["ts", "ok", "contract_version", "command", "effect_class", "view", "target_root", "skills", "summary", "observation_scope", "write_authorization", "admissions", "contexts", "artifacts", "next_action", "receipt"],
+  "properties": {
+    "ts": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "contract_version": { "const": "codex-workflow-step-agent.v1" },
+    "command": { "const": "aidn codex workflow-step --view agent --json" },
+    "effect_class": { "const": "projector" },
+    "view": { "const": "agent" },
+    "target_root": { "type": "string" },
+    "mode": { "type": ["string", "null"] },
+    "skills": { "type": "array", "items": { "type": "string" } },
+    "workspace": { "type": "object", "additionalProperties": true },
+    "summary": { "type": "object", "required": ["skill_count", "admission_count", "blocked_skill_count", "hydrate_count"], "additionalProperties": true },
+    "observation_scope": { "type": "string" },
+    "write_authorization": { "const": false },
+    "admissions": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["skill", "ok", "admission_status", "admission_kind", "context", "blocking_reasons", "warnings", "blocking_findings", "source_of_truth"],
+        "properties": {
+          "skill": { "type": "string" }, "ok": { "type": "boolean" },
+          "admission_status": { "type": "string" }, "admission_kind": { "type": "string" },
+          "context": { "type": "object", "additionalProperties": true },
+          "blocking_reasons": { "type": "array" }, "warnings": { "type": "array" }, "blocking_findings": { "type": "array" },
+          "source_of_truth": { "type": "object", "additionalProperties": true }
+        }, "additionalProperties": true
+      }
+    },
+    "contexts": {
+      "type": "array",
+      "items": { "type": "object", "required": ["skill", "artifact_refs", "decisions", "recent_history", "repair_layer"], "properties": {
+        "skill": { "type": "string" }, "source_revision": { "type": ["string", "null"] },
+        "artifact_refs": { "type": "array", "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+        "decisions": { "type": "object", "additionalProperties": true }, "recent_history": { "type": "array" },
+        "repair_layer": { "type": ["object", "null"], "additionalProperties": true }
+      }, "additionalProperties": true }
+    },
+    "artifacts": { "type": "array", "items": { "type": "object", "required": ["id", "source", "artifact"], "properties": {
+      "id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "source": { "type": "object", "additionalProperties": true },
+      "artifact": { "type": "object", "additionalProperties": true }
+    }, "additionalProperties": false } },
+    "next_action": { "type": "object", "additionalProperties": true },
+    "receipt": { "type": ["object", "null"], "required": ["path", "sha256", "bytes"], "properties": {
+      "path": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 0 }
+    }, "additionalProperties": false },
+    "daemon": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false
+}

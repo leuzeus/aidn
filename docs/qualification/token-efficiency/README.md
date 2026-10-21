@@ -12,7 +12,7 @@ model revision. No previous benchmark arm is reused.
 | Lot | Status | Required exit evidence |
 | --- | --- | --- |
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
-| L1 Agent views | Not started | Separate opt-in contracts, equivalent decisions and retained full evidence |
+| L1 Agent views | Source candidate implemented | 13 fixture/real-CLI assertions, public contracts/effect/catalog checks; native consumption and overall savings remain unqualified |
 | L2 Shared workflow observation | Not started | Per-skill admissions, no blocked-skill hydration, coherent invocation-local observation and concurrent-change refusal |
 | L6 Procedures/kernel | Not started | Grouped required reads and deterministic controls; native adoption deferred until qualification |
 | L3 Task selection/budget | Not started | Complete mandatory units, final serialized budget and explicit expansion refusal |
@@ -103,6 +103,15 @@ not measured guarantees or native-token limits. The manifest retains these
 observations and corpus identity. Legacy 262,144/1,048,576-byte defaults are
 unchanged; mandatory units that exceed an experimental budget must cause an
 explicit refusal/expansion, never silent truncation.
+
+L1 adds explicit agent views without changing default per-skill execution.
+The same disposable workflow fixture produced 108,660 compact-serialized legacy
+JSON bytes and 80,455 agent JSON bytes. Exact different source revisions remain
+distinct and all original excerpt markers survive. These are representation
+observations, not native token savings. The internal hook projection keeps raw
+evidence and every refusal/strict/sync/exit outcome; new complete diagnostic
+receipts require explicit writes. Workflow grouping and task-aware budgets are
+still later lots.
 
 ## Qualification rules
 

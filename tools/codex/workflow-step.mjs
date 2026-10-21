@@ -8,6 +8,7 @@ import { runHydrateContextUseCase } from "../../src/application/codex/hydrate-co
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { computeCoordinatorNextAction } from "../runtime/coordinator-next-action.mjs";
+import { persistAgentViewReceipt, projectWorkflowAgentView, validateAgentViewOptions } from "../../src/application/codex/agent-view-projection.mjs";
 
 const DEFAULT_DAEMON_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 
@@ -60,6 +61,8 @@ export function parseArgs(argv) {
     daemonEndpointFile: DEFAULT_DAEMON_ENDPOINT_FILE,
     daemonTimeoutMs: 30000,
     json: false,
+    view: "full",
+    write: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -146,6 +149,11 @@ export function parseArgs(argv) {
     } else if (token === "--daemon-timeout-ms") {
       args.daemonTimeoutMs = Number(argv[i + 1] ?? 1500);
       i += 1;
+    } else if (token === "--view") {
+      args.view = String(argv[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--write") {
+      args.write = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -156,6 +164,7 @@ export function parseArgs(argv) {
     }
   }
   args.skills = unique(args.skills);
+  if (!["full", "agent"].includes(args.view)) throw new Error("Invalid --view. Expected full|agent");
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
@@ -182,6 +191,7 @@ function printUsage() {
   console.log("  npx aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skill requirements-delta --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --json [--write]  (explicit complete diagnostic receipt)");
 }
 
 function summarizeAdmission(payload) {
@@ -245,6 +255,7 @@ function buildHydrateArgs(args, skill) {
 }
 
 export async function runWorkflowStep({ args, targetRoot }) {
+  validateAgentViewOptions(args);
   const hookContextStore = createHookContextStoreAdapter();
   const workspace = resolveWorkspaceContext({ targetRoot });
   const steps = [];
@@ -304,7 +315,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
   const blockedSkills = Object.entries(admissions)
     .filter(([, payload]) => payload?.ok !== true)
     .map(([skill]) => skill);
-  return {
+  const output = {
     ts: new Date().toISOString(),
     ok: blockedSkills.length === 0,
     contract_version: "codex-workflow-step.v1",
@@ -333,6 +344,10 @@ export async function runWorkflowStep({ args, targetRoot }) {
     hydrations,
     next_action: nextAction,
   };
+  const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "workflow-step", payload: output });
+  if (args.view === "agent") return projectWorkflowAgentView(output, receipt);
+  if (receipt) output.receipt = receipt;
+  return output;
 }
 
 function resolveDaemonEndpointFile(targetRoot, endpointFile) {
@@ -438,7 +453,7 @@ function requestDaemonWorkflowStep({ args, targetRoot }) {
 }
 
 async function main() {
-  let outputJson = false;
+  let outputJson = process.argv.slice(2).includes("--json");
   try {
     const args = parseArgs(process.argv.slice(2));
     outputJson = args.json;
@@ -474,9 +489,9 @@ async function main() {
       };
     }
     if (args.json) {
-      console.log(JSON.stringify(output, null, 2));
+      console.log(args.view === "agent" ? JSON.stringify(output) : JSON.stringify(output, null, 2));
     } else {
-      console.log(`Workflow step ${output.ok ? "OK" : "WARN"}: skills=${output.skills.join(",")} next=${output.steps.at(-1)?.summary?.action ?? "unknown"}`);
+      console.log(`Workflow step ${output.ok ? "OK" : "WARN"}: skills=${output.skills.join(",")} next=${output.next_action?.recommendation?.action ?? "unknown"}`);
     }
     if (args.strict && !output.ok) {
       process.exit(1);

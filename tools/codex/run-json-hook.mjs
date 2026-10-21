@@ -42,6 +42,8 @@ function parseArgs(argv) {
     json: false,
     verbose: false,
     includeRaw: false,
+    view: "full",
+    write: false,
     dbSync: null,
     dbSyncExplicit: false,
     useDaemon: false,
@@ -89,6 +91,11 @@ function parseArgs(argv) {
       args.json = true;
     } else if (token === "--verbose") {
       args.verbose = true;
+    } else if (token === "--view") {
+      args.view = String(options[i + 1] ?? "").trim();
+      i += 1;
+    } else if (token === "--write") {
+      args.write = true;
     } else if (token === "--include-raw") {
       args.includeRaw = true;
     } else if (token === "--db-sync") {
@@ -119,6 +126,8 @@ function parseArgs(argv) {
     }
   }
 
+  if (!["full", "agent"].includes(args.view)) throw new Error("Invalid --view. Expected full|agent");
+  if (args.view === "agent" && (args.verbose || args.includeRaw)) throw new Error("Agent view conflicts with --verbose or --include-raw");
   if (!args.skill) {
     throw new Error("Missing value for --skill");
   }
@@ -146,6 +155,7 @@ function printUsage() {
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --no-auto-skip-gate --json");
   console.log("  npx aidn codex run-json-hook --skill close-session --mode COMMITTING --target . --fail-on-repair-block");
   console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json --verbose");
+  console.log("  npx aidn codex run-json-hook --skill context-reload --target . --view agent --json [--write]  (explicit complete diagnostic receipt)");
   console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json --include-raw");
   console.log("  npx aidn codex run-json-hook --skill context-reload --mode THINKING --target . --json --use-daemon");
 }
@@ -343,7 +353,7 @@ async function main() {
     }
 
     if (args.json) {
-      console.log(JSON.stringify(output, null, 2));
+      console.log(args.view === "agent" ? JSON.stringify(output) : JSON.stringify(output, null, 2));
     } else {
       const status = output.ok ? "OK" : "WARN";
       const decision = output.decision ?? output.action ?? output.result ?? "n/a";
@@ -374,8 +384,8 @@ async function main() {
       process.exit(1);
     }
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    printUsage();
+    if (splitArgs(process.argv.slice(2)).options.includes("--json")) console.log(JSON.stringify({ ok: false, message: String(error.message) }));
+    else { console.error(`ERROR: ${error.message}`); printUsage(); }
     process.exit(1);
   }
 }
