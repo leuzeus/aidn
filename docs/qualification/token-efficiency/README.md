@@ -12,7 +12,7 @@ model revision. No previous benchmark arm is reused.
 | Lot | Status | Required exit evidence |
 | --- | --- | --- |
 | L0 Reference/instrumentation | Reference recorded | Complete native workflow, separate read-refusal/repair control and experimental fixture-derived byte budgets |
-| L1 Agent views | Source and local native semantic read verified | Projection fixtures, one fixed native diagnostic pair and an installed grouped diagnostic; complete provider-body residency and overall workflow savings remain unqualified |
+| L1 Agent views | Source and one whole-workflow functional trial PASS | Exact projection/receipt checks, local native diagnostics and complete development/relay/closure; global performance thresholds remain unqualified |
 | L2 Shared workflow observation | Source candidate implemented | Source-CLI/fixture checks including stale source rejection and actual SQLite concurrent mutation; grouped path is opt-in, native qualification pending |
 | L6 Procedures/kernel | Experimental procedure pack implemented | Shared stable prefix and task routes package separately from installed skills; native scheduling/adoption qualification pending |
 | L3 Task selection/budget | Source candidate implemented | Accepted client task policies, complete mandatory units, final serialized target and explicit expansion refusal; native qualification pending |
@@ -214,6 +214,34 @@ validating transport, raw file binding/bytes/hash and exact domain projection.
 That fixture does not regrade the original native attempt. Future host code
 captures actual process results before checking them; a new fresh full workflow
 must still pass before continuing qualification or adopting procedures.
+
+The fresh [whole-workflow repetition](agent-view-workflow-success.v1.json) at
+`7843919` passes the independent application oracle (20/20), coordinator relay,
+cycle/session terminal sequence and all native scope/transport checks. All 13
+announced complete hook receipts were physically read back and compared with
+actual CLI domain projections. Nine actual native product patches each have
+their own positive specific admission. Processes closed, PostgreSQL stopped,
+temporary auth copies were removed and observed personal files, frozen harness
+and deliberately stale visible anchors were preserved.
+
+| Observation | Frozen reference | Agent hook views |
+| --- | ---: | ---: |
+| Model responses | 114 | 110 |
+| Cumulative input | 12,081,890 | 12,039,182 |
+| Cached input subset | 11,746,560 | 11,733,760 |
+| Uncached input | 335,330 | 305,422 |
+| Output | 39,586 | 39,319 |
+| Elapsed seconds | 1,708.642 | 1,874.374 |
+
+This single later trial does not demonstrate the programme's performance goals:
+response count falls about 3.5%, cumulative input about 0.35% and uncached input
+about 8.9%; elapsed time grows about 9.7%. These are descriptive ratios, not paired
+causal or median estimates. The earlier reference overlapped fixture work. No
+confirmation series or adoption is qualified. The next whole-workflow screening
+uses the same candidate engine and oracles with the explicitly selected grouped
+procedure pack, so the active change is procedural scheduling/entry routing.
+Grouping's two-to-one hydration effect remains a separately bounded native
+component observation; it is not presented as a measured whole-workflow saving.
 
 The packaged research procedures live in
 [`scaffold/experiments/token-efficiency.v1`](../../../scaffold/experiments/token-efficiency.v1/README.md).
