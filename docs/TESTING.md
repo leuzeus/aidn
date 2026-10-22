@@ -1461,6 +1461,13 @@ Configured PostgreSQL failure must emit no partial batch or stale-file fallback.
 Native benchmarks must distinguish model round trips and cumulative item
 residency from unique document bytes; moving a rule read from shell to CLI must
 not be misreported as a new rule or a causal token saving.
+The same gate includes pure artifact-intent preparation, complete distributed
+session/cycle template inputs, atomic refusal, scoped field/section edits and
+full-plan budget refusal. Real SQLite CAS tests distinguish stale content,
+metadata-only and create-only conflicts. Its terminal consumer reuses the
+ordered-closure engine with injected host ports; actual native hooks and whole
+scenario token gains remain unqualified. See [the bounded preparation
+experiment](ARTIFACT_INTENT_PREPARATION_EXPERIMENT.md).
 Template discovery uses the existing artifact-store list surface with
 `--templates`. Its regression gate checks distribution-derived exact references,
 complete canonical batch reads, wrong-name refusal, required missing models,

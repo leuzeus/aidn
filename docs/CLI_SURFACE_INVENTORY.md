@@ -6,6 +6,10 @@ through the existing admission, CAS artifact, runtime projector and strict hook
 commands below. Each command retains its existing effects and contracts. Pure
 preview and explicit execution, supported modes and partial/refusal semantics
 are documented in [the experiment](ORDERED_CLOSURE_EXPERIMENT.md).
+The internal [artifact intent compiler](ARTIFACT_INTENT_PREPARATION_EXPERIMENT.md)
+prepares batch drafts and exact mutations without a new CLI or effect. Its
+terminal consumer invokes those existing commands through the same engine;
+creation drafts require the existing create-only CAS port, never unchecked upsert.
 
 `aidn runtime pre-write-admit --view agent --json` and
 `aidn runtime coordinator-next-action --view agent --json` are read-only,

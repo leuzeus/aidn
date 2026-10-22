@@ -14,6 +14,7 @@ import { distributedTemplates, discoverProjectTemplates } from '../../src/applic
 import { discoverProjectArtifacts } from '../../src/application/runtime/artifact-inventory-service.mjs';
 import { executePostgresArtifactCommand } from '../../src/adapters/runtime/postgres-artifact-command-lib.mjs';
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from '../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs';
+import { verifyArtifactIntentPreparation } from './verify-artifact-intent-preparation-fixtures.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const isolatedEnvKeys = ['AIDN_RUNTIME_PERSISTENCE_BACKEND', 'AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF', 'AIDN_STATE_MODE', 'AIDN_EFFICIENCY_UNAVAILABLE'];
@@ -359,7 +360,8 @@ try {
     const discovery=cli('artifact-store',['list','--templates']);assert.notEqual(discovery.status,0);assert.equal(discovery.stdout.trim(),'');
     const inventory=cli('artifact-store',['list','--view','agent']);assert.notEqual(inventory.status,0);assert.equal(inventory.stdout.trim(),'');
   });
-  console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements }));
+  const artifact_intents = await verifyArtifactIntentPreparation();
+  console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements, artifact_intents }));
 } finally {
   for (const [key, value] of previousEnv) { if (value === undefined) delete process.env[key];else process.env[key] = value; }
   fs.rmSync(temp, { recursive: true, force: true });

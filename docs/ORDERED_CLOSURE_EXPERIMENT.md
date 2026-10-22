@@ -40,6 +40,11 @@ Required exit artifacts, branch/drift checks and explicit cycle-resolution choic
 must already be prepared through the ordinary procedure. The executor does not
 choose an outcome, write product files, merge, publish or skip a control.
 
+The optional internal [artifact intent compiler](ARTIFACT_INTENT_PREPARATION_EXPERIMENT.md)
+prepares exact terminal mutations from explicit field/section values and complete
+canonical preimages. Its terminal consumer checks the same preview target and
+calls this unchanged engine. Pure preparation grants no admission or write intent.
+
 ## Host boundary and failure
 
 The injected `execute(argv)` port must invoke the actual CLI serially and return

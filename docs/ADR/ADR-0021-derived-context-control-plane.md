@@ -166,6 +166,16 @@ composition accepts database-canonical dual/db-only execution and preserves the
 legacy files procedure. It adds no public command, shared authority, schema or
 implicit adoption. Host-injected fixtures are not native qualification. See
 [the bounded experiment](../ORDERED_CLOSURE_EXPERIMENT.md).
+An optional pure artifact-intent compiler can prepare several drafts or exact
+mutations from explicit values and complete retained canonical preimages. One
+observation revision binds scope, source hashes, metadata and observed absences;
+it is never admission or write permission. Unedited template bytes remain intact,
+ambiguity and insufficient full-output budgets refuse atomically, and create
+drafts require the existing create-only CAS port. Its terminal consumer forwards
+generated mutations to the unchanged ordered-closure controls after checking
+the preview target. No new public surface, store, effect, authority or default
+procedure is introduced. Native consumption of startup drafts and token gains
+remain unqualified. See [the preparation experiment](../ARTIFACT_INTENT_PREPARATION_EXPERIMENT.md).
 The manual native qualification port uses a declared invocation-local
 `bounded-context.v1` output policy. It requests 60,000 history tokens independently
 of the code-mode display budget and refuses dynamic tool JSON above 131,072 UTF-8
