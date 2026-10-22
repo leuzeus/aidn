@@ -15,9 +15,6 @@ published capabilities from demonstrated native behavior and remaining cases.
 Experimental [compact agent views](docs/CODEX_INTEGRATION.md#opt-in-compact-agent-views)
 are explicit CLI options. Full output and installed workflow defaults remain
 compatible; diagnostic receipts require explicit writes and grant no permission.
-An internal [artifact intent preparation experiment](docs/ARTIFACT_INTENT_PREPARATION_EXPERIMENT.md)
-compiles explicit values from complete canonical preimages into drafts or CAS
-mutations. It remains opt-in; fixture results do not establish native token gains.
 
 ## Philosophy
 
