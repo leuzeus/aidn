@@ -120,6 +120,19 @@ is still required. Earlier default-history trials cannot be requalified by the
 new profile. The explicit internal `outputProfile: null` route is reserved for
 historical negative controls.
 
+The internal native port also accepts an explicit `schedulingProfile:
+"bounded-wait.v1"`. It adds invocation-local guidance to use 60-second code-mode
+exec yields and, when necessary, 60-second waits for already-authorized sequential
+blocks. The default remains unchanged. It does not intercept or rewrite tools,
+add operations, extend the original deadline, change output capacity, reuse an
+admission or bypass a refusal. Every required result is still inspected and a
+refusal stops dependent work. A resume without explicit developer instructions
+does not replace inherited instructions. Unknown profiles and combination with
+the historical null output profile refuse before dispatch. Reports can record
+the requested scheduling policy; only native traces establish whether the model
+followed it or whether responses, tokens and elapsed time improved. Fixture
+checks do not establish those gains.
+
 The lifecycle fixture suite covers profile negotiation without permission/model
 changes, immutable caller config, conflicts, exact UTF-8 output boundaries,
 multibyte overflow, unserializable results and non-retry diagnostics. Native
