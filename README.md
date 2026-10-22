@@ -108,6 +108,11 @@ Codex instruction layering after install:
 
 ## CLI Surface
 
+Experimental `aidn runtime artifact-query` consults contract-bound active-state
+fields and their complete dependent sections without writing project state.
+It is opt-in and does not replace workflow authorities or fresh admission; see
+the parameters and compatibility boundary in [the CLI inventory](docs/CLI_SURFACE_INVENTORY.md).
+
 - `aidn setup`, `aidn project add`, `aidn project migrate`, `aidn doctor`
   - common installation, explicit project attachment/migration and diagnosis
 - `aidn update`, `aidn rollback`

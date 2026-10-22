@@ -276,6 +276,7 @@ export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
   { id: "runtime-db-first-artifact", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-fetch", linked_concepts: ["artifact", "workspace"] },
+  { id: "runtime-artifact-query", linked_concepts: ["artifact", "workspace", "current_state", "runtime_state", "session", "cycle"] },
   { id: "runtime-artifact-store-list", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store-get", linked_concepts: ["artifact", "workspace"] },
   { id: "runtime-artifact-store-upsert", linked_concepts: ["artifact", "workspace"] },

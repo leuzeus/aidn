@@ -98,6 +98,7 @@
     "codex:hydrate-context": "node tools/codex/hydrate-context.mjs",
     "codex:workflow-step": "node tools/codex/workflow-step.mjs",
     "runtime:artifact-fetch": "node tools/runtime/artifact-fetch.mjs",
+    "runtime:artifact-query": "node tools/runtime/artifact-query.mjs",
     "runtime:artifact-store": "node tools/runtime/artifact-store.mjs",
     "runtime:db-backup": "node tools/runtime/db-backup.mjs",
     "runtime:db-migrate": "node tools/runtime/db-migrate.mjs",

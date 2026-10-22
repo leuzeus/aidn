@@ -1,5 +1,31 @@
 # CLI Surface Inventory
 
+`runtime artifact-query --profile active-state.v1 --params-file <relative.json>
+--json` is an experimental read-only factual consultation. Parameters are a bounded
+worktree-relative JSON object with `schema_version: 1`; optional `scope` pins all
+four project/workspace/worktree/runtime identities, `expected_revision` pins a
+previous observation, `target_bytes` is 256–65,536 (default 16,384), and
+`include_optional` defaults to true. No SQL, arbitrary field expression, backend
+override, write or migration flag is accepted. `--manifest --json` discovers the
+catalog derived from critical Markdown contracts, field identities, extractors,
+section dependencies and the registered profile without querying project state.
+
+The active-state profile reads current/runtime state and the referenced session
+and cycle from one canonical DB snapshot, or fenced file observations in files
+mode. It keeps known empty lists distinct from absent or uninterpretable values,
+detects duplicate fields and conflicting state, and includes full required
+sections with source hashes. Canonical JSON is verified against complete source
+content; incompatible extraction is rebuilt only in memory. An unsupported
+artifact contract refuses. Scope/revision/integrity/backend failures do not fall
+back to visible projections. Sources and canonical evidence are never written.
+The `runtime-artifact-query.v1` output reports `ok`, `incomplete`, `blocked` or
+`manifest`; incomplete/blocked exits 2. Optional fields are omitted first, and an
+insufficient mandatory budget returns a refusal with expansion references.
+Diagnostics may exceed a tiny requested budget and report their actual size.
+The result never replaces required workflow authorities, fresh admission or
+write CAS/fences. No installed procedure or native benchmark is changed by this
+opt-in surface. Other task profiles remain unavailable in this first tranche.
+
 The internal `createOrderedClosureSequence` research composition adds no public
 command. An explicitly bound host can execute its selected terminal segments
 through the existing admission, CAS artifact, runtime projector and strict hook

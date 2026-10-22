@@ -257,6 +257,29 @@ CLI, default backend, user profile or distribution policy.
 
 ## Consequences and validation
 
+Contract-bound factual consultation is an explicit experimental read-only path,
+`runtime artifact-query`. Its manifest is derived from the critical Markdown
+contract registry, including stable field identities, extraction versions and
+complete section dependencies. Profiles select facts; they neither alter
+client-owned accepted context policies nor replace mandatory authorities. The
+first profile, `active-state.v1`, is distinct from workflow admission.
+
+The query verifies a fresh coherent canonical scope and complete source hashes.
+Canonical JSON cannot silently supply stale facts: incompatible extraction is
+recomputed in memory from the same canonical content, without a repair write.
+Unknown artifact contracts refuse; known legacy shapes retain their identity.
+Missing, ambiguous and explicitly unknown fields are distinguishable from known
+empty lists. Full dependent sections retain nested exceptions. The complete
+serialized response owns its byte budget; optional fields are removed first and
+an insufficient mandatory minimum returns an explicit expansion request.
+
+The compatibility corpus pins the profile's consumed field semantics, types,
+extractors and dependencies. A contract change must update its consumers or
+publish a versioned successor. Fixtures, real database and installed-package
+checks, and native token qualification remain separate. The catalog/query is a
+derived surface of existing artifact and workspace concepts, not a new source
+of truth, persistent cache, permission or shared coordination concept.
+
 Conservative full-revision invalidation can discard useful notes after unrelated
 changes. It favors reconstruction over silent authority drift. Multiple local
 capsules and raw observations cost storage; retention never deletes raw proof.

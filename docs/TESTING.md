@@ -1432,6 +1432,22 @@ second admission invocation.
 
 ## Artifact efficiency intent
 
+The same runtime gate includes the contract-bound artifact-query corpus. It
+checks consumed field identities/types/meanings and section dependencies against
+the locked compatibility fixture, rejects unsupported source versions, and
+distinguishes missing/unknown/ambiguous fields and known empty lists. Source
+hashes, foreign scope, stale extraction, concurrent file/directory changes,
+dependent complete sections, optional omissions and final JSON budget refusals
+are covered independently of native token usage. The first profile is factual
+`active-state.v1`; diagnostic/admission, mutation and closure profiles are not
+declared available. Injected PostgreSQL snapshots do not establish live DB
+isolation; real DB checks and native qualification have separate evidence.
+`node tools/perf/verify-artifact-query-postgres-smoke.mjs` is a separate manual
+check with an already provisioned `PG_BIN_DIR` and the locked optional `pg`
+driver. It creates and removes its own private cluster and client, checks
+unchanged canonical rows, and interleaves a real canonical writer with the
+repeatable-read consultation. It never uses an installed project's DB.
+
 Run `npm run perf:verify-artifact-efficiency` for opt-in agent views, complete
 Markdown consultation and exact revision-checked replacements. This required
 runtime gate distinguishes pure fixtures and real CLI executions from native

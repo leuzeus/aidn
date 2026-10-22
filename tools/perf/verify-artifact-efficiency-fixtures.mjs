@@ -15,6 +15,7 @@ import { discoverProjectArtifacts } from '../../src/application/runtime/artifact
 import { executePostgresArtifactCommand } from '../../src/adapters/runtime/postgres-artifact-command-lib.mjs';
 import { POSTGRES_RUNTIME_RELATIONAL_TARGET_SCHEMA_VERSION } from '../../src/application/runtime/postgres-runtime-persistence-contract-service.mjs';
 import { verifyArtifactIntentPreparation } from './verify-artifact-intent-preparation-fixtures.mjs';
+import { verifyArtifactQueryFixtures } from './verify-artifact-query-fixtures.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const isolatedEnvKeys = ['AIDN_RUNTIME_PERSISTENCE_BACKEND', 'AIDN_RUNTIME_PERSISTENCE_CONNECTION_REF', 'AIDN_STATE_MODE', 'AIDN_EFFICIENCY_UNAVAILABLE'];
@@ -361,7 +362,8 @@ try {
     const inventory=cli('artifact-store',['list','--view','agent']);assert.notEqual(inventory.status,0);assert.equal(inventory.stdout.trim(),'');
   });
   const artifact_intents = await verifyArtifactIntentPreparation();
-  console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements, artifact_intents }));
+  const artifact_queries = await verifyArtifactQueryFixtures();
+  console.log(JSON.stringify({ status: 'PASS', checks, fixtures: true, real_cli: true, native: false, measurements, artifact_intents, artifact_queries }));
 } finally {
   for (const [key, value] of previousEnv) { if (value === undefined) delete process.env[key];else process.env[key] = value; }
   fs.rmSync(temp, { recursive: true, force: true });

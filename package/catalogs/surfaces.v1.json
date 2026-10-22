@@ -3794,6 +3794,61 @@
       "migration": ""
     },
     {
+      "id": "command:aidn runtime artifact-query",
+      "kind": "command",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "Runtime CLI maintainer",
+      "source": "src/core/cli/command-registry.mjs",
+      "entrypoint": "aidn runtime artifact-query",
+      "implementation": "tools/runtime/artifact-query.mjs",
+      "effects": {
+        "surface": "aidn runtime artifact-query",
+        "default": "read-only",
+        "global_rules": [
+          {
+            "id": "help",
+            "when_args": [
+              "--help"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "short-help",
+            "when_args": [
+              "-h"
+            ],
+            "effect_class": "read-only"
+          },
+          {
+            "id": "dry-run",
+            "when_args": [
+              "--dry-run"
+            ],
+            "effect_class": "preview"
+          },
+          {
+            "id": "json",
+            "when_args": [
+              "--json"
+            ],
+            "role": "format-only"
+          }
+        ],
+        "variants": []
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/runtime/artifact-query.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "command:aidn runtime artifact-store",
       "kind": "command",
       "status": "active",
@@ -7638,6 +7693,27 @@
       "source": "src/core/contracts/cli-output/runtime-artifact-fetch.v1.schema.json",
       "entrypoint": "aidn runtime artifact-fetch --json",
       "implementation": "src/core/contracts/cli-output/runtime-artifact-fetch.v1.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "contract:runtime-artifact-query.v1.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/runtime-artifact-query.v1.schema.json",
+      "entrypoint": "aidn runtime artifact-query --json",
+      "implementation": "src/core/contracts/cli-output/runtime-artifact-query.v1.schema.json",
       "effects": "machine-readable public output",
       "consumer": "automation and contract fixtures",
       "docs": "docs/agents/04-json-contracts.md",

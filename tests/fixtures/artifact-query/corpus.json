@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "purpose": "Independent semantic oracles for the first consultative profile; not native token evidence",
+  "reference": {"source_commit": "462d594c6097b9461e0683e338956a0827b32ce9", "profile": "active-state.v1", "native_reference": "compact003", "responses": 53, "input_tokens": 5166461, "uncached_input_tokens": 308093},
+  "cases": [
+    {"id":"active", "mutation":"none", "status":"ok", "field":"cycle_status.state", "value":"IMPLEMENTING"},
+    {"id":"empty-blockers", "mutation":"none", "status":"ok", "field":"current_state.blocking_findings", "value":[]},
+    {"id":"absent-mode", "mutation":"absent-mode", "status":"blocked", "field":"current_state.mode", "field_status":"absent"},
+    {"id":"unknown-mode", "mutation":"unknown-mode", "status":"incomplete", "field":"current_state.mode", "field_status":"uninterpretable"},
+    {"id":"duplicate-mode", "mutation":"duplicate-mode", "status":"incomplete", "field":"current_state.mode", "field_status":"uninterpretable"},
+    {"id":"unknown-version", "mutation":"unknown-version", "status":"blocked", "error":"ARTIFACT_QUERY_CONTRACT_INCOMPATIBLE"},
+    {"id":"legacy-cycle", "mutation":"legacy-cycle", "status":"ok", "field":"cycle_status.state", "value":"IMPLEMENTING"},
+    {"id":"missing-cycle", "mutation":"missing-cycle", "status":"blocked", "error":"ARTIFACT_QUERY_SOURCE_ABSENT"},
+    {"id":"foreign-scope", "mutation":"foreign-scope", "status":"blocked", "error":"ARTIFACT_QUERY_SCOPE_MISMATCH"},
+    {"id":"branch-conflict", "mutation":"branch-conflict", "status":"blocked", "error":"ARTIFACT_QUERY_STATE_CONFLICT"},
+    {"id":"mode-conflict", "mutation":"mode-conflict", "status":"blocked", "error":"ARTIFACT_QUERY_STATE_CONFLICT"},
+    {"id":"hash-corrupt", "mutation":"hash-corrupt", "status":"blocked", "error":"ARTIFACT_QUERY_SOURCE_INTEGRITY"},
+    {"id":"json-stale", "mutation":"json-stale", "status":"ok", "field":"cycle_status.state", "value":"IMPLEMENTING"},
+    {"id":"budget-insufficient", "mutation":"budget-insufficient", "status":"blocked", "error":"ARTIFACT_QUERY_BUDGET_INSUFFICIENT"},
+    {"id":"revision-invalid", "mutation":"revision-invalid", "status":"blocked", "error":"ARTIFACT_QUERY_REVISION_CHANGED"},
+    {"id":"inactive", "mutation":"inactive", "status":"ok", "field":"current_state.active_cycle", "value":"none"},
+    {"id":"ambiguous-cycle", "mutation":"ambiguous-cycle", "status":"blocked", "error":"ARTIFACT_QUERY_SOURCE_AMBIGUOUS"},
+    {"id":"contradictory-blockers", "mutation":"contradictory-blockers", "status":"incomplete", "field":"cycle_status.blockers", "field_status":"uninterpretable"}
+  ]
+}

@@ -399,6 +399,11 @@ const CONTRACT_CASES = [
     args: ["runtime", "artifact-fetch", "--path", "snapshots/context-snapshot.md", "--json"],
   },
   {
+    name: "runtime-artifact-query",
+    schema: "runtime-artifact-query.v1.schema.json",
+    args: ["runtime", "artifact-query", "--manifest", "--json"],
+  },
+  {
     name: "runtime-artifact-store-materialize",
     schema: "runtime-artifact-store-materialize.v1.schema.json",
     args: ["runtime", "artifact-store", "materialize", "--audit-root", "docs/audit", "--only-path", "snapshots/context-snapshot.md", "--dry-run", "--json"],

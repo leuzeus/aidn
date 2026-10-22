@@ -586,6 +586,16 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Reads one canonical runtime artifact, optionally an agent view or complete consultative heading, without materializing files; absent selectors exit non-zero.",
   }),
   commandPolicy({
+    id: "runtime-artifact-query",
+    command: "aidn runtime artifact-query --json",
+    effectClass: "read-only",
+    stability: "experimental",
+    jsonContract: "runtime-artifact-query.v1.schema.json",
+    safeArgs: ["runtime", "artifact-query", "--manifest", "--json"],
+    allowNonZero: true,
+    notes: "Opt-in contract-bound factual consultation; canonical scope, revisions and explicit missing fields, no writes, migration or admission.",
+  }),
+  commandPolicy({
     id: "runtime-artifact-store-list",
     command: "aidn runtime artifact-store list --json",
     effectClass: "read-only",
