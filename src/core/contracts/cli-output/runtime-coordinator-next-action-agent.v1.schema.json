@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-coordinator-next-action-agent.v1",
+  "title": "aidn runtime coordinator-next-action --view agent --json",
+  "x-aidn-command": "aidn runtime coordinator-next-action --view agent --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "command",
+    "view",
+    "effect_class",
+    "write_authorization"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "runtime-coordinator-next-action-agent.v1"
+    },
+    "command": {
+      "const": "aidn runtime coordinator-next-action --view agent --json"
+    },
+    "view": {
+      "const": "agent"
+    },
+    "effect_class": {
+      "const": "read-only"
+    },
+    "write_authorization": {
+      "const": false
+    },
+    "target_root": {
+      "type": "string"
+    },
+    "current_state_file": {
+      "type": "string"
+    },
+    "runtime_state_file": {
+      "type": "string"
+    },
+    "packet_file": {
+      "type": "string"
+    },
+    "packet_resolution": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "handoff": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "preferred_dispatch_source": {
+      "type": "string"
+    },
+    "shared_planning_candidate": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "recommendation": {
+      "type": "object",
+      "required": [
+        "role",
+        "action",
+        "goal",
+        "source",
+        "reason",
+        "stop_required"
+      ],
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "goal": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "stop_required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "scope_type",
+        "scope_id",
+        "target_branch"
+      ],
+      "additionalProperties": true
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "next_action_diagnostic": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "full_output": {
+      "type": "object",
+      "required": [
+        "command",
+        "args",
+        "requires_fresh_read",
+        "retained"
+      ],
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requires_fresh_read": {
+          "const": true
+        },
+        "retained": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "stop_required": {
+      "type": "boolean"
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "required": [
+        "contract_version",
+        "command",
+        "view",
+        "effect_class",
+        "write_authorization",
+        "target_root",
+        "current_state_file",
+        "runtime_state_file",
+        "packet_file",
+        "packet_resolution",
+        "handoff",
+        "preferred_dispatch_source",
+        "recommendation",
+        "scope",
+        "context",
+        "next_action_diagnostic",
+        "full_output"
+      ]
+    },
+    {
+      "required": [
+        "ok",
+        "stop_required",
+        "error"
+      ],
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "stop_required": {
+          "const": true
+        }
+      }
+    }
+  ]
+}

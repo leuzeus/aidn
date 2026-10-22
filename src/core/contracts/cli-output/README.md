@@ -42,6 +42,10 @@ Compatibility policy:
 
 Initial v1 commands:
 
+- `aidn runtime pre-write-admit --view agent --json`
+- `aidn runtime coordinator-next-action --view agent --json`
+- `aidn codex workflow-step --view agent --projection-profile compact.v1 --json`
+
 - `aidn bootstrap --json`
 - `aidn bootstrap --dry-run --json`
 - `aidn runtime project-runtime-state --json`

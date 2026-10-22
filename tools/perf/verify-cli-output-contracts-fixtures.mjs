@@ -162,6 +162,10 @@ const CONTRACT_CASES = [
     args: ["runtime", "pre-write-admit", "--skill", "cycle-create", "--json"],
   },
   {
+    name: "runtime-pre-write-admit-agent", schema: "runtime-pre-write-admit-agent.v1.schema.json",
+    args: ["runtime", "pre-write-admit", "--skill", "cycle-create", "--view", "agent", "--json"],
+  },
+  {
     name: "runtime-db-status",
     schema: "runtime-db-status.v1.schema.json",
     args: ["runtime", "db-status", "--json"],
@@ -431,6 +435,10 @@ const CONTRACT_CASES = [
     args: ["runtime", "coordinator-next-action", "--json"],
   },
   {
+    name: "runtime-coordinator-next-action-agent", schema: "runtime-coordinator-next-action-agent.v1.schema.json",
+    args: ["runtime", "coordinator-next-action", "--view", "agent", "--json"],
+  },
+  {
     name: "runtime-coordinator-loop",
     schema: "runtime-coordinator-loop.v1.schema.json",
     args: ["runtime", "coordinator-loop", "--json"],
@@ -516,6 +524,10 @@ const CONTRACT_CASES = [
     name: "codex-workflow-step-agent",
     schema: "codex-workflow-step-agent.v1.schema.json",
     args: ["codex", "workflow-step", "--skills", "context-reload", "--mode", "THINKING", "--view", "agent", "--json"],
+  },
+  {
+    name: "codex-workflow-step-agent-compact", schema: "codex-workflow-step-agent-compact.v1.schema.json",
+    args: ["codex", "workflow-step", "--skills", "context-reload", "--mode", "THINKING", "--view", "agent", "--projection-profile", "compact.v1", "--json"],
   },
   {
     name: "codex-workflow-step-agent-error", schema: "codex-workflow-step-agent-error.v1.schema.json", expectedExit: 1,

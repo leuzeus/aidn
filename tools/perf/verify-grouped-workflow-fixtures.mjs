@@ -10,6 +10,7 @@ import { withWorkflowObservation, observeWorkflowRead, workflowObservationActive
 import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
 import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 import schema from "../../src/core/contracts/cli-output/codex-workflow-step-agent.v1.schema.json" with { type: "json" };
+import compactSchema from "../../src/core/contracts/cli-output/codex-workflow-step-agent-compact.v1.schema.json" with { type: "json" };
 import errorSchema from "../../src/core/contracts/cli-output/codex-workflow-step-agent-error.v1.schema.json" with { type: "json" };
 import { loadSharedStateSnapshotAsync } from "../../src/application/runtime/shared-state-backend-service.mjs";
 import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
@@ -64,6 +65,26 @@ try {
     assert(grouped.payload.admissions.find(row => row.skill === "requirements-delta").blocking_reasons.length);
     assert.equal(new Set(grouped.payload.artifacts.map(row => row.id)).size, grouped.payload.artifacts.length);
     checks.push(`${mode}: equivalent admissions, one hydration, blocked skill has no context`);
+    const compact = workflow(["--grouped", "--projection-profile", "compact.v1"]);
+    assert.equal(compact.status, grouped.status);
+    assert.deepEqual(validateJsonSchema(compact.payload, compactSchema, "$"), []);
+    assert.equal(compact.payload.observation.source_revision, grouped.payload.observation.source_revision);
+    assert.deepEqual(compact.payload.admissions, grouped.payload.admissions);
+    assert.deepEqual(compact.payload.artifacts.map(row => row.artifact), grouped.payload.artifacts.map(row => row.artifact));
+    for (let index = 0; index < compact.payload.artifacts.length; index++) {
+      const row = compact.payload.artifacts[index], previous = grouped.payload.artifacts[index];
+      const { source_revision: freshRevision, ...freshScope } = row.source;
+      const { source_revision: previousRevision, ...previousScope } = previous.source;
+      assert.deepEqual(freshScope, previousScope);
+      assert.match(freshRevision, /^[a-f0-9]{64}$/); assert.match(previousRevision, /^[a-f0-9]{64}$/);
+      assert.equal(row.id, createHash("sha256").update(JSON.stringify({ source: row.source, artifact: row.artifact })).digest("hex"));
+    }
+    for (const context of compact.payload.contexts) for (const ref of context.artifact_refs)
+      assert.equal(compact.payload.artifacts.find(row => row.id === ref).source.source_revision, context.source_revision);
+    assert.deepEqual(compact.payload.next_action.recommendation, grouped.payload.next_action.recommendation);
+    assert.deepEqual(compact.payload.next_action.scope, grouped.payload.next_action.scope);
+    assert.equal(fs.readFileSync(hydrationFile, "utf8"), cached);
+    checks.push(`${mode}: compact profile preserves common revision, every admission and complete context unit`);
   }
   for (const mode of ["files", "dual"]) {
     fs.writeFileSync(configFile, JSON.stringify({ version: 1, runtime: { stateMode: mode, indexStoreMode: "dual-sqlite" } }));
@@ -171,6 +192,14 @@ try {
   assert(unavailable.payload.admissions.every(row => !row.ok));
   assert(unavailable.payload.admissions.some(row => row.blocking_reasons.some(reason => reason.includes("canonical runtime backend is unavailable"))));
   checks.push("configured PostgreSQL unavailable refuses without file or SQLite fallback");
+  const compactUnavailable = workflow(["--grouped", "--projection-profile", "compact.v1"]);
+  assert.equal(compactUnavailable.status, unavailable.status);
+  assert.deepEqual(validateJsonSchema(compactUnavailable.payload, compactSchema, "$"), []);
+  assert.equal(compactUnavailable.payload.ok, false); assert.equal(compactUnavailable.payload.summary.hydrate_count, 0);
+  assert(compactUnavailable.payload.admissions.every(row => !row.ok));
+  assert.deepEqual(compactUnavailable.payload.admissions.map(row => row.blocking_reasons), unavailable.payload.admissions.map(row => row.blocking_reasons));
+  assert.equal(compactUnavailable.payload.next_action.recommendation.stop_required, unavailable.payload.next_action.recommendation.stop_required);
+  checks.push("compact projection preserves PostgreSQL refusal without fallback or hydration");
   console.log(JSON.stringify({ status: "PASS", proof_class: "fixtures-and-real-source-cli", assertions: checks.length, checks,
     installed_package: "SKIP", native_tokens: "UNAVAILABLE", postgres_integration: "SKIP" }));
 } catch (error) { console.error(error.stack); process.exitCode = 1; }

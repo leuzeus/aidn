@@ -849,7 +849,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "read-only",
     jsonContract: "runtime-pre-write-admit.v1.schema.json",
     safeArgs: ["runtime", "pre-write-admit", "--skill", "cycle-create", "--json"],
-    notes: "Read-only admission; cycle-create can verify an explicit canonical initial session without inventing cycle freshness. Optional --native-request-stdin evaluates one native patch scope. Generic admission is orientation, never universal write authorization. Neither form repairs or applies the patch.",
+    notes: "Read-only admission; cycle-create can verify an explicit canonical initial session without inventing cycle freshness. Optional --native-request-stdin evaluates one native patch scope. --view agent formats the same decision without persistence. Generic admission is orientation, never universal write authorization. Neither form repairs or applies the patch.",
   }),
   commandPolicy({
     id: "runtime-handoff-admit",
@@ -866,7 +866,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "read-only",
     jsonContract: "runtime-coordinator-next-action.v1.schema.json",
     safeArgs: ["runtime", "coordinator-next-action", "--json"],
-    notes: "Recommends the next route without executing it.",
+    notes: "Recommends the next route without executing it. --view agent retains routing, stops and scope without adding writes or retained evidence.",
   }),
   commandPolicy({
     id: "runtime-coordinator-dispatch-plan",

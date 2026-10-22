@@ -1,0 +1,231 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-pre-write-admit-agent.v1",
+  "title": "aidn runtime pre-write-admit --view agent --json",
+  "x-aidn-command": "aidn runtime pre-write-admit --view agent --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "command",
+    "view",
+    "effect_class",
+    "reusable_write_authorization"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "runtime-pre-write-admit-agent.v1"
+    },
+    "command": {
+      "const": "aidn runtime pre-write-admit --view agent --json"
+    },
+    "view": {
+      "const": "agent"
+    },
+    "effect_class": {
+      "const": "read-only"
+    },
+    "reusable_write_authorization": {
+      "const": false
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "admission_status": {
+      "type": "string"
+    },
+    "admission_kind": {
+      "enum": [
+        "generic",
+        "specific"
+      ]
+    },
+    "generic_admission_status": {
+      "type": "string"
+    },
+    "target_root": {
+      "type": "string"
+    },
+    "skill": {
+      "type": "string"
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "workspace": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "shared_state_backend": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "shared_runtime_validation": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "blocking_reasons": {
+      "type": "array"
+    },
+    "warnings": {
+      "type": "array"
+    },
+    "blocking_findings": {
+      "type": "array"
+    },
+    "prioritized_artifacts": {
+      "type": "array"
+    },
+    "current_state_file": {
+      "type": "string"
+    },
+    "runtime_state_file": {
+      "type": "string"
+    },
+    "session_file": {
+      "type": "string"
+    },
+    "cycle_status_file": {
+      "type": "string"
+    },
+    "plan_file": {
+      "type": "string"
+    },
+    "source_revision": {
+      "type": "string"
+    },
+    "source_of_truth": {
+      "type": "object",
+      "properties": {
+        "state_mode": {
+          "type": "string"
+        },
+        "runtime_state_mode": {
+          "type": "string"
+        },
+        "observed_sources": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "issues": {
+          "type": "array"
+        },
+        "repair_actions": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": false
+    },
+    "write_decision": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "full_output": {
+      "type": "object",
+      "required": [
+        "command",
+        "args",
+        "requires_fresh_read",
+        "retained"
+      ],
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requires_fresh_read": {
+          "const": true
+        },
+        "retained": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "stop_required": {
+      "type": "boolean"
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "required": [
+        "contract_version",
+        "command",
+        "view",
+        "effect_class",
+        "reusable_write_authorization",
+        "ok",
+        "admission_status",
+        "admission_kind",
+        "target_root",
+        "skill",
+        "context",
+        "checks",
+        "blocking_reasons",
+        "warnings",
+        "blocking_findings",
+        "source_of_truth",
+        "full_output"
+      ]
+    },
+    {
+      "required": [
+        "ok",
+        "stop_required",
+        "error"
+      ],
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "stop_required": {
+          "const": true
+        }
+      }
+    }
+  ]
+}

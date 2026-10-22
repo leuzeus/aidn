@@ -129,6 +129,12 @@ Codex instruction layering after install:
 
 The current stable/advanced/internal classification lives in [docs/CLI_SURFACE_INVENTORY.md](docs/CLI_SURFACE_INVENTORY.md).
 
+Read-only admission and coordinator commands support opt-in `--view agent --json`.
+Workflow consultation can additionally select `--view agent --projection-profile compact.v1 --json`.
+These versioned projections preserve decisions, refusals and scope while omitting
+static policy inventories and derived packet bodies. Full defaults remain available;
+view selection never retains evidence or grants reusable write permission.
+
 Representative commands:
 
 ```bash

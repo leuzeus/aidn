@@ -69,6 +69,7 @@ export function parseArgs(argv) {
     daemonTimeoutMs: 30000,
     json: false,
     view: "full",
+    projectionProfile: null,
     write: false,
     grouped: false,
     contextProfile: "",
@@ -164,6 +165,9 @@ export function parseArgs(argv) {
     } else if (token === "--view") {
       args.view = String(argv[i + 1] ?? "").trim();
       i += 1;
+    } else if (token === "--projection-profile") {
+      args.projectionProfile = String(argv[++i] ?? "").trim();
+      if (args.projectionProfile !== "compact.v1") throw new Error("Unknown agent projection profile");
     } else if (token === "--write") {
       args.write = true;
     } else if (token === "--grouped") {
@@ -222,6 +226,7 @@ function printUsage() {
   console.log("  npx aidn codex workflow-step --target . --skill requirements-delta --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --json [--write]  (explicit complete diagnostic receipt)");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --projection-profile compact.v1 --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload,requirements-delta --view agent --grouped --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --grouped --context-profile token-efficiency.v1 --json");
   console.log("  Add --context-baseline-file <complete-prior-agent-or-workflow-receipt.json> for optional-unit delta; --history-view transitions preserves distinct execution references.");
@@ -424,6 +429,8 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
 
 export async function runWorkflowStep({ args, targetRoot }) {
   validateAgentViewOptions(args);
+  if (args.projectionProfile != null && (args.projectionProfile !== "compact.v1" || args.view !== "agent"))
+    throw new Error("Compact projection requires agent view");
   if (args.grouped !== undefined && typeof args.grouped !== "boolean") throw new Error("Grouped workflow selector must be boolean");
   if (args.contextProfile && (args.contextProfile !== TOKEN_CONTEXT_PROFILE.id || !args.grouped
       || !Number.isSafeInteger(args.bundleTargetBytes) || !Number.isSafeInteger(args.bundleHardLimitBytes)
@@ -446,7 +453,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
   } else output = await computeWorkflowStep({ args, targetRoot });
   const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "workflow-step", payload: output });
   if (args.view === "agent") {
-    const projected = projectWorkflowAgentView(output, receipt);
+    const projected = projectWorkflowAgentView(output, receipt, args.projectionProfile ?? null);
     return args.contextProfile ? finalizeWorkflowContextBudget(projected,
       { targetBytes: args.bundleTargetBytes, hardLimitBytes: args.bundleHardLimitBytes }) : projected;
   }
@@ -474,7 +481,7 @@ function readWorkflowBaseline(targetRoot, ref) {
       // metadata, graph and body-integrity checks before optional reuse.
       value = projectWorkflowAgentView(value.observation);
     }
-    if (value.contract_version !== "codex-workflow-step-agent.v1" || value.bundle_budget?.status === "blocked"
+    if (!["codex-workflow-step-agent.v1", "codex-workflow-step-agent-compact.v1"].includes(value.contract_version) || value.bundle_budget?.status === "blocked"
         || !Array.isArray(value.contexts) || !value.contexts.length || !Array.isArray(value.artifacts) || value.artifacts.length > 128) return null;
     const revision = value.contexts[0].source_revision;
     if (!value.contexts.every(context => context.source_revision === revision && Array.isArray(context.artifact_refs))) return null;

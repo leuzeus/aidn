@@ -1,5 +1,31 @@
 # CLI Surface Inventory
 
+`aidn runtime pre-write-admit --view agent --json` and
+`aidn runtime coordinator-next-action --view agent --json` are read-only,
+versioned compact projections. The canonical decision is evaluated first. They
+retain scope identities, activation revision, observed sources, checks, policy,
+blockers, warnings, repair findings, routing and stop decisions. A specific native
+patch's complete `write_decision` is retained unchanged. Admission omits the static
+concept-policy inventory and backend driver-distribution descriptions. Coordinator
+projection omits the derived packet body; routing, transition, consistency and
+repair diagnostics remain. Different packet observations remain distinct.
+
+`aidn codex workflow-step --view agent --projection-profile compact.v1 --json`
+selects `codex-workflow-step-agent-compact.v1`. It reuses the existing compact
+admissions and exact selected context units, projecting only the bulky next action.
+It composes with grouped selection, total JSON budgets, history and delta; the
+original full default and `codex-workflow-step-agent.v1` remain unchanged.
+Effects and explicit `--write` receipt intent remain those of the selected workflow
+invocation. A complete diagnostic receipt still retains the full original observation.
+
+The standalone projections use `runtime-pre-write-admit-agent.v1` and
+`runtime-coordinator-next-action-agent.v1`. Their unavailable/invalid-input form
+is a complete JSON refusal with `ok: false` and `stop_required: true`, without
+invented scope, source revision or proof. `full_output` describes a fresh full
+read and explicitly says `retained: false`; it is not a receipt or replay promise.
+The view neither performs repairs nor adds persistence, fallback, approval or
+reusable admission. Native token gains require a separate native comparison.
+
 `codex workflow-step --view agent --json` is an opt-in, versioned projection of
 the existing per-skill workflow. It retains admissions, blockers, scope, source
 revisions and complete selected excerpts, sharing exact duplicate artifact bodies

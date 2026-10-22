@@ -67,6 +67,19 @@ They have no canonical or admission role, are not automatically purged or shared
 and do not replace fresh action-specific admission. No receipt or token saving
 may be inferred merely from an agent view or a content hash.
 
+Standalone admission and coordinator agent views are pure projections after the
+existing canonical evaluation. The opt-in `compact.v1` workflow projection keeps
+its existing compact admissions and selected authority units, and applies the
+same coordinator projection to `next_action`. It has a distinct public contract;
+the existing full and agent-v1 shapes remain available. Static concept/driver
+inventories and derived packet bodies are not decision proofs. Activation and
+scope identity, checks, refusal/repair/transition diagnostics and exact native
+patch decisions remain explicit. Only equal packet-resolution metadata may be
+deduplicated; different observations stay distinct. A `full_output` descriptor
+requires a fresh full read and claims no retained record, source revision or
+authorization. View selection creates no persistence. An unavailable decision
+stops with a typed diagnostic instead of implying canonical fallback or success.
+
 An explicitly grouped workflow consultation can share one complete canonical
 snapshot and each needed shared planning/relay observation within its private
 asynchronous invocation. These internal values cannot be supplied through JSON,

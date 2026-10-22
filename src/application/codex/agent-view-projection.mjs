@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
+import { projectNextActionAgentView } from "../runtime/agent-decision-projection.mjs";
 
 const hash = value => createHash("sha256").update(value).digest("hex");
 const pick = (value, keys) => Object.fromEntries(keys.filter(key => value?.[key] !== undefined).map(key => [key, value[key]]));
@@ -49,7 +50,8 @@ const DECISION_FIELDS = ["ok", "decision", "action", "result", "reason_codes", "
   "recommended_next_action", "repair_layer_open_count", "repair_layer_blocking", "repair_layer_status",
   "repair_layer_advice", "repair_primary_reason", "repair_layer_top_findings", "error"];
 
-export function projectWorkflowAgentView(payload, receipt = null) {
+export function projectWorkflowAgentView(payload, receipt = null, projectionProfile = null) {
+  if (projectionProfile !== null && projectionProfile !== "compact.v1") throw new Error("Unknown agent projection profile");
   const artifacts = new Map();
   const metadata = new Map();
   const contexts = Object.entries(payload.hydrations ?? {}).map(([skill, hydrated]) => {
@@ -77,7 +79,7 @@ export function projectWorkflowAgentView(payload, receipt = null) {
         : (hydrated.recent_history ?? []).map(entry => pick(entry, ["skill", "ts", "execution_id", ...DECISION_FIELDS])),
       repair_layer: hydrated.repair_layer ?? null };
   });
-  return {
+  const projected = {
     ts: payload.ts, ok: payload.ok, contract_version: "codex-workflow-step-agent.v1",
     command: "aidn codex workflow-step --view agent --json", effect_class: payload.effect_class,
     view: "agent", target_root: payload.target_root, mode: payload.mode,
@@ -102,6 +104,13 @@ export function projectWorkflowAgentView(payload, receipt = null) {
     ...(payload.history_view ? { history_view: payload.history_view } : {}),
     receipt,
   };
+  if (projectionProfile === "compact.v1") {
+    projected.contract_version = "codex-workflow-step-agent-compact.v1";
+    projected.command = "aidn codex workflow-step --view agent --projection-profile compact.v1 --json";
+    projected.projection_profile = "compact.v1";
+    projected.next_action = projectNextActionAgentView(payload.next_action);
+  }
+  return projected;
 }
 
 export function projectHookAgentView(payload, receipt = null) {

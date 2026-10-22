@@ -71,6 +71,13 @@ view-implied receipt writes and explicit complete receipt readback. The required
 Codex integration lifecycle gate includes it once. Its output-size observations
 are fixture bytes; native performance and installed-procedure adoption remain
 separate qualifications.
+The same fixture gate covers the opt-in compact admission/coordinator CLI and
+`--projection-profile compact.v1` workflow. It compares strict exit/refusal and
+stop decisions, retains checks, source identities and exact native patch bindings,
+checks read-only target hashes, preserves complete selected units, and validates
+structured error output without invented proof. Grouped fixtures also check the
+compact PostgreSQL-unavailable refusal without hydration or fallback. The new
+contracts have isolated real-command cases in the public contract closure gate.
 The client corpus is copied through the tracked-file filter, then explicitly
 indexed in the disposable target. Ignored local fixture databases and caches
 are never inputs; excerpt-preservation checks require real selected text.
