@@ -1,5 +1,11 @@
 # Testing Guide
 
+Windows setup fixtures force an OEM console while exchanging UTF-8 JSON with
+Node, preserving accented registry paths and restoring the caller's encoding.
+Coordinator adapter cwd probes keep their batch-file bytes ASCII and transport
+the same accented paths/arguments through Windows variables and argv; their
+quoting and target-only sentinel assertions remain unchanged.
+
 `node tools/perf/verify-ordered-closure-fixtures.mjs` covers the internal opt-in
 closure composition with injected host responses: pure preview, explicit write
 intent, selected entities, exact CAS inputs, serial cycle/session order, strict
