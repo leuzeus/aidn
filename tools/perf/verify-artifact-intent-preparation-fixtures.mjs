@@ -217,6 +217,48 @@ export async function verifyArtifactIntentPreparation() {
       : { status: "PREVIEW", target_root: process.cwd() } }, { ...f.request, stage: "cycle", outcome: "DONE" }, f.observation, { write: true });
     assert.deepEqual(result.execution, partial);
   });
+  await test("write intent is captured before awaiting and cannot be escalated by caller mutation", async () => {
+    const f = fixture(), options = { write: false }; let writes = 0;
+    const sequence = { run: async (request, flags = {}) => {
+      if (flags.write) { writes++; return { status: "PASS", written: true }; }
+      return { status: "PREVIEW", target_root: process.cwd() };
+    } };
+    const pending = runPreparedOrderedClosure(sequence, { ...f.request, stage: "cycle", outcome: "DONE" }, f.observation, options);
+    options.write = true;
+    const result = await pending; assert.equal(result.execution.status, "PREVIEW"); assert.equal(writes, 0);
+  });
+  await test("preview port mutations cannot alter the already compiled execution request", async () => {
+    const f = fixture(); let executed;
+    const sequence = { run: async (request, flags = {}) => {
+      if (flags.write) { executed = request; return { status: "PASS" }; }
+      request.mutations[0].replacements[0].new = "state: OPEN\n";
+      return { status: "PREVIEW", target_root: process.cwd() };
+    } };
+    await runPreparedOrderedClosure(sequence, { ...f.request, stage: "cycle", outcome: "DONE" }, f.observation, { write: true });
+    assert.equal(executed.mutations[0].replacements[0].new, "state: DONE\n");
+  });
+  await test("unknown options and nonboolean write intent refuse before entering a port", async () => {
+    const f = fixture(); let entered = 0;
+    for (const options of [{ write: "true" }, { write: 1 }, { write: null }, { skip_gate: true }, null]) {
+      const result = await runPreparedOrderedClosure({ run: () => { entered++; } },
+        { ...f.request, stage: "cycle", outcome: "DONE" }, f.observation, options);
+      assert.equal(result.execution.status, "REFUSED"); assert.equal(result.execution.written, false);
+    }
+    assert.equal(entered, 0);
+  });
+  await test("literal preparation refusal retains its code instead of becoming a port outage", async () => {
+    const f = fixture(); f.request.items[0].edits = [{ kind: "replace", old: "e", new: "x" }];
+    const result = await runPreparedOrderedClosure({ run: () => { throw Error("must not enter"); } },
+      { ...f.request, stage: "cycle", outcome: "DONE" }, f.observation, { write: true });
+    assert.deepEqual(result.execution.errors, ["ARTIFACT_REPLACEMENT_NOT_UNIQUE"]);
+  });
+  await test("the existing engine's preview refusal and diagnostics remain unchanged", async () => {
+    const f = fixture(), refused = { status: "REFUSED", written: false, stop_required: true,
+      errors: ["CLOSURE_INPUT_TOO_LARGE"], steps: [], retry_allowed: false };
+    const result = await runPreparedOrderedClosure({ run: async () => refused },
+      { ...f.request, stage: "cycle", outcome: "DONE" }, f.observation, { write: true });
+    assert.deepEqual(result.execution, refused);
+  });
   return { status: "PASS", proof_class: "pure-preparation-and-SQLite-CAS-fixtures", assertions: checks.length, checks,
     closure_controls: "injected-host-fixtures", live_postgres: "UNAVAILABLE", native_qualification: "NOT_EXECUTED" };
 }

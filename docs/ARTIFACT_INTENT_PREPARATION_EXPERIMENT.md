@@ -84,8 +84,10 @@ executor consuming them remains unqualified.
 `runPreparedOrderedClosure` is the concrete terminal consumer. After pure
 preparation it checks the existing engine's pure preview target and forwards only
 the generated existing-artifact mutations to `createOrderedClosureSequence.run`.
-Actual effects still require `write:true`. The engine performs its unchanged
-fresh stage admission, SHA-CAS writes, runtime generation/persistence and verified
+Actual effects still require `write:true`.
+The consumer captures the boolean write intent before awaiting, isolates each
+port's request copy and preserves the original preparation/engine refusal codes.
+The engine performs its unchanged fresh stage admission, SHA-CAS writes, runtime generation/persistence and verified
 strict final hook. Its writer preserves current metadata under its ordinary lock;
 the terminal CLI does not acquire an additional historical metadata-pin option.
 Session closure still requires the actual successful cycle segment in that host.

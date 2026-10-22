@@ -207,8 +207,11 @@ export function prepareArtifactIntentBatch(request, observation, { maxOutputByte
 // Concrete consumer for existing terminal controls. Creation drafts are never
 // sent through an unchecked upsert; terminal stages accept existing CAS deltas.
 export async function runPreparedOrderedClosure(sequence, request, observation, options = {}) {
-  let preparation;
+  let preparation, write;
   try {
+    keys(options, ["write"], []);
+    write = options.write === undefined ? false : options.write;
+    check(typeof write === "boolean", "ARTIFACT_INTENT_WRITE_INTENT_INVALID");
     keys(request, ["stage", "outcome", "scope", "observation_sha256", "session_id", "cycle_id", "items"]);
     const { stage, outcome, ...intent } = request;
     check(["cycle", "session"].includes(stage) && outcome === (stage === "cycle" ? "DONE" : "CLOSED"), "ARTIFACT_INTENT_EXPLICIT_OUTCOME_REQUIRED");
@@ -217,19 +220,21 @@ export async function runPreparedOrderedClosure(sequence, request, observation, 
     check(preparation.items.every(item => item.kind === "replace"), "ARTIFACT_INTENT_CLOSURE_CREATION_REFUSED");
   } catch (error) {
     return { preparation: preparation ?? null, execution: { status: "REFUSED", written: false, stop_required: true,
-      retry_allowed: false, steps: [], errors: [error?.message?.startsWith("ARTIFACT_INTENT_") ? error.message : "ARTIFACT_INTENT_CONSUMER_UNAVAILABLE"] } };
+      retry_allowed: false, steps: [], errors: [/^(ARTIFACT_INTENT_|ARTIFACT_REPLACEMENT|ARTIFACT_REVISION_CONFLICT)[A-Z0-9_]*$/.test(error?.message ?? "")
+        ? error.message : "ARTIFACT_INTENT_CONSUMER_UNAVAILABLE"] } };
   }
   try {
     const compiled = { stage: request.stage, outcome: request.outcome, session_id: request.session_id, cycle_id: request.cycle_id,
       mutations: preparation.items.map(({ cas_request: cas }) => ({ path: cas.path, expected_sha256: cas.expectedSha256, replacements: cas.replacements })) };
-    const preview = await sequence.run(compiled);
+    const preview = await sequence.run(structuredClone(compiled));
+    if (preview.status !== "PREVIEW") return { preparation, execution: preview };
     const normalizeRoot = value => process.platform === "win32" ? path.resolve(value).toLowerCase() : path.resolve(value);
-    if (preview.status !== "PREVIEW" || typeof preview.target_root !== "string"
+    if (typeof preview.target_root !== "string"
       || normalizeRoot(preview.target_root) !== normalizeRoot(preparation.target_root)) {
       return { preparation, execution: { status: "REFUSED", written: false, stop_required: true, retry_allowed: false,
         steps: [], errors: ["ARTIFACT_INTENT_EXECUTOR_TARGET_MISMATCH"] } };
     }
-    const execution = options.write === undefined || options.write === false ? preview : await sequence.run(compiled, options);
+    const execution = write ? await sequence.run(structuredClone(compiled), { write: true }) : preview;
     return { preparation, execution };
   } catch {
     // A host exception is not evidence that an attempted write had no effect.
