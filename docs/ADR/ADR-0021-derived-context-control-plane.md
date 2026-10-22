@@ -155,6 +155,17 @@ packaged outside the ordinary installed skill tree and requires explicit researc
 host selection. Batching preserves actual control executions and stops dependent
 actions on refusal; no host observation becomes a reusable write authorization.
 Default procedures and user profiles remain unchanged until native qualification.
+An internal opt-in ordered-closure composition can execute each explicitly
+chosen cycle/session segment through the existing CLI and canonical writers.
+It requires explicit write intent, exact entity/path/CAS inputs, fresh local
+scope checks, the original deadline and independently verified strict final
+hook evidence. Session execution follows an actual successful cycle segment;
+it never predicts that outcome. An actual failure stops dependent work and
+disables replay; partial and unknown write outcomes remain visible. This first
+composition accepts database-canonical dual/db-only execution and preserves the
+legacy files procedure. It adds no public command, shared authority, schema or
+implicit adoption. Host-injected fixtures are not native qualification. See
+[the bounded experiment](../ORDERED_CLOSURE_EXPERIMENT.md).
 The manual native qualification port uses a declared invocation-local
 `bounded-context.v1` output policy. It requests 60,000 history tokens independently
 of the code-mode display budget and refuses dynamic tool JSON above 131,072 UTF-8

@@ -1,5 +1,12 @@
 # CLI Surface Inventory
 
+The internal `createOrderedClosureSequence` research composition adds no public
+command. An explicitly bound host can execute its selected terminal segments
+through the existing admission, CAS artifact, runtime projector and strict hook
+commands below. Each command retains its existing effects and contracts. Pure
+preview and explicit execution, supported modes and partial/refusal semantics
+are documented in [the experiment](ORDERED_CLOSURE_EXPERIMENT.md).
+
 `aidn runtime pre-write-admit --view agent --json` and
 `aidn runtime coordinator-next-action --view agent --json` are read-only,
 versioned compact projections. The canonical decision is evaluated first. They

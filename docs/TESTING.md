@@ -1,5 +1,15 @@
 # Testing Guide
 
+`node tools/perf/verify-ordered-closure-fixtures.mjs` covers the internal opt-in
+closure composition with injected host responses: pure preview, explicit write
+intent, selected entities, exact CAS inputs, serial cycle/session order, strict
+nested-hook verification, original deadline, concurrent requests, scope changes,
+refusal/partial/unknown write outcomes and disabled replay. Files-mode execution
+refuses before dispatch and keeps its ordinary procedure. The Codex integration
+lifecycle gate includes this suite. These are host-injected fixture proofs;
+actual installed CLI, native hooks, live PostgreSQL and token gains require
+separate native evidence. See [the experiment](ORDERED_CLOSURE_EXPERIMENT.md).
+
 The cycle-close completion fixtures exercise clean, cached terminal branches in
 `files`, `dual` and `db-only` with gate evaluation forced. A successful recent
 COMMITTING drift check on the same branch must remain visible on that path;

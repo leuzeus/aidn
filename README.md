@@ -160,6 +160,11 @@ same guarded actions through `aidn runtime workflow-action`. A local dashboard
 starts only with `aidn runtime workflow-dashboard --serve`; JSON alone is a
 preview. It preserves existing instance pins and supervisor admission.
 
+The internal [ordered closure experiment](docs/ORDERED_CLOSURE_EXPERIMENT.md)
+composes explicitly chosen cycle/session closure through existing admissions,
+CAS writers and strict final hooks. It requires an explicitly selected research
+host and write intent; installed procedures and public commands remain unchanged.
+
 Bounded supervised runs use a separate opt-in command family:
 `aidn runtime agent-run`, `agent-run-status`, `agent-run-resume`,
 `agent-run-cancel` and `agent-run-cleanup`. Every command selects a pinned local
