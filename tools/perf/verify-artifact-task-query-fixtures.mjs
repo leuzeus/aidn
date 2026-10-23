@@ -100,6 +100,8 @@ export async function verifyArtifactTaskQueries() {
         const narrow=cli(['codex','workflow-step','--skills','context-reload','--view','agent','--grouped','--artifact-query-profile',profile,'--artifact-query-params-file','narrow-query.json','--bundle-target-bytes','65536','--json']).value;
         assert.equal(narrow.artifact_consultation.budget.target_bytes,256,'the workflow must not widen a narrower requested query budget');
         assert.equal(narrow.artifact_consultation.status,'blocked');assert.equal(narrow.ok,false);assert.equal(narrow.summary.hydrate_count,0);
+        assert.equal(narrow.artifact_consultation.errors.filter(e=>e.code==='ARTIFACT_QUERY_BUDGET_INSUFFICIENT').length,1);
+        assert(narrow.artifact_consultation.expansions.length>narrow.artifact_consultation.sources.length,'refusal must retain authority expansion references');
         checks.push('a narrower query-file budget remains binding before and after workflow projection');
         const limit=Math.floor((actual.value.budget.total_bytes+w.bundle_budget.total_bytes)/2);
         assert(limit>actual.value.budget.total_bytes&&limit<w.bundle_budget.total_bytes);

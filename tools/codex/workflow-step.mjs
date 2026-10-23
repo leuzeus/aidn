@@ -488,7 +488,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
   const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "workflow-step", payload: output });
   if (args.view === "agent") {
     const projected = projectWorkflowAgentView(output, receipt, args.projectionProfile ?? null);
-    if(projected.artifact_consultation?.authorities) {
+    if(projected.artifact_consultation?.authorities&&projected.artifact_consultation.status!=='blocked') {
       for(const unit of projected.artifact_consultation.authorities) {
         const match=projected.artifacts.find(row=>row.artifact.unit_id===unit.unit_id&&row.artifact.sha256===unit.sha256
           &&row.artifact.content_excerpt===unit.content_excerpt);

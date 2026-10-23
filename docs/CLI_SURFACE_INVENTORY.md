@@ -61,10 +61,11 @@ serves admitted skills, and identical mandatory authority bodies are referenced
 once in the final agent representation. A global coordinator stop suppresses
 the consultation and hydration. Failed consultation also prevents hydration.
 The default complete-JSON target is 16,384 bytes and maximum 65,536; both include
-the query, checks, history, selected units and transport metadata. Optional units
-are also subject to a smaller query `target_bytes` supplied in the parameters
-file; the workflow never widens that bound during selection or projection. Units
-may be omitted explicitly; mandatory units are never truncated. Historical
+the query, checks, history, selected units and transport metadata. A smaller
+query `target_bytes` supplied in the parameters file remains binding during
+selection and projection. Existing refusals retain their minimum and expansion
+references. Optional units may be omitted explicitly; mandatory units are never
+truncated. Historical
 workflows and default projections remain available.
 The existing scoped hydration path requires an explicitly prepared index even
 in files mode; a missing index refuses the workflow context without creating
