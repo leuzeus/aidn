@@ -7432,6 +7432,27 @@
       "migration": ""
     },
     {
+      "id": "contract:codex-workflow-step-agent-compact.v2.schema.json",
+      "kind": "contract",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI contract maintainer",
+      "source": "src/core/contracts/cli-output/codex-workflow-step-agent-compact.v2.schema.json",
+      "entrypoint": "aidn codex workflow-step --view agent --projection-profile compact.v2 --json",
+      "implementation": "src/core/contracts/cli-output/codex-workflow-step-agent-compact.v2.schema.json",
+      "effects": "machine-readable public output",
+      "consumer": "automation and contract fixtures",
+      "docs": "docs/agents/04-json-contracts.md",
+      "proof": {
+        "class": "fixture",
+        "target": "tools/perf/verify-cli-output-contracts-fixtures.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
       "id": "contract:codex-workflow-step-agent-error.v1.schema.json",
       "kind": "contract",
       "status": "active",
