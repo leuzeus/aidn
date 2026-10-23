@@ -96,6 +96,11 @@ export async function verifyArtifactTaskQueries() {
       assert.deepEqual(validateJsonSchema(w.artifact_consultation,schema),[]);
       checks.push(`${mode}: real query CLI and grouped workflow share checked admissions and deduplicate authority bodies`);
       if(mode==='files') {
+        fs.writeFileSync(target+'/narrow-query.json',JSON.stringify({schema_version:1,target_bytes:256}));
+        const narrow=cli(['codex','workflow-step','--skills','context-reload','--view','agent','--grouped','--artifact-query-profile',profile,'--artifact-query-params-file','narrow-query.json','--bundle-target-bytes','65536','--json']).value;
+        assert.equal(narrow.artifact_consultation.budget.target_bytes,256,'the workflow must not widen a narrower requested query budget');
+        assert.equal(narrow.artifact_consultation.status,'blocked');assert.equal(narrow.ok,false);assert.equal(narrow.summary.hydrate_count,0);
+        checks.push('a narrower query-file budget remains binding before and after workflow projection');
         const limit=Math.floor((actual.value.budget.total_bytes+w.bundle_budget.total_bytes)/2);
         assert(limit>actual.value.budget.total_bytes&&limit<w.bundle_budget.total_bytes);
         const bounded=cli(['codex','workflow-step','--skills','context-reload','--view','agent','--grouped','--artifact-query-profile',profile,'--bundle-target-bytes',String(limit),'--json']).value;

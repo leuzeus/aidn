@@ -374,7 +374,7 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
       if(params.skills)throw new Error('Workflow supplies its own artifact-query skills');
       artifactConsultation=await queryProjectArtifacts({targetRoot,profile:args.artifactQueryProfile,existingAdmissions:admissions,
         onSelection:request=>{artifactSelectionRequest=request;},
-        params:{...params,...(args.artifactQueryProfile==='active-state.v1'?{}:{skills:args.skills}),target_bytes:args.bundleTargetBytes}});
+        params:{...params,...(args.artifactQueryProfile==='active-state.v1'?{}:{skills:args.skills}),target_bytes:Math.min(args.bundleTargetBytes,params.target_bytes??args.bundleTargetBytes)}});
     }
   }
   if (grouped && admittedSkills.length && nextAction?.recommendation?.stop_required !== true
@@ -494,7 +494,7 @@ export async function runWorkflowStep({ args, targetRoot }) {
           &&row.artifact.content_excerpt===unit.content_excerpt);
         if(match){delete unit.content_excerpt;unit.workflow_artifact_ref=match.id;}
       }
-      finalizeArtifactQueryBudget(projected.artifact_consultation,args.bundleTargetBytes);
+      finalizeArtifactQueryBudget(projected.artifact_consultation,projected.artifact_consultation.budget?.target_bytes??args.bundleTargetBytes);
     }
     return args.contextProfile || args.artifactQueryProfile ? finalizeWorkflowContextBudget(projected,
       { targetBytes: args.bundleTargetBytes, hardLimitBytes: args.bundleHardLimitBytes }) : projected;
