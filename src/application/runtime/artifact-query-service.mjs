@@ -76,15 +76,15 @@ function fieldValue(source, field) {
   const values = details.list_items;
   if (details.style === 'list' && Array.isArray(values)) {
     const rawValues=details.raw_block.split('\n').map(line=>line.trim().replace(/^[-*]\s+/,''));
-    if (rawValues.some(v => /^(unknown|unavailable)$/i.test(v)) || rawValues.length > 1 && rawValues.some(v => /^\(?none\)?$/i.test(v)))
+    if (rawValues.some(v => /^(unknown|unavailable)$/i.test(v)) || rawValues.length > 1 && rawValues.some(v => /^(?:none|\(none\))$/i.test(v)))
       return { status: 'uninterpretable', value: null, reason: 'ambiguous_list' };
-    if(values.length || rawValues.length===1 && /^\(?none\)?$/i.test(rawValues[0])){
+    if(values.length || rawValues.length===1 && /^(?:none|\(none\))$/i.test(rawValues[0])){
       const projected=source.canonical?.derived_session_context?.[field.source_key]??source.canonical?.derived_runtime_context?.[field.source_key];
       return { status: 'known', value:isDeepStrictEqual(projected,values)?projected:values };
     }
   }
   if (field.type === 'list_or_scalar' && details.style === 'scalar' && details.scalar && !/^(unknown|unavailable)$/i.test(details.scalar))
-    return { status:'known', value:/^\(?none\)?$/i.test(details.scalar)?[]:[details.scalar] };
+    return { status:'known', value:/^(?:none|\(none\))$/i.test(details.scalar)?[]:[details.scalar] };
   return { status: 'uninterpretable', value: null, reason: 'list_invalid' };
 }
 

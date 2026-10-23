@@ -86,6 +86,12 @@ export async function verifyArtifactQueryFixtures() {
     for(const params of [{},{schema_version:2},{schema_version:1,sql:'select *'},{schema_version:1,target_bytes:0},{schema_version:1,include_optional:1},{schema_version:1,scope:{project_id:'foreign'}}])
       check('invalid bounded parameters',()=>assert.throws(()=>validateArtifactQueryParams(params),/PARAMS_INVALID/));
     const selected=selectArtifactQuery({payload:base,backend:'files',scope});
+    for(const marker of ['(none','none)','none','(none)'])check(`balanced empty-list sentinel ${marker}`,()=>{
+      const payload=structuredClone(base);revise(payload,3,s=>s.replace('blockers:\n- none',`blockers: ${marker}`));
+      const result=selectArtifactQuery({payload,backend:'files',scope});
+      const actual=result.fields.find(f=>f.id==='cycle_status.blockers');
+      assert.deepEqual(actual.value,['none','(none)'].includes(marker)?[]:[marker]);
+    });
     check('fenced examples cannot supply a missing required field',()=>{
       const payload=structuredClone(base);revise(payload,0,s=>s.replace('mode: COMMITTING\n','')+'\n```text\nmode: COMMITTING\n```\n');
       const result=selectArtifactQuery({payload,backend:'files',scope});assert.notEqual(result.status,'ok');assert.equal(result.fields.find(f=>f.id==='current_state.mode').status,'absent');
