@@ -37,6 +37,9 @@ export async function runArtifactTaskQuery({options,readSources,select,finalize}
       if(existingAdmissions&&keys.length!==1)fail('ARTIFACT_QUERY_ADMISSION_BINDING');
       admissions[skill]=existingAdmissions?existingAdmissions[keys[0]]:await preWriteAdmit({targetRoot,skill});
       if(admissions[skill].skill!==skill)fail('ARTIFACT_QUERY_ADMISSION_BINDING');
+      if(admissions[skill].activation?.active && (admissions[skill].source_of_truth?.state_mode!==observation.stateMode
+        || observation.backend!=='files'&&admissions[skill].shared_state_backend?.projection_backend_kind!==observation.backend))
+        fail('ARTIFACT_QUERY_ADMISSION_CANONICAL_MISMATCH');
     }
     result.admissions=skills.map(skill=>({skill,...pick(admissions[skill],['ok','admission_status','admission_kind','checks','blocking_reasons','warnings','blocking_findings']),
       repairs:structuredClone(admissions[skill].source_of_truth?.repair_actions??[]),

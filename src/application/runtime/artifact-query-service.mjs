@@ -276,5 +276,5 @@ async function readArtifactQuerySources({targetRoot,params,profile=ACTIVE_STATE_
   }
   if(!configObservation && readPhysical(targetRoot,'.aidn/config.json'))fail('ARTIFACT_QUERY_SOURCE_CHANGED');
   if(!isDeepStrictEqual(identity(resolveRuntimeProjectContext({targetRoot})),identity(scope)))fail('ARTIFACT_QUERY_SCOPE_CHANGED');
-  return {payload,backend,scope};
+  return {payload,backend,scope,stateMode:resolveConfigStateMode(config)??'files'};
 }

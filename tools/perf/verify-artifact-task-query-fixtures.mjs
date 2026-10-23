@@ -39,6 +39,10 @@ export async function verifyArtifactTaskQueries() {
     for(const row of payload.artifacts){const p=target+'/docs/audit/'+row.path;fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,row.content);}
     const config={version:1,runtime:{stateMode:'files',indexStoreMode:'dual-sqlite'},workflow:{sourceBranch:'dev'}};
     fs.writeFileSync(target+'/.aidn/config.json',JSON.stringify(config));
+    const previousMode=process.env.AIDN_STATE_MODE;
+    try{process.env.AIDN_STATE_MODE='db-only';await assert.rejects(query(),/ARTIFACT_QUERY_ADMISSION_CANONICAL_MISMATCH/);}
+    finally{if(previousMode===undefined)delete process.env.AIDN_STATE_MODE;else process.env.AIDN_STATE_MODE=previousMode;}
+    checks.push('an environment override cannot mix a file observation with canonical database admissions');
     fs.rmSync(target+'/docs/audit/HANDOFF-PACKET.md',{force:true});
     const docs={'QUERY-RULES.md':'## Admission\nUse fresh canonical admission and retain every refusal.\n### Exception\nAn expired proof never authorizes closure.\n## Closure\nREQ, TEST, GAP and CR must be reconciled by the existing closure checks.\n',
       'QUERY-EVIDENCE.md':'## Evidence\nA consulted receipt is not a certified acceptance.\n### Last exception\nMissing proof requires the existing verification procedure.\n'};
