@@ -442,7 +442,7 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
     hydrations,
     next_action: nextAction,
     ...(artifactConsultation?{artifact_consultation:artifactConsultation}:{}),
-    ...(args.contextProfile ? { context_budget_request: { profile: TOKEN_CONTEXT_PROFILE.id,
+    ...(args.contextProfile || args.artifactQueryProfile ? { context_budget_request: { profile: TOKEN_CONTEXT_PROFILE.id,
       target_bytes: args.bundleTargetBytes, hard_limit_bytes: args.bundleHardLimitBytes },
       selection_policy: selectionPolicy ? Object.fromEntries(Object.entries(selectionPolicy).filter(([key]) => key !== "request"))
         : { mode: "not-attempted", reason: "no_admitted_continuation", write_authorization: false },

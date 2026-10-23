@@ -103,6 +103,13 @@ export async function verifyArtifactTaskQueries() {
         assert.deepEqual(bounded.artifact_consultation.authorities,[]);assert(bounded.artifact_consultation.expansions.length);
         assert.equal(bounded.bundle_budget.total_bytes,Buffer.byteLength(JSON.stringify(bounded)));
         checks.push('final workflow budget refuses even when the query alone fits; no dangling authority references');
+        const index=target+'/.aidn/runtime/index/workflow-index.sqlite';fs.renameSync(index,index+'.held');
+        try {
+          const missingIndex=cli(['codex','workflow-step','--skills','context-reload','--view','agent','--grouped','--artifact-query-profile',profile,'--bundle-target-bytes','65536','--json']).value;
+          assert.equal(missingIndex.ok,false);assert.equal(missingIndex.context_selection.status,'blocked');
+          assert.equal(missingIndex.bundle_budget.status,'blocked');
+        }finally{fs.renameSync(index+'.held',index);}
+        checks.push('missing indexed authority selection cannot become a successful workflow consultation');
       }
     }
     const small=await query(profile,{...params,target_bytes:256});assert.equal(small.status,'blocked');assert(small.errors.some(e=>e.code==='ARTIFACT_QUERY_BUDGET_INSUFFICIENT'));assert.equal(small.authorities.length,0);

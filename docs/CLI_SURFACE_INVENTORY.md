@@ -64,6 +64,9 @@ The default complete-JSON target is 16,384 bytes and maximum 65,536; both includ
 the query, checks, history, selected units and transport metadata. Optional units
 may be omitted explicitly; mandatory units are never truncated. Historical
 workflows and default projections remain available.
+The existing scoped hydration path requires an explicitly prepared index even
+in files mode; a missing index refuses the workflow context without creating
+one. Standalone files-mode artifact queries read their canonical files directly.
 
 The internal `createOrderedClosureSequence` research composition adds no public
 command. An explicitly bound host can execute its selected terminal segments
