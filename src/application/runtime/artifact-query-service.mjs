@@ -197,7 +197,7 @@ export function readArtifactQueryParams(targetRoot, relative) {
   try{return validateArtifactQueryParams(JSON.parse(read.bytes.toString('utf8')));}catch{fail('ARTIFACT_QUERY_PARAMS_INVALID');}
 }
 
-export async function queryProjectArtifacts({targetRoot,params,profile=ACTIVE_STATE_PROFILE,snapshotReader=readRuntimeSnapshot,afterRead=null}) {
+export async function queryProjectArtifacts({targetRoot,params,profile=ACTIVE_STATE_PROFILE,snapshotReader=options=>readRuntimeSnapshot(options),afterRead=null}) {
   const request=validateArtifactQueryParams(params); // Capture before any await.
   if(profile!==ACTIVE_STATE_PROFILE)fail('ARTIFACT_QUERY_PROFILE_UNSUPPORTED');
   const configObservation=readPhysical(targetRoot,'.aidn/config.json');
