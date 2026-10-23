@@ -538,6 +538,10 @@ const CONTRACT_CASES = [
     name: "codex-workflow-step-agent-error", schema: "codex-workflow-step-agent-error.v1.schema.json", expectedExit: 1,
     args: ["codex", "workflow-step", "--skills", "context-reload", "--view", "agent", "--grouped", "--context-profile", "unrecognized", "--json"],
   },
+  {
+    name: "codex-workflow-step-agent-compact-v2", schema: "codex-workflow-step-agent-compact.v2.schema.json",
+    args: ["codex", "workflow-step", "--skills", "context-reload,start-session", "--mode", "THINKING", "--view", "agent", "--projection-profile", "compact.v2", "--json"],
+  },
 ];
 
 function prepareBaseFixture(sourceRoot, tempRoot) {

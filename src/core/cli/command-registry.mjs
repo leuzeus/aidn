@@ -214,6 +214,7 @@ const CODEX_COMMANDS = freezeDeep([
     "codex-workflow-step.v1.schema.json",
     "codex-workflow-step-agent.v1.schema.json",
     "codex-workflow-step-agent-compact.v1.schema.json",
+    "codex-workflow-step-agent-compact.v2.schema.json",
     "codex-workflow-step-agent-error.v1.schema.json",
   ]),
 ]);

@@ -9,6 +9,7 @@ import { resolveWorkspaceContext } from "../../src/application/runtime/workspace
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { computeCoordinatorNextAction } from "../runtime/coordinator-next-action.mjs";
 import { persistAgentViewReceipt, projectWorkflowAgentView, validateAgentViewOptions } from "../../src/application/codex/agent-view-projection.mjs";
+import { expandWorkflowProjection } from "../../src/application/codex/workflow-shared-projection.mjs";
 import { withWorkflowObservation } from "../../src/application/runtime/workflow-observation-service.mjs";
 import { readWorkflowAdapterConfig } from "../../src/lib/config/workflow-adapter-config-lib.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
@@ -171,7 +172,7 @@ export function parseArgs(argv) {
       i += 1;
     } else if (token === "--projection-profile") {
       args.projectionProfile = String(argv[++i] ?? "").trim();
-      if (args.projectionProfile !== "compact.v1") throw new Error("Unknown agent projection profile");
+      if (!["compact.v1", "compact.v2"].includes(args.projectionProfile)) throw new Error("Unknown agent projection profile");
     } else if (token === "--write") {
       args.write = true;
     } else if (token === "--grouped") {
@@ -237,6 +238,7 @@ function printUsage() {
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --json [--write]  (explicit complete diagnostic receipt)");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --projection-profile compact.v1 --json");
+  console.log("  Use --projection-profile compact.v2 for same-response decision/source references; compact.v1 remains available.");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload,requirements-delta --view agent --grouped --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --grouped --context-profile token-efficiency.v1 --json");
   console.log('  npx aidn codex workflow-step --skills close-session --view agent --grouped --artifact-query-profile verification-closure.v1 --json');
@@ -458,7 +460,7 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
 
 export async function runWorkflowStep({ args, targetRoot }) {
   validateAgentViewOptions(args);
-  if (args.projectionProfile != null && (args.projectionProfile !== "compact.v1" || args.view !== "agent"))
+  if (args.projectionProfile != null && (!["compact.v1", "compact.v2"].includes(args.projectionProfile) || args.view !== "agent"))
     throw new Error("Compact projection requires agent view");
   if (args.grouped !== undefined && typeof args.grouped !== "boolean") throw new Error("Grouped workflow selector must be boolean");
   if (args.contextProfile && (args.contextProfile !== TOKEN_CONTEXT_PROFILE.id || !args.grouped
@@ -523,7 +525,8 @@ function readWorkflowBaseline(targetRoot, ref) {
       // metadata, graph and body-integrity checks before optional reuse.
       value = projectWorkflowAgentView(value.observation);
     }
-    if (!["codex-workflow-step-agent.v1", "codex-workflow-step-agent-compact.v1"].includes(value.contract_version) || value.bundle_budget?.status === "blocked"
+    value = expandWorkflowProjection(value);
+    if (!["codex-workflow-step-agent.v1", "codex-workflow-step-agent-compact.v1", "codex-workflow-step-agent-compact.v2"].includes(value.contract_version) || value.bundle_budget?.status === "blocked"
         || !Array.isArray(value.contexts) || !value.contexts.length || !Array.isArray(value.artifacts) || value.artifacts.length > 128) return null;
     const revision = value.contexts[0].source_revision;
     if (!value.contexts.every(context => context.source_revision === revision && Array.isArray(context.artifact_refs))) return null;
@@ -535,7 +538,7 @@ function readWorkflowBaseline(targetRoot, ref) {
           || !row.source || typeof row.source !== "object" || Array.isArray(row.source)
           || typeof row.path !== "string" || !/^[a-f0-9]{64}$/.test(row.sha256)
           || !row.canonical || typeof row.canonical !== "object" || Array.isArray(row.canonical)) return null;
-      const { id, ...binding } = row;
+      const { id } = row, binding = { source: row.source, path: row.path, sha256: row.sha256, canonical: row.canonical };
       if (id !== sha256(JSON.stringify(binding))) return null;
       metadata.set(id, row);
     }

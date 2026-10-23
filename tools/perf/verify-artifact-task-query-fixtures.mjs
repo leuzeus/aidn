@@ -15,9 +15,56 @@ import {writeWorkflowAdapterConfig} from '../../src/lib/config/workflow-adapter-
 import {preWriteAdmit} from '../runtime/pre-write-admit.mjs';
 import {withWorkflowObservation} from '../../src/application/runtime/workflow-observation-service.mjs';
 import {validateJsonSchema} from '../../src/core/contracts/json-schema-validator.mjs';
+import {projectWorkflowAgentView} from '../../src/application/codex/agent-view-projection.mjs';
+import {shareWorkflowProjection,expandWorkflowProjection} from '../../src/application/codex/workflow-shared-projection.mjs';
+import {finalizeWorkflowContextBudget} from '../../src/application/codex/task-context-profile.mjs';
 
 const repo=path.resolve(import.meta.dirname,'../..'),hash=b=>createHash('sha256').update(b).digest('hex');
 const schema=JSON.parse(fs.readFileSync(repo+'/src/core/contracts/cli-output/runtime-artifact-query.v1.schema.json'));
+const sharedSchema=JSON.parse(fs.readFileSync(repo+'/src/core/contracts/cli-output/codex-workflow-step-agent-compact.v2.schema.json'));
+
+function verifySharedProjection() {
+  const source={target_root:'fixture',source_revision:'a'.repeat(64),source_backend:'postgres',runtime_scope_id:'runtime:project=fixture:workspace=fixture:profile=default',project_id:'fixture',workspace_id:'fixture',state_mode:'db-only'};
+  const decisions=Object.fromEntries(['audit','create','drift','handoff','session'].map(action=>[action,{ok:true,decision:'full',action,result:'ok',
+    reason_codes:['BRANCH_CHANGED','ARTIFACTS_CHANGED','DIGEST_MISS'],repair_layer_open_count:0,repair_layer_blocking:false,
+    repair_layer_status:'clean',repair_layer_advice:'Repair layer is clean.',repair_primary_reason:'Repair layer is clean.',repair_layer_top_findings:[]}]));
+  const artifacts=['kernel','workflow','summary','baseline'].map(unit_id=>({path:unit_id+'.md',unit_id,sha256:'b'.repeat(64),selection_reasons:['mandatory_policy'],
+    content_excerpt:'Complete authority, including final exceptions.\n',canonical:{schema_version:1,title:unit_id}}));
+  const hydration={...source,artifacts,decisions,recent_history:[]};
+  const payload={ts:'fixture',ok:true,effect_class:'read-only',target_root:'fixture',mode:'COMMITTING',skills:['context-reload','start-session'],workspace:{},
+    summary:{skill_count:2,admission_count:2,blocked_skill_count:0,hydrate_count:1},admissions:{},hydrations:{'context-reload':hydration,'start-session':hydration},
+    next_action:{target_root:'fixture',current_state_file:'current',runtime_state_file:'runtime',packet_file:'packet',packet_resolution:{},handoff:null,
+      preferred_dispatch_source:'workflow',recommendation:{role:'executor',action:'implement',goal:'fixture',source:'workflow',reason:'admitted',stop_required:false},
+      scope:{scope_type:'cycle',scope_id:'C001',target_branch:'fixture'},context:{},next_action_diagnostic:{}},
+    selection_policy:{mode:'scoped',reason:'accepted_task_policy',write_authorization:false}};
+  const initial=projectWorkflowAgentView(payload,null,'compact.v1');
+  artifacts[0].content_excerpt+='x'.repeat(66000-Buffer.byteLength(JSON.stringify(initial)));
+  const full=projectWorkflowAgentView(payload,null,'compact.v1'),shared=projectWorkflowAgentView(payload,null,'compact.v2');
+  assert.deepEqual(validateJsonSchema(shared,sharedSchema),[]);
+  const expanded=expandWorkflowProjection(shared),normal=structuredClone(full);
+  for(const key of ['contract_version','command','projection_profile'])expanded[key]=normal[key];
+  assert.deepEqual(expanded,normal,'all decision fields, source identities and authority bodies reconstruct exactly');
+  assert.equal(shared.decision_sets.length,1);assert.equal(shared.context_sources.length,1);
+  assert(!Object.hasOwn(shared.contexts[0],'decisions'));
+  const bounded=finalizeWorkflowContextBudget(structuredClone(shared),{targetBytes:65536,hardLimitBytes:65536});
+  const refused=finalizeWorkflowContextBudget(structuredClone(full),{targetBytes:65536,hardLimitBytes:65536});
+  assert.equal(refused.bundle_budget.status,'blocked');assert(refused.bundle_budget.minimum_required_bytes>65536);
+  assert.equal(bounded.bundle_budget.status,'within-target');assert.equal(bounded.ok,true);assert.equal(bounded.artifacts.length,4);
+  assert.deepEqual(bounded.artifacts.map(a=>a.artifact),full.artifacts.map(a=>a.artifact));
+  assert.equal(bounded.bundle_budget.total_bytes,Buffer.byteLength(JSON.stringify(bounded)));assert(bounded.bundle_budget.total_bytes<=65536);
+  for(const mutate of [
+    v=>delete v.decision_sets,
+    v=>v.decision_sets[0].decisions.audit.ok=false,
+    v=>v.contexts[0].decisions={},
+    v=>v.context_sources.push(v.context_sources[0]),
+    v=>v.artifacts[0].source_ref='0'.repeat(64),
+  ]){const bad=structuredClone(shared);mutate(bad);assert.throws(()=>expandWorkflowProjection(bad),/WORKFLOW_PROJECTION_/);}
+  const different=structuredClone(full);different.contexts[1].decisions.audit.ok=false;different.artifacts[0].source={...different.artifacts[0].source,source_revision:'c'.repeat(64)};
+  shareWorkflowProjection(different);assert(!different.decision_sets,'different decisions never merge');assert(Object.hasOwn(different.artifacts[0],'source'),'different revisions remain inline');
+  const tiny=finalizeWorkflowContextBudget(structuredClone(shared),{targetBytes:256,hardLimitBytes:65536});
+  assert.equal(tiny.bundle_budget.status,'blocked');assert.equal(tiny.artifacts.length,0);assert(!tiny.context_sources);expandWorkflowProjection(tiny);
+  return {before_minimum:refused.bundle_budget.minimum_required_bytes,after_bytes:bounded.bundle_budget.total_bytes,limit:65536};
+}
 export async function verifyArtifactTaskQueries() {
   const previous=process.env.AIDN_TASK_QUERY_UNAVAILABLE;delete process.env.AIDN_TASK_QUERY_UNAVAILABLE;
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'aidn-task-query-')),target=root+'/client',checks=[];
@@ -30,6 +77,7 @@ export async function verifyArtifactTaskQueries() {
     visit(target);return hash(JSON.stringify(values));
   };
   try {
+    const sharedMeasurement=verifySharedProjection();checks.push('compact.v2: lossless decision/source references fit an overflowing mandatory response without increasing its limit: '+JSON.stringify(sharedMeasurement));
     const fixture=repo+'/tests/fixtures/repo-installed-core',tracked=createTrackedFixtureFilter(fixture,repo);
     fs.cpSync(fixture,target,{recursive:true,filter:p=>tracked(p)&&isActivationFixtureSource(fixture,p,{freshContext:true})});
     for(const args of [['init','-b','feature/example'],['config','user.name','fixture'],['config','user.email','fixture@example.invalid']])assert.equal(run('git',['-C',target,...args]).status,0);
@@ -95,7 +143,25 @@ export async function verifyArtifactTaskQueries() {
       assert.equal(w.bundle_budget.total_bytes,Buffer.byteLength(JSON.stringify(w)));assert.equal(w.observation.fence_status,'unchanged');
       assert.deepEqual(validateJsonSchema(w.artifact_consultation,schema),[]);
       checks.push(`${mode}: real query CLI and grouped workflow share checked admissions and deduplicate authority bodies`);
+      const sharedBefore=fingerprint();
+      const compact=cli(['codex','workflow-step','--skills','context-reload','--view','agent','--projection-profile','compact.v2','--grouped','--artifact-query-profile',profile,'--bundle-target-bytes','65536','--json']).value;
+      assert.equal(compact.ok,true,JSON.stringify(compact));assert.deepEqual(validateJsonSchema(compact,sharedSchema),[]);
+      const expanded=expandWorkflowProjection(compact);
+      assert.deepEqual(expanded.admissions,w.admissions);assert.deepEqual(expanded.artifact_consultation.admissions,w.artifact_consultation.admissions);
+      assert.deepEqual(expanded.artifacts.map(a=>a.artifact),w.artifacts.map(a=>a.artifact));
+      assert.equal(compact.observation.fence_status,'unchanged');assert.equal(compact.bundle_budget.total_bytes,Buffer.byteLength(JSON.stringify(compact)));
+      assert.equal(sharedBefore,fingerprint());checks.push(`${mode}: compact.v2 real CLI retains checks, complete authorities, budget and read-only fence`);
       if(mode==='files') {
+        const deltaArgs=['codex','workflow-step','--skills','context-reload','--view','agent','--projection-profile','compact.v2','--grouped',
+          '--context-profile','token-efficiency.v1','--artifact-query-profile',profile,'--bundle-target-bytes','65536','--json'];
+        const baseline=cli(deltaArgs).value;assert.equal(baseline.ok,true);assert(baseline.context_sources?.length);
+        fs.writeFileSync(target+'/shared-baseline.json',JSON.stringify(baseline));
+        const delta=cli([...deltaArgs,'--context-baseline-file','shared-baseline.json']).value;
+        assert.equal(delta.ok,true,JSON.stringify(delta));assert.equal(delta.context_delta.mode,'differential');
+        baseline.artifacts[0].source_ref='0'.repeat(64);fs.writeFileSync(target+'/shared-baseline.json',JSON.stringify(baseline));
+        const reanchored=cli([...deltaArgs,'--context-baseline-file','shared-baseline.json']).value;
+        assert.equal(reanchored.ok,true);assert.equal(reanchored.context_delta.mode,'full');
+        checks.push('compact.v2 retained metadata/source bindings support checked delta and invalid references force fresh full selection');
         fs.writeFileSync(target+'/narrow-query.json',JSON.stringify({schema_version:1,target_bytes:256}));
         const narrow=cli(['codex','workflow-step','--skills','context-reload','--view','agent','--grouped','--artifact-query-profile',profile,'--artifact-query-params-file','narrow-query.json','--bundle-target-bytes','65536','--json']).value;
         assert.equal(narrow.artifact_consultation.budget.target_bytes,256,'the workflow must not widen a narrower requested query budget');

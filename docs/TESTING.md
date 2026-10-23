@@ -1508,6 +1508,14 @@ unaccepted policy, changed evidence, concurrency and insufficient budgets refuse
 Unavailable configured PostgreSQL cannot fall back. Fixture, real PostgreSQL,
 installed-package and native token evidence remain separate.
 
+The same task-query corpus exercises `compact.v2` through the real workflow CLI
+in all three modes. Pure regressions reconstruct every shared value, retain
+divergent decisions/revisions, reject missing/corrupt/ambiguous bindings, prune
+unused sources and measure the final JSON exactly. A mandatory response above
+65,536 bytes fits by deduplication alone with unchanged authorities and controls;
+an insufficient budget still refuses. These byte checks are separate from native
+benchmark measurements.
+
 `node tools/perf/verify-artifact-task-query-postgres-smoke.mjs` is a separate
 manual proof in an owned ephemeral PostgreSQL cluster. It executes all three
 profiles, counts one common canonical transaction plus its fresh publication

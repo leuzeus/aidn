@@ -1,4 +1,5 @@
 import { resolveSkillId } from "../../core/skills/skill-policy.mjs";
+import { pruneWorkflowProjectionSources } from "./workflow-shared-projection.mjs";
 import { isGovernanceAdoptionEffective } from "../../core/governance/adoption-policy.mjs";
 import { sha256, stableContextJson } from "../../core/context/working-memory-policy.mjs";
 
@@ -96,6 +97,7 @@ export function finalizeWorkflowContextBudget(output, { targetBytes, hardLimitBy
       const live = new Set(output.artifacts.map(row => row.artifact.canonical_ref).filter(Boolean));
       output.artifact_metadata = output.artifact_metadata.filter(row => live.has(row.id));
     }
+    pruneWorkflowProjectionSources(output);
   };
   if (measure() > targetBytes) {
     const optional = output.artifacts.filter(row => row.artifact.selection_reasons?.every(reason => reason === "optional_consultation"));

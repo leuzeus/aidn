@@ -79,6 +79,19 @@ The existing scoped hydration path requires an explicitly prepared index even
 in files mode; a missing index refuses the workflow context without creating
 one. Standalone files-mode artifact queries read their canonical files directly.
 
+`--projection-profile compact.v2` selects `codex-workflow-step-agent-compact.v2`.
+It preserves the compact.v1 decisions and checks while storing identical context
+decision sets once in `decision_sets` and repeated artifact source identities in
+`context_sources`. Context `decisions_ref` and artifact/metadata `source_ref`
+resolve by SHA-256 ID inside those same-response tables. Each row has exactly one
+inline value or reference; differing revisions or values remain distinct. Bodies,
+admissions, checks, refusal reasons and each skill's history remain complete.
+Tables participate in the existing final JSON budget and are pruned with their
+units. Delta readers expand and validate bindings before their ordinary integrity
+and scope checks; invalid references trigger a fresh full selection. These
+references grant no write authorization and cause no persistence. Default and
+compact.v1 shapes remain available.
+
 The internal `createOrderedClosureSequence` research composition adds no public
 command. An explicitly bound host can execute its selected terminal segments
 through the existing admission, CAS artifact, runtime projector and strict hook

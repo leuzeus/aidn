@@ -303,6 +303,17 @@ their provenance and mandatory closure remain present. The final workflow JSON
 budget includes these profiles and transport metadata. No persistent query cache,
 implicit adoption, SQL pushdown, or native performance claim is introduced.
 
+The separate opt-in `compact.v2` workflow contract factors only exactly identical
+context decision sets and artifact source identities into same-response tables.
+SHA-256 bindings retain every decision field, scope and revision; different values
+are never merged. There are no external pointers or reusable authorizations.
+Budget pruning removes unreferenced source entries. Retained delta readers expand
+and validate these bindings before the existing scope/body integrity checks and
+reanchor on invalid input. Admissions, checks, complete authorities and their
+dependency closure, CAS and publication/write fences remain unchanged. Historical
+projections keep their existing shape. Fixture byte savings are not native token
+or performance qualification.
+
 Conservative full-revision invalidation can discard useful notes after unrelated
 changes. It favors reconstruction over silent authority drift. Multiple local
 capsules and raw observations cost storage; retention never deletes raw proof.
