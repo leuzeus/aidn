@@ -9,7 +9,9 @@ import { resolveCriticalMarkdownContract } from '../../lib/workflow/markdown-con
 import { completeMarkdownUnit } from '../codex/scoped-context-selection.mjs';
 import { resolveRuntimeProjectContext } from './runtime-project-context-service.mjs';
 import { readRuntimeSnapshot } from './runtime-snapshot-service.mjs';
-import { artifactQueryManifest, ACTIVE_STATE_PROFILE } from './artifact-query-catalog.mjs';
+import { artifactQueryManifest, ACTIVE_STATE_PROFILE, ARTIFACT_TASK_PROFILES } from './artifact-query-catalog.mjs';
+import { resolveSkillId } from '../../core/skills/skill-policy.mjs';
+import { runArtifactTaskQuery } from './artifact-task-query-service.mjs';
 
 const hash = value => createHash('sha256').update(typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value)).digest('hex');
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -22,12 +24,21 @@ const safeRelative = name => typeof name === 'string' && name.length < 512 && !/
 
 export function validateArtifactQueryParams(params) {
   if (!object(params) || params.schema_version !== 1
-    || Object.keys(params).some(k => !['schema_version','scope','expected_revision','target_bytes','include_optional'].includes(k))
+    || Object.keys(params).some(k => !['schema_version','scope','expected_revision','target_bytes','include_optional','skills','task','artifact_paths','field_ids'].includes(k))
     || params.scope !== undefined && (!object(params.scope) || Object.keys(params.scope).length !== identityKeys.length
       || identityKeys.some(k => typeof params.scope[k] !== 'string' || !params.scope[k] || params.scope[k].length > 512))
     || params.expected_revision !== undefined && !/^[a-f0-9]{64}$/.test(params.expected_revision)
     || params.target_bytes !== undefined && (!Number.isInteger(params.target_bytes) || params.target_bytes < 256 || params.target_bytes > 65536)
-    || params.include_optional !== undefined && typeof params.include_optional !== 'boolean') fail('ARTIFACT_QUERY_PARAMS_INVALID');
+    || params.include_optional !== undefined && typeof params.include_optional !== 'boolean'
+    || params.skills !== undefined && (!Array.isArray(params.skills) || !params.skills.length || params.skills.length>16
+      || params.skills.some(s=>!resolveSkillId(s)) || new Set(params.skills.map(resolveSkillId)).size!==params.skills.length)
+    || params.task !== undefined && (!object(params.task) || Object.keys(params.task).some(k=>!['operation','paths'].includes(k))
+      || params.task.operation !== undefined && (typeof params.task.operation!=='string'||!params.task.operation||params.task.operation.length>160)
+      || params.task.paths !== undefined && (!Array.isArray(params.task.paths)||params.task.paths.length>128||params.task.paths.some(p=>!safeRelative(p))))
+    || params.artifact_paths !== undefined && (!Array.isArray(params.artifact_paths)||!params.artifact_paths.length||params.artifact_paths.length>16
+      || params.artifact_paths.some(p=>!safeRelative(p))||new Set(params.artifact_paths).size!==params.artifact_paths.length)
+    || params.field_ids !== undefined && (!Array.isArray(params.field_ids)||!params.field_ids.length||params.field_ids.length>32
+      || params.field_ids.some(id=>typeof id!=='string'||!/^[a-z_]+\.[a-z_]+$/.test(id))||new Set(params.field_ids).size!==params.field_ids.length)) fail('ARTIFACT_QUERY_PARAMS_INVALID');
   return structuredClone(params);
 }
 
@@ -88,12 +99,13 @@ function fieldValue(source, field) {
   return { status: 'uninterpretable', value: null, reason: 'list_invalid' };
 }
 
-export function selectArtifactQuery({ payload, backend, scope, params = {schema_version:1}, profile = ACTIVE_STATE_PROFILE }) {
+export function selectArtifactQuery({ payload, backend, scope, params = {schema_version:1}, profile = ACTIVE_STATE_PROFILE, deferBudget = false }) {
   const output = artifactQueryEnvelope(profile), manifest = artifactQueryManifest();
   const request = validateArtifactQueryParams(params);
   output.catalog_revision = manifest.revision; output.source_backend = backend; output.scope = identity(scope);
   const error = (code, ref = null) => output.errors.push({ code, ref });
-  if(profile !== ACTIVE_STATE_PROFILE){error('ARTIFACT_QUERY_PROFILE_UNSUPPORTED');return output;}
+  const policy=manifest.profiles.find(p=>p.id===profile);
+  if(!policy){error('ARTIFACT_QUERY_PROFILE_UNSUPPORTED');return output;}
   if(identityKeys.some(k => typeof output.scope[k] !== 'string' || !output.scope[k])
     || request.scope && !isDeepStrictEqual(request.scope, output.scope)
     || backend !== 'files' && !isDeepStrictEqual(identity(payload?.project_context),output.scope)) {
@@ -129,18 +141,19 @@ export function selectArtifactQuery({ payload, backend, scope, params = {schema_
     if(!field){output.fields.push({id,status:'absent',value:null,source_ref:null,optional,reason:'source_unavailable'});return null;}
     const result=fieldValue(row,field);
     output.fields.push({id,...result,source_ref:type,optional});
-    for(const key of field.requires_sections) {
-      const sectionId=`${type}.section.${key}`;
-      if(output.sections.some(s=>s.id===sectionId))continue;
-      const section=row.canonical.structured_sections.filter(s=>s.key===key);
-      if(section.length!==1){error('ARTIFACT_QUERY_SECTION_UNAVAILABLE',sectionId);continue;}
-      const unit=completeMarkdownUnit(row.content,`${'#'.repeat(section[0].level)} ${section[0].text}`);
-      if(!unit){error('ARTIFACT_QUERY_SECTION_UNAVAILABLE',sectionId);continue;}
-      output.sections.push({id:sectionId,source_ref:type,...unit,sha256:hash(unit.content)});
-    }
+    for(const key of field.requires_sections) appendSection(type,key,row);
     return result;
   }
-  const policy=manifest.profiles[0];for(const id of policy.mandatory)append(id);
+  function appendSection(type,key,row) {
+      const sectionId=`${type}.section.${key}`;
+      if(output.sections.some(s=>s.id===sectionId))return;
+      const section=row.canonical.structured_sections.filter(s=>s.key===key);
+      if(section.length!==1){error('ARTIFACT_QUERY_SECTION_UNAVAILABLE',sectionId);return;}
+      const unit=completeMarkdownUnit(row.content,`${'#'.repeat(section[0].level)} ${section[0].text}`);
+      if(!unit){error('ARTIFACT_QUERY_SECTION_UNAVAILABLE',sectionId);return;}
+      output.sections.push({id:sectionId,source_ref:type,...unit,sha256:hash(unit.content)});
+  }
+  for(const id of policy.mandatory)append(id);
   function known(id){const f=output.fields.find(f=>f.id===id);return f?.status==='known'?f.value:null;}
   for(const [field,type,prefix,predicate]of [
     ['current_state.active_session','session','S',(r,id)=>new RegExp(`^sessions/${id}(?:[-_.][^/]*)?\\.md$`).test(r.path)],
@@ -158,22 +171,32 @@ export function selectArtifactQuery({ payload, backend, scope, params = {schema_
   if(cycleBranch && currentCycleBranch?.status==='known' && cycleBranch!==currentCycleBranch.value)error('ARTIFACT_QUERY_STATE_CONFLICT','cycle_branch');
   if(known('session.mode') && known('current_state.mode') && known('session.mode')!==known('current_state.mode'))error('ARTIFACT_QUERY_STATE_CONFLICT','mode');
   if(known('cycle_status.dor_state') && known('current_state.dor_state') && known('cycle_status.dor_state')!==known('current_state.dor_state'))error('ARTIFACT_QUERY_STATE_CONFLICT','dor_state');
+  for(const [type,sections]of Object.entries(policy.sections??{}))if(selected.has(type))for(const key of sections)appendSection(type,key,selected.get(type));
+  for(const id of request.field_ids??[]) {
+    const type=id.split('.')[0];
+    if(!manifest.artifacts.some(c=>c.fields.some(f=>f.id===id)) || !selected.has(type))error('ARTIFACT_QUERY_FIELD_UNAVAILABLE',id);
+    else if(!output.fields.some(f=>f.id===id))append(id);
+  }
   if(request.include_optional!==false)for(const id of policy.optional)append(id,true);
   else output.omissions.push(...policy.optional.map(id=>({id,reason:'optional_not_requested'})));
   output.source_revision=hash({scope:output.scope,backend,profile,catalog:manifest.revision,sources:output.sources});
   if(request.expected_revision && request.expected_revision!==output.source_revision)error('ARTIFACT_QUERY_REVISION_CHANGED');
   output.status=output.errors.length?'blocked':output.fields.some(f=>!f.optional && f.status!=='known')?'incomplete':'ok';
-  return finalizeArtifactQueryBudget(output,request.target_bytes??16384);
+  return deferBudget ? output : finalizeArtifactQueryBudget(output,request.target_bytes??16384);
 }
 
 export function finalizeArtifactQueryBudget(output, target) {
   output.budget={target_bytes:target,hard_limit_bytes:65536,total_bytes:0,minimum_required_bytes:null,within_target:false};
   function measure(){for(let i=0;i<20;i++){const n=Buffer.byteLength(JSON.stringify(output));if(output.budget.total_bytes===n)return n;output.budget.total_bytes=n;}fail('ARTIFACT_QUERY_BUDGET_UNSTABLE');}
   if(measure()>target){const omitted=output.fields.filter(f=>f.optional);output.fields=output.fields.filter(f=>!f.optional);
-    output.omissions.push(...omitted.map(f=>({id:f.id,reason:'optional_budget'})));}
+    output.omissions.push(...omitted.map(f=>({id:f.id,reason:'optional_budget'})));
+    if(output.authorities){const optional=output.authorities.filter(u=>u.selection_reasons.every(r=>r==='optional_consultation'));
+      output.authorities=output.authorities.filter(u=>!optional.includes(u));output.omissions.push(...optional.map(u=>({id:u.unit_id,reason:'optional_budget'})));}}
   if(measure()>target){output.budget.minimum_required_bytes=measure();output.status='blocked';
     output.errors.push({code:'ARTIFACT_QUERY_BUDGET_INSUFFICIENT',ref:null});
-    output.expansions=output.sources.map(s=>({path:s.path,sha256:s.sha256}));output.fields=[];output.sections=[];}
+    output.expansions=[...output.sources.map(s=>({path:s.path,sha256:s.sha256})),...(output.authorities??[]).map(u=>({path:u.path,sha256:u.sha256}))];
+    output.fields=[];output.sections=[];if(output.authorities)output.authorities=[];}
+  if(output.status==='blocked'&&output.preparation)output.preparation.ready=false;
   output.budget.within_target=measure()<=target;measure();return output;
 }
 
@@ -197,9 +220,19 @@ export function readArtifactQueryParams(targetRoot, relative) {
   try{return validateArtifactQueryParams(JSON.parse(read.bytes.toString('utf8')));}catch{fail('ARTIFACT_QUERY_PARAMS_INVALID');}
 }
 
-export async function queryProjectArtifacts({targetRoot,params,profile=ACTIVE_STATE_PROFILE,snapshotReader=options=>readRuntimeSnapshot(options),afterRead=null}) {
-  const request=validateArtifactQueryParams(params); // Capture before any await.
+export async function queryProjectArtifacts(options) {
+  const profile=options.profile??ACTIVE_STATE_PROFILE;
+  const request=validateArtifactQueryParams(options.params);
+  if(ARTIFACT_TASK_PROFILES.includes(profile))return runArtifactTaskQuery({options:{...options,params:request},readSources:readArtifactQuerySources,select:selectArtifactQuery,finalize:finalizeArtifactQueryBudget});
   if(profile!==ACTIVE_STATE_PROFILE)fail('ARTIFACT_QUERY_PROFILE_UNSUPPORTED');
+  if(['skills','task','artifact_paths','field_ids'].some(k=>Object.hasOwn(request,k)))fail('ARTIFACT_QUERY_PROFILE_PARAMS_CONFLICT');
+  const observation=await readArtifactQuerySources({...options,params:request});
+  return selectArtifactQuery({...observation,params:request,profile});
+}
+
+async function readArtifactQuerySources({targetRoot,params,profile=ACTIVE_STATE_PROFILE,snapshotReader=options=>readRuntimeSnapshot(options),afterRead=null,extraPaths=[]}) {
+  const request=validateArtifactQueryParams(params); // Capture before any await.
+  if(!artifactQueryManifest().profiles.some(p=>p.id===profile))fail('ARTIFACT_QUERY_PROFILE_UNSUPPORTED');
   const configObservation=readPhysical(targetRoot,'.aidn/config.json');
   let config;
   try{config=validateAidnProjectConfig(readAidnProjectConfig(targetRoot).data);}catch{fail('ARTIFACT_QUERY_CONFIG_INVALID');}
@@ -232,6 +265,7 @@ export async function queryProjectArtifacts({targetRoot,params,profile=ACTIVE_ST
       directories.push({folder,names});if(!names)continue;
       for(const name of names)if(new RegExp(status?`^${id}(?:[-_].+)?$`:`^${id}(?:[-_.].*)?\\.md$`).test(name))take(`${dir}/${name}${status?'/status.md':''}`);
     }
+    for(const name of extraPaths)if(!rows.some(r=>r.path===name))take(name);
     payload={project_context:scope,artifacts:rows};
   }
   if(afterRead)await afterRead();
@@ -242,5 +276,5 @@ export async function queryProjectArtifacts({targetRoot,params,profile=ACTIVE_ST
   }
   if(!configObservation && readPhysical(targetRoot,'.aidn/config.json'))fail('ARTIFACT_QUERY_SOURCE_CHANGED');
   if(!isDeepStrictEqual(identity(resolveRuntimeProjectContext({targetRoot})),identity(scope)))fail('ARTIFACT_QUERY_SCOPE_CHANGED');
-  return selectArtifactQuery({payload,backend,scope,params:request,profile});
+  return {payload,backend,scope};
 }

@@ -1492,3 +1492,22 @@ installed-client, real CLI and native session/cycle/admission evidence are disti
 The retained conditional-read regression also preserves a grouped read's exit2
 for an absent optional artifact, then uses the existing canonical list surface
 to establish presence before constructing the next complete required read set.
+
+`node tools/perf/verify-artifact-task-query-fixtures.mjs`, included once in the
+runtime artifact-efficiency gate, qualifies the three opt-in task consultations.
+It pins their consumed contract fields and sections, compares actual generic
+admission checks inside the same canonical observation boundary, and exercises
+files, dual and db-only SQLite. It checks exact preparation preimages without
+returning complete bodies, complete closure criteria/dependencies and explicit
+non-certification of consulted proof. Real query/workflow CLI checks retain one
+admission per skill, one common hydration, deduplicated mandatory authority
+bodies, fresh publication fences and exact final JSON budgets. Foreign scope,
+unaccepted policy, changed evidence, concurrency and insufficient budgets refuse.
+Unavailable configured PostgreSQL cannot fall back. Fixture, real PostgreSQL,
+installed-package and native token evidence remain separate.
+
+`node tools/perf/verify-artifact-task-query-postgres-smoke.mjs` is a separate
+manual proof in an owned ephemeral PostgreSQL cluster. It executes all three
+profiles, counts one common canonical transaction plus its fresh publication
+fence, verifies unchanged canonical rows, and refuses a concurrent canonical
+change. Its real database evidence remains outside PR admission.

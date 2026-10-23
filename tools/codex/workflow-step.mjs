@@ -16,6 +16,8 @@ import { TOKEN_CONTEXT_PROFILE, buildTaskContextRequest, finalizeWorkflowContext
 import { projectHistoryTransitions } from "../../src/application/codex/context-history-transitions.mjs";
 import { sha256 } from "../../src/core/context/working-memory-policy.mjs";
 import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
+import {artifactQueryManifest} from '../../src/application/runtime/artifact-query-catalog.mjs';
+import {artifactQueryEnvelope, readArtifactQueryParams, queryProjectArtifacts, finalizeArtifactQueryBudget} from '../../src/application/runtime/artifact-query-service.mjs';
 
 const DEFAULT_DAEMON_ENDPOINT_FILE = ".aidn/runtime/daemon/endpoint.json";
 
@@ -76,6 +78,8 @@ export function parseArgs(argv) {
     contextTaskFile: "",
     contextBaselineFile: "",
     historyView: "full",
+    artifactQueryProfile: "",
+    artifactQueryParamsFile: "",
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -175,6 +179,12 @@ export function parseArgs(argv) {
     } else if (token === "--context-profile") {
       args.contextProfile = String(argv[++i] ?? "").trim();
       if (args.contextProfile !== TOKEN_CONTEXT_PROFILE.id) throw new Error("Unknown context profile");
+    } else if (token === '--artifact-query-profile') {
+      args.artifactQueryProfile=String(argv[++i]??'').trim();
+      if(!artifactQueryManifest().profiles.some(p=>p.id===args.artifactQueryProfile))throw new Error('Unknown artifact query profile');
+    } else if (token === '--artifact-query-params-file') {
+      args.artifactQueryParamsFile=String(argv[++i]??'').trim();
+      if(!args.artifactQueryParamsFile||args.artifactQueryParamsFile.startsWith('--'))throw new Error('Missing artifact query parameters file');
     } else if (token === "--context-task-file") {
       args.contextTaskFile = String(argv[++i] ?? "").trim();
       if (!args.contextTaskFile || args.contextTaskFile.startsWith("--")) throw new Error("Missing task query file");
@@ -194,7 +204,7 @@ export function parseArgs(argv) {
     }
   }
   args.skills = unique(args.skills);
-  if (args.contextProfile) {
+  if (args.contextProfile || args.artifactQueryProfile) {
     if (!argv.includes("--bundle-target-bytes")) args.bundleTargetBytes = TOKEN_CONTEXT_PROFILE.target_bytes;
     if (!argv.includes("--bundle-hard-limit-bytes")) args.bundleHardLimitBytes = TOKEN_CONTEXT_PROFILE.hard_limit_bytes;
   }
@@ -229,6 +239,7 @@ function printUsage() {
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --projection-profile compact.v1 --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload,requirements-delta --view agent --grouped --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --view agent --grouped --context-profile token-efficiency.v1 --json");
+  console.log('  npx aidn codex workflow-step --skills close-session --view agent --grouped --artifact-query-profile verification-closure.v1 --json');
   console.log("  Add --context-baseline-file <complete-prior-agent-or-workflow-receipt.json> for optional-unit delta; --history-view transitions preserves distinct execution references.");
 }
 
@@ -298,7 +309,7 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
   const steps = [];
   const admissions = {};
   const hydrations = {};
-  let selectionPolicy = null, commonSelection = null, commonDelta = null;
+  let selectionPolicy = null, commonSelection = null, commonDelta = null, artifactConsultation = null, artifactQueryParams = null, artifactSelectionRequest = null;
 
   for (const skill of args.skills) {
     const admission = await preWriteAdmit({
@@ -353,15 +364,30 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
   });
 
   const admittedSkills = args.skills.filter(skill => admissions[skill]?.ok === true);
-  if (grouped && admittedSkills.length && nextAction?.recommendation?.stop_required !== true) {
-    if (args.contextProfile) {
-      const task = args.contextTaskFile ? readTaskQuery(targetRoot, args.contextTaskFile) : {};
+  if(args.artifactQueryProfile) {
+    if(nextAction?.recommendation?.stop_required===true) {
+      artifactConsultation=artifactQueryEnvelope(args.artifactQueryProfile);
+      artifactConsultation.errors.push({code:'ARTIFACT_QUERY_GLOBAL_STOP',ref:null});
+    }else {
+      const params=args.artifactQueryParamsFile?readArtifactQueryParams(targetRoot,args.artifactQueryParamsFile):{schema_version:1};
+      artifactQueryParams=params;
+      if(params.skills)throw new Error('Workflow supplies its own artifact-query skills');
+      artifactConsultation=await queryProjectArtifacts({targetRoot,profile:args.artifactQueryProfile,existingAdmissions:admissions,
+        onSelection:request=>{artifactSelectionRequest=request;},
+        params:{...params,...(args.artifactQueryProfile==='active-state.v1'?{}:{skills:args.skills}),target_bytes:args.bundleTargetBytes}});
+    }
+  }
+  if (grouped && admittedSkills.length && nextAction?.recommendation?.stop_required !== true
+      && (!artifactConsultation||artifactConsultation.status==='ok')) {
+    if (args.contextProfile || args.artifactQueryProfile) {
+      const task = args.contextTaskFile ? readTaskQuery(targetRoot, args.contextTaskFile) : artifactQueryParams?.task ?? {};
       const context = admissions[admittedSkills[0]].context, resolved = resolveRuntimeProjectContext({ targetRoot });
       const scope = Object.fromEntries(["project_id", "workspace_id", "worktree_id", "runtime_scope_id"].map(key => [key, resolved[key]]));
       for (const [key, value] of [["session_id", context.active_session], ["cycle_id", context.active_cycle]])
         if (value && !["none", "unknown"].includes(value)) scope[key] = value;
       selectionPolicy = buildTaskContextRequest({ adoption: readWorkflowAdapterConfig(targetRoot).data.governanceAdoption,
         scope, admissions, skills: admittedSkills, task, asOf: new Date().toISOString().slice(0, 10) });
+      if(artifactSelectionRequest&&selectionPolicy.mode==='scoped')selectionPolicy.request=artifactSelectionRequest;
     }
     if (selectionPolicy?.mode !== "blocked") {
     const hydrated = await runHydrateContextUseCase({
@@ -409,11 +435,13 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
       blocked_skill_count: blockedSkills.length,
       hydrate_count: steps.filter(step => step.kind === "hydrate-context").length,
       next_action_status: nextAction?.recommendation?.stop_required === true ? "stop_required" : "recommended",
+      ...(args.artifactQueryProfile?{artifact_query_count:nextAction?.recommendation?.stop_required===true?0:1}:{}),
     },
     steps,
     admissions,
     hydrations,
     next_action: nextAction,
+    ...(artifactConsultation?{artifact_consultation:artifactConsultation}:{}),
     ...(args.contextProfile ? { context_budget_request: { profile: TOKEN_CONTEXT_PROFILE.id,
       target_bytes: args.bundleTargetBytes, hard_limit_bytes: args.bundleHardLimitBytes },
       selection_policy: selectionPolicy ? Object.fromEntries(Object.entries(selectionPolicy).filter(([key]) => key !== "request"))
@@ -424,6 +452,7 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
       baseline_revision: null, source_revision: null, unchanged_optional_refs: [], removed_unit_ids: [], write_authorization: false } } : {}),
     ...(args.historyView === "transitions" ? { history_view: "transitions" } : {}),
   };
+  if(artifactConsultation&&artifactConsultation.status!=='ok')output.ok=false;
   return output;
 }
 
@@ -436,6 +465,11 @@ export async function runWorkflowStep({ args, targetRoot }) {
       || !Number.isSafeInteger(args.bundleTargetBytes) || !Number.isSafeInteger(args.bundleHardLimitBytes)
       || args.bundleTargetBytes < 1 || args.bundleTargetBytes > args.bundleHardLimitBytes
       || args.bundleHardLimitBytes > TOKEN_CONTEXT_PROFILE.hard_limit_bytes)) throw new Error("Invalid grouped context profile or budget");
+  if(args.artifactQueryProfile&&(!args.grouped||!artifactQueryManifest().profiles.some(p=>p.id===args.artifactQueryProfile)
+    ||!Number.isSafeInteger(args.bundleTargetBytes)||!Number.isSafeInteger(args.bundleHardLimitBytes)||args.bundleTargetBytes<256
+    ||args.bundleTargetBytes>args.bundleHardLimitBytes||args.bundleHardLimitBytes>65536))throw new Error('Artifact consultation requires grouped agent view and bounded total JSON');
+  if(args.artifactQueryParamsFile&&!args.artifactQueryProfile)throw new Error('Artifact query parameters require a profile');
+  if(args.artifactQueryParamsFile&&args.contextTaskFile)throw new Error('Use one task query file for the common consultation');
   if (args.contextTaskFile && !args.contextProfile) throw new Error("Task query requires a context profile");
   if (args.contextBaselineFile && !args.contextProfile) throw new Error("Context baseline requires a context profile");
   if (args.historyView !== undefined && !["full", "transitions"].includes(args.historyView)
@@ -454,7 +488,15 @@ export async function runWorkflowStep({ args, targetRoot }) {
   const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "workflow-step", payload: output });
   if (args.view === "agent") {
     const projected = projectWorkflowAgentView(output, receipt, args.projectionProfile ?? null);
-    return args.contextProfile ? finalizeWorkflowContextBudget(projected,
+    if(projected.artifact_consultation?.authorities) {
+      for(const unit of projected.artifact_consultation.authorities) {
+        const match=projected.artifacts.find(row=>row.artifact.unit_id===unit.unit_id&&row.artifact.sha256===unit.sha256
+          &&row.artifact.content_excerpt===unit.content_excerpt);
+        if(match){delete unit.content_excerpt;unit.workflow_artifact_ref=match.id;}
+      }
+      finalizeArtifactQueryBudget(projected.artifact_consultation,args.bundleTargetBytes);
+    }
+    return args.contextProfile || args.artifactQueryProfile ? finalizeWorkflowContextBudget(projected,
       { targetBytes: args.bundleTargetBytes, hardLimitBytes: args.bundleHardLimitBytes }) : projected;
   }
   if (receipt) output.receipt = receipt;
@@ -658,7 +700,7 @@ async function main() {
     }
     // Transport metadata is part of the final command JSON too. Reconcile the
     // same budget without restoring an omitted unit or clearing a refusal.
-    if (args.contextProfile) finalizeWorkflowContextBudget(output,
+    if (args.contextProfile || args.artifactQueryProfile) finalizeWorkflowContextBudget(output,
       { targetBytes: args.bundleTargetBytes, hardLimitBytes: args.bundleHardLimitBytes });
     if (args.json) {
       console.log(args.view === "agent" ? JSON.stringify(output) : JSON.stringify(output, null, 2));

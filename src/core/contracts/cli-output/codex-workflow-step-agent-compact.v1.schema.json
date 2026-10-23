@@ -25,6 +25,36 @@
     "projection_profile"
   ],
   "properties": {
+    "artifact_consultation": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "profile",
+        "status",
+        "write_authorization",
+        "fields",
+        "sections",
+        "sources",
+        "errors",
+        "omissions"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "runtime-artifact-query.v1"
+        },
+        "write_authorization": {
+          "const": false
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "incomplete",
+            "blocked"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
     "ts": {
       "type": "string"
     },

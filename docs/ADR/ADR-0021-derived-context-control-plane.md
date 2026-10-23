@@ -280,6 +280,23 @@ checks, and native token qualification remain separate. The catalog/query is a
 derived surface of existing artifact and workspace concepts, not a new source
 of truth, persistent cache, permission or shared coordination concept.
 
+The same consultative boundary now covers admission diagnostics, modification
+preparation and verification/closure. These profiles compose existing fresh
+generic admission checks with the client's accepted task context policies and
+complete authority/dependency units. Closure reports consulted evidence separately
+from certified acceptance; only existing closure procedures can establish their
+own checks. Preparation returns canonical preimage references, never reusable
+write admission. Its actual writer retains complete fresh preimages, CAS and
+fences. Unsupported targets or unaccepted policies refuse explicitly.
+
+Opt-in grouped workflow consultation shares the invocation observation and its
+publication fence with admissions and hydration. Every skill keeps its distinct
+decision; blocked skills receive diagnostics and no rich hydration. Global stop
+suppresses continuation. Exact common authority bodies may be referenced once;
+their provenance and mandatory closure remain present. The final workflow JSON
+budget includes these profiles and transport metadata. No persistent query cache,
+implicit adoption, SQL pushdown, or native performance claim is introduced.
+
 Conservative full-revision invalidation can discard useful notes after unrelated
 changes. It favors reconstruction over silent authority drift. Multiple local
 capsules and raw observations cost storage; retention never deletes raw proof.

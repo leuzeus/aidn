@@ -7,6 +7,200 @@
   "type": "object",
   "required": ["contract_version", "kind", "profile", "status", "effect_class", "written", "write_authorization", "source_backend", "scope", "source_revision", "catalog_revision", "fields", "sections", "sources", "errors", "omissions", "expansions", "budget"],
   "properties": {
+    "admissions": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": [
+          "skill",
+          "ok",
+          "admission_status",
+          "checks",
+          "blocking_reasons",
+          "repairs",
+          "write_authorization",
+          "next_action"
+        ],
+        "properties": {
+          "skill": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "admission_status": {
+            "type": "string"
+          },
+          "checks": {
+            "type": "object"
+          },
+          "blocking_reasons": {
+            "type": "array"
+          },
+          "repairs": {
+            "type": "array"
+          },
+          "write_authorization": {
+            "const": false
+          },
+          "next_action": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "authorities": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "required": [
+          "unit_id",
+          "path",
+          "authority",
+          "scope",
+          "sha256",
+          "unit_sha256",
+          "selection_reasons",
+          "start_line",
+          "end_line"
+        ],
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "unit_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "content_excerpt": {
+            "type": "string"
+          },
+          "workflow_artifact_ref": {
+            "type": "string"
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "content_excerpt"
+            ]
+          },
+          {
+            "required": [
+              "workflow_artifact_ref"
+            ]
+          }
+        ],
+        "additionalProperties": true
+      }
+    },
+    "authority_selection": {
+      "type": "object",
+      "required": [
+        "status",
+        "policy_revision",
+        "source_revision",
+        "errors",
+        "omissions",
+        "expansions",
+        "write_authorization"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "complete",
+            "blocked"
+          ]
+        },
+        "write_authorization": {
+          "const": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "preparation": {
+      "type": "object",
+      "required": [
+        "operation",
+        "preimages",
+        "preconditions",
+        "next_action",
+        "ready",
+        "write_authorization"
+      ],
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        },
+        "write_authorization": {
+          "const": false
+        },
+        "preimages": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256",
+              "contract_version",
+              "content_bytes",
+              "field_ids"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "evaluated_by",
+        "completion_authorized",
+        "evidence_status",
+        "next_action",
+        "open_points"
+      ],
+      "properties": {
+        "completion_authorized": {
+          "const": false
+        },
+        "evidence_status": {
+          "const": "consulted-not-certified"
+        }
+      },
+      "additionalProperties": true
+    },
+    "observation": {
+      "type": "object",
+      "required": [
+        "scope",
+        "source_revision",
+        "write_authorization",
+        "fence_status",
+        "distinct_reads"
+      ],
+      "properties": {
+        "write_authorization": {
+          "const": false
+        },
+        "fence_status": {
+          "const": "unchanged"
+        }
+      },
+      "additionalProperties": true
+    },
     "contract_version": {"const": "runtime-artifact-query.v1"},
     "kind": {"const": "runtime-artifact-query"},
     "profile": {"type": ["string", "null"]},

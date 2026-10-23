@@ -24,7 +24,46 @@ insufficient mandatory budget returns a refusal with expansion references.
 Diagnostics may exceed a tiny requested budget and report their actual size.
 The result never replaces required workflow authorities, fresh admission or
 write CAS/fences. No installed procedure or native benchmark is changed by this
-opt-in surface. Other task profiles remain unavailable in this first tranche.
+opt-in surface.
+
+Three additional experimental profiles require a bounded `skills` array of
+registered skills and the client's effective `governanceAdoption` task policies:
+`admission-diagnostic.v1`, `modification-preparation.v1`, and
+`verification-closure.v1`. They execute the existing generic pre-write admission
+and return its checks, exact refusals, warnings and repair actions. Authority
+sections and their dependency closure come from the accepted client bindings;
+missing, foreign, changed or unaccepted authorities refuse the consultation.
+No package profile accepts or modifies client policy implicitly.
+
+`task` optionally contains `operation` and worktree-relative `paths`. Preparation
+requires `task.operation`, bounded audit-relative `artifact_paths`, and semantic
+`field_ids`. Targets must resolve to the current/runtime/session/cycle sources
+selected by the profile. The engine retains complete canonical content for
+extraction; the response exposes preimage hashes, sizes and contract versions.
+`ready` means preparation can continue; `write_authorization` remains false.
+The actual writer still needs its complete fresh canonical preimage, specific
+admission, CAS and execution fence.
+
+Closure requires closure skills and includes the complete session close report,
+cycle tracking section, accepted criteria/evidence units and checks actually
+executed by pre-write admission. `evidence_status: consulted-not-certified` and
+`completion_authorized: false` do not claim that closure-specific checks ran or
+that a receipt is valid. Existing closure procedures execute and retain those
+checks. Consultation never closes a cycle or session.
+
+`codex workflow-step --view agent --grouped --artifact-query-profile <profile>
+--json` opts into a common consultation. Optional
+`--artifact-query-params-file <relative.json>` supplies its parameters; the
+workflow supplies its own skills. Use that file's `task` rather than a second
+`--context-task-file`. Admissions are reused only within the invocation, with
+the existing fresh publication fence. Canonical reads are shared, one hydration
+serves admitted skills, and identical mandatory authority bodies are referenced
+once in the final agent representation. A global coordinator stop suppresses
+the consultation and hydration. Failed consultation also prevents hydration.
+The default complete-JSON target is 16,384 bytes and maximum 65,536; both include
+the query, checks, history, selected units and transport metadata. Optional units
+may be omitted explicitly; mandatory units are never truncated. Historical
+workflows and default projections remain available.
 
 The internal `createOrderedClosureSequence` research composition adds no public
 command. An explicitly bound host can execute its selected terminal segments

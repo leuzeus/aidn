@@ -3,6 +3,7 @@ import { listCriticalMarkdownContracts } from '../../lib/workflow/markdown-contr
 
 export const ARTIFACT_QUERY_EXTRACTOR = 'artifact-query-extractor.v1';
 export const ACTIVE_STATE_PROFILE = 'active-state.v1';
+export const ARTIFACT_TASK_PROFILES = ['admission-diagnostic.v1', 'modification-preparation.v1', 'verification-closure.v1'];
 const types = ['current_state', 'runtime_state', 'session', 'cycle_status'];
 const profile = {
   id: ACTIVE_STATE_PROFILE, purpose: 'Consult active facts, never admission or authority replacement',
@@ -14,6 +15,13 @@ const profile = {
   optional: ['runtime_state.prioritized_artifacts'],
 };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const profiles = [profile, ...ARTIFACT_TASK_PROFILES.map(id => ({
+  ...structuredClone(profile), id, purpose: 'Consult fresh checks and accepted task authorities; never authorize a write',
+  mandatory: [...profile.mandatory, 'runtime_state.repair_primary_reason', 'runtime_state.repair_routing_hint'],
+  conditional: { ...structuredClone(profile.conditional), session: [...profile.conditional.session, 'session.carry_over_pending'] },
+  sections: id === 'verification-closure.v1' ? { session: ['session_close_report_required', 'session_cycle_tracking_required_for_committing'] } : {},
+  requires_client_task_policy: true,
+}))];
 
 export function artifactQueryManifest(contracts = listCriticalMarkdownContracts()) {
   const artifacts = types.map(type => {
@@ -33,10 +41,14 @@ export function artifactQueryManifest(contracts = listCriticalMarkdownContracts(
       fields: c.consultation_fields, sections: c.required_sections.map(key => ({ id: `${type}.section.${key}`, key })) };
   });
   const all = new Set(artifacts.flatMap(c => c.fields.map(f => f.id)));
-  for (const id of [...profile.mandatory, ...Object.values(profile.conditional).flat(), ...profile.optional]) {
+  for (const policy of profiles) {
+  for (const [type, sections] of Object.entries(policy.sections ?? {}))
+    if (sections.some(key => !artifacts.find(c => c.artifact_type === type)?.sections.some(s => s.key === key))) throw new Error('ARTIFACT_QUERY_CATALOG_SECTION');
+  for (const id of [...policy.mandatory, ...Object.values(policy.conditional).flat(), ...policy.optional]) {
     if (!all.has(id)) throw new Error('ARTIFACT_QUERY_CATALOG_PROFILE_REFERENCE');
   }
+  }
   const manifest = { manifest_version: 'artifact-query-manifest.v1', extractor_version: ARTIFACT_QUERY_EXTRACTOR,
-    artifacts, profiles: [structuredClone(profile)] };
+    artifacts, profiles: structuredClone(profiles) };
   return { ...manifest, revision: digest(manifest) };
 }

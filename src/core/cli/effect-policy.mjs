@@ -593,7 +593,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     jsonContract: "runtime-artifact-query.v1.schema.json",
     safeArgs: ["runtime", "artifact-query", "--manifest", "--json"],
     allowNonZero: true,
-    notes: "Opt-in contract-bound factual consultation; canonical scope, revisions and explicit missing fields, no writes, migration or admission.",
+    notes: "Opt-in contract-bound consultation of facts, fresh admission diagnostics, modification preimages or closure evidence. Accepted client task authorities and complete dependencies remain required. No writes, migration or reusable write authorization.",
   }),
   commandPolicy({
     id: "runtime-artifact-store-list",

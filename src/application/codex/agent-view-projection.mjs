@@ -97,6 +97,7 @@ export function projectWorkflowAgentView(payload, receipt = null, projectionProf
         ...(payload.observation ? ["observed_sources"] : [])]),
     })),
     contexts, artifacts: [...artifacts.values()], next_action: payload.next_action,
+    ...(payload.artifact_consultation?{artifact_consultation:structuredClone(payload.artifact_consultation)}:{}),
     ...(metadata.size ? { artifact_metadata: [...metadata.values()] } : {}),
     ...(payload.selection_policy ? { selection_policy: payload.selection_policy } : {}),
     ...(payload.context_selection ? { context_selection: structuredClone(payload.context_selection) } : {}),

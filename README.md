@@ -109,7 +109,9 @@ Codex instruction layering after install:
 ## CLI Surface
 
 Experimental `aidn runtime artifact-query` consults contract-bound active-state
-fields and their complete dependent sections without writing project state.
+fields, fresh admission diagnostics, modification preimages and closure evidence
+with complete accepted dependencies, without writing project state. The three
+task profiles also integrate opt-in through grouped `codex workflow-step`.
 It is opt-in and does not replace workflow authorities or fresh admission; see
 the parameters and compatibility boundary in [the CLI inventory](docs/CLI_SURFACE_INVENTORY.md).
 
