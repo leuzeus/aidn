@@ -32,8 +32,25 @@ export async function verifyArtifactQueryFixtures() {
   const target=fs.mkdtempSync(path.join(os.tmpdir(),'aidn-artifact-query-'));
   const scope=resolveRuntimeProjectContext({targetRoot:target});
   const base=artifactQueryFixturePayload(scope), contractList=listCriticalMarkdownContracts();
+  const initialPayload=structuredClone(base);
+  initialPayload.artifacts=initialPayload.artifacts.slice(0,2).map(row=>{
+    const content=fs.readFileSync(path.join(root,'scaffold/docs_audit',row.path),'utf8')
+      .replaceAll('{{PREFERRED_STATE_MODE}}','files').replaceAll('{{PROJECT_NAME}}','fixture');
+    return {...row,content,sha256:hash(content),canonical:buildCanonicalFromMarkdown(content,{relativePath:row.path,classification:{kind:row.kind}})};
+  });
   const revise=(payload,n,fn)=>{const r=payload.artifacts[n];r.content=fn(r.content);r.sha256=hash(r.content);};
   try{
+    check('installed initial sources conform while unknown bootstrap facts remain incomplete',()=>{
+      const result=selectArtifactQuery({payload:initialPayload,backend:'files',scope});
+      assert.equal(result.status,'incomplete',JSON.stringify(result.errors));
+      assert(result.sources.every(source=>source.contract_status==='conformant'));
+      for(const id of ['current_state.mode','current_state.branch_kind','current_state.dor_state'])
+        assert.equal(result.fields.find(field=>field.id===id)?.status,'uninterpretable');
+      assert.equal(result.write_authorization,false);
+      const malformed=structuredClone(initialPayload);
+      revise(malformed,0,text=>text.replace(/^## Blocking Findings\r?\n/m,''));
+      assert(selectArtifactQuery({payload:malformed,backend:'files',scope}).errors.some(error=>error.code==='ARTIFACT_QUERY_CONTRACT_NON_CONFORMANT'));
+    });
     for(const test of corpus.cases){
       const payload=structuredClone(base),params={schema_version:1};
       switch(test.mutation){

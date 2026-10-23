@@ -26,6 +26,14 @@ The result never replaces required workflow authorities, fresh admission or
 write CAS/fences. No installed procedure or native benchmark is changed by this
 opt-in surface.
 
+Newly installed state may be conformant while its facts remain `unknown`.
+Bootstrap uses the complete canonical context-reload/start-session route and
+ordinary admitted state updates before opting into task queries. A task query
+does not initialize those facts. If invoked too early it remains incomplete or
+blocked; callers stop dependent work rather than silently falling back. The
+initial current-state scaffold includes the existing required Blocking Findings
+section without converting unknown facts into known values.
+
 Three additional experimental profiles require a bounded `skills` array of
 registered skills and the client's effective `governanceAdoption` task policies:
 `admission-diagnostic.v1`, `modification-preparation.v1`, and

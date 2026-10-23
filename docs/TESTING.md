@@ -1439,8 +1439,10 @@ distinguishes missing/unknown/ambiguous fields and known empty lists. Source
 hashes, foreign scope, stale extraction, concurrent file/directory changes,
 dependent complete sections, optional omissions and final JSON budget refusals
 are covered independently of native token usage. The first profile is factual
-`active-state.v1`; diagnostic/admission, mutation and closure profiles are not
-declared available. Injected PostgreSQL snapshots do not establish live DB
+`active-state.v1`; the task profiles have their separate coverage below. Rendered
+initial scaffold sources must conform while unknown bootstrap facts remain
+incomplete and never grant write authorization. Removing their required section
+still refuses. Injected PostgreSQL snapshots do not establish live DB
 isolation; real DB checks and native qualification have separate evidence.
 `node tools/perf/verify-artifact-query-postgres-smoke.mjs` is a separate manual
 check with an already provisioned `PG_BIN_DIR` and the locked optional `pg`

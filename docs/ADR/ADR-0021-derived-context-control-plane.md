@@ -289,6 +289,12 @@ own checks. Preparation returns canonical preimage references, never reusable
 write admission. Its actual writer retains complete fresh preimages, CAS and
 fences. Unsupported targets or unaccepted policies refuse explicitly.
 
+These consultations do not bootstrap an uninitialized project. Complete canonical
+reads and the existing admitted session/cycle procedures establish its facts
+first; unknown facts stay unknown. A refused query cannot trigger an implicit
+fallback or repair. The initial scaffold conforms to its existing artifact
+contract without changing those admission boundaries.
+
 Opt-in grouped workflow consultation shares the invocation observation and its
 publication fence with admissions and hydration. Every skill keeps its distinct
 decision; blocked skills receive diagnostics and no rich hydration. Global stop

@@ -65,6 +65,8 @@ open_change_requests:
 open_gaps:
 - none
 
+## Blocking Findings
+
 blocking_findings:
 - none
 
