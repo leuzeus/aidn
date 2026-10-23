@@ -9,7 +9,7 @@ import { resolveCriticalMarkdownContract } from '../../lib/workflow/markdown-con
 import { completeMarkdownUnit } from '../codex/scoped-context-selection.mjs';
 import { resolveRuntimeProjectContext } from './runtime-project-context-service.mjs';
 import { readRuntimeSnapshot } from './runtime-snapshot-service.mjs';
-import { artifactQueryManifest, ACTIVE_STATE_PROFILE, ARTIFACT_TASK_PROFILES } from './artifact-query-catalog.mjs';
+import { artifactQueryManifest, ACTIVE_STATE_PROFILE, ACTIVE_STATE_PROFILES, ARTIFACT_TASK_PROFILES } from './artifact-query-catalog.mjs';
 import { resolveSkillId } from '../../core/skills/skill-policy.mjs';
 import { runArtifactTaskQuery } from './artifact-task-query-service.mjs';
 
@@ -224,7 +224,7 @@ export async function queryProjectArtifacts(options) {
   const profile=options.profile??ACTIVE_STATE_PROFILE;
   const request=validateArtifactQueryParams(options.params);
   if(ARTIFACT_TASK_PROFILES.includes(profile))return runArtifactTaskQuery({options:{...options,params:request},readSources:readArtifactQuerySources,select:selectArtifactQuery,finalize:finalizeArtifactQueryBudget});
-  if(profile!==ACTIVE_STATE_PROFILE)fail('ARTIFACT_QUERY_PROFILE_UNSUPPORTED');
+  if(!ACTIVE_STATE_PROFILES.includes(profile))fail('ARTIFACT_QUERY_PROFILE_UNSUPPORTED');
   if(['skills','task','artifact_paths','field_ids'].some(k=>Object.hasOwn(request,k)))fail('ARTIFACT_QUERY_PROFILE_PARAMS_CONFLICT');
   const observation=await readArtifactQuerySources({...options,params:request});
   return selectArtifactQuery({...observation,params:request,profile});

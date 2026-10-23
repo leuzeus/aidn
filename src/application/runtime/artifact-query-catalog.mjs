@@ -3,6 +3,8 @@ import { listCriticalMarkdownContracts } from '../../lib/workflow/markdown-contr
 
 export const ARTIFACT_QUERY_EXTRACTOR = 'artifact-query-extractor.v1';
 export const ACTIVE_STATE_PROFILE = 'active-state.v1';
+export const ACTIVE_STATE_RECHECK_PROFILE = 'active-state.v2';
+export const ACTIVE_STATE_PROFILES = [ACTIVE_STATE_PROFILE, ACTIVE_STATE_RECHECK_PROFILE];
 export const ARTIFACT_TASK_PROFILES = ['admission-diagnostic.v1', 'modification-preparation.v1', 'verification-closure.v1'];
 const types = ['current_state', 'runtime_state', 'session', 'cycle_status'];
 const profile = {
@@ -15,7 +17,13 @@ const profile = {
   optional: ['runtime_state.prioritized_artifacts'],
 };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const profiles = [profile, ...ARTIFACT_TASK_PROFILES.map(id => ({
+const recheckProfile = {
+  ...structuredClone(profile), id: ACTIVE_STATE_RECHECK_PROFILE,
+  mandatory: [...profile.mandatory, 'current_state.updated_at'],
+  conditional: { ...structuredClone(profile.conditional), session: [...profile.conditional.session,
+    'session.state', 'session.attached_cycles', 'session.carry_over_pending'] },
+};
+const profiles = [profile, recheckProfile, ...ARTIFACT_TASK_PROFILES.map(id => ({
   ...structuredClone(profile), id, purpose: 'Consult fresh checks and accepted task authorities; never authorize a write',
   mandatory: [...profile.mandatory, 'runtime_state.repair_primary_reason', 'runtime_state.repair_routing_hint'],
   conditional: { ...structuredClone(profile.conditional), session: [...profile.conditional.session, 'session.carry_over_pending'] },

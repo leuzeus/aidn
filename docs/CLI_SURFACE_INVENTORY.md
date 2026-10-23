@@ -10,6 +10,15 @@ override, write or migration flag is accepted. `--manifest --json` discovers the
 catalog derived from critical Markdown contracts, field identities, extractors,
 section dependencies and the registered profile without querying project state.
 
+`active-state.v2` is an opt-in successor with twenty non-optional facts when an
+active session and cycle are present. It retains all sixteen v1 facts and adds
+`current_state.updated_at`, `session.state`, `session.attached_cycles` and
+`session.carry_over_pending`. The timestamp is always required; the three session
+facts are conditional on an active session. The complete work-mode section stays
+required. Use the same bounded parameters without `field_ids`: neither factual
+profile accepts task, skill, artifact-path or field selectors. The v1 default and
+the three task profiles keep their existing requirements and response shape.
+
 The active-state profile reads current/runtime state and the referenced session
 and cycle from one canonical DB snapshot, or fenced file observations in files
 mode. It keeps known empty lists distinct from absent or uninterpretable values,

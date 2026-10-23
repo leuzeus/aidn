@@ -264,6 +264,15 @@ complete section dependencies. Profiles select facts; they neither alter
 client-owned accepted context policies nor replace mandatory authorities. The
 first profile, `active-state.v1`, is distinct from workflow admission.
 
+The opt-in successor `active-state.v2` declares the complete twenty-fact active
+state consultation in the catalogue: the sixteen existing facts plus the current
+state timestamp, session state, attached cycles and carry-over. It shares the
+same read-only, canonical observation and complete-section rules. These fields
+are profile requirements rather than caller-supplied extraction selectors; v1
+and the task profiles retain their previous needs. Versioned compatibility and
+public CLI fixtures cover the actual profile/parameter boundary, not only the
+internal selector. This successor adds no authority, write or persistence effect.
+
 The query verifies a fresh coherent canonical scope and complete source hashes.
 Canonical JSON cannot silently supply stale facts: incompatible extraction is
 recomputed in memory from the same canonical content, without a repair write.

@@ -1444,6 +1444,14 @@ initial scaffold sources must conform while unknown bootstrap facts remain
 incomplete and never grant write authorization. Removing their required section
 still refuses. Injected PostgreSQL snapshots do not establish live DB
 isolation; real DB checks and native qualification have separate evidence.
+The versioned `active-state.v2` compatibility fixture pins all twenty active
+facts, including the timestamp, session state, attached cycles and carry-over.
+Its public CLI case uses only registered-profile parameters and verifies all
+twenty values, complete dependent sections, scope, revision and unchanged source
+bytes. Missing facts, foreign scope, stale revision, insufficient budget and free
+field selectors remain refused or explicitly incomplete. Files, dual SQLite,
+db-only SQLite and injected PostgreSQL are checked separately; an installed
+package call and native benchmark still require their own evidence.
 `node tools/perf/verify-artifact-query-postgres-smoke.mjs` is a separate manual
 check with an already provisioned `PG_BIN_DIR` and the locked optional `pg`
 driver. It creates and removes its own private cluster and client, checks

@@ -104,9 +104,9 @@ export async function verifyArtifactTaskQueries() {
     assert.equal(run('git',['-C',target,'add','.']).status,0);assert.equal(run('git',['-C',target,'commit','-m','fixture']).status,0);
     prepareActivationFixture(target,repo);
     const manifest=artifactQueryManifest();
-    assert.deepEqual(manifest.profiles.map(p=>p.id),['active-state.v1',profile,'modification-preparation.v1','verification-closure.v1']);
+    assert.deepEqual(manifest.profiles.map(p=>p.id),['active-state.v1','active-state.v2',profile,'modification-preparation.v1','verification-closure.v1']);
     const compatibility=JSON.parse(fs.readFileSync(repo+'/tests/fixtures/artifact-query/task-compatibility.v1.json'));
-    const consumers=manifest.profiles.slice(1),ids=new Set(consumers.flatMap(p=>[...p.mandatory,...Object.values(p.conditional).flat(),...p.optional]));
+    const consumers=manifest.profiles.filter(p=>p.requires_client_task_policy),ids=new Set(consumers.flatMap(p=>[...p.mandatory,...Object.values(p.conditional).flat(),...p.optional]));
     assert.deepEqual({profiles:consumers,consumed:manifest.artifacts.map(c=>({artifact_type:c.artifact_type,contract_version:c.contract_version,fields:c.fields.filter(f=>ids.has(f.id)),sections:c.sections}))},compatibility);
     checks.push('three versioned consumers pin semantic fields and complete closure sections');
     for(const mode of ['files','dual','db-only']) {
