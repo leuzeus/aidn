@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { readAidnProjectConfig, resolveConfigStateMode, resolveConfigRuntimePersistence } from '../../lib/config/aidn-config-lib.mjs';
+import { readAidnProjectConfig, validateAidnProjectConfig, resolveConfigStateMode, resolveConfigRuntimePersistence } from '../../lib/config/aidn-config-lib.mjs';
 import { buildCanonicalFromMarkdown } from '../../lib/workflow/markdown-render-lib.mjs';
 import { inspectStructuredField, analyzeStructuredArtifact } from '../../lib/workflow/structured-artifact-parser-lib.mjs';
 import { resolveCriticalMarkdownContract } from '../../lib/workflow/markdown-contract-registry-lib.mjs';
@@ -201,7 +201,9 @@ export async function queryProjectArtifacts({targetRoot,params,profile=ACTIVE_ST
   const request=validateArtifactQueryParams(params); // Capture before any await.
   if(profile!==ACTIVE_STATE_PROFILE)fail('ARTIFACT_QUERY_PROFILE_UNSUPPORTED');
   const configObservation=readPhysical(targetRoot,'.aidn/config.json');
-  const config=readAidnProjectConfig(targetRoot).data, persistence=resolveConfigRuntimePersistence(config);
+  let config;
+  try{config=validateAidnProjectConfig(readAidnProjectConfig(targetRoot).data);}catch{fail('ARTIFACT_QUERY_CONFIG_INVALID');}
+  const persistence=resolveConfigRuntimePersistence(config);
   const scope=resolveRuntimeProjectContext({targetRoot});
   const database=persistence?.backend==='postgres'||(resolveConfigStateMode(config)??'files')!=='files';
   let backend='files',payload,observed=[],directories=[];

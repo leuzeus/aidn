@@ -117,6 +117,11 @@ export async function verifyArtifactQueryFixtures() {
     const fingerprint=()=>hash(JSON.stringify(base.artifacts.map(row=>fs.readFileSync(path.join(target,'docs/audit',row.path),'utf8'))));
     const before=fingerprint(),files=await queryProjectArtifacts({targetRoot:target,params:{schema_version:1}});
     check('real files consultation is read-only and equals pure selection',()=>{assert.equal(files.status,'ok');assert.deepEqual(files.fields,selected.fields);assert.equal(fingerprint(),before);});
+    for(const invalid of [{runtime:{stateMode:'files',persistence:{backend:'postgres-typo'}}},{runtime:{stateMode:'invalid'}},{version:999}]){
+      fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify(invalid));
+      await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},snapshotReader:async()=>{throw Error('SHOULD_NOT_READ_BACKEND');}}),/ARTIFACT_QUERY_CONFIG_INVALID/);checks++;
+    }
+    fs.writeFileSync(path.join(target,'.aidn/config.json'),JSON.stringify({runtime:{stateMode:'files'}}));
     await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},afterRead:()=>fs.appendFileSync(path.join(target,'docs/audit/CURRENT-STATE.md'),'\nConcurrent update\n')}),/SOURCE_CHANGED/);checks++;
     fs.writeFileSync(path.join(target,'docs/audit/CURRENT-STATE.md'),base.artifacts[0].content);
     await assert.rejects(queryProjectArtifacts({targetRoot:target,params:{schema_version:1},afterRead:()=>{
