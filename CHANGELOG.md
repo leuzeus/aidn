@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.16.0 (2026-10-23)
+
+- Add opt-in contract-bound artifact consultation profiles for active state,
+  admission, modification preparation and verification/closure; integrate task
+  consultations into grouped workflows with canonical scope and provenance.
+- Add compact admission, next-action and workflow projections while retaining
+  complete mandatory authorities, dependency closure, refusals and JSON limits.
+- Add bounded native wait guidance and internal opt-in intent/closure preparation.
+  Fresh admissions, full canonical preimages, CAS and fences remain required.
+- Correct initial-state/bootstrap prerequisites and preserve typed canonical
+  backend, malformed-value and insufficient-budget refusals without fallback.
+- Clarify explicit runtime projection output with --out; align files-mode backend
+  nullability and canonical consistency metadata with public JSON contracts.
+  An unobserved snapshot is explicitly identified rather than reported checked.
+- Preserve UTF-8 project paths through Windows setup processes.
+- Retain the [qualification limits](https://github.com/leuzeus/aidn/blob/v0.16.0/docs/qualification/token-efficiency/v0.16.0.md):
+  one pre-release candidate completed the native application/governance scenario,
+  but the fresh reference stopped on a governance connector refusal. Matched
+  performance gains and the exact release package's native benchmark remain
+  unqualified. Experimental paths stay opt-in with no global token-saving claim.
+
 ## 0.15.0 (2026-10-21)
 
 - Add explicit opt-in agent JSON views for workflow and hooks, retaining
