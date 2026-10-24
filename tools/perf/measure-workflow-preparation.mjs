@@ -38,6 +38,8 @@ const variants = {
   scoped_grouped: ['--view', 'agent', '--grouped', '--projection-profile', 'compact.v2', '--context-profile', 'token-efficiency.v1'],
   ...(process.argv.includes('--include-transaction') ? { transaction: ['--transaction'] } : {}),
 };
+const sourceCommit = run('git', ['rev-parse', 'HEAD'], repo).stdout.trim();
+const sourceDiff = hash(run('git', ['diff', 'HEAD'], repo).stdout);
 try {
   const source = path.join(repo, 'tests/fixtures/repo-installed-core'), tracked = createTrackedFixtureFilter(source, repo);
   fs.cpSync(source, target, { recursive: true, filter: file => tracked(file) && isActivationFixtureSource(source, file, { freshContext: true }) });
@@ -92,6 +94,12 @@ try {
     }
   }
   const controls = [];
+  let native = null;
+  if (process.argv.includes('--execute-native')) {
+    const { measureNativeWorkflowPreparation } = await import('../verify/workflow-preparation-native-probe.mjs');
+    native = await measureNativeWorkflowPreparation({ binary: arg('--binary', ''), sourceHome: arg('--codex-home', ''),
+      output: arg('--native-output', ''), variants: { ...variants, historical_microsteps: null }, cli, samples: Number(arg('--native-samples', '2')) });
+  }
   if (variants.transaction) {
     assert.equal(resolveCliEffectClass('aidn codex workflow-step', ['--transaction', '--json']), 'read-only');
     assert.equal(resolveCliEffectClass('aidn codex workflow-step', ['--transaction', '--write', '--json']), 'mutating');
@@ -117,9 +125,10 @@ try {
     controls.push('strict missing-policy/budget refusals preserve cache, limits and null receipt');
   }
   const percentile = (values, q) => [...values].sort((a, b) => a - b)[Math.ceil(values.length * q) - 1];
-  const report = { schema_version: 1, evidence: 'source-fixture-microbenchmark', source_commit: run('git', ['rev-parse', 'HEAD'], repo).stdout.trim(),
-    source_diff_sha256: hash(run('git', ['diff', 'HEAD'], repo).stdout), node: process.version, platform: process.platform, samples,
+  const report = { schema_version: 1, evidence: 'source-fixture-microbenchmark', source_commit: sourceCommit,
+    source_diff_sha256: sourceDiff, node: process.version, platform: process.platform, samples,
     fixture: 'tracked activated files-mode client, two admitted skills, accepted one-unit policy', rows, controls,
+    ...(native ? { native } : {}),
     benchmark_sha256: hash(fs.readFileSync(import.meta.filename)),
     summary: Object.fromEntries(Object.keys(variants).map(variant => { const rowsForVariant = rows.filter(r => r.variant === variant); return [variant, {
       elapsed_p50_ms: percentile(rowsForVariant.map(r => r.elapsed_ms), .5), elapsed_p95_ms: percentile(rowsForVariant.map(r => r.elapsed_ms), .95),
@@ -127,7 +136,8 @@ try {
       json_bytes: rowsForVariant.map(r => r.json_bytes), hydration_count: rowsForVariant[0].hydration_count }]; })),
     unmeasured: { model_responses: null, input_tokens: null, cached_input_tokens: null, uncached_input_tokens: null, output_tokens: null,
       resident_tokens: null, db_transactions: null, db_round_trips: null, native_handoffs: null, native_new_context: null, product_oracle: null },
-    limitations: ['No native model call or token saving established', 'Decision parity is not product acceptance', 'No live PostgreSQL or installed-package qualification', 'CLI clocks include startup; p95 with three samples is descriptive'] };
+    limitations: [native ? 'Native measurements cover only the bounded preparation oracle, not full product development' : 'No native model call or token saving established',
+      'Decision parity is not product acceptance', 'No live PostgreSQL or installed-package qualification in this benchmark', 'CLI clocks include startup; p95 with three samples is descriptive'] };
   if (out) { fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, JSON.stringify(report, null, 2) + '\n', { flag: 'wx' }); }
   console.log(JSON.stringify(report, null, 2));
 } finally { removePathWithRetry(root); }

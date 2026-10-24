@@ -43,6 +43,20 @@ includes it in the Codex integration gate. Its descriptive clocks and byte
 counts are fixture microbenchmarks; provider tokens and native quality remain
 separate measurements.
 
+For an explicitly requested native comparison, the manual source benchmark also
+accepts `--include-transaction --execute-native --native-samples 2 --binary
+<absolute-app-binary> --codex-home <existing-home> --native-output
+<new-external-directory>`. It compares the same bounded preparation task on fresh
+native threads, rotates variant order, runs actual source CLI preparation inside
+each arm clock, submits the same exact-field oracle, checks unchanged runtime
+source hashes, and records unique completed-response usage through the existing
+observer. Root model/reasoning settings stay fixed; no fallback, native trust
+override, external app, nested agent or transcript edit is permitted. Cleanup
+removes the temporary authentication copy and verifies the source config/auth.
+Raw native events and account metadata stay outside the source checkout. This
+is a manual native source-preparation experiment, not the 034/036 application
+benchmark, an installed-client qualification or production rollover approval.
+
 `node tools/perf/verify-agent-working-memory-fixtures.mjs` checks real fixture
 checkpoint/handoff CLI, explicit write intent, fresh admission refusal, revision
 changes, missing/changed evidence, capsule integrity, per-agent isolation,
