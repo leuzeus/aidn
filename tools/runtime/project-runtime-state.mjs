@@ -187,6 +187,7 @@ export async function projectRuntimeState({
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
     : buildVirtualCurrentStateConsistency({
+      targetRoot: absoluteTargetRoot,
       currentStateResolution,
       activeCycle,
       activeSession,

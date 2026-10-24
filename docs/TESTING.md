@@ -1,5 +1,14 @@
 # Testing Guide
 
+The runtime-state projector fixtures validate its public JSON contract in
+`files`, `dual` and `db-only` modes. Files mode reports `shared_state_backend:
+null`; default/explicit reads and preview remain read-only, while explicit
+`--write` creates only the requested projection. Malformed backend values and
+incomplete backend objects remain invalid.
+Canonical consistency retains its existing checks and adds the required context
+metadata. Its snapshot explicitly reports `observed: false` and
+`source: not_evaluated`; these fields do not establish a snapshot check.
+
 Windows setup fixtures force an OEM console while exchanging UTF-8 JSON with
 Node, preserving accented registry paths and restoring the caller's encoding.
 Coordinator adapter cwd probes keep their batch-file bytes ASCII and transport

@@ -518,6 +518,7 @@ export function resolveCyclePlanArtifact({
 }
 
 export function buildVirtualCurrentStateConsistency({
+  targetRoot,
   currentStateResolution,
   activeCycle,
   activeSession = "none",
@@ -583,7 +584,18 @@ export function buildVirtualCurrentStateConsistency({
   }
 
   const pass = Object.values(checks).every((check) => check?.pass === true);
+  const absoluteTargetRoot = path.resolve(targetRoot ?? ".");
+  const missingFiles = [];
+  if (currentStateResolution?.exists !== true) missingFiles.push("docs/audit/CURRENT-STATE.md");
+  if (!canonicalNone(normalizedActiveCycle) && !canonicalUnknown(normalizedActiveCycle) && cycleStatusResolution?.exists !== true) {
+    missingFiles.push(`docs/audit/cycles/${normalizedActiveCycle}-*/status.md`);
+  }
   return {
+    ts: new Date().toISOString(),
+    target_root: absoluteTargetRoot,
+    audit_root: path.join(absoluteTargetRoot, "docs", "audit"),
+    missing_files: missingFiles,
+    snapshot: { observed: false, source: "not_evaluated" },
     pass,
     source: currentStateResolution?.source ?? "missing",
     current_state: {

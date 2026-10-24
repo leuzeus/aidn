@@ -55,7 +55,7 @@
       "additionalProperties": true
     },
     "shared_state_backend": {
-      "type": "object",
+      "type": ["object", "null"],
       "required": [
         "shared_runtime_mode",
         "coordination_backend_kind",
