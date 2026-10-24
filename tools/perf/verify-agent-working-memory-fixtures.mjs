@@ -17,6 +17,7 @@ import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persisten
 import { createArtifactProjectorAdapter } from "../../src/adapters/runtime/artifact-projector-adapter.mjs";
 import { resolveRuntimeProjectContext } from "../../src/application/runtime/runtime-project-context-service.mjs";
 import { cleanAndVerifyScopes } from "./verify-postgres-runtime-persistence-live-smoke.mjs";
+import { loadDbIndexPayloadSafe } from "../runtime/db-first-runtime-view-lib.mjs";
 
 const repo = path.resolve(import.meta.dirname, "../..");
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-working-memory-"));
@@ -349,6 +350,12 @@ try {
           assert.equal(captured.index.skipped, true);
           const before = snapshot();
           const handoff = command("tools/runtime/project-handoff-packet.mjs", ["--resume-agent", "agent-1", "--json"]);
+          if (handoff.status !== 0) {
+            const diagnostic = await loadDbIndexPayloadSafe(root);
+            const bounded = JSON.stringify({ state_mode: stateMode, exists: diagnostic.exists,
+              warning: String(diagnostic.warning ?? '').slice(0, 500), backend: diagnostic.backend?.projection_backend_kind });
+            assert.fail(bounded.replaceAll(connectionString, '[redacted]').replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, '[redacted-postgres-url]'));
+          }
           assert.equal(handoff.status, 0, handoff.stderr.replaceAll(connectionString, "[redacted]"));
           const resumed = JSON.parse(handoff.stdout).resume_capsule;
           assert.equal(resumed.status, "current", JSON.stringify(resumed.reasons));

@@ -199,3 +199,22 @@ Serialization stabilization, PostgreSQL pooling, CLI process pooling and CI
 coverage reduction are not retained optimizations: the baseline supplies no
 isolated evidence that changing them would safely improve task completion.
 Existing exact-size accounting and all required qualification gates remain.
+
+## Canonical continuation defect found by live qualification
+
+The optional live smoke initially passed dual checkpoint/resume, then failed
+db-only handoff with canonical backend unavailable. A bounded diagnostic on a
+second isolated attempt showed `backend: sqlite`, `exists: false`: the generic
+asynchronous DB-first continuity reader inherited the compatibility projection
+default when the client omitted `localProjectionPolicy`. The configured
+PostgreSQL backend had not failed; the wrong reader was selected.
+
+The continuity helper now defaults its local projection preference to `none`,
+which selects configured PostgreSQL. SQLite remains the backend when PostgreSQL
+is not configured. Explicit compatibility diagnostics retain their separate
+options; no outage fallback, migration or implicit synchronization was added.
+The existing shared-backend suite now checks this omitted-preference case with
+an injected PostgreSQL store and no local SQLite projection: PASS. The subsequent
+real PostgreSQL smoke passes dual and db-only checkpoint/resume, canonical-change
+rejection and verified cleanup of its own random scopes. The first two failures
+remain retained and are not rewritten as product qualification PASS.
