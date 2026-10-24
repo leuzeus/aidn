@@ -1451,6 +1451,16 @@ second admission invocation.
 
 ## Artifact efficiency intent
 
+`node tools/perf/measure-artifact-query-parsing.mjs --out <new-file>` measures
+whole active-state.v2 selection on the tracked four-source corpus, after warmup,
+in five batches of forty selections. Every output must remain exactly equal.
+The ordinary artifact-query corpus covers invalid hashes, stale supplied JSON,
+duplicate fields, fenced examples, foreign scope, changed source and contract
+compatibility. Normalized field-analysis reuse is scoped to one synchronous
+selection and keyed by source path/hash/extractor kind; no persistent entry or
+cross-invocation freshness is inferred. The benchmark measures CPU fixture
+latency only and never reports model tokens or DB transaction savings.
+
 The same runtime gate includes the contract-bound artifact-query corpus. It
 checks consumed field identities/types/meanings and section dependencies against
 the locked compatibility fixture, rejects unsupported source versions, and

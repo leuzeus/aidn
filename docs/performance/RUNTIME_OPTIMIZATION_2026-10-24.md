@@ -169,3 +169,33 @@ local-only because native evidence includes account and machine details.
 See the [official app-server documentation](https://developers.openai.com/codex/app-server/)
 for supported thread and compaction methods; schema inspection alone never
 establishes a fresh-window lifecycle or model qualification.
+
+## Lot 4 — measured parsing and existing shared snapshots
+
+Field extraction previously invoked `analyzeStructuredArtifact` and stripped
+fenced examples again for every requested field of the same source. A map local
+to one synchronous `selectArtifactQuery` now reuses normalized fence-filtered
+text by source path, verified content SHA and extractor kind. Backend/scope and
+source revision remain owned by that invocation; a later invocation starts
+empty. Complete source hash/contract/canonical verification still runs before
+extraction. No persistent cache or stale canonical JSON shortcut was added.
+
+Five warmed batches of forty complete active-state.v2 selections on the same
+four-source corpus: p50 **7.545 ms before / 4.810 ms after** (-36.2%); observed
+p95 **7.835 / 5.418 ms**. Input is 45,195 JSON bytes and output is 4,939 bytes in
+both cases. The output is checked for exact determinism at every iteration.
+`verify-artifact-query-fixtures.mjs`: PASS, 90 checks, including real SQLite
+dual/db-only and injected PostgreSQL. These are CPU microbenchmark gains only.
+
+The common snapshot/read sharing requested by the mission already exists in
+`workflow-observation-service.mjs` and `runtime-snapshot-service.mjs`. The retained
+grouped source CLI suite is PASS (19 groups), including three modes, multi-skill
+refusals, global stop, real concurrent SQLite revision change, changed ignored
+local authority, foreign scopes and configured PostgreSQL outage with no fallback.
+No naive Promise.all admission change was made. Reads are shared for preparation
+only, then freshly fenced, and every later writer still re-admits independently.
+
+Serialization stabilization, PostgreSQL pooling, CLI process pooling and CI
+coverage reduction are not retained optimizations: the baseline supplies no
+isolated evidence that changing them would safely improve task completion.
+Existing exact-size accounting and all required qualification gates remain.

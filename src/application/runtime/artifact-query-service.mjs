@@ -49,15 +49,24 @@ export function artifactQueryEnvelope(profile = ACTIVE_STATE_PROFILE) {
     fields: [], sections: [], sources: [], errors: [], omissions: [], expansions: [], budget: null };
 }
 
-function fieldValue(source, field) {
-  const normalized=analyzeStructuredArtifact(source.content,{classification:{kind:source.descriptor?.artifact_type??source.kind}}).normalized_text;
-  let fence=null;
-  const content=normalized.split('\n').filter(line=>{
-    const mark=line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-    if(mark){if(!fence)fence={character:mark[1][0],length:mark[1].length};
-      else if(mark[1][0]===fence.character&&mark[1].length>=fence.length&&!mark[2].trim())fence=null;return false;}
-    return !fence;
-  }).join('\n');
+function fieldValue(source, field, analyses) {
+  // Only verified sources from this synchronous selection reach this cache.
+  // Scope/backend/revision are pinned by the owning invocation; path, content
+  // hash and extractor kind distinguish source identities within that scope.
+  const kind=source.descriptor?.artifact_type??source.kind;
+  const key=JSON.stringify([source.path,source.sha256,kind]);
+  let content=analyses.get(key);
+  if(content===undefined) {
+    const normalized=analyzeStructuredArtifact(source.content,{classification:{kind}}).normalized_text;
+    let fence=null;
+    content=normalized.split('\n').filter(line=>{
+      const mark=line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if(mark){if(!fence)fence={character:mark[1][0],length:mark[1].length};
+        else if(mark[1][0]===fence.character&&mark[1].length>=fence.length&&!mark[2].trim())fence=null;return false;}
+      return !fence;
+    }).join('\n');
+    analyses.set(key,content);
+  }
   if (field.extractor === 'session-mode.v1') {
     const modes = [...content.matchAll(/\[\s*[xX]\s*\]\s*(COMMITTING|EXPLORING|THINKING)\b/g)].map(m => m[1]);
     modes.push(...[...content.matchAll(/^##\s+WORK MODE\s*-\s*(COMMITTING|EXPLORING|THINKING)\b/gim)].map(m=>m[1].toUpperCase()));
@@ -112,7 +121,7 @@ export function selectArtifactQuery({ payload, backend, scope, params = {schema_
     error('ARTIFACT_QUERY_SCOPE_MISMATCH'); return finalizeArtifactQueryBudget(output,request.target_bytes??16384);
   }
   if(!Array.isArray(payload?.artifacts)){error('ARTIFACT_QUERY_CANONICAL_UNAVAILABLE');return finalizeArtifactQueryBudget(output,request.target_bytes??16384);}
-  const rows = payload.artifacts, selected = new Map();
+  const rows = payload.artifacts, selected = new Map(), analyses = new Map();
   function source(type, predicate) {
     const matches=rows.filter(predicate);
     if(matches.length!==1){error(matches.length?'ARTIFACT_QUERY_SOURCE_AMBIGUOUS':'ARTIFACT_QUERY_SOURCE_ABSENT',type);return null;}
@@ -139,7 +148,7 @@ export function selectArtifactQuery({ payload, backend, scope, params = {schema_
   function append(id, optional=false) {
     const type=id.slice(0,id.indexOf('.')), row=selected.get(type), field=row?.descriptor.fields.find(f=>f.id===id);
     if(!field){output.fields.push({id,status:'absent',value:null,source_ref:null,optional,reason:'source_unavailable'});return null;}
-    const result=fieldValue(row,field);
+    const result=fieldValue(row,field,analyses);
     output.fields.push({id,...result,source_ref:type,optional});
     for(const key of field.requires_sections) appendSection(type,key,row);
     return result;
@@ -165,9 +174,9 @@ export function selectArtifactQuery({ payload, backend, scope, params = {schema_
       if(declared.present && declared.scalar!==id)error('ARTIFACT_QUERY_ACTIVE_REFERENCE_CONFLICT',type);
       if(row[type==='session'?'session_id':'cycle_id'] && row[type==='session'?'session_id':'cycle_id']!==id)error('ARTIFACT_QUERY_ACTIVE_REFERENCE_CONFLICT',type);}
   }
-  const sessionBranch=known('session.session_branch'), currentSessionBranch=selected.get('current_state')&&fieldValue(selected.get('current_state'),{source_key:'session_branch',type:'scalar',extractor:'structured-field.v1'});
+  const sessionBranch=known('session.session_branch'), currentSessionBranch=selected.get('current_state')&&fieldValue(selected.get('current_state'),{source_key:'session_branch',type:'scalar',extractor:'structured-field.v1'},analyses);
   if(sessionBranch && currentSessionBranch?.status==='known' && sessionBranch!==currentSessionBranch.value)error('ARTIFACT_QUERY_STATE_CONFLICT','session_branch');
-  const cycleBranch=known('cycle_status.branch_name'), currentCycleBranch=selected.get('current_state')&&fieldValue(selected.get('current_state'),{source_key:'cycle_branch',type:'scalar',extractor:'structured-field.v1'});
+  const cycleBranch=known('cycle_status.branch_name'), currentCycleBranch=selected.get('current_state')&&fieldValue(selected.get('current_state'),{source_key:'cycle_branch',type:'scalar',extractor:'structured-field.v1'},analyses);
   if(cycleBranch && currentCycleBranch?.status==='known' && cycleBranch!==currentCycleBranch.value)error('ARTIFACT_QUERY_STATE_CONFLICT','cycle_branch');
   if(known('session.mode') && known('current_state.mode') && known('session.mode')!==known('current_state.mode'))error('ARTIFACT_QUERY_STATE_CONFLICT','mode');
   if(known('cycle_status.dor_state') && known('current_state.dor_state') && known('cycle_status.dor_state')!==known('current_state.dor_state'))error('ARTIFACT_QUERY_STATE_CONFLICT','dor_state');
