@@ -124,3 +124,48 @@ Single-trial transaction output was 10,264 bytes, one hydration and two distinct
 canonical observation keys. Its 3,265 ms clock does not establish a speed gain;
 the value is bounded preparation and fewer required client consultations.
 Actual model-turn reduction still requires a native paired task.
+
+## Lot 3 — supported continuation and actual native limits
+
+The existing versioned working-memory capsule already binds project/worktree,
+checkout and canonical revisions, objective, decisions, next step, typed TODO,
+test claims and exact evidence references. Existing resume rejects stale,
+corrupt, incompatible or changed evidence instead of replaying a transcript.
+The lifecycle service now offers explicit `prepareContinuation({write:true})`:
+ordinary admitted capture followed by fresh read-only resume, with no native
+window request. Its result requires fresh admission and explicitly reports
+`native_rollover: false`. It cannot clear host history. No installed trust,
+configuration or production native qualification changes.
+
+`node tools/perf/verify-context-lifecycle-fixtures.mjs`: PASS, 20 lifecycle
+scenarios plus the existing local/research fixture controls. Missing ports,
+stale/invalid capsules, capture intent, unknown/expired qualifications and lost
+native acknowledgements remain fail-closed.
+
+Host inspection and isolated native experiments on 2026-10-24:
+
+- The npm CLI 0.125.0 could generate app-server schemas including
+  `thread/start` and `thread/compact/start`, but refused the configured
+  `service_tier: default` before model execution. This failure is retained.
+- The running app binary is 0.164.0-alpha.11.1. The existing three-window ledger
+  qualifier observed **two actual native new_context calls**. Both later rounds
+  have ordered checkpoint/acknowledgement/restore/retrieval/submission evidence;
+  all nine retained-answer cases eventually pass. The complete qualifier is
+  **FAIL**: the first round did not request a new context, the second round
+  lacked a required continuity detail, and final window number is two instead
+  of three. No retry or weakened criterion converts it to PASS. The capability
+  registry remains unqualified; a real native operation being available is not
+  reliable autonomous lifecycle qualification.
+- The separate existing native full/delta selection probe is **PASS** for its
+  small synthetic consumption oracle. It does not qualify this transaction's
+  end-to-end task performance or production rollover.
+- All three isolated probes stopped their app-server process, removed temporary
+  credential copies and verified the original config/auth bytes unchanged.
+
+Reproduction uses the existing manual qualifiers with `--execute --binary
+<actual-app-binary> --codex-home <existing-home> --output <new-external-dir>`;
+add `--only-ledger` for `qualify-context-native.mjs`. Retained reports are
+local-only because native evidence includes account and machine details.
+See the [official app-server documentation](https://developers.openai.com/codex/app-server/)
+for supported thread and compaction methods; schema inspection alone never
+establishes a fresh-window lifecycle or model qualification.
