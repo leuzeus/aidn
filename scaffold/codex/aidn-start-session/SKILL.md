@@ -32,6 +32,14 @@ Before the first durable write in this skill, run:
 
 ## Steps
 
+At first installation, reconstruct unknown state through context-reload's
+complete canonical read path before selecting an artifact-query task profile.
+Run this skill's ordinary activation and pre-write admissions, complete session
+template and canonical state updates; do not fabricate mode, branch kind or DoR
+to make a consultation pass. A query is neither session initialization nor write
+authorization. Select it only after its required canonical facts are established.
+An actual refusal still stops the dependent action and requires explicit repair.
+
 1) Run aidn-start-session runtime admission first:
 - detect current branch
 - classify branch kind: `source` | `session` | `cycle` | `intermediate` | `other`

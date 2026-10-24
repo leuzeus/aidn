@@ -1,0 +1,199 @@
+{
+  "manifest_version": "artifact-query-manifest.v1",
+  "extractor_version": "artifact-query-extractor.v1",
+  "profile": {
+    "id": "active-state.v1",
+    "purpose": "Consult active facts, never admission or authority replacement",
+    "mandatory": [
+      "current_state.active_session",
+      "current_state.active_cycle",
+      "current_state.branch_kind",
+      "current_state.mode",
+      "current_state.dor_state",
+      "current_state.blocking_findings",
+      "runtime_state.current_state_freshness",
+      "runtime_state.repair_layer_status",
+      "runtime_state.blocking_findings"
+    ],
+    "conditional": {
+      "session": [
+        "session.session_branch",
+        "session.primary_focus_cycle",
+        "session.mode"
+      ],
+      "cycle_status": [
+        "cycle_status.state",
+        "cycle_status.branch_name",
+        "cycle_status.dor_state",
+        "cycle_status.blockers"
+      ]
+    },
+    "optional": [
+      "runtime_state.prioritized_artifacts"
+    ]
+  },
+  "consumed": [
+    {
+      "artifact_type": "current_state",
+      "contract_version": "critical-markdown-v1",
+      "fields": [
+        {
+          "id": "current_state.active_session",
+          "source_key": "active_session",
+          "type": "scalar",
+          "meaning": "current_state: active session",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.active_cycle",
+          "source_key": "active_cycle",
+          "type": "scalar",
+          "meaning": "current_state: active cycle",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.branch_kind",
+          "source_key": "branch_kind",
+          "type": "scalar",
+          "meaning": "current_state: branch kind",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.mode",
+          "source_key": "mode",
+          "type": "scalar",
+          "meaning": "current_state: mode",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.dor_state",
+          "source_key": "dor_state",
+          "type": "scalar",
+          "meaning": "current_state: dor state",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.blocking_findings",
+          "source_key": "blocking_findings",
+          "type": "list",
+          "meaning": "current_state: blocking findings",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        }
+      ]
+    },
+    {
+      "artifact_type": "runtime_state",
+      "contract_version": "critical-markdown-v1",
+      "fields": [
+        {
+          "id": "runtime_state.repair_layer_status",
+          "source_key": "repair_layer_status",
+          "type": "scalar",
+          "meaning": "runtime_state: repair layer status",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "runtime_state.current_state_freshness",
+          "source_key": "current_state_freshness",
+          "type": "scalar",
+          "meaning": "runtime_state: current state freshness",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "runtime_state.blocking_findings",
+          "source_key": "blocking_findings",
+          "type": "list",
+          "meaning": "runtime_state: blocking findings",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "runtime_state.prioritized_artifacts",
+          "source_key": "prioritized_artifacts",
+          "type": "list",
+          "meaning": "runtime_state: prioritized artifacts",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        }
+      ]
+    },
+    {
+      "artifact_type": "session",
+      "contract_version": "critical-markdown-v1",
+      "fields": [
+        {
+          "id": "session.session_branch",
+          "source_key": "session_branch",
+          "type": "scalar",
+          "meaning": "session: session branch",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "session.primary_focus_cycle",
+          "source_key": "primary_focus_cycle",
+          "type": "scalar",
+          "meaning": "session: primary focus cycle",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "session.mode",
+          "source_key": "mode",
+          "type": "scalar",
+          "meaning": "session: mode",
+          "extractor": "session-mode.v1",
+          "requires_sections": [
+            "work_mode_required"
+          ]
+        }
+      ]
+    },
+    {
+      "artifact_type": "cycle_status",
+      "contract_version": "critical-markdown-v1",
+      "fields": [
+        {
+          "id": "cycle_status.state",
+          "source_key": "state",
+          "type": "scalar",
+          "meaning": "cycle_status: state",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "cycle_status.branch_name",
+          "source_key": "branch_name",
+          "type": "scalar",
+          "meaning": "cycle_status: branch name",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "cycle_status.dor_state",
+          "source_key": "dor_state",
+          "type": "scalar",
+          "meaning": "cycle_status: dor state",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "cycle_status.blockers",
+          "source_key": "blockers",
+          "type": "list_or_scalar",
+          "meaning": "cycle_status: blockers",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        }
+      ]
+    }
+  ]
+}

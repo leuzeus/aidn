@@ -586,6 +586,16 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     notes: "Reads one canonical runtime artifact, optionally an agent view or complete consultative heading, without materializing files; absent selectors exit non-zero.",
   }),
   commandPolicy({
+    id: "runtime-artifact-query",
+    command: "aidn runtime artifact-query --json",
+    effectClass: "read-only",
+    stability: "experimental",
+    jsonContract: "runtime-artifact-query.v1.schema.json",
+    safeArgs: ["runtime", "artifact-query", "--manifest", "--json"],
+    allowNonZero: true,
+    notes: "Opt-in contract-bound consultation of facts, fresh admission diagnostics, modification preimages or closure evidence. Accepted client task authorities and complete dependencies remain required. No writes, migration or reusable write authorization.",
+  }),
+  commandPolicy({
     id: "runtime-artifact-store-list",
     command: "aidn runtime artifact-store list --json",
     effectClass: "read-only",
@@ -849,7 +859,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "read-only",
     jsonContract: "runtime-pre-write-admit.v1.schema.json",
     safeArgs: ["runtime", "pre-write-admit", "--skill", "cycle-create", "--json"],
-    notes: "Read-only admission; cycle-create can verify an explicit canonical initial session without inventing cycle freshness. Optional --native-request-stdin evaluates one native patch scope. Generic admission is orientation, never universal write authorization. Neither form repairs or applies the patch.",
+    notes: "Read-only admission; cycle-create can verify an explicit canonical initial session without inventing cycle freshness. Optional --native-request-stdin evaluates one native patch scope. --view agent formats the same decision without persistence. Generic admission is orientation, never universal write authorization. Neither form repairs or applies the patch.",
   }),
   commandPolicy({
     id: "runtime-handoff-admit",
@@ -866,7 +876,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "read-only",
     jsonContract: "runtime-coordinator-next-action.v1.schema.json",
     safeArgs: ["runtime", "coordinator-next-action", "--json"],
-    notes: "Recommends the next route without executing it.",
+    notes: "Recommends the next route without executing it. --view agent retains routing, stops and scope without adding writes or retained evidence.",
   }),
   commandPolicy({
     id: "runtime-coordinator-dispatch-plan",

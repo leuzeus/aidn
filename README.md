@@ -108,6 +108,13 @@ Codex instruction layering after install:
 
 ## CLI Surface
 
+Experimental `aidn runtime artifact-query` consults contract-bound active-state
+fields, fresh admission diagnostics, modification preimages and closure evidence
+with complete accepted dependencies, without writing project state. The three
+task profiles also integrate opt-in through grouped `codex workflow-step`.
+It is opt-in and does not replace workflow authorities or fresh admission; see
+the parameters and compatibility boundary in [the CLI inventory](docs/CLI_SURFACE_INVENTORY.md).
+
 - `aidn setup`, `aidn project add`, `aidn project migrate`, `aidn doctor`
   - common installation, explicit project attachment/migration and diagnosis
 - `aidn update`, `aidn rollback`
@@ -128,6 +135,12 @@ Codex instruction layering after install:
   - Codex hook and context helpers used by workflow automation
 
 The current stable/advanced/internal classification lives in [docs/CLI_SURFACE_INVENTORY.md](docs/CLI_SURFACE_INVENTORY.md).
+
+Read-only admission and coordinator commands support opt-in `--view agent --json`.
+Workflow consultation can additionally select `--view agent --projection-profile compact.v1 --json`.
+These versioned projections preserve decisions, refusals and scope while omitting
+static policy inventories and derived packet bodies. Full defaults remain available;
+view selection never retains evidence or grants reusable write permission.
 
 Representative commands:
 
@@ -153,6 +166,11 @@ workflow observations through `aidn runtime workflow-inspect --json` and the
 same guarded actions through `aidn runtime workflow-action`. A local dashboard
 starts only with `aidn runtime workflow-dashboard --serve`; JSON alone is a
 preview. It preserves existing instance pins and supervisor admission.
+
+The internal [ordered closure experiment](docs/ORDERED_CLOSURE_EXPERIMENT.md)
+composes explicitly chosen cycle/session closure through existing admissions,
+CAS writers and strict final hooks. It requires an explicitly selected research
+host and write intent; installed procedures and public commands remain unchanged.
 
 Bounded supervised runs use a separate opt-in command family:
 `aidn runtime agent-run`, `agent-run-status`, `agent-run-resume`,
@@ -331,7 +349,7 @@ For Windows setup including optional PostgreSQL preparation, follow
 [per-project Windows setup](docs/WINDOWS_PROJECT_SETUP.md) is historical 0.9.x guidance.
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.15.0` source also executes dispatched agent commands in their target
+The `v0.16.0` source also executes dispatched agent commands in their target
 worktree, including Windows paths with spaces and accents. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -413,7 +431,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.15.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.16.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

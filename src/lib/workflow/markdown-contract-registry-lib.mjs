@@ -31,6 +31,12 @@ function buildVariant(definition) {
 function buildContract(definition) {
   const artifactType = normalizeKey(definition?.artifact_type);
   const metadataPolicy = getMetadataPolicy(artifactType);
+  // Consultative field identities are owned by the artifact contract. They do
+  // not enlarge its required fields or change historical conformance.
+  const queryTypes = { ...definition.field_types,
+    ...(artifactType === 'session' ? { state: 'scalar', mode: 'scalar' } : {}),
+    ...(artifactType === 'cycle_status' ? { blockers: 'list_or_scalar' } : {}),
+  };
   return Object.freeze({
     artifact_type: artifactType,
     contract_version: normalizeScalar(definition?.contract_version || CRITICAL_MARKDOWN_CONTRACT_VERSION),
@@ -43,6 +49,12 @@ function buildContract(definition) {
       .map(([fieldName, fieldType]) => [normalizeKey(fieldName), normalizeKey(fieldType)])
       .filter((entry) => entry[0] && entry[1]))),
     legacy_variants: Object.freeze(Array.isArray(definition?.legacy_variants) ? definition.legacy_variants.map(buildVariant) : []),
+    consultation_fields: Object.freeze(Object.entries(queryTypes).filter(([name]) => name !== 'contract_version').map(([name, type]) => Object.freeze({
+      id: `${artifactType}.${name}`, source_key: name, type,
+      meaning: `${artifactType}: ${name.replaceAll('_', ' ')}`,
+      extractor: artifactType === 'session' && name === 'mode' ? 'session-mode.v1' : 'structured-field.v1',
+      requires_sections: Object.freeze(artifactType === 'session' && name === 'mode' ? ['work_mode_required'] : []),
+    }))),
   });
 }
 

@@ -10,6 +10,7 @@ import { DatabaseSync } from "node:sqlite";
 import { deriveCanonicalRepairSummary } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
 import { throws as assertThrows } from "node:assert/strict";
+import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
 
 function printUsage() {
   console.log("Usage:");
@@ -117,6 +118,26 @@ function main() {
       throw new Error("injected runtime-state projector fixture failure");
     }
     const outFile = path.join(tempRoot, "RUNTIME-STATE.md");
+    const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/cli-output/runtime-project-runtime-state.v1.schema.json", import.meta.url), "utf8"));
+    const filesRepo = path.join(tempRoot, "files-client");
+    fs.cpSync(path.resolve(fixture), filesRepo, { recursive: true });
+    const filesConfigPath = path.join(filesRepo, ".aidn/config.json");
+    const filesConfig = JSON.parse(fs.readFileSync(filesConfigPath, "utf8"));
+    filesConfig.runtime = { ...filesConfig.runtime, stateMode: "files", indexStoreMode: "files" };
+    fs.writeFileSync(filesConfigPath, JSON.stringify(filesConfig));
+    const filesOut = path.join(tempRoot, "RUNTIME-STATE-files.md");
+    const defaultFilesOut = path.join(filesRepo, "docs/audit/RUNTIME-STATE.md");
+    const defaultBefore = fs.existsSync(defaultFilesOut) ? fs.readFileSync(defaultFilesOut, "utf8") : null;
+    for (const flags of [[], ["--out", filesOut], ["--out", filesOut, "--dry-run"], ["--out", filesOut, "--write"]]) {
+      const filesResult = runJson("tools/runtime/project-runtime-state.mjs", ["--target", filesRepo, "--json", ...flags], { AIDN_STATE_MODE: "files", AIDN_INDEX_STORE_MODE: "files" });
+      assert(filesResult.shared_state_backend === null, "files mode must explicitly report no shared backend");
+      assert(validateJsonSchema(filesResult, schema).length === 0, "files-mode projector output must match its public contract");
+      for (const invalidBackend of [false, "files", [], {}]) {
+        assert(validateJsonSchema({ ...filesResult, shared_state_backend: invalidBackend }, schema).length > 0, "the backend contract must reject malformed values and incomplete objects");
+      }
+      if (!flags.includes("--write")) assert(!fs.existsSync(filesOut), "read-only and preview must not write the explicit output");
+      assert((fs.existsSync(defaultFilesOut) ? fs.readFileSync(defaultFilesOut, "utf8") : null) === defaultBefore, "files-mode reads must preserve the default projection");
+    }
 
     const result = runJson("tools/runtime/project-runtime-state.mjs", [
       "--target", fixture,
@@ -126,6 +147,7 @@ function main() {
     ]);
 
     const markdown = fs.readFileSync(outFile, "utf8");
+    assert(validateJsonSchema(result, schema).length === 0, "dual-mode projector output must match its public contract");
     assert(typeof result?.digest?.project_id === "string" && result.digest.project_id.length > 0, "digest.project_id missing");
     assert(typeof result?.digest?.workspace_id === "string" && result.digest.workspace_id.length > 0, "digest.workspace_id missing");
     assert(typeof result?.digest?.worktree_id === "string" && result.digest.worktree_id.length > 0, "digest.worktree_id missing");
@@ -177,6 +199,10 @@ function main() {
       AIDN_INDEX_STORE_MODE: "sqlite",
     });
     const filelessMarkdown = fs.readFileSync(filelessOut, "utf8");
+    const filelessContractIssues = validateJsonSchema(fileless, schema);
+    assert(filelessContractIssues.length === 0, `db-only projector output must match its public contract: ${filelessContractIssues.join("; ")}`);
+    assert(fileless.consistency.target_root === path.resolve(filelessRepo), "canonical consistency metadata must bind to the selected target");
+    assert(fileless.consistency.snapshot.observed === false && fileless.consistency.snapshot.source === "not_evaluated", "canonical consistency must not invent a snapshot observation");
     assert(fileless.digest.runtime_state_mode === "db-only", "db-only fileless digest should preserve runtime_state_mode");
     assert(typeof fileless.digest.project_id === "string" && fileless.digest.project_id.length > 0, "db-only fileless digest should expose project_id");
     assert(fileless.digest.shared_runtime_validation_status === "clear", "db-only fileless digest should expose clear shared runtime validation");
@@ -237,6 +263,10 @@ function main() {
     resultPayload = {
       ok: true,
       status: "PASS",
+      files_mode_contract: "PASS",
+      files_mode_variants: 4,
+      malformed_backend_refusals: true,
+      db_mode_contracts: "PASS",
       success_cleanup: true,
       injected_failure_cleanup: injectedFailureCleanup,
       cleanup_scope: "process-owned",

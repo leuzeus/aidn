@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readActivation } from "../../src/application/install/project-activation-service.mjs";
+import { projectAdmissionAgentView, projectAgentDecisionError } from "../../src/application/runtime/agent-decision-projection.mjs";
 import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
 import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
@@ -43,6 +44,7 @@ function parseArgs(argv) {
     runtimeStateFile: "docs/audit/RUNTIME-STATE.md",
     strict: false,
     json: false,
+    view: "full",
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -62,6 +64,9 @@ function parseArgs(argv) {
       args.strict = true;
     } else if (token === "--native-request-stdin") {
       args.nativeRequestStdin = true;
+    } else if (token === "--view") {
+      args.view = String(argv[++i] ?? "").trim();
+      if (!["full", "agent"].includes(args.view)) throw new Error("Invalid --view. Expected full|agent");
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -74,12 +79,14 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
+  if (args.view === "agent" && !args.json) throw new Error("Agent view requires --json");
   return args;
 }
 
 function printUsage() {
   console.log("Usage:");
   console.log("  npx aidn runtime pre-write-admit --target . --json");
+  console.log("  npx aidn runtime pre-write-admit --target . --view agent --json");
   console.log("  npx aidn runtime pre-write-admit --target . --native-request-stdin --json < native-request.json");
   console.log("  npx aidn runtime pre-write-admit --target . --skill cycle-create --strict --json");
   console.log("  npx aidn runtime pre-write-admit --target tests/fixtures/perf-handoff/ready --skill requirements-delta --json");
@@ -1145,6 +1152,7 @@ function printText(output) {
 }
 
 function main() {
+  const argv = process.argv.slice(2), agentJson = argv.includes("--json") && argv[argv.lastIndexOf("--view") + 1] === "agent";
   Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
     let nativeRequest;
@@ -1164,7 +1172,7 @@ function main() {
       nativeRequest,
     });
     if (args.json) {
-      console.log(JSON.stringify(output));
+      console.log(JSON.stringify(args.view === "agent" ? projectAdmissionAgentView(output) : output));
     } else {
       printText(output);
     }
@@ -1172,6 +1180,10 @@ function main() {
       process.exitCode = 1;
     }
   }).catch((error) => {
+    if (agentJson) {
+      console.log(JSON.stringify(projectAgentDecisionError("pre-write-admit", error)));
+      process.exitCode = 1; return;
+    }
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exitCode = 1;

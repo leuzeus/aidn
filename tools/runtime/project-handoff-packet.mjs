@@ -487,6 +487,7 @@ export async function projectHandoffPacket({
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
     : buildVirtualCurrentStateConsistency({
+      targetRoot: absoluteTargetRoot,
       currentStateResolution,
       activeCycle,
       activeSession,

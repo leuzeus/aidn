@@ -67,6 +67,19 @@ They have no canonical or admission role, are not automatically purged or shared
 and do not replace fresh action-specific admission. No receipt or token saving
 may be inferred merely from an agent view or a content hash.
 
+Standalone admission and coordinator agent views are pure projections after the
+existing canonical evaluation. The opt-in `compact.v1` workflow projection keeps
+its existing compact admissions and selected authority units, and applies the
+same coordinator projection to `next_action`. It has a distinct public contract;
+the existing full and agent-v1 shapes remain available. Static concept/driver
+inventories and derived packet bodies are not decision proofs. Activation and
+scope identity, checks, refusal/repair/transition diagnostics and exact native
+patch decisions remain explicit. Only equal packet-resolution metadata may be
+deduplicated; different observations stay distinct. A `full_output` descriptor
+requires a fresh full read and claims no retained record, source revision or
+authorization. View selection creates no persistence. An unavailable decision
+stops with a typed diagnostic instead of implying canonical fallback or success.
+
 An explicitly grouped workflow consultation can share one complete canonical
 snapshot and each needed shared planning/relay observation within its private
 asynchronous invocation. These internal values cannot be supplied through JSON,
@@ -142,6 +155,27 @@ packaged outside the ordinary installed skill tree and requires explicit researc
 host selection. Batching preserves actual control executions and stops dependent
 actions on refusal; no host observation becomes a reusable write authorization.
 Default procedures and user profiles remain unchanged until native qualification.
+An internal opt-in ordered-closure composition can execute each explicitly
+chosen cycle/session segment through the existing CLI and canonical writers.
+It requires explicit write intent, exact entity/path/CAS inputs, fresh local
+scope checks, the original deadline and independently verified strict final
+hook evidence. Session execution follows an actual successful cycle segment;
+it never predicts that outcome. An actual failure stops dependent work and
+disables replay; partial and unknown write outcomes remain visible. This first
+composition accepts database-canonical dual/db-only execution and preserves the
+legacy files procedure. It adds no public command, shared authority, schema or
+implicit adoption. Host-injected fixtures are not native qualification. See
+[the bounded experiment](../ORDERED_CLOSURE_EXPERIMENT.md).
+An optional pure artifact-intent compiler can prepare several drafts or exact
+mutations from explicit values and complete retained canonical preimages. One
+observation revision binds scope, source hashes, metadata and observed absences;
+it is never admission or write permission. Unedited template bytes remain intact,
+ambiguity and insufficient full-output budgets refuse atomically, and create
+drafts require the existing create-only CAS port. Its terminal consumer forwards
+generated mutations to the unchanged ordered-closure controls after checking
+the preview target. No new public surface, store, effect, authority or default
+procedure is introduced. Native consumption of startup drafts and token gains
+remain unqualified. See [the preparation experiment](../ARTIFACT_INTENT_PREPARATION_EXPERIMENT.md).
 The manual native qualification port uses a declared invocation-local
 `bounded-context.v1` output policy. It requests 60,000 history tokens independently
 of the code-mode display budget and refuses dynamic tool JSON above 131,072 UTF-8
@@ -222,6 +256,72 @@ identifiers and raw code/logs remain local-only; this path changes no public
 CLI, default backend, user profile or distribution policy.
 
 ## Consequences and validation
+
+Contract-bound factual consultation is an explicit experimental read-only path,
+`runtime artifact-query`. Its manifest is derived from the critical Markdown
+contract registry, including stable field identities, extraction versions and
+complete section dependencies. Profiles select facts; they neither alter
+client-owned accepted context policies nor replace mandatory authorities. The
+first profile, `active-state.v1`, is distinct from workflow admission.
+
+The opt-in successor `active-state.v2` declares the complete twenty-fact active
+state consultation in the catalogue: the sixteen existing facts plus the current
+state timestamp, session state, attached cycles and carry-over. It shares the
+same read-only, canonical observation and complete-section rules. These fields
+are profile requirements rather than caller-supplied extraction selectors; v1
+and the task profiles retain their previous needs. Versioned compatibility and
+public CLI fixtures cover the actual profile/parameter boundary, not only the
+internal selector. This successor adds no authority, write or persistence effect.
+
+The query verifies a fresh coherent canonical scope and complete source hashes.
+Canonical JSON cannot silently supply stale facts: incompatible extraction is
+recomputed in memory from the same canonical content, without a repair write.
+Unknown artifact contracts refuse; known legacy shapes retain their identity.
+Missing, ambiguous and explicitly unknown fields are distinguishable from known
+empty lists. Full dependent sections retain nested exceptions. The complete
+serialized response owns its byte budget; optional fields are removed first and
+an insufficient mandatory minimum returns an explicit expansion request.
+
+The compatibility corpus pins the profile's consumed field semantics, types,
+extractors and dependencies. A contract change must update its consumers or
+publish a versioned successor. Fixtures, real database and installed-package
+checks, and native token qualification remain separate. The catalog/query is a
+derived surface of existing artifact and workspace concepts, not a new source
+of truth, persistent cache, permission or shared coordination concept.
+
+The same consultative boundary now covers admission diagnostics, modification
+preparation and verification/closure. These profiles compose existing fresh
+generic admission checks with the client's accepted task context policies and
+complete authority/dependency units. Closure reports consulted evidence separately
+from certified acceptance; only existing closure procedures can establish their
+own checks. Preparation returns canonical preimage references, never reusable
+write admission. Its actual writer retains complete fresh preimages, CAS and
+fences. Unsupported targets or unaccepted policies refuse explicitly.
+
+These consultations do not bootstrap an uninitialized project. Complete canonical
+reads and the existing admitted session/cycle procedures establish its facts
+first; unknown facts stay unknown. A refused query cannot trigger an implicit
+fallback or repair. The initial scaffold conforms to its existing artifact
+contract without changing those admission boundaries.
+
+Opt-in grouped workflow consultation shares the invocation observation and its
+publication fence with admissions and hydration. Every skill keeps its distinct
+decision; blocked skills receive diagnostics and no rich hydration. Global stop
+suppresses continuation. Exact common authority bodies may be referenced once;
+their provenance and mandatory closure remain present. The final workflow JSON
+budget includes these profiles and transport metadata. No persistent query cache,
+implicit adoption, SQL pushdown, or native performance claim is introduced.
+
+The separate opt-in `compact.v2` workflow contract factors only exactly identical
+context decision sets and artifact source identities into same-response tables.
+SHA-256 bindings retain every decision field, scope and revision; different values
+are never merged. There are no external pointers or reusable authorizations.
+Budget pruning removes unreferenced source entries. Retained delta readers expand
+and validate these bindings before the existing scope/body integrity checks and
+reanchor on invalid input. Admissions, checks, complete authorities and their
+dependency closure, CAS and publication/write fences remain unchanged. Historical
+projections keep their existing shape. Fixture byte savings are not native token
+or performance qualification.
 
 Conservative full-revision invalidation can discard useful notes after unrelated
 changes. It favors reconstruction over silent authority drift. Multiple local

@@ -213,6 +213,8 @@ const CODEX_COMMANDS = freezeDeep([
   publicCommand("codex", "workflow-step", "tools/codex/workflow-step.mjs", [
     "codex-workflow-step.v1.schema.json",
     "codex-workflow-step-agent.v1.schema.json",
+    "codex-workflow-step-agent-compact.v1.schema.json",
+    "codex-workflow-step-agent-compact.v2.schema.json",
     "codex-workflow-step-agent-error.v1.schema.json",
   ]),
 ]);
@@ -221,6 +223,7 @@ const RUNTIME_COMMANDS = freezeDeep([
   ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => publicCommand("runtime", name,
     "tools/runtime/workflow-console-cli.mjs", [`runtime-${name}.v1.schema.json`], [name])),
   publicCommand("runtime", "artifact-fetch", "tools/runtime/artifact-fetch.mjs", ["runtime-artifact-fetch.v1.schema.json"]),
+  publicCommand("runtime", "artifact-query", "tools/runtime/artifact-query.mjs", ["runtime-artifact-query.v1.schema.json"]),
   publicCommand("runtime", "artifact-store", "tools/runtime/artifact-store.mjs", [
     "runtime-artifact-store-get.v1.schema.json",
     "runtime-artifact-store-list.v1.schema.json",
@@ -260,7 +263,7 @@ const RUNTIME_COMMANDS = freezeDeep([
   publicCommand("runtime", "coordinator-orchestrate", "tools/runtime/coordinator-orchestrate.mjs", ["runtime-coordinator-orchestrate.v1.schema.json"]),
   publicCommand("runtime", "coordinator-record-arbitration", "tools/runtime/coordinator-record-arbitration.mjs", ["runtime-coordinator-record-arbitration.v1.schema.json"]),
   publicCommand("runtime", "coordinator-resume", "tools/runtime/coordinator-resume.mjs", ["runtime-coordinator-resume.v1.schema.json"]),
-  publicCommand("runtime", "coordinator-next-action", "tools/runtime/coordinator-next-action.mjs", ["runtime-coordinator-next-action.v1.schema.json"]),
+  publicCommand("runtime", "coordinator-next-action", "tools/runtime/coordinator-next-action.mjs", ["runtime-coordinator-next-action.v1.schema.json", "runtime-coordinator-next-action-agent.v1.schema.json"]),
   publicCommand("runtime", "coordinator-select-agent", "tools/runtime/coordinator-select-agent.mjs", ["runtime-coordinator-select-agent.v1.schema.json"]),
   publicCommand("runtime", "coordinator-suggest-arbitration", "tools/runtime/coordinator-suggest-arbitration.mjs", ["runtime-coordinator-suggest-arbitration.v1.schema.json"]),
   publicCommand("runtime", "list-agent-adapters", "tools/runtime/list-agent-adapters.mjs", ["runtime-list-agent-adapters.v1.schema.json"]),
@@ -272,7 +275,7 @@ const RUNTIME_COMMANDS = freezeDeep([
   publicCommand("runtime", "project-multi-agent-status", "tools/runtime/project-multi-agent-status.mjs", ["runtime-project-multi-agent-status.v1.schema.json"]),
   publicCommand("runtime", "db-first-artifact", "tools/runtime/db-first-artifact.mjs", ["runtime-db-first-artifact.v1.schema.json"]),
   publicCommand("runtime", "handoff-admit", "tools/runtime/handoff-admit.mjs", ["runtime-handoff-admit.v1.schema.json"]),
-  publicCommand("runtime", "pre-write-admit", "tools/runtime/pre-write-admit.mjs", ["runtime-pre-write-admit.v1.schema.json"]),
+  publicCommand("runtime", "pre-write-admit", "tools/runtime/pre-write-admit.mjs", ["runtime-pre-write-admit.v1.schema.json", "runtime-pre-write-admit-agent.v1.schema.json"]),
   publicCommand("runtime", "project-coordination-summary", "tools/runtime/project-coordination-summary.mjs", ["runtime-project-coordination-summary.v1.schema.json"]),
   publicCommand("runtime", "project-handoff-packet", "tools/runtime/project-handoff-packet.mjs", ["runtime-project-handoff-packet.v1.schema.json"]),
   publicCommand("runtime", "project-runtime-state", "tools/runtime/project-runtime-state.mjs", ["runtime-project-runtime-state.v1.schema.json"]),

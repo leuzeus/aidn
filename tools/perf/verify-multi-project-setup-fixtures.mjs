@@ -123,6 +123,7 @@ try {
     fs.writeFileSync(answersFile, JSON.stringify(['2', '0', target, 'o', '3', 'n', '5', 'o', 'q']));
     fs.writeFileSync(menuFile, `param($Source, $AnswersFile)
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding(850)
 $global:menuAnswers = New-Object 'System.Collections.Generic.Queue[string]'
 foreach ($answer in (Get-Content -LiteralPath $AnswersFile -Raw -Encoding UTF8 | ConvertFrom-Json)) { $global:menuAnswers.Enqueue([string]$answer) }
 function Read-Host { param($Prompt, [switch]$AsSecureString)
@@ -130,6 +131,7 @@ function Read-Host { param($Prompt, [switch]$AsSecureString)
  return $global:menuAnswers.Dequeue()
 }
 & (Join-Path $Source 'scripts/setup-project.ps1') -Wizard
+if ([Console]::OutputEncoding.CodePage -ne 850) { throw 'Setup must restore the caller console encoding' }
 `);
     const menu = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-File', menuFile, '-Source', repoRoot, '-AnswersFile', answersFile], {
       env: { ...process.env, AIDN_HOME: home }, encoding: 'utf8', timeout: 30000 });

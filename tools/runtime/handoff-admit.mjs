@@ -225,6 +225,7 @@ export async function admitHandoff({
   const consistency = currentStateResolution.source === "file"
     ? evaluateCurrentStateConsistency({ targetRoot: absoluteTargetRoot })
     : buildVirtualCurrentStateConsistency({
+      targetRoot: absoluteTargetRoot,
       currentStateResolution,
       activeCycle: normalizeScalar(current.get("active_cycle") ?? "none") || "none",
       activeSession: normalizeScalar(current.get("active_session") ?? "none") || "none",
