@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { projectNextActionAgentView, projectAgentDecisionError } from "../../src/application/runtime/agent-decision-projection.mjs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -39,6 +40,7 @@ function parseArgs(argv) {
     runtimeStateFile: "docs/audit/RUNTIME-STATE.md",
     packetFile: "docs/audit/HANDOFF-PACKET.md",
     json: false,
+    view: "full",
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -54,6 +56,9 @@ function parseArgs(argv) {
     } else if (token === "--packet-file") {
       args.packetFile = String(argv[i + 1] ?? "").trim();
       i += 1;
+    } else if (token === "--view") {
+      args.view = String(argv[++i] ?? "").trim();
+      if (!["full", "agent"].includes(args.view)) throw new Error("Invalid --view. Expected full|agent");
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -66,12 +71,14 @@ function parseArgs(argv) {
   if (!args.target) {
     throw new Error("Missing value for --target");
   }
+  if (args.view === "agent" && !args.json) throw new Error("Agent view requires --json");
   return args;
 }
 
 function printUsage() {
   console.log("Usage:");
   console.log("  node tools/runtime/coordinator-next-action.mjs --target .");
+  console.log("  node tools/runtime/coordinator-next-action.mjs --target . --view agent --json");
   console.log("  node tools/runtime/coordinator-next-action.mjs --target tests/fixtures/repo-installed-core --json");
 }
 
@@ -305,6 +312,7 @@ export async function computeCoordinatorNextAction({
 }
 
 function main() {
+  const argv = process.argv.slice(2), agentJson = argv.includes("--json") && argv[argv.lastIndexOf("--view") + 1] === "agent";
   Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
     const result = await computeCoordinatorNextAction({
@@ -314,7 +322,7 @@ function main() {
       packetFile: args.packetFile,
     });
     if (args.json) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(args.view === "agent" ? JSON.stringify(projectNextActionAgentView(result)) : JSON.stringify(result, null, 2));
     } else {
       console.log("Coordinator next action:");
       console.log(`- role=${result.recommendation.role}`);
@@ -326,6 +334,10 @@ function main() {
       console.log(`- stop_required=${result.recommendation.stop_required}`);
     }
   }).catch((error) => {
+    if (agentJson) {
+      console.log(JSON.stringify(projectAgentDecisionError("coordinator-next-action", error)));
+      process.exitCode = 1; return;
+    }
     console.error(`ERROR: ${error.message}`);
     printUsage();
     process.exit(1);

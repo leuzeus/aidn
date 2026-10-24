@@ -1,0 +1,360 @@
+{
+  "profiles": [
+    {
+      "id": "admission-diagnostic.v1",
+      "purpose": "Consult fresh checks and accepted task authorities; never authorize a write",
+      "mandatory": [
+        "current_state.active_session",
+        "current_state.active_cycle",
+        "current_state.branch_kind",
+        "current_state.mode",
+        "current_state.dor_state",
+        "current_state.blocking_findings",
+        "runtime_state.current_state_freshness",
+        "runtime_state.repair_layer_status",
+        "runtime_state.blocking_findings",
+        "runtime_state.repair_primary_reason",
+        "runtime_state.repair_routing_hint"
+      ],
+      "conditional": {
+        "session": [
+          "session.session_branch",
+          "session.primary_focus_cycle",
+          "session.mode",
+          "session.carry_over_pending"
+        ],
+        "cycle_status": [
+          "cycle_status.state",
+          "cycle_status.branch_name",
+          "cycle_status.dor_state",
+          "cycle_status.blockers"
+        ]
+      },
+      "optional": [
+        "runtime_state.prioritized_artifacts"
+      ],
+      "sections": {},
+      "requires_client_task_policy": true
+    },
+    {
+      "id": "modification-preparation.v1",
+      "purpose": "Consult fresh checks and accepted task authorities; never authorize a write",
+      "mandatory": [
+        "current_state.active_session",
+        "current_state.active_cycle",
+        "current_state.branch_kind",
+        "current_state.mode",
+        "current_state.dor_state",
+        "current_state.blocking_findings",
+        "runtime_state.current_state_freshness",
+        "runtime_state.repair_layer_status",
+        "runtime_state.blocking_findings",
+        "runtime_state.repair_primary_reason",
+        "runtime_state.repair_routing_hint"
+      ],
+      "conditional": {
+        "session": [
+          "session.session_branch",
+          "session.primary_focus_cycle",
+          "session.mode",
+          "session.carry_over_pending"
+        ],
+        "cycle_status": [
+          "cycle_status.state",
+          "cycle_status.branch_name",
+          "cycle_status.dor_state",
+          "cycle_status.blockers"
+        ]
+      },
+      "optional": [
+        "runtime_state.prioritized_artifacts"
+      ],
+      "sections": {},
+      "requires_client_task_policy": true
+    },
+    {
+      "id": "verification-closure.v1",
+      "purpose": "Consult fresh checks and accepted task authorities; never authorize a write",
+      "mandatory": [
+        "current_state.active_session",
+        "current_state.active_cycle",
+        "current_state.branch_kind",
+        "current_state.mode",
+        "current_state.dor_state",
+        "current_state.blocking_findings",
+        "runtime_state.current_state_freshness",
+        "runtime_state.repair_layer_status",
+        "runtime_state.blocking_findings",
+        "runtime_state.repair_primary_reason",
+        "runtime_state.repair_routing_hint"
+      ],
+      "conditional": {
+        "session": [
+          "session.session_branch",
+          "session.primary_focus_cycle",
+          "session.mode",
+          "session.carry_over_pending"
+        ],
+        "cycle_status": [
+          "cycle_status.state",
+          "cycle_status.branch_name",
+          "cycle_status.dor_state",
+          "cycle_status.blockers"
+        ]
+      },
+      "optional": [
+        "runtime_state.prioritized_artifacts"
+      ],
+      "sections": {
+        "session": [
+          "session_close_report_required",
+          "session_cycle_tracking_required_for_committing"
+        ]
+      },
+      "requires_client_task_policy": true
+    }
+  ],
+  "consumed": [
+    {
+      "artifact_type": "current_state",
+      "contract_version": "critical-markdown-v1",
+      "fields": [
+        {
+          "id": "current_state.active_session",
+          "source_key": "active_session",
+          "type": "scalar",
+          "meaning": "current_state: active session",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.active_cycle",
+          "source_key": "active_cycle",
+          "type": "scalar",
+          "meaning": "current_state: active cycle",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.branch_kind",
+          "source_key": "branch_kind",
+          "type": "scalar",
+          "meaning": "current_state: branch kind",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.mode",
+          "source_key": "mode",
+          "type": "scalar",
+          "meaning": "current_state: mode",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.dor_state",
+          "source_key": "dor_state",
+          "type": "scalar",
+          "meaning": "current_state: dor state",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "current_state.blocking_findings",
+          "source_key": "blocking_findings",
+          "type": "list",
+          "meaning": "current_state: blocking findings",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        }
+      ],
+      "sections": [
+        {
+          "id": "current_state.section.summary",
+          "key": "summary"
+        },
+        {
+          "id": "current_state.section.active_context",
+          "key": "active_context"
+        },
+        {
+          "id": "current_state.section.blocking_findings",
+          "key": "blocking_findings"
+        }
+      ]
+    },
+    {
+      "artifact_type": "runtime_state",
+      "contract_version": "critical-markdown-v1",
+      "fields": [
+        {
+          "id": "runtime_state.repair_layer_status",
+          "source_key": "repair_layer_status",
+          "type": "scalar",
+          "meaning": "runtime_state: repair layer status",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "runtime_state.repair_primary_reason",
+          "source_key": "repair_primary_reason",
+          "type": "scalar",
+          "meaning": "runtime_state: repair primary reason",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "runtime_state.repair_routing_hint",
+          "source_key": "repair_routing_hint",
+          "type": "scalar",
+          "meaning": "runtime_state: repair routing hint",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "runtime_state.current_state_freshness",
+          "source_key": "current_state_freshness",
+          "type": "scalar",
+          "meaning": "runtime_state: current state freshness",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "runtime_state.blocking_findings",
+          "source_key": "blocking_findings",
+          "type": "list",
+          "meaning": "runtime_state: blocking findings",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "runtime_state.prioritized_artifacts",
+          "source_key": "prioritized_artifacts",
+          "type": "list",
+          "meaning": "runtime_state: prioritized artifacts",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        }
+      ],
+      "sections": [
+        {
+          "id": "runtime_state.section.summary",
+          "key": "summary"
+        },
+        {
+          "id": "runtime_state.section.current_state_freshness",
+          "key": "current_state_freshness"
+        },
+        {
+          "id": "runtime_state.section.blocking_findings",
+          "key": "blocking_findings"
+        },
+        {
+          "id": "runtime_state.section.prioritized_reads",
+          "key": "prioritized_reads"
+        }
+      ]
+    },
+    {
+      "artifact_type": "session",
+      "contract_version": "critical-markdown-v1",
+      "fields": [
+        {
+          "id": "session.session_branch",
+          "source_key": "session_branch",
+          "type": "scalar",
+          "meaning": "session: session branch",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "session.primary_focus_cycle",
+          "source_key": "primary_focus_cycle",
+          "type": "scalar",
+          "meaning": "session: primary focus cycle",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "session.carry_over_pending",
+          "source_key": "carry_over_pending",
+          "type": "scalar",
+          "meaning": "session: carry over pending",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "session.mode",
+          "source_key": "mode",
+          "type": "scalar",
+          "meaning": "session: mode",
+          "extractor": "session-mode.v1",
+          "requires_sections": [
+            "work_mode_required"
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "session.section.work_mode_required",
+          "key": "work_mode_required"
+        },
+        {
+          "id": "session.section.session_branch_continuity_required",
+          "key": "session_branch_continuity_required"
+        },
+        {
+          "id": "session.section.branch_context_required_for_committing",
+          "key": "branch_context_required_for_committing"
+        },
+        {
+          "id": "session.section.session_cycle_tracking_required_for_committing",
+          "key": "session_cycle_tracking_required_for_committing"
+        },
+        {
+          "id": "session.section.session_close_report_required",
+          "key": "session_close_report_required"
+        }
+      ]
+    },
+    {
+      "artifact_type": "cycle_status",
+      "contract_version": "critical-markdown-v1",
+      "fields": [
+        {
+          "id": "cycle_status.state",
+          "source_key": "state",
+          "type": "scalar",
+          "meaning": "cycle_status: state",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "cycle_status.branch_name",
+          "source_key": "branch_name",
+          "type": "scalar",
+          "meaning": "cycle_status: branch name",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "cycle_status.dor_state",
+          "source_key": "dor_state",
+          "type": "scalar",
+          "meaning": "cycle_status: dor state",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        },
+        {
+          "id": "cycle_status.blockers",
+          "source_key": "blockers",
+          "type": "list_or_scalar",
+          "meaning": "cycle_status: blockers",
+          "extractor": "structured-field.v1",
+          "requires_sections": []
+        }
+      ],
+      "sections": []
+    }
+  ]
+}

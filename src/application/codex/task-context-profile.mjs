@@ -1,4 +1,5 @@
 import { resolveSkillId } from "../../core/skills/skill-policy.mjs";
+import { pruneWorkflowProjectionSources } from "./workflow-shared-projection.mjs";
 import { isGovernanceAdoptionEffective } from "../../core/governance/adoption-policy.mjs";
 import { sha256, stableContextJson } from "../../core/context/working-memory-policy.mjs";
 
@@ -77,6 +78,11 @@ export function finalizeWorkflowContextBudget(output, { targetBytes, hardLimitBy
   if (budget.minimum_required_bytes !== null && addedMetadata > 0) budget.minimum_required_bytes += addedMetadata;
   const measure = () => {
     for (let pass = 0; pass < 16; pass++) {
+      const query=output.artifact_consultation;
+      if(query?.budget)for(let i=0;i<16;i++){
+        const size=Buffer.byteLength(JSON.stringify(query));if(query.budget.total_bytes===size)break;
+        query.budget.total_bytes=size;
+      }
       const size = Buffer.byteLength(JSON.stringify(output));
       if (size === budget.total_bytes) return size;
       budget.total_bytes = size;
@@ -91,12 +97,18 @@ export function finalizeWorkflowContextBudget(output, { targetBytes, hardLimitBy
       const live = new Set(output.artifacts.map(row => row.artifact.canonical_ref).filter(Boolean));
       output.artifact_metadata = output.artifact_metadata.filter(row => live.has(row.id));
     }
+    pruneWorkflowProjectionSources(output);
   };
   if (measure() > targetBytes) {
     const optional = output.artifacts.filter(row => row.artifact.selection_reasons?.every(reason => reason === "optional_consultation"));
     const unchanged = output.context_delta?.unchanged_optional_refs ?? [];
     budget.omitted_optional_ids = unique([...budget.omitted_optional_ids, ...optional.map(row => row.artifact.unit_id), ...unchanged.map(row => row.unit_id)]);
     remove(optional);
+    if(output.artifact_consultation?.authorities) {
+      const query=output.artifact_consultation,optional=query.authorities.filter(u=>u.selection_reasons.every(r=>r==='optional_consultation'));
+      query.authorities=query.authorities.filter(u=>!optional.includes(u));
+      query.omissions.push(...optional.map(u=>({id:u.unit_id,reason:'optional_workflow_budget'})));
+    }
     if (output.context_delta) output.context_delta.unchanged_optional_refs = [];
     if (Array.isArray(output.context_selection?.expansions)) output.context_selection.expansions = output.context_selection.expansions
       .filter(row => !budget.omitted_optional_ids.includes(row.unit_id));
@@ -107,6 +119,13 @@ export function finalizeWorkflowContextBudget(output, { targetBytes, hardLimitBy
     budget.expansion_required = output.artifacts.map(row => ({ id: row.id, path: row.artifact.path,
       unit_id: row.artifact.unit_id ?? null, sha256: row.artifact.sha256 ?? null }));
     remove([...output.artifacts]);
+    if(output.artifact_consultation) {
+      const query=output.artifact_consultation;
+      query.status='blocked';query.errors.push({code:'ARTIFACT_QUERY_WORKFLOW_BUDGET_INSUFFICIENT',ref:null});
+      query.expansions.push(...(query.authorities??[]).map(u=>({path:u.path,sha256:u.sha256})));
+      query.fields=[];query.sections=[];query.authorities=[];
+      if(query.preparation)query.preparation.ready=false;
+    }
     // Include the size of the expansion metadata when declaring the minimum.
     const minimum = budget.minimum_required_bytes;
     budget.minimum_required_bytes = Math.max(minimum, measure());

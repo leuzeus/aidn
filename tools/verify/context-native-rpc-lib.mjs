@@ -10,15 +10,34 @@ export const NATIVE_CONTEXT_OUTPUT_POLICY = Object.freeze({
   suggested_exec_output_tokens: 60000, max_dynamic_tool_json_bytes: 131072,
 });
 
+export const NATIVE_TOOL_SCHEDULING_POLICY = Object.freeze({
+  id: "bounded-wait.v1", exec_yield_time_ms: 60000, wait_yield_time_ms: 60000,
+});
+
+function schedulingPolicy(profile) {
+  if (profile === null) return null;
+  if (profile !== NATIVE_TOOL_SCHEDULING_POLICY.id) throw new Error("NATIVE_PROBE_SCHEDULING_PROFILE_UNSUPPORTED");
+  return NATIVE_TOOL_SCHEDULING_POLICY;
+}
+
+export function nativeProbeSchedulingInstructions(profile = null) {
+  const policy = schedulingPolicy(profile);
+  return policy ? `Native scheduling profile ${policy.id}: for an already-authorized deterministic sequential block, set the code-mode exec yield_time_ms to ${policy.exec_yield_time_ms}. If that invocation is still running, use wait with yield_time_ms ${policy.wait_yield_time_ms}, never repeated short polls. Return each actual result once and inspect every required exit, blocker and stop inside the block; abort dependent work immediately on refusal. Do not add operations or continue past a decision merely to fill a batch. Keep the original invocation deadline, cancellation and owned-process cleanup; waits do not extend them. An incomplete result never authorizes retry or implies success. This profile changes waiting guidance only, not tool arguments, permissions, admissions, CAS, fences, proof requirements or output capacity.` : "";
+}
+
 function outputPolicy(profile) {
   if (profile === null) return null; // Explicit historical negative control.
   if (profile !== NATIVE_CONTEXT_OUTPUT_POLICY.id) throw new Error("NATIVE_PROBE_OUTPUT_PROFILE_UNSUPPORTED");
   return NATIVE_CONTEXT_OUTPUT_POLICY;
 }
 
-export function nativeProbeOutputInstructions(profile = NATIVE_CONTEXT_OUTPUT_POLICY.id) {
+export function nativeProbeOutputInstructions(profile = NATIVE_CONTEXT_OUTPUT_POLICY.id, schedulingProfile = null) {
   const policy = outputPolicy(profile);
-  return policy ? `Native output profile ${policy.id}: history capacity is invocation-local. For code-mode exec printing tool data, use // @exec: {"max_output_tokens":${policy.suggested_exec_output_tokens}} and print each actual result once. A transport refusal or clipped required body keeps dependent work readonly. Inspect the retained outcome and retrieve complete missing units in bounded official readonly calls; never repeat an action because its output failed. Increasing a limit does not restore content clipped in an earlier response.` : "";
+  const schedule = schedulingPolicy(schedulingProfile);
+  if (schedule && !policy) throw new Error("NATIVE_PROBE_SCHEDULING_REQUIRES_OUTPUT_PROFILE");
+  const pragma = policy ? JSON.stringify({ max_output_tokens: policy.suggested_exec_output_tokens,
+    ...(schedule ? { yield_time_ms: schedule.exec_yield_time_ms } : {}) }) : "";
+  return policy ? `Native output profile ${policy.id}: history capacity is invocation-local. For code-mode exec printing tool data, use // @exec: ${pragma} and print each actual result once. A transport refusal or clipped required body keeps dependent work readonly. Inspect the retained outcome and retrieve complete missing units in bounded official readonly calls; never repeat an action because its output failed. Increasing a limit does not restore content clipped in an earlier response.` : "";
 }
 
 export function nativeProbeRootSettings(text) {
@@ -31,9 +50,11 @@ export function nativeProbeRootSettings(text) {
   return root.split(/\r?\n/).filter(line => /^(model|model_reasoning_effort|model_reasoning_summary|service_tier)\s*=/.test(line)).join("\n");
 }
 
-export function nativeProbeThreadParams(params, reviewedTestHooks = false, outputProfile = NATIVE_CONTEXT_OUTPUT_POLICY.id) {
+export function nativeProbeThreadParams(params, reviewedTestHooks = false, outputProfile = NATIVE_CONTEXT_OUTPUT_POLICY.id, schedulingProfile = null) {
   if (typeof reviewedTestHooks !== "boolean") throw new Error("NATIVE_PROBE_REVIEWED_HOOK_INTENT_REQUIRED");
   const policy = outputPolicy(outputProfile);
+  const schedulingInstructions = nativeProbeSchedulingInstructions(schedulingProfile);
+  const outputInstructions = nativeProbeOutputInstructions(outputProfile, schedulingProfile);
   const value = structuredClone(params);
   if (!reviewedTestHooks && value.config?.bypass_hook_trust === true)
     throw new Error("NATIVE_PROBE_REVIEWED_HOOK_INTENT_REQUIRED");
@@ -46,10 +67,13 @@ export function nativeProbeThreadParams(params, reviewedTestHooks = false, outpu
     value.config = { ...value.config, tool_output_token_limit: policy.history_token_limit };
     // Do not replace inherited developer instructions on resume. Enrich only
     // the caller's explicit text, and keep the shared prefix once.
-    const instructions = nativeProbeOutputInstructions(outputProfile);
+    const instructions = outputInstructions;
     if (typeof value.developerInstructions === "string" && !value.developerInstructions.includes(instructions))
       value.developerInstructions += `\n\n${instructions}`;
   }
+  if (schedulingInstructions && typeof value.developerInstructions === "string"
+      && !value.developerInstructions.includes(schedulingInstructions))
+    value.developerInstructions += `\n\n${schedulingInstructions}`;
   return value;
 }
 
@@ -80,8 +104,10 @@ export function isNativeTurnCompletion(event, threadId, turnId) {
 // Native test transport: no permission escalation, no fallback tools and no
 // automatic retry of a model turn or a potentially dispatched window request.
 export function createContextNativeProbeClient({ binary, home, cwd, evidenceFile, onToolCall, reviewedTestHooks = false,
-  outputProfile = NATIVE_CONTEXT_OUTPUT_POLICY.id }) {
+  outputProfile = NATIVE_CONTEXT_OUTPUT_POLICY.id, schedulingProfile = null }) {
   const policy = outputPolicy(outputProfile);
+  const schedule = schedulingPolicy(schedulingProfile);
+  nativeProbeOutputInstructions(outputProfile, schedulingProfile);
   // App-server does not forward the TUI's process-level hook flag. Its own
   // official exec client uses a typed per-thread override instead. Only the
   // explicit, reviewed test mode can forward that same invocation-local intent.
@@ -129,10 +155,11 @@ export function createContextNativeProbeClient({ binary, home, cwd, evidenceFile
   return {
     events,
     get outputPolicy() { return policy ? { ...policy } : null; },
+    get schedulingPolicy() { return schedule ? { ...schedule } : null; },
     get outputObservations() { return structuredClone(outputObservations); },
     notify(method, params = {}) { send({ method, params }); },
     request(method, params, timeout = 120000) {
-      if (["thread/start", "thread/resume"].includes(method)) params = nativeProbeThreadParams(params, reviewedTestHooks, outputProfile);
+      if (["thread/start", "thread/resume"].includes(method)) params = nativeProbeThreadParams(params, reviewedTestHooks, outputProfile, schedulingProfile);
       return new Promise((resolve, reject) => {
         const id = ++nextId, timer = setTimeout(() => { pending.delete(id); reject(new Error(`NATIVE_PROBE_TIMEOUT_${method}`)); }, timeout);
         pending.set(id, { resolve, reject, timer }); send({ id, method, params });

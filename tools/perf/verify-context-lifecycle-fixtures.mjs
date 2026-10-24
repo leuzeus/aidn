@@ -8,7 +8,7 @@ import { contextBenchmarkCases, resolveContextCapabilities } from "../../src/cor
 import { createContextLifecycleService } from "../../src/application/codex/context-lifecycle-service.mjs";
 import { contextTelemetryFromNativeUsage } from "../../src/adapters/codex/context-native-telemetry.mjs";
 import { assessNativeContextRound, assessNativeHookLifecycle } from "../verify/context-native-evidence-lib.mjs";
-import { nativeProbeRootSettings, nativeProbeThreadParams, nativeProbeToolResponse, NATIVE_CONTEXT_OUTPUT_POLICY, isNativeTurnCompletion } from "../verify/context-native-rpc-lib.mjs";
+import { nativeProbeRootSettings, nativeProbeThreadParams, nativeProbeToolResponse, nativeProbeSchedulingInstructions, NATIVE_TOOL_SCHEDULING_POLICY, NATIVE_CONTEXT_OUTPUT_POLICY, isNativeTurnCompletion } from "../verify/context-native-rpc-lib.mjs";
 
 const identity = { provider: "fixture", model: "fixture", model_revision: "fixture-r1", client: "fixture", client_version: "1" };
 // Injected qualification exercises policy decisions; it is not native proof.
@@ -125,6 +125,26 @@ try {
     assert.throws(() => nativeProbeThreadParams({ ...original, config: { tool_output_token_limit: 1000 } }), /OUTPUT_PROFILE_CONFLICT/);
     assert.throws(() => nativeProbeThreadParams({ ...original, config: [] }), /OUTPUT_CONFIG_INVALID/);
     assert.equal(nativeProbeThreadParams({ ...original, config: { tool_output_token_limit: 60000 } }).config.tool_output_token_limit, 60000);
+  });
+  await check("opt-in bounded waits preserve all non-instruction thread controls and caller data", async () => {
+    const original = { cwd: "fixture", model: "fixture-model", approvalPolicy: "never", permissions: "benchmark",
+      allowProviderModelFallback: false, config: { features: { hooks: true } }, developerInstructions: "Keep canonical admission and the original deadline." };
+    const before = structuredClone(original), ordinary = nativeProbeThreadParams(original);
+    const value = nativeProbeThreadParams(original, false, NATIVE_CONTEXT_OUTPUT_POLICY.id, NATIVE_TOOL_SCHEDULING_POLICY.id);
+    const { developerInstructions, ...controls } = value;
+    const { developerInstructions: oldInstructions, ...oldControls } = ordinary;
+    assert.deepEqual(controls, oldControls); assert.deepEqual(original, before);
+    assert(developerInstructions.startsWith(original.developerInstructions));
+    assert(developerInstructions.includes('{"max_output_tokens":60000,"yield_time_ms":60000}'));
+    assert(developerInstructions.includes("abort dependent work immediately on refusal"));
+    assert(developerInstructions.includes("original invocation deadline, cancellation and owned-process cleanup"));
+    assert(!oldInstructions.includes("bounded-wait.v1"));
+    assert.equal(nativeProbeThreadParams(value, false, NATIVE_CONTEXT_OUTPUT_POLICY.id, NATIVE_TOOL_SCHEDULING_POLICY.id).developerInstructions, developerInstructions);
+    assert.equal(nativeProbeThreadParams({ config: {} }, false, NATIVE_CONTEXT_OUTPUT_POLICY.id, NATIVE_TOOL_SCHEDULING_POLICY.id).developerInstructions, undefined);
+    assert.equal(nativeProbeSchedulingInstructions(), "");
+    assert.throws(() => nativeProbeThreadParams(original, false, NATIVE_CONTEXT_OUTPUT_POLICY.id, "unknown"), /SCHEDULING_PROFILE_UNSUPPORTED/);
+    assert.throws(() => nativeProbeThreadParams(original, false, null, NATIVE_TOOL_SCHEDULING_POLICY.id), /SCHEDULING_REQUIRES_OUTPUT_PROFILE/);
+    assert.equal(value.config.bypass_hook_trust, undefined);
   });
   await check("native transport rejects oversized complete JSON before sending body fragments", async () => {
     const max = NATIVE_CONTEXT_OUTPUT_POLICY.max_dynamic_tool_json_bytes;

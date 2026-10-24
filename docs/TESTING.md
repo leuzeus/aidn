@@ -1,5 +1,30 @@
 # Testing Guide
 
+The runtime-state projector fixtures validate its public JSON contract in
+`files`, `dual` and `db-only` modes. Files mode reports `shared_state_backend:
+null`; default/explicit reads and preview remain read-only, while explicit
+`--write` creates only the requested projection. Malformed backend values and
+incomplete backend objects remain invalid.
+Canonical consistency retains its existing checks and adds the required context
+metadata. Its snapshot explicitly reports `observed: false` and
+`source: not_evaluated`; these fields do not establish a snapshot check.
+
+Windows setup fixtures force an OEM console while exchanging UTF-8 JSON with
+Node, preserving accented registry paths and restoring the caller's encoding.
+Coordinator adapter cwd probes keep their batch-file bytes ASCII and transport
+the same accented paths/arguments through Windows variables and argv; their
+quoting and target-only sentinel assertions remain unchanged.
+
+`node tools/perf/verify-ordered-closure-fixtures.mjs` covers the internal opt-in
+closure composition with injected host responses: pure preview, explicit write
+intent, selected entities, exact CAS inputs, serial cycle/session order, strict
+nested-hook verification, original deadline, concurrent requests, scope changes,
+refusal/partial/unknown write outcomes and disabled replay. Files-mode execution
+refuses before dispatch and keeps its ordinary procedure. The Codex integration
+lifecycle gate includes this suite. These are host-injected fixture proofs;
+actual installed CLI, native hooks, live PostgreSQL and token gains require
+separate native evidence. See [the experiment](ORDERED_CLOSURE_EXPERIMENT.md).
+
 The cycle-close completion fixtures exercise clean, cached terminal branches in
 `files`, `dual` and `db-only` with gate evaluation forced. A successful recent
 COMMITTING drift check on the same branch must remain visible on that path;
@@ -71,6 +96,13 @@ view-implied receipt writes and explicit complete receipt readback. The required
 Codex integration lifecycle gate includes it once. Its output-size observations
 are fixture bytes; native performance and installed-procedure adoption remain
 separate qualifications.
+The same fixture gate covers the opt-in compact admission/coordinator CLI and
+`--projection-profile compact.v1` workflow. It compares strict exit/refusal and
+stop decisions, retains checks, source identities and exact native patch bindings,
+checks read-only target hashes, preserves complete selected units, and validates
+structured error output without invented proof. Grouped fixtures also check the
+compact PostgreSQL-unavailable refusal without hydration or fallback. The new
+contracts have isolated real-command cases in the public contract closure gate.
 The client corpus is copied through the tracked-file filter, then explicitly
 indexed in the disposable target. Ignored local fixture databases and caches
 are never inputs; excerpt-preservation checks require real selected text.
@@ -119,6 +151,19 @@ not establish provider-body residency; separate later exact native restitution
 is still required. Earlier default-history trials cannot be requalified by the
 new profile. The explicit internal `outputProfile: null` route is reserved for
 historical negative controls.
+
+The internal native port also accepts an explicit `schedulingProfile:
+"bounded-wait.v1"`. It adds invocation-local guidance to use 60-second code-mode
+exec yields and, when necessary, 60-second waits for already-authorized sequential
+blocks. The default remains unchanged. It does not intercept or rewrite tools,
+add operations, extend the original deadline, change output capacity, reuse an
+admission or bypass a refusal. Every required result is still inspected and a
+refusal stops dependent work. A resume without explicit developer instructions
+does not replace inherited instructions. Unknown profiles and combination with
+the historical null output profile refuse before dispatch. Reports can record
+the requested scheduling policy; only native traces establish whether the model
+followed it or whether responses, tokens and elapsed time improved. Fixture
+checks do not establish those gains.
 
 The lifecycle fixture suite covers profile negotiation without permission/model
 changes, immutable caller config, conflicts, exact UTF-8 output boundaries,
@@ -1396,6 +1441,32 @@ second admission invocation.
 
 ## Artifact efficiency intent
 
+The same runtime gate includes the contract-bound artifact-query corpus. It
+checks consumed field identities/types/meanings and section dependencies against
+the locked compatibility fixture, rejects unsupported source versions, and
+distinguishes missing/unknown/ambiguous fields and known empty lists. Source
+hashes, foreign scope, stale extraction, concurrent file/directory changes,
+dependent complete sections, optional omissions and final JSON budget refusals
+are covered independently of native token usage. The first profile is factual
+`active-state.v1`; the task profiles have their separate coverage below. Rendered
+initial scaffold sources must conform while unknown bootstrap facts remain
+incomplete and never grant write authorization. Removing their required section
+still refuses. Injected PostgreSQL snapshots do not establish live DB
+isolation; real DB checks and native qualification have separate evidence.
+The versioned `active-state.v2` compatibility fixture pins all twenty active
+facts, including the timestamp, session state, attached cycles and carry-over.
+Its public CLI case uses only registered-profile parameters and verifies all
+twenty values, complete dependent sections, scope, revision and unchanged source
+bytes. Missing facts, foreign scope, stale revision, insufficient budget and free
+field selectors remain refused or explicitly incomplete. Files, dual SQLite,
+db-only SQLite and injected PostgreSQL are checked separately; an installed
+package call and native benchmark still require their own evidence.
+`node tools/perf/verify-artifact-query-postgres-smoke.mjs` is a separate manual
+check with an already provisioned `PG_BIN_DIR` and the locked optional `pg`
+driver. It creates and removes its own private cluster and client, checks
+unchanged canonical rows, and interleaves a real canonical writer with the
+repeatable-read consultation. It never uses an installed project's DB.
+
 Run `npm run perf:verify-artifact-efficiency` for opt-in agent views, complete
 Markdown consultation and exact revision-checked replacements. This required
 runtime gate distinguishes pure fixtures and real CLI executions from native
@@ -1425,6 +1496,13 @@ Configured PostgreSQL failure must emit no partial batch or stale-file fallback.
 Native benchmarks must distinguish model round trips and cumulative item
 residency from unique document bytes; moving a rule read from shell to CLI must
 not be misreported as a new rule or a causal token saving.
+The same gate includes pure artifact-intent preparation, complete distributed
+session/cycle template inputs, atomic refusal, scoped field/section edits and
+full-plan budget refusal. Real SQLite CAS tests distinguish stale content,
+metadata-only and create-only conflicts. Its terminal consumer reuses the
+ordered-closure engine with injected host ports; actual native hooks and whole
+scenario token gains remain unqualified. See [the bounded preparation
+experiment](ARTIFACT_INTENT_PREPARATION_EXPERIMENT.md).
 Template discovery uses the existing artifact-store list surface with
 `--templates`. Its regression gate checks distribution-derived exact references,
 complete canonical batch reads, wrong-name refusal, required missing models,
@@ -1433,3 +1511,30 @@ installed-client, real CLI and native session/cycle/admission evidence are disti
 The retained conditional-read regression also preserves a grouped read's exit2
 for an absent optional artifact, then uses the existing canonical list surface
 to establish presence before constructing the next complete required read set.
+
+`node tools/perf/verify-artifact-task-query-fixtures.mjs`, included once in the
+runtime artifact-efficiency gate, qualifies the three opt-in task consultations.
+It pins their consumed contract fields and sections, compares actual generic
+admission checks inside the same canonical observation boundary, and exercises
+files, dual and db-only SQLite. It checks exact preparation preimages without
+returning complete bodies, complete closure criteria/dependencies and explicit
+non-certification of consulted proof. Real query/workflow CLI checks retain one
+admission per skill, one common hydration, deduplicated mandatory authority
+bodies, fresh publication fences and exact final JSON budgets. Foreign scope,
+unaccepted policy, changed evidence, concurrency and insufficient budgets refuse.
+Unavailable configured PostgreSQL cannot fall back. Fixture, real PostgreSQL,
+installed-package and native token evidence remain separate.
+
+The same task-query corpus exercises `compact.v2` through the real workflow CLI
+in all three modes. Pure regressions reconstruct every shared value, retain
+divergent decisions/revisions, reject missing/corrupt/ambiguous bindings, prune
+unused sources and measure the final JSON exactly. A mandatory response above
+65,536 bytes fits by deduplication alone with unchanged authorities and controls;
+an insufficient budget still refuses. These byte checks are separate from native
+benchmark measurements.
+
+`node tools/perf/verify-artifact-task-query-postgres-smoke.mjs` is a separate
+manual proof in an owned ephemeral PostgreSQL cluster. It executes all three
+profiles, counts one common canonical transaction plus its fresh publication
+fence, verifies unchanged canonical rows, and refuses a concurrent canonical
+change. Its real database evidence remains outside PR admission.

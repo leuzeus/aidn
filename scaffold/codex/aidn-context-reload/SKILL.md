@@ -99,6 +99,19 @@ Keep report concise.
 
 ## Explicit scoped consultation
 
+For a newly installed project, keep this skill's complete canonical reads while
+mode, branch kind, DoR or runtime freshness are unknown. Unknown facts are not a
+contract error or permission to write. Report them, then let the separately
+admitted start-session/cycle procedures establish their actual canonical facts.
+Do not use an artifact-query task profile as the bootstrap admission gate.
+
+An explicitly selected task profile may run after a fresh complete observation
+establishes its required facts and conformant sources. In dual/db-only, use the
+configured canonical backend, never visible anchors to decide readiness. Keep
+fresh action admissions, complete required authorities and write CAS/fences.
+If an invoked query is incomplete or blocked, stop its dependent work; do not
+silently fall back to the complete route or retry the refused action.
+
 Only when explicitly requested, consult accepted complete units with
 `aidn codex hydrate-context --target . --context-selection-file request.json --json`.
 This selection variant is read-only and does not refresh a cache. Use

@@ -42,11 +42,18 @@ function Invoke-SetupControl {
     # Windows PowerShell 5 represents native stderr as ErrorRecords even for
     # successful progress/warnings. Exit status, not stderr presence, is authoritative.
     $savedPreference = $ErrorActionPreference
+    $savedNodeOutputEncoding = [Console]::OutputEncoding
     try {
         $ErrorActionPreference = 'Continue'
+        # Node emits UTF-8 JSON. Windows PowerShell otherwise decodes native
+        # stdout with the console OEM page, corrupting accented project paths.
+        [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
         $result = & $nodeCommand.Source $setupControlPath @ControlArguments
         $controlStatus = $LASTEXITCODE
-    } finally { $ErrorActionPreference = $savedPreference }
+    } finally {
+        [Console]::OutputEncoding = $savedNodeOutputEncoding
+        $ErrorActionPreference = $savedPreference
+    }
     if ($controlStatus -ne 0) { throw 'Setup operation failed; inspect the diagnostic above. No automatic rollback.' }
     return ($result | ConvertFrom-Json)
 }

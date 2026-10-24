@@ -1,5 +1,143 @@
 # CLI Surface Inventory
 
+`runtime artifact-query --profile active-state.v1 --params-file <relative.json>
+--json` is an experimental read-only factual consultation. Parameters are a bounded
+worktree-relative JSON object with `schema_version: 1`; optional `scope` pins all
+four project/workspace/worktree/runtime identities, `expected_revision` pins a
+previous observation, `target_bytes` is 256–65,536 (default 16,384), and
+`include_optional` defaults to true. No SQL, arbitrary field expression, backend
+override, write or migration flag is accepted. `--manifest --json` discovers the
+catalog derived from critical Markdown contracts, field identities, extractors,
+section dependencies and the registered profile without querying project state.
+
+`active-state.v2` is an opt-in successor with twenty non-optional facts when an
+active session and cycle are present. It retains all sixteen v1 facts and adds
+`current_state.updated_at`, `session.state`, `session.attached_cycles` and
+`session.carry_over_pending`. The timestamp is always required; the three session
+facts are conditional on an active session. The complete work-mode section stays
+required. Use the same bounded parameters without `field_ids`: neither factual
+profile accepts task, skill, artifact-path or field selectors. The v1 default and
+the three task profiles keep their existing requirements and response shape.
+
+The active-state profile reads current/runtime state and the referenced session
+and cycle from one canonical DB snapshot, or fenced file observations in files
+mode. It keeps known empty lists distinct from absent or uninterpretable values,
+detects duplicate fields and conflicting state, and includes full required
+sections with source hashes. Canonical JSON is verified against complete source
+content; incompatible extraction is rebuilt only in memory. An unsupported
+artifact contract refuses. Scope/revision/integrity/backend failures do not fall
+back to visible projections. Sources and canonical evidence are never written.
+The `runtime-artifact-query.v1` output reports `ok`, `incomplete`, `blocked` or
+`manifest`; incomplete/blocked exits 2. Optional fields are omitted first, and an
+insufficient mandatory budget returns a refusal with expansion references.
+Diagnostics may exceed a tiny requested budget and report their actual size.
+The result never replaces required workflow authorities, fresh admission or
+write CAS/fences. No installed procedure or native benchmark is changed by this
+opt-in surface.
+
+Newly installed state may be conformant while its facts remain `unknown`.
+Bootstrap uses the complete canonical context-reload/start-session route and
+ordinary admitted state updates before opting into task queries. A task query
+does not initialize those facts. If invoked too early it remains incomplete or
+blocked; callers stop dependent work rather than silently falling back. The
+initial current-state scaffold includes the existing required Blocking Findings
+section without converting unknown facts into known values.
+
+Three additional experimental profiles require a bounded `skills` array of
+registered skills and the client's effective `governanceAdoption` task policies:
+`admission-diagnostic.v1`, `modification-preparation.v1`, and
+`verification-closure.v1`. They execute the existing generic pre-write admission
+and return its checks, exact refusals, warnings and repair actions. Authority
+sections and their dependency closure come from the accepted client bindings;
+missing, foreign, changed or unaccepted authorities refuse the consultation.
+No package profile accepts or modifies client policy implicitly.
+
+`task` optionally contains `operation` and worktree-relative `paths`. Preparation
+requires `task.operation`, bounded audit-relative `artifact_paths`, and semantic
+`field_ids`. Targets must resolve to the current/runtime/session/cycle sources
+selected by the profile. The engine retains complete canonical content for
+extraction; the response exposes preimage hashes, sizes and contract versions.
+`ready` means preparation can continue; `write_authorization` remains false.
+The actual writer still needs its complete fresh canonical preimage, specific
+admission, CAS and execution fence.
+
+Closure requires closure skills and includes the complete session close report,
+cycle tracking section, accepted criteria/evidence units and checks actually
+executed by pre-write admission. `evidence_status: consulted-not-certified` and
+`completion_authorized: false` do not claim that closure-specific checks ran or
+that a receipt is valid. Existing closure procedures execute and retain those
+checks. Consultation never closes a cycle or session.
+
+`codex workflow-step --view agent --grouped --artifact-query-profile <profile>
+--json` opts into a common consultation. Optional
+`--artifact-query-params-file <relative.json>` supplies its parameters; the
+workflow supplies its own skills. Use that file's `task` rather than a second
+`--context-task-file`. Admissions are reused only within the invocation, with
+the existing fresh publication fence. Canonical reads are shared, one hydration
+serves admitted skills, and identical mandatory authority bodies are referenced
+once in the final agent representation. A global coordinator stop suppresses
+the consultation and hydration. Failed consultation also prevents hydration.
+The default complete-JSON target is 16,384 bytes and maximum 65,536; both include
+the query, checks, history, selected units and transport metadata. A smaller
+query `target_bytes` supplied in the parameters file remains binding during
+selection and projection. Existing refusals retain their minimum and expansion
+references. Optional units may be omitted explicitly; mandatory units are never
+truncated. Historical
+workflows and default projections remain available.
+The existing scoped hydration path requires an explicitly prepared index even
+in files mode; a missing index refuses the workflow context without creating
+one. Standalone files-mode artifact queries read their canonical files directly.
+
+`--projection-profile compact.v2` selects `codex-workflow-step-agent-compact.v2`.
+It preserves the compact.v1 decisions and checks while storing identical context
+decision sets once in `decision_sets` and repeated artifact source identities in
+`context_sources`. Context `decisions_ref` and artifact/metadata `source_ref`
+resolve by SHA-256 ID inside those same-response tables. Each row has exactly one
+inline value or reference; differing revisions or values remain distinct. Bodies,
+admissions, checks, refusal reasons and each skill's history remain complete.
+Tables participate in the existing final JSON budget and are pruned with their
+units. Delta readers expand and validate bindings before their ordinary integrity
+and scope checks; invalid references trigger a fresh full selection. These
+references grant no write authorization and cause no persistence. Default and
+compact.v1 shapes remain available.
+
+The internal `createOrderedClosureSequence` research composition adds no public
+command. An explicitly bound host can execute its selected terminal segments
+through the existing admission, CAS artifact, runtime projector and strict hook
+commands below. Each command retains its existing effects and contracts. Pure
+preview and explicit execution, supported modes and partial/refusal semantics
+are documented in [the experiment](ORDERED_CLOSURE_EXPERIMENT.md).
+The internal [artifact intent compiler](ARTIFACT_INTENT_PREPARATION_EXPERIMENT.md)
+prepares batch drafts and exact mutations without a new CLI or effect. Its
+terminal consumer invokes those existing commands through the same engine;
+creation drafts require the existing create-only CAS port, never unchecked upsert.
+
+`aidn runtime pre-write-admit --view agent --json` and
+`aidn runtime coordinator-next-action --view agent --json` are read-only,
+versioned compact projections. The canonical decision is evaluated first. They
+retain scope identities, activation revision, observed sources, checks, policy,
+blockers, warnings, repair findings, routing and stop decisions. A specific native
+patch's complete `write_decision` is retained unchanged. Admission omits the static
+concept-policy inventory and backend driver-distribution descriptions. Coordinator
+projection omits the derived packet body; routing, transition, consistency and
+repair diagnostics remain. Different packet observations remain distinct.
+
+`aidn codex workflow-step --view agent --projection-profile compact.v1 --json`
+selects `codex-workflow-step-agent-compact.v1`. It reuses the existing compact
+admissions and exact selected context units, projecting only the bulky next action.
+It composes with grouped selection, total JSON budgets, history and delta; the
+original full default and `codex-workflow-step-agent.v1` remain unchanged.
+Effects and explicit `--write` receipt intent remain those of the selected workflow
+invocation. A complete diagnostic receipt still retains the full original observation.
+
+The standalone projections use `runtime-pre-write-admit-agent.v1` and
+`runtime-coordinator-next-action-agent.v1`. Their unavailable/invalid-input form
+is a complete JSON refusal with `ok: false` and `stop_required: true`, without
+invented scope, source revision or proof. `full_output` describes a fresh full
+read and explicitly says `retained: false`; it is not a receipt or replay promise.
+The view neither performs repairs nor adds persistence, fallback, approval or
+reusable admission. Native token gains require a separate native comparison.
+
 `codex workflow-step --view agent --json` is an opt-in, versioned projection of
 the existing per-skill workflow. It retains admissions, blockers, scope, source
 revisions and complete selected excerpts, sharing exact duplicate artifact bodies
@@ -481,6 +619,13 @@ separate DB-first write operation; a successful admission does not create them.
 - `aidn runtime coordinator-suggest-arbitration --json`
 - `aidn runtime coordinator-record-arbitration --json`
 - `aidn runtime project-runtime-state --json` and `--write` for projection writes
+  - `--out <path>` selects the projection destination relative to `--target`;
+    its public default remains `docs/audit/RUNTIME-STATE.md`. For an isolated
+    DB-only no-materialize workflow, generate with
+    `aidn runtime project-runtime-state --target . --out .aidn/runtime/context/runtime-state.md --write --json`,
+    then persist the exact generated bytes through the admitted DB-first writer.
+    An invocation-local preparation profile may require this explicit ignored
+    output path; that requirement does not change the public default.
   - DB-backed repair status is read from the current canonical snapshot, never
     inferred from an old successful hook or a missing findings collection.
   - `--write --out <reviewed-digest>` writes only that projection file. In

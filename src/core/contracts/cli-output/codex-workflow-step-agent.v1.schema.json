@@ -7,6 +7,36 @@
   "type": "object",
   "required": ["ts", "ok", "contract_version", "command", "effect_class", "view", "target_root", "skills", "summary", "observation_scope", "write_authorization", "admissions", "contexts", "artifacts", "next_action", "receipt"],
   "properties": {
+    "artifact_consultation": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "profile",
+        "status",
+        "write_authorization",
+        "fields",
+        "sections",
+        "sources",
+        "errors",
+        "omissions"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "runtime-artifact-query.v1"
+        },
+        "write_authorization": {
+          "const": false
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "incomplete",
+            "blocked"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
     "ts": { "type": "string" },
     "ok": { "type": "boolean" },
     "contract_version": { "const": "codex-workflow-step-agent.v1" },

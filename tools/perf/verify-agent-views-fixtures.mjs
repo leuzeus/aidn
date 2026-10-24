@@ -12,6 +12,10 @@ import { validateJsonSchema } from "../../src/core/contracts/json-schema-validat
 import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 import workflowSchema from "../../src/core/contracts/cli-output/codex-workflow-step-agent.v1.schema.json" with { type: "json" };
 import hookSchema from "../../src/core/contracts/context/codex-hook-agent.v1.schema.json" with { type: "json" };
+import compactSchema from "../../src/core/contracts/cli-output/codex-workflow-step-agent-compact.v1.schema.json" with { type: "json" };
+import admissionSchema from "../../src/core/contracts/cli-output/runtime-pre-write-admit-agent.v1.schema.json" with { type: "json" };
+import nextActionSchema from "../../src/core/contracts/cli-output/runtime-coordinator-next-action-agent.v1.schema.json" with { type: "json" };
+import { projectAdmissionAgentView, projectNextActionAgentView, projectAgentDecisionError } from "../../src/application/runtime/agent-decision-projection.mjs";
 
 const repo = path.resolve(import.meta.dirname, "../.."), root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agent-views-"));
 const target = path.join(root, "client"), source = path.join(repo, "tests/fixtures/repo-installed-core");
@@ -40,6 +44,93 @@ try {
   const visible = ["RUNTIME-STATE.md", "HANDOFF-PACKET.md"].map(name => path.join(target, "docs/audit", name));
   const before = visible.map(file => fs.existsSync(file) ? hash(fs.readFileSync(file)) : null);
   const full = workflow([]), agent = workflow(["--view", "agent"]);
+  const compact = workflow(["--view", "agent", "--projection-profile", "compact.v1"]);
+  check("compact workflow is opt-in and preserves decisions and complete context units", () => {
+    assert.equal(compact.status, 0, compact.stderr);
+    assert.deepEqual(validateJsonSchema(compact.payload, compactSchema, "$"), []);
+    assert.equal(agent.payload.contract_version, "codex-workflow-step-agent.v1");
+    assert.equal(compact.payload.contract_version, "codex-workflow-step-agent-compact.v1");
+    assert.deepEqual(compact.payload.next_action.recommendation, agent.payload.next_action.recommendation);
+    assert.deepEqual(compact.payload.next_action.scope, agent.payload.next_action.scope);
+    assert.equal(compact.payload.next_action.handoff?.packet, undefined);
+    assert.equal(compact.payload.receipt, null);
+    for (const context of compact.payload.contexts) {
+      const original = full.payload.hydrations[context.skill];
+      context.artifact_refs.forEach((id, index) => assert.deepEqual(compact.payload.artifacts.find(row => row.id === id).artifact, original.artifacts[index]));
+    }
+  });
+  const treeDigest = directory => {
+    const entries = [];
+    const walk = current => { for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const file = path.join(current, entry.name);
+      if (entry.isDirectory()) walk(file); else if (entry.isFile()) entries.push([path.relative(directory, file), hash(fs.readFileSync(file))]);
+    } };
+    walk(directory); return hash(JSON.stringify(entries.sort()));
+  };
+  check("standalone compact admissions preserve strict refusal, checks, source binding and read-only behavior", () => {
+    const before = treeDigest(target);
+    const args = ["runtime", "pre-write-admit", "--skill", "requirements-delta", "--strict", "--json"];
+    const normal = command(args), selected = command([...args, "--view", "agent"]);
+    assert.equal(selected.status, normal.status);
+    assert.deepEqual(validateJsonSchema(selected.payload, admissionSchema, "$"), []);
+    for (const key of ["ok", "admission_status", "admission_kind", "context", "checks", "blocking_reasons", "blocking_findings", "warnings", "activation"])
+      assert.deepEqual(selected.payload[key], normal.payload[key]);
+    assert.deepEqual(selected.payload.source_of_truth.observed_sources, normal.payload.source_of_truth.observed_sources);
+    assert.equal(selected.payload.source_of_truth.concepts, undefined);
+    assert.equal(selected.payload.full_output.retained, false);
+    assert.equal(treeDigest(target), before);
+  });
+  check("standalone compact coordinator preserves stops, repair diagnostics and scope without writes", () => {
+    const before = treeDigest(target), args = ["runtime", "coordinator-next-action", "--json"];
+    const normal = command(args), selected = command([...args, "--view", "agent"]);
+    assert.equal(selected.status, normal.status);
+    assert.deepEqual(validateJsonSchema(selected.payload, nextActionSchema, "$"), []);
+    for (const key of ["recommendation", "scope", "next_action_diagnostic", "packet_resolution"])
+      assert.deepEqual(selected.payload[key], normal.payload[key]);
+    for (const key of ["admitted", "admission_status", "issues", "warnings", "transition_policy"])
+      assert.deepEqual(selected.payload.handoff?.[key], normal.payload.handoff?.[key]);
+    const { ts: normalTime, ...normalConsistency } = normal.payload.handoff?.consistency ?? {};
+    const { ts: selectedTime, ...selectedConsistency } = selected.payload.handoff?.consistency ?? {};
+    assert.deepEqual(selectedConsistency, normalConsistency);
+    if (normalTime !== undefined) assert(Date.parse(selectedTime) >= Date.parse(normalTime), "fresh observation timestamps remain present");
+    assert.equal(treeDigest(target), before);
+  });
+  check("specific native patch decisions are preserved exactly, including denial and immutable bindings", () => {
+    for (const outcome of ["allow", "deny"]) {
+      const payload = { target_root: target, skill: "native-write", admission_kind: "specific", ok: outcome === "allow",
+        admission_status: outcome === "allow" ? "admitted" : "blocked", context: { effective_state_mode: "db-only" }, checks: { fresh: false },
+        blocking_reasons: ["retained reason"], warnings: ["retained warning"], blocking_findings: [{ severity: "block", id: "fixture" }],
+        source_of_truth: { concepts: { bulky: "static policy".repeat(200) }, observed_sources: { current_state: "postgres" }, issues: [{ reason_code: "fixture" }], repair_actions: ["repair"] },
+        write_decision: { outcome, observation: { canonical_sha256: "a".repeat(64), payload_sha256: "b".repeat(64) }, operations: [{ path: "subject.txt", operation: "update" }], reasons: [{ code: "fixture" }] } };
+      const before = JSON.stringify(payload), selected = projectAdmissionAgentView(payload);
+      assert.deepEqual(selected.write_decision, payload.write_decision);
+      assert.equal(selected.reusable_write_authorization, false);
+      assert.equal(selected.full_output.retained, false); assert.equal(selected.receipt, undefined);
+      selected.write_decision.observation.canonical_sha256 = "changed";
+      assert.equal(JSON.stringify(payload), before);
+    }
+  });
+  check("compact next action keeps different source observations and every global stop", () => {
+    const payload = { recommendation: { stop_required: true }, scope: { scope_id: "foreign-scope" },
+      packet_resolution: { source_revision: "first" }, context: { packet_resolution: { source_revision: "first" } },
+      handoff: { packet: { body: "derived packet body" }, packet_resolution: { source_revision: "second" },
+        admitted: false, issues: ["keep refusal"], transition_policy: { status: "blocked" } } };
+    const before = JSON.stringify(payload), selected = projectNextActionAgentView(payload);
+    assert.equal(selected.recommendation.stop_required, true);
+    assert.deepEqual(selected.scope, payload.scope);
+    assert.deepEqual(selected.handoff.packet_resolution, payload.handoff.packet_resolution);
+    assert.deepEqual(selected.handoff.transition_policy, payload.handoff.transition_policy);
+    assert.equal(selected.context.packet_resolution, undefined);
+    assert.equal(JSON.stringify(payload), before);
+    for (const [kind, schema] of [["pre-write-admit", admissionSchema], ["coordinator-next-action", nextActionSchema]]) {
+      const refusal = projectAgentDecisionError(kind, { code: "ECONNREFUSED", message: "must not expose connection details" });
+      assert.deepEqual(validateJsonSchema(refusal, schema, "$"), []);
+      assert.equal(refusal.stop_required, true); assert.equal(refusal.source_revision, undefined);
+      assert(!JSON.stringify(refusal).includes("must not expose"));
+      const invalid = command(["runtime", kind, "--view", "agent", "--json", "--unknown-option"]);
+      assert.equal(invalid.status, 1); assert.deepEqual(validateJsonSchema(invalid.payload, schema, "$"), []);
+    }
+  });
   check("legacy contract and per-skill execution remain the default", () => {
     assert.equal(full.status, 0); assert.equal(full.payload.contract_version, "codex-workflow-step.v1");
     assert.equal(full.payload.summary.hydrate_count, 2); assert.equal(full.payload.receipt, undefined);
@@ -122,6 +213,9 @@ try {
       content_excerpt: `## ${unit_id}\nComplete rule.\n`, canonical, selection_reasons: ["task_obligation"] }));
     const payload = { selection_policy: { mode: "scoped" }, admissions: {}, hydrations: { a: { target_root: "/client", source_revision: "r1", artifacts: units } } };
     const before = JSON.stringify(payload), projected = projectWorkflowAgentView(payload);
+    const compactProjection = projectWorkflowAgentView(payload, null, "compact.v1");
+    assert.deepEqual(compactProjection.artifacts, projected.artifacts, "same observation keeps exact context/provenance graph");
+    assert.deepEqual(compactProjection.contexts, projected.contexts);
     assert.equal(projected.artifact_metadata.length, 1);
     for (const row of projected.artifacts) {
       const metadata = projected.artifact_metadata.find(entry => entry.id === row.artifact.canonical_ref);
@@ -169,6 +263,6 @@ try {
     assert.deepEqual(fs.readdirSync(outside), []);
   });
   console.log(JSON.stringify({ status: "PASS", proof_class: "fixture-and-real-cli", fixture_source: "tracked-only-with-explicit-fresh-index", assertions: checks.length, checks,
-    observations: { legacy_compact_json_bytes: Buffer.byteLength(JSON.stringify(full.payload)), agent_compact_json_bytes: Buffer.byteLength(JSON.stringify(agent.payload)), native_token_savings: "UNAVAILABLE" } }));
+    observations: { legacy_compact_json_bytes: Buffer.byteLength(JSON.stringify(full.payload)), agent_compact_json_bytes: Buffer.byteLength(JSON.stringify(agent.payload)), compact_profile_json_bytes: Buffer.byteLength(JSON.stringify(compact.payload)), native_token_savings: "UNAVAILABLE" } }));
 } catch (error) { console.error(error.stack); process.exitCode = 1; }
 finally { removePathWithRetry(root); }
