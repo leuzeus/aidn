@@ -87,3 +87,19 @@ Native paired task measurements, installed-package qualification and live
 PostgreSQL isolation are separate evidence obligations. Unexecuted measurements
 will be reported separately from PASS. No numerical engineering target is
 claimed achieved by the baseline.
+
+## Lot 1 — bounded policy refusal
+
+Managed and unknown skills with absent/uncovered task policies now return
+`selection_policy.mode: blocked` with explicit remediation, zero hydration and
+no implicit full selection. The 256 KiB/1 MiB override is removed. Explicit
+legacy/full diagnostics remain available without the bounded profile. Public
+agent schemas add the optional `remediation` string; existing fields and full
+defaults are unchanged. ADR-0021 records the amendment.
+
+`node tools/perf/verify-task-context-profile-fixtures.mjs`: PASS, 19 fixture/source
+CLI groups, including missing-policy/multi-skill refusal, final UTF-8 byte
+accounting, dependency completeness, stale/foreign baseline invalidation and
+explicit diagnostic receipts. The first run exposed a closed-schema rejection
+of the added remediation field; the schema was aligned and the full focused
+suite then passed. No native timing/token improvement is attributed to this fix.

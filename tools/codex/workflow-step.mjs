@@ -395,8 +395,6 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
     const hydrated = await runHydrateContextUseCase({
       scopedBudgetOwner: selectionPolicy?.request ? "workflow-agent-json" : "hydrate-json",
       args: { ...buildHydrateArgs(args, ""), out: "", historySkills: admittedSkills,
-        ...(args.contextProfile && selectionPolicy?.mode === "legacy-full-fallback"
-          ? { bundleTargetBytes: 262144, bundleHardLimitBytes: 1048576 } : {}),
         ...(selectionPolicy?.request ? { contextRequest: selectionPolicy.request,
           ...(args.contextBaselineFile ? { contextBaseline: readWorkflowBaseline(targetRoot, args.contextBaselineFile) } : {}) } : {}) },
       hookContextStore, targetRoot,

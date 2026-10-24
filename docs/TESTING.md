@@ -69,7 +69,8 @@ stale files/dual rule copies, canonical dual digests over stale visible state,
 and the typed agent refusal without retaining a stale diagnostic receipt.
 
 `npm run perf:verify-task-context-profile` exercises accepted task policies and
-the real grouped source CLI: complete mandatory dependencies, additive operation
+the real grouped source CLI: missing or uncovered task policies refuse with
+remediation and zero hydration, without widening the budget; complete mandatory dependencies, additive operation
 and affected-path needs, optional omission, insufficient budgets, foreign scope,
 unaccepted policy, explicit retained receipts and exact final UTF-8 JSON counters
 including transport metadata. Native tokens and installed-client qualification

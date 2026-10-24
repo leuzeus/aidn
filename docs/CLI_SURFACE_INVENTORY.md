@@ -157,7 +157,10 @@ It never grants reusable write authorization or changes the legacy default.
 policies and a binding final JSON target (16,384 bytes, maximum 65,536). Its optional
 `--context-task-file` contains additive operation/affected-path query data. It
 requires the grouped agent path. Known configured skills use complete sections
-and dependency closure; unknown/unconfigured skills retain historical selection.
+and dependency closure; unknown skills or missing mandatory policies return a
+blocked result with remediation and no hydration. There is no implicit full
+fallback or budget expansion. Explicit full diagnostics remain available by
+omitting the bounded profile and selecting `--view full`.
 The final JSON includes refusals, history, provenance, transport and receipt
 metadata. Optional closure is omitted first; an insufficient mandatory target
 returns an explicit blocked result with expansion references. Refusal metadata

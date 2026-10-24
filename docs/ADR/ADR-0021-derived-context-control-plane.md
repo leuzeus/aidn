@@ -109,8 +109,11 @@ Its `taskContextPolicies` extension declares a stable mandatory minimum and
 additive per-skill/task obligations. Operation/path labels cannot remove that
 minimum, accept an authority or grant admission. Existing complete Markdown
 selection enforces the accepted unit bindings, scope and dependency closure.
-Unknown skills or missing mappings retain the full historical selection path;
-an invalid/effectively unaccepted declared policy refuses instead of inventing
+As of the 2026-10-24 bounded-path amendment, unknown skills, absent policies or
+missing mappings refuse with remediation and no hydration. The bounded profile
+never expands implicitly to historical 256 KiB/1 MiB budgets. An explicit full
+view without the profile remains available for compatibility diagnostics.
+An invalid/effectively unaccepted declared policy refuses instead of inventing
 authority. Changing a client's effective policy requires its adoption revision
 and history procedure; no installed policy is silently populated.
 
