@@ -16,6 +16,7 @@ import { persistHookContext } from "../../src/adapters/codex/context-store.mjs";
 import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
 import { projectHistoryTransitions } from "../../src/application/codex/context-history-transitions.mjs";
 import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
+import "./verify-workflow-transaction-fixtures.mjs";
 
 const repo = path.resolve(import.meta.dirname, "../.."), root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-task-profile-"));
 const target = path.join(root, "client"), source = path.join(repo, "tests/fixtures/repo-installed-core"), checks = [];

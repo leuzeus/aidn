@@ -75,6 +75,7 @@ export function parseArgs(argv) {
     projectionProfile: null,
     write: false,
     grouped: false,
+    transaction: false,
     contextProfile: "",
     contextTaskFile: "",
     contextBaselineFile: "",
@@ -177,6 +178,8 @@ export function parseArgs(argv) {
       args.write = true;
     } else if (token === "--grouped") {
       args.grouped = true;
+    } else if (token === "--transaction") {
+      args.transaction = true;
     } else if (token === "--context-profile") {
       args.contextProfile = String(argv[++i] ?? "").trim();
       if (args.contextProfile !== TOKEN_CONTEXT_PROFILE.id) throw new Error("Unknown context profile");
@@ -205,6 +208,15 @@ export function parseArgs(argv) {
     }
   }
   args.skills = unique(args.skills);
+  if (args.transaction) {
+    for (const [flag, key, value] of [["--view", "view", "agent"], ["--projection-profile", "projectionProfile", "compact.v2"],
+      ["--context-profile", "contextProfile", TOKEN_CONTEXT_PROFILE.id], ["--history-view", "historyView", "transitions"]]) {
+      if (argv.includes(flag) && args[key] !== value) throw new Error(`Workflow transaction conflicts with ${flag}`);
+      args[key] = value;
+    }
+    args.grouped = true;
+    args.strict = true;
+  }
   if (args.contextProfile || args.artifactQueryProfile) {
     if (!argv.includes("--bundle-target-bytes")) args.bundleTargetBytes = TOKEN_CONTEXT_PROFILE.target_bytes;
     if (!argv.includes("--bundle-hard-limit-bytes")) args.bundleHardLimitBytes = TOKEN_CONTEXT_PROFILE.hard_limit_bytes;
@@ -233,6 +245,7 @@ export function parseArgs(argv) {
 
 function printUsage() {
   console.log("Usage:");
+  console.log("  npx aidn codex workflow-step --target . --skills context-reload,start-session --transaction --json");
   console.log("  npx aidn codex workflow-step --target . --skills close-session,pr-orchestrate --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skill requirements-delta --mode COMMITTING --json");
   console.log("  npx aidn codex workflow-step --target . --skills context-reload --json --use-daemon");
@@ -458,6 +471,10 @@ async function computeWorkflowStep({ args, targetRoot, grouped = false }) {
 
 export async function runWorkflowStep({ args, targetRoot }) {
   validateAgentViewOptions(args);
+  if (args.transaction !== undefined && typeof args.transaction !== "boolean") throw new Error("Workflow transaction selector must be boolean");
+  if (args.transaction && (args.view !== "agent" || !args.grouped || !args.strict
+      || args.projectionProfile !== "compact.v2" || args.contextProfile !== TOKEN_CONTEXT_PROFILE.id
+      || args.historyView !== "transitions")) throw new Error("Workflow transaction requires its bounded preparation profile");
   if (args.projectionProfile != null && (!["compact.v1", "compact.v2"].includes(args.projectionProfile) || args.view !== "agent"))
     throw new Error("Compact projection requires agent view");
   if (args.grouped !== undefined && typeof args.grouped !== "boolean") throw new Error("Grouped workflow selector must be boolean");
@@ -485,6 +502,9 @@ export async function runWorkflowStep({ args, targetRoot }) {
       () => computeWorkflowStep({ args, targetRoot, grouped: true }));
     output = { ...observed.value, observation: observed.observation };
   } else output = await computeWorkflowStep({ args, targetRoot });
+  if (args.transaction) output.transaction = { contract_version: "workflow-transaction.v1", kind: "preparation-only",
+    source_revision: output.observation.source_revision, write_authorization: false, requires_fresh_admission: true,
+    required_before_write: ["fresh-specific-admission", "current-scope-and-authority", "compare-and-swap", "execution-fence"] };
   const receipt = persistAgentViewReceipt({ write: args.write, targetRoot, kind: "workflow-step", payload: output });
   if (args.view === "agent") {
     const projected = projectWorkflowAgentView(output, receipt, args.projectionProfile ?? null);
@@ -718,7 +738,7 @@ async function main() {
       message: String(error.message ?? error),
     };
     const viewIndex = originalArgv.lastIndexOf("--view");
-    if ((parsedArgs?.view ?? (viewIndex >= 0 ? originalArgv[viewIndex + 1] : "full")) === "agent") {
+    if ((parsedArgs?.view ?? (viewIndex >= 0 ? originalArgv[viewIndex + 1] : originalArgv.includes("--transaction") ? "agent" : "full")) === "agent") {
       const targetIndex = originalArgv.lastIndexOf("--target"), candidate = targetIndex < 0 ? "." : originalArgv[targetIndex + 1];
       const target = parsedArgs?.target ?? (candidate && !candidate.startsWith("--") ? candidate : ".");
       const code = String(error.code ?? "").startsWith("WORKFLOW_") ? error.code

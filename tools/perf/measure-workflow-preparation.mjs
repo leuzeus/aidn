@@ -11,6 +11,10 @@ import { createTrackedFixtureFilter, removePathWithRetry } from './test-git-fixt
 import { isActivationFixtureSource, prepareActivationFixture } from './test-activation-fixture-lib.mjs';
 import { resolveRuntimeProjectContext } from '../../src/application/runtime/runtime-project-context-service.mjs';
 import { writeWorkflowAdapterConfig } from '../../src/lib/config/workflow-adapter-config-lib.mjs';
+import { parseArgs } from '../codex/workflow-step.mjs';
+import { resolveCliEffectClass } from '../../src/core/cli/effect-policy.mjs';
+import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
+import transactionSchema from '../../src/core/contracts/cli-output/codex-workflow-step-agent-compact.v2.schema.json' with { type: 'json' };
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const arg = (name, fallback) => process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : fallback;
@@ -73,15 +77,50 @@ try {
       if (decisions.size) assert.deepEqual(decision, decisions.values().next().value);
       decisions.set(variant, decision);
       if (payload.bundle_budget) assert.equal(payload.bundle_budget.total_bytes, Buffer.byteLength(JSON.stringify(payload)));
+      if (variant === 'transaction') {
+        assert.deepEqual(validateJsonSchema(payload, transactionSchema, '$'), []);
+        assert.equal(payload.transaction.source_revision, payload.observation.source_revision);
+        assert.equal(payload.transaction.write_authorization, false);
+        assert.equal(payload.receipt, null);
+        assert.equal(payload.effect_class, 'read-only');
+        assert.equal(payload.bundle_budget.target_bytes, 16384);
+        assert.equal(payload.bundle_budget.hard_limit_bytes, 65536);
+      }
       rows.push({ variant, sample, elapsed_ms: elapsed, stdout_bytes: Buffer.byteLength(result.stdout), json_bytes: Buffer.byteLength(JSON.stringify(payload)),
         admission_count: payload.summary.admission_count, hydration_count: payload.summary.hydrate_count,
         distinct_canonical_reads: payload.observation?.distinct_reads ?? null, oracle: 'decision-parity-pass' });
     }
   }
+  const controls = [];
+  if (variants.transaction) {
+    assert.equal(resolveCliEffectClass('aidn codex workflow-step', ['--transaction', '--json']), 'read-only');
+    assert.equal(resolveCliEffectClass('aidn codex workflow-step', ['--transaction', '--write', '--json']), 'mutating');
+    for (const flags of [['--view', 'full'], ['--projection-profile', 'compact.v1'], ['--history-view', 'full']])
+      assert.throws(() => parseArgs(['--skills', 'context-reload', '--transaction', ...flags]), /conflicts/);
+    controls.push('transaction preset and effect classification reject incompatible full selectors');
+    const cache = path.join(target, '.aidn/runtime/context/hydrated-context.json'), previous = fs.readFileSync(cache);
+    const refused = flags => {
+      const result = spawnSync(process.execPath, [path.join(repo, 'bin/aidn.mjs'), 'codex', 'workflow-step', '--target', target,
+        '--skills', 'context-reload', '--transaction', '--json', ...flags], { cwd: repo, encoding: 'utf8', windowsHide: true, timeout: 90000 });
+      assert(!result.error, result.error?.message); assert.notEqual(result.status, 0);
+      return JSON.parse(result.stdout);
+    };
+    const budgetRefusal = refused(['--bundle-target-bytes', '256']);
+    assert.equal(budgetRefusal.bundle_budget.status, 'blocked');
+    assert.equal(budgetRefusal.bundle_budget.hard_limit_bytes, 65536);
+    assert.equal(refused(['--bundle-hard-limit-bytes', '65537']).code, 'WORKFLOW_STEP_FAILED');
+    writeWorkflowAdapterConfig(target, { governanceAdoption: { ...adoption, extensions: {} } });
+    const missing = refused([]);
+    assert.equal(missing.selection_policy.mode, 'blocked'); assert.equal(missing.summary.hydrate_count, 0);
+    assert.equal(missing.receipt, null); assert.deepEqual(fs.readFileSync(cache), previous);
+    assert.deepEqual(validateJsonSchema(missing, transactionSchema, '$'), []);
+    controls.push('strict missing-policy/budget refusals preserve cache, limits and null receipt');
+  }
   const percentile = (values, q) => [...values].sort((a, b) => a - b)[Math.ceil(values.length * q) - 1];
   const report = { schema_version: 1, evidence: 'source-fixture-microbenchmark', source_commit: run('git', ['rev-parse', 'HEAD'], repo).stdout.trim(),
     source_diff_sha256: hash(run('git', ['diff', 'HEAD'], repo).stdout), node: process.version, platform: process.platform, samples,
-    fixture: 'tracked activated files-mode client, two admitted skills, accepted one-unit policy', rows,
+    fixture: 'tracked activated files-mode client, two admitted skills, accepted one-unit policy', rows, controls,
+    benchmark_sha256: hash(fs.readFileSync(import.meta.filename)),
     summary: Object.fromEntries(Object.keys(variants).map(variant => { const rowsForVariant = rows.filter(r => r.variant === variant); return [variant, {
       elapsed_p50_ms: percentile(rowsForVariant.map(r => r.elapsed_ms), .5), elapsed_p95_ms: percentile(rowsForVariant.map(r => r.elapsed_ms), .95),
       min_ms: Math.min(...rowsForVariant.map(r => r.elapsed_ms)), max_ms: Math.max(...rowsForVariant.map(r => r.elapsed_ms)),

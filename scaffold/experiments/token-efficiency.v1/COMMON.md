@@ -38,11 +38,15 @@ document body merely to inspect the writer's decision and current stored hash.
 Use official compact inventories to discover unknown exact paths; batch known
 canonical paths in one complete fetch. Preserve complete selected Markdown units
 with scope, revision and dependency closure. Grouped context uses `aidn codex
-workflow-step --view agent --grouped --skills <known-skills> --json`. Do not
+workflow-step --transaction --skills <known-skills> --json`. This nominal bounded
+entry point returns admissions, common canonical observation, complete required
+context, blockers and coordinator advice together using compact.v2, the accepted
+task policy, transition history, a 16 KiB target and 64 KiB maximum. Missing
+accepted policy blocks with remediation; never switch to full implicitly. Do not
 hydrate a refused skill separately. A failed material-change fence requires a
 fresh observation. Do not silently retry a write.
 
-Select `--context-profile token-efficiency.v1` only with an accepted client-owned
+The transaction selects `--context-profile token-efficiency.v1` with an accepted client-owned
 task policy. Include an additive task query when relevant. Inspect the complete
 JSON budget result: an expansion refusal is a decision point, never permission
 to omit a mandatory authority. The byte budget covers CLI JSON, not the native

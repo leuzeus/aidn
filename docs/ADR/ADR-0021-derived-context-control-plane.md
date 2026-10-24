@@ -105,6 +105,19 @@ receipt. Common activation refusals retain the existing CLI boundary contract.
 
 The experimental `token-efficiency.v1` workflow profile derives the union of
 known admitted skills' context needs from client-owned accepted adoption data.
+The 2026-10-24 `--transaction` composition selects grouped compact.v2,
+token-efficiency.v1 and transition history together for a bounded preparation.
+It introduces no new canonical information concept, write transaction, admission
+lease, persistent cache or shared schema. Every skill is still admitted
+sequentially; the private observation is revalidated before publication and the
+actual writer retains its independent admission, CAS and reservation fence.
+The full default remains compatible. In the bounded experimental procedure this
+composition is the nominal entry point, with explicit failure and remediation
+instead of an implicit full fallback. CLI defaults alone do not prove reduced
+native turns or installed procedure adoption.
+
+The profile derives
+known admitted skills' context needs from client-owned accepted adoption data.
 Its `taskContextPolicies` extension declares a stable mandatory minimum and
 additive per-skill/task obligations. Operation/path labels cannot remove that
 minimum, accept an authority or grant admission. Existing complete Markdown

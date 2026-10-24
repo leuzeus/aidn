@@ -1,5 +1,18 @@
 # CLI Surface Inventory
 
+`codex workflow-step --transaction --skills <known-skills> --json` prepares one
+bounded, read-only workflow observation. It selects grouped consultation,
+compact.v2, token-efficiency.v1 and transition history, with a 16 KiB target and
+64 KiB maximum. Explicit conflicting view/profile/history selectors refuse.
+Missing accepted task policy refuses without hydration or a full fallback.
+Existing admissions, canonical scope/revision fences, complete required context,
+blockers and coordinator next action are returned together. The additive
+`transaction` descriptor in the existing compact.v2 contract states
+`preparation-only`, no write authorization, and the fresh admission/CAS/fences
+required at the actual writer. Refusal makes the invocation nonzero by default.
+`--write` explicitly retains a full local diagnostic receipt; its reference is
+included in the final budget. The legacy full default remains available.
+
 `runtime artifact-query --profile active-state.v1 --params-file <relative.json>
 --json` is an experimental read-only factual consultation. Parameters are a bounded
 worktree-relative JSON object with `schema_version: 1`; optional `scope` pins all

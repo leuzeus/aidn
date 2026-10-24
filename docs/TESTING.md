@@ -34,6 +34,15 @@ implementation.
 
 ## Explicit agent working memory
 
+`npm run perf:verify-workflow-transaction` compares the historical, grouped,
+scoped and `--transaction` source CLI preparations on the same activated fixture.
+It checks exact admission/recommendation parity, compact.v2 schema, preset
+conflicts, no view-implied receipt/cache write, strict missing-policy refusal
+and final JSON budget accounting. The existing task-context-profile suite
+includes it in the Codex integration gate. Its descriptive clocks and byte
+counts are fixture microbenchmarks; provider tokens and native quality remain
+separate measurements.
+
 `node tools/perf/verify-agent-working-memory-fixtures.mjs` checks real fixture
 checkpoint/handoff CLI, explicit write intent, fresh admission refusal, revision
 changes, missing/changed evidence, capsule integrity, per-agent isolation,

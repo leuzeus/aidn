@@ -103,3 +103,24 @@ accounting, dependency completeness, stale/foreign baseline invalidation and
 explicit diagnostic receipts. The first run exposed a closed-schema rejection
 of the added remediation field; the schema was aligned and the full focused
 suite then passed. No native timing/token improvement is attributed to this fix.
+
+## Lot 2 — one bounded preparation
+
+`workflow-step --transaction` composes the existing grouped observation,
+compact.v2, accepted token-efficiency policy and transition history. Defaults
+are 16 KiB/64 KiB; conflicting full selectors refuse. It returns current
+admissions, required units, blockers and coordinator advice in one invocation,
+with an additive `workflow-transaction.v1` preparation descriptor inside the
+existing compact.v2 output. Failure exits nonzero. There is no write transaction
+or reusable admission. Legacy full interfaces remain unchanged. The bounded
+experimental procedure now names this entry point; installed personal skills
+are not silently changed.
+
+`node tools/perf/verify-workflow-transaction-fixtures.mjs`: PASS. Four real-source
+CLI variants preserve every admission and coordinator recommendation. Preset
+conflicts, effect classes, exact final budget, null implicit receipt, unchanged
+cache, missing-policy zero hydration and over-limit refusal are verified.
+Single-trial transaction output was 10,264 bytes, one hydration and two distinct
+canonical observation keys. Its 3,265 ms clock does not establish a speed gain;
+the value is bounded preparation and fewer required client consultations.
+Actual model-turn reduction still requires a native paired task.
