@@ -1292,5 +1292,62 @@
     "targeted_audit_sha256": "f686e94149b25612bbe96dd203aa337b6a7b0a8c7f9caf20d672aa74eb3cf5b1",
     "application_comparison": "NOT_EXECUTED",
     "end_to_end_gain_claimed": false
+  },
+  "complete_no_aidn_integration_pilot": {
+    "status": "BASELINE_PASS",
+    "comparative_sample": false,
+    "workflow_seconds": 1009.726,
+    "phase_seconds": [
+      698.621,
+      309.789
+    ],
+    "unique_provider_responses": 30,
+    "tokens": {
+      "input_tokens": 993838,
+      "cached_input_tokens": 886912,
+      "output_tokens": 32780,
+      "reasoning_output_tokens": 7232,
+      "uncached_input_tokens": 106926
+    },
+    "native_hooks": 0,
+    "final_self_tests_passed": 22,
+    "application_oracle": {
+      "status": "PASS",
+      "passed": 20,
+      "expected": 20,
+      "reasons": []
+    },
+    "owned_process_cleanup": "confirmed_both_workers_and_oracle",
+    "principal_profile_preserved": true,
+    "frozen_controls_preserved": true,
+    "raw_result_sha256": "7e4015070ca0c189a59549eb0f0cbb957aba7cde6e7cabed9581e1e59df6ec5c",
+    "usage_report_sha256": "c999294f2b4fa44c85cb478989b952f8eba596b0c3b057087c3943697882a2d8",
+    "meaning": "Exploratory independent pilot; not retroactive promotion to a predeclared repeated A/B cohort"
+  },
+  "cold_transaction_native_counter_control": {
+    "successful_preparation": "FAIL_BUDGET_EXCEEDED",
+    "fail_closed_limit": "PASS",
+    "candidate_sha256": "86e37dc22d5d75914afa36e63230c94cb5423290fd53a421e5b6036326eaac60",
+    "model_calls": 0,
+    "application_product_verdict": "not_executed",
+    "admissions": "PASS_CONTEXT_RELOAD_AND_START_SESSION",
+    "policy": "all six complete bodies required in initial context",
+    "minimum_required_bytes": 69291,
+    "target_bytes": 65536,
+    "hard_limit_bytes": 65536,
+    "refusal_response_bytes": 16407,
+    "checkout_unchanged": true,
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 43,
+      "changed_refs": 0,
+      "protected_git_files": 265,
+      "changed_git_files": 0
+    },
+    "private_postgres_removed": true,
+    "principal_profile_preserved": true,
+    "raw_result_sha256": "35e4ddb7bec30be2dec0911c7be57e7941dd5fb095cc529794b2ebdc0230d446",
+    "steady_state_result_transferred_to_bootstrap": false,
+    "fallback_or_cap_increase": false
   }
 }

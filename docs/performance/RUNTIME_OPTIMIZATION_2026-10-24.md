@@ -1271,3 +1271,56 @@ gain. Its four-body policy differs from the earlier six-body control, so their
 byte counts are not an isolated implementation A/B. Future governed comparator
 arms must receive the same routed fixture declaration and complete bootstrap
 requirements before their clocks; the historical observations cannot be relabelled.
+
+
+## No-AIDN integration pilot and remaining amplification
+
+A separate project with no AIDN installation completes two native phases and the
+same fixed oracle (20/20, score 60/60). Its workflow clock is 1,009.726 seconds,
+including 698.621 seconds in phase 1 and 309.789 seconds in phase 2. Thirty unique
+responses expose 993,838 cumulative input tokens, 886,912 cached input tokens,
+106,926 uncached input tokens, 32,780 output tokens and 7,232 reasoning output
+tokens. Both phases retain zero native hooks; the final self-test run passes
+22 tests. All owned phase/oracle processes close and configuration/authentication
+and frozen controls are unchanged.
+
+| Exploratory whole-task pilot | Workflow seconds | Responses | Input | Cached input | Uncached input | Oracle |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Current-runtime composed governance | 2089.307 | 69 | 8118837 | 7802624 | 316213 | 20/20 |
+| No AIDN | 1009.726 | 30 | 993838 | 886912 | 106926 | 20/20 |
+
+These separately declared integration pilots are not retroactively promoted to a
+predeclared repeated A/B cohort. They share binary/model/high reasoning/default
+tier, task, oracle and arm deadline, but their control declarations and platform
+guidance are separate. Descriptive ratios are 2.07x workflow time, 2.30x responses,
+8.17x cumulative input and 2.96x uncached input; they establish no isolated change
+benefit or statistical confidence. Numerical engineering targets are not proven
+achieved. Matched repeated old/current/compact/transaction runs remain open.
+
+The completed governed pilot retains 226,334 bytes of full admission JSON over
+thirteen calls and 115,214 bytes of full hook JSON over sixteen calls, before
+host wrappers. Canonical writes retain 380,555 raw bytes over forty-three calls,
+but forty-one already use a smaller candidate-engine model view. Seven canonical
+fetches retain 200,709 raw bytes. These are command-output measurements, not a
+conversion to tokens or a claim that every supervisor byte was injected. The
+native coordinator's separate 105,077-byte hydration is not a model response.
+Admission/hook presentation and deterministic closure scheduling remain useful
+next measurements, ahead of speculative serializer/CPU changes.
+
+## Cold bounded-bootstrap counter-control
+
+A fresh source-branch fixture with no session/cycle creation executes actual
+`workflow-step --skills context-reload,start-session --transaction` on the new
+installed archive. Both admissions pass and the accepted policy correctly
+requires all six complete authorities for this initial state. The final mandatory
+minimum is **69,291 bytes**; the explicit 65,536-byte limit refuses it with a
+16,407-byte diagnostic. This is FAIL for successful bounded preparation and PASS
+for the fail-closed limit, with zero model calls and no application execution.
+No checkout changes, foreign-ref changes, profile changes, leaked processes or
+private cluster remain.
+
+The 47,970-byte steady-state success therefore cannot qualify initial bootstrap.
+A subsequent experimental task must declare ordinary complete bootstrap before
+selecting the supported bounded steady-state route; it cannot first consume the
+refusal and then silently switch to full. This boundary is specific to these
+whole-document fixtures, not a statement that the native API is unavailable.
