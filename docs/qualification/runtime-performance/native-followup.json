@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "evidence": "native-followup-layered-observations",
+  "initial_candidate_sha256": "01c14eeea7cdcc2f51a9ab3b7f9ccb2a56009343c05deb0691a5b3a44d509257",
+  "owner_hook_approval": "RECEIVED_AND_OBSERVED",
+  "owner_profile_consent": "RECEIVED",
+  "owner_v2_maintenance_consent": "RECEIVED",
+  "legacy_worker": {
+    "execution": "EXECUTED_FIRST_CASE",
+    "gate": "FAIL",
+    "reason": "QUALIFICATION_AUTHORIZED_EFFECT_MISSING",
+    "admitted_patch_effect": "MISSING",
+    "out_of_scope_denials": 2,
+    "lost_ownership_denial": 1,
+    "worker_cleanup": "CONFIRMED",
+    "postgres_cleanup": "REMOVED",
+    "remaining_cases": "NOT_EXECUTED",
+    "product_application_verdict": "NOT_EVALUATED"
+  },
+  "legacy_profile_v1_final_observation": {
+    "status": "UNCONFIRMED",
+    "reason": "PROFILE_SETUP_STATE_CHANGED",
+    "worker_cleanup_is_separate": true
+  },
+  "profile_v2_preflight": {
+    "reason": "PROFILE_BACKEND_NOT_READY",
+    "observed_readiness": "updateRequired",
+    "metadata_execution": "EXECUTED",
+    "native_worker_execution": "NOT_RUN"
+  },
+  "mxc_probe_reports": [
+    {
+      "trial": "001",
+      "raw_summary_sha256": "2f15b1056345d0c0782819512abbe1826c5038e382ffd4e338dbec691202bfb7",
+      "evidence": "native-os-sandbox-diagnostic",
+      "requested_backend": "mxc",
+      "profile": ":workspace",
+      "model_calls": 0,
+      "cases": [
+        {
+          "name": "startup",
+          "outcome": "failed",
+          "exit_code": 1,
+          "cleanup": "confirmed",
+          "marker_observed": false
+        }
+      ],
+      "status": "FAIL_OS_ONLY",
+      "configuration_preserved": true,
+      "native_startup_refusal": "MXC requires nonempty Unicode host SystemDrive"
+    },
+    {
+      "trial": "002",
+      "raw_summary_sha256": "8d205d35966861e395973235c00fdb917b2035dde22ba53c5d7d0e7362c1d23f",
+      "evidence": "native-os-sandbox-diagnostic",
+      "requested_backend": "mxc",
+      "profile": ":workspace",
+      "model_calls": 0,
+      "cases": [
+        {
+          "name": "startup",
+          "outcome": "completed",
+          "exit_code": 0,
+          "cleanup": "confirmed",
+          "marker_observed": true
+        },
+        {
+          "name": "permissions",
+          "inside_write_read_remove": true,
+          "outside_write_denied": true,
+          "exit_code": 0,
+          "cleanup": "confirmed"
+        }
+      ],
+      "status": "PASS_OS_ONLY",
+      "configuration_preserved": true
+    },
+    {
+      "trial": "003",
+      "raw_summary_sha256": "8d205d35966861e395973235c00fdb917b2035dde22ba53c5d7d0e7362c1d23f",
+      "evidence": "native-os-sandbox-diagnostic",
+      "requested_backend": "mxc",
+      "profile": ":workspace",
+      "model_calls": 0,
+      "cases": [
+        {
+          "name": "startup",
+          "outcome": "completed",
+          "exit_code": 0,
+          "cleanup": "confirmed",
+          "marker_observed": true
+        },
+        {
+          "name": "permissions",
+          "inside_write_read_remove": true,
+          "outside_write_denied": true,
+          "exit_code": 0,
+          "cleanup": "confirmed"
+        }
+      ],
+      "status": "PASS_OS_ONLY",
+      "configuration_preserved": true
+    }
+  ],
+  "source_checks": {
+    "startup": 50,
+    "executor": 69,
+    "native_qualification_fixtures": 395,
+    "status": "PASS",
+    "native_model_qualification": "NOT_ESTABLISHED_BY_FIXTURES",
+    "controlled_metadata_bridge": "PASS",
+    "validation_launcher": "PASS"
+  },
+  "runtime_source_hashes": {
+    "src/core/agents/codex-startup-arguments.mjs": "db671a7f56dc789342b6ba429cb9609ff778e3d50f9707829e1d3f4b7005839b",
+    "src/adapters/agents/codex-cli-task-executor.mjs": "cd6b32deab2a0a76118e21258675dcd69b5240b8d7de4b4dc536e850be4813c2",
+    "src/application/runtime/codex-native-profile-observation-service.mjs": "f4c1ec65cd3a31104acbcb74f4138576c2df28275613be48d4a29f57c6912cb5",
+    "src/application/runtime/controlled-codex-profile-metadata.mjs": "ffcd567112bb5d61cefaafbabe1c19869a37e951e6ccb2e0fd4247adef747f22",
+    "src/adapters/runtime/codex-sandbox-validation-boundary.mjs": "28e07cf5022b7dd6592f13822f8c05f8631903a057c88f71d71f2ec2cdb2327c"
+  },
+  "full_application_ab": "NOT_EXECUTED",
+  "production_rollover": "NOT_QUALIFIED"
+}

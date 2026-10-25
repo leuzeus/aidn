@@ -456,9 +456,72 @@ archive or transfer its identity to another package.
 The current
 [native qualification authority](../AGENT_EXECUTION_NATIVE_QUALIFICATION.md)
 requires human review of the exact executable hooks through native `/hooks`
-controls before dependent execution. Human approval has not yet been recorded.
+controls before dependent execution. Human approval was not yet recorded at
+that initial preparation checkpoint.
 Native edit/refusal,
 termination, host coexistence, current PostgreSQL claims, accepted full task
 policies and the full application A/B remain **NOT EXECUTED** until their actual
 prerequisites are met. The source-preparation experiment above has a separate
 read-only boundary and cannot substitute for them.
+
+## Native follow-up after owner approval
+
+The owner subsequently approved the exact hooks, the existing native profile's
+bounded local effects, and then the already implemented v2 Codex-managed sandbox
+maintenance boundary. Actual native API observation confirmed trusted/enabled
+project hooks on the three reviewed roots. The package was reproduced unchanged
+at SHA-256 `01c14eeea7cdcc2f51a9ab3b7f9ccb2a56009343c05deb0691a5b3a44d509257`.
+No approval hashes, authentication copies or personal configuration were written
+by the qualification tooling. Raw profile/account evidence remains local-only.
+
+A real supervised-worker qualification ran on that candidate. The first native
+patch was admitted but did not produce the authorized file effect. The two
+out-of-scope patches and subsequent lost-ownership patch were refused. The
+worker exited, its Windows Job confirmed zero remaining descendants, and its
+private PostgreSQL cluster was removed. The attempt is FAIL with
+`QUALIFICATION_AUTHORIZED_EFFECT_MISSING`; cancellation, timeout and later port
+cases were not executed. Native Codex also updated its sandbox executable cache
+and deny-read ACL state, so v1's exact setup preservation failed. The later v2
+metadata preflight ran but refused worker execution with
+`PROFILE_BACKEND_NOT_READY` and a legacy
+`updateRequired` observation. Neither refusal is rewritten as PASS.
+
+A TARGETED authority review corrected the evidence routing: the bounded-agent
+protocol explicitly qualifies the supervised `elevated` worker milestone. The
+034/036 runtime campaigns used ordinary native MXC sessions and have separate
+candidate-specific hook/workflow evidence. Their benchmark does not enable the
+public supervised-agent capability. Its controls still require human-reviewed
+hooks, actual specific write admission, canonical scope/revision/CAS, strict
+handoff and closure, native permissions and owned cleanup. Legacy-agent failure
+cannot become MXC qualification, and OS readiness alone cannot become either.
+No gate or public backend policy was weakened or changed by this distinction.
+
+A discriminating MXC command probe found an independent source defect: the
+bounded metadata and worker environments omitted Windows `SystemDrive`. The
+native executable refused startup with `MXC requires nonempty Unicode host
+SystemDrive`. Adding only that non-secret OS value to the otherwise unchanged
+environment made explicit MXC startup pass, then permitted workspace
+write/read/remove while refusing an outside write. The same probe using the
+corrected source host-filter function also passes. All probe process trees
+terminate and personal configuration hashes remain unchanged. These are
+**OS-only** observations with zero model calls, not application performance.
+The initial admitted patch failure's complete cause is not established by this
+separate command test.
+
+The source correction centralizes the non-secret host allowlist, preserves
+`SystemDrive` in metadata/worker preparation and admits it in the exact final
+shell filter. Private credentials, inherited native-home/temp selection and
+unknown variables remain excluded; native profile bindings and all action
+fences remain required. Focused results: startup 50 checks PASS, executor 69
+fixtures PASS, native qualification fixture suite 395 checks PASS. Controlled
+metadata bridge and validation-launcher fixtures also pass. The verifier child
+environment remains narrower than the native launcher. These are
+source/fixture checks; the old native attempt cannot qualify the corrected
+archive. No architectural authority or backend migration is introduced.
+
+[Redacted follow-up observations](../qualification/runtime-performance/native-followup.json)
+retain the layer-specific results and source hashes. Full installed application
+A/B and production native rollover remain NOT EXECUTED. The next native runtime
+trial must freeze the corrected package and use fresh scope/workflow evidence
+under the actual MXC surface, rather than transferring the historical pair or
+enabling an unqualified public agent executor.
