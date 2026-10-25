@@ -35,6 +35,7 @@ function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = 
     async checkAvailability() { calls.push("availability"); return { available: true }; },
     async run(spec, { signal, onEvent }) {
       calls.push("run"); assert.equal(spec.cwd, cwd); assert.equal(spec.stdin, request.instruction);
+      assert.equal(spec.env.SystemDrive, "C:", "native bootstrap preserves the host drive through preparation and execution");
       assert.equal(spec.env.AIDN_PG_URL, undefined); assert.equal(spec.args.at(-1), "-");
       if (throwController) throw new Error("lost native observation");
       try {
@@ -55,7 +56,7 @@ function setup({ output = bytes, termination = "confirmed", exit = 0, outcome = 
     },
     qualify: async () => ({ qualified: qualify }),
     prepare: async req => { if (invalidatePreparation) qualify = false; return { request_sha256: fingerprintAgentExecutionValue(req),
-      env: minimalEnvironment ? { AIDN_AGENT_ATTEMPT_ID: req.attempt_id, AIDN_AGENT_REQUEST_SHA256: fingerprintAgentExecutionValue(req) } : createCodexWorkerEnvironment({ host: { PATH: process.env.PATH ?? "", AIDN_PG_URL: "never-forward", OPENAI_API_KEY: "never-forward" },
+      env: minimalEnvironment ? { AIDN_AGENT_ATTEMPT_ID: req.attempt_id, AIDN_AGENT_REQUEST_SHA256: fingerprintAgentExecutionValue(req) } : createCodexWorkerEnvironment({ host: { SystemDrive: "C:", PATH: process.env.PATH ?? "", AIDN_PG_URL: "never-forward", OPENAI_API_KEY: "never-forward" },
         codexHome: path.join(root, "profile"), tempDirectory: path.join(root, "temp"),
         admission: { endpoint: "http://127.0.0.1:12345/v1/admit", token: "a".repeat(64), attemptId: req.attempt_id, requestSha256: fingerprintAgentExecutionValue(req) } }) }; },
     recordLaunchIntent: async () => calls.push("intent"),

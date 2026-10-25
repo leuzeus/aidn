@@ -42,7 +42,7 @@ function fixture() {
     profile: { id: "aidn-fixture", home, home_identity_sha256: H, config_layers: [{ path: path.join(home, "config.toml"), present: false }],
       provisioning_files: [{ path: path.join(home, "existing-setup-marker"), present: true, bytes: 1, sha256: H }],
       environment_override_names: ["NODE_OPTIONS"], effective_policy: effective, effective_policy_sha256: fingerprint(effective) }, roots,
-    launcher_environment: { ...env, CODEX_HOME: home } };
+    launcher_environment: { ...env, SystemDrive: "C:", CODEX_HOME: home } };
   const invocation = { invocation_id: "case.fixture", boundary_id: config.boundary_id, validation_id: "check.fixture", executable,
     executable_sha256: H, argv: ["check espace été.mjs"], cwd: path.join(roots.snapshots, "snapshot espace été"), environment_sha256: fingerprint(env), max_duration_ms: 30000, max_output_bytes: 1024 };
   return { config, request: { ...invocation, request_sha256: fingerprint(invocation), environment: env } };
@@ -160,6 +160,8 @@ await check("pure config and invocation preserve inputs and use exact structured
   assert(!launch.args.some(arg => /sandbox-state|full-access|setup|externalSandbox/.test(arg)));
   const input = JSON.parse(launch.stdin); assert.deepEqual(JSON.parse(input.environment_json), request.environment);
   assert.equal(input.environment_sha256, request.environment_sha256); assert(!Object.hasOwn(launch.env, "NODE_OPTIONS"));
+  assert.equal(launch.env.SystemDrive, "C:");
+  assert.equal(Object.hasOwn(request.environment, "SystemDrive"), false, "launcher bootstrap does not widen the verifier child environment");
 });
 for (const [name, transform] of [
   ["implicit setup", c => { c.profile.effective_policy.provisioning = "auto"; }],

@@ -4,12 +4,13 @@ import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { sanitizeCodexMetadataRpcDiagnostic } from "../../adapters/agents/codex-metadata-rpc-diagnostic.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
+import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../core/agents/codex-startup-arguments.mjs";
 
 const BRIDGE = "src/adapters/agents/process-tree/codex-profile-metadata-bridge.mjs";
 const COLLECTOR = "src/application/runtime/codex-native-profile-observation-service.mjs";
 const SELF = "src/application/runtime/controlled-codex-profile-metadata.mjs";
 const HASH = /^[a-f0-9]{64}$/u, OUTPUT_LIMIT = 2 * 1024 * 1024 + 65536;
-const ENVIRONMENT = new Set(["SYSTEMROOT", "WINDIR", "COMSPEC", "PATH", "PATHEXT", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA", "CODEX_HOME", "TEMP", "TMP"]);
+const ENVIRONMENT = new Set(CODEX_STARTUP_ENVIRONMENT_PROFILES.worker.filter(name => !name.startsWith("AIDN_")));
 const object = value => value && typeof value === "object" && !Array.isArray(value);
 const exact = (value, names) => object(value) && Object.keys(value).sort().join("|") === [...names].sort().join("|");
 const fail = (code, process, diagnostic) => { throw Object.assign(new Error(code), { code, ...(process ? { process } : {}),

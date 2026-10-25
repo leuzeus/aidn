@@ -34,6 +34,13 @@ implementation.
 
 ## Explicit agent working memory
 
+The startup-argument and Codex task-executor fixtures retain Windows
+`SystemDrive` through the shared OS allowlist, prepared worker environment and
+final shell filter, while excluding credentials and inherited native-home/temp
+selection. The runtime metadata observer uses that same host filter. A separate
+manual MXC OS probe can establish command startup and bounded workspace writes;
+it is neither native model evidence nor supervised-agent qualification.
+
 `npm run perf:verify-workflow-transaction` compares the historical, grouped,
 scoped and `--transaction` source CLI preparations on the same activated fixture.
 It checks exact admission/recommendation parity, compact.v2 schema, preset

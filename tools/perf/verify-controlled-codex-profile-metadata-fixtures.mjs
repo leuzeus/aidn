@@ -36,7 +36,7 @@ try {
       candidate_sha256: hash(fs.readFileSync(path.join(source, "src/adapters/agents/process-tree/windows-process-tree-controller.mjs"))) }; },
     run() { throw new Error("PURE_FIXTURE_MUST_NOT_LAUNCH"); },
   };
-  const base = { controller, nodeRuntime, candidateRoot, candidateInventory }, env = { ...(process.platform === "win32" ? { SystemRoot: process.env.SystemRoot } : {}), TEMP: cwd, TMP: cwd };
+  const base = { controller, nodeRuntime, candidateRoot, candidateInventory }, env = { ...(process.platform === "win32" ? { SystemRoot: process.env.SystemRoot } : {}), SystemDrive: "C:", TEMP: cwd, TMP: cwd };
   const server = path.join(root, "fake-app-server.mjs");
   fs.writeFileSync(server, `import fs from 'node:fs';import readline from 'node:readline';import {spawn} from 'node:child_process';
 const [mode,sentinel]=process.argv.slice(2);let started=false;
