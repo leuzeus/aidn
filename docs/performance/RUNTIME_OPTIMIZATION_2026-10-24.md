@@ -324,9 +324,10 @@ current client/package. No whole-development numerical target is claimed met.
 
 - Internal model tokens, hidden provider residency, exact DB transaction and
   round-trip counts: unknown. No byte-to-token or billing estimate is substituted.
-- Transaction plus production rollover: NOT EXECUTED. The exact native lifecycle
-  qualification failed; its two observed later window calls do not authorize
-  bypassing that qualification.
+- Transaction plus production rollover: NOT EXECUTED. The earlier native
+  lifecycle attempt failed. The later clean-source three-window ledger research
+  passes, as retained below, but no trusted production integration or complete
+  application comparison is qualified by that separate workload.
 - Current installed-client full application A/B: ATTEMPTED, NO VALID SAMPLES.
   Later native attempts and the G-only physical-identity precondition failure
   are retained below and in the follow-up ledger. They do not provide a current
@@ -726,7 +727,7 @@ it does not equate a supported opt-in route with default installed adoption.
 | --- | --- | --- |
 | Compact nominal agent preparation | Bounded transaction defaults, complete-unit policy validation and no implicit broad fallback pass source/preparation checks | Native qualification and promotion of the ordinary installed skill/startup route |
 | Fewer model interactions | Repeated native preparation oracle passes with seven versus three responses | Complete installed-task A/B with the same functional and workflow oracle |
-| Supported continuation | Explicit admitted capsule capture and fresh validated resume; native limitations retained | Native rollover remains unqualified and is not promoted |
+| Supported continuation | Explicit admitted capture/resume and a later native three-window ledger research PASS | Production integration remains unqualified; no automatic promotion follows |
 | Mutualized reads and parsing | Existing observation fences retained, invocation-local parse gain measured, canonical backend correction verified | No end-to-end gain is inferred from the CPU result |
 | Final source qualification | Fresh complete run: 59 PASS, two FAIL, one SKIP; both repaired gates subsequently pass at clean source `2130db42c7a77f7a2265735582deb8d7b0159d85` | Initial failure and optional shared-smoke SKIP remain explicit; no remote admission or native promotion follows |
 
@@ -843,3 +844,50 @@ model context before assertions and observes source dirtiness from Git. The
 model's bounded refusal, native order/window checks and qualification gate remain
 unchanged. A fresh native observation can now distinguish a capture failure from
 an actual rollover failure instead of losing the child diagnostic.
+
+
+### Fresh native three-window ledger result
+
+The instrumented source at clean commit
+`2211649b89a4d64a17d15c251aafb9e46621e7f7` passes one fresh, isolated native
+ledger qualification. The exact client remains 0.164.0-alpha.11.1, SHA-256
+`1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098`,
+with gpt-6.1-sol/high/default. All experiment files and copied temporary
+credentials reside on G. A containing Windows Job owns the Node qualifier,
+app-server, bridge and descendants with a fixed ten-minute bound; it confirms
+zero descendants after completion. The source commit and checkout stay unchanged.
+
+Raw events establish three unique native `new_context` requests and three
+matching acknowledgements, not model statements or scheduled conversations.
+Every round has an actual admitted checkpoint before dispatch, acknowledgement,
+fresh resume, exact proof retrieval and an accepted submission of all nine
+answers. The TODO survives and the final native window number is three. Five
+real checkpoint CLI invocations succeed, including initial and telemetry capture;
+all ten retained stdout/stderr diagnostic files match their byte/hash references.
+The ledger profile and Job checks pass; original config/auth files are preserved
+and copied credentials are removed.
+
+The retained failed attempt is not relabelled. Its first checkpoint callback
+refusal is not reproduced by either deterministic control or this native run,
+and its original cause remains unknown. No retry was issued within a failed
+window or weakened lifecycle/window criterion introduced. The new run supplies
+its own complete evidence instead of transferring the old attempt's partial
+results. Source cleanliness is observed rather than hard-coded.
+
+For this qualification workload only, 16 unique provider responses report
+278,253 cumulative input tokens, 243,328 cached input, 34,925 uncached input,
+1,306 output and 200 reasoning-output tokens. The report interval is 104,819 ms
+and includes fixture setup, checkpoints and model execution. These are native
+observations, not a matched A/B, a billing calculation or evidence of application
+performance improvement. Internal residency remains unavailable.
+
+This establishes bounded native ledger continuity in that observed environment.
+It does not qualify installed application development, persistent hook lifecycle,
+the supervised worker, automatic rollover or the default installed procedures.
+The API supplies no exact model revision, the trusted capability registry is not
+populated and autonomy remains false. The research qualifier's hooks are SKIP;
+existing project-hook approval is a separate observation. The remaining native
+application work still requires a compatible ready backend and the complete
+fixed oracle. The operator reports no setup action in the desktop interface;
+the selected CLI's help exposes a manual elevated setup command. Its effects
+are prepared for review outside the checkout, not executed by AIDN.

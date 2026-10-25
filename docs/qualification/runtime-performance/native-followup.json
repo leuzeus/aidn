@@ -472,5 +472,79 @@
       "all_observed_hooks_enabled_and_trusted": true,
       "qualification": "NOT_GRANTED"
     }
-  ]
+  ],
+  "native_ledger_research": {
+    "status": "PASS",
+    "scope": "Clean-source native model-owned-ledger research on G; not installed application A/B, public worker or autonomous capability promotion",
+    "source_commit": "2211649b89a4d64a17d15c251aafb9e46621e7f7",
+    "source_dirty": false,
+    "source_preserved": true,
+    "client_version": "0.164.0-alpha.11.1",
+    "client_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "service_tier": "default",
+    "model_revision": null,
+    "raw_report_sha256": "aa79ad674be3d8d5408ac78075e3280b0dae348d6df65c31f692f096cc4b2d8a",
+    "raw_events_sha256": "4c43c9bf2a5817d6d5b364d82540c26f65b5dc11f51e69d30667f4d3810fdb5d",
+    "supervisor_summary_sha256": "58d7e77897c626da90699a1879441bd3336fb5280b81402cf505224acad8b3a9",
+    "actual_new_context_calls": 3,
+    "matching_acknowledgements": 3,
+    "final_window_number": 3,
+    "successful_submissions": 3,
+    "cases_per_submission": 9,
+    "ordered_rounds": [
+      {
+        "status": "PASS",
+        "native_requests": 1,
+        "checkpoint_before_dispatch": true,
+        "acknowledged": true,
+        "fresh_restore_after_dispatch": true,
+        "exact_retrieval_after_dispatch": true,
+        "continuation_submitted": true
+      },
+      {
+        "status": "PASS",
+        "native_requests": 1,
+        "checkpoint_before_dispatch": true,
+        "acknowledged": true,
+        "fresh_restore_after_dispatch": true,
+        "exact_retrieval_after_dispatch": true,
+        "continuation_submitted": true
+      },
+      {
+        "status": "PASS",
+        "native_requests": 1,
+        "checkpoint_before_dispatch": true,
+        "acknowledged": true,
+        "fresh_restore_after_dispatch": true,
+        "exact_retrieval_after_dispatch": true,
+        "continuation_submitted": true
+      }
+    ],
+    "todo_preserved": true,
+    "checkpoint_cli_invocations": 5,
+    "checkpoint_diagnostic_files_verified": 10,
+    "provider_responses": 16,
+    "observed_usage": {
+      "inputTokens": 278253,
+      "cachedInputTokens": 243328,
+      "outputTokens": 1306,
+      "reasoningOutputTokens": 200,
+      "uncachedInputTokens": 34925
+    },
+    "elapsed_report_ms": 104819,
+    "process_cleanup": "confirmed",
+    "active_descendants": 0,
+    "temporary_credentials_removed": true,
+    "source_config_unchanged": true,
+    "source_auth_unchanged": true,
+    "native_hooks": "SKIP",
+    "autonomy_qualified": false,
+    "limits": [
+      "Earlier failed native attempt remains unchanged and its checkpoint refusal is not causally explained.",
+      "Model revision is unavailable and no trusted production integration is registered.",
+      "Counts describe this qualification workload, not an end-to-end performance gain."
+    ]
+  }
 }
