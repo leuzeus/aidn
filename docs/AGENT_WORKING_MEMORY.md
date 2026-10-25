@@ -147,6 +147,17 @@ concatenated and no shared relay is written.
 
 ## Conditional lifecycle candidate
 
+At a phase or handoff boundary, or after a measured residency warning, hosts may
+explicitly call the internal lifecycle service's `prepareContinuation({ write:
+true })`. It uses the ordinary admitted checkpoint port, then the fresh read-only
+resume port. It returns only a current validated capsule, with
+`native_rollover: false`, `requires_fresh_admission: true` and no authorization.
+Missing resume, failed capture, obsolete/corrupt capsule or changed evidence
+refuses preparation. No native qualification is inferred. The host must carry
+the capsule and artifact references through its supported continuation route;
+this method cannot clear history, start a window or measure internal residency.
+The existing explicit checkpoint/handoff CLI remains the user-facing route.
+
 `src/application/codex/context-lifecycle-service.mjs` composes explicit checkpoint,
 read-only resume and native window-request ports. A host can bind its qualified
 `PreCompact`, `PostCompact`, `SessionStart` and `SubagentStop` events to those

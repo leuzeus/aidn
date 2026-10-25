@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
-import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { copyFixtureToTmp, initGitRepo, removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
 import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function upsertScalarLine(text, key, value) {
@@ -122,7 +122,8 @@ function runJson(script, scriptArgs, env = {}) {
 
 function runCase(tmpRoot, testCase) {
   const sourceTarget = path.resolve(process.cwd(), testCase.fixture);
-  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-cycle-close-${testCase.id}`);
+  const tracked = createTrackedFixtureFilter(sourceTarget, path.resolve(import.meta.dirname, '../..'));
+  const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-cycle-close-${testCase.id}`, { filter: tracked });
   if (typeof testCase.mutate === "function") {
     testCase.mutate(targetRoot);
   }

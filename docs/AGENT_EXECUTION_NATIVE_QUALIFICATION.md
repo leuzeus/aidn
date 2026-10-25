@@ -255,6 +255,17 @@ on Windows. A collision with a required variable, a new or duplicate name, a
 nonempty effective value, or a wider inherited filter refuses execution.
 The selected profile is never rewritten to remove its custom environment.
 
+The bounded OS environment retains Windows `SystemDrive` as well as
+`SystemRoot`. Native MXC command startup requires the drive value; stripping it
+can prevent a command before any model or admission runs. Metadata collection,
+worker preparation and final shell filters use the same closed host allowlist.
+The controlled metadata bridge and validation launcher also admit this bootstrap
+value; the verifier child's separate environment boundary remains unchanged.
+This bootstrap value grants no filesystem/network permission and does not
+forward credentials, inherited profile selection or unapproved variables.
+An OS-only MXC probe does not qualify this document's supervised `elevated`
+executor or substitute for its native cases.
+
 Fixtures prove these bindings and refusals with synthetic inputs. They do not
 qualify an actual profile, backend or OS. The four native cases and preservation
 checks must pass on the exact candidate before this capability is available.

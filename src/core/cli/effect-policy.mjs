@@ -1124,6 +1124,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "projector",
     effectVariants: [
       { id: "grouped-consultation", whenArgs: ["--grouped"], unlessArgs: ["--write"], effectClass: "read-only" },
+      { id: "transaction-preparation", whenArgs: ["--transaction"], unlessArgs: ["--write"], effectClass: "read-only" },
       { id: "retain-diagnostic", whenArgs: ["--write"], effectClass: "mutating" },
     ],
     jsonContract: "codex-workflow-step.v1.schema.json",

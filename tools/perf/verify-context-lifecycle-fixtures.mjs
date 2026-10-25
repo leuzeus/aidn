@@ -23,6 +23,32 @@ const current = { status: "current", requires_fresh_admission: true, capsule: { 
 let checks = 0;
 async function check(name, action) { await action(); checks += 1; console.log(`PASS ${name}`); }
 try {
+  await check("explicit continuation prepares only a freshly validated capsule without native qualification", async () => {
+    const order = [];
+    const service = createContextLifecycleService({ identity,
+      checkpoint: async () => { order.push("checkpoint"); return captured; },
+      resume: async (...args) => { assert.deepEqual(args, []); order.push("resume"); return current; },
+      newContext: () => { throw new Error("manual continuation must not dispatch"); } });
+    assert.equal((await service.prepareContinuation()).reason, "explicit_checkpoint_write_required");
+    assert.deepEqual(order, []);
+    const prepared = await service.prepareContinuation({ write: true });
+    assert.equal(prepared.status, "continuation_prepared"); assert.equal(prepared.native_rollover, false);
+    assert.equal(prepared.requires_fresh_admission, true); assert.equal(prepared.write_authorization, false);
+    assert.deepEqual(prepared.resume, current); assert.deepEqual(order, ["checkpoint", "resume"]);
+    assert.equal(service.capabilities.can_request_new_context, false);
+  });
+  await check("explicit continuation refuses stale, invalid or absent capsule and missing resume before effects", async () => {
+    for (const result of [{ status: "stale", requires_fresh_admission: true },
+      { status: "invalid", requires_fresh_admission: true }, { status: "current", requires_fresh_admission: true },
+      { ...current, requires_fresh_admission: false }]) {
+      const service = createContextLifecycleService({ identity, checkpoint: async () => captured, resume: async () => result });
+      const refused = await service.prepareContinuation({ write: true });
+      assert.equal(refused.reason, "fresh_capsule_unavailable"); assert.equal(refused.write_authorization, false);
+      assert.equal(refused.resume, undefined);
+    }
+    const missing = createContextLifecycleService({ identity, checkpoint: () => { throw new Error("must not capture"); } });
+    assert.equal((await missing.prepareContinuation({ write: true })).reason, "resume_port_unavailable");
+  });
   await check("unknown, ambiguous and fixture-only models retain harness fallback", async () => {
     for (const profiles of [[], [{ ...qualified, proof_class: "fixture" }], [qualified, qualified],
       [{ ...qualified, context_bench: {} }], [{ ...qualified, mode: "clm" }],

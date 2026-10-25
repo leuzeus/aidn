@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { initGitRepo, removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture, completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
 
 const FAILURE_INJECTION_ENV = "AIDN_COORDINATOR_EXECUTE_FIXTURE_INJECT_FAILURE";
@@ -249,7 +249,8 @@ function main() {
 
     for (const [name, target] of [["ready", readyTarget], ["warn", warnTarget], ["blocked", blockedTarget], ["ready", escalatedTarget], ["warn", roleBlockedTarget]]) {
       const sourceRoot = path.join(handoffFixturesRoot, name);
-      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+      const tracked = createTrackedFixtureFilter(sourceRoot, repoRoot);
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => tracked(source) && isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
     }
     installSharedPlanningFixture(readyTarget);
     writeDualConfig(warnTarget);

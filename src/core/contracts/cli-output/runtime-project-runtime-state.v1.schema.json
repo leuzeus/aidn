@@ -5,16 +5,25 @@
   "type": "object",
   "x-aidn-command": "aidn runtime project-runtime-state --json",
   "x-aidn-contract-version": "cli-output-v1",
-  "required": [
-    "target_root",
-    "workspace",
-    "shared_state_backend",
-    "shared_runtime_validation",
-    "output_file",
-    "written",
-    "write",
-    "digest",
-    "consistency"
+  "anyOf": [
+    { "required": ["target_root", "workspace", "shared_state_backend", "shared_runtime_validation", "output_file", "written", "write", "digest", "consistency"] },
+    {
+      "required": ["ok", "target_root", "effect_class", "written", "write", "error"],
+      "properties": {
+        "ok": { "const": false },
+        "written": { "const": false },
+        "effect_class": { "type": "string" },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "const": "RUNTIME_HYDRATED_ARTIFACT_PATH_INVALID" },
+            "message": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
   ],
   "properties": {
     "target_root": { "type": "string" },

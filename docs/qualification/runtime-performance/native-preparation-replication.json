@@ -1,0 +1,898 @@
+{
+  "evidence": "native-source-preparation-task",
+  "status": "PASS",
+  "source_commit": "74236e75a2918b849a9c4e541424eb4067e0786a",
+  "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "runtime_source_hashes": {
+    "tools/codex/workflow-step.mjs": "a93e168decc316965c0233110eee293b136b0cafa2ef6dd95b5a9c2a13faa07e",
+    "src/application/codex/task-context-profile.mjs": "6c8254437c16ea95854bddc66d6b5885053a8267beb1b34ab88654203046336d",
+    "src/application/codex/agent-view-projection.mjs": "525ec3084b41fa74991f29a0727f90406f25b1996309299ef9feb881e9aacde0",
+    "src/application/runtime/workflow-observation-service.mjs": "0bfb279df3a0439779023aa0d555474abf42870ec93319cdde3aaa8ea6cc2ce8",
+    "src/application/runtime/artifact-query-service.mjs": "9f4c55321ce0f784ab625fbc7b698400deca8406de4a6b5680533e37513def49",
+    "tools/runtime/db-first-runtime-view-lib.mjs": "6260c4763103e27f6c5ad929ab9cd64788bac84969455648b69d6ad778ec22bc"
+  },
+  "binary_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098",
+  "root_model_settings": "model = \"gpt-6.1-sol\"\nmodel_reasoning_effort = \"high\"\nmodel_reasoning_summary = \"concise\"\nservice_tier = \"default\"",
+  "general_product_performance": "not_established",
+  "actual_rollovers": 0,
+  "schema_version": 1,
+  "raw_events_sha256": "da6aa3e909249233b057376164cb23fe96c55e7dec68ca178861971c775dd210",
+  "measurement_boundary": {
+    "setup_and_thread_start": "excluded",
+    "turn_start_through_completion_including_real_cli": "measured",
+    "cli_fixture": "warm",
+    "model_counters": "unique rawResponse/completed, client-reported",
+    "provider_body_residency": "UNAVAILABLE",
+    "billed_cost": "NOT_ESTIMATED",
+    "db_transactions_and_roundtrips": null
+  },
+  "rows": [
+    {
+      "variant": "historical",
+      "sample": 0,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 1,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 1653.5608999999968,
+      "hydrations": 2,
+      "elapsed_ms": 8334.566100000004,
+      "actual_rollovers": 0,
+      "model_responses": 3,
+      "tokens": {
+        "input_tokens": 80795,
+        "cached_input_tokens": 47232,
+        "output_tokens": 178,
+        "reasoning_output_tokens": 33,
+        "uncached_input_tokens": 33563
+      },
+      "raw_cli_result_bytes": 71908,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 72063,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 72108,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 65,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 33208,
+          "cached_input_tokens": 14080,
+          "output_tokens": 101,
+          "reasoning_output_tokens": 33,
+          "uncached_input_tokens": 19128,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 33343,
+          "cached_input_tokens": 33152,
+          "output_tokens": 12,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 191,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "compact_grouped",
+      "sample": 0,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 1,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 3124.912399999994,
+      "hydrations": 1,
+      "elapsed_ms": 10371.640999999996,
+      "actual_rollovers": 0,
+      "model_responses": 3,
+      "tokens": {
+        "input_tokens": 64555,
+        "cached_input_tokens": 39040,
+        "output_tokens": 156,
+        "reasoning_output_tokens": 0,
+        "uncached_input_tokens": 25515
+      },
+      "raw_cli_result_bytes": 40458,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 40661,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 40706,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 59,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 25108,
+          "cached_input_tokens": 14080,
+          "output_tokens": 61,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 11028,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 25203,
+          "cached_input_tokens": 24960,
+          "output_tokens": 36,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 243,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "scoped_grouped",
+      "sample": 0,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 1,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 3168.4870999999985,
+      "hydrations": 1,
+      "elapsed_ms": 8931.423300000002,
+      "actual_rollovers": 0,
+      "model_responses": 3,
+      "tokens": {
+        "input_tokens": 49108,
+        "cached_input_tokens": 31360,
+        "output_tokens": 176,
+        "reasoning_output_tokens": 0,
+        "uncached_input_tokens": 17748
+      },
+      "raw_cli_result_bytes": 9882,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 10127,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 10172,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 70,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 17382,
+          "cached_input_tokens": 14080,
+          "output_tokens": 66,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 3302,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 17482,
+          "cached_input_tokens": 17280,
+          "output_tokens": 40,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 202,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "transaction",
+      "sample": 0,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 1,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 3489.9177999999956,
+      "hydrations": 1,
+      "elapsed_ms": 10875.727399999989,
+      "actual_rollovers": 0,
+      "model_responses": 3,
+      "tokens": {
+        "input_tokens": 49268,
+        "cached_input_tokens": 31488,
+        "output_tokens": 151,
+        "reasoning_output_tokens": 0,
+        "uncached_input_tokens": 17780
+      },
+      "raw_cli_result_bytes": 10264,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 10418,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 10463,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 69,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 17462,
+          "cached_input_tokens": 14080,
+          "output_tokens": 66,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 3382,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 17562,
+          "cached_input_tokens": 17408,
+          "output_tokens": 16,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 154,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "historical_microsteps",
+      "sample": 0,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 5,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 7546.973100000003,
+      "hydrations": 2,
+      "elapsed_ms": 20899.8269,
+      "actual_rollovers": 0,
+      "model_responses": 7,
+      "tokens": {
+        "input_tokens": 191299,
+        "cached_input_tokens": 151808,
+        "output_tokens": 340,
+        "reasoning_output_tokens": 40,
+        "uncached_input_tokens": 39491
+      },
+      "raw_cli_result_bytes": 94885,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 7003,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 7015,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 39602,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 39610,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 2305,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 95580,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 63,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 16034,
+          "cached_input_tokens": 14080,
+          "output_tokens": 34,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 1954,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 17798,
+          "cached_input_tokens": 15872,
+          "output_tokens": 34,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 1926,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 4,
+          "input_tokens": 27893,
+          "cached_input_tokens": 17664,
+          "output_tokens": 49,
+          "reasoning_output_tokens": 13,
+          "uncached_input_tokens": 10229,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 5,
+          "input_tokens": 38015,
+          "cached_input_tokens": 27776,
+          "output_tokens": 34,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 10239,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 6,
+          "input_tokens": 38593,
+          "cached_input_tokens": 37888,
+          "output_tokens": 95,
+          "reasoning_output_tokens": 27,
+          "uncached_input_tokens": 705,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 7,
+          "input_tokens": 38722,
+          "cached_input_tokens": 38528,
+          "output_tokens": 31,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 194,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "compact_grouped",
+      "sample": 1,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 1,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 3465.2130999999936,
+      "hydrations": 1,
+      "elapsed_ms": 11975.49040000001,
+      "actual_rollovers": 0,
+      "model_responses": 3,
+      "tokens": {
+        "input_tokens": 64546,
+        "cached_input_tokens": 39040,
+        "output_tokens": 178,
+        "reasoning_output_tokens": 40,
+        "uncached_input_tokens": 25506
+      },
+      "raw_cli_result_bytes": 40458,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 40661,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 40706,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 58,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 25080,
+          "cached_input_tokens": 14080,
+          "output_tokens": 108,
+          "reasoning_output_tokens": 40,
+          "uncached_input_tokens": 11000,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 25222,
+          "cached_input_tokens": 24960,
+          "output_tokens": 12,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 262,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "scoped_grouped",
+      "sample": 1,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 1,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 3463.030799999993,
+      "hydrations": 1,
+      "elapsed_ms": 10282.491500000004,
+      "actual_rollovers": 0,
+      "model_responses": 3,
+      "tokens": {
+        "input_tokens": 49086,
+        "cached_input_tokens": 31360,
+        "output_tokens": 160,
+        "reasoning_output_tokens": 0,
+        "uncached_input_tokens": 17726
+      },
+      "raw_cli_result_bytes": 9882,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 10127,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 10172,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 63,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 17371,
+          "cached_input_tokens": 14080,
+          "output_tokens": 66,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 3291,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 17471,
+          "cached_input_tokens": 17280,
+          "output_tokens": 31,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 191,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "transaction",
+      "sample": 1,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 1,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 3026.4221000000107,
+      "hydrations": 1,
+      "elapsed_ms": 8662.829400000002,
+      "actual_rollovers": 0,
+      "model_responses": 3,
+      "tokens": {
+        "input_tokens": 49240,
+        "cached_input_tokens": 31360,
+        "output_tokens": 165,
+        "reasoning_output_tokens": 0,
+        "uncached_input_tokens": 17880
+      },
+      "raw_cli_result_bytes": 10264,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 10418,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 10463,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 63,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 17448,
+          "cached_input_tokens": 14080,
+          "output_tokens": 66,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 3368,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 17548,
+          "cached_input_tokens": 17280,
+          "output_tokens": 36,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 268,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "historical_microsteps",
+      "sample": 1,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 5,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 7202.9024999999965,
+      "hydrations": 2,
+      "elapsed_ms": 23356.50959999999,
+      "actual_rollovers": 0,
+      "model_responses": 7,
+      "tokens": {
+        "input_tokens": 191312,
+        "cached_input_tokens": 151808,
+        "output_tokens": 321,
+        "reasoning_output_tokens": 37,
+        "uncached_input_tokens": 39504
+      },
+      "raw_cli_result_bytes": 94885,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 7003,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 7015,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 39602,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 39610,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 2305,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 95580,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 63,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 16034,
+          "cached_input_tokens": 14080,
+          "output_tokens": 34,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 1954,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 17798,
+          "cached_input_tokens": 15872,
+          "output_tokens": 34,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 1926,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 4,
+          "input_tokens": 27899,
+          "cached_input_tokens": 17664,
+          "output_tokens": 51,
+          "reasoning_output_tokens": 15,
+          "uncached_input_tokens": 10235,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 5,
+          "input_tokens": 38019,
+          "cached_input_tokens": 27776,
+          "output_tokens": 34,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 10243,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 6,
+          "input_tokens": 38597,
+          "cached_input_tokens": 37888,
+          "output_tokens": 90,
+          "reasoning_output_tokens": 22,
+          "uncached_input_tokens": 709,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 7,
+          "input_tokens": 38721,
+          "cached_input_tokens": 38528,
+          "output_tokens": 15,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 193,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "variant": "historical",
+      "sample": 1,
+      "model": "gpt-6.1-sol",
+      "provider": "openai",
+      "consultations": 1,
+      "oracle": "PASS",
+      "cli_elapsed_ms": 1486.7251000000106,
+      "hydrations": 2,
+      "elapsed_ms": 9617.656799999997,
+      "actual_rollovers": 0,
+      "model_responses": 3,
+      "tokens": {
+        "input_tokens": 80664,
+        "cached_input_tokens": 47104,
+        "output_tokens": 167,
+        "reasoning_output_tokens": 31,
+        "uncached_input_tokens": 33560
+      },
+      "raw_cli_result_bytes": 71908,
+      "tool_outputs": [
+        {
+          "status": "sent",
+          "json_bytes": 72063,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        },
+        {
+          "status": "sent",
+          "json_bytes": 45,
+          "output_profile": "bounded-context.v1",
+          "provider_body_residency": "UNAVAILABLE",
+          "write_authorization": false
+        }
+      ],
+      "transmitted_tool_json_bytes": 72108,
+      "completed_responses": [
+        {
+          "response_ordinal": 1,
+          "input_tokens": 14244,
+          "cached_input_tokens": 0,
+          "output_tokens": 61,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 14244,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 2,
+          "input_tokens": 33146,
+          "cached_input_tokens": 14080,
+          "output_tokens": 94,
+          "reasoning_output_tokens": 31,
+          "uncached_input_tokens": 19066,
+          "provider_body_residency": "UNAVAILABLE"
+        },
+        {
+          "response_ordinal": 3,
+          "input_tokens": 33274,
+          "cached_input_tokens": 33024,
+          "output_tokens": 12,
+          "reasoning_output_tokens": 0,
+          "uncached_input_tokens": 250,
+          "provider_body_residency": "UNAVAILABLE"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "historical": {
+      "samples": 2,
+      "mean_ms": 8976.11145,
+      "p50_ms": 8976.11145,
+      "p95_ms": 9617.656799999997,
+      "min_ms": 8334.566100000004,
+      "max_ms": 9617.656799999997,
+      "mean_model_responses": 3,
+      "mean_input_tokens": 80729.5,
+      "mean_uncached_input_tokens": 33561.5
+    },
+    "compact_grouped": {
+      "samples": 2,
+      "mean_ms": 11173.565700000003,
+      "p50_ms": 11173.565700000003,
+      "p95_ms": 11975.49040000001,
+      "min_ms": 10371.640999999996,
+      "max_ms": 11975.49040000001,
+      "mean_model_responses": 3,
+      "mean_input_tokens": 64550.5,
+      "mean_uncached_input_tokens": 25510.5
+    },
+    "scoped_grouped": {
+      "samples": 2,
+      "mean_ms": 9606.957400000003,
+      "p50_ms": 9606.957400000003,
+      "p95_ms": 10282.491500000004,
+      "min_ms": 8931.423300000002,
+      "max_ms": 10282.491500000004,
+      "mean_model_responses": 3,
+      "mean_input_tokens": 49097,
+      "mean_uncached_input_tokens": 17737
+    },
+    "transaction": {
+      "samples": 2,
+      "mean_ms": 9769.278399999996,
+      "p50_ms": 9769.278399999996,
+      "p95_ms": 10875.727399999989,
+      "min_ms": 8662.829400000002,
+      "max_ms": 10875.727399999989,
+      "mean_model_responses": 3,
+      "mean_input_tokens": 49254,
+      "mean_uncached_input_tokens": 17830
+    },
+    "historical_microsteps": {
+      "samples": 2,
+      "mean_ms": 22128.168249999995,
+      "p50_ms": 22128.168249999995,
+      "p95_ms": 23356.50959999999,
+      "min_ms": 20899.8269,
+      "max_ms": 23356.50959999999,
+      "mean_model_responses": 7,
+      "mean_input_tokens": 191305.5,
+      "mean_uncached_input_tokens": 39497.5
+    }
+  },
+  "cleanup": {
+    "process_stopped": true,
+    "temporary_credentials_removed": true,
+    "source_config_unchanged": true,
+    "source_auth_unchanged": true
+  },
+  "limits": [
+    "Two unblinded trials per variant; not statistical significance.",
+    "Preparation extraction oracle only; no application development/closure qualification.",
+    "No native production rollover.",
+    "No internal provider residency or billed-token inference."
+  ]
+}

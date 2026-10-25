@@ -15,7 +15,38 @@ discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
 and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIES.md).
 
+## Ordinary procedures and explicit compact views
+
+Startup and the thirteen managed skills retain their compatible admission
+procedure. The eleven documented hook invocations also retain their ordinary
+view selector. An experiment forced `--view agent` on those admissions and
+hooks; the four qualified trials in
+[the performance report](performance/RUNTIME_OPTIMIZATION_2026-10-25_RESULTS.md)
+found fewer model responses but higher cumulative/uncached inputs and elapsed
+time. That combined default-adoption experiment is withdrawn. The comparison
+does not isolate the individual effects of admission/hook formatting or their
+exclusive contribution among the candidate's other code changes.
+
+The existing `runtime pre-write-admit --view agent` and
+`codex run-json-hook --view agent` interfaces remain explicit options with their
+same decisions, effects and complete diagnostics. A projection cannot replace
+activation, required authority reads, hydration, strict nested-hook checks or
+fresh write admission. Source asset changes require an installation/upgrade to
+affect a client; a frozen experimental package remains unchanged.
+
+The grouped transaction remains an explicit experiment. The retained cold
+whole-authority fixture exceeds its 64 KiB hard limit; no broad fallback or
+truncation is introduced to make it fit. Warm preparation evidence and the
+ordinary complete application comparison are separate qualifications.
+
 ## Opt-in compact agent views
+
+`workflow-step --transaction --skills <known-skills> --json` composes grouped
+consultation, compact.v2, token-efficiency.v1 and transition history in one
+bounded preparation. It is read-only by default and refuses missing accepted
+policy or conflicting full selectors. Its additive preparation descriptor grants
+no write authority; every actual writer still needs current admission and fences.
+It exits nonzero on a blocked result. `--write` alone adds diagnostic retention.
 
 `workflow-step --view agent --grouped --json` additionally opts into one
 invocation-local observation. It evaluates separate admissions and the
@@ -96,8 +127,10 @@ client's adoption revision/history process. A task query such as
 with `--context-task-file <local.json>` (bounded local JSON, at most 64 KiB).
 Rules can also match canonical `modes`, `cycleStates` or the presence of a
 `blocked` skill. They only add obligations; the stable mandatory set remains.
-Unknown skills or missing mappings use historical full selection. Invalid or
-unaccepted declared policies refuse. No client policy is created automatically.
+Unknown skills, absent policies or missing mappings block the bounded route with
+remediation and no hydration. Invalid or unaccepted declared policies refuse.
+There is no implicit full fallback or budget expansion. Explicit full diagnostics
+remain available without this profile. No client policy is created automatically.
 
 The experimental final compact JSON target is 16,384 bytes with a maximum of
 65,536. `--bundle-target-bytes` and `--bundle-hard-limit-bytes` can select smaller

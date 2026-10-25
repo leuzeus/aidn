@@ -10,6 +10,7 @@ import { loadSharedStateSnapshot } from '../../src/application/runtime/shared-st
 import { createRuntimeArtifactStore } from '../../src/application/runtime/runtime-persistence-service.mjs';
 import { createRuntimePersistenceFakePgClientFactory } from './runtime-persistence-fake-pg-lib.mjs';
 import { removePathWithRetry } from './test-git-fixture-lib.mjs';
+import { deriveRuntimeStatePrioritizedArtifacts } from '../../src/application/runtime/runtime-state-projector-use-case.mjs';
 
 const sha = value => createHash('sha256').update(value).digest('hex');
 function inventory(root) {
@@ -64,6 +65,25 @@ export async function verifyCanonicalHandoffAdmission() {
       assert.deepEqual(inventory(root), before);
     });
     configure('db-only'); await store.writeIndexProjection({ payload });
+    await check('hydrated_audit_keys_preserve_canonical_handoff_references', async () => {
+      const changed = structuredClone(payload);
+      const selected = changed.artifacts.filter(row => row.path === 'snapshots/context-snapshot.md'
+        || row.path === 'cycles/C101-feature-alpha/status.md');
+      assert.equal(selected.length, 2);
+      const prioritized = deriveRuntimeStatePrioritizedArtifacts({}, { artifacts: selected });
+      for (const artifact of selected) assert(prioritized.includes(`docs/audit/${artifact.path}`),
+        'Hydrated audit keys must become repository-relative digest references');
+      const packet = changed.artifacts.find(row => row.path === 'HANDOFF-PACKET.md');
+      packet.content = packet.content.replace('prioritized_artifacts:',
+        `prioritized_artifacts:\n${prioritized.map(ref => `- ${ref}`).join('\n')}`);
+      packet.sha256 = sha(packet.content);
+      await store.writeIndexProjection({ payload: changed });
+      const before = inventory(root), result = await admit();
+      assert.equal(result.admitted, true, JSON.stringify(result.issues));
+      assert.equal(result.packet_source, 'postgres');
+      assert.deepEqual(inventory(root), before);
+    });
+    await store.writeIndexProjection({ payload });
     await check('invalid_canonical_head_refuses_visible_bootstrap', async () => {
       const head = [...fake.state.runtimeHeads.values()].find(row => row.head_key === 'current_state');
       assert(head); const originalPayload = head.payload_json;
@@ -102,7 +122,9 @@ export async function verifyCanonicalHandoffAdmission() {
     await check('canonical_required_artifact_cannot_be_satisfied_by_stale_projection', async () => {
       const changed = structuredClone(payload);
       const packet = changed.artifacts.find(a => a.path === 'HANDOFF-PACKET.md');
-      packet.content = packet.content.replace('prioritized_artifacts:', 'prioritized_artifacts:\n- docs/audit/only-visible.md'); packet.sha256 = sha(packet.content);
+      const references = deriveRuntimeStatePrioritizedArtifacts({}, { artifacts: [{ path: 'only-visible.md' }] });
+      assert(references.includes('docs/audit/only-visible.md'), 'A missing canonical source must not be dropped from derived priorities');
+      packet.content = packet.content.replace('prioritized_artifacts:', `prioritized_artifacts:\n${references.map(ref => `- ${ref}`).join('\n')}`); packet.sha256 = sha(packet.content);
       write('docs/audit/only-visible.md', 'stale visible evidence'); await store.writeIndexProjection({ payload: changed });
       const before = inventory(root); const result = await admit();
       assert.equal(result.admitted, false); assert(result.issues.some(x => x.includes('only-visible.md')));

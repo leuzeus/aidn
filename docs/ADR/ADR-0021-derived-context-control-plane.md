@@ -80,6 +80,17 @@ requires a fresh full read and claims no retained record, source revision or
 authorization. View selection creates no persistence. An unavailable decision
 stops with a typed diagnostic instead of implying canonical fallback or success.
 
+An experiment selected that compact admission view and the existing hook agent
+view in the source startup contract and managed procedures. On 2026-10-25,
+cohort 033 completed two qualified trials per variant: forcing those selectors
+reduced responses but increased cumulative/uncached input and elapsed time.
+The combined nominal adoption is withdrawn; ordinary source procedures retain
+their compatible defaults. Explicit compact views remain available and keep
+their independent decision/contract parity. This outcome does not identify which
+individual selector or candidate code change caused a difference, promote a grouped procedure, alter
+mandatory reads or fresh admission, or rewrite the frozen experimental package.
+See the [closed performance result](../performance/RUNTIME_OPTIMIZATION_2026-10-25_RESULTS.md).
+
 An explicitly grouped workflow consultation can share one complete canonical
 snapshot and each needed shared planning/relay observation within its private
 asynchronous invocation. These internal values cannot be supplied through JSON,
@@ -105,12 +116,26 @@ receipt. Common activation refusals retain the existing CLI boundary contract.
 
 The experimental `token-efficiency.v1` workflow profile derives the union of
 known admitted skills' context needs from client-owned accepted adoption data.
-Its `taskContextPolicies` extension declares a stable mandatory minimum and
+The 2026-10-24 `--transaction` composition selects grouped compact.v2,
+token-efficiency.v1 and transition history together for a bounded preparation.
+It introduces no new canonical information concept, write transaction, admission
+lease, persistent cache or shared schema. Every skill is still admitted
+sequentially; the private observation is revalidated before publication and the
+actual writer retains its independent admission, CAS and reservation fence.
+The full default remains compatible. In the bounded experimental procedure this
+composition is the nominal entry point, with explicit failure and remediation
+instead of an implicit full fallback. CLI defaults alone do not prove reduced
+native turns or installed procedure adoption.
+
+The `taskContextPolicies` extension declares a stable mandatory minimum and
 additive per-skill/task obligations. Operation/path labels cannot remove that
 minimum, accept an authority or grant admission. Existing complete Markdown
 selection enforces the accepted unit bindings, scope and dependency closure.
-Unknown skills or missing mappings retain the full historical selection path;
-an invalid/effectively unaccepted declared policy refuses instead of inventing
+As of the 2026-10-24 bounded-path amendment, unknown skills, absent policies or
+missing mappings refuse with remediation and no hydration. The bounded profile
+never expands implicitly to historical 256 KiB/1 MiB budgets. An explicit full
+view without the profile remains available for compatibility diagnostics.
+An invalid/effectively unaccepted declared policy refuses instead of inventing
 authority. Changing a client's effective policy requires its adoption revision
 and history procedure; no installed policy is silently populated.
 

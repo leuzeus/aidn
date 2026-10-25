@@ -1,0 +1,2172 @@
+{
+  "schema_version": 1,
+  "evidence": "native-followup-layered-observations",
+  "initial_candidate_sha256": "01c14eeea7cdcc2f51a9ab3b7f9ccb2a56009343c05deb0691a5b3a44d509257",
+  "owner_hook_approval": "RECEIVED_AND_OBSERVED",
+  "owner_profile_consent": "RECEIVED",
+  "owner_v2_maintenance_consent": "RECEIVED",
+  "legacy_worker": {
+    "execution": "EXECUTED_FIRST_CASE",
+    "gate": "FAIL",
+    "reason": "QUALIFICATION_AUTHORIZED_EFFECT_MISSING",
+    "admitted_patch_effect": "MISSING",
+    "out_of_scope_denials": 2,
+    "lost_ownership_denial": 1,
+    "worker_cleanup": "CONFIRMED",
+    "postgres_cleanup": "REMOVED",
+    "remaining_cases": "NOT_EXECUTED",
+    "product_application_verdict": "NOT_EVALUATED"
+  },
+  "legacy_profile_v1_final_observation": {
+    "status": "UNCONFIRMED",
+    "reason": "PROFILE_SETUP_STATE_CHANGED",
+    "worker_cleanup_is_separate": true
+  },
+  "profile_v2_preflight": {
+    "reason": "PROFILE_BACKEND_NOT_READY",
+    "observed_readiness": "updateRequired",
+    "metadata_execution": "EXECUTED",
+    "native_worker_execution": "NOT_RUN"
+  },
+  "mxc_probe_reports": [
+    {
+      "trial": "001",
+      "raw_summary_sha256": "2f15b1056345d0c0782819512abbe1826c5038e382ffd4e338dbec691202bfb7",
+      "evidence": "native-os-sandbox-diagnostic",
+      "requested_backend": "mxc",
+      "profile": ":workspace",
+      "model_calls": 0,
+      "cases": [
+        {
+          "name": "startup",
+          "outcome": "failed",
+          "exit_code": 1,
+          "cleanup": "confirmed",
+          "marker_observed": false
+        }
+      ],
+      "status": "FAIL_OS_ONLY",
+      "configuration_preserved": true,
+      "native_startup_refusal": "MXC requires nonempty Unicode host SystemDrive"
+    },
+    {
+      "trial": "002",
+      "raw_summary_sha256": "8d205d35966861e395973235c00fdb917b2035dde22ba53c5d7d0e7362c1d23f",
+      "evidence": "native-os-sandbox-diagnostic",
+      "requested_backend": "mxc",
+      "profile": ":workspace",
+      "model_calls": 0,
+      "cases": [
+        {
+          "name": "startup",
+          "outcome": "completed",
+          "exit_code": 0,
+          "cleanup": "confirmed",
+          "marker_observed": true
+        },
+        {
+          "name": "permissions",
+          "inside_write_read_remove": true,
+          "outside_write_denied": true,
+          "exit_code": 0,
+          "cleanup": "confirmed"
+        }
+      ],
+      "status": "PASS_OS_ONLY",
+      "configuration_preserved": true
+    },
+    {
+      "trial": "003",
+      "raw_summary_sha256": "8d205d35966861e395973235c00fdb917b2035dde22ba53c5d7d0e7362c1d23f",
+      "evidence": "native-os-sandbox-diagnostic",
+      "requested_backend": "mxc",
+      "profile": ":workspace",
+      "model_calls": 0,
+      "cases": [
+        {
+          "name": "startup",
+          "outcome": "completed",
+          "exit_code": 0,
+          "cleanup": "confirmed",
+          "marker_observed": true
+        },
+        {
+          "name": "permissions",
+          "inside_write_read_remove": true,
+          "outside_write_denied": true,
+          "exit_code": 0,
+          "cleanup": "confirmed"
+        }
+      ],
+      "status": "PASS_OS_ONLY",
+      "configuration_preserved": true
+    }
+  ],
+  "source_checks": {
+    "startup": 50,
+    "executor": 69,
+    "native_qualification_fixtures": 395,
+    "status": "PASS",
+    "native_model_qualification": "NOT_ESTABLISHED_BY_FIXTURES",
+    "controlled_metadata_bridge": "PASS",
+    "validation_launcher": "PASS"
+  },
+  "runtime_source_hashes": {
+    "src/core/agents/codex-startup-arguments.mjs": "db671a7f56dc789342b6ba429cb9609ff778e3d50f9707829e1d3f4b7005839b",
+    "src/adapters/agents/codex-cli-task-executor.mjs": "cd6b32deab2a0a76118e21258675dcd69b5240b8d7de4b4dc536e850be4813c2",
+    "src/application/runtime/codex-native-profile-observation-service.mjs": "f4c1ec65cd3a31104acbcb74f4138576c2df28275613be48d4a29f57c6912cb5",
+    "src/application/runtime/controlled-codex-profile-metadata.mjs": "ffcd567112bb5d61cefaafbabe1c19869a37e951e6ccb2e0fd4247adef747f22",
+    "src/adapters/runtime/codex-sandbox-validation-boundary.mjs": "28e07cf5022b7dd6592f13822f8c05f8631903a057c88f71d71f2ec2cdb2327c"
+  },
+  "full_application_ab": "ATTEMPTED_NO_VALID_SAMPLES",
+  "production_rollover": "NOT_QUALIFIED",
+  "current_application_candidate": {
+    "source_head": "09043656e1295cae2ee2152ff7d9addcff6eb6c7",
+    "archive_sha256": "6893c21c81a3e294173850d1ea38f34590c78205145f70e3cee4bc46f49ec8c0",
+    "release_family": {
+      "PASS": 3,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "internal_route": "ASSURED",
+    "harness_tests": 307,
+    "pilots": [
+      {
+        "trial": "pilot-001",
+        "native_execution": "EXECUTED",
+        "gate": "FAIL",
+        "classification": "precondition_failure",
+        "reason": "GLOBAL_RUNTIME_ACCESS_DENIED",
+        "product_verdict": "NOT_EVALUATED",
+        "responses": 2,
+        "elapsed_seconds": 77.657,
+        "worker_cleanup": "confirmed",
+        "active_descendants": 0,
+        "postgres_removed": true,
+        "raw_summary_sha256": "2fe9f9585c836d63ddf35b7e0000cc65bd3305001ceff5881e0ca63f2e4d91af",
+        "summary_semantic_correction_retained": true
+      },
+      {
+        "trial": "pilot-002",
+        "native_execution": "EXECUTED",
+        "gate": "FAIL",
+        "classification": "precondition_failure",
+        "reason": "ACTIVATION_READ_FAILED",
+        "product_verdict": "NOT_EVALUATED",
+        "responses": 2,
+        "elapsed_seconds": 76.977,
+        "worker_cleanup": "confirmed",
+        "active_descendants": 0,
+        "postgres_removed": true,
+        "raw_summary_sha256": "b52c6d5e884817d3479d3019cde5646d962e2cbbb886e6559d84c9210787f0bf",
+        "summary_semantic_correction_retained": false
+      }
+    ],
+    "native_physical_identity": {
+      "non_system_volume": "FAIL_EPERM",
+      "system_volume": "PASS",
+      "activation_on_system_volume": "PASS",
+      "sandbox": "mxc",
+      "model_calls_in_identity_probes": 0,
+      "identity_control_preserved": true
+    },
+    "system_volume_preparation": {
+      "native_metadata_readiness": "ready",
+      "hook_definitions_and_handlers_identical": true,
+      "native_project_review": "WITHDRAWN_OWNER_G_ONLY_CONSTRAINT",
+      "profile_effects_consent": "PREVIOUSLY_RECEIVED",
+      "model_calls": 0,
+      "review_sha256": "d823a238df47bea9c3ef322778583f08dd239f3589ef595e89d41d0bce71c985",
+      "status": "RETIRED_DIAGNOSTIC_ONLY"
+    },
+    "comparative_application_samples": "NONE_VALID"
+  },
+  "owner_storage_scope": "G_ONLY_PROJECTS_AND_EXPERIMENTAL_STATE",
+  "system_volume_workaround": "EXCLUDED_BY_OWNER",
+  "current_g_minimal_reproduction": [
+    {
+      "trial": "g-builtin-versus-custom-001",
+      "raw_sha256": "af08874cf1853c1888c64010ee3e45e9359ea7b161d2a81f52d9b8c49e5b9c4a",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "builtin-workspace",
+          "permission": ":workspace",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        },
+        {
+          "id": "custom-workspace",
+          "permission": "g_probe",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        }
+      ]
+    },
+    {
+      "trial": "g-environment-comparison-001",
+      "raw_sha256": "a6635232b9a4bbc114665c0200df01726919ac958bc1ad553baf151ecad7096f",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "closed-host",
+          "permission": ":workspace",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        },
+        {
+          "id": "historical-inherited-host",
+          "permission": ":workspace",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        }
+      ]
+    },
+    {
+      "trial": "g-explicit-workspace-roots-001",
+      "raw_sha256": "ae15e01e682c40d14245203b008258ac157e489748c5da518b4cc73646ff1c38",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "explicit-workspace-roots",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        }
+      ]
+    },
+    {
+      "trial": "current-client-location-probe-001",
+      "raw_sha256": "69139370c39defd0b0b3ed5d4fa197cc7cb98d45d8147a881668463e7a95f664",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "installed-system-program",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0,
+          "executable_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098"
+        },
+        {
+          "id": "identical-program-copy-on-g",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0,
+          "executable_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098"
+        }
+      ],
+      "same_binary_bytes": true
+    },
+    {
+      "trial": "old-client-version-comparison-001",
+      "raw_sha256": "891a8fffc96c89ae9629723f31ac162e36b1ae554d849824b3adef785d9c7f5e",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "current-0164-public-app",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0,
+          "version": "codex-cli 0.164.0-alpha.11.1",
+          "executable_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098"
+        },
+        {
+          "id": "official-0163-public-release",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0,
+          "version": "codex-cli 0.163.0-alpha.10.2",
+          "executable_sha256": "76b4bfc83785f31c59ec384760003109410132bab602a2115d83e88e04a6dc47"
+        }
+      ],
+      "old_version_is_not_bit_identical_to_historical_app_binary": true,
+      "official_release": "https://github.com/openai/codex/releases/tag/rust-v0.163.0-alpha.10.2",
+      "official_asset_digests_verified": true
+    }
+  ],
+  "stopped_application_baseline_004": {
+    "execution": "EXECUTED_AND_STOPPED",
+    "verdict": "FAIL_PRECONDITION",
+    "comparative_sample": "EXCLUDED",
+    "oracle": "NOT_RUN",
+    "phase2": "NOT_RUN",
+    "completed_native_responses": 12,
+    "diagnostic_usage_not_task_performance": {
+      "inputTokens": 285900,
+      "cachedInputTokens": 265984,
+      "outputTokens": 14109,
+      "reasoningOutputTokens": 1881
+    },
+    "native_patch_failures": 3,
+    "cleanup": "confirmed",
+    "active_descendants": 0,
+    "protected_configuration_change": "NEW_PROJECT_TRUST_OBSERVED_NOT_HUMAN_APPROVAL",
+    "authentication_changed": false,
+    "frozen_controls_preserved": true
+  },
+  "retired_c_copies": {
+    "archives_verified": 2,
+    "automatic_cleanup": "REJECTED_BLOCKED_BY_POLICY",
+    "copies": "INERT_NO_FURTHER_EXECUTION",
+    "personal_profile": "NOT_MOVED_OR_REMOVED"
+  },
+  "whole_authority_policy_probe": {
+    "status": "PASS",
+    "scope": "Pure current-engine policy/selection probe over complete actual installed authorities; no native worker, PostgreSQL, application or startup-route qualification",
+    "model_calls": 0,
+    "client_config_writes": 0,
+    "whole_authority_documents": 6,
+    "source_bytes": 42139,
+    "explicit_64k_bytes": 64608,
+    "changed_hash_refused": true,
+    "missing_mandatory_refused": true,
+    "unaccepted_policy_refused": true,
+    "unknown_skill_refused": true,
+    "nominal_16k": "REFUSED"
+  },
+  "native_component_patch_probes": [
+    {
+      "trial": "native-patch-explicit-root-001",
+      "status": "FAIL_NATIVE_MARKER",
+      "configuration_preserved": true,
+      "scope": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "trial": "native-patch-absolute-root-002",
+      "status": "FAIL_NATIVE_MARKER",
+      "configuration_preserved": true,
+      "scope": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "trial": "native-patch-sibling-omittedcwd-003",
+      "status": "FAIL_NATIVE_MARKER",
+      "configuration_preserved": true,
+      "scope": "DIAGNOSTIC_ONLY"
+    }
+  ],
+  "g_legacy_readiness_refresh": [
+    {
+      "trial": "g-legacy-readiness-refresh-001",
+      "raw_summary_sha256": "3201a25710dad542d34961d1b8d80e0b99132fd0d1eab944f09f9bcb62648c97",
+      "raw_status": "REFUSED",
+      "reason": "PROFILE_MANIFEST_BINDING_MISMATCH",
+      "model_calls": 0,
+      "worker_launches": 0,
+      "main_configuration_preserved": true,
+      "classification": "precondition_failure",
+      "metadata_processes": 0,
+      "cleanup": "NOT_STARTED",
+      "correction_sha256": "6f174ced1a35943ecb1455355b15ea5b43fa213cd8755fc1311f2a199e71de00"
+    },
+    {
+      "trial": "g-legacy-readiness-refresh-002",
+      "raw_summary_sha256": "7cd04e4b97f7101c75fff3ba12ceeaf8552c212ef29e1e7a466323be551b7500",
+      "raw_status": "REFUSED",
+      "reason": "PROFILE_TREE_TIMEOUT",
+      "model_calls": 0,
+      "worker_launches": 0,
+      "main_configuration_preserved": true,
+      "classification": "metadata_precondition_failure",
+      "metadata_budget_ms": 10000,
+      "readiness": null,
+      "cleanup": "confirmed",
+      "active_descendants": 0,
+      "protected_sources": "NOT_FULLY_VERIFIED"
+    },
+    {
+      "trial": "g-legacy-readiness-refresh-003",
+      "raw_summary_sha256": "06c79a33e0a1caba8be5b3ae6b277ffafd606d7ae653a55779d2e571badb98e5",
+      "raw_status": "REFUSED",
+      "reason": "PROFILE_BACKEND_NOT_READY",
+      "model_calls": 0,
+      "worker_launches": 0,
+      "main_configuration_preserved": true,
+      "classification": "metadata_precondition_failure",
+      "metadata_budget_ms": 60000,
+      "readiness": {
+        "status": "updateRequired"
+      },
+      "cleanup": "confirmed",
+      "active_descendants": 0,
+      "protected_sources": "PASS",
+      "phase": "bootstrap",
+      "verification_10s": "NOT_RUN_AFTER_BOOTSTRAP_REFUSAL",
+      "response_count": 5,
+      "hook_entries_per_worker": [
+        2,
+        2
+      ],
+      "all_observed_hooks_enabled_and_trusted": true,
+      "qualification": "NOT_GRANTED"
+    }
+  ],
+  "native_ledger_research": {
+    "status": "PASS",
+    "scope": "Clean-source native model-owned-ledger research on G; not installed application A/B, public worker or autonomous capability promotion",
+    "source_commit": "2211649b89a4d64a17d15c251aafb9e46621e7f7",
+    "source_dirty": false,
+    "source_preserved": true,
+    "client_version": "0.164.0-alpha.11.1",
+    "client_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "service_tier": "default",
+    "model_revision": null,
+    "raw_report_sha256": "aa79ad674be3d8d5408ac78075e3280b0dae348d6df65c31f692f096cc4b2d8a",
+    "raw_events_sha256": "4c43c9bf2a5817d6d5b364d82540c26f65b5dc11f51e69d30667f4d3810fdb5d",
+    "supervisor_summary_sha256": "58d7e77897c626da90699a1879441bd3336fb5280b81402cf505224acad8b3a9",
+    "actual_new_context_calls": 3,
+    "matching_acknowledgements": 3,
+    "final_window_number": 3,
+    "successful_submissions": 3,
+    "cases_per_submission": 9,
+    "ordered_rounds": [
+      {
+        "status": "PASS",
+        "native_requests": 1,
+        "checkpoint_before_dispatch": true,
+        "acknowledged": true,
+        "fresh_restore_after_dispatch": true,
+        "exact_retrieval_after_dispatch": true,
+        "continuation_submitted": true
+      },
+      {
+        "status": "PASS",
+        "native_requests": 1,
+        "checkpoint_before_dispatch": true,
+        "acknowledged": true,
+        "fresh_restore_after_dispatch": true,
+        "exact_retrieval_after_dispatch": true,
+        "continuation_submitted": true
+      },
+      {
+        "status": "PASS",
+        "native_requests": 1,
+        "checkpoint_before_dispatch": true,
+        "acknowledged": true,
+        "fresh_restore_after_dispatch": true,
+        "exact_retrieval_after_dispatch": true,
+        "continuation_submitted": true
+      }
+    ],
+    "todo_preserved": true,
+    "checkpoint_cli_invocations": 5,
+    "checkpoint_diagnostic_files_verified": 10,
+    "provider_responses": 16,
+    "observed_usage": {
+      "inputTokens": 278253,
+      "cachedInputTokens": 243328,
+      "outputTokens": 1306,
+      "reasoningOutputTokens": 200,
+      "uncachedInputTokens": 34925
+    },
+    "elapsed_report_ms": 104819,
+    "process_cleanup": "confirmed",
+    "active_descendants": 0,
+    "temporary_credentials_removed": true,
+    "source_config_unchanged": true,
+    "source_auth_unchanged": true,
+    "native_hooks": "SKIP",
+    "autonomy_qualified": false,
+    "limits": [
+      "Earlier failed native attempt remains unchanged and its checkpoint refusal is not causally explained.",
+      "Model revision is unavailable and no trusted production integration is registered.",
+      "Counts describe this qualification workload, not an end-to-end performance gain."
+    ]
+  },
+  "authorized_operator_setup": {
+    "status": "COMPLETED",
+    "exit_code": 0,
+    "administrator_token": true,
+    "authorization": "Direct explicit human authorization for this native setup and documented system changes, received after the earlier no-setup boundary",
+    "ordinary_worker_policy_changed": false,
+    "protected_files": 20,
+    "changed_protected_files": 0,
+    "result_sha256": "d3b8e98beb5fc97bdf13e9c731281852c6ada8e3e7c89bc63c913cd3891fd3e7",
+    "preservation_sha256": "0c6f010a2aa5ad960a5394d9b29e1c19adbddf18ad3a99422fb7edb21d86e26a",
+    "limits": "Does not claim Windows accounts, ACLs or firewall state unchanged; those official provisioning effects were authorized."
+  },
+  "current_legacy_preconditions": {
+    "metadata": {
+      "status": "PROPOSAL_OBSERVED",
+      "readiness": "ready",
+      "hook_counts": [
+        2,
+        2
+      ],
+      "protected_sources_preserved": true,
+      "phase": "verification",
+      "process_cleanup": "confirmed",
+      "active_descendants": 0,
+      "raw_sha256": "1e95b41111e35c38947a9635fc817085eb02b800a12527b88075d3e496d18c2f"
+    },
+    "os_probe": {
+      "status": "PASS",
+      "backend": "elevated",
+      "prefer_mxc": false,
+      "native_realpath": "PASS",
+      "write_read_remove": "PASS",
+      "outside_write_denied": true,
+      "distinct_sandbox_user": true,
+      "main_config_preserved": true,
+      "main_auth_preserved": true,
+      "process_cleanup": "confirmed",
+      "active_descendants": 0,
+      "model_calls": 0,
+      "raw_sha256": "044edb2a22f76d7d3d1735210a402bcb39e779191a4cbb982c6c02a426785cc4"
+    },
+    "native_edit_probe": {
+      "status": "PASS_NATIVE_MARKER",
+      "native_edits": 1,
+      "shell_commands_started": 0,
+      "provider_responses": 2,
+      "marker_matches": true,
+      "owned_marker_removed": true,
+      "main_config_preserved": true,
+      "auth_changed": false,
+      "process_cleanup": "confirmed",
+      "active_descendants": 0,
+      "raw_sha256": "589b9dce2b8ef6337ed99b5436a34855c1e76d4449f0891deb261883745e4d24"
+    },
+    "scope": "Component preconditions on G only; no AIDN application oracle, current full-task A/B, native supervised worker or default procedure qualification"
+  },
+  "next_g_application_candidate": {
+    "source_commit": "10419336b5d98809c4995b16433a3d6f21aca794",
+    "version": "0.16.0",
+    "input_files": 1047,
+    "tarball_sha256": "aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576",
+    "status": "BUILT_NOT_NATIVE_APPLICATION_QUALIFIED",
+    "storage": "permitted non-system volume",
+    "backend_plan": "elevated with explicit prefer_mxc=false in all comparator arms",
+    "next_checks": [
+      "Fresh installed-client integration pilot and independent application/workflow oracle",
+      "Multiple complete current-candidate comparison arms; bounded fixture authority policy distinct from production acceptance",
+      "Research rollover application integration, followed by installed nominal compact procedure qualification"
+    ]
+  },
+  "legacy_network_preflight": {
+    "backend": "elevated",
+    "prefer_mxc": false,
+    "source_commit": "10419336b5d98809c4995b16433a3d6f21aca794",
+    "candidate_sha256": "aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576",
+    "attempts": [
+      {
+        "attempt": "001",
+        "status": "FAIL",
+        "checks": {
+          "native_realpath": {
+            "status": "PASS"
+          },
+          "workspace_write": {
+            "status": "PASS",
+            "value": true
+          },
+          "outside_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "runtime_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_auth_read_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_config_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "host_loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "managed_proxy_present": {
+            "status": "PASS",
+            "value": false
+          },
+          "proxy_domain_denial": {
+            "status": "FAIL",
+            "code": "NO_PROXY"
+          },
+          "postgres_select": {
+            "status": "PASS",
+            "value": true
+          }
+        },
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": true,
+        "model_calls": 0,
+        "summary_sha256": "04f0c264b6c3bb7979e3f5765a3d7659f2315b5aa5d401160d97e19d8d59d560"
+      },
+      {
+        "attempt": "002",
+        "status": "FAIL",
+        "checks": {},
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": true,
+        "model_calls": 0,
+        "summary_sha256": "f1a23f99b7a791a11e52158f9f14960d09be2766ca712dc0db8f2160ad733aa8"
+      },
+      {
+        "attempt": "003",
+        "status": "PASS",
+        "checks": {
+          "native_realpath": {
+            "status": "PASS"
+          },
+          "workspace_write": {
+            "status": "PASS",
+            "value": true
+          },
+          "outside_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "runtime_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_auth_read_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_config_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "host_loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "managed_proxy_present": {
+            "status": "PASS",
+            "value": true
+          },
+          "proxy_domain_denial": {
+            "status": "PASS",
+            "value": true
+          },
+          "postgres_select": {
+            "status": "PASS",
+            "value": true
+          }
+        },
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": true,
+        "model_calls": 0,
+        "summary_sha256": "029f41b3c6298ee7495294fe963cdf5625d2d679c94203719b37a7642dfa6ce7"
+      },
+      {
+        "attempt": "004",
+        "status": "FAIL",
+        "checks": {
+          "native_realpath": {
+            "status": "PASS"
+          },
+          "workspace_write": {
+            "status": "PASS",
+            "value": true
+          },
+          "outside_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "runtime_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_auth_read_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_config_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "host_loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "managed_proxy_present": {
+            "status": "PASS",
+            "value": true
+          },
+          "proxy_domain_denial": {
+            "status": "PASS",
+            "value": true
+          },
+          "direct_nonloopback_denied": {
+            "status": "PASS",
+            "value": false
+          }
+        },
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": "NOT_USED_IN_THIS_PROBE",
+        "model_calls": 0,
+        "summary_sha256": "c4222e18fb51ca36fa4022b283a577d103274c31d5a55773ee5efee2d13cfd3d"
+      },
+      {
+        "attempt": "005",
+        "status": "PASS",
+        "checks": {
+          "native_realpath": {
+            "status": "PASS"
+          },
+          "workspace_write": {
+            "status": "PASS",
+            "value": true
+          },
+          "outside_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "runtime_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_auth_read_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_config_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "host_loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "managed_proxy_present": {
+            "status": "PASS",
+            "value": true
+          },
+          "proxy_domain_denial": {
+            "status": "PASS",
+            "value": true
+          },
+          "direct_documentation_tcp_denied": {
+            "status": "PASS",
+            "value": true
+          }
+        },
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": "NOT_USED_IN_THIS_PROBE",
+        "model_calls": 0,
+        "summary_sha256": "79c214df3ec639b7d78a58cdbac89a7702dd8587e752783ce10b25ae7cca24b5"
+      }
+    ],
+    "interpretation": [
+      "001 proves native G identity, filesystem denial and private PostgreSQL SELECT but fails actual proxy presence.",
+      "002 command/exec refuses unsupported custom outputBytesCap before command execution.",
+      "003 actual app-server command/exec passes proxy domain denial, loopback, private PostgreSQL and protected runtime/profile controls.",
+      "004 retains a failed proposed negative: the host own network address remains reachable; this does not establish an external-network escape or loopback-only confinement.",
+      "005 separately observes EACCES/EPERM for direct TCP to a reserved documentation address and a denied proxy domain. It does not rerun PostgreSQL.",
+      "Local binding remains enabled for application tests and private PostgreSQL; no claim of network-namespace isolation or exhaustive external-network proof."
+    ],
+    "scope": "Component preflight, no model, no application oracle and no A/B gain",
+    "controls": {
+      "status": "PASS",
+      "tests": 331,
+      "fail": 0,
+      "skip": 0,
+      "control_inventory_sha256": "94376a1f894636b66025388d7bb6bd90453bf55ffc0a9306b49eccc2196bf7fa",
+      "source_bindings": "Current candidate package imports replace historical installed-runtime imports; historical fixture verdicts retained",
+      "canonical_transport": "Actual app-server command/exec with genuine host-held installed-generation lease; no unproxied CLI fallback",
+      "native_lifecycle": "Observe exact backend, readiness, disabled integrations and expected trusted project hooks before thread/start; omit redundant cwd; verify returned cwd"
+    }
+  },
+  "linked_git_integration_followup": {
+    "closed_application_attempt": {
+      "status": "FAIL",
+      "execution": "native preparation ran; application implementation not started",
+      "gate": "first_phase_handoff_missing",
+      "product_verdict": "not_assessed",
+      "worker_transport_status": "PASS",
+      "worker_seconds": 219.302,
+      "unique_provider_responses": 7,
+      "input_tokens": 385081,
+      "cached_input_tokens": 279552,
+      "uncached_input_tokens": 105529,
+      "output_tokens": 1894,
+      "reasoning_output_tokens": 271,
+      "counter_source": "Unique rawResponse/completed usage; sums equal final monotonic thread totals",
+      "canonical_calls": 9,
+      "product_edits": 0,
+      "application_tests": "NOT_EXECUTED",
+      "phase2": "NOT_STARTED",
+      "coordinator": "NOT_STARTED",
+      "process_cleanup": "confirmed",
+      "private_postgres_removed": true,
+      "protected_configuration": true,
+      "frozen_controls_preserved": true,
+      "result_sha256": "46f3711aeadd95ef1fcf7171ea6cf41625b7807598a98e72545bfd4e3f930f0b",
+      "cause": "Worktree .git file grant does not grant the separate common refs required to create an admitted session branch"
+    },
+    "zero_model_git_control": {
+      "first_proposal": "Refused before execution: dotted CLI override parser did not accept quoted filesystem path keys",
+      "successor": {
+        "status": "PASS",
+        "observed": {
+          "status": "PASS",
+          "checks": [
+            "session_branch_created",
+            "cycle_branch_created",
+            "product_commit_created",
+            "owned_fast_forward",
+            "other_ref_write_denied"
+          ],
+          "model_calls": 0
+        },
+        "existing_refs_preserved": true,
+        "protected_ref_preserved": true,
+        "principal_config_preserved": true,
+        "principal_auth_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "model_calls": 0,
+        "scope": "Git metadata preflight only; no AIDN admission, application implementation or oracle"
+      },
+      "summary_sha256": "1a1826837933a036f61e725a194059f76837e1b5524805779195e5c6489d50b4",
+      "scope": "Actual worktree Git directory, exact newly owned refs/reflog namespaces and private test object store; no whole common-directory or all-refs write grant"
+    },
+    "new_controls": {
+      "pass": 338,
+      "fail": 0,
+      "skip": 0,
+      "new_cases": 7,
+      "assertions": "Production source/session/cycle classification, denial of whole common directory/all refs/foreign namespace/foreign metadata, complete inline profile keeps network and deny policy"
+    },
+    "next_attempt": "Separate fresh G client; fixed declared source/session/cycle branches and immutable exact grant/profile evidence",
+    "application_qualified": false,
+    "comparative_sample": false
+  },
+  "canonical_preimage_transport_followup": {
+    "closed_attempt": {
+      "status": "FAIL",
+      "execution": "Native Git/session/canonical preparation ran; application implementation not started",
+      "product_verdict": "not_assessed",
+      "native_transport_status": "PASS",
+      "worker_seconds": 272.277,
+      "unique_provider_responses": 10,
+      "input_tokens": 711411,
+      "cached_input_tokens": 613888,
+      "uncached_input_tokens": 97523,
+      "output_tokens": 3497,
+      "reasoning_output_tokens": 285,
+      "canonical_calls": 14,
+      "product_edits": 0,
+      "application_tests": "NOT_EXECUTED",
+      "phase2": "NOT_STARTED",
+      "process_cleanup": "confirmed",
+      "private_postgres_removed": true,
+      "frozen_controls_preserved": true,
+      "protected_configuration": true,
+      "git_preservation": {
+        "status": "PASS",
+        "protected_refs": 11,
+        "changed_refs": 0,
+        "protected_git_files": 115,
+        "changed_git_files": 0
+      },
+      "result_sha256": "5e1bf90ff3307ca2b62781903c9df26ca0e33f64faff55b694b5f086c5a0f336"
+    },
+    "cause": "Benchmark preimage filter accepted only its old MXC label, discarding complete actual app-server receipts; agent then incorrectly continued after an unexecuted invalid proposal and a real strict admission refused unknown mode/freshness",
+    "diagnostic_replay": {
+      "status": "TRANSPORT_FILTER_CAUSE_CONFIRMED",
+      "request_index": 11,
+      "prior_receipts": 11,
+      "complete_preimage_receipt_index": 3,
+      "preimage_sha256": "9320abd84f47c077e0c7494762066e79f59d757fec89827f29d637643ea91a4f",
+      "writes": 0,
+      "failed_attempt_requalified": false,
+      "raw_sha256": "7d75ffad4c634859faa7ef6aac4b590ddb0a2aacd5e64879d9344a15232e7bc4"
+    },
+    "new_control": {
+      "pass": 350,
+      "fail": 0,
+      "skip": 0,
+      "added_cases": 12,
+      "binding": "Explicit selected backend/profile, actual app-server route, pinned CLI entry and generation, genuine released installed-runtime lease and current source-module hash; existing target/backend/full-content/hash/CAS checks retained",
+      "legacy_receipts": "Accepted only in historical/explicit MXC contexts; an elevated phase cannot pass using the old label",
+      "scope": "Read-only observed preimage; never freshness or action permission",
+      "current_status": "Fresh installed pilot running; strict first-cycle admission observed positive, application oracle still open"
+    }
+  },
+  "historical_runtime_baseline_staging": {
+    "status": "BUILT_NOT_NATIVE_QUALIFIED",
+    "source_commit": "04753926d342a72af58d415e605aec532cd84d3a",
+    "version": "0.16.0",
+    "input_files": 1043,
+    "tarball_sha256": "cc87ef837a269d83f6d4b8a73fe83aa8af01ea740772a805c4e87bab72dbf8d0",
+    "source_clean": true,
+    "storage": "permitted non-system volume",
+    "meaning": "Actual pre-optimization dev package; separate from current-candidate historical-composed procedure and unmatched historical native benchmark observations"
+  },
+  "actual_application_phase_followup": {
+    "candidate_source": "10419336b5d98809c4995b16433a3d6f21aca794",
+    "candidate_sha256": "aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576",
+    "original_parent_status": "FAIL",
+    "phase_elapsed_seconds": 1345.938,
+    "unique_provider_responses": 40,
+    "tokens": {
+      "input": 5260145,
+      "cached_input": 5086336,
+      "uncached_input": 173809,
+      "output": 31021,
+      "reasoning_output": 3606
+    },
+    "specific_native_patch_admissions": 7,
+    "actual_canonical_calls": 51,
+    "actual_cas_delta_writes": 11,
+    "native_hooks_completed": 81,
+    "maximum_concurrent_hooks": 1,
+    "self_tests_passed": 14,
+    "independent_oracle": {
+      "status": "PASS_APPLICATION_ORACLE",
+      "scope": "Independent application functionality only; the closed native phase remains failed and no phase2/workflow/A-B claim is made",
+      "passed": 20,
+      "expected": 20,
+      "missing": 0,
+      "application_files_preserved": true,
+      "principal_config_preserved": true,
+      "principal_auth_preserved": true,
+      "process_cleanup": "confirmed",
+      "active_descendants": 0,
+      "model_calls": 0
+    },
+    "independent_trace_review_status": "PASS_INDEPENDENT_TRACE_REVIEW",
+    "independent_trace_sha256": "6e81204f9a671575dded252f5c2947c6a46785146c39f1fa5242a2dea0f64510",
+    "original_driver_rewritten": false,
+    "original_attempt_continuation_allowed": false,
+    "phase2": "NOT_EXECUTED",
+    "final_governed_closure": "NOT_EXECUTED",
+    "comparative_sample": false,
+    "default_installed_route_promoted": false,
+    "independent_trace_review_scope_limit": "Patch preparation/canonical-call bindings only; did not cover ordinary zero-exit Git stderr denials"
+  },
+  "cold_initialization_semantic_control": {
+    "status": "SEMANTIC_CONTROL_PASS",
+    "original_driver_status": "FAIL",
+    "driver_error": "Diagnostic expected prose label fresh; actual existing public field value is ok",
+    "original_driver_rewritten": false,
+    "actual_cli_calls": 22,
+    "cli_interval_sum_ms": 82701,
+    "before": {
+      "exit_code": 1,
+      "admission": "blocked",
+      "blocking_reasons": [
+        "current state freshness is unknown in DB-backed mode"
+      ]
+    },
+    "after": {
+      "exit_code": 0,
+      "admission": "admitted_with_warnings",
+      "context": {
+        "mode": "COMMITTING",
+        "active_session": "S001",
+        "active_cycle": "C001",
+        "branch_kind": "cycle",
+        "current_state_freshness": "ok",
+        "repair_layer_status": "clean",
+        "dor_state": "NOT_READY"
+      }
+    },
+    "actual_corrective_replacements": 8,
+    "freshness_or_repair_override": false,
+    "model_calls": 0,
+    "product_edits": 0,
+    "native_permission_qualification": false,
+    "closed_native_attempts_requalified": false,
+    "raw_receipts_sha256": "4d4e6fee515ccac63d709b9163b5b12428ed9433936ca4820f8b8cd45d80dc3f",
+    "driver_result_sha256": "c601a1b71109168a8ab9613f44b243928391c85e366a7c9bc812c1fb63b57e6b",
+    "preservation": {
+      "git": {
+        "status": "PASS",
+        "protected_refs": 16,
+        "changed_refs": 0,
+        "protected_git_files": 139,
+        "changed_git_files": 0
+      },
+      "postgres_removed": true,
+      "principal_config_auth_preserved": true
+    }
+  },
+  "native_transaction_budget_probe": {
+    "model_calls": 0,
+    "unsupported_runtime_action_as_skill": "checkpoint explicitly refused; prospective harness corrected",
+    "supported_skills": [
+      "context-reload",
+      "branch-cycle-audit"
+    ],
+    "mode": "COMMITTING",
+    "skill_admissions": "PASS_BOTH",
+    "policy": "accepted whole six-authority closure",
+    "status": "FAIL_BUDGET_EXCEEDED",
+    "mandatory_minimum_bytes": 70395,
+    "target_bytes": 65536,
+    "hard_limit_bytes": 65536,
+    "refusal_response_bytes": 17280,
+    "checkout_unchanged": true,
+    "private_postgres_removed": true,
+    "config_auth_preserved": true,
+    "old_results_rewritten": false,
+    "new_harness_assertions": {
+      "PASS": 390,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "result_sha256": "bb5b249657b58f7d105bba4925c96576e375ca513dd50938d8553ce33a95f78e"
+  },
+  "independent_native_coordinator_fixture": {
+    "status": "PASS",
+    "model_calls": 0,
+    "receive_transition": {
+      "allowed": true,
+      "status": "allowed",
+      "reason": "COMMITTING allows executor -> coordinator",
+      "mode": "COMMITTING",
+      "from_role": "executor",
+      "from_action": "relay",
+      "to_role": "coordinator",
+      "to_action": "coordinate"
+    },
+    "dispatch_transition": {
+      "allowed": true,
+      "status": "allowed",
+      "reason": "COMMITTING allows coordinator -> executor",
+      "mode": "COMMITTING",
+      "from_role": "coordinator",
+      "from_action": "relay",
+      "to_role": "executor",
+      "to_action": "implement"
+    },
+    "product_files_unchanged": true,
+    "final_admission_status": "admitted",
+    "sources": {
+      "packet_source": "postgres",
+      "current_state_source": "postgres",
+      "runtime_state_source": "postgres"
+    },
+    "report_sha256": "79d4e37b1dd9d7ab5c1f6202dc79ade271bf8a2344a7073443e5c2928a05f0ee",
+    "scope": "Restored fixture transport only; no new implementation, transaction success, closed-attempt recovery or comparative sample",
+    "first_missing_context_refusal_retained": true,
+    "real_strict_reload_hook_before_packet": true,
+    "process_cleanup": "confirmed",
+    "private_postgres_removed": true,
+    "principal_config_auth_preserved": true
+  },
+  "compact_admission_source_default": {
+    "status": "SOURCE_ASSETS_IMPLEMENTED",
+    "managed_skill_procedures": 13,
+    "startup_contract": true,
+    "selector": "runtime pre-write-admit --view agent",
+    "full_cli_default_compatible": true,
+    "grouped_transaction_default_promoted": false,
+    "actual_source_cli_parity_assertions": 20,
+    "installed_client_gate": "PASS",
+    "pack_topology_gate": "PASS",
+    "owned_asset_fixtures": "PASS",
+    "native_new_archive_selector": "PENDING",
+    "personal_installation_changed": false
+  },
+  "complete_native_application_pilot": {
+    "status": "WORKFLOW_PASS",
+    "candidate_sha256": "aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576",
+    "source_commit": "10419336b5d98809c4995b16433a3d6f21aca794",
+    "comparison_sample": false,
+    "workflow_seconds": 2089.307,
+    "clock_excludes": [
+      "client/runtime preparation",
+      "final fixed oracle",
+      "private cluster cleanup"
+    ],
+    "phase_seconds": [
+      1139.813,
+      913.384
+    ],
+    "coordinator_seconds": 34.083,
+    "unique_provider_responses": 69,
+    "tokens": {
+      "input_tokens": 8118837,
+      "cached_input_tokens": 7802624,
+      "output_tokens": 44004,
+      "reasoning_output_tokens": 6179,
+      "uncached_input_tokens": 316213
+    },
+    "canonical_cli_calls": 92,
+    "specific_native_patch_admissions": 9,
+    "native_hooks_completed": 136,
+    "maximum_concurrent_hooks": 1,
+    "final_self_tests_passed": 12,
+    "actual_new_context_calls": 0,
+    "scheduled_native_threads": 2,
+    "terminal_cycle_and_session_gates": "PASS_ACTUAL_NESTED_HOOK_AND_DB_CONSTRAINT_EVIDENCE",
+    "application_oracle": {
+      "status": "PASS",
+      "passed": 20,
+      "expected": 20,
+      "missing": 0,
+      "score": 60
+    },
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 34,
+      "changed_refs": 0,
+      "protected_git_files": 224,
+      "changed_git_files": 0
+    },
+    "process_cleanup": "confirmed_all_four_trees",
+    "private_postgres_removed": true,
+    "frozen_controls_preserved": true,
+    "principal_config_auth_preserved": true,
+    "raw_result_sha256": "5692a300be4d5cdbd3150ad967b13f6dcb09cffaa5c6d392557b2336bc732069",
+    "usage_report_sha256": "00cadcd74bc2d2ed27da318ab49e178460868e7eb7579965d2ea5051c59427e9",
+    "end_to_end_gain_claimed": false,
+    "strict_protocol_qualification": "INVALIDATED_BY_GIT_STDERR_DENIAL_REVIEW",
+    "original_driver_status_preserved": true,
+    "component_oracle_and_terminal_execution_preserved": true
+  },
+  "packaged_compact_admission_selector": {
+    "status": "PASS_INSTALLED_NATIVE_SELECTOR_AND_COORDINATOR",
+    "source_commit": "bc2572faaad98dfa47fa9b6e264a40f947aecd32",
+    "candidate_sha256": "86e37dc22d5d75914afa36e63230c94cb5423290fd53a421e5b6036326eaac60",
+    "model_calls": 0,
+    "full_json_bytes": 17640,
+    "agent_json_bytes": 8848,
+    "same_activation_decision_checks_and_sources": true,
+    "checkout_unchanged_by_admission": true,
+    "private_installed_skills_exact_official_render": 13,
+    "runtime_implementation_changes": 0,
+    "hook_handler_changes": 0,
+    "native_full_application_run_on_this_archive": "NOT_EXECUTED",
+    "grouped_default_procedure_promoted": false,
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 37,
+      "changed_refs": 0,
+      "protected_git_files": 237,
+      "changed_git_files": 0
+    },
+    "process_cleanup": "confirmed",
+    "private_postgres_removed": true,
+    "principal_profile_preserved": true,
+    "raw_sha256": "98d3f793b5adc985eee454ead1fa42586ff35324eeb0f758e414a4bdcfd45606"
+  },
+  "routed_fixture_native_preparation": {
+    "status": "PASS",
+    "candidate_sha256": "86e37dc22d5d75914afa36e63230c94cb5423290fd53a421e5b6036326eaac60",
+    "fixture_policy": "routed-v2; fresh declaration, unchanged production authority",
+    "model_calls": 0,
+    "complete_json_bytes": 47970,
+    "target_bytes": 65536,
+    "hard_limit_bytes": 65536,
+    "complete_mandatory_authorities": [
+      "RULE_STATE_BOUNDARY.md",
+      "WORKFLOW-KERNEL.md",
+      "WORKFLOW.md",
+      "WORKFLOW_SUMMARY.md"
+    ],
+    "checkout_unchanged": true,
+    "write_authorization": false,
+    "original_six_document_results_rewritten": false,
+    "comparable_to_original_six_document_control": false,
+    "counter_cases": {
+      "PASS": 29,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "full_harness": {
+      "PASS": 419,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "initial_test_input_error_preserved": "asOf required existing date-only value; incorrect timestamp test result retained",
+    "native_coordinator": "PASS",
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 40,
+      "changed_refs": 0,
+      "protected_git_files": 251,
+      "changed_git_files": 0
+    },
+    "private_postgres_removed": true,
+    "principal_profile_preserved": true,
+    "raw_transaction_sha256": "b1972f0008df0e94622303466bdcf108b8ef24228e8f4f38e87a891599a178c7",
+    "raw_final_sha256": "374fea2d276d6bdb9d099f0bf8e4576563780717d08756c9561010744b30763a",
+    "targeted_audit_sha256": "f686e94149b25612bbe96dd203aa337b6a7b0a8c7f9caf20d672aa74eb3cf5b1",
+    "application_comparison": "NOT_EXECUTED",
+    "end_to_end_gain_claimed": false
+  },
+  "complete_no_aidn_integration_pilot": {
+    "status": "BASELINE_PASS",
+    "comparative_sample": false,
+    "workflow_seconds": 1009.726,
+    "phase_seconds": [
+      698.621,
+      309.789
+    ],
+    "unique_provider_responses": 30,
+    "tokens": {
+      "input_tokens": 993838,
+      "cached_input_tokens": 886912,
+      "output_tokens": 32780,
+      "reasoning_output_tokens": 7232,
+      "uncached_input_tokens": 106926
+    },
+    "native_hooks": 0,
+    "final_self_tests_passed": 22,
+    "application_oracle": {
+      "status": "PASS",
+      "passed": 20,
+      "expected": 20,
+      "reasons": []
+    },
+    "owned_process_cleanup": "confirmed_both_workers_and_oracle",
+    "principal_profile_preserved": true,
+    "frozen_controls_preserved": true,
+    "raw_result_sha256": "7e4015070ca0c189a59549eb0f0cbb957aba7cde6e7cabed9581e1e59df6ec5c",
+    "usage_report_sha256": "c999294f2b4fa44c85cb478989b952f8eba596b0c3b057087c3943697882a2d8",
+    "meaning": "Exploratory independent pilot; not retroactive promotion to a predeclared repeated A/B cohort"
+  },
+  "cold_transaction_native_counter_control": {
+    "successful_preparation": "FAIL_BUDGET_EXCEEDED",
+    "fail_closed_limit": "PASS",
+    "candidate_sha256": "86e37dc22d5d75914afa36e63230c94cb5423290fd53a421e5b6036326eaac60",
+    "model_calls": 0,
+    "application_product_verdict": "not_executed",
+    "admissions": "PASS_CONTEXT_RELOAD_AND_START_SESSION",
+    "policy": "all six complete bodies required in initial context",
+    "minimum_required_bytes": 69291,
+    "target_bytes": 65536,
+    "hard_limit_bytes": 65536,
+    "refusal_response_bytes": 16407,
+    "checkout_unchanged": true,
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 43,
+      "changed_refs": 0,
+      "protected_git_files": 265,
+      "changed_git_files": 0
+    },
+    "private_postgres_removed": true,
+    "principal_profile_preserved": true,
+    "raw_result_sha256": "35e4ddb7bec30be2dec0911c7be57e7941dd5fb095cc529794b2ebdc0230d446",
+    "steady_state_result_transferred_to_bootstrap": false,
+    "fallback_or_cap_increase": false
+  },
+  "git_lock_protocol_review": {
+    "status": "GIT_LOCK_DENIAL_BLIND_SPOT_CONFIRMED",
+    "scope": "Strict protocol acceptance only; functional oracle and actual gate executions remain observations",
+    "historical_runtime_product_verdict": "not_executed",
+    "historical_runtime_canonical_calls": 9,
+    "historical_runtime_seconds": 214.692,
+    "historical_runtime_phase2": "NOT_EXECUTED",
+    "former_current_pilot_refusal_commands": 2,
+    "previous_closed_application_phase_refusal_commands": 2,
+    "no_aidn_pilot_refusal_commands": 0,
+    "original_results_rewritten": false,
+    "closed_attempts_resumed": false,
+    "prospective_guard_contract": "benchmark-phase-continuation.v15",
+    "guard_tests": {
+      "PASS": 8,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "native_diagnostics": {
+      "direct_and_shell_variants": 4,
+      "git_versions": [
+        "2.47.1.windows.2",
+        "2.53.0.windows.3"
+      ],
+      "automatic_maintenance_disabled_still_refuses": true,
+      "permission_expanded": false,
+      "foreign_refs_common_controls_and_profile_preserved": true
+    },
+    "raw_independent_review_sha256": "a52a9e60c797fc9964f179c084b8a8f2f784e811e1204ba81f1a8b6266499c84",
+    "git_execution_remedy": "PASS_SAME_COMMIT_BRANCH_COMPONENT_ONLY"
+  },
+  "same_commit_git_adapter_native_component": {
+    "status": "PASS",
+    "contract": "same-commit-owned-branch.v1",
+    "model_calls": 0,
+    "native_successful_git_calls": 70,
+    "nonempty_git_stderr": 0,
+    "negative_controls": 7,
+    "session_and_cycle_transitions": "PASS",
+    "same_head_and_index": "PRESERVED",
+    "existing_refs_common_controls_and_profile": "PRESERVED",
+    "outside_metadata_write": "DENIED",
+    "permission_expansion": false,
+    "cleanup": "confirmed_zero_descendants",
+    "guard_tests": {
+      "PASS": 73,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "raw_native_summary_sha256": "353aad9678cf8e6e92f25df977838c3c92f320de3292df34063716c9bda18cd8",
+    "adapter_module_sha256": "6b02e949eb353674d822d9132153191437a85615e194f7d7345c5c6e893b505a",
+    "application_comparison": "NOT_EXECUTED",
+    "cross_commit_checkout_and_commit": "NOT_QUALIFIED"
+  },
+  "nominal_hook_projection_source_delta": {
+    "status": "SOURCE_ASSET_CHANGE",
+    "skills_with_hook_examples": 11,
+    "new_hook_invocations": 0,
+    "runtime_projection_changed": false,
+    "retained_native_payload_replay": {
+      "PASS": 14,
+      "FAIL": 0,
+      "full_bytes": 107118,
+      "agent_bytes": 17927,
+      "help_excluded": 1,
+      "supervisor_coordinator_hook_excluded": 1,
+      "decision_and_raw_evidence_parity": "PASS",
+      "report_sha256": "3ca7eea879db661e2211076b73e1c1901994c8eb58b07a316ab162a999f48af0"
+    },
+    "real_cli_view_assertions": 20,
+    "provider_token_gain": "NOT_MEASURED",
+    "application_gain": "NOT_MEASURED",
+    "new_package_installation": "PASS_PRIVATE_INSTALLED_ASSETS",
+    "candidate_sha256": "e442962f4524249d7e305b4f93b9913356348361754b878c51c999a7728a0b9c",
+    "candidate_source_commit": "4fc7075d463f8a7b5d2aacf7f2bd5eccf0b37a2e",
+    "official_rendered_installed_skills": 13,
+    "benchmark_control_tests": {
+      "PASS": 430,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "full_supervisor_hook_receipts": "RETAINED_BEFORE_ENGINE_MODEL_PROJECTION",
+    "personal_assets_changed": false,
+    "exact_native_branch_guard": "benchmark-phase-continuation.v16",
+    "release_reproducibility": {
+      "PASS": 1,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "application_pilot": "FAIL_COORDINATOR_ARTIFACT_REFERENCE_NAMESPACE"
+  },
+  "historical_runtime_complete_native_pilot": {
+    "status": "WORKFLOW_PASS",
+    "source_commit": "04753926d342a72af58d415e605aec532cd84d3a",
+    "candidate_sha256": "cc87ef837a269d83f6d4b8a73fe83aa8af01ea740772a805c4e87bab72dbf8d0",
+    "strict_whole_application_accepted": true,
+    "strict_acceptance_reasons": [],
+    "comparative_sample": false,
+    "workflow_seconds": 2573.6,
+    "unique_provider_responses": 71,
+    "tokens": {
+      "input_tokens": 7993562,
+      "cached_input_tokens": 7740928,
+      "output_tokens": 40012,
+      "reasoning_output_tokens": 3873,
+      "uncached_input_tokens": 252634
+    },
+    "canonical_cli_model_calls": 90,
+    "canonical_cli_coordinator_calls": 6,
+    "cli_latency_seconds": {
+      "p50": 4.973,
+      "p95": 10.56155
+    },
+    "actual_new_context_calls": 0,
+    "fresh_native_threads": 2,
+    "git_lock_refusals": 0,
+    "application_oracle": {
+      "status": "PASS",
+      "passed": 20,
+      "expected": 20,
+      "reasons": []
+    },
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 66,
+      "changed_refs": 0,
+      "protected_git_files": 289,
+      "changed_git_files": 0
+    },
+    "principal_configuration_preserved": true,
+    "frozen_controls_preserved": true,
+    "private_postgres_removed": true,
+    "raw_result_sha256": "90536c89407d3392123ad74a4992c4b225657e1e2a57e65e8fe266f00d5d5a65",
+    "measurement_sha256": "c387c039a6c0c42ee08e79750ab83824d86be446430af536420ee99c070f2d09",
+    "meaning": "Fresh complete historical-runtime calibration on the corrected declared Git path, not retroactive repair of any prior attempt or a repeated A/B sample"
+  },
+  "compact_hook_native_calibration_refusal": {
+    "status": "FAIL_COORDINATOR_RELAY",
+    "phase1_native_status": "PASS",
+    "phase1_guard": "PASS_V16_WITH_VALIDATED_INITIAL_READINESS_REPAIR",
+    "phase1_seconds": 1389.034,
+    "phase1_responses": 44,
+    "phase1_tokens": {
+      "input_tokens": 4885065,
+      "cached_input_tokens": 4731264,
+      "output_tokens": 28159,
+      "reasoning_output_tokens": 2973,
+      "uncached_input_tokens": 153801
+    },
+    "coordinator_status": "FAIL",
+    "coordinator_seconds": 32.77,
+    "phase2": "NOT_EXECUTED",
+    "application_oracle": "NOT_EXECUTED",
+    "end_to_end_gain_claimed": false,
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 69,
+      "changed_refs": 0,
+      "protected_git_files": 301,
+      "changed_git_files": 0
+    },
+    "frozen_controls_preserved": true,
+    "principal_configuration_preserved": true,
+    "private_postgres_removed": true,
+    "failure_cause": "Runtime-state projector copies audit-relative hydrated artifact keys into repository-relative priorities; strict handoff correctly rejects their wrong locations",
+    "original_attempt_resumed": false,
+    "raw_result_sha256": "dde83ff32495e1bcb7915b867cacda08a30051754409220fc5fa3028c351eba1",
+    "repeated_comparison_campaign": "NOT_EXECUTED_PREREQUISITE_FAILED"
+  },
+  "hydrated_runtime_reference_source_correction": {
+    "status": "SOURCE_FIX_VALIDATED",
+    "producer": "deriveRuntimeStatePrioritizedArtifacts",
+    "consumer_checks_changed": false,
+    "new_error_code": "RUNTIME_HYDRATED_ARTIFACT_PATH_INVALID",
+    "success_json_shape_changed": false,
+    "error_contract": "additive v1 alternative",
+    "read_write_preview_error_cases": 3,
+    "projector_suite": "PASS",
+    "canonical_handoff_cases": 14,
+    "handoff_packet_suite": "PASS",
+    "handoff_admission_use_case_suite": "PASS",
+    "public_cli_contract_suite": "PASS",
+    "checked_public_contracts": 78,
+    "native_live_component": "PASS_RESTORED_FIXTURE_ZERO_MODEL",
+    "old_failed_attempt_resumed": false,
+    "source_commit": "6fe160d63ebbacca286d95c6a80dd89ca1adb659",
+    "candidate_sha256": "60efaf3243ea202fc08ef69f6a216fa3fd347ec3a408e8c0f5b869f99a7eaf1f",
+    "native_canonical_calls": 9,
+    "native_call_failures": 0,
+    "native_hydrated_references": 6,
+    "native_canonical_backend": "postgres",
+    "principal_configuration_preserved": true,
+    "frozen_controls_preserved": true,
+    "private_postgres_removed": true,
+    "native_git_preservation": {
+      "status": "PASS",
+      "protected_refs": 72,
+      "changed_refs": 0,
+      "protected_git_files": 313,
+      "changed_git_files": 0
+    },
+    "release_reproducibility": {
+      "PASS": 1,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "native_raw_result_sha256": "d7bf7def46744db12a31b9f1531a28b17783560463207d90cc7728b29054d6f8",
+    "application_oracle": "NOT_EXECUTED_COMPONENT_ONLY"
+  },
+  "predeclared_repeated_comparison": {
+    "status": "STOPPED_AFTER_FIRST_INCOMPLETE_SAMPLE",
+    "protocol": "native-comparison-030.v6",
+    "protocol_sha256": "d644eb5c077b3528aedcd3a7e3b6193085d7ef3e4c19a4f31aa28a9ee41368d5",
+    "order": [
+      "corrected_compact",
+      "historical",
+      "historical",
+      "corrected_compact"
+    ],
+    "samples_per_variant": 2,
+    "native_state": "Fresh campaign-and-trial-specific G metadata namespace",
+    "same_model_brief_oracle_profile_and_budgets": true,
+    "acceptance": "Both native phases, actual coordinator, final cycle/session checks, oracle20/20, unchanged scope and cleanup for every sample",
+    "qualification": "First corrected sample includes full application qualification; stop cohort on its failure, never replace a sample",
+    "controls_per_payload": {
+      "PASS": 434,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "earlier_calibrations_enrolled": false,
+    "old_unqualified_candidate_reused": false,
+    "executed_samples": 1,
+    "unexecuted_samples": 3,
+    "strict_whole_application_accepted": false,
+    "application_oracle": "NOT_EXECUTED",
+    "measurement_recovery": "READ_ONLY_RAW_USAGE_AND_UNFINALIZED_RECEIPT_PREFIX",
+    "first_phase_seconds": 796.126,
+    "model_responses": 45,
+    "input_tokens": 3784603,
+    "cached_input_tokens": 3656704,
+    "uncached_input_tokens": 127899,
+    "output_tokens": 9811,
+    "actual_cli_calls": 33,
+    "actual_cli_nonzero": 0,
+    "product_edits": 0,
+    "reason": "Benchmark omitted its own exact hidden hydration profile; intermediate question confused final selector; no application verdict",
+    "old_sample_resumed": false,
+    "read_only_measurement_sha256": "dda336523dfbbef68731afab4bc5a5ef178ac0a160982a1329f378ee6e32959f"
+  },
+  "benchmark_transport_followup": {
+    "status": "FIXED_IN_NEW_CONTROLS_ONLY",
+    "native_terminal_selection": "Actual completed turn and exactly matching item identity/content; no last-message or ID-prefix guessing",
+    "terminal_guard": "benchmark-phase-continuation.v17",
+    "worker_finalizes_receipts_on_failure": true,
+    "missing_final_file_is_explicit_guard_refusal": true,
+    "exact_hidden_hydration_argv_disclosed": true,
+    "transport_permission_or_effect_changes": false,
+    "failed_sample_relabelled": false,
+    "unmodified_historical_measurement_reproduced": true,
+    "historical_control": {
+      "source_commit": "a49595716d4dd9e5069ce093ac549e99f5e4f80c",
+      "base": "04753926d342a72af58d415e605aec532cd84d3a",
+      "patch": "Only the three-file 6fe160d hydration namespace and typed error correction",
+      "performance_features_backported": false,
+      "archive_sha256": "8a00b2debf1c4d49dde7da53419c59f88677d0b0ebb5a3fc237d62653a9287ba",
+      "native_component": "NATIVE_HANDOFF_COMPONENT_PASS",
+      "native_model_calls": 0,
+      "native_git_preservation": {
+        "status": "PASS",
+        "protected_refs": 78,
+        "changed_refs": 0,
+        "protected_git_files": 344,
+        "changed_git_files": 0
+      },
+      "protected_configuration": true,
+      "private_postgres_removed": true,
+      "frozen_controls_preserved": true
+    }
+  },
+  "predeclared_repeated_comparison_033": {
+    "status": "COMPLETE_ALL_FOUR_QUALIFIED",
+    "protocol": "native-comparison-033.v1",
+    "protocol_sha256": "210fc4b77099e21d635d14aee8aca2988929a9f3caddb62a5d4127fb0c09b5cb",
+    "guard": "benchmark-phase-continuation.v17",
+    "order": [
+      {
+        "id": "pilot-001",
+        "variant": "compact"
+      },
+      {
+        "id": "pilot-002",
+        "variant": "historical"
+      },
+      {
+        "id": "pilot-003",
+        "variant": "historical"
+      },
+      {
+        "id": "pilot-004",
+        "variant": "compact"
+      }
+    ],
+    "candidates": {
+      "historical": {
+        "sha256": "8a00b2debf1c4d49dde7da53419c59f88677d0b0ebb5a3fc237d62653a9287ba",
+        "source_commit": "a49595716d4dd9e5069ce093ac549e99f5e4f80c",
+        "runtime_descriptor_sha256": "c466b9f6baf61d0dcf4d06018455a7d5f6ec7fefcc1f2814cac1640d8d4f3eba"
+      },
+      "compact": {
+        "sha256": "60efaf3243ea202fc08ef69f6a216fa3fd347ec3a408e8c0f5b869f99a7eaf1f",
+        "source_commit": "6fe160d63ebbacca286d95c6a80dd89ca1adb659",
+        "runtime_descriptor_sha256": "ac2885102d020c5575af1965ce2e30b145f7fecc88a4f835d8d9cf9103f0e549"
+      }
+    },
+    "identical_control_files": 96,
+    "controls_per_payload": {
+      "PASS": 451,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "matched_control_contains_common_correctness_patch": true,
+    "prior_cohort_included": false,
+    "application_qualification": "REQUIRED_IN_FIRST_ALLOCATED_SAMPLE",
+    "all_evidence_on_G": true,
+    "complete_gain_comparison": "MIXED_RESPONSES_DOWN_BUT_TIME_AND_INPUT_UP",
+    "executed_samples": 4,
+    "qualified_samples": 4,
+    "failed_samples": 0,
+    "skipped_samples": 0,
+    "all_oracles": "20/20",
+    "closed_result_sha256": "d481d3b3297678670ddb455e337f5c173e7f3e8061f57dc6dc7e31fed163ea9a",
+    "aggregate_sha256": "fca7876661fb8205e58c79176e575c434a55c0419a7f09da62c16e8a0e618b99",
+    "rows": [
+      {
+        "id": "pilot-001",
+        "variant": "compact",
+        "status": "WORKFLOW_PASS",
+        "accepted": true,
+        "reasons": [],
+        "seconds": 2496.757,
+        "responses": 91,
+        "input_tokens": 11926718,
+        "cached_input_tokens": 11529344,
+        "output_tokens": 43762,
+        "reasoning_output_tokens": 5718,
+        "uncached_input_tokens": 397374,
+        "cli_calls": 110,
+        "coordinator_cli_calls": 6,
+        "model_cli_span_seconds_sum": 691.1730000000001,
+        "coordinator_cli_span_seconds_sum": 35.851,
+        "cli_p50_seconds": 5.4045000000000005,
+        "cli_p95_seconds": 11.42965,
+        "cli_counts": {
+          "runtime pre-write-admit": 25,
+          "runtime artifact-fetch": 7,
+          "runtime artifact-store": 4,
+          "runtime db-first-artifact": 44,
+          "runtime project-runtime-state": 7,
+          "codex run-json-hook": 14,
+          "codex hydrate-context": 5,
+          "runtime sync-db-first-selective": 3,
+          "runtime handoff-admit": 1
+        },
+        "tool_output_bytes": 1115508,
+        "hook_text_bytes": 8483,
+        "input_per_response_p50": 129423,
+        "input_per_response_p95": 191909,
+        "new_context_calls": 0,
+        "fresh_threads": 2,
+        "oracle": {
+          "status": "PASS",
+          "passed": 20,
+          "expected": 20,
+          "reasons": []
+        },
+        "measurement_sha256": "d7d8c5fdc911e6a9dc617824c87af26042f02f912547df0b9246b4ac69877205"
+      },
+      {
+        "id": "pilot-002",
+        "variant": "historical",
+        "status": "WORKFLOW_PASS",
+        "accepted": true,
+        "reasons": [],
+        "seconds": 2259.255,
+        "responses": 92,
+        "input_tokens": 11375996,
+        "cached_input_tokens": 10985344,
+        "output_tokens": 41768,
+        "reasoning_output_tokens": 4999,
+        "uncached_input_tokens": 390652,
+        "cli_calls": 96,
+        "coordinator_cli_calls": 6,
+        "model_cli_span_seconds_sum": 627.548,
+        "coordinator_cli_span_seconds_sum": 38.864000000000004,
+        "cli_p50_seconds": 5.681,
+        "cli_p95_seconds": 12.035499999999999,
+        "cli_counts": {
+          "runtime pre-write-admit": 18,
+          "runtime artifact-store": 3,
+          "runtime artifact-fetch": 6,
+          "codex run-json-hook": 13,
+          "runtime db-first-artifact": 44,
+          "runtime project-runtime-state": 5,
+          "codex hydrate-context": 4,
+          "runtime sync-db-first-selective": 2,
+          "runtime handoff-admit": 1
+        },
+        "tool_output_bytes": 1138323,
+        "hook_text_bytes": 8163,
+        "input_per_response_p50": 131957.5,
+        "input_per_response_p95": 179750.4,
+        "new_context_calls": 0,
+        "fresh_threads": 2,
+        "oracle": {
+          "status": "PASS",
+          "passed": 20,
+          "expected": 20,
+          "reasons": []
+        },
+        "measurement_sha256": "95615fbc57aa35db393487292077f1cd1fb6fb7b8ba207b4f46e0a05fc3dadc1"
+      },
+      {
+        "id": "pilot-003",
+        "variant": "historical",
+        "status": "WORKFLOW_PASS",
+        "accepted": true,
+        "reasons": [],
+        "seconds": 2144.218,
+        "responses": 86,
+        "input_tokens": 10930148,
+        "cached_input_tokens": 10519040,
+        "output_tokens": 42546,
+        "reasoning_output_tokens": 4021,
+        "uncached_input_tokens": 411108,
+        "cli_calls": 91,
+        "coordinator_cli_calls": 6,
+        "model_cli_span_seconds_sum": 550.795,
+        "coordinator_cli_span_seconds_sum": 34.422,
+        "cli_p50_seconds": 5.227,
+        "cli_p95_seconds": 11.352,
+        "cli_counts": {
+          "runtime pre-write-admit": 17,
+          "runtime artifact-store": 4,
+          "runtime artifact-fetch": 7,
+          "runtime project-runtime-state": 4,
+          "runtime db-first-artifact": 37,
+          "codex run-json-hook": 14,
+          "codex hydrate-context": 4,
+          "runtime sync-db-first-selective": 3,
+          "runtime handoff-admit": 1
+        },
+        "tool_output_bytes": 1146608,
+        "hook_text_bytes": 8273,
+        "input_per_response_p50": 137267.5,
+        "input_per_response_p95": 199929.75,
+        "new_context_calls": 0,
+        "fresh_threads": 2,
+        "oracle": {
+          "status": "PASS",
+          "passed": 20,
+          "expected": 20,
+          "reasons": []
+        },
+        "measurement_sha256": "90058d4ddc9fd9a26c8cfe105c6427094ddf88ea31d08225e23dfcc00e3ebe4b"
+      },
+      {
+        "id": "pilot-004",
+        "variant": "compact",
+        "status": "WORKFLOW_PASS",
+        "accepted": true,
+        "reasons": [],
+        "seconds": 2346.151,
+        "responses": 73,
+        "input_tokens": 13505068,
+        "cached_input_tokens": 12972800,
+        "output_tokens": 45476,
+        "reasoning_output_tokens": 6708,
+        "uncached_input_tokens": 532268,
+        "cli_calls": 107,
+        "coordinator_cli_calls": 6,
+        "model_cli_span_seconds_sum": 616.4290000000001,
+        "coordinator_cli_span_seconds_sum": 34.553,
+        "cli_p50_seconds": 5.055,
+        "cli_p95_seconds": 10.8057,
+        "cli_counts": {
+          "runtime pre-write-admit": 20,
+          "runtime artifact-store": 4,
+          "runtime artifact-fetch": 6,
+          "runtime db-first-artifact": 48,
+          "codex run-json-hook": 13,
+          "runtime project-runtime-state": 6,
+          "codex hydrate-context": 4,
+          "runtime sync-db-first-selective": 5,
+          "runtime handoff-admit": 1
+        },
+        "tool_output_bytes": 1021212,
+        "hook_text_bytes": 8683,
+        "input_per_response_p50": 148154,
+        "input_per_response_p95": 340646.6,
+        "new_context_calls": 0,
+        "fresh_threads": 2,
+        "oracle": {
+          "status": "PASS",
+          "passed": 20,
+          "expected": 20,
+          "reasons": []
+        },
+        "measurement_sha256": "42c2a8ce8306f6a2fbeb19e2d131f9e37d94e5783d1349ef1a5cf80deeff2c16"
+      }
+    ],
+    "groups": {
+      "historical": {
+        "allocated": 2,
+        "executed": 2,
+        "qualified": 2,
+        "failed": 0,
+        "successful_task_cost_statistics": {
+          "seconds": {
+            "n": 2,
+            "mean": 2201.7365,
+            "min": 2144.218,
+            "max": 2259.255,
+            "p50": 2201.7365,
+            "p95": 2253.50315,
+            "sample_stddev": 81.34344278735705
+          },
+          "responses": {
+            "n": 2,
+            "mean": 89,
+            "min": 86,
+            "max": 92,
+            "p50": 89,
+            "p95": 91.7,
+            "sample_stddev": 4.242640687119285
+          },
+          "input_tokens": {
+            "n": 2,
+            "mean": 11153072,
+            "min": 10930148,
+            "max": 11375996,
+            "p50": 11153072,
+            "p95": 11353703.6,
+            "sample_stddev": 315262.1441784598
+          },
+          "cached_input_tokens": {
+            "n": 2,
+            "mean": 10752192,
+            "min": 10519040,
+            "max": 10985344,
+            "p50": 10752192,
+            "p95": 10962028.8,
+            "sample_stddev": 329726.7204944119
+          },
+          "uncached_input_tokens": {
+            "n": 2,
+            "mean": 400880,
+            "min": 390652,
+            "max": 411108,
+            "p50": 400880,
+            "p95": 410085.2,
+            "sample_stddev": 14464.576315952016
+          },
+          "output_tokens": {
+            "n": 2,
+            "mean": 42157,
+            "min": 41768,
+            "max": 42546,
+            "p50": 42157,
+            "p95": 42507.1,
+            "sample_stddev": 550.129075763134
+          },
+          "reasoning_output_tokens": {
+            "n": 2,
+            "mean": 4510,
+            "min": 4021,
+            "max": 4999,
+            "p50": 4510,
+            "p95": 4950.1,
+            "sample_stddev": 691.5504320004435
+          },
+          "cli_calls": {
+            "n": 2,
+            "mean": 93.5,
+            "min": 91,
+            "max": 96,
+            "p50": 93.5,
+            "p95": 95.75,
+            "sample_stddev": 3.5355339059327378
+          },
+          "model_cli_span_seconds_sum": {
+            "n": 2,
+            "mean": 589.1714999999999,
+            "min": 550.795,
+            "max": 627.548,
+            "p50": 589.1714999999999,
+            "p95": 623.71035,
+            "sample_stddev": 54.27256677641111
+          },
+          "tool_output_bytes": {
+            "n": 2,
+            "mean": 1142465.5,
+            "min": 1138323,
+            "max": 1146608,
+            "p50": 1142465.5,
+            "p95": 1146193.75,
+            "sample_stddev": 5858.379682130546
+          }
+        }
+      },
+      "compact": {
+        "allocated": 2,
+        "executed": 2,
+        "qualified": 2,
+        "failed": 0,
+        "successful_task_cost_statistics": {
+          "seconds": {
+            "n": 2,
+            "mean": 2421.4539999999997,
+            "min": 2346.151,
+            "max": 2496.757,
+            "p50": 2421.4539999999997,
+            "p95": 2489.2267,
+            "sample_stddev": 106.49452388738133
+          },
+          "responses": {
+            "n": 2,
+            "mean": 82,
+            "min": 73,
+            "max": 91,
+            "p50": 82,
+            "p95": 90.1,
+            "sample_stddev": 12.727922061357855
+          },
+          "input_tokens": {
+            "n": 2,
+            "mean": 12715893,
+            "min": 11926718,
+            "max": 13505068,
+            "p50": 12715893,
+            "p95": 13426150.5,
+            "sample_stddev": 1116061.9880857873
+          },
+          "cached_input_tokens": {
+            "n": 2,
+            "mean": 12251072,
+            "min": 11529344,
+            "max": 12972800,
+            "p50": 12251072,
+            "p95": 12900627.2,
+            "sample_stddev": 1020677.5259444092
+          },
+          "uncached_input_tokens": {
+            "n": 2,
+            "mean": 464821,
+            "min": 397374,
+            "max": 532268,
+            "p50": 464821,
+            "p95": 525523.3,
+            "sample_stddev": 95384.46214137814
+          },
+          "output_tokens": {
+            "n": 2,
+            "mean": 44619,
+            "min": 43762,
+            "max": 45476,
+            "p50": 44619,
+            "p95": 45390.3,
+            "sample_stddev": 1211.9810229537425
+          },
+          "reasoning_output_tokens": {
+            "n": 2,
+            "mean": 6213,
+            "min": 5718,
+            "max": 6708,
+            "p50": 6213,
+            "p95": 6658.5,
+            "sample_stddev": 700.035713374682
+          },
+          "cli_calls": {
+            "n": 2,
+            "mean": 108.5,
+            "min": 107,
+            "max": 110,
+            "p50": 108.5,
+            "p95": 109.85,
+            "sample_stddev": 2.1213203435596424
+          },
+          "model_cli_span_seconds_sum": {
+            "n": 2,
+            "mean": 653.8010000000002,
+            "min": 616.4290000000001,
+            "max": 691.1730000000001,
+            "p50": 653.8010000000002,
+            "p95": 687.4358000000001,
+            "sample_stddev": 52.851989253007325
+          },
+          "tool_output_bytes": {
+            "n": 2,
+            "mean": 1068360,
+            "min": 1021212,
+            "max": 1115508,
+            "p50": 1068360,
+            "p95": 1110793.2,
+            "sample_stddev": 66677.34103876668
+          }
+        }
+      }
+    },
+    "mean_deltas": {
+      "seconds": {
+        "historical_mean": 2201.7365,
+        "compact_mean": 2421.4539999999997,
+        "compact_change_percent": 9.979282261978195
+      },
+      "responses": {
+        "historical_mean": 89,
+        "compact_mean": 82,
+        "compact_change_percent": -7.86516853932584
+      },
+      "input_tokens": {
+        "historical_mean": 11153072,
+        "compact_mean": 12715893,
+        "compact_change_percent": 14.012471182827468
+      },
+      "cached_input_tokens": {
+        "historical_mean": 10752192,
+        "compact_mean": 12251072,
+        "compact_change_percent": 13.940227257846583
+      },
+      "uncached_input_tokens": {
+        "historical_mean": 400880,
+        "compact_mean": 464821,
+        "compact_change_percent": 15.950159648772711
+      },
+      "output_tokens": {
+        "historical_mean": 42157,
+        "compact_mean": 44619,
+        "compact_change_percent": 5.840074009061369
+      },
+      "reasoning_output_tokens": {
+        "historical_mean": 4510,
+        "compact_mean": 6213,
+        "compact_change_percent": 37.76053215077606
+      },
+      "cli_calls": {
+        "historical_mean": 93.5,
+        "compact_mean": 108.5,
+        "compact_change_percent": 16.042780748663098
+      },
+      "model_cli_span_seconds_sum": {
+        "historical_mean": 589.1714999999999,
+        "compact_mean": 653.8010000000002,
+        "compact_change_percent": 10.96955640250763
+      },
+      "tool_output_bytes": {
+        "historical_mean": 1142465.5,
+        "compact_mean": 1068360,
+        "compact_change_percent": -6.486454076731418
+      }
+    },
+    "default_adoption": "WITHDRAWN_IN_SOURCE",
+    "current_nominal_procedure": "Compatible previous admission/hook source assets restored; explicit compact APIs retained",
+    "new_context_function_calls": 0,
+    "fresh_threads_per_task": 2,
+    "model_and_coordinator_cli_calls_all_exit_zero": true,
+    "all_preservation_and_cleanup": true,
+    "view_coverage": {
+      "compact": {
+        "admissions": 45,
+        "agent_admissions": 45,
+        "hooks": 27,
+        "agent_hooks": 27
+      },
+      "historical": {
+        "admissions": 35,
+        "agent_admissions": 0,
+        "hooks": 27,
+        "agent_hooks": 22
+      },
+      "interpretation": "Historical procedure already permits existing opt-in agent views; this is combined nominal adoption, not all-full versus all-compact"
+    }
+  },
+  "current_delivery_disposition": {
+    "complete_application_comparison": "FOUR_QUALIFIED_SAMPLES",
+    "global_performance_target": "NOT_ACHIEVED_IN_AVAILABLE_OBSERVATIONS",
+    "combined_nominal_compact_selector_adoption": "REJECTED_AFTER_MEASURED_TIME_AND_INPUT_REGRESSION",
+    "explicit_compact_interfaces": "RETAINED_WITH_PARITY_TESTS",
+    "bounded_workflow_transaction": "RETAINED_OPT_IN_COLD_TASK_REFUSAL_PRESERVED",
+    "supported_continuation": "ACTUAL_COORDINATOR_AND_TWO_FRESH_THREADS_IN_EACH_TASK; separate ledger research not promoted",
+    "snapshot_and_parse_cache": "RETAINED_INVOCATION_ONLY",
+    "postgres_and_hydration_correctness_fixes": "RETAINED",
+    "next_experiment": "Bounded installed native ordered closure and staged preparation; retain fresh per-write admissions, fences, explicit intent, original deadline and full audit receipts",
+    "new_public_release_or_remote_admission": false,
+    "native_package_after_source_default_withdrawal": "NOT_EXECUTED_NO_EXACT_NEW_PACKAGE_CLAIM",
+    "native_trials_new_work_volume": "G",
+    "host_preflight_temp_exception": "One patch-preparation fixture inherited system TEMP before final correction; its scoped finally cleanup completed. Native trials used G TEMP/TMP. Final verification explicitly uses G TEMP/TMP/npm cache.",
+    "restored_source_validation": {
+      "counts": {
+        "PASS": 7,
+        "FAIL": 0,
+        "SKIP": 0
+      },
+      "result_sha256": "74208a89e63f04220c8c0736df13dc554052a99ab38a967b0d865cf0cef57251",
+      "scope": "Source assets, official installer/renderer, explicit CLI view parity; no new native package claim",
+      "thirteen_skills_and_startup_match_historical_source_bytes": true,
+      "reference_commit": "04753926d342a72af58d415e605aec532cd84d3a",
+      "scratch_and_npm_cache_volume": "G",
+      "patch_preparation_G_replay": {
+        "PASS": 7,
+        "FAIL": 0,
+        "SKIP": 0
+      }
+    },
+    "causal_limit": "Whole package/procedure comparison; neither individual selector nor their exclusive combined contribution among other code changes is isolated"
+  }
+}

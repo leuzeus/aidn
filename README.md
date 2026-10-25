@@ -142,6 +142,11 @@ These versioned projections preserve decisions, refusals and scope while omittin
 static policy inventories and derived packet bodies. Full defaults remain available;
 view selection never retains evidence or grants reusable write permission.
 
+Experimental `aidn codex workflow-step --transaction --skills context-reload,start-session --json`
+prepares one bounded consultation using compact.v2 and accepted client task
+policies (16 KiB target, 64 KiB maximum). Missing policy refuses with remediation.
+The actual writer still requires its fresh admission, CAS and execution fences.
+
 Representative commands:
 
 ```bash

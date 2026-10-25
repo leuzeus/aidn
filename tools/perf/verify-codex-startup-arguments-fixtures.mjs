@@ -7,7 +7,7 @@ import net from "node:net";
 import path from "node:path";
 import { syncBuiltinESMExports } from "node:module";
 import { buildCodexStartupArguments as build, assertCodexStartupArgumentsConfiguration as validate,
-  CODEX_STARTUP_ENVIRONMENT_PROFILES as profiles } from "../../src/core/agents/codex-startup-arguments.mjs";
+  CODEX_STARTUP_ENVIRONMENT_PROFILES as profiles, createCodexHostEnvironment } from "../../src/core/agents/codex-startup-arguments.mjs";
 import { buildCodexNativeProfileArguments, fingerprintCodexNativeProfilePolicy, resolveCodexNativeProfileStatePaths,
   CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES } from "../../src/adapters/agents/codex-native-profile-policy.mjs";
 const checks = [], copy = value => structuredClone(value), H = "a".repeat(64);
@@ -50,15 +50,21 @@ await check("worker empty configuration has the exact historical setting order",
     'model_provider="openai"', 'history.persistence="none"', "memories.generate_memories=false", "memories.use_memories=false", "features.memories=false",
     'developer_instructions=""', 'instructions=""', "shell_environment_policy.set={}", 'shell_environment_policy.inherit="all"',
     "shell_environment_policy.ignore_default_excludes=true",
-    'shell_environment_policy.filters={"SYSTEMROOT"="include","WINDIR"="include","COMSPEC"="include","PATH"="include","PATHEXT"="include","USERPROFILE"="include","LOCALAPPDATA"="include","APPDATA"="include","PROGRAMDATA"="include","CODEX_HOME"="include","TEMP"="include","TMP"="include","AIDN_AGENT_ADMISSION_ENDPOINT"="include","AIDN_AGENT_ADMISSION_TOKEN"="include","AIDN_AGENT_ATTEMPT_ID"="include","AIDN_AGENT_REQUEST_SHA256"="include"}',
+    'shell_environment_policy.filters={"SYSTEMROOT"="include","SYSTEMDRIVE"="include","WINDIR"="include","COMSPEC"="include","PATH"="include","PATHEXT"="include","USERPROFILE"="include","LOCALAPPDATA"="include","APPDATA"="include","PROGRAMDATA"="include","CODEX_HOME"="include","TEMP"="include","TMP"="include","AIDN_AGENT_ADMISSION_ENDPOINT"="include","AIDN_AGENT_ADMISSION_TOKEN"="include","AIDN_AGENT_ATTEMPT_ID"="include","AIDN_AGENT_REQUEST_SHA256"="include"}',
     'log_dir="/fixture/state/logs"', 'sqlite_home="/fixture/state/sqlite"',
   ]);
   assert.equal(args.length, 38); assert(args.filter((_, index) => index % 2 === 0).every(arg => arg === "-c"));
 });
 await check("only the worker environment profile is exposed immutable", () => {
-  assert.deepEqual(Object.keys(profiles), ["worker"]); assert.equal(profiles.worker.length, 16);
+  assert.deepEqual(Object.keys(profiles), ["worker"]); assert.equal(profiles.worker.length, 17);
   assert.deepEqual(profiles.worker, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES);
   assert(Object.isFrozen(profiles) && Object.values(profiles).every(Object.isFrozen));
+});
+await check("native Windows bootstrap retains SystemDrive without forwarding credentials or profile overrides", () => {
+  const env = createCodexHostEnvironment({ SystemDrive: "C:", SystemRoot: "C:\\Windows", PATH: "native-runtime",
+    OPENAI_API_KEY: "never-forward", AIDN_PG_URL: "never-forward", CODEX_HOME: "unselected-home", TEMP: "unselected-temp" });
+  assert.deepEqual(env, { SystemDrive: "C:", SystemRoot: "C:\\Windows", PATH: "native-runtime" });
+  assert(build(configuration()).some(arg => arg.includes('"SYSTEMDRIVE"="include"')));
 });
 for (const [name, edits] of [
   ["empty", {}], ["sorting and dotted IDs", { mcp_server_ids: ["z.last", "a.first"], plugin_ids: ["plug.in", "PLUG"], app_ids: ["_default", "app.z"], environment_override_names: ["Z_VALUE", "a_value"] }],
@@ -106,7 +112,7 @@ for (const [name, mutate] of [
   ["array extra field", value => { value.app_ids.extra = true; }], ["sparse array", value => { value.app_ids = Array(1); }],
   ["removed setup environment profile", value => { value.environment_names = profiles.worker.slice(0, 12); }],
   ["unknown environment profile", value => { value.environment_names = ["PATH"]; }], ["environment profile reordered", value => { value.environment_names.reverse(); }],
-  ["environment name lowercase", value => { value.environment_names[0] = "systemroot"; }], ["17 environment names", value => { value.environment_names = [...profiles.worker, "EXTRA"]; }],
+  ["environment name lowercase", value => { value.environment_names[0] = "systemroot"; }], ["unknown eighteenth environment name", value => { value.environment_names = [...profiles.worker, "EXTRA"]; }],
   ["override injection", value => { value.environment_override_names = ['EXTRA"="include']; }], ["override reserved case insensitive", value => { value.environment_override_names = ["Path"]; }],
   ["override duplicate case insensitive", value => { value.environment_override_names = ["VALUE", "value"]; }],
   ["override numeric", value => { value.environment_override_names = [12]; }], ["override length 257", value => { value.environment_override_names = ["X".repeat(257)]; }],

@@ -52,7 +52,8 @@
     "selection_policy": { "type": "object", "required": ["mode", "reason", "write_authorization"], "properties": {
       "mode": { "enum": ["scoped", "legacy-full-fallback", "blocked", "not-attempted"] },
       "reason": { "type": "string" }, "write_authorization": { "const": false },
-      "policy_revision": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      "policy_revision": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "remediation": { "type": "string" }
     }, "additionalProperties": false },
     "context_selection": { "type": "object", "required": ["status", "scope", "errors", "omissions"], "additionalProperties": true },
     "history_view": { "const": "transitions" },
