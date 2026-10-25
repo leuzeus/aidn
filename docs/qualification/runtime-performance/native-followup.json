@@ -1167,5 +1167,85 @@
     "owned_asset_fixtures": "PASS",
     "native_new_archive_selector": "PENDING",
     "personal_installation_changed": false
+  },
+  "complete_native_application_pilot": {
+    "status": "WORKFLOW_PASS",
+    "candidate_sha256": "aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576",
+    "source_commit": "10419336b5d98809c4995b16433a3d6f21aca794",
+    "comparison_sample": false,
+    "workflow_seconds": 2089.307,
+    "clock_excludes": [
+      "client/runtime preparation",
+      "final fixed oracle",
+      "private cluster cleanup"
+    ],
+    "phase_seconds": [
+      1139.813,
+      913.384
+    ],
+    "coordinator_seconds": 34.083,
+    "unique_provider_responses": 69,
+    "tokens": {
+      "input_tokens": 8118837,
+      "cached_input_tokens": 7802624,
+      "output_tokens": 44004,
+      "reasoning_output_tokens": 6179,
+      "uncached_input_tokens": 316213
+    },
+    "canonical_cli_calls": 92,
+    "specific_native_patch_admissions": 9,
+    "native_hooks_completed": 136,
+    "maximum_concurrent_hooks": 1,
+    "final_self_tests_passed": 12,
+    "actual_new_context_calls": 0,
+    "scheduled_native_threads": 2,
+    "terminal_cycle_and_session_gates": "PASS_ACTUAL_NESTED_HOOK_AND_DB_CONSTRAINT_EVIDENCE",
+    "application_oracle": {
+      "status": "PASS",
+      "passed": 20,
+      "expected": 20,
+      "missing": 0,
+      "score": 60
+    },
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 34,
+      "changed_refs": 0,
+      "protected_git_files": 224,
+      "changed_git_files": 0
+    },
+    "process_cleanup": "confirmed_all_four_trees",
+    "private_postgres_removed": true,
+    "frozen_controls_preserved": true,
+    "principal_config_auth_preserved": true,
+    "raw_result_sha256": "5692a300be4d5cdbd3150ad967b13f6dcb09cffaa5c6d392557b2336bc732069",
+    "usage_report_sha256": "00cadcd74bc2d2ed27da318ab49e178460868e7eb7579965d2ea5051c59427e9",
+    "end_to_end_gain_claimed": false
+  },
+  "packaged_compact_admission_selector": {
+    "status": "PASS_INSTALLED_NATIVE_SELECTOR_AND_COORDINATOR",
+    "source_commit": "bc2572faaad98dfa47fa9b6e264a40f947aecd32",
+    "candidate_sha256": "86e37dc22d5d75914afa36e63230c94cb5423290fd53a421e5b6036326eaac60",
+    "model_calls": 0,
+    "full_json_bytes": 17640,
+    "agent_json_bytes": 8848,
+    "same_activation_decision_checks_and_sources": true,
+    "checkout_unchanged_by_admission": true,
+    "private_installed_skills_exact_official_render": 13,
+    "runtime_implementation_changes": 0,
+    "hook_handler_changes": 0,
+    "native_full_application_run_on_this_archive": "NOT_EXECUTED",
+    "grouped_default_procedure_promoted": false,
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 37,
+      "changed_refs": 0,
+      "protected_git_files": 237,
+      "changed_git_files": 0
+    },
+    "process_cleanup": "confirmed",
+    "private_postgres_removed": true,
+    "principal_profile_preserved": true,
+    "raw_sha256": "98d3f793b5adc985eee454ead1fa42586ff35324eeb0f758e414a4bdcfd45606"
   }
 }

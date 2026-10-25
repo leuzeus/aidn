@@ -10,6 +10,13 @@ recoverable archives on the permitted evidence volume. Automatic cleanup was
 rejected by policy, so the original copies remain inert; the personal Codex
 profile was neither moved nor removed.
 
+One full application integration pilot now passes on the permitted volume with
+the explicitly selected elevated legacy backend: two native threads, actual
+coordinator relay, genuine cycle/session closure and the fixed 20/20 oracle.
+Its workflow clock is 2,089.307 seconds; it exposes 69 completed provider
+responses, 8,118,837 cumulative input tokens and 316,213 uncached input tokens.
+This pilot uses the frozen source `10419336` package and is not a matched A/B.
+
 The current native application campaign has **no valid comparative samples**.
 The retained MXC non-system-volume reproduction fails native physical-path
 resolution with both the official `:workspace` profile and a custom profile,
@@ -1170,3 +1177,58 @@ preexisting foreign refs and 210 Git files remain intact, the private PostgreSQL
 cluster is removed and the owned process tree closes. Zero models are invoked.
 This proves fixture transport and prerequisites only. The separate transaction
 budget refusal is retained; no transaction success is claimed by this control.
+
+
+## Complete native application integration pilot
+
+The frozen source `10419336` archive `aa9b3614…f4991576` completes the full
+application workflow. Phase 1 passes in 1,139.813 seconds, the actual coordinator
+in 34.083 seconds, and phase 2 in 913.384 seconds. The parent workflow clock is
+2,089.307 seconds (34.82 minutes), inside the original 2,700-second deadline.
+This clock excludes initial client/runtime preparation and the fixed final oracle;
+no total including installation, private-cluster preparation or cleanup is inferred.
+
+All 92 canonical CLI calls succeed across both workers and the coordinator.
+Nine native patches each have their own positive specific-scope hook admission;
+136 native hooks complete, with maximum concurrency one. The final product has
+twelve passing self-tests. Phase 2 fixes the first worker's recorded leap-second
+gap and additional bounded input handling before VERIFYING. Actual strict
+cycle-close and close-session receipts pass, including their nested gates and
+the required DB constraint loop. The fixed independent application oracle then
+passes all twenty criteria with score 60/60 and no missing criterion.
+
+The unique-response observer records 69 responses, 8,118,837 input tokens,
+7,802,624 cached input tokens, 316,213 uncached input tokens, 44,004 output tokens
+and 6,179 reasoning output tokens. These are client-reported response counters,
+not billed cost or internal model-window measurements. Two scheduled fresh
+threads are observed; actual `new_context` count is zero in this application
+pilot. The separate three-window research proof is not transferred here.
+
+The four owned process trees close, the private PostgreSQL cluster is removed,
+34 preexisting foreign Git refs and 224 Git files are unchanged, frozen harness
+inputs are preserved, and principal configuration/authentication hashes remain
+unchanged. This is a successful integration pilot, **not a comparative sample**.
+The historical runtime and equivalent repeated variant runs remain separate gates;
+no before/after gain or numerical engineering target is declared achieved.
+
+## Packaged compact admission selector
+
+Source `bc2572faaad98dfa47fa9b6e264a40f947aecd32` produces the new local archive
+`86e37dc22d5d75914afa36e63230c94cb5423290fd53a421e5b6036326eaac60` from
+1,047 clean tracked inputs. Its private installation on the permitted volume
+preserves all thirteen skills through the official integration-revision renderer.
+Archive comparison finds no changed runtime implementations or hook handlers;
+one verification fixture changes alongside the skill/startup assets and docs.
+
+The new installed archive's actual native standalone admission selector passes:
+the complete JSON changes from 17,640 to 8,848 bytes while activation, decisions,
+context, checks, blockers/findings, warnings and observed canonical sources remain
+identical. Neither invocation changes checkout files. Its independent native
+coordinator also passes; all owned processes close, the private cluster is removed,
+37 foreign refs and 237 Git files remain unchanged, and the principal profile is
+preserved. This is zero-model selector/transport evidence, not a repeated full
+application run or general grouped/startup promotion. Source CLI view parity has
+20 passing assertions. Installed-client, package-topology and owned-assets checks
+pass. The release family first reports two PASS and one clean-checkout precondition
+FAIL on the original checkout; that exact reproducibility gate subsequently passes
+on the clean candidate worktree. The preexisting untracked files are preserved.
