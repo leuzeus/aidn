@@ -1431,11 +1431,63 @@
     "candidate_source_commit": "4fc7075d463f8a7b5d2aacf7f2bd5eccf0b37a2e",
     "official_rendered_installed_skills": 13,
     "benchmark_control_tests": {
-      "PASS": 418,
+      "PASS": 430,
       "FAIL": 0,
       "SKIP": 0
     },
     "full_supervisor_hook_receipts": "RETAINED_BEFORE_ENGINE_MODEL_PROJECTION",
-    "personal_assets_changed": false
+    "personal_assets_changed": false,
+    "exact_native_branch_guard": "benchmark-phase-continuation.v16",
+    "release_reproducibility": {
+      "PASS": 1,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "application_pilot": "RUNNING_NEW_FRESH_CLIENT_NO_VERDICT_YET"
+  },
+  "historical_runtime_complete_native_pilot": {
+    "status": "WORKFLOW_PASS",
+    "source_commit": "04753926d342a72af58d415e605aec532cd84d3a",
+    "candidate_sha256": "cc87ef837a269d83f6d4b8a73fe83aa8af01ea740772a805c4e87bab72dbf8d0",
+    "strict_whole_application_accepted": true,
+    "strict_acceptance_reasons": [],
+    "comparative_sample": false,
+    "workflow_seconds": 2573.6,
+    "unique_provider_responses": 71,
+    "tokens": {
+      "input_tokens": 7993562,
+      "cached_input_tokens": 7740928,
+      "output_tokens": 40012,
+      "reasoning_output_tokens": 3873,
+      "uncached_input_tokens": 252634
+    },
+    "canonical_cli_model_calls": 90,
+    "canonical_cli_coordinator_calls": 6,
+    "cli_latency_seconds": {
+      "p50": 4.973,
+      "p95": 10.56155
+    },
+    "actual_new_context_calls": 0,
+    "fresh_native_threads": 2,
+    "git_lock_refusals": 0,
+    "application_oracle": {
+      "status": "PASS",
+      "passed": 20,
+      "expected": 20,
+      "reasons": []
+    },
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 66,
+      "changed_refs": 0,
+      "protected_git_files": 289,
+      "changed_git_files": 0
+    },
+    "principal_configuration_preserved": true,
+    "frozen_controls_preserved": true,
+    "private_postgres_removed": true,
+    "raw_result_sha256": "90536c89407d3392123ad74a4992c4b225657e1e2a57e65e8fe266f00d5d5a65",
+    "measurement_sha256": "c387c039a6c0c42ee08e79750ab83824d86be446430af536420ee99c070f2d09",
+    "meaning": "Fresh complete historical-runtime calibration on the corrected declared Git path, not retroactive repair of any prior attempt or a repeated A/B sample"
   }
 }

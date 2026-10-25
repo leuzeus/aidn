@@ -10,8 +10,11 @@ recoverable archives on the permitted evidence volume. Automatic cleanup was
 rejected by policy, so the original copies remain inert; the personal Codex
 profile was neither moved nor removed.
 
-Strict whole-application protocol qualification is currently **NOT ESTABLISHED**.
-A former driver PASS is preserved, but independent review found two native Git
+Strict whole-application protocol qualification of the optimized candidate is
+currently **NOT ESTABLISHED**. A new historical-runtime calibration now passes
+all strict workflow and twenty application checks on the corrected Git path;
+its exact scope and measurements are recorded below.
+A former optimized-candidate driver PASS is preserved, but independent review found two native Git
 metadata-lock permission refusals with exit zero before implementation. The
 phase guard missed stderr denials. Its actual 20/20 oracle, specific patch
 admissions and terminal hook executions remain valid component observations;
@@ -1438,3 +1441,50 @@ Its twenty focused tests include refusal parity and altered-proof/strict-flag
 rejection; all 418 surrounding host tests pass with zero failures or skips.
 These checks prepare a fresh application trial; native application success and
 token/time gains for this package remain unclaimed.
+
+
+## Fresh complete historical-runtime calibration
+
+A new client, initially empty private PostgreSQL scope and two fresh native
+threads complete the historical `04753926d342a72af58d415e605aec532cd84d3a`
+runtime procedure. This uses the unchanged fixed brief and twenty-criterion
+oracle, pinned model/reasoning, managed elevated non-system-volume profile,
+original 2,700-second arm bound and exact owned Git namespaces. Both same-commit
+branch transitions are observed through their protected native adapter. No Git
+lock refusal occurs. The prospective v15 guards admit both phases, the actual
+coordinator relay passes, and actual final cycle/session hooks and the fixed
+oracle pass. Independent exact adapter-execution review also passes.
+
+| Observation | Historical calibration |
+| --- | ---: |
+| Workflow clock, including both native phases and relay | 2,573.600 s |
+| Unique completed provider responses | 71 |
+| Cumulative input tokens | 7,993,562 |
+| Cached input tokens | 7,740,928 |
+| Uncached input tokens | 252,634 |
+| Output tokens, including reported reasoning subset | 40,012 |
+| Reported reasoning subset | 3,873 |
+| Actual canonical calls, model / coordinator | 90 / 6 |
+| Model canonical CLI duration p50 / p95 | 4.973 / 10.562 s |
+| Fixed application oracle | 20/20 |
+| Actual native `new_context` function calls | 0 |
+| Fresh native threads | 2 |
+
+The workflow clock excludes fixture/package preparation, final external oracle
+and database cleanup. Cumulative cached input is not standard-rate uncached
+billing or a hidden-context-residency measurement. DB round trips remain
+unavailable rather than being inferred from CLI counts. The owned workers,
+coordinator and oracle stop; the private PostgreSQL cluster is removed. All 66
+protected refs, 289 retained Git files, frozen controls and principal config/auth
+hashes are preserved.
+
+This is a valid complete historical calibration, not a predeclared repeated
+comparative cohort, a recovered prior failure, optimized-package qualification,
+or a causal performance gain. The next independently initialized compact
+admission/hook candidate is running with the same brief, oracle, model, reasoning
+and bounds. Its result remains pending. Its prospective v16 guard additionally
+checks the exact native helper invocation and complete PASS result for each
+owned branch transition, rejecting wrong bindings, replay, hidden diagnostics
+and compound shell commands; twelve new cases bring the prepared control suite
+to 430 PASS, zero FAIL/SKIP. Package reproducibility independently passes once
+on its clean source checkout.
