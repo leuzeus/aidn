@@ -1115,5 +1115,57 @@
       "SKIP": 0
     },
     "result_sha256": "bb5b249657b58f7d105bba4925c96576e375ca513dd50938d8553ce33a95f78e"
+  },
+  "independent_native_coordinator_fixture": {
+    "status": "PASS",
+    "model_calls": 0,
+    "receive_transition": {
+      "allowed": true,
+      "status": "allowed",
+      "reason": "COMMITTING allows executor -> coordinator",
+      "mode": "COMMITTING",
+      "from_role": "executor",
+      "from_action": "relay",
+      "to_role": "coordinator",
+      "to_action": "coordinate"
+    },
+    "dispatch_transition": {
+      "allowed": true,
+      "status": "allowed",
+      "reason": "COMMITTING allows coordinator -> executor",
+      "mode": "COMMITTING",
+      "from_role": "coordinator",
+      "from_action": "relay",
+      "to_role": "executor",
+      "to_action": "implement"
+    },
+    "product_files_unchanged": true,
+    "final_admission_status": "admitted",
+    "sources": {
+      "packet_source": "postgres",
+      "current_state_source": "postgres",
+      "runtime_state_source": "postgres"
+    },
+    "report_sha256": "79d4e37b1dd9d7ab5c1f6202dc79ade271bf8a2344a7073443e5c2928a05f0ee",
+    "scope": "Restored fixture transport only; no new implementation, transaction success, closed-attempt recovery or comparative sample",
+    "first_missing_context_refusal_retained": true,
+    "real_strict_reload_hook_before_packet": true,
+    "process_cleanup": "confirmed",
+    "private_postgres_removed": true,
+    "principal_config_auth_preserved": true
+  },
+  "compact_admission_source_default": {
+    "status": "SOURCE_ASSETS_IMPLEMENTED",
+    "managed_skill_procedures": 13,
+    "startup_contract": true,
+    "selector": "runtime pre-write-admit --view agent",
+    "full_cli_default_compatible": true,
+    "grouped_transaction_default_promoted": false,
+    "actual_source_cli_parity_assertions": 20,
+    "installed_client_gate": "PASS",
+    "pack_topology_gate": "PASS",
+    "owned_asset_fixtures": "PASS",
+    "native_new_archive_selector": "PENDING",
+    "personal_installation_changed": false
   }
 }

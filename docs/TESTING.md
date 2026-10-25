@@ -1589,3 +1589,10 @@ manual proof in an owned ephemeral PostgreSQL cluster. It executes all three
 profiles, counts one common canonical transaction plus its fresh publication
 fence, verifies unchanged canonical rows, and refuses a concurrent canonical
 change. Its real database evidence remains outside PR admission.
+
+
+The installed skill namespace fixture also checks the deployed startup admission
+selectors. The agent-view fixture compares actual full/agent strict admission,
+activation, source binding, blockers, checks and unchanged target bytes. Compact
+admission defaults in source assets are separate from opt-in grouped transaction
+qualification and from activation or upgrade of an existing installed client.

@@ -1135,3 +1135,38 @@ The next discriminating control verifies the coordinator transport separately
 on a fresh, explicitly restored fixture. A fixture relay cannot establish a
 new model implementation, end-to-end gain, default installed-route adoption or
 recovery of the closed failed application attempt.
+
+
+## Nominal compact admission presentation
+
+The source startup contract and all thirteen managed skill procedures now use
+`runtime pre-write-admit --view agent` for their initial admission and listed
+read-only admission examples. Actual activation and admission remain the first
+boundary, before loading workflow state. The compact projection retains checks,
+blockers, findings, warnings, scope, observed sources and specific patch decisions;
+full diagnostics remain an explicit fresh read. Complete artifact requirements,
+canonical writers, fresh action admissions and all native controls are unchanged.
+CLI full-output defaults remain compatible. This is the small standalone view
+change; grouped transaction/startup promotion remains unqualified.
+
+The actual source CLI view suite passes twenty assertions, including full/agent
+strict-refusal parity, activation, exact native decision bindings and unchanged
+checkout bytes. Namespace/startup selector checks, installed-client and package
+topology gates, and owned Codex asset fixture checks pass. Native selection on a
+new archive remains pending; the ongoing application pilot deliberately retains
+its older frozen package. No personal installation or trust configuration is
+modified by this source-asset commit.
+
+## Independent native coordinator transport control
+
+A fresh restored fixture verifies the coordinator on the same frozen package.
+An initial control produces/persists a correctly routed canonical packet but its
+actual admission refuses the absent derived `codex-context.json` artifact. That
+failed control remains immutable. The successor executes the ordinary strict
+context-reload hook first; its actual generated context, packet persistence,
+hidden hydration and default PostgreSQL handoff admission pass. The receive and
+dispatch role transitions are both allowed. No product files change, thirty-one
+preexisting foreign refs and 210 Git files remain intact, the private PostgreSQL
+cluster is removed and the owned process tree closes. Zero models are invoked.
+This proves fixture transport and prerequisites only. The separate transaction
+budget refusal is retained; no transaction success is claimed by this control.

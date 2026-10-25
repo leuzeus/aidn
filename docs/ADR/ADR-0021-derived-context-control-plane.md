@@ -80,6 +80,15 @@ requires a fresh full read and claims no retained record, source revision or
 authorization. View selection creates no persistence. An unavailable decision
 stops with a typed diagnostic instead of implying canonical fallback or success.
 
+The source startup contract and managed skills now select that existing compact
+standalone admission view. This changes presentation of the same activation
+boundary, not its canonical evaluation, required reads, effects or fresh-write
+checks. Full CLI defaults remain compatible and explicit full diagnostics stay
+available. Source fixture/CLI parity and an installed native selector check are
+distinct evidence; a frozen older package is not retroactively qualified. This
+small admission default does not promote the experimental grouped procedure or
+its native lifecycle integration.
+
 An explicitly grouped workflow consultation can share one complete canonical
 snapshot and each needed shared planning/relay observation within its private
 asynchronous invocation. These internal values cannot be supplied through JSON,

@@ -9,7 +9,9 @@ metadata:
 
 ## Project Activation
 
-Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
+Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill context-reload --view agent --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
+
+The nominal admission response uses the existing compact agent view. Inspect its actual activation, decision, checks, blockers and observed sources. Expand full diagnostics explicitly only when needed; a view never grants reusable write permission or replaces the complete artifact reads and fresh action admissions below.
 
 If activation is absent, false or unknown, stop this skill without loading workflow state or creating artifacts. Report the activation reason; `aidn bootstrap --diagnose --json` is the explicit read-only diagnostic. Do not install or activate the project automatically. A blocked admission allows only the read-only diagnostics it recommends, within the user's scope.
 

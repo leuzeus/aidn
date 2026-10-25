@@ -15,6 +15,21 @@ discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
 and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIES.md).
 
+## Nominal compact admission
+
+Installed startup and the thirteen skill procedures select the existing compact
+`runtime pre-write-admit --view agent` response by default. It retains actual
+activation, admission, checks, blockers, scope and observed sources. Full CLI
+defaults remain compatible; full diagnostics are an explicit expansion. This
+source-asset change requires installation/upgrade to take effect and does not
+requalify an already frozen package or change native trust.
+
+This admission presentation change does not promote the grouped transaction as
+ordinary startup. Activation still precedes workflow loading; all prescribed
+complete artifact reads and fresh action admissions remain necessary. The
+retained native whole-authority fixture exceeds the 64 KiB transaction budget,
+so grouped default adoption and its application-level gains remain open.
+
 ## Opt-in compact agent views
 
 `workflow-step --transaction --skills <known-skills> --json` composes grouped
@@ -293,7 +308,7 @@ uses the ordinary consumer and preserves client adoption history.
 
 ## Project activation and skill names
 
-Before loading workflow context, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Continue only when `activation.active` is true and admission is admissible. The thirteen public skills now use `aidn-*` names, such as `aidn-context-reload` and `aidn-start-session`; their internal CLI `--skill context-reload` and `--skill start-session` identifiers stay compatible.
+Before loading workflow context, run `aidn runtime pre-write-admit --target . --skill context-reload --view agent --json`. Continue only when `activation.active` is true and admission is admissible. The thirteen public skills now use `aidn-*` names, such as `aidn-context-reload` and `aidn-start-session`; their internal CLI `--skill context-reload` and `--skill start-session` identifiers stay compatible.
 
 Context reload reconstructs a mode rather than requiring one to exist already.
 An unknown mode remains unknown in the read-only admission output. Activation,
