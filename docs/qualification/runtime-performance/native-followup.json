@@ -1383,6 +1383,29 @@
       "foreign_refs_common_controls_and_profile_preserved": true
     },
     "raw_independent_review_sha256": "a52a9e60c797fc9964f179c084b8a8f2f784e811e1204ba81f1a8b6266499c84",
-    "git_execution_remedy": "NOT_YET_VALIDATED"
+    "git_execution_remedy": "PASS_SAME_COMMIT_BRANCH_COMPONENT_ONLY"
+  },
+  "same_commit_git_adapter_native_component": {
+    "status": "PASS",
+    "contract": "same-commit-owned-branch.v1",
+    "model_calls": 0,
+    "native_successful_git_calls": 70,
+    "nonempty_git_stderr": 0,
+    "negative_controls": 7,
+    "session_and_cycle_transitions": "PASS",
+    "same_head_and_index": "PRESERVED",
+    "existing_refs_common_controls_and_profile": "PRESERVED",
+    "outside_metadata_write": "DENIED",
+    "permission_expansion": false,
+    "cleanup": "confirmed_zero_descendants",
+    "guard_tests": {
+      "PASS": 73,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "raw_native_summary_sha256": "353aad9678cf8e6e92f25df977838c3c92f320de3292df34063716c9bda18cd8",
+    "adapter_module_sha256": "6b02e949eb353674d822d9132153191437a85615e194f7d7345c5c6e893b505a",
+    "application_comparison": "NOT_EXECUTED",
+    "cross_commit_checkout_and_commit": "NOT_QUALIFIED"
   }
 }

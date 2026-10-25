@@ -1366,3 +1366,34 @@ This guard correction is independent of a still-unvalidated Git execution remedy
 Scope restrictions protecting unrelated refs remain unchanged. No new expensive
 model attempt is justified until the intended branch path executes without
 these errors on a fresh zero-model case.
+
+
+## Same-commit native Git component after protocol invalidation
+
+A new owned non-system-volume linked worktree validates a narrowly bounded Git
+adapter for the source-to-session and session-to-cycle transitions. It creates
+the target branch at the verified unchanged commit and selects that branch with
+Git's official symbolic-ref command. It does not perform a cross-commit checkout.
+Fresh checks require exact physical target/common/worktree identity, the owned
+namespace, expected current branch and commit, an absent target, a clean index
+and working tree, and no in-progress merge, cherry-pick, revert, rebase, sequencer
+or bisect state. These conditions are checked again before HEAD selection.
+
+The native elevated managed-proxy run completes both transitions: all 70 retained
+Git commands have empty stderr; HEAD and index are preserved. Seven negative
+controls refuse dirty state, an in-progress operation, wrong commit, out-of-order
+selection, foreign naming and replay of each completed transition. A separate
+foreign-metadata write remains denied. Existing refs, common Git controls and
+principal configuration/authentication hashes are unchanged; the owned process
+tree closes with zero descendants. No broader common-directory or packed-refs
+write permission is added. The prospective phase guard and adjacent controls
+pass 73 tests, with zero failures or skips.
+
+This is a branch-transition component result with zero model calls. It does not
+restore either invalidated application attempt, qualify Git commits or arbitrary
+checkouts, or establish an end-to-end gain. The following fresh application pilot
+uses the declared same-commit adapter after ordinary fresh AIDN admissions; its
+initial policy, strict terminal gates and fixed twenty-criterion oracle remain
+unchanged. Successful branch-tool output is compact; actual failures retain their
+diagnostic and stop dependent work. Raw component identity and module SHA-256 are
+bound in [the layered follow-up](../qualification/runtime-performance/native-followup.json).
