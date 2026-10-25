@@ -1419,3 +1419,22 @@ not recovered application acceptance, provider-token measurements or a measured
 end-to-end speedup. Namespace/startup coverage and twenty existing real-CLI view
 assertions pass. Installed upgrade and application comparison for this new
 source-asset delta remain separate qualification steps.
+
+
+The new source asset candidate is now packaged from clean source `4fc7075` and
+installed privately. All thirteen installed skill byte sequences match the
+protected official renderer; all eleven hook examples retain the agent selector.
+The archive SHA-256 is
+`e442962f4524249d7e305b4f93b9913356348361754b878c51c999a7728a0b9c`.
+Runtime, CLI and hook implementation files are byte-identical to the preceding
+compact-admission package; the only changed executable is its namespace fixture
+verifier. No personal installed assets or native trust are changed.
+
+The next benchmark transport retains and verifies the complete actual hook
+stdout and nested terminal evidence before applying that installed engine's
+projection to the model response. It binds full/model hashes, exact requested
+and executed arguments, protected module identity and actual own raw evidence.
+Its twenty focused tests include refusal parity and altered-proof/strict-flag
+rejection; all 418 surrounding host tests pass with zero failures or skips.
+These checks prepare a fresh application trial; native application success and
+token/time gains for this package remain unclaimed.

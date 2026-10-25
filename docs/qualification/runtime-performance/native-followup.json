@@ -1426,6 +1426,16 @@
     "real_cli_view_assertions": 20,
     "provider_token_gain": "NOT_MEASURED",
     "application_gain": "NOT_MEASURED",
-    "new_package_installation": "NOT_YET_EXECUTED"
+    "new_package_installation": "PASS_PRIVATE_INSTALLED_ASSETS",
+    "candidate_sha256": "e442962f4524249d7e305b4f93b9913356348361754b878c51c999a7728a0b9c",
+    "candidate_source_commit": "4fc7075d463f8a7b5d2aacf7f2bd5eccf0b37a2e",
+    "official_rendered_installed_skills": 13,
+    "benchmark_control_tests": {
+      "PASS": 418,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "full_supervisor_hook_receipts": "RETAINED_BEFORE_ENGINE_MODEL_PROJECTION",
+    "personal_assets_changed": false
   }
 }
