@@ -1397,3 +1397,25 @@ initial policy, strict terminal gates and fixed twenty-criterion oracle remain
 unchanged. Successful branch-tool output is compact; actual failures retain their
 diagnostic and stop dependent work. Raw component identity and module SHA-256 are
 bound in [the layered follow-up](../qualification/runtime-performance/native-followup.json).
+
+
+## Nominal skill hook presentation
+
+The eleven scaffold skills that invoke `codex run-json-hook` now select the
+existing `--view agent` response. The read-only context-reload and crash-recovery
+procedures gain no new hook invocation. The existing full CLI default, hook
+effects, strict flags, raw context-store evidence, complete context-file reads,
+hydration and final nested-hook verification remain unchanged. This is a new
+source-asset delta; frozen installed candidates and native trust are unchanged.
+
+A read-only replay applies the unchanged protected candidate projector to the
+fourteen actual model-facing hook JSON payloads retained from the earlier pilot.
+It checks exact parity of overall/command/strict decisions, repair diagnostics,
+recommendations, synchronization flags and raw-evidence hashes. Their aggregate
+UTF-8 size falls from 107,118 to 17,927 bytes (83.3%). One help response and the
+supervisor-only coordinator hook are explicitly excluded. The pilot's strict
+protocol invalidation remains in force; these are projection component results,
+not recovered application acceptance, provider-token measurements or a measured
+end-to-end speedup. Namespace/startup coverage and twenty existing real-CLI view
+assertions pass. Installed upgrade and application comparison for this new
+source-asset delta remain separate qualification steps.

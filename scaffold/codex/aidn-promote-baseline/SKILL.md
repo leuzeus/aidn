@@ -66,7 +66,7 @@ Before the first durable write in this skill, run:
 - keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 5) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill promote-baseline --mode COMMITTING --target . --json`
+- run `npx aidn codex run-json-hook --skill promote-baseline --mode COMMITTING --target . --view agent --json`
 - the runtime `aidn-promote-baseline` hook validates target-cycle selection, open-gap closure, and traceability readiness before delegating to generic checkpoint/index/repair behavior
 - expect machine-visible outcomes such as `promote_baseline_allowed`, `choose_cycle`, or `blocked_open_gap`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).

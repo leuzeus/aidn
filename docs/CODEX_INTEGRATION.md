@@ -15,7 +15,7 @@ discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
 and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIES.md).
 
-## Nominal compact admission
+## Nominal compact admission and hook responses
 
 Installed startup and the thirteen skill procedures select the existing compact
 `runtime pre-write-admit --view agent` response by default. It retains actual
@@ -23,6 +23,15 @@ activation, admission, checks, blockers, scope and observed sources. Full CLI
 defaults remain compatible; full diagnostics are an explicit expansion. This
 source-asset change requires installation/upgrade to take effect and does not
 requalify an already frozen package or change native trust.
+
+The eleven skill procedures that invoke `codex run-json-hook` also select its
+existing `--view agent` response. Inspect the actual overall decision, command
+status, strict/repair findings, advice, synchronization result and raw evidence
+reference. Complete context-file reads, hydration and final nested-hook checks
+remain prescribed by each procedure. Diagnostic expansion explicitly selects
+`--view full`; it does not require another hook execution solely to reformat an
+already retained result. View selection preserves the hook's existing effects
+and does not add a diagnostic receipt write.
 
 This admission presentation change does not promote the grouped transaction as
 ordinary startup. Activation still precedes workflow loading; all prescribed

@@ -67,7 +67,7 @@ or merge automatically; report the concrete next workflow action when blocked.
 - in `dual`/`db-only`, prefer `--state-mode dual|db-only` so the promoted backlog is also written through the DB-backed artifact store
 
 5) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill handoff-close --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- run `npx aidn codex run-json-hook --skill handoff-close --mode <THINKING|EXPLORING|COMMITTING> --target . --view agent --json`
 - the runtime `aidn-handoff-close` hook exposes the underlying checkpoint result directly; blocked reload/gate states are surfaced as blocking hook results
 - handoff-specific packet validation remains enforced by `project-handoff-packet` and `handoff-admit`, not by the perf hook alone
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).

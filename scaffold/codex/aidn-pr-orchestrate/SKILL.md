@@ -43,7 +43,7 @@ Drive the session branch through the explicit PR lifecycle without skipping push
 - `post_merge_sync_status`
 
 3) Run the runtime admission:
-- `npx aidn codex run-json-hook --skill pr-orchestrate --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- `npx aidn codex run-json-hook --skill pr-orchestrate --mode <THINKING|EXPLORING|COMMITTING> --target . --view agent --json`
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill pr-orchestrate --project-runtime-state --json`.

@@ -103,7 +103,7 @@ Update:
 ### Snapshot updated? (checked)
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill close-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- run `npx aidn codex run-json-hook --skill close-session --mode <THINKING|EXPLORING|COMMITTING> --target . --view agent --json`
 - the runtime `aidn-close-session` hook applies open-cycle resolution admission before delegating to generic `session-close` checkpoint/index/repair behavior
 - expect machine-visible outcomes such as `close_session_allowed`, `blocked_open_cycles_must_be_resolved`, or `blocked_cycle_resolution_decision_required`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).

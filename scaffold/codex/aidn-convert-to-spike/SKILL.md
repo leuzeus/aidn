@@ -57,7 +57,7 @@ If mode=EXPLORING and:
 - keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 7) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill convert-to-spike --mode EXPLORING --target . --json`
+- run `npx aidn codex run-json-hook --skill convert-to-spike --mode EXPLORING --target . --view agent --json`
 - the runtime `aidn-convert-to-spike` hook applies spike-continuity admission before delegating to generic checkpoint/index/repair behavior
 - it reuses `aidn-cycle-create` continuity logic with the `EXPLORING` mode gate, so strict chain may still stop and require explicit override/choice
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).

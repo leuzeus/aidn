@@ -92,7 +92,7 @@ Rules:
 - keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --json`
+- run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --view agent --json`
 - the runtime `aidn-requirements-delta` hook applies ownership/impact admission before delegating to generic checkpoint/index/repair behavior
 - expect machine-visible outcomes such as `continue_same_cycle`, `recommend_new_cycle`, or `stop_choose_cycle_or_branch`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).

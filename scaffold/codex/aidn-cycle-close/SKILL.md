@@ -106,7 +106,7 @@ or a guarantee that a later revision exists.
 - keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 6) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill cycle-close --mode COMMITTING --target . --json`
+- run `npx aidn codex run-json-hook --skill cycle-close --mode COMMITTING --target . --view agent --json`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill cycle-close --project-runtime-state --json`.

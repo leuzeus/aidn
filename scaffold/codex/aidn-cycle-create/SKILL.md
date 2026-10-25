@@ -133,7 +133,7 @@ discovery and every required read. Consultation never replaces admission.
 - do not change a frozen plan to expand an edit's own permission; use the governed scope-change process
 
 9) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --json`
+- run `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --view agent --json`
 - the runtime `aidn-cycle-create` hook applies continuity admission before delegating to generic checkpoint/index/repair behavior
 - in DB-backed modes, continuity admission reads the configured canonical runtime backend before visible session/cycle projections and reports `continuity_context_source`, `continuity_context_backend`, `canonical_continuity_status`, and any `canonical_continuity_ambiguities`
 - in strict `db-only`, STOP when the canonical runtime is unavailable or has ambiguous active session/cycle candidates; do not infer continuity from stale visible anchors or latest-row timestamps

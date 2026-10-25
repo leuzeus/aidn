@@ -1407,5 +1407,25 @@
     "adapter_module_sha256": "6b02e949eb353674d822d9132153191437a85615e194f7d7345c5c6e893b505a",
     "application_comparison": "NOT_EXECUTED",
     "cross_commit_checkout_and_commit": "NOT_QUALIFIED"
+  },
+  "nominal_hook_projection_source_delta": {
+    "status": "SOURCE_ASSET_CHANGE",
+    "skills_with_hook_examples": 11,
+    "new_hook_invocations": 0,
+    "runtime_projection_changed": false,
+    "retained_native_payload_replay": {
+      "PASS": 14,
+      "FAIL": 0,
+      "full_bytes": 107118,
+      "agent_bytes": 17927,
+      "help_excluded": 1,
+      "supervisor_coordinator_hook_excluded": 1,
+      "decision_and_raw_evidence_parity": "PASS",
+      "report_sha256": "3ca7eea879db661e2211076b73e1c1901994c8eb58b07a316ab162a999f48af0"
+    },
+    "real_cli_view_assertions": 20,
+    "provider_token_gain": "NOT_MEASURED",
+    "application_gain": "NOT_MEASURED",
+    "new_package_installation": "NOT_YET_EXECUTED"
   }
 }

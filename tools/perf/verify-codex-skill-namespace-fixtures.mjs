@@ -12,6 +12,7 @@ try {
   assert.equal(deployed.length, 13);
   for (const entry of deployed) assert.ok(entry.name.startsWith("aidn-"), `unprefixed skill collides with an unprefixed host homonym: ${entry.name}`);
   const { parse } = await import("yaml");
+  let nominalHookExamples = 0;
   for (const entry of deployed) {
     assert.ok(entry.name.startsWith("aidn-"), `unprefixed skill collides with an unprefixed host homonym: ${entry.name}`);
     const text = fs.readFileSync(path.join(directory, entry.name, "SKILL.md"), "utf8");
@@ -22,8 +23,14 @@ try {
     assert(text.includes(`aidn runtime pre-write-admit --target . --skill ${id} --view agent --json`));
     assert(text.indexOf("## Project Activation") < text.indexOf("## Goal"));
     assert(text.includes("activation.active") && text.includes("admission_status"));
+    for (const [command] of text.matchAll(/npx aidn codex run-json-hook [^`\r\n]*/gu)) {
+      assert(command.includes("--view agent --json"), `nominal hook example must select its existing compact view: ${id}`);
+      nominalHookExamples += 1;
+    }
 
   }
+  assert.equal(nominalHookExamples, 11);
+  checks.push("eleven_nominal_hook_examples_select_existing_agent_view");
   checks.push("thirteen_namespaced_skills_avoid_unprefixed_host_name_collisions");
   const startup = fs.readFileSync(path.join(root, "scaffold/root/AGENTS.md"), "utf8");
   assert(startup.includes("aidn runtime pre-write-admit --target . --skill context-reload --view agent --json"));

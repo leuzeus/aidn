@@ -163,7 +163,7 @@ Keep this file summary-only.
 Do not duplicate full session or cycle content.
 
 9) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
+- run `npx aidn codex run-json-hook --skill start-session --mode <THINKING|EXPLORING|COMMITTING> --target . --view agent --json`
 - the runtime `aidn-start-session` hook applies workflow admission before delegating to generic session-start checkpoint/index/repair behavior
 - Admission reads the canonical snapshot in db-only or with configured PostgreSQL. It preserves session closure, PR status and post-merge synchronization; stale Markdown is not a fallback when that authority is unavailable.
 - The hook does not automatically import Markdown into the canonical database. Its diagnostic and context telemetry do not create or reopen a session.
