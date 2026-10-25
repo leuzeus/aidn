@@ -612,9 +612,267 @@
     "storage": "permitted non-system volume",
     "backend_plan": "elevated with explicit prefer_mxc=false in all comparator arms",
     "next_checks": [
-      "Frozen G-only harness and actual network-proxy/loopback/PostgreSQL controls",
       "Fresh installed-client integration pilot and independent application/workflow oracle",
-      "Multiple complete current-candidate comparison arms; bounded fixture authority policy kept distinct from production acceptance"
+      "Multiple complete current-candidate comparison arms; bounded fixture authority policy distinct from production acceptance",
+      "Research rollover application integration, followed by installed nominal compact procedure qualification"
     ]
+  },
+  "legacy_network_preflight": {
+    "backend": "elevated",
+    "prefer_mxc": false,
+    "source_commit": "10419336b5d98809c4995b16433a3d6f21aca794",
+    "candidate_sha256": "aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576",
+    "attempts": [
+      {
+        "attempt": "001",
+        "status": "FAIL",
+        "checks": {
+          "native_realpath": {
+            "status": "PASS"
+          },
+          "workspace_write": {
+            "status": "PASS",
+            "value": true
+          },
+          "outside_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "runtime_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_auth_read_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_config_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "host_loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "managed_proxy_present": {
+            "status": "PASS",
+            "value": false
+          },
+          "proxy_domain_denial": {
+            "status": "FAIL",
+            "code": "NO_PROXY"
+          },
+          "postgres_select": {
+            "status": "PASS",
+            "value": true
+          }
+        },
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": true,
+        "model_calls": 0,
+        "summary_sha256": "04f0c264b6c3bb7979e3f5765a3d7659f2315b5aa5d401160d97e19d8d59d560"
+      },
+      {
+        "attempt": "002",
+        "status": "FAIL",
+        "checks": {},
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": true,
+        "model_calls": 0,
+        "summary_sha256": "f1a23f99b7a791a11e52158f9f14960d09be2766ca712dc0db8f2160ad733aa8"
+      },
+      {
+        "attempt": "003",
+        "status": "PASS",
+        "checks": {
+          "native_realpath": {
+            "status": "PASS"
+          },
+          "workspace_write": {
+            "status": "PASS",
+            "value": true
+          },
+          "outside_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "runtime_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_auth_read_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_config_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "host_loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "managed_proxy_present": {
+            "status": "PASS",
+            "value": true
+          },
+          "proxy_domain_denial": {
+            "status": "PASS",
+            "value": true
+          },
+          "postgres_select": {
+            "status": "PASS",
+            "value": true
+          }
+        },
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": true,
+        "model_calls": 0,
+        "summary_sha256": "029f41b3c6298ee7495294fe963cdf5625d2d679c94203719b37a7642dfa6ce7"
+      },
+      {
+        "attempt": "004",
+        "status": "FAIL",
+        "checks": {
+          "native_realpath": {
+            "status": "PASS"
+          },
+          "workspace_write": {
+            "status": "PASS",
+            "value": true
+          },
+          "outside_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "runtime_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_auth_read_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_config_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "host_loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "managed_proxy_present": {
+            "status": "PASS",
+            "value": true
+          },
+          "proxy_domain_denial": {
+            "status": "PASS",
+            "value": true
+          },
+          "direct_nonloopback_denied": {
+            "status": "PASS",
+            "value": false
+          }
+        },
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": "NOT_USED_IN_THIS_PROBE",
+        "model_calls": 0,
+        "summary_sha256": "c4222e18fb51ca36fa4022b283a577d103274c31d5a55773ee5efee2d13cfd3d"
+      },
+      {
+        "attempt": "005",
+        "status": "PASS",
+        "checks": {
+          "native_realpath": {
+            "status": "PASS"
+          },
+          "workspace_write": {
+            "status": "PASS",
+            "value": true
+          },
+          "outside_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "runtime_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_auth_read_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "profile_config_write_denied": {
+            "status": "PASS",
+            "value": true
+          },
+          "loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "host_loopback_http": {
+            "status": "PASS",
+            "value": true
+          },
+          "managed_proxy_present": {
+            "status": "PASS",
+            "value": true
+          },
+          "proxy_domain_denial": {
+            "status": "PASS",
+            "value": true
+          },
+          "direct_documentation_tcp_denied": {
+            "status": "PASS",
+            "value": true
+          }
+        },
+        "protected_files_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "private_postgres_cleanup": "NOT_USED_IN_THIS_PROBE",
+        "model_calls": 0,
+        "summary_sha256": "79c214df3ec639b7d78a58cdbac89a7702dd8587e752783ce10b25ae7cca24b5"
+      }
+    ],
+    "interpretation": [
+      "001 proves native G identity, filesystem denial and private PostgreSQL SELECT but fails actual proxy presence.",
+      "002 command/exec refuses unsupported custom outputBytesCap before command execution.",
+      "003 actual app-server command/exec passes proxy domain denial, loopback, private PostgreSQL and protected runtime/profile controls.",
+      "004 retains a failed proposed negative: the host own network address remains reachable; this does not establish an external-network escape or loopback-only confinement.",
+      "005 separately observes EACCES/EPERM for direct TCP to a reserved documentation address and a denied proxy domain. It does not rerun PostgreSQL.",
+      "Local binding remains enabled for application tests and private PostgreSQL; no claim of network-namespace isolation or exhaustive external-network proof."
+    ],
+    "scope": "Component preflight, no model, no application oracle and no A/B gain",
+    "controls": {
+      "status": "PASS",
+      "tests": 331,
+      "fail": 0,
+      "skip": 0,
+      "control_inventory_sha256": "94376a1f894636b66025388d7bb6bd90453bf55ffc0a9306b49eccc2196bf7fa",
+      "source_bindings": "Current candidate package imports replace historical installed-runtime imports; historical fixture verdicts retained",
+      "canonical_transport": "Actual app-server command/exec with genuine host-held installed-generation lease; no unproxied CLI fallback",
+      "native_lifecycle": "Observe exact backend, readiness, disabled integrations and expected trusted project hooks before thread/start; omit redundant cwd; verify returned cwd"
+    }
   }
 }

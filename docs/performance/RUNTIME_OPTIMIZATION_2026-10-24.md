@@ -946,3 +946,54 @@ connectivity, install fresh independent clients, and complete the fixed native
 application/workflow oracle. No system-volume client or old incomplete arm is
 reused. Current full-application comparative samples remain absent; native
 worker/default-procedure promotion remains unqualified.
+
+
+### G network and PostgreSQL preflight after authorized setup
+
+Fresh probes keep all new files, clients, scratch and private databases on G,
+using the already selected native binary and existing principal profile. The
+first explicitly elevated `codex sandbox` probe passes physical G identity,
+inside writes, outside/runtime write denials, principal auth read denial and a
+real private PostgreSQL `SELECT`. It fails actual proxy presence despite the
+feature and domain configuration. This failure is retained. In the pinned
+[official CLI source](https://github.com/openai/codex/blob/rust-v0.164.0-alpha.11.1/codex-rs/cli/src/debug_sandbox.rs),
+the legacy Windows session branches before managed proxy startup and sets
+`proxy_enforced: false`; its loopback success cannot establish domain filtering.
+
+The supported standalone `command/exec` API uses the app-server execution
+boundary without creating a model thread or turn. Its
+[official implementation](https://github.com/openai/codex/blob/rust-v0.164.0-alpha.11.1/codex-rs/app-server/src/request_processors/command_exec_processor.rs)
+starts the selected profile proxy before the native sandbox execution. One
+attempt refuses an unsupported custom output capture cap before execution; the
+fresh successor uses the native default plus its containing Job's byte/time
+bounds. It passes actual proxy presence, a denied HTTP proxy domain, local HTTP
+binding and host loopback access, private PostgreSQL SELECT and all protected
+filesystem checks. No connection string is emitted or retained in the report.
+
+A further negative control against this same host's non-loopback interface does
+not deny the connection; the failed expectation remains recorded. That target
+is still the local machine, so this observation neither establishes external
+network escape nor supports a loopback-only isolation claim. A separate bounded
+TCP connection to an address reserved for documentation is refused with
+`EACCES`/`EPERM`, while local application HTTP remains usable and the forbidden
+proxy domain is denied. This supplies specific positive/negative controls, not
+an exhaustive network-isolation qualification. No model or application oracle
+runs in these probes. Every owned Job confirms zero descendants, protected
+config/auth/runtime files remain unchanged and private PostgreSQL is removed.
+
+The fresh G control set passes 331 assertions, including 15 pre-thread native
+precondition cases and nine native command transport cases. The transport keeps
+real installed-generation lease acquisition on the trusted host, executes the
+unchanged protected CLI through the actual app-server named permission profile,
+and releases the lease after each receipt. Runtime directories receive no write
+grant. There is no unproxied command fallback or retry after a refusal. Current
+candidate source imports replace historical installed-runtime imports; retained
+historical failure fixtures remain failures. A fresh installed application pilot
+is still required before complete comparative samples or default-route adoption.
+
+The first new pilot stops during preparation before any model invocation:
+Git correctly refuses adding the intentionally ignored local workflow adapter
+configuration. Its initial benchmark-owned authority declaration is retained
+privately with a hash; the corrected harness leaves it outside Git. The failed
+preparation is not a product failure or comparative sample. A separate fresh
+client is used for the next attempt, with the same candidate and frozen controls.
