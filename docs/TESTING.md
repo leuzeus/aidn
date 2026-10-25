@@ -25,6 +25,16 @@ lifecycle gate includes this suite. These are host-injected fixture proofs;
 actual installed CLI, native hooks, live PostgreSQL and token gains require
 separate native evidence. See [the experiment](ORDERED_CLOSURE_EXPERIMENT.md).
 
+Runtime-state projection converts hydrated audit-relative keys into repository-
+relative digest references before handoff consumption. Projector fixtures cover
+legacy prefixes, path separators, Unicode, de-duplication and unsafe path refusal.
+The typed invalid-cache JSON error retains the actual invocation effect class,
+explicit write intent and unchanged outputs in read, write and preview variants.
+Canonical handoff fixtures exercise the producer/consumer boundary against the
+injected PostgreSQL store with stale visible projections, and retain rejection
+when a hydrated priority is genuinely absent from canonical state. These are
+fixtures; a restored live native handoff remains a separate qualification.
+
 The cycle-close completion fixtures exercise clean, cached terminal branches in
 `files`, `dual` and `db-only` with gate evaluation forced. A successful recent
 COMMITTING drift check on the same branch must remain visible on that path;

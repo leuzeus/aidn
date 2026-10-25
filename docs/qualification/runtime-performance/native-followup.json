@@ -1443,7 +1443,7 @@
       "FAIL": 0,
       "SKIP": 0
     },
-    "application_pilot": "RUNNING_NEW_FRESH_CLIENT_NO_VERDICT_YET"
+    "application_pilot": "FAIL_COORDINATOR_ARTIFACT_REFERENCE_NAMESPACE"
   },
   "historical_runtime_complete_native_pilot": {
     "status": "WORKFLOW_PASS",
@@ -1489,5 +1489,55 @@
     "raw_result_sha256": "90536c89407d3392123ad74a4992c4b225657e1e2a57e65e8fe266f00d5d5a65",
     "measurement_sha256": "c387c039a6c0c42ee08e79750ab83824d86be446430af536420ee99c070f2d09",
     "meaning": "Fresh complete historical-runtime calibration on the corrected declared Git path, not retroactive repair of any prior attempt or a repeated A/B sample"
+  },
+  "compact_hook_native_calibration_refusal": {
+    "status": "FAIL_COORDINATOR_RELAY",
+    "phase1_native_status": "PASS",
+    "phase1_guard": "PASS_V16_WITH_VALIDATED_INITIAL_READINESS_REPAIR",
+    "phase1_seconds": 1389.034,
+    "phase1_responses": 44,
+    "phase1_tokens": {
+      "input_tokens": 4885065,
+      "cached_input_tokens": 4731264,
+      "output_tokens": 28159,
+      "reasoning_output_tokens": 2973,
+      "uncached_input_tokens": 153801
+    },
+    "coordinator_status": "FAIL",
+    "coordinator_seconds": 32.77,
+    "phase2": "NOT_EXECUTED",
+    "application_oracle": "NOT_EXECUTED",
+    "end_to_end_gain_claimed": false,
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 69,
+      "changed_refs": 0,
+      "protected_git_files": 301,
+      "changed_git_files": 0
+    },
+    "frozen_controls_preserved": true,
+    "principal_configuration_preserved": true,
+    "private_postgres_removed": true,
+    "failure_cause": "Runtime-state projector copies audit-relative hydrated artifact keys into repository-relative priorities; strict handoff correctly rejects their wrong locations",
+    "original_attempt_resumed": false,
+    "raw_result_sha256": "dde83ff32495e1bcb7915b867cacda08a30051754409220fc5fa3028c351eba1",
+    "repeated_comparison_campaign": "NOT_EXECUTED_PREREQUISITE_FAILED"
+  },
+  "hydrated_runtime_reference_source_correction": {
+    "status": "SOURCE_FIX_VALIDATED",
+    "producer": "deriveRuntimeStatePrioritizedArtifacts",
+    "consumer_checks_changed": false,
+    "new_error_code": "RUNTIME_HYDRATED_ARTIFACT_PATH_INVALID",
+    "success_json_shape_changed": false,
+    "error_contract": "additive v1 alternative",
+    "read_write_preview_error_cases": 3,
+    "projector_suite": "PASS",
+    "canonical_handoff_cases": 14,
+    "handoff_packet_suite": "PASS",
+    "handoff_admission_use_case_suite": "PASS",
+    "public_cli_contract_suite": "PASS",
+    "checked_public_contracts": 78,
+    "native_live_component": "NOT_YET_EXECUTED",
+    "old_failed_attempt_resumed": false
   }
 }

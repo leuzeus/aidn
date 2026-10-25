@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { captureContextIdentity } from "../../src/adapters/codex/context-provenance.mjs";
+import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 import {
   buildRuntimeStateMarkdown,
   deriveRuntimeStateRepairSummary,
@@ -246,8 +247,11 @@ function printFreshnessHint(digest) {
 }
 
 function main() {
+  const argv = process.argv.slice(2);
+  let parsedArgs = null;
   Promise.resolve().then(async () => {
-    const args = parseArgs(process.argv.slice(2));
+    const args = parseArgs(argv);
+    parsedArgs = args;
     const output = await projectRuntimeState({
       targetRoot: args.target,
       hydratedFile: args.hydratedFile,
@@ -270,7 +274,18 @@ function main() {
     }
   }).catch((error) => {
     console.error(`ERROR: ${error.message}`);
-    printUsage();
+    if (parsedArgs?.json && error.code === "RUNTIME_HYDRATED_ARTIFACT_PATH_INVALID") {
+      console.log(JSON.stringify({
+        ok: false,
+        target_root: path.resolve(parsedArgs.target),
+        effect_class: resolveCliEffectClass("aidn runtime project-runtime-state", argv),
+        written: false,
+        write: parsedArgs.write,
+        error: { code: error.code, message: error.message },
+      }, null, 2));
+    } else {
+      printUsage();
+    }
     process.exit(1);
   });
 }

@@ -1488,3 +1488,50 @@ owned branch transition, rejecting wrong bindings, replay, hidden diagnostics
 and compound shell commands; twelve new cases bring the prepared control suite
 to 430 PASS, zero FAIL/SKIP. Package reproducibility independently passes once
 on its clean source checkout.
+
+
+## Compact calibration stopped at an observed namespace defect
+
+The fresh compact candidate completes its first phase and exact v16 native
+branch/transport guard. The single initial cycle-readiness diagnostic follows
+the predeclared bounded repair; its independent validator passes. Phase one
+measures 1,389.034 seconds, 44 responses and 4,885,065 cumulative input tokens
+(4,731,264 cached; 153,801 uncached), with 28,159 output tokens. These are partial
+measurements, not end-to-end savings. The actual coordinator then rejects the
+handoff and dependent phase two does not run. The application oracle is
+NOT_EXECUTED; this is a continuation-pipeline failure, not an observed failure
+of the benchmark reservation API.
+
+The refusal names six hydrated artifact keys. Their first appearance is in the
+actual generated runtime digest, not model-authored metadata: hydration returns
+keys relative to the audit root, while
+`deriveRuntimeStatePrioritizedArtifacts` copied them unchanged into the digest's
+repository-relative list. The generated packet carries those keys forward.
+The consumer correctly looks for the resulting root locations and refuses them,
+even though the intended audit artifacts exist in canonical PostgreSQL.
+
+A producer-side correction prefixes hydrated keys with `docs/audit/`, preserves
+already-prefixed compatibility references and rejects traversal, absolute or
+malformed cached keys. It does not relax handoff admission or infer existence
+from a visible projection. A new canonical producer/consumer regression fails
+before the correction and passes after it; existing missing-canonical-source,
+backend outage, ambiguous head, freshness and file/SQLite authority controls
+remain required. The original native refusal and archive stay unchanged.
+
+All 69 protected refs, 301 retained Git files, frozen controls and principal
+configuration hashes are preserved, and the private database is removed. The
+prepared repeated comparison does not launch because its compact-calibration
+prerequisite failed. It must bind a corrected, independently qualified candidate
+before any sample. Live native qualification of this source correction is
+pending; the stopped attempt is never resumed or relabelled successful.
+
+
+The correction also gives its malformed-hydration refusal a typed additive JSON
+error alternative under the existing v1 command contract. Read, write and preview
+invocations retain their actual effect class and write intent, report
+`written:false`, emit one complete JSON document and preserve both destination
+and existing default projection. The success payload shape is unchanged. The
+runtime projector suite, fourteen canonical handoff cases, handoff-packet and
+admission-use-case suites, complete public CLI contract verification and three
+documentation gates pass. No ADR decision, backend authority or write policy is
+changed. The restored live-native component is prepared but not yet executed.
