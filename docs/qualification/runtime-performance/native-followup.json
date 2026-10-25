@@ -1247,5 +1247,50 @@
     "private_postgres_removed": true,
     "principal_profile_preserved": true,
     "raw_sha256": "98d3f793b5adc985eee454ead1fa42586ff35324eeb0f758e414a4bdcfd45606"
+  },
+  "routed_fixture_native_preparation": {
+    "status": "PASS",
+    "candidate_sha256": "86e37dc22d5d75914afa36e63230c94cb5423290fd53a421e5b6036326eaac60",
+    "fixture_policy": "routed-v2; fresh declaration, unchanged production authority",
+    "model_calls": 0,
+    "complete_json_bytes": 47970,
+    "target_bytes": 65536,
+    "hard_limit_bytes": 65536,
+    "complete_mandatory_authorities": [
+      "RULE_STATE_BOUNDARY.md",
+      "WORKFLOW-KERNEL.md",
+      "WORKFLOW.md",
+      "WORKFLOW_SUMMARY.md"
+    ],
+    "checkout_unchanged": true,
+    "write_authorization": false,
+    "original_six_document_results_rewritten": false,
+    "comparable_to_original_six_document_control": false,
+    "counter_cases": {
+      "PASS": 29,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "full_harness": {
+      "PASS": 419,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "initial_test_input_error_preserved": "asOf required existing date-only value; incorrect timestamp test result retained",
+    "native_coordinator": "PASS",
+    "git_preservation": {
+      "status": "PASS",
+      "protected_refs": 40,
+      "changed_refs": 0,
+      "protected_git_files": 251,
+      "changed_git_files": 0
+    },
+    "private_postgres_removed": true,
+    "principal_profile_preserved": true,
+    "raw_transaction_sha256": "b1972f0008df0e94622303466bdcf108b8ef24228e8f4f38e87a891599a178c7",
+    "raw_final_sha256": "374fea2d276d6bdb9d099f0bf8e4576563780717d08756c9561010744b30763a",
+    "targeted_audit_sha256": "f686e94149b25612bbe96dd203aa337b6a7b0a8c7f9caf20d672aa74eb3cf5b1",
+    "application_comparison": "NOT_EXECUTED",
+    "end_to_end_gain_claimed": false
   }
 }

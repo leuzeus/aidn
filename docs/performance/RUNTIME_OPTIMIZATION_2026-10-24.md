@@ -1232,3 +1232,42 @@ application run or general grouped/startup promotion. Source CLI view parity has
 pass. The release family first reports two PASS and one clean-checkout precondition
 FAIL on the original checkout; that exact reproducibility gate subsequently passes
 on the clean candidate worktree. The preexisting untracked files are preserved.
+
+
+## Targeted fixture-routing correction and native preparation
+
+A targeted governance audit distinguishes the valid hard-cap refusal from the
+benchmark's unconditional dependency policy. That fixture requires all six whole
+documents for every skill. The existing kernel instead routes canonical-rule
+precision and cycle creation conditionally after complete bootstrap. The audit
+recommends a separate fixture; it changes no production authority, gate or rule.
+The old six-document refusal and failed attempts remain immutable.
+
+A freshly declared `routed-v2` fixture retains all six exact source bindings and
+complete initial bootstrap/dynamic/skill reads. A strictly observed, unambiguous
+COMMITTING cycle in IMPLEMENTING with DoR READY may prepare the stable two-skill
+reload using four complete bodies: kernel, summary, project workflow and
+rule/state boundary. Canonical precision, cycle creation, closure, recovery,
+blocked or uncertain state retains complete expansion or stops. Other skills
+retain the six-document minimum. The native host checks the real canonical cycle,
+branch kind, freshness, repair state and five PostgreSQL source selectors first.
+Caller labels never grant action admission or authorize omitting a triggered read.
+
+The routed fixture's 29 counter-cases and the full 419-assertion harness pass.
+An initial pure test-input error (timestamp instead of the required date-only
+asOf value) remains in its failed report; the corrected test uses the existing
+public type. The actual installed native transaction then passes with a
+47,970-byte complete JSON envelope under the explicit 65,536-byte target/hard
+limit. All four mandatory bodies match their complete checkout bytes and SHA-256;
+no truncation, broad fallback, cache write or checkout mutation occurs. Fresh
+transaction metadata grants no write permission. The native coordinator also
+passes; the private cluster and owned processes close, forty foreign refs and
+251 Git files remain unchanged, and principal configuration/authentication stay
+intact.
+
+This is zero-model preparation on a restored fixture, not a new application
+comparison, native default grouped procedure, automatic rollover or token/time
+gain. Its four-body policy differs from the earlier six-body control, so their
+byte counts are not an isolated implementation A/B. Future governed comparator
+arms must receive the same routed fixture declaration and complete bootstrap
+requirements before their clocks; the historical observations cannot be relabelled.
