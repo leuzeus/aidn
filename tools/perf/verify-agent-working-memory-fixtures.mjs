@@ -357,7 +357,9 @@ try {
             assert.fail(bounded.replaceAll(connectionString, '[redacted]').replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, '[redacted-postgres-url]'));
           }
           assert.equal(handoff.status, 0, handoff.stderr.replaceAll(connectionString, "[redacted]"));
-          const resumed = JSON.parse(handoff.stdout).resume_capsule;
+          const handoffPayload = JSON.parse(handoff.stdout);
+          assert.equal(handoffPayload.shared_state_backend?.projection_backend_kind, "postgres");
+          const resumed = handoffPayload.resume_capsule;
           assert.equal(resumed.status, "current", JSON.stringify(resumed.reasons));
           assert.equal(resumed.capsule.canonical_revision.backend, "postgres");
           assert.equal(handoff.stdout.includes(connectionString), false); assert.equal(snapshot(), before);
