@@ -1,0 +1,559 @@
+{
+  "schema_version": 1,
+  "evidence": "local-source-gate-campaign-and-explicit-replays",
+  "remote_governance_admission": "NOT_EXECUTED",
+  "initial_source_commit": "74236e75a2918b849a9c4e541424eb4067e0786a",
+  "initial_counts": {
+    "PASS": 56,
+    "FAIL": 6,
+    "SKIP": 0
+  },
+  "initial_run_passed": false,
+  "raw_initial_sha256": "fa739a89468dbdd736d576dbca09d9d0eb5c5a65ffc015db5cadba691d9ff095",
+  "results": [
+    {
+      "id": "contracts-workflow-compilation",
+      "family": "contracts",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 1195,
+      "exit_code": 0
+    },
+    {
+      "id": "contracts-workflow-shadow",
+      "family": "contracts",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 743,
+      "exit_code": 0
+    },
+    {
+      "id": "contracts-json",
+      "family": "contracts",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 172151,
+      "exit_code": 0
+    },
+    {
+      "id": "contracts-surface-catalog",
+      "family": "contracts",
+      "status": "FAIL",
+      "obligation": "required",
+      "duration_ms": 17365,
+      "exit_code": 1,
+      "replay": {
+        "status": "PASS",
+        "duration_ms": 19190,
+        "exit_code": 0,
+        "raw_report_sha256": "a58de595717b66ed28c5e0f0daf93258cc9c2ac5e0a5d41728b0aa224db93493"
+      }
+    },
+    {
+      "id": "effects-policy",
+      "family": "effects",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 5134,
+      "exit_code": 0
+    },
+    {
+      "id": "effects-no-implicit-write",
+      "family": "effects",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 43519,
+      "exit_code": 0
+    },
+    {
+      "id": "effects-db-migrate-write-boundary",
+      "family": "effects",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 2886,
+      "exit_code": 0
+    },
+    {
+      "id": "governance-source",
+      "family": "governance",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 756,
+      "exit_code": 0
+    },
+    {
+      "id": "governance-metadata",
+      "family": "governance",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 727,
+      "exit_code": 0
+    },
+    {
+      "id": "governance-completeness",
+      "family": "governance",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 4225,
+      "exit_code": 0
+    },
+    {
+      "id": "docs-contract",
+      "family": "docs",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 1772,
+      "exit_code": 0
+    },
+    {
+      "id": "docs-cli-inventory",
+      "family": "docs",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 755,
+      "exit_code": 0
+    },
+    {
+      "id": "docs-references",
+      "family": "docs",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 938,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-pack-topology",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 14648,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-installed-client",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 23916,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-integration-lifecycle",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 501494,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-context-diagnostics",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 11218,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-scoped-context-selection",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 6656,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-agent-working-memory",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 106269,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-context-admission",
+      "family": "codex",
+      "status": "FAIL",
+      "obligation": "required",
+      "duration_ms": 256300,
+      "exit_code": 1,
+      "replay": {
+        "status": "PASS",
+        "duration_ms": 326976,
+        "exit_code": 0,
+        "raw_report_sha256": "1dc0da369faa979cef46d2b154f8e739b86175edd9270cb9ee579255fec4dd9f"
+      }
+    },
+    {
+      "id": "codex-context-completion",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 460503,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-context-coordination",
+      "family": "codex",
+      "status": "FAIL",
+      "obligation": "required",
+      "duration_ms": 319270,
+      "exit_code": 1,
+      "replay": {
+        "status": "PASS",
+        "duration_ms": 515159,
+        "exit_code": 0,
+        "raw_report_sha256": "1d478ea0ab36ba0c14158b9c465d3560b6c1c66176d4cef2a51cbbc89e68f9a8"
+      }
+    },
+    {
+      "id": "codex-context-projection",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 128141,
+      "exit_code": 0
+    },
+    {
+      "id": "codex-real-discovery",
+      "family": "codex",
+      "status": "PASS",
+      "obligation": "optional",
+      "duration_ms": 26897,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-state-modes",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 69317,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-governance-cli",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 4852,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-locator-atomicity",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 700,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-state-projector-cleanup",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 11320,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-db-schema-migrations",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 1067,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-agent-execution-contracts",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 1364,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-agent-execution-postgres",
+      "family": "runtime",
+      "status": "FAIL",
+      "obligation": "required",
+      "duration_ms": 988,
+      "exit_code": 1,
+      "replay": {
+        "status": "PASS",
+        "duration_ms": 459906,
+        "exit_code": 0,
+        "raw_report_sha256": "8c83eb819fb5469ef60cf6be216e09075ae4b8932aa0145ba4a9e3ef0fcbea7e"
+      }
+    },
+    {
+      "id": "runtime-agent-worker-fixtures",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 41146,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-agent-execution-scheduler",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 67903,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-agent-verification",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 273962,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-agent-git-integration",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 140900,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-agent-run-lifecycle",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 93514,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-coordination-concurrency",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 6356,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-artifact-efficiency",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 142666,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-db-runtime-cli",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 12478,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-persistence-parity",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 1781,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-coordination-backup",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 3565,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-coordination-restore",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 3986,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-coordination-doctor",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 4505,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-coordination-store-port",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 599,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-workspace-resolution",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 7319,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-db-first-regression",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 9853,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-sqlite-boundary",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 5945,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-db-only-hooks",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 7090,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-runtime-path",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 772,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-shared-runtime-reanchor",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 18491,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-postgres-persistence-live-cleanup",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "optional",
+      "duration_ms": 17390,
+      "exit_code": 0
+    },
+    {
+      "id": "runtime-postgres-shared-live-cleanup",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "optional",
+      "duration_ms": 3959,
+      "exit_code": 0
+    },
+    {
+      "id": "security-shared-boundary",
+      "family": "security",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 885,
+      "exit_code": 0
+    },
+    {
+      "id": "security-tracked-sensitivity",
+      "family": "security",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 1825,
+      "exit_code": 0
+    },
+    {
+      "id": "release-version",
+      "family": "release",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 795,
+      "exit_code": 0
+    },
+    {
+      "id": "release-reproducibility",
+      "family": "release",
+      "status": "FAIL",
+      "obligation": "required",
+      "duration_ms": 0,
+      "exit_code": null,
+      "replay": {
+        "status": "PASS",
+        "duration_ms": 141976,
+        "exit_code": 0,
+        "raw_report_sha256": "6999aab4ede61c011628183a84109bdc0c074601fa2c76f096309420401da439"
+      }
+    },
+    {
+      "id": "release-workflow-policy",
+      "family": "release",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 1062,
+      "exit_code": 0
+    },
+    {
+      "id": "cleanliness-branch-policy",
+      "family": "cleanliness",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 956,
+      "exit_code": 0
+    },
+    {
+      "id": "cleanliness-branch-policy-fixtures",
+      "family": "cleanliness",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 17764,
+      "exit_code": 0
+    },
+    {
+      "id": "cleanliness-gate-catalog",
+      "family": "cleanliness",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 1520,
+      "exit_code": 0
+    },
+    {
+      "id": "cleanliness-gate-runner-fixtures",
+      "family": "cleanliness",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 3204,
+      "exit_code": 0
+    },
+    {
+      "id": "cleanliness-worktree",
+      "family": "cleanliness",
+      "status": "FAIL",
+      "obligation": "required",
+      "duration_ms": 850,
+      "exit_code": 1,
+      "replay": {
+        "status": "PASS",
+        "duration_ms": 738,
+        "exit_code": 0,
+        "raw_report_sha256": "a1f2821b2d1175eb15aff2c9277817e8789bfb5d51824d8d3670f870c2bb1b48"
+      }
+    }
+  ],
+  "replay_counts": {
+    "PASS": 6,
+    "FAIL": 0,
+    "SKIP": 0
+  },
+  "native_application_status": "NOT_EXECUTED_PENDING_EXACT_HOOK_REVIEW",
+  "limits": [
+    "Not a remote PR rollup or merge authorization.",
+    "Initial failure is retained; replays do not rewrite that attempt.",
+    "Initial untracked local files remain preserved.",
+    "Replays bind their own source/candidate boundaries; no aggregate exact-head native or whole-application qualification is claimed."
+  ]
+}

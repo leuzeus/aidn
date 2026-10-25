@@ -218,3 +218,238 @@ an injected PostgreSQL store and no local SQLite projection: PASS. The subsequen
 real PostgreSQL smoke passes dual and db-only checkpoint/resume, canonical-change
 rejection and verified cleanup of its own random scopes. The first two failures
 remain retained and are not rewritten as product qualification PASS.
+
+## Lot 5 — native preparation comparison
+
+The final manual experiment freezes executable source at
+`be59c824789bec1404ce55c42c1f84946913fabd`, with an empty tracked diff.
+The current app binary is fingerprinted. Ten fresh native threads use the same
+`gpt-6.1-sol`, high reasoning profile, default service tier, task, exact-field
+oracle, canonical fixture and tool/output limits. Two trials per variant rotate
+execution order. Actual CLI calls run inside the native task clock. No provider
+fallback, trust override, nested agent, external app or native transcript edit
+is permitted. Runtime source hashes are checked before every consultation.
+
+Fixture/index setup and the rotating source CLI trials precede the native arms:
+this is a warm preparation comparison. Authentication and `thread/start` are
+outside the measured clock; `turn/start` through native turn completion,
+including actual CLI consultations, is inside it. These boundaries differ from
+the independent cold application budgets in 034/036.
+
+[Redacted samples and counters](../qualification/runtime-performance/native-preparation.json)
+retain unique completed-response observations, actual CLI and transmitted tool
+JSON byte counts, hydration counts, timings, source/binary fingerprints and
+cleanup. Native events remain local-only. Cached input is a subset of cumulative
+input; uncached input is their difference. Counts are not billed standard-rate
+tokens or unique document tokens.
+
+| Native preparation variant | CLI consultations | Model responses per trial | Mean cumulative input | Mean uncached input | Mean seconds | Seconds range |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Separate historical microsteps | 5 | 7 | 191091.5 | 39411.5 | 24.050 | 21.998–26.103 |
+| Existing composed historical interface | 1 | 3 | 80832 | 33600 | 10.136 | 9.970–10.302 |
+| Grouped compact.v2 | 1 | 3 | 64605 | 25437 | 12.026 | 11.598–12.455 |
+| Grouped compact.v2 and scoped policy | 1 | 3 | 48872.5 | 17640.5 | 10.583 | 9.747–11.419 |
+| Bounded transaction | 1 | 3 | 49048 | 17752 | 12.208 | 12.145–12.272 |
+
+Every trial passes the same preparation extraction oracle: skill identities,
+admission booleans, mode, coordinator action and absence of write authority.
+The separate path actually invokes two pre-write admissions, two hydrations
+and coordinator advice. The combined path retains the admissions and advice,
+with one common hydration and a publication fence. It is not a mock admission.
+
+Relative to separate microsteps, this bounded task observes 57.1% fewer model
+responses, 74.3% less cumulative input, 55.0% less uncached input and 49.2% less
+mean elapsed time. These are descriptive observations from two unblinded trials,
+not statistical or whole-product causal estimates. Concurrent source
+qualification load was not controlled; elapsed time includes model/service,
+transport and CLI work. Exact raw CLI result bytes are 94,885 versus 10,264;
+transmitted tool JSON, including wrapper/submission responses, is 95,580 versus
+10,463. Internal provider body residency remains unavailable.
+
+Relative to the already composed historical interface, responses stay at three,
+cumulative input drops 39.3%, but mean time increases 20.4%. Compact/grouped
+selection alone therefore does not prove a latency gain. The mechanism is the
+reduction of separate consultations plus smaller resident results. This supports
+the conversational-amplification mechanism on preparation, not a conclusion
+that it is the dominant remaining cause across the entire 036 workflow.
+
+A [separate earlier ten-trial campaign](../qualification/runtime-performance/native-preparation-replication.json)
+at source `74236e75a2918b849a9c4e541424eb4067e0786a` observes the same
+seven-versus-three response pattern: transaction mean 9.769 seconds versus
+22.128 for microsteps and 8.976 for already composed historical preparation.
+The later campaign includes the typed transaction argument-refusal correction.
+These candidates are not pooled. With two samples per variant, p50 is the mean
+of the pair and nearest-rank p95 is its maximum, not a stable tail estimate.
+
+The full 034/036 application oracle, development, handoff, resumed execution,
+cycle/session closure and cleanup were not requalified on this candidate.
+The newer retained application reference is itself incomplete for continuity,
+workflow closure and relay despite application success. Its historical
+qualification and successful application score cannot be transferred to the
+current client/package. No whole-development numerical target is claimed met.
+
+### Remaining measurements and reproducible full-task protocol
+
+- Internal model tokens, hidden provider residency, exact DB transaction and
+  round-trip counts: unknown. No byte-to-token or billing estimate is substituted.
+- Transaction plus production rollover: NOT EXECUTED. The exact native lifecycle
+  qualification failed; its two observed later window calls do not authorize
+  bypassing that qualification.
+- Current installed-client full application A/B: NOT EXECUTED. A new archive and review materials are prepared, but it still needs
+  current-client native source/contract qualification and a
+  reviewed adaptation of the retained application harness. Old prepared runners,
+  temporary homes, databases, partial references and arms are never reused.
+- Pack the exact candidate with a provenance manifest and archive SHA; install
+  separate disposable clients and prepare independent empty PostgreSQL scopes.
+  Bind the real mandatory authority units/dependencies through a genuinely
+  accepted client policy. Missing mappings remain blocking; the small synthetic
+  policy above cannot become production acceptance.
+- Freeze one current binary, model/reasoning setting, brief, fixed independent
+  application oracle, time/output constraints and initial state for all arms.
+  Run separate, composed, compact/grouped and transaction arms with rotated order.
+  Keep full native admission, actual edit, CAS, coordination, handoff/reprise,
+  cycle/session closure and owned-process cleanup evidence. Count actual
+  completed provider responses and union overlapping wall intervals.
+- Reject incomplete application/workflow/closure proof even when application
+  tests pass. Add transaction plus rollover only after the exact lifecycle
+  qualification passes. Run multiple fresh pairs and report dispersion.
+
+No extrapolated gain is reported. The best next impact/risk step is to qualify
+adoption of the bounded preparation in complete installed procedures, eliminate
+duplicate read preflights only when the same live evaluator is consumed, and
+run that controlled full-task campaign. Removing a mandatory write guard,
+accepting a synthetic policy on behalf of a client, weakening closure or
+pretending a fork/resume is a new context are rejected approaches.
+
+### Compatibility, risks and CI
+
+Legacy full and agent interfaces remain available; the new transaction is an
+explicit composition with compact defaults. The existing compact.v2 schema adds
+its preparation descriptor, and three agent schemas accept optional policy
+remediation. No canonical/shared schema migration, persistent cache, source of
+truth change or automatic personal installation is introduced. ADR-0021 and
+the runtime authority guide describe these boundaries.
+
+An absent accepted managed policy now refuses in the bounded path by design.
+A real required closure can exceed the 16 KiB target and then needs explicit
+expansion/remediation, never silent 256 KiB/1 MiB selection or truncated success.
+The common observation can be slower than legacy composed preparation because
+its fresh revision fences are preserved. A current capsule grants no write
+authority and explicit continuation alone cannot clear a host transcript.
+
+Development uses focused behavioral/schema fixtures first. The ASSURED route
+selects nine PR families, each once; the complete source campaign retains all
+required gates. Installed/package reproducibility, real PostgreSQL smoke and
+native experiments retain separate evidence labels. Expensive native application
+benchmarks stay manual and outside PR admission; no mandatory CI coverage is
+removed to make performance look better.
+
+## Qualification outcome and targeted fixture audit
+
+The first nine-family local run reports **56 PASS / 6 FAIL / 0 SKIP** across
+62 required gates. That run remains failed. Redacted result identities, durations
+and replay references are retained in
+[the qualification ledger](../qualification/runtime-performance/qualification.json).
+A local family invocation is not the remote branch-protection Governance
+Admission rollup and grants no merge authorization.
+
+The six initial failures have distinct causes and separately retained replays:
+
+- `contracts-surface-catalog`: the new CLI selector was absent from the generated
+  catalog. The official generator added it; the exact gate replay passes.
+- `codex-context-admission` and `codex-context-coordination`: warm tracked fixture
+  directories contained ignored indexes/runtime observations left by earlier
+  checks. Unfiltered filesystem copies imported those non-corpus files into new
+  clients. Cold copies passed while equivalent warm copies failed. Existing
+  tracked-file filters now bound branch audit, cycle-close admission, coordinator
+  resume, orchestration and both dispatch fixtures. Warm direct cases and both
+  complete gate scripts pass; no expected outcome or production admission changed.
+- `runtime-agent-execution-postgres`: the initial run lacked its required portable
+  binary prerequisite. A private-cluster replay then exposed a fixture clock race:
+  releasing a blocker 5.5 seconds after request creation did not establish five
+  seconds of actual canonical lock wait. The test now observes its own backend
+  blocker before timing bounded success or timeout rejection. Production lock,
+  statement and coordination deadlines are unchanged. The full real-PostgreSQL
+  gate passes with no focused scenario selection, confirmed process termination
+  and cleanup. Missing prerequisites and an insufficient contention stimulus do
+  not establish a production lock-timeout defect.
+- `release-reproducibility` and `cleanliness-worktree`: the source checkout had
+  preexisting untracked local files. They were preserved. Qualification uses a
+  separate clean worktree. The first detached cleanliness replay correctly refused
+  missing detached provenance; a real named development branch passes all five
+  cleanliness gates without fabricated remote refs or deleted local files.
+
+This was a TARGETED attempt-outcome integrity audit using the existing governance
+skill, not a change to acceptance criteria. Facts are the observed cold/warm
+asymmetry, copied ignored runtime state and lock-wait timing. The inferred causes
+were tested by controlled warm replays and observed contention. No lower lane,
+exception, retry relabeling, relaxed deadline or omitted case was introduced.
+PostgreSQL exposes the blocker relation through
+[`pg_blocking_pids`](https://www.postgresql.org/docs/17/functions-info.html);
+observing that relation prevents connection/setup latency from consuming the
+intended lock stimulus. The generic GFD evidence validator is not applicable to
+these local gate-runner records; this narrative does not turn them into its
+versioned evidence format or a product verdict.
+
+The retained tests cover full/compact decision parity, public JSON schemas,
+read-only effects, exact UTF-8 budgets, stale/foreign scope/revision refusals,
+shared snapshot fences, CAS-sensitive writes, canonical backend outage, real
+PostgreSQL concurrency and package installation. Unchanged passing gates are
+not rerun solely to erase the first failed campaign. Each relevant replay and
+its source boundary remains explicit.
+
+## P2 diagnostic sampling
+
+After structural changes, a separate V8 sampling run instruments three rotated
+source trials per preparation variant plus refusal controls, with unchanged
+source at `9aa43cfd3b583d10073a3c64aeac8db83294e138`.
+[Redacted sample sites and profile hashes](../qualification/runtime-performance/cpu-profile.json)
+keep launcher and workflow-process groups separate. The workflow group has
+25,688 samples: synchronous child-process sites account for 52.0%, `lstat` for
+20.1% and `existsSync` for 6.2%; module compilation also appears. The budget
+finalizer is present in five inclusive samples and runtime project resolution
+in eighteen. These are sampling sites, including blocking work, not exact CPU
+or task-time attribution. Native serialization can be attributed to its caller,
+so few named stringify samples do not establish zero serialization cost.
+
+The initial launcher-only profile mostly observed its synchronous child wait;
+it could not attribute the unprofiled child's work. The final run propagates
+`--cpu-prof` through `NODE_OPTIONS` to actual workflow children. Do not sum parent
+and child elapsed clocks. To reproduce, create a new external profile directory,
+set `NODE_OPTIONS=--cpu-prof --cpu-prof-dir=<absolute-external-directory>` only
+for the manual source benchmark process, run three samples with
+`--include-transaction`, then restore the caller's environment. Profile outputs
+contain local paths and stay outside Git. Group workflow profiles by observed
+`tools/codex/workflow-step.mjs` frames rather than pooling launcher waits.
+
+This files-mode diagnostic does not profile production PostgreSQL queries or
+separate its network round trips. Live DB smoke and contention gates prove
+behavior, not a pooling speedup. No isolated result justifies a new connection
+pool, persistent runtime cache, weaker path verification or a rewrite of exact
+budget stabilization. Those remain unimplemented hypotheses. A next controlled
+experiment can isolate subprocess/path-verification cost while preserving the
+existing revision and activation fences; the current samples are insufficient
+to promise a gain from such a change.
+
+## Exact native application prerequisite
+
+A fresh 0.16.0 candidate was packed and installed from clean source
+`9aa43cfd3b583d10073a3c64aeac8db83294e138`, archive SHA-256
+`01c14eeea7cdcc2f51a9ab3b7f9ccb2a56009343c05deb0691a5b3a44d509257`.
+The native preparation tool created a neutral repository, two separate activated
+worktrees, exact root receipts, hook/handler hashes, an empty isolated home,
+manifest, preservation baseline and human review sheet. It reports
+`native_execution: NOT_RUN`, `human_trust: NOT_RECORDED`, zero model calls.
+No user authentication or trust was copied by this preparation; no sandbox was
+provisioned. Later report-only commits do not silently replace this reviewed
+archive or transfer its identity to another package.
+
+The current
+[native qualification authority](../AGENT_EXECUTION_NATIVE_QUALIFICATION.md)
+requires human review of the exact executable hooks through native `/hooks`
+controls before dependent execution. Human approval has not yet been recorded.
+Native edit/refusal,
+termination, host coexistence, current PostgreSQL claims, accepted full task
+policies and the full application A/B remain **NOT EXECUTED** until their actual
+prerequisites are met. The source-preparation experiment above has a separate
+read-only boundary and cannot substitute for them.
