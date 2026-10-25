@@ -874,5 +874,70 @@
       "canonical_transport": "Actual app-server command/exec with genuine host-held installed-generation lease; no unproxied CLI fallback",
       "native_lifecycle": "Observe exact backend, readiness, disabled integrations and expected trusted project hooks before thread/start; omit redundant cwd; verify returned cwd"
     }
+  },
+  "linked_git_integration_followup": {
+    "closed_application_attempt": {
+      "status": "FAIL",
+      "execution": "native preparation ran; application implementation not started",
+      "gate": "first_phase_handoff_missing",
+      "product_verdict": "not_assessed",
+      "worker_transport_status": "PASS",
+      "worker_seconds": 219.302,
+      "unique_provider_responses": 7,
+      "input_tokens": 385081,
+      "cached_input_tokens": 279552,
+      "uncached_input_tokens": 105529,
+      "output_tokens": 1894,
+      "reasoning_output_tokens": 271,
+      "counter_source": "Unique rawResponse/completed usage; sums equal final monotonic thread totals",
+      "canonical_calls": 9,
+      "product_edits": 0,
+      "application_tests": "NOT_EXECUTED",
+      "phase2": "NOT_STARTED",
+      "coordinator": "NOT_STARTED",
+      "process_cleanup": "confirmed",
+      "private_postgres_removed": true,
+      "protected_configuration": true,
+      "frozen_controls_preserved": true,
+      "result_sha256": "46f3711aeadd95ef1fcf7171ea6cf41625b7807598a98e72545bfd4e3f930f0b",
+      "cause": "Worktree .git file grant does not grant the separate common refs required to create an admitted session branch"
+    },
+    "zero_model_git_control": {
+      "first_proposal": "Refused before execution: dotted CLI override parser did not accept quoted filesystem path keys",
+      "successor": {
+        "status": "PASS",
+        "observed": {
+          "status": "PASS",
+          "checks": [
+            "session_branch_created",
+            "cycle_branch_created",
+            "product_commit_created",
+            "owned_fast_forward",
+            "other_ref_write_denied"
+          ],
+          "model_calls": 0
+        },
+        "existing_refs_preserved": true,
+        "protected_ref_preserved": true,
+        "principal_config_preserved": true,
+        "principal_auth_preserved": true,
+        "process_cleanup": "confirmed",
+        "active_descendants": 0,
+        "model_calls": 0,
+        "scope": "Git metadata preflight only; no AIDN admission, application implementation or oracle"
+      },
+      "summary_sha256": "1a1826837933a036f61e725a194059f76837e1b5524805779195e5c6489d50b4",
+      "scope": "Actual worktree Git directory, exact newly owned refs/reflog namespaces and private test object store; no whole common-directory or all-refs write grant"
+    },
+    "new_controls": {
+      "pass": 338,
+      "fail": 0,
+      "skip": 0,
+      "new_cases": 7,
+      "assertions": "Production source/session/cycle classification, denial of whole common directory/all refs/foreign namespace/foreign metadata, complete inline profile keeps network and deny policy"
+    },
+    "next_attempt": "Separate fresh G client; fixed declared source/session/cycle branches and immutable exact grant/profile evidence",
+    "application_qualified": false,
+    "comparative_sample": false
   }
 }

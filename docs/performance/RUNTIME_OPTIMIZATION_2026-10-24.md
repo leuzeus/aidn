@@ -997,3 +997,41 @@ configuration. Its initial benchmark-owned authority declaration is retained
 privately with a hash; the corrected harness leaves it outside Git. The failed
 preparation is not a product failure or comparative sample. A separate fresh
 client is used for the next attempt, with the same candidate and frozen controls.
+
+
+### Installed pilot boundary: shared Git metadata
+
+The next native application pilot executes real hooks and nine successful
+canonical CLI calls through the verified managed-proxy transport. It stops
+before product implementation when Git cannot create the session branch's lock
+in the linked worktree's common refs. The native phase's transport status is
+PASS, but the semantic guard refuses continuation because HANDOFF is absent.
+The application verdict is not assessed: zero product edits, no application
+tests, no coordinator relay and no second phase. PostgreSQL is removed, the Job
+confirms zero descendants and the frozen controls plus principal config/auth
+remain unchanged. This remains a failed integration attempt, not a comparison.
+
+This closed preparation costs 219.302 seconds and seven unique provider
+responses: 385,081 input, 279,552 cached input, 105,529 uncached input, 1,894
+output and 271 reasoning-output tokens. Summing unique response usage matches
+the final monotonic native thread totals. No application gain is inferred.
+
+The targeted session/governance audit identifies a missing transfer condition:
+a native workspace marker does not qualify branch creation and commits in a
+linked Git worktree. A worktree `.git` file grant does not grant its common
+refs, reflogs or object store. The branch-ownership and admission rules remain
+unchanged. The first zero-model Git control refuses a malformed dotted-path
+permission proposal before execution. A separate successor supplies the same
+limited grants as a complete inline profile. It passes actual session/cycle
+branch creation, a commit and an owned fast-forward. Another existing branch
+ref refuses writable-open; all preexisting refs and principal config/auth stay
+unchanged. Its Job confirms zero descendants.
+
+The prospective harness grants only its actual worktree Git metadata, exact
+new trial branch namespaces under heads/reflogs and the private test repository
+object store. It grants neither the entire common Git directory nor all refs.
+Seven additional controls preserve production branch classification and reject
+whole-common-directory, all-refs, foreign-namespace and foreign-metadata grants;
+the original network and deny policies survive the inline-profile composition.
+The G control set now passes 338 assertions. Another fresh installed pilot must
+still demonstrate admitted product edits, complete relay/closure and the oracle.
