@@ -679,5 +679,60 @@
       "skipped_count": 0,
       "manual_deferred_count": 2
     }
-  }
+  },
+  "initial_gate_costs": {
+    "scope": "Sum of retained individual gate clocks from the failed initial source campaign; not CI wall time, current passing qualification, or product runtime",
+    "source_commit": "74236e75a2918b849a9c4e541424eb4067e0786a",
+    "raw_report_sha256": "fa739a89468dbdd736d576dbca09d9d0eb5c5a65ffc015db5cadba691d9ff095",
+    "total_duration_ms": 3090127,
+    "obligations": {
+      "required": 59,
+      "optional": 3
+    },
+    "families": {
+      "contracts": {
+        "gates": 4,
+        "duration_ms": 191454
+      },
+      "effects": {
+        "gates": 3,
+        "duration_ms": 51539
+      },
+      "governance": {
+        "gates": 3,
+        "duration_ms": 5708
+      },
+      "docs": {
+        "gates": 3,
+        "duration_ms": 3465
+      },
+      "codex": {
+        "gates": 11,
+        "duration_ms": 1855312
+      },
+      "runtime": {
+        "gates": 28,
+        "duration_ms": 953788
+      },
+      "security": {
+        "gates": 2,
+        "duration_ms": 2710
+      },
+      "release": {
+        "gates": 3,
+        "duration_ms": 1857
+      },
+      "cleanliness": {
+        "gates": 5,
+        "duration_ms": 24294
+      }
+    },
+    "limits": [
+      "Failed scripts may stop before executing their remaining checks.",
+      "Failed preconditions and zero-duration refusal are retained, not priced as successful qualification.",
+      "Native model campaigns and manual smoke are separate from these gate clocks."
+    ]
+  },
+  "current_native_application_status": "ATTEMPTED_NO_VALID_SAMPLES_G_PHYSICAL_IDENTITY_PRECONDITION_FAILED",
+  "current_native_followup_ref": "native-followup.json"
 }

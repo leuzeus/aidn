@@ -327,10 +327,11 @@ current client/package. No whole-development numerical target is claimed met.
 - Transaction plus production rollover: NOT EXECUTED. The exact native lifecycle
   qualification failed; its two observed later window calls do not authorize
   bypassing that qualification.
-- Current installed-client full application A/B: NOT EXECUTED. A new archive and review materials are prepared, but it still needs
-  current-client native source/contract qualification and a
-  reviewed adaptation of the retained application harness. Old prepared runners,
-  temporary homes, databases, partial references and arms are never reused.
+- Current installed-client full application A/B: ATTEMPTED, NO VALID SAMPLES.
+  Later native attempts and the G-only physical-identity precondition failure
+  are retained below and in the follow-up ledger. They do not provide a current
+  comparative application oracle. Old prepared runners, temporary homes,
+  databases, partial references and arms are never reused.
 - Pack the exact candidate with a provenance manifest and archive SHA; install
   separate disposable clients and prepare independent empty PostgreSQL scopes.
   Bind the real mandatory authority units/dependencies through a genuinely
@@ -379,7 +380,7 @@ removed to make performance look better.
 ## Qualification outcome and targeted fixture audit
 
 The first nine-family local run reports **56 PASS / 6 FAIL / 0 SKIP** across
-62 required gates. That run remains failed. Redacted result identities, durations
+62 gates (59 required, three optional). That run remains failed. Redacted result identities, durations
 and replay references are retained in
 [the qualification ledger](../qualification/runtime-performance/qualification.json).
 A local family invocation is not the remote branch-protection Governance
@@ -714,3 +715,36 @@ its application oracle and end-to-end engineering targets remain unevaluated.
 The retained controls provide a reproducible precondition check for a future
 compatible runtime, without removing the identity check or changing storage
 scope.
+
+
+### Remaining mission requirements and validation cost
+
+The mission remains incomplete. This assessment preserves the requested scope;
+it does not equate a supported opt-in route with default installed adoption.
+
+| Requirement | Current evidence | Remaining acceptance |
+| --- | --- | --- |
+| Compact nominal agent preparation | Bounded transaction defaults, complete-unit policy validation and no implicit broad fallback pass source/preparation checks | Native qualification and promotion of the ordinary installed skill/startup route |
+| Fewer model interactions | Repeated native preparation oracle passes with seven versus three responses | Complete installed-task A/B with the same functional and workflow oracle |
+| Supported continuation | Explicit admitted capsule capture and fresh validated resume; native limitations retained | Native rollover remains unqualified and is not promoted |
+| Mutualized reads and parsing | Existing observation fences retained, invocation-local parse gain measured, canonical backend correction verified | No end-to-end gain is inferred from the CPU result |
+| Final source qualification | Targeted checks and retained initial failures/replays; a fresh complete run is active at clean source `02e40f5854cdb141553e9d14d2281760ee33c228` | Inspect its terminal result before any full-source PASS claim |
+
+The initial source campaign's retained individual gate clocks total
+3,090,127 ms (51.50 minutes). This is a sum of script clocks from the failed
+campaign, not parallel CI elapsed time or a complete passing qualification.
+Codex accounts for 1,855,312 ms (30.92 minutes) and runtime for 953,788 ms
+(15.90 minutes); together they account for 90.9% of that measured sum.
+Contracts account for 191,454 ms. The missing PostgreSQL prerequisite and
+zero-duration release refusal make those initial costs incomplete. Detailed
+family sums are retained in the qualification ledger; they are not substituted
+for the terminal result of the fresh run.
+
+Development should select the transaction/task-policy/lifecycle behavior checks
+for the affected path. The transaction fixture is imported by the existing
+task-context-profile fixture, so its standalone npm wrapper does not imply a
+missing PR gate. Governance Admission resolves the nine affected families once;
+complete clean-source qualification keeps all 59 required and three optional
+gates. Native application/model campaigns remain distinct manual evidence.
+No gate is removed, obligation lowered, deadline relaxed or coverage reduction
+claimed from this cost analysis.
