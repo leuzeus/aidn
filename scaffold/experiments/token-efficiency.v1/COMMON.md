@@ -2,8 +2,11 @@
 
 Use only the selected project and its configured canonical backend. Respect
 SPEC > WORKFLOW > AGENTS and the installed WORKFLOW-KERNEL.md. Before loading
-project context, run the actual `aidn runtime pre-write-admit --skill
-context-reload --json`; require activation.active and admission. A refusal stops
+project context in this selected profile, request one actual `aidn codex
+workflow-step --transaction --skills context-reload,<other-known-skills> --json`.
+Its admissions execute the ordinary `pre-write-admit` evaluator; require
+activation.active and an admitted context-reload result. Consume that live read preflight
+without prepending a duplicate standalone consultation. A refusal stops
 the dependent action. Independent admitted skills may continue only while the
 coordinator does not require a global stop.
 
