@@ -483,6 +483,15 @@
       "duration_ms": 0,
       "exit_code": null,
       "replay": {
+        "source_commit": "ebd6cf3e2d296d786007c4db5b0206b7998a1241",
+        "id": "release-reproducibility",
+        "family": "release",
+        "status": "PASS",
+        "duration_ms": 162459,
+        "exit_code": 0,
+        "raw_report_sha256": "d8a327927996c53e8e497612d81f414675cbd9d8c778284670c489166574b42d"
+      },
+      "earlier_replay": {
         "status": "PASS",
         "duration_ms": 141976,
         "exit_code": 0,
@@ -537,6 +546,15 @@
       "duration_ms": 850,
       "exit_code": 1,
       "replay": {
+        "source_commit": "ebd6cf3e2d296d786007c4db5b0206b7998a1241",
+        "id": "cleanliness-worktree",
+        "family": "cleanliness",
+        "status": "PASS",
+        "duration_ms": 1016,
+        "exit_code": 0,
+        "raw_report_sha256": "6ce61399ed03c684edb8a829d03c02493e6790cf53a83820ed93886dc6f4a48d"
+      },
+      "earlier_replay": {
         "status": "PASS",
         "duration_ms": 738,
         "exit_code": 0,
@@ -555,5 +573,111 @@
     "Initial failure is retained; replays do not rewrite that attempt.",
     "Initial untracked local files remain preserved.",
     "Replays bind their own source/candidate boundaries; no aggregate exact-head native or whole-application qualification is claimed."
-  ]
+  ],
+  "post_report_validation": {
+    "source_commit": "ebd6cf3e2d296d786007c4db5b0206b7998a1241",
+    "checkout": "separate clean named development worktree",
+    "results": [
+      {
+        "id": "docs-contract",
+        "family": "docs",
+        "status": "PASS",
+        "duration_ms": 2808,
+        "exit_code": 0,
+        "raw_report_sha256": "d39c7d5a9c58499b8fd0ecd17404e330f2d1ea5b65681669032b27f5dceb4521"
+      },
+      {
+        "id": "docs-cli-inventory",
+        "family": "docs",
+        "status": "PASS",
+        "duration_ms": 781,
+        "exit_code": 0,
+        "raw_report_sha256": "d39c7d5a9c58499b8fd0ecd17404e330f2d1ea5b65681669032b27f5dceb4521"
+      },
+      {
+        "id": "docs-references",
+        "family": "docs",
+        "status": "PASS",
+        "duration_ms": 1127,
+        "exit_code": 0,
+        "raw_report_sha256": "d39c7d5a9c58499b8fd0ecd17404e330f2d1ea5b65681669032b27f5dceb4521"
+      },
+      {
+        "id": "cleanliness-branch-policy",
+        "family": "cleanliness",
+        "status": "PASS",
+        "duration_ms": 1428,
+        "exit_code": 0,
+        "raw_report_sha256": "6ce61399ed03c684edb8a829d03c02493e6790cf53a83820ed93886dc6f4a48d"
+      },
+      {
+        "id": "cleanliness-branch-policy-fixtures",
+        "family": "cleanliness",
+        "status": "PASS",
+        "duration_ms": 19167,
+        "exit_code": 0,
+        "raw_report_sha256": "6ce61399ed03c684edb8a829d03c02493e6790cf53a83820ed93886dc6f4a48d"
+      },
+      {
+        "id": "cleanliness-gate-catalog",
+        "family": "cleanliness",
+        "status": "PASS",
+        "duration_ms": 1551,
+        "exit_code": 0,
+        "raw_report_sha256": "6ce61399ed03c684edb8a829d03c02493e6790cf53a83820ed93886dc6f4a48d"
+      },
+      {
+        "id": "cleanliness-gate-runner-fixtures",
+        "family": "cleanliness",
+        "status": "PASS",
+        "duration_ms": 4559,
+        "exit_code": 0,
+        "raw_report_sha256": "6ce61399ed03c684edb8a829d03c02493e6790cf53a83820ed93886dc6f4a48d"
+      },
+      {
+        "id": "cleanliness-worktree",
+        "family": "cleanliness",
+        "status": "PASS",
+        "duration_ms": 1016,
+        "exit_code": 0,
+        "raw_report_sha256": "6ce61399ed03c684edb8a829d03c02493e6790cf53a83820ed93886dc6f4a48d"
+      },
+      {
+        "id": "release-reproducibility",
+        "family": "release",
+        "status": "PASS",
+        "duration_ms": 162459,
+        "exit_code": 0,
+        "raw_report_sha256": "d8a327927996c53e8e497612d81f414675cbd9d8c778284670c489166574b42d"
+      }
+    ],
+    "limits": "Executed before this evidence-only addition; no claim about another package archive or native application qualification."
+  },
+  "route": {
+    "contract": "governance-route.v1",
+    "status": "PASS",
+    "lane": "ASSURED",
+    "delivery_lane": "ASSURED",
+    "source_commit": "ebd6cf3e2d296d786007c4db5b0206b7998a1241",
+    "raw_report_sha256": "4c49d0b2ca592a52cfca386a3ad40680e48ffb27a66cd856af1548945947b765",
+    "gate_selection": {
+      "context": "dev",
+      "families": [
+        "contracts",
+        "effects",
+        "governance",
+        "docs",
+        "codex",
+        "runtime",
+        "security",
+        "release",
+        "cleanliness"
+      ],
+      "all_count": 60,
+      "required_count": 59,
+      "optional_count": 1,
+      "skipped_count": 0,
+      "manual_deferred_count": 2
+    }
+  }
 }

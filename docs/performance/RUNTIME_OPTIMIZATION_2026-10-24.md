@@ -1,4 +1,4 @@
-# Runtime performance campaign — 2026-10-24
+# Runtime performance campaign â€” 2026-10-24
 
 ## Baseline and scope
 
@@ -88,7 +88,7 @@ PostgreSQL isolation are separate evidence obligations. Unexecuted measurements
 will be reported separately from PASS. No numerical engineering target is
 claimed achieved by the baseline.
 
-## Lot 1 — bounded policy refusal
+## Lot 1 â€” bounded policy refusal
 
 Managed and unknown skills with absent/uncovered task policies now return
 `selection_policy.mode: blocked` with explicit remediation, zero hydration and
@@ -104,7 +104,7 @@ explicit diagnostic receipts. The first run exposed a closed-schema rejection
 of the added remediation field; the schema was aligned and the full focused
 suite then passed. No native timing/token improvement is attributed to this fix.
 
-## Lot 2 — one bounded preparation
+## Lot 2 â€” one bounded preparation
 
 `workflow-step --transaction` composes the existing grouped observation,
 compact.v2, accepted token-efficiency policy and transition history. Defaults
@@ -125,7 +125,7 @@ canonical observation keys. Its 3,265 ms clock does not establish a speed gain;
 the value is bounded preparation and fewer required client consultations.
 Actual model-turn reduction still requires a native paired task.
 
-## Lot 3 — supported continuation and actual native limits
+## Lot 3 â€” supported continuation and actual native limits
 
 The existing versioned working-memory capsule already binds project/worktree,
 checkout and canonical revisions, objective, decisions, next step, typed TODO,
@@ -170,7 +170,7 @@ See the [official app-server documentation](https://developers.openai.com/codex/
 for supported thread and compaction methods; schema inspection alone never
 establishes a fresh-window lifecycle or model qualification.
 
-## Lot 4 — measured parsing and existing shared snapshots
+## Lot 4 â€” measured parsing and existing shared snapshots
 
 Field extraction previously invoked `analyzeStructuredArtifact` and stripped
 fenced examples again for every requested field of the same source. A map local
@@ -219,7 +219,7 @@ real PostgreSQL smoke passes dual and db-only checkpoint/resume, canonical-chang
 rejection and verified cleanup of its own random scopes. The first two failures
 remain retained and are not rewritten as product qualification PASS.
 
-## Lot 5 — native preparation comparison
+## Lot 5 â€” native preparation comparison
 
 The final manual experiment freezes executable source at
 `be59c824789bec1404ce55c42c1f84946913fabd`, with an empty tracked diff.
@@ -245,11 +245,11 @@ tokens or unique document tokens.
 
 | Native preparation variant | CLI consultations | Model responses per trial | Mean cumulative input | Mean uncached input | Mean seconds | Seconds range |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Separate historical microsteps | 5 | 7 | 191091.5 | 39411.5 | 24.050 | 21.998–26.103 |
-| Existing composed historical interface | 1 | 3 | 80832 | 33600 | 10.136 | 9.970–10.302 |
-| Grouped compact.v2 | 1 | 3 | 64605 | 25437 | 12.026 | 11.598–12.455 |
-| Grouped compact.v2 and scoped policy | 1 | 3 | 48872.5 | 17640.5 | 10.583 | 9.747–11.419 |
-| Bounded transaction | 1 | 3 | 49048 | 17752 | 12.208 | 12.145–12.272 |
+| Separate historical microsteps | 5 | 7 | 191091.5 | 39411.5 | 24.050 | 21.998â€“26.103 |
+| Existing composed historical interface | 1 | 3 | 80832 | 33600 | 10.136 | 9.970â€“10.302 |
+| Grouped compact.v2 | 1 | 3 | 64605 | 25437 | 12.026 | 11.598â€“12.455 |
+| Grouped compact.v2 and scoped policy | 1 | 3 | 48872.5 | 17640.5 | 10.583 | 9.747â€“11.419 |
+| Bounded transaction | 1 | 3 | 49048 | 17752 | 12.208 | 12.145â€“12.272 |
 
 Every trial passes the same preparation extraction oracle: skill identities,
 admission booleans, mode, coordinator action and absence of write authority.
@@ -397,6 +397,15 @@ shared snapshot fences, CAS-sensitive writes, canonical backend outage, real
 PostgreSQL concurrency and package installation. Unchanged passing gates are
 not rerun solely to erase the first failed campaign. Each relevant replay and
 its source boundary remains explicit.
+
+Final post-report checks at clean commit
+`ebd6cf3e2d296d786007c4db5b0206b7998a1241`: documentation **3 PASS**, cleanliness
+**5 PASS**, package reproducibility **1 PASS**, zero FAIL/SKIP. The last check
+builds the exact tracked candidate twice and exercises its packaged CLI/HTTP
+fixtures. It does not run native Codex or an external installed-client model
+task. The ASSURED resolver also passes for all nine selected families. These
+results precede this evidence-only addition; they do not silently qualify a
+changed native archive. Remote PR/merge checks remain NOT EXECUTED.
 
 ## P2 diagnostic sampling
 
