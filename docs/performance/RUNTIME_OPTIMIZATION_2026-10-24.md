@@ -27,6 +27,13 @@ fail the same native operation. The older public executable carries the
 historical version label but differs from the archived application binary;
 this is not a bit-for-bit historical replay.
 
+After a subsequent explicit owner authorization, the official elevated sandbox
+setup completes successfully. Fresh metadata reports ready on the reviewed G
+roots; native physical identity and a single genuine native edit now pass on G
+with explicit legacy selection and no MXC preference. These are component
+preconditions, not valid full-application comparison samples. The independently
+retained MXC refusal is not relabelled or repaired by this different backend.
+
 Source/native preparation measurements below remain valid within their stated
 scope. No system-volume diagnostic, stopped application attempt or microbenchmark
 is a successful end-to-end task measurement. Public native worker/rollover
@@ -710,8 +717,8 @@ older public version as sufficient repairs in the present environment.
 A [public upstream issue](https://github.com/openai/codex/issues/52593) reports
 the same JavaScript/native-realpath split inside Windows sandboxing. That is
 external corroboration, not proof of this host's Windows syscall cause or a
-verified fixed build. The present native application comparison is unavailable
-because a required physical-identity precondition fails before the workflow;
+verified fixed build. At that stage the MXC native application comparison was unavailable
+because a required physical-identity precondition failed before the workflow;
 its application oracle and end-to-end engineering targets remain unevaluated.
 The retained controls provide a reproducible precondition check for a future
 compatible runtime, without removing the identity check or changing storage
@@ -888,6 +895,54 @@ The API supplies no exact model revision, the trusted capability registry is not
 populated and autonomy remains false. The research qualifier's hooks are SKIP;
 existing project-hook approval is a separate observation. The remaining native
 application work still requires a compatible ready backend and the complete
-fixed oracle. The operator reports no setup action in the desktop interface;
-the selected CLI's help exposes a manual elevated setup command. Its effects
-are prepared for review outside the checkout, not executed by AIDN.
+fixed oracle. At that stage the operator reported no setup action in the desktop interface;
+the selected CLI's help exposed a manual elevated setup command. Its effects
+were prepared for review outside the checkout. The subsequent explicit operator
+authorization and execution are retained below.
+
+
+### Authorized native setup and restored G preconditions
+
+The owner subsequently explicitly authorized executing the official Windows
+sandbox setup and its documented system modifications. This is a separate
+one-off operator action, not a change to ordinary AIDN v2 worker policy or an
+implicit setup during admission. The selected executable hash is verified before
+launch. A Windows `RunAs` request starts the native setup under an administrator
+token for the existing user/profile; it exits zero. Logs and preimages reside on
+G. Twenty observed configuration/authentication/rule/hook resources remain
+unchanged. Official provisioning can change its sandbox accounts, ACLs and
+firewall resources; those effects are authorized, not reported unchanged.
+
+A fresh controlled metadata attempt then completes its bounded bootstrap and
+ordinary ten-second verification. It reports `ready`, two enabled/trusted hooks
+per original G worker, preserved protected sources and a confirmed empty Job.
+This supersedes the earlier readiness obstacle; it does not overwrite that
+failed attempt or qualify a worker by consent alone.
+
+The next OS-only probe explicitly selects `elevated` with
+`features.prefer_mxc=false` and the standard `:workspace` profile. On G, both
+native and JavaScript realpath pass, write/read/remove succeeds inside the
+workspace and an outside writable-open attempt is refused. A kernel identity
+query observes a sandbox user distinct from the host user. The sentinel and
+main config/auth files are unchanged; the Job closes with zero descendants.
+No model or AIDN application command is involved in that probe.
+
+Finally a fresh native model component trial on G succeeds with one actual
+`apply_patch`, two provider responses, the expected marker bytes and zero shell
+commands started. Its dispatcher checks readiness, disabled integrations and
+zero baseline hooks before starting the thread. Omitting redundant thread cwd
+preserves personal trust configuration. The owned marker is removed after
+verification and the containing Job closes with zero descendants. Main config
+and auth remain unchanged. This supplies an admitted-by-native-permissions edit
+precondition, not AIDN action-admission or application qualification.
+
+The next installable candidate is built from clean, already package-qualified
+source `10419336b5d98809c4995b16433a3d6f21aca794`: 1,047 package inputs, version
+0.16.0, tarball SHA-256
+`aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576`.
+It remains a local unpublished candidate. A new G-only campaign must still
+freeze its adapted controls, prove managed network/loopback and PostgreSQL
+connectivity, install fresh independent clients, and complete the fixed native
+application/workflow oracle. No system-volume client or old incomplete arm is
+reused. Current full-application comparative samples remain absent; native
+worker/default-procedure promotion remains unqualified.

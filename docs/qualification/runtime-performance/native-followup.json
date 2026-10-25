@@ -546,5 +546,75 @@
       "Model revision is unavailable and no trusted production integration is registered.",
       "Counts describe this qualification workload, not an end-to-end performance gain."
     ]
+  },
+  "authorized_operator_setup": {
+    "status": "COMPLETED",
+    "exit_code": 0,
+    "administrator_token": true,
+    "authorization": "Direct explicit human authorization for this native setup and documented system changes, received after the earlier no-setup boundary",
+    "ordinary_worker_policy_changed": false,
+    "protected_files": 20,
+    "changed_protected_files": 0,
+    "result_sha256": "d3b8e98beb5fc97bdf13e9c731281852c6ada8e3e7c89bc63c913cd3891fd3e7",
+    "preservation_sha256": "0c6f010a2aa5ad960a5394d9b29e1c19adbddf18ad3a99422fb7edb21d86e26a",
+    "limits": "Does not claim Windows accounts, ACLs or firewall state unchanged; those official provisioning effects were authorized."
+  },
+  "current_legacy_preconditions": {
+    "metadata": {
+      "status": "PROPOSAL_OBSERVED",
+      "readiness": "ready",
+      "hook_counts": [
+        2,
+        2
+      ],
+      "protected_sources_preserved": true,
+      "phase": "verification",
+      "process_cleanup": "confirmed",
+      "active_descendants": 0,
+      "raw_sha256": "1e95b41111e35c38947a9635fc817085eb02b800a12527b88075d3e496d18c2f"
+    },
+    "os_probe": {
+      "status": "PASS",
+      "backend": "elevated",
+      "prefer_mxc": false,
+      "native_realpath": "PASS",
+      "write_read_remove": "PASS",
+      "outside_write_denied": true,
+      "distinct_sandbox_user": true,
+      "main_config_preserved": true,
+      "main_auth_preserved": true,
+      "process_cleanup": "confirmed",
+      "active_descendants": 0,
+      "model_calls": 0,
+      "raw_sha256": "044edb2a22f76d7d3d1735210a402bcb39e779191a4cbb982c6c02a426785cc4"
+    },
+    "native_edit_probe": {
+      "status": "PASS_NATIVE_MARKER",
+      "native_edits": 1,
+      "shell_commands_started": 0,
+      "provider_responses": 2,
+      "marker_matches": true,
+      "owned_marker_removed": true,
+      "main_config_preserved": true,
+      "auth_changed": false,
+      "process_cleanup": "confirmed",
+      "active_descendants": 0,
+      "raw_sha256": "589b9dce2b8ef6337ed99b5436a34855c1e76d4449f0891deb261883745e4d24"
+    },
+    "scope": "Component preconditions on G only; no AIDN application oracle, current full-task A/B, native supervised worker or default procedure qualification"
+  },
+  "next_g_application_candidate": {
+    "source_commit": "10419336b5d98809c4995b16433a3d6f21aca794",
+    "version": "0.16.0",
+    "input_files": 1047,
+    "tarball_sha256": "aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576",
+    "status": "BUILT_NOT_NATIVE_APPLICATION_QUALIFIED",
+    "storage": "permitted non-system volume",
+    "backend_plan": "elevated with explicit prefer_mxc=false in all comparator arms",
+    "next_checks": [
+      "Frozen G-only harness and actual network-proxy/loopback/PostgreSQL controls",
+      "Fresh installed-client integration pilot and independent application/workflow oracle",
+      "Multiple complete current-candidate comparison arms; bounded fixture authority policy kept distinct from production acceptance"
+    ]
   }
 }
