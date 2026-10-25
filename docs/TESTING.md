@@ -1042,6 +1042,12 @@ The pack topology verifier checks the package tarball surface, the published doc
 Package topology also requires the dedicated local research qualifier and its
 external-pilot/resource helpers to remain outside distributed packages. They
 are source-checkout test tools; the release input detector remains unchanged.
+Local temporary roots may share the source checkout's parent. Pure native
+qualification contract paths therefore use synthetic labels independent of
+TEMP, while still refusing all real profile/output overlaps. Start-session's
+nested failure probe keeps a short unique parent prefix so Git Windows can
+reach the intended injected child call under a long G-only temporary root;
+its cleanup/process assertions and bounded child-error diagnostics remain.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.

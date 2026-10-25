@@ -734,5 +734,547 @@
     ]
   },
   "current_native_application_status": "ATTEMPTED_NO_VALID_SAMPLES_G_PHYSICAL_IDENTITY_PRECONDITION_FAILED",
-  "current_native_followup_ref": "native-followup.json"
+  "current_native_followup_ref": "native-followup.json",
+  "g_only_complete_run": {
+    "source_commit": "02e40f5854cdb141553e9d14d2281760ee33c228",
+    "checkout": "Separate clean named development worktree; TEMP/TMP and npm cache on permitted volume",
+    "ok": false,
+    "counts": {
+      "PASS": 59,
+      "FAIL": 2,
+      "SKIP": 1
+    },
+    "raw_report_sha256": "e0779e9accda927a92a55ffa1480217c66fa57323a518356a110c13f0ff4d50a",
+    "total_gate_duration_ms": 3801458,
+    "worktree_mutations": 0,
+    "results": [
+      {
+        "id": "contracts-workflow-compilation",
+        "family": "contracts",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 2907,
+        "exit_code": 0
+      },
+      {
+        "id": "contracts-workflow-shadow",
+        "family": "contracts",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 835,
+        "exit_code": 0
+      },
+      {
+        "id": "contracts-json",
+        "family": "contracts",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 167474,
+        "exit_code": 0
+      },
+      {
+        "id": "contracts-surface-catalog",
+        "family": "contracts",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 20706,
+        "exit_code": 0
+      },
+      {
+        "id": "effects-policy",
+        "family": "effects",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 5546,
+        "exit_code": 0
+      },
+      {
+        "id": "effects-no-implicit-write",
+        "family": "effects",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 42653,
+        "exit_code": 0
+      },
+      {
+        "id": "effects-db-migrate-write-boundary",
+        "family": "effects",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 3107,
+        "exit_code": 0
+      },
+      {
+        "id": "governance-source",
+        "family": "governance",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 725,
+        "exit_code": 0
+      },
+      {
+        "id": "governance-metadata",
+        "family": "governance",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 717,
+        "exit_code": 0
+      },
+      {
+        "id": "governance-completeness",
+        "family": "governance",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 4165,
+        "exit_code": 0
+      },
+      {
+        "id": "docs-contract",
+        "family": "docs",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 1828,
+        "exit_code": 0
+      },
+      {
+        "id": "docs-cli-inventory",
+        "family": "docs",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 641,
+        "exit_code": 0
+      },
+      {
+        "id": "docs-references",
+        "family": "docs",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 936,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-pack-topology",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 14409,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-installed-client",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 24094,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-integration-lifecycle",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 534315,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-context-diagnostics",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 13396,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-scoped-context-selection",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 6847,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-agent-working-memory",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 124388,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-context-admission",
+        "family": "codex",
+        "status": "FAIL",
+        "obligation": "required",
+        "duration_ms": 137159,
+        "exit_code": 1
+      },
+      {
+        "id": "codex-context-completion",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 514689,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-context-coordination",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 452102,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-context-projection",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 124765,
+        "exit_code": 0
+      },
+      {
+        "id": "codex-real-discovery",
+        "family": "codex",
+        "status": "PASS",
+        "obligation": "optional",
+        "duration_ms": 23920,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-state-modes",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 81611,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-governance-cli",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 4579,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-locator-atomicity",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 764,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-state-projector-cleanup",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 11540,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-db-schema-migrations",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 1307,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-agent-execution-contracts",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 1391,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-agent-execution-postgres",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 418098,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-agent-worker-fixtures",
+        "family": "runtime",
+        "status": "FAIL",
+        "obligation": "required",
+        "duration_ms": 38291,
+        "exit_code": 1
+      },
+      {
+        "id": "runtime-agent-execution-scheduler",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 71850,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-agent-verification",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 275591,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-agent-git-integration",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 164374,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-agent-run-lifecycle",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 93887,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-coordination-concurrency",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 9020,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-artifact-efficiency",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 144625,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-db-runtime-cli",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 12366,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-persistence-parity",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 1712,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-coordination-backup",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 2787,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-coordination-restore",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 3618,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-coordination-doctor",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 3609,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-coordination-store-port",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 589,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-workspace-resolution",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 6396,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-db-first-regression",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 7896,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-sqlite-boundary",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 6365,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-db-only-hooks",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 5973,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-runtime-path",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 690,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-shared-runtime-reanchor",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 17970,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-postgres-persistence-live-cleanup",
+        "family": "runtime",
+        "status": "PASS",
+        "obligation": "optional",
+        "duration_ms": 12205,
+        "exit_code": 0
+      },
+      {
+        "id": "runtime-postgres-shared-live-cleanup",
+        "family": "runtime",
+        "status": "SKIP",
+        "obligation": "optional",
+        "duration_ms": 0,
+        "exit_code": null
+      },
+      {
+        "id": "security-shared-boundary",
+        "family": "security",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 627,
+        "exit_code": 0
+      },
+      {
+        "id": "security-tracked-sensitivity",
+        "family": "security",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 1139,
+        "exit_code": 0
+      },
+      {
+        "id": "release-version",
+        "family": "release",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 632,
+        "exit_code": 0
+      },
+      {
+        "id": "release-reproducibility",
+        "family": "release",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 154911,
+        "exit_code": 0
+      },
+      {
+        "id": "release-workflow-policy",
+        "family": "release",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 760,
+        "exit_code": 0
+      },
+      {
+        "id": "cleanliness-branch-policy",
+        "family": "cleanliness",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 810,
+        "exit_code": 0
+      },
+      {
+        "id": "cleanliness-branch-policy-fixtures",
+        "family": "cleanliness",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 16662,
+        "exit_code": 0
+      },
+      {
+        "id": "cleanliness-gate-catalog",
+        "family": "cleanliness",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 1250,
+        "exit_code": 0
+      },
+      {
+        "id": "cleanliness-gate-runner-fixtures",
+        "family": "cleanliness",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 2497,
+        "exit_code": 0
+      },
+      {
+        "id": "cleanliness-worktree",
+        "family": "cleanliness",
+        "status": "PASS",
+        "obligation": "required",
+        "duration_ms": 742,
+        "exit_code": 0
+      }
+    ],
+    "required_postgres_gate": {
+      "id": "runtime-agent-execution-postgres",
+      "family": "runtime",
+      "status": "PASS",
+      "obligation": "required",
+      "duration_ms": 418098,
+      "exit_code": 0
+    },
+    "limits": [
+      "Failed complete run retained unchanged.",
+      "Optional shared smoke skipped because its required URL was unavailable.",
+      "No native model/application or default-startup qualification follows from these source gates."
+    ],
+    "targeted_fixture_repairs": [
+      {
+        "gate": "codex-context-admission",
+        "cause": "Nested cleanup-probe fixture exceeded Git Windows path length before injected third call",
+        "change": "Shorter unique parent prefix; retain the third-call failure and all cleanup/process checks",
+        "direct_replay": "PASS_39_CASES_WITH_INJECTED_FAILURE_CLEANUP",
+        "raw_report_sha256": "d4fd003b3ff3d88da9a9aa94b48508fd9ad946b5c8169c9710e6e4236bf24281",
+        "whole_gate_replay": "PENDING"
+      },
+      {
+        "gate": "runtime-agent-worker-fixtures",
+        "cause": "Pure contract path labels inherited TEMP below the same parent used as a synthetic source-containing profile",
+        "change": "Use volume-root-relative synthetic labels only; no filesystem resources created and overlap guards unchanged",
+        "direct_replay": "PASS_395_CHECKS_ZERO_EFFECTS",
+        "raw_report_sha256": "0e7d7fb8eb9437fb64dba9d0ac22196a5b2e0b3df77f49db4ac69d92e5689102",
+        "whole_gate_replay": "PENDING"
+      }
+    ]
+  }
 }

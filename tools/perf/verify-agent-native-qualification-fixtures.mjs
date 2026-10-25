@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
-import os from "node:os";
 import childProcess from "node:child_process";
 import net from "node:net";
 import http from "node:http";
@@ -16,7 +15,9 @@ import { fileURLToPath } from "node:url";
 
 // Synthetic objects only: these paths are labels, never created or inspected.
 // No native profile, previous local qualification or external pilot is required.
-const root = path.join(os.tmpdir(), "aidn-native-qualification-contracts", "projet été");
+// These are pure labels, not temporary filesystem resources. Keep them outside
+// the checkout's parent: TEMP may itself live below that parent on local runs.
+const root = path.join(path.parse(fileURLToPath(import.meta.url)).root, "aidn-native-qualification-contracts", "projet été");
 const roles = ["coordinator", "worker-a", "worker-b"];
 const sha = (letter) => letter.repeat(64);
 const definition = JSON.stringify({ hooks: {

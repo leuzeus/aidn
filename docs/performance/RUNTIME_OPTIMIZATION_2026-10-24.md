@@ -728,7 +728,7 @@ it does not equate a supported opt-in route with default installed adoption.
 | Fewer model interactions | Repeated native preparation oracle passes with seven versus three responses | Complete installed-task A/B with the same functional and workflow oracle |
 | Supported continuation | Explicit admitted capsule capture and fresh validated resume; native limitations retained | Native rollover remains unqualified and is not promoted |
 | Mutualized reads and parsing | Existing observation fences retained, invocation-local parse gain measured, canonical backend correction verified | No end-to-end gain is inferred from the CPU result |
-| Final source qualification | Targeted checks and retained initial failures/replays; a fresh complete run is active at clean source `02e40f5854cdb141553e9d14d2281760ee33c228` | Inspect its terminal result before any full-source PASS claim |
+| Final source qualification | Fresh complete run at clean source `02e40f5854cdb141553e9d14d2281760ee33c228`: 59 PASS, two FAIL, one SKIP | Two fixture repairs pass directly; complete affected gate replays remain required |
 
 The initial source campaign's retained individual gate clocks total
 3,090,127 ms (51.50 minutes). This is a sum of script clocks from the failed
@@ -781,3 +781,44 @@ attempt-scoped state remain on the permitted volume. The
 describes administrator-approved setup for the legacy elevated backend;
 readiness alone neither diagnoses a specific provisioning defect nor authorizes
 AIDN to perform that setup under the retained consent boundary.
+
+
+### Complete G-only source campaign and two fixture repairs
+
+The fresh clean-source campaign at
+`02e40f5854cdb141553e9d14d2281760ee33c228` terminates with **59 PASS / 2 FAIL /
+1 SKIP**. All 62 selected outcomes and their redacted identities remain in the
+qualification ledger. The required real-PostgreSQL gate passes. The optional
+shared PostgreSQL live smoke is SKIP because its URL is unavailable; it is not
+reported as PASS. The complete run remains failed and no checkout mutation is
+observed. Its gate clocks sum to 3,801,458 ms (63.36 minutes), not application
+runtime or parallel CI duration.
+
+Both failures have new, reproduced fixture causes under the permitted temporary
+root. The start-session cleanup probe nests another descriptive case directory;
+Git refuses its longest tracked path before the intended third-call injection.
+The retained diagnostic confirms `Filename too long`, zero JSON child calls and
+successful removal. Shortening only the unique parent prefix makes the actual
+third-call injection execute. Its direct complete replay passes 39 cases, expected
+nonzero injection, zero residual targets, process-return evidence, timeout
+observation and both cleanup retry controls. Child error diagnostics are now
+retained when this probe fails; no expected refusal or cleanup check is removed.
+
+The native qualification contract suite uses pure path labels, with filesystem
+access forbidden. Deriving those labels from TEMP puts them inside the parent
+of the source checkout when that parent also holds the G-only scratch directory.
+Its supposedly external source-containing profile then legitimately overlaps
+its fake outputs and is refused. Volume-root-relative synthetic labels remove
+that accidental physical layout dependency without creating files or changing
+production profile checks. All 395 direct checks pass with zero effects,
+including every prohibited profile overlap. Full affected gate replays remain
+required; their earlier failures are not overwritten by these direct results.
+
+A separate inspection of the retained native ledger trace clarifies its first
+failure: `aidn_checkpoint` returned `QUALIFICATION_TOOL_REFUSED` after the TODO
+edit. The model then refused to reset context or submit incomplete answers.
+The missing first rollover is therefore preceded by a host checkpoint failure,
+not proof that the native operation is absent. The callback did not retain the
+underlying child diagnostic. A fresh deterministic checkpoint replay and bounded
+host diagnostics are needed before another model trial; no existing native
+qualification or final window-count assertion is relaxed.
