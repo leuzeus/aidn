@@ -1570,3 +1570,47 @@ cycle/session completion and per-write controls are never waived. Older failed
 calibrations and the earlier unexecuted preparation versions stay separate.
 Trials execute sequentially; no source builds or broad gates run during their
 clocks. This predeclaration is not an executed result or a performance gain.
+
+## Incomplete first comparison sample and transport correction
+
+The first allocated compact sample of cohort 030 stops before product edits,
+application tests or the oracle. Its native turn lasts 796.126 seconds, reports
+45 completed provider responses and uses 3,784,603 cumulative input tokens:
+3,656,704 cached and 127,899 uncached, plus 9,811 output tokens. All 33 actual
+canonical CLI calls exit zero. The model cannot prepare the benchmark's required
+hidden hydration command because the tool description withholds its fixed argv.
+It requests that missing technical information and leaves the task incomplete.
+This is an unexecuted argument-preparation failure, not an observed application
+failure or an actual CLI admission refusal. The remaining three samples never
+start. No result is replaced or resumed.
+
+The native stream contains both an intermediate question and the terminal reply
+as `final_answer` items. The old selector requires exactly one such event and
+fails before finalizing normalized commands and receipts. A separate read-only
+closed-attempt assessor retains the actual usage and explicitly marks the live
+receipt prefix unfinalized. It keeps this case strictly unaccepted; it does not
+create missing evidence or rehabilitate the failed sample. It independently
+reproduces the accepted historical calibration's complete usage and verdict.
+
+New controls identify the terminal reply through the actual completed turn and
+the matching completed item with identical thread, turn, item and content. A
+question or trailing message cannot replace that binding. Missing, ambiguous or
+inconsistent evidence refuses continuation. The worker finalizes actual receipts
+even when final selection fails, and the driver records a refused guard instead
+of replacing the cause with a missing-file exception. The exact already-supported
+hidden hydration vector is disclosed to both variants. It retains all five
+no-project flags, required reads, skill-specific admissions and strict hooks;
+the cache-selection skill key grants no role or lasting permission.
+
+Successor cohort 033 binds 96 identical control files and 451 passing assertions
+per payload, with zero failures or skips after the capability test explicitly
+recognizes the corrected historical control. The initial preflight's one wrong
+historical positive expectation is retained separately. The new comparison uses
+historical `0475392` plus only the three-file hydration namespace/typed-error
+correctness correction, local commit `a495957`, against optimized `6fe160d`.
+This is a matched correctness control, not the unmodified historical release;
+its archive is distinct and its native handoff component must pass before use.
+No performance feature is backported. The old historical calibration remains
+separate. Two samples per variant are declared in compact/historical/historical/
+compact order, with unchanged task, oracle, model, deadlines and preservation
+checks. Its sealed preparation is not an executed comparison or a gain claim.

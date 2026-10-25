@@ -1564,7 +1564,7 @@
     "application_oracle": "NOT_EXECUTED_COMPONENT_ONLY"
   },
   "predeclared_repeated_comparison": {
-    "status": "PREPARED_NOT_EXECUTED",
+    "status": "STOPPED_AFTER_FIRST_INCOMPLETE_SAMPLE",
     "protocol": "native-comparison-030.v6",
     "protocol_sha256": "d644eb5c077b3528aedcd3a7e3b6193085d7ef3e4c19a4f31aa28a9ee41368d5",
     "order": [
@@ -1584,6 +1584,100 @@
       "SKIP": 0
     },
     "earlier_calibrations_enrolled": false,
-    "old_unqualified_candidate_reused": false
+    "old_unqualified_candidate_reused": false,
+    "executed_samples": 1,
+    "unexecuted_samples": 3,
+    "strict_whole_application_accepted": false,
+    "application_oracle": "NOT_EXECUTED",
+    "measurement_recovery": "READ_ONLY_RAW_USAGE_AND_UNFINALIZED_RECEIPT_PREFIX",
+    "first_phase_seconds": 796.126,
+    "model_responses": 45,
+    "input_tokens": 3784603,
+    "cached_input_tokens": 3656704,
+    "uncached_input_tokens": 127899,
+    "output_tokens": 9811,
+    "actual_cli_calls": 33,
+    "actual_cli_nonzero": 0,
+    "product_edits": 0,
+    "reason": "Benchmark omitted its own exact hidden hydration profile; intermediate question confused final selector; no application verdict",
+    "old_sample_resumed": false,
+    "read_only_measurement_sha256": "dda336523dfbbef68731afab4bc5a5ef178ac0a160982a1329f378ee6e32959f"
+  },
+  "benchmark_transport_followup": {
+    "status": "FIXED_IN_NEW_CONTROLS_ONLY",
+    "native_terminal_selection": "Actual completed turn and exactly matching item identity/content; no last-message or ID-prefix guessing",
+    "terminal_guard": "benchmark-phase-continuation.v17",
+    "worker_finalizes_receipts_on_failure": true,
+    "missing_final_file_is_explicit_guard_refusal": true,
+    "exact_hidden_hydration_argv_disclosed": true,
+    "transport_permission_or_effect_changes": false,
+    "failed_sample_relabelled": false,
+    "unmodified_historical_measurement_reproduced": true,
+    "historical_control": {
+      "source_commit": "a49595716d4dd9e5069ce093ac549e99f5e4f80c",
+      "base": "04753926d342a72af58d415e605aec532cd84d3a",
+      "patch": "Only the three-file 6fe160d hydration namespace and typed error correction",
+      "performance_features_backported": false,
+      "archive_sha256": "8a00b2debf1c4d49dde7da53419c59f88677d0b0ebb5a3fc237d62653a9287ba",
+      "native_component": "NATIVE_HANDOFF_COMPONENT_PASS",
+      "native_model_calls": 0,
+      "native_git_preservation": {
+        "status": "PASS",
+        "protected_refs": 78,
+        "changed_refs": 0,
+        "protected_git_files": 344,
+        "changed_git_files": 0
+      },
+      "protected_configuration": true,
+      "private_postgres_removed": true,
+      "frozen_controls_preserved": true
+    }
+  },
+  "predeclared_repeated_comparison_033": {
+    "status": "PREPARED_NOT_EXECUTED",
+    "protocol": "native-comparison-033.v1",
+    "protocol_sha256": "210fc4b77099e21d635d14aee8aca2988929a9f3caddb62a5d4127fb0c09b5cb",
+    "guard": "benchmark-phase-continuation.v17",
+    "order": [
+      {
+        "id": "pilot-001",
+        "variant": "compact"
+      },
+      {
+        "id": "pilot-002",
+        "variant": "historical"
+      },
+      {
+        "id": "pilot-003",
+        "variant": "historical"
+      },
+      {
+        "id": "pilot-004",
+        "variant": "compact"
+      }
+    ],
+    "candidates": {
+      "historical": {
+        "sha256": "8a00b2debf1c4d49dde7da53419c59f88677d0b0ebb5a3fc237d62653a9287ba",
+        "source_commit": "a49595716d4dd9e5069ce093ac549e99f5e4f80c",
+        "runtime_descriptor_sha256": "c466b9f6baf61d0dcf4d06018455a7d5f6ec7fefcc1f2814cac1640d8d4f3eba"
+      },
+      "compact": {
+        "sha256": "60efaf3243ea202fc08ef69f6a216fa3fd347ec3a408e8c0f5b869f99a7eaf1f",
+        "source_commit": "6fe160d63ebbacca286d95c6a80dd89ca1adb659",
+        "runtime_descriptor_sha256": "ac2885102d020c5575af1965ce2e30b145f7fecc88a4f835d8d9cf9103f0e549"
+      }
+    },
+    "identical_control_files": 96,
+    "controls_per_payload": {
+      "PASS": 451,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "matched_control_contains_common_correctness_patch": true,
+    "prior_cohort_included": false,
+    "application_qualification": "REQUIRED_IN_FIRST_ALLOCATED_SAMPLE",
+    "all_evidence_on_G": true,
+    "complete_gain_comparison": "NOT_ESTABLISHED"
   }
 }
