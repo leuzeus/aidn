@@ -10,12 +10,14 @@ recoverable archives on the permitted evidence volume. Automatic cleanup was
 rejected by policy, so the original copies remain inert; the personal Codex
 profile was neither moved nor removed.
 
-One full application integration pilot now passes on the permitted volume with
-the explicitly selected elevated legacy backend: two native threads, actual
-coordinator relay, genuine cycle/session closure and the fixed 20/20 oracle.
-Its workflow clock is 2,089.307 seconds; it exposes 69 completed provider
-responses, 8,118,837 cumulative input tokens and 316,213 uncached input tokens.
-This pilot uses the frozen source `10419336` package and is not a matched A/B.
+Strict whole-application protocol qualification is currently **NOT ESTABLISHED**.
+A former driver PASS is preserved, but independent review found two native Git
+metadata-lock permission refusals with exit zero before implementation. The
+phase guard missed stderr denials. Its actual 20/20 oracle, specific patch
+admissions and terminal hook executions remain valid component observations;
+continuing after the unhandled refusal cannot establish strict protocol success.
+The no-AIDN pilot has no corresponding Git denial. Neither pilot is promoted to
+a predeclared repeated A/B cohort.
 
 The current native application campaign has **no valid comparative samples**.
 The retained MXC non-system-volume reproduction fails native physical-path
@@ -1179,10 +1181,11 @@ This proves fixture transport and prerequisites only. The separate transaction
 budget refusal is retained; no transaction success is claimed by this control.
 
 
-## Complete native application integration pilot
+## Original complete-run driver observation (strict protocol invalidated)
 
-The frozen source `10419336` archive `aa9b3614…f4991576` completes the full
-application workflow. Phase 1 passes in 1,139.813 seconds, the actual coordinator
+The frozen source `10419336` archive `aa9b3614…f4991576` originally reports a
+completed workflow. Its strict protocol acceptance is invalidated by the later
+Git-lock review below; the following executed observations remain unchanged. Phase 1 passes in 1,139.813 seconds, the actual coordinator
 in 34.083 seconds, and phase 2 in 913.384 seconds. The parent workflow clock is
 2,089.307 seconds (34.82 minutes), inside the original 2,700-second deadline.
 This clock excludes initial client/runtime preparation and the fixed final oracle;
@@ -1324,3 +1327,42 @@ A subsequent experimental task must declare ordinary complete bootstrap before
 selecting the supported bounded steady-state route; it cannot first consume the
 refusal and then silently switch to full. This boundary is specific to these
 whole-document fixtures, not a statement that the native API is unavailable.
+
+
+## Git stderr denial review and corrected protocol guard
+
+The actual historical `04753926` runtime pilot stops before session/cycle or
+application creation after Git reports inability to create a common
+`packed-refs.lock`. Nine canonical CLI calls succeed; the model stops and writes
+no HANDOFF, so the original phase guard refuses continuation. The owned process
+closes, the private cluster is removed, and protected refs/files and principal
+profile are preserved. Product verdict is not_executed; this does not establish
+an AIDN product or performance failure.
+
+Independent native event review finds the same two zero-exit lock-denial commands
+in the former current-runtime complete-run pilot's first phase, and in the
+previous closed application phase. The no-AIDN pilot has zero such commands in
+both phases. This invalidates strict protocol acceptance of the affected governed
+runs, without rewriting their original driver records, resuming them, inventing
+rollback, or discarding actual functional oracle/patch/terminal-gate evidence.
+The old Git preflight asserted process status and ref effects without retaining
+all successful-command stderr; it did not prove absence of these denials.
+
+A fresh zero-model diagnostic reproduces successful owned branch selection plus
+two denied global locks under direct Node, PowerShell with and without profiles,
+and disabled automatic maintenance. All processes close and foreign refs/common
+controls/profile hashes remain unchanged. A separate comparison reproduces the
+same issue with both installed Git 2.47.1 and bundled Git 2.53.0. No global Git
+permission is granted and no system Git installation/configuration is changed.
+Trace evidence points to post-switch ref transactions, not a shell-profile or
+automatic-maintenance explanation. The exact cleanup mechanism remains under
+investigation; a different Git version is not a demonstrated remedy.
+
+A prospective v15 continuation guard explicitly detects native command lock
+permission refusals even when exit code is zero. Eight tests pass, including the
+actual historical event, both formerly missed zero-exit events, refusal despite
+synthetic ready/handoff claims, non-Git application output and malformed evidence.
+This guard correction is independent of a still-unvalidated Git execution remedy.
+Scope restrictions protecting unrelated refs remain unchanged. No new expensive
+model attempt is justified until the intended branch path executes without
+these errors on a fresh zero-model case.

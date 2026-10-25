@@ -1041,7 +1041,8 @@
     "phase2": "NOT_EXECUTED",
     "final_governed_closure": "NOT_EXECUTED",
     "comparative_sample": false,
-    "default_installed_route_promoted": false
+    "default_installed_route_promoted": false,
+    "independent_trace_review_scope_limit": "Patch preparation/canonical-call bindings only; did not cover ordinary zero-exit Git stderr denials"
   },
   "cold_initialization_semantic_control": {
     "status": "SEMANTIC_CONTROL_PASS",
@@ -1220,7 +1221,10 @@
     "principal_config_auth_preserved": true,
     "raw_result_sha256": "5692a300be4d5cdbd3150ad967b13f6dcb09cffaa5c6d392557b2336bc732069",
     "usage_report_sha256": "00cadcd74bc2d2ed27da318ab49e178460868e7eb7579965d2ea5051c59427e9",
-    "end_to_end_gain_claimed": false
+    "end_to_end_gain_claimed": false,
+    "strict_protocol_qualification": "INVALIDATED_BY_GIT_STDERR_DENIAL_REVIEW",
+    "original_driver_status_preserved": true,
+    "component_oracle_and_terminal_execution_preserved": true
   },
   "packaged_compact_admission_selector": {
     "status": "PASS_INSTALLED_NATIVE_SELECTOR_AND_COORDINATOR",
@@ -1349,5 +1353,36 @@
     "raw_result_sha256": "35e4ddb7bec30be2dec0911c7be57e7941dd5fb095cc529794b2ebdc0230d446",
     "steady_state_result_transferred_to_bootstrap": false,
     "fallback_or_cap_increase": false
+  },
+  "git_lock_protocol_review": {
+    "status": "GIT_LOCK_DENIAL_BLIND_SPOT_CONFIRMED",
+    "scope": "Strict protocol acceptance only; functional oracle and actual gate executions remain observations",
+    "historical_runtime_product_verdict": "not_executed",
+    "historical_runtime_canonical_calls": 9,
+    "historical_runtime_seconds": 214.692,
+    "historical_runtime_phase2": "NOT_EXECUTED",
+    "former_current_pilot_refusal_commands": 2,
+    "previous_closed_application_phase_refusal_commands": 2,
+    "no_aidn_pilot_refusal_commands": 0,
+    "original_results_rewritten": false,
+    "closed_attempts_resumed": false,
+    "prospective_guard_contract": "benchmark-phase-continuation.v15",
+    "guard_tests": {
+      "PASS": 8,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "native_diagnostics": {
+      "direct_and_shell_variants": 4,
+      "git_versions": [
+        "2.47.1.windows.2",
+        "2.53.0.windows.3"
+      ],
+      "automatic_maintenance_disabled_still_refuses": true,
+      "permission_expanded": false,
+      "foreign_refs_common_controls_and_profile_preserved": true
+    },
+    "raw_independent_review_sha256": "a52a9e60c797fc9964f179c084b8a8f2f784e811e1204ba81f1a8b6266499c84",
+    "git_execution_remedy": "NOT_YET_VALIDATED"
   }
 }
