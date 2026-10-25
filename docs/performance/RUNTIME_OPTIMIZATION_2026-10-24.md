@@ -1535,3 +1535,38 @@ runtime projector suite, fourteen canonical handoff cases, handoff-packet and
 admission-use-case suites, complete public CLI contract verification and three
 documentation gates pass. No ADR decision, backend authority or write policy is
 changed. The restored live-native component is prepared but not yet executed.
+
+
+## Corrected native reference boundary and sealed repeated comparison
+
+Clean source `6fe160d` is packaged as an unpublished candidate with archive SHA-256
+`60efaf3243ea202fc08ef69f6a216fa3fd347ec3a408e8c0f5b869f99a7eaf1f`.
+An independently restored fixture executes actual native hydration, runtime digest
+projection/persistence, coordinator packet generation/persistence and default
+handoff admission through the managed elevated transport. All nine actual CLI
+calls pass. The six audit-relative hydration keys become repository-relative
+references and resolve from canonical PostgreSQL. This uses zero model calls;
+it does not resume the failed attempt or establish new application acceptance.
+The database is removed, the owned process tree stops, all 72 protected refs and
+313 retained Git files are preserved, and configuration/control hashes match.
+Clean-source package reproducibility passes independently.
+
+The successor comparison is sealed before any sample: corrected compact,
+historical, historical, corrected compact, two samples per variant. Each case
+uses a fresh client, private database and campaign-specific native metadata
+namespace, with the same model/reasoning/tier, task, oracle, whole-authority policy,
+Git adapter, bounds and strict final controls. Both payloads pass 434 applicable
+host-control assertions. The historical parser must reject unsupported
+`--transaction`; the optimized parser must recognize it. This capability check
+executes no CLI, and neither standalone measured arm selects that experiment.
+The original mistaken historical positive-capability preflight is retained as
+433 PASS/1 FAIL before this corrected explicit matrix; no runtime behavior or
+sample outcome was changed to satisfy it.
+
+The corrected candidate's first complete application qualification is included
+in its first allocated sample, after source regression and the actual native
+component. Its failure stops the cohort; the fixed twenty-criterion oracle,
+cycle/session completion and per-write controls are never waived. Older failed
+calibrations and the earlier unexecuted preparation versions stay separate.
+Trials execute sequentially; no source builds or broad gates run during their
+clocks. This predeclaration is not an executed result or a performance gain.

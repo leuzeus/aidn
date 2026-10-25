@@ -1537,7 +1537,53 @@
     "handoff_admission_use_case_suite": "PASS",
     "public_cli_contract_suite": "PASS",
     "checked_public_contracts": 78,
-    "native_live_component": "NOT_YET_EXECUTED",
-    "old_failed_attempt_resumed": false
+    "native_live_component": "PASS_RESTORED_FIXTURE_ZERO_MODEL",
+    "old_failed_attempt_resumed": false,
+    "source_commit": "6fe160d63ebbacca286d95c6a80dd89ca1adb659",
+    "candidate_sha256": "60efaf3243ea202fc08ef69f6a216fa3fd347ec3a408e8c0f5b869f99a7eaf1f",
+    "native_canonical_calls": 9,
+    "native_call_failures": 0,
+    "native_hydrated_references": 6,
+    "native_canonical_backend": "postgres",
+    "principal_configuration_preserved": true,
+    "frozen_controls_preserved": true,
+    "private_postgres_removed": true,
+    "native_git_preservation": {
+      "status": "PASS",
+      "protected_refs": 72,
+      "changed_refs": 0,
+      "protected_git_files": 313,
+      "changed_git_files": 0
+    },
+    "release_reproducibility": {
+      "PASS": 1,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "native_raw_result_sha256": "d7bf7def46744db12a31b9f1531a28b17783560463207d90cc7728b29054d6f8",
+    "application_oracle": "NOT_EXECUTED_COMPONENT_ONLY"
+  },
+  "predeclared_repeated_comparison": {
+    "status": "PREPARED_NOT_EXECUTED",
+    "protocol": "native-comparison-030.v6",
+    "protocol_sha256": "d644eb5c077b3528aedcd3a7e3b6193085d7ef3e4c19a4f31aa28a9ee41368d5",
+    "order": [
+      "corrected_compact",
+      "historical",
+      "historical",
+      "corrected_compact"
+    ],
+    "samples_per_variant": 2,
+    "native_state": "Fresh campaign-and-trial-specific G metadata namespace",
+    "same_model_brief_oracle_profile_and_budgets": true,
+    "acceptance": "Both native phases, actual coordinator, final cycle/session checks, oracle20/20, unchanged scope and cleanup for every sample",
+    "qualification": "First corrected sample includes full application qualification; stop cohort on its failure, never replace a sample",
+    "controls_per_payload": {
+      "PASS": 434,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "earlier_calibrations_enrolled": false,
+    "old_unqualified_candidate_reused": false
   }
 }
