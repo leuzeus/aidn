@@ -159,7 +159,11 @@ Native context qualification is manual via
 before any files, authentication copy or model turn. Use a new absolute output
 outside the source checkout. The driver records native model/client identity,
 raw local events, exact answers, checkpoints, repeated windows, tokens and
-configuration/credential cleanup. Optional compaction hook probes retain
+configuration/credential cleanup. Checkpoint admission outcomes and bounded
+child-process returns are saved before assertions; complete synthetic CLI
+stdout/stderr remain in local diagnostic files with byte counts and hashes,
+never injected into the model as a repair instruction. Source dirtiness is
+observed from Git rather than assumed. Optional compaction hook probes retain
 `UNAVAILABLE` separately from compaction success; a partial required probe exits
 2. Their invocation-only hook option cannot establish persistent human trust.
 The driver additionally proves ordinary untrusted hooks do not dispatch, denied

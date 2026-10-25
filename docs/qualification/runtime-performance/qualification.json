@@ -1265,7 +1265,19 @@
         "change": "Shorter unique parent prefix; retain the third-call failure and all cleanup/process checks",
         "direct_replay": "PASS_39_CASES_WITH_INJECTED_FAILURE_CLEANUP",
         "raw_report_sha256": "d4fd003b3ff3d88da9a9aa94b48508fd9ad946b5c8169c9710e6e4236bf24281",
-        "whole_gate_replay": "PENDING"
+        "whole_gate_replay": {
+          "id": "codex-context-admission",
+          "status": "PASS",
+          "duration_ms": 268561,
+          "exit_code": 0,
+          "source_commit": "2130db42c7a77f7a2265735582deb8d7b0159d85",
+          "raw_report_sha256": "e977c10477067e05716f4e54c15c8fff1581d9ea98a39e1ec42c98dbcbfff546",
+          "counts": {
+            "PASS": 1,
+            "FAIL": 0,
+            "SKIP": 0
+          }
+        }
       },
       {
         "gate": "runtime-agent-worker-fixtures",
@@ -1273,8 +1285,108 @@
         "change": "Use volume-root-relative synthetic labels only; no filesystem resources created and overlap guards unchanged",
         "direct_replay": "PASS_395_CHECKS_ZERO_EFFECTS",
         "raw_report_sha256": "0e7d7fb8eb9437fb64dba9d0ac22196a5b2e0b3df77f49db4ac69d92e5689102",
-        "whole_gate_replay": "PENDING"
+        "whole_gate_replay": {
+          "id": "runtime-agent-worker-fixtures",
+          "status": "PASS",
+          "duration_ms": 40083,
+          "exit_code": 0,
+          "source_commit": "2130db42c7a77f7a2265735582deb8d7b0159d85",
+          "raw_report_sha256": "3abbbb733e9c5f1177e9b340f807e34b41038920d431b747361bded4a436af64",
+          "counts": {
+            "PASS": 1,
+            "FAIL": 0,
+            "SKIP": 0
+          }
+        }
       }
     ]
-  }
+  },
+  "deterministic_checkpoint_ledger_replays": [
+    {
+      "trial": "001",
+      "status": "PASS",
+      "source_commit": "2130db42c7a77f7a2265735582deb8d7b0159d85",
+      "raw_sha256": "c32b400be0c5c1b934ccdda52e9ce123c46cad74088820c318061520c4e9f7f5",
+      "scope": "Fresh deterministic source fixture only; zero model calls and no native client/profile/authentication",
+      "stages": [
+        {
+          "stage": "initial-admission",
+          "ok": true,
+          "admission_status": "admitted"
+        },
+        {
+          "stage": "initial",
+          "exit_code": 0,
+          "signal": null,
+          "error": null,
+          "status": "captured"
+        },
+        {
+          "stage": "edited-ledger-invalidates-old-capsule",
+          "status": "invalid_evidence"
+        },
+        {
+          "stage": "after-todo-edit-admission",
+          "ok": true,
+          "admission_status": "admitted"
+        },
+        {
+          "stage": "after-todo-edit",
+          "exit_code": 0,
+          "signal": null,
+          "error": null,
+          "status": "captured"
+        },
+        {
+          "stage": "fresh-resume",
+          "status": "current",
+          "todo_preserved": true
+        }
+      ],
+      "limits": "Does not reproduce or explain the earlier native callback refusal and does not qualify native windows."
+    },
+    {
+      "trial": "002",
+      "status": "PASS",
+      "source_commit": "2130db42c7a77f7a2265735582deb8d7b0159d85",
+      "raw_sha256": "44dc817310c2bfc6724fbd10bdd4febf05cea1eb8a515ee7dcf37b9b42216564",
+      "scope": "Fresh unfiltered-copy control matching the native qualifier setup; zero model calls and no native client/profile/authentication",
+      "stages": [
+        {
+          "stage": "initial-admission",
+          "ok": true,
+          "admission_status": "admitted"
+        },
+        {
+          "stage": "initial",
+          "exit_code": 0,
+          "signal": null,
+          "error": null,
+          "status": "captured"
+        },
+        {
+          "stage": "edited-ledger-invalidates-old-capsule",
+          "status": "invalid_evidence"
+        },
+        {
+          "stage": "after-todo-edit-admission",
+          "ok": true,
+          "admission_status": "admitted"
+        },
+        {
+          "stage": "after-todo-edit",
+          "exit_code": 0,
+          "signal": null,
+          "error": null,
+          "status": "captured"
+        },
+        {
+          "stage": "fresh-resume",
+          "status": "current",
+          "todo_preserved": true
+        }
+      ],
+      "limits": "Does not reproduce or explain the earlier native callback refusal and does not qualify native windows."
+    }
+  ]
 }

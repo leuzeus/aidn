@@ -728,7 +728,7 @@ it does not equate a supported opt-in route with default installed adoption.
 | Fewer model interactions | Repeated native preparation oracle passes with seven versus three responses | Complete installed-task A/B with the same functional and workflow oracle |
 | Supported continuation | Explicit admitted capsule capture and fresh validated resume; native limitations retained | Native rollover remains unqualified and is not promoted |
 | Mutualized reads and parsing | Existing observation fences retained, invocation-local parse gain measured, canonical backend correction verified | No end-to-end gain is inferred from the CPU result |
-| Final source qualification | Fresh complete run at clean source `02e40f5854cdb141553e9d14d2281760ee33c228`: 59 PASS, two FAIL, one SKIP | Two fixture repairs pass directly; complete affected gate replays remain required |
+| Final source qualification | Fresh complete run: 59 PASS, two FAIL, one SKIP; both repaired gates subsequently pass at clean source `2130db42c7a77f7a2265735582deb8d7b0159d85` | Initial failure and optional shared-smoke SKIP remain explicit; no remote admission or native promotion follows |
 
 The initial source campaign's retained individual gate clocks total
 3,090,127 ms (51.50 minutes). This is a sum of script clocks from the failed
@@ -822,3 +822,24 @@ not proof that the native operation is absent. The callback did not retain the
 underlying child diagnostic. A fresh deterministic checkpoint replay and bounded
 host diagnostics are needed before another model trial; no existing native
 qualification or final window-count assertion is relaxed.
+
+
+The two complete gate replays at clean source
+`2130db42c7a77f7a2265735582deb8d7b0159d85` both PASS: context admission in
+268,561 ms and native worker fixtures in 40,083 ms, with no checkout mutation.
+These runs execute the whole affected scripts, not only the failing assertions.
+Together with the retained unchanged passing gates, they cover the source
+corrections; they do not rewrite the failed full attempt or its optional shared
+smoke SKIP.
+
+Two fresh deterministic ledger fixtures also PASS at that source: one copies
+only tracked inputs, the other follows the original native qualifier's full
+copy. Each observes initial admitted capture, invalidation after the TODO edit,
+a new admitted capture and a current resume preserving the TODO. Neither uses a
+native client, profile, copied credential or model. The earlier callback failure
+is not reproduced, so neither fixture is declared its repair. The native ledger
+qualifier now retains its actual checkpoint admission/CLI diagnostics outside
+model context before assertions and observes source dirtiness from Git. The
+model's bounded refusal, native order/window checks and qualification gate remain
+unchanged. A fresh native observation can now distinguish a capture failure from
+an actual rollover failure instead of losing the child diagnostic.
