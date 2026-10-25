@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.17.0 (2026-10-25)
+
+- Add explicit bounded workflow-transaction preparation, invocation-local
+  canonical reuse and parsing memoization. Preserve distinct fresh admissions,
+  exact source/revision fences, complete authorities and the 64 KiB hard limit.
+- Refuse missing managed context policies and oversized required preparations
+  without silent broad fallback. Existing explicit full diagnostics remain.
+- Strengthen versioned continuation validation and preserve configured
+  PostgreSQL authority. Normalize hydrated audit keys into repository-relative
+  handoff references; malformed paths retain typed JSON refusals and write intent.
+- Preserve required Windows startup environment through the native adapter;
+  retain scoped native sandbox/profile controls and qualification boundaries.
+- Publish the closed runtime performance evidence: four predeclared native
+  application trials pass strict workflow and oracle 20/20. The experimental
+  compact package/procedure used 7.9% fewer model responses but 14.0% more
+  cumulative input, 16.0% more uncached input and 10.0% more workflow time.
+  Withdraw forced nominal compact admission/hook selectors; retain their
+  explicit interfaces and compatible managed procedures. Other candidate code
+  differs, so individual formatting effects are not isolated.
+- Keep grouped transactions, capsule/ledger research and internal ordered-closure
+  preparation opt-in. The exact 0.17.0 release archive has not undergone a new
+  native application benchmark; source, CI and package checks do not establish
+  an end-to-end speedup or public automatic-rollover qualification. See
+  [the measured report](docs/performance/RUNTIME_OPTIMIZATION_2026-10-25_RESULTS.md).
+
 ## 0.16.0 (2026-10-23)
 
 - Add opt-in contract-bound artifact consultation profiles for active state,
