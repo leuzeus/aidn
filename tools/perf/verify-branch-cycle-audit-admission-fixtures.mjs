@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { collectGatingObservations, readEventSignalStats } from "../../src/application/runtime/gating-observation-service.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
 import { resolveWorkflowSnapshotBackend } from "../../src/application/runtime/runtime-snapshot-service.mjs";
-import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { copyFixtureToTmp, initGitRepo, removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture, prepareWorkflowDocumentsFixture } from "./test-activation-fixture-lib.mjs";
 import { inspectImmediateProcessExitArguments } from "../verify/spawn-sync-evidence-lib.mjs";
 
@@ -156,9 +156,10 @@ function verifyObservationBoundaries(root) {
 
 function runCase(tmpRoot, testCase, onTargetCreated) {
   const sourceTarget = path.resolve(process.cwd(), testCase.fixture);
+  const tracked = createTrackedFixtureFilter(sourceTarget, path.resolve(import.meta.dirname, '../..'));
   const targetRoot = copyFixtureToTmp(sourceTarget, tmpRoot, `tmp-branch-cycle-audit-${testCase.id}`, {
     onDestinationCreated: onTargetCreated,
-    filter: (source) => isActivationFixtureSource(sourceTarget, source, { freshContext: true }),
+    filter: (source) => tracked(source) && isActivationFixtureSource(sourceTarget, source, { freshContext: true }),
   });
   initGitRepo(targetRoot, {
     workingBranch: testCase.workingBranch,
@@ -227,9 +228,10 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
 
 function verifyDriftCompletion(tmpRoot, onCreated) {
   const source = path.resolve('tests/fixtures/perf-current-state/active');
+  const tracked = createTrackedFixtureFilter(source, path.resolve(import.meta.dirname, '../..'));
   const root = copyFixtureToTmp(source, tmpRoot, 'tmp-drift-completion', {
     onDestinationCreated: onCreated,
-    filter: file => isActivationFixtureSource(source, file, { freshContext: true }),
+    filter: file => tracked(file) && isActivationFixtureSource(source, file, { freshContext: true }),
   });
   initGitRepo(root, { workingBranch: 'feature/C101-alpha' });
   prepareActivationFixture(root);
