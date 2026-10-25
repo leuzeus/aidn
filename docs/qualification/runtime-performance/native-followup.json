@@ -119,5 +119,65 @@
     "src/adapters/runtime/codex-sandbox-validation-boundary.mjs": "28e07cf5022b7dd6592f13822f8c05f8631903a057c88f71d71f2ec2cdb2327c"
   },
   "full_application_ab": "NOT_EXECUTED",
-  "production_rollover": "NOT_QUALIFIED"
+  "production_rollover": "NOT_QUALIFIED",
+  "current_application_candidate": {
+    "source_head": "09043656e1295cae2ee2152ff7d9addcff6eb6c7",
+    "archive_sha256": "6893c21c81a3e294173850d1ea38f34590c78205145f70e3cee4bc46f49ec8c0",
+    "release_family": {
+      "PASS": 3,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "internal_route": "ASSURED",
+    "harness_tests": 307,
+    "pilots": [
+      {
+        "trial": "pilot-001",
+        "native_execution": "EXECUTED",
+        "gate": "FAIL",
+        "classification": "precondition_failure",
+        "reason": "GLOBAL_RUNTIME_ACCESS_DENIED",
+        "product_verdict": "NOT_EVALUATED",
+        "responses": 2,
+        "elapsed_seconds": 77.657,
+        "worker_cleanup": "confirmed",
+        "active_descendants": 0,
+        "postgres_removed": true,
+        "raw_summary_sha256": "2fe9f9585c836d63ddf35b7e0000cc65bd3305001ceff5881e0ca63f2e4d91af",
+        "summary_semantic_correction_retained": true
+      },
+      {
+        "trial": "pilot-002",
+        "native_execution": "EXECUTED",
+        "gate": "FAIL",
+        "classification": "precondition_failure",
+        "reason": "ACTIVATION_READ_FAILED",
+        "product_verdict": "NOT_EVALUATED",
+        "responses": 2,
+        "elapsed_seconds": 76.977,
+        "worker_cleanup": "confirmed",
+        "active_descendants": 0,
+        "postgres_removed": true,
+        "raw_summary_sha256": "b52c6d5e884817d3479d3019cde5646d962e2cbbb886e6559d84c9210787f0bf",
+        "summary_semantic_correction_retained": false
+      }
+    ],
+    "native_physical_identity": {
+      "non_system_volume": "FAIL_EPERM",
+      "system_volume": "PASS",
+      "activation_on_system_volume": "PASS",
+      "sandbox": "mxc",
+      "model_calls_in_identity_probes": 0,
+      "identity_control_preserved": true
+    },
+    "system_volume_preparation": {
+      "native_metadata_readiness": "ready",
+      "hook_definitions_and_handlers_identical": true,
+      "native_project_review": "PENDING",
+      "profile_effects_consent": "PREVIOUSLY_RECEIVED",
+      "model_calls": 0,
+      "review_sha256": "d823a238df47bea9c3ef322778583f08dd239f3589ef595e89d41d0bce71c985"
+    },
+    "comparative_application_samples": "NOT_EXECUTED"
+  }
 }

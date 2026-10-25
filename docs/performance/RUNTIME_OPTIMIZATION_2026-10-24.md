@@ -525,3 +525,60 @@ A/B and production native rollover remain NOT EXECUTED. The next native runtime
 trial must freeze the corrected package and use fresh scope/workflow evidence
 under the actual MXC surface, rather than transferring the historical pair or
 enabling an unqualified public agent executor.
+
+### Fresh installed MXC application integration attempts
+
+The corrected source at `09043656e1295cae2ee2152ff7d9addcff6eb6c7`
+was packed and independently installed. Archive SHA-256:
+`6893c21c81a3e294173850d1ea38f34590c78205145f70e3cee4bc46f49ec8c0`.
+The current source release family passes three gates, including reproducibility
+(169,972 ms). The internal route remains ASSURED. External harness controls pass
+291 tests, then 307 after adding the current transport regression cases. These
+checks do not qualify the application.
+
+Two fresh native integration pilots used the actual approved project hooks,
+gpt-6.1-sol/high and explicit MXC. Both stopped on their first actual canonical
+CLI refusal before any product edit, test or HANDOFF. Neither is an A/B sample:
+
+| Pilot | Execution | Evidence verdict | Application verdict |
+| --- | --- | --- | --- |
+| 001 | Native model, SessionStart, PreToolUse and CLI executed | FAIL: `GLOBAL_RUNTIME_ACCESS_DENIED` | NOT EVALUATED |
+| 002 | Native model, hooks and leased protected-package CLI executed | FAIL: `ACTIVATION_READ_FAILED` | NOT EVALUATED |
+
+Pilot 001's initial summary incorrectly used `PHASE1_PASS` for a completed
+native transport. A separate retained correction applies the existing semantic
+phase guard: canonical failure and missing first-phase HANDOFF make the pilot
+FAIL. Its raw summary remains unchanged; successful process exit is not
+successful workflow. Pilot 002 applies that semantic guard directly and stops.
+Both Windows Jobs confirm zero descendants; both owned PostgreSQL clusters are
+removed; personal configuration and authentication hashes remain unchanged.
+
+Independent OS probes separate two preconditions. First, a readonly runtime
+with a grant for the absent admission-lock file still refuses lock creation.
+A broader writable runtime permits the lock, but also permits creation of
+absent control files despite their readonly entries. That profile is rejected;
+existing control-file write denials alone were insufficient evidence.
+A disposable supervisor adapter instead acquires the genuine installed runtime
+lease, verifies the selected generation and executes its exact package CLI
+under MXC, retaining the actual argv and released-lease proof. This is an
+external transport experiment, not public worker qualification.
+
+Second, a native syscall probe identifies the activation failure: Node's
+`fs.realpathSync.native` returns EPERM for the pilot directory on the non-system
+NTFS volume under MXC. Ordinary read/write/remove, `lstat` and JavaScript
+realpath succeed there; native realpath succeeds outside MXC. A fresh owned
+system-volume directory passes all four operations under the same MXC profile.
+Adding explicit `:root` read access does not fix native realpath on the
+non-system volume. An explicit volume-root entry is refused by MXC as not
+representable losslessly. No identity resolver, activation rule or sandbox is
+weakened to conceal these observations.
+
+The identical archive is now prepared in a fresh disposable system-volume
+repository. Its native physical identity and real AIDN activation both PASS
+under MXC; metadata reports ready. Exact hook definitions and all three handler
+hashes match the original reviewed definitions. Native discovery currently
+excludes the new untrusted project layer. The existing profile/maintenance
+consents remain applicable; human review of this new repository through native
+controls is pending under `CODEX_NATIVE_QUALIFICATION.md`. No trust entry or
+approved hash was injected. Its OS/activation success remains preparation
+evidence, with zero model calls and no application verdict.
