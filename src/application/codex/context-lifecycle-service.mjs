@@ -18,6 +18,20 @@ export function createContextLifecycleService({ identity, qualifications = [], c
   }
   return {
     get capabilities() { return capabilities(); },
+    // Supported without native event/window qualification: an explicitly
+    // requested checkpoint followed by the ordinary fresh, read-only resume.
+    // The caller must deliver only this validated capsule at its continuation
+    // boundary. This method cannot clear a host transcript or create a window.
+    async prepareContinuation(intent = {}) {
+      if (typeof resume !== "function") return blocked("resume_port_unavailable");
+      const captured = await capture(intent);
+      if (captured.status !== "checkpointed") return captured;
+      const result = await resume();
+      if (result?.status !== "current" || result.requires_fresh_admission !== true || !result.capsule)
+        return blocked("fresh_capsule_unavailable");
+      return { status: "continuation_prepared", mode: "explicit-capsule", resume: result,
+        native_rollover: false, requires_fresh_admission: true, write_authorization: false };
+    },
     async handleEvent(event, intent = {}) {
       if (!capabilities().native_events.includes(event)) return blocked("native_event_unqualified");
       if (event === "PreCompact") return await capture(intent);

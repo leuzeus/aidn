@@ -201,7 +201,9 @@ export async function loadDbIndexPayloadSafe(targetRoot, options = {}) {
     backend: options.backend,
     connectionString: options.connectionString,
     connectionRef: options.connectionRef,
-    localProjectionPolicy: options.localProjectionPolicy,
+    // Continuity reads select the configured canonical backend even when an
+    // older client omitted the local compatibility-projection preference.
+    localProjectionPolicy: options.localProjectionPolicy || "none",
     configData: options.configData ?? null,
     env: options.env ?? process.env,
     clientFactory: options.clientFactory ?? null,

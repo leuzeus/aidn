@@ -131,6 +131,7 @@
         "write_authorization": {
           "const": false
         },
+        "remediation": { "type": "string" },
         "policy_revision": {
           "type": "string",
           "pattern": "^[a-f0-9]{64}$"

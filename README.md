@@ -142,6 +142,11 @@ These versioned projections preserve decisions, refusals and scope while omittin
 static policy inventories and derived packet bodies. Full defaults remain available;
 view selection never retains evidence or grants reusable write permission.
 
+Experimental `aidn codex workflow-step --transaction --skills context-reload,start-session --json`
+prepares one bounded consultation using compact.v2 and accepted client task
+policies (16 KiB target, 64 KiB maximum). Missing policy refuses with remediation.
+The actual writer still requires its fresh admission, CAS and execution fences.
+
 Representative commands:
 
 ```bash
@@ -349,7 +354,7 @@ For Windows setup including optional PostgreSQL preparation, follow
 [per-project Windows setup](docs/WINDOWS_PROJECT_SETUP.md) is historical 0.9.x guidance.
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.16.0` source also executes dispatched agent commands in their target
+The `v0.17.0` source also executes dispatched agent commands in their target
 worktree, including Windows paths with spaces and accents. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -431,7 +436,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.16.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.17.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

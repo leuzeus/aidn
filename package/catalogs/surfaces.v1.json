@@ -1006,6 +1006,17 @@
             "unless_args": [],
             "effect_class": "mutating",
             "policy": "codex-workflow-step/retain-diagnostic"
+          },
+          {
+            "id": "codex-workflow-step/transaction-preparation",
+            "when_args": [
+              "--transaction"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "read-only",
+            "policy": "codex-workflow-step/transaction-preparation"
           }
         ]
       },
@@ -12703,6 +12714,42 @@
       "effects": {
         "role": "effect-neutral",
         "rule": "invocation-profile"
+      },
+      "consumer": "installed client and automation",
+      "docs": "docs/CLI_SURFACE_INVENTORY.md",
+      "proof": {
+        "class": "source",
+        "target": "tools/codex/workflow-step.mjs",
+        "gate": "tools/verify/verify-surface-catalog.mjs"
+      },
+      "replacement": "",
+      "migration": ""
+    },
+    {
+      "id": "option:aidn codex workflow-step:--transaction",
+      "kind": "option",
+      "status": "active",
+      "visibility": "public",
+      "information_class": "canonical",
+      "owner": "CLI maintainer",
+      "source": "tools/codex/workflow-step.mjs",
+      "entrypoint": "aidn codex workflow-step --transaction",
+      "implementation": "tools/codex/workflow-step.mjs",
+      "effects": {
+        "role": "effect-selector",
+        "default": "projector",
+        "variants": [
+          {
+            "when_args": [
+              "--transaction"
+            ],
+            "unless_args": [
+              "--write"
+            ],
+            "effect_class": "read-only",
+            "policy": "codex-workflow-step/transaction-preparation"
+          }
+        ]
       },
       "consumer": "installed client and automation",
       "docs": "docs/CLI_SURFACE_INVENTORY.md",

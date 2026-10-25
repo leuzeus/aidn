@@ -471,7 +471,9 @@ function runCase(tmpRoot, testCase, onTargetCreated) {
 }
 
 function runFailureCleanupProbe(args) {
-  const probeRoot = fs.mkdtempSync(path.join(args.tmpRoot, "aidn-start-session-failure-probe-"));
+  // The child adds its own descriptive fixture name. Avoid wasting Windows'
+  // Git path budget before the intended third-call failure can be injected.
+  const probeRoot = fs.mkdtempSync(path.join(args.tmpRoot, "aidn-ss-fail-"));
   let result;
   try {
     result = runProcess(process.execPath, [
@@ -543,6 +545,8 @@ function runFailureCleanupProbe(args) {
       injected_failure_observed: payload?.injected_failure_observed === true,
       child_cleanup_reported: payload?.cleanup?.all_removed === true,
       child_completion_evidence_valid: childCompletionEvidenceValid,
+      child_error: payload?.error ? { name: payload.error.name, code: payload.error.code,
+        message: String(payload.error.message ?? "").slice(-1024) } : null,
       residual_target_count: residualTargets.length,
       timeout_probe: {
         timeout_observed: timeoutObserved,
@@ -666,6 +670,9 @@ async function main() {
     console.log(`Cleanup: ${allTargetsRemoved ? "PASS" : "FAIL"}`);
     if (failureProbe) {
       console.log(`Injected third-call failure cleanup: ${failureProbe.pass ? "PASS" : "FAIL"}`);
+      if (!failureProbe.pass && failureProbe.child_error) {
+        console.error(`Failure probe child: ${JSON.stringify(failureProbe.child_error)}`);
+      }
     }
     if (primaryError) {
       console.error(`ERROR: ${primaryError.message}`);

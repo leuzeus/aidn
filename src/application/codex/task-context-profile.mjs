@@ -30,17 +30,17 @@ function validPolicies(policies) {
 // Query scope/labels can add obligations; they cannot remove the stable minimum,
 // accept a new authority or change action-specific admission.
 export function buildTaskContextRequest({ adoption, scope, admissions, skills, task = {}, asOf }) {
-  const fallback = reason => ({ mode: "legacy-full-fallback", reason, write_authorization: false });
-  const blocked = reason => ({ mode: "blocked", reason, write_authorization: false });
+  const blocked = reason => ({ mode: "blocked", reason, write_authorization: false,
+    remediation: "Accept a current client-owned task policy covering every requested skill and its complete authority dependencies, then reconsult. Use an explicit full view without the bounded context profile for compatibility diagnostics." });
   if (!keys(task, ["operation", "paths"]) || task.operation !== undefined && (typeof task.operation !== "string" || task.operation.length > 160)
       || task.paths !== undefined && (!Array.isArray(task.paths) || task.paths.length > 128 || !task.paths.every(safePath))) return blocked("invalid_task_query");
   const canonicalSkills = skills.map(resolveSkillId);
-  if (canonicalSkills.some(skill => !skill)) return fallback("unknown_skill_full_fallback");
+  if (canonicalSkills.some(skill => !skill)) return blocked("unknown_skill_requires_explicit_full_view");
   const policies = adoption?.extensions?.taskContextPolicies;
-  if (policies === undefined) return fallback("client_task_policies_unavailable");
+  if (policies === undefined) return blocked("client_task_policies_required");
   if (!validPolicies(policies)) return blocked("invalid_client_task_policies");
   if (!isGovernanceAdoptionEffective(adoption, { asOf, expectedScope: "installed-project" })) return blocked("client_adoption_not_effective");
-  if (canonicalSkills.some(skill => !policies.skills[skill])) return fallback("skill_policy_unavailable_full_fallback");
+  if (canonicalSkills.some(skill => !policies.skills[skill])) return blocked("skill_task_policy_required");
   const roots = [...policies.mandatory], optional = [], blockedSkill = Object.values(admissions).some(row => !row.ok);
   for (let index = 0; index < skills.length; index++) {
     const policy = policies.skills[canonicalSkills[index]], context = admissions[skills[index]]?.context ?? {};

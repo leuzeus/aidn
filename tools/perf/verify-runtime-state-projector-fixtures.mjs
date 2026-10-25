@@ -7,7 +7,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { DatabaseSync } from "node:sqlite";
-import { deriveCanonicalRepairSummary } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
+import { deriveCanonicalRepairSummary, deriveRuntimeStatePrioritizedArtifacts } from "../../src/application/runtime/runtime-state-projector-use-case.mjs";
 import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
 import { throws as assertThrows } from "node:assert/strict";
 import { validateJsonSchema } from "../../src/core/contracts/json-schema-validator.mjs";
@@ -97,6 +97,18 @@ function main() {
   let primaryError = null;
   let cleanupError = null;
   try {
+    const hydratedReferences = deriveRuntimeStatePrioritizedArtifacts({}, { artifacts: [
+      { path: "SPEC.md" }, { path: "docs/audit/SPEC.md" },
+      { path: "cycles\\C001-feature-example\\status.md" }, { path: "résumé.md" },
+    ] });
+    assert(hydratedReferences.includes("docs/audit/SPEC.md") && hydratedReferences.includes("docs/audit/cycles/C001-feature-example/status.md")
+      && hydratedReferences.includes("docs/audit/résumé.md"), "hydrated audit keys must become repository-relative references");
+    assert(hydratedReferences.filter(ref => ref === "docs/audit/SPEC.md").length === 1,
+      "already-prefixed hydration compatibility must not double-prefix or duplicate a reference");
+    for (const ref of ["../SPEC.md", "/SPEC.md", "C:/SPEC.md", "file://SPEC.md", "docs/audit/../SPEC.md", "a//SPEC.md", "SPEC\0.md"]) {
+      assertThrows(() => deriveRuntimeStatePrioritizedArtifacts({}, { artifacts: [{ path: ref }] }),
+        error => error.code === "RUNTIME_HYDRATED_ARTIFACT_PATH_INVALID");
+    }
     const historical = { artifact_id: 1, path: "docs/audit/RUNTIME-STATE.md", sha256: "historical", content: "current_state_freshness: unknown" };
     const current = { artifact_id: 2, path: "RUNTIME-STATE.md", sha256: "current", content: "current_state_freshness: ok" };
     const pointer = { head_key: "runtime_state", artifact_id: 2, artifact_path: "RUNTIME-STATE.md", artifact_sha256: "current" };
@@ -137,6 +149,28 @@ function main() {
       }
       if (!flags.includes("--write")) assert(!fs.existsSync(filesOut), "read-only and preview must not write the explicit output");
       assert((fs.existsSync(defaultFilesOut) ? fs.readFileSync(defaultFilesOut, "utf8") : null) === defaultBefore, "files-mode reads must preserve the default projection");
+    }
+    const invalidHydration = path.join(tempRoot, "invalid-hydration.json");
+    fs.writeFileSync(invalidHydration, JSON.stringify({ artifacts: [{ path: "../SPEC.md" }] }));
+    const invalidOut = path.join(tempRoot, "invalid-hydration-output.md");
+    for (const flags of [[], ["--write"], ["--write", "--dry-run"]]) {
+      const failure = spawnSync(process.execPath, ["tools/runtime/project-runtime-state.mjs", "--target", filesRepo,
+        "--hydrated-file", invalidHydration, "--out", invalidOut, "--json", ...flags], {
+        cwd: process.cwd(), encoding: "utf8", windowsHide: true,
+        env: { ...process.env, AIDN_STATE_MODE: "files", AIDN_INDEX_STORE_MODE: "files" },
+      });
+      assert(failure.status === 1, "unsafe hydrated path must refuse the CLI projection");
+      const refused = JSON.parse(failure.stdout);
+      assert(refused.ok === false && refused.written === false && refused.write === flags.includes("--write"),
+        "projection refusal must preserve explicit intent without claiming a write");
+      assert(refused.effect_class === (flags.includes("--dry-run") ? "preview" : flags.includes("--write") ? "projector" : "read-only"),
+        "a refused projection must retain its actual invocation effect class");
+      assert(refused.error.code === "RUNTIME_HYDRATED_ARTIFACT_PATH_INVALID", "typed hydration-path refusal missing");
+      assert(validateJsonSchema(refused, schema).length === 0, "projection refusal must be one complete contract-valid JSON document");
+      assert(String(failure.stderr).includes("Invalid hydrated audit artifact path"), "failure diagnostic must remain on stderr");
+      assert(!fs.existsSync(invalidOut), "unsafe hydrated paths must not write an output even with explicit write intent");
+      assert((fs.existsSync(defaultFilesOut) ? fs.readFileSync(defaultFilesOut, "utf8") : null) === defaultBefore,
+        "unsafe hydration refusal must preserve the existing default projection");
     }
 
     const result = runJson("tools/runtime/project-runtime-state.mjs", [

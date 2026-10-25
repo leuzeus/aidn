@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "evidence": "source-fixture-microbenchmark",
+  "source_commit": "04753926d342a72af58d415e605aec532cd84d3a",
+  "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "node": "v24.13.1",
+  "platform": "win32",
+  "samples": 3,
+  "fixture": "tracked activated files-mode client, two admitted skills, accepted one-unit policy",
+  "rows": [
+    {
+      "variant": "historical",
+      "sample": 0,
+      "elapsed_ms": 1310.1387,
+      "stdout_bytes": 71909,
+      "json_bytes": 71908,
+      "admission_count": 2,
+      "hydration_count": 2,
+      "distinct_canonical_reads": null,
+      "oracle": "decision-parity-pass"
+    },
+    {
+      "variant": "compact_grouped",
+      "sample": 0,
+      "elapsed_ms": 2863.7884999999997,
+      "stdout_bytes": 40459,
+      "json_bytes": 40458,
+      "admission_count": 2,
+      "hydration_count": 1,
+      "distinct_canonical_reads": 2,
+      "oracle": "decision-parity-pass"
+    },
+    {
+      "variant": "scoped_grouped",
+      "sample": 0,
+      "elapsed_ms": 2961.6107999999995,
+      "stdout_bytes": 9883,
+      "json_bytes": 9882,
+      "admission_count": 2,
+      "hydration_count": 1,
+      "distinct_canonical_reads": 2,
+      "oracle": "decision-parity-pass"
+    },
+    {
+      "variant": "compact_grouped",
+      "sample": 1,
+      "elapsed_ms": 2914.9748,
+      "stdout_bytes": 40459,
+      "json_bytes": 40458,
+      "admission_count": 2,
+      "hydration_count": 1,
+      "distinct_canonical_reads": 2,
+      "oracle": "decision-parity-pass"
+    },
+    {
+      "variant": "scoped_grouped",
+      "sample": 1,
+      "elapsed_ms": 2840.536399999999,
+      "stdout_bytes": 9883,
+      "json_bytes": 9882,
+      "admission_count": 2,
+      "hydration_count": 1,
+      "distinct_canonical_reads": 2,
+      "oracle": "decision-parity-pass"
+    },
+    {
+      "variant": "historical",
+      "sample": 1,
+      "elapsed_ms": 1312.4847000000009,
+      "stdout_bytes": 71909,
+      "json_bytes": 71908,
+      "admission_count": 2,
+      "hydration_count": 2,
+      "distinct_canonical_reads": null,
+      "oracle": "decision-parity-pass"
+    },
+    {
+      "variant": "scoped_grouped",
+      "sample": 2,
+      "elapsed_ms": 2782.5884000000005,
+      "stdout_bytes": 9883,
+      "json_bytes": 9882,
+      "admission_count": 2,
+      "hydration_count": 1,
+      "distinct_canonical_reads": 2,
+      "oracle": "decision-parity-pass"
+    },
+    {
+      "variant": "historical",
+      "sample": 2,
+      "elapsed_ms": 1314.7521000000015,
+      "stdout_bytes": 71909,
+      "json_bytes": 71908,
+      "admission_count": 2,
+      "hydration_count": 2,
+      "distinct_canonical_reads": null,
+      "oracle": "decision-parity-pass"
+    },
+    {
+      "variant": "compact_grouped",
+      "sample": 2,
+      "elapsed_ms": 2881.994499999997,
+      "stdout_bytes": 40459,
+      "json_bytes": 40458,
+      "admission_count": 2,
+      "hydration_count": 1,
+      "distinct_canonical_reads": 2,
+      "oracle": "decision-parity-pass"
+    }
+  ],
+  "summary": {
+    "historical": {
+      "elapsed_p50_ms": 1312.4847000000009,
+      "elapsed_p95_ms": 1314.7521000000015,
+      "min_ms": 1310.1387,
+      "max_ms": 1314.7521000000015,
+      "json_bytes": [
+        71908,
+        71908,
+        71908
+      ],
+      "hydration_count": 2
+    },
+    "compact_grouped": {
+      "elapsed_p50_ms": 2881.994499999997,
+      "elapsed_p95_ms": 2914.9748,
+      "min_ms": 2863.7884999999997,
+      "max_ms": 2914.9748,
+      "json_bytes": [
+        40458,
+        40458,
+        40458
+      ],
+      "hydration_count": 1
+    },
+    "scoped_grouped": {
+      "elapsed_p50_ms": 2840.536399999999,
+      "elapsed_p95_ms": 2961.6107999999995,
+      "min_ms": 2782.5884000000005,
+      "max_ms": 2961.6107999999995,
+      "json_bytes": [
+        9882,
+        9882,
+        9882
+      ],
+      "hydration_count": 1
+    }
+  },
+  "unmeasured": {
+    "model_responses": null,
+    "input_tokens": null,
+    "cached_input_tokens": null,
+    "uncached_input_tokens": null,
+    "output_tokens": null,
+    "resident_tokens": null,
+    "db_transactions": null,
+    "db_round_trips": null,
+    "native_handoffs": null,
+    "native_new_context": null,
+    "product_oracle": null
+  },
+  "limitations": [
+    "No native model call or token saving established",
+    "Decision parity is not product acceptance",
+    "No live PostgreSQL or installed-package qualification",
+    "CLI clocks include startup; p95 with three samples is descriptive"
+  ]
+}

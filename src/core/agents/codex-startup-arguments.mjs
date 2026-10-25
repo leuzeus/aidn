@@ -1,12 +1,18 @@
 import { posix, win32 } from "node:path";
 
 const HOST_NAMES = Object.freeze([
-  "SYSTEMROOT", "WINDIR", "COMSPEC", "PATH", "PATHEXT", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA",
-  "CODEX_HOME", "TEMP", "TMP",
+  "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "PATH", "PATHEXT", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA",
 ]);
 export const CODEX_STARTUP_ENVIRONMENT_PROFILES = Object.freeze({
-  worker: Object.freeze([...HOST_NAMES, "AIDN_AGENT_ADMISSION_ENDPOINT", "AIDN_AGENT_ADMISSION_TOKEN", "AIDN_AGENT_ATTEMPT_ID", "AIDN_AGENT_REQUEST_SHA256"]),
+  worker: Object.freeze([...HOST_NAMES, "CODEX_HOME", "TEMP", "TMP", "AIDN_AGENT_ADMISSION_ENDPOINT", "AIDN_AGENT_ADMISSION_TOKEN", "AIDN_AGENT_ATTEMPT_ID", "AIDN_AGENT_REQUEST_SHA256"]),
 });
+
+// Windows native sandbox startup needs SystemDrive as well as SystemRoot.
+// Keep metadata and worker processes on the same non-secret OS allowlist.
+export function createCodexHostEnvironment(host = process.env) {
+  const names = new Set(HOST_NAMES.map(name => name.toLowerCase()));
+  return Object.fromEntries(Object.entries(host).filter(([key, value]) => names.has(key.toLowerCase()) && typeof value === "string"));
+}
 const FIELDS = ["mcp_server_ids", "plugin_ids", "app_ids", "environment_override_names", "environment_names", "log_dir", "sqlite_home"];
 const RESERVED = new Set(CODEX_STARTUP_ENVIRONMENT_PROFILES.worker);
 const fail = code => { throw Object.assign(new Error(`CODEX_STARTUP_${code}`), { code: `CODEX_STARTUP_${code}` }); };
@@ -49,7 +55,7 @@ export function assertCodexStartupArgumentsConfiguration(configuration) {
   dataObject(configuration);
   for (const field of ["mcp_server_ids", "plugin_ids", "app_ids"]) identifiers(configuration[field]);
   const names = configuration.environment_names;
-  dataArray(names, 16);
+  dataArray(names, CODEX_STARTUP_ENVIRONMENT_PROFILES.worker.length);
   ensure(Object.values(CODEX_STARTUP_ENVIRONMENT_PROFILES).some(profile => names.length === profile.length
     && names.every((name, index) => name === profile[index])), "ENVIRONMENT_PROFILE_INVALID");
   const overrides = configuration.environment_override_names;

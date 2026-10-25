@@ -12,13 +12,30 @@ try {
   assert.equal(deployed.length, 13);
   for (const entry of deployed) assert.ok(entry.name.startsWith("aidn-"), `unprefixed skill collides with an unprefixed host homonym: ${entry.name}`);
   const { parse } = await import("yaml");
+  let nominalHookExamples = 0;
   for (const entry of deployed) {
     assert.ok(entry.name.startsWith("aidn-"), `unprefixed skill collides with an unprefixed host homonym: ${entry.name}`);
     const text = fs.readFileSync(path.join(directory, entry.name, "SKILL.md"), "utf8");
     const frontmatter = parse(text.match(/^---\r?\n([\s\S]*?)\r?\n---/u)?.[1] ?? "");
     assert.equal(frontmatter.name, entry.name, `public discovery name must match folder: ${entry.name}`);
+    const id = frontmatter.metadata?.["aidn-skill-id"];
+    assert.equal(policy.resolveSkillId(id), id);
+    assert(text.includes(`aidn runtime pre-write-admit --target . --skill ${id} --json`));
+    assert(text.indexOf("## Project Activation") < text.indexOf("## Goal"));
+    assert(text.includes("activation.active") && text.includes("admission_status"));
+    for (const [command] of text.matchAll(/npx aidn codex run-json-hook [^`\r\n]*/gu)) {
+      assert(command.includes("--json") && !command.includes("--view"), `ordinary hook procedure must not force the rejected presentation experiment: ${id}`);
+      nominalHookExamples += 1;
+    }
+
   }
+  assert.equal(nominalHookExamples, 11);
+  checks.push("eleven_ordinary_hook_examples_preserve_compatible_default_view");
   checks.push("thirteen_namespaced_skills_avoid_unprefixed_host_name_collisions");
+  const startup = fs.readFileSync(path.join(root, "scaffold/root/AGENTS.md"), "utf8");
+  assert(startup.includes("aidn runtime pre-write-admit --target . --skill context-reload --json"));
+  checks.push("ordinary_admission_preserved_by_startup_and_all_skills_without_replacing_activation_guard");
+
   assert.equal(policy.SKILL_IDENTITIES.length, 13);
   assert.equal(new Set(policy.SKILL_IDENTITIES.map((skill) => skill.id)).size, 13);
   assert.equal(new Set(policy.SKILL_IDENTITIES.map((skill) => skill.publicName)).size, 13);

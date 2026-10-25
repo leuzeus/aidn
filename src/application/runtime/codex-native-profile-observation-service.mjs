@@ -3,6 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createCodexMetadataRpcDiagnostic } from "../../adapters/agents/codex-metadata-rpc-diagnostic.mjs";
+import { createCodexHostEnvironment } from "../../core/agents/codex-startup-arguments.mjs";
 import { fingerprintAgentExecutionValue as fingerprint } from "../../core/agents/agent-execution-contracts.mjs";
 import { assertCodexNativeProfilePolicy, assertCodexNativeProfileBinding, fingerprintCodexNativeProfilePolicy,
   resolveCodexNativeProfileStatePaths, buildCodexNativeProfileArguments, CODEX_NATIVE_PROFILE_ENVIRONMENT_NAMES,
@@ -119,8 +120,7 @@ function checkedConsent(consent, policy, proposal = false) {
 }
 
 function environmentFor(home, stateRoot, host) {
-  const allowed = new Set(["systemroot", "windir", "comspec", "path", "pathext", "userprofile", "localappdata", "appdata", "programdata"]);
-  return { ...Object.fromEntries(Object.entries(host).filter(([key, value]) => allowed.has(key.toLowerCase()) && typeof value === "string")),
+  return { ...createCodexHostEnvironment(host),
     CODEX_HOME: home, TEMP: stateRoot, TMP: stateRoot };
 }
 

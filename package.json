@@ -1,6 +1,6 @@
 {
   "name": "aidn-workflow",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "aidâ€™n â€” Audit-driven, session-based workflow packaging system for structured AI-assisted development",
   "license": "MIT",
   "repository": {
@@ -68,6 +68,7 @@
     "pg": ">=8 <9"
   },
   "scripts": {
+    "perf:verify-workflow-transaction": "node tools/perf/verify-workflow-transaction-fixtures.mjs",
     "aidn": "node bin/aidn.mjs",
     "bootstrap": "node tools/bootstrap.mjs",
     "install-pack": "node tools/install.mjs",

@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { assertAgentExecutionContract, fingerprintAgentExecutionValue } from "../../core/agents/agent-execution-contracts.mjs";
 import { createAgentTaskEventChannel } from "../../core/ports/agent-task-executor-port.mjs";
 import { createCodexJsonlProtocol } from "./codex-jsonl-protocol.mjs";
+import { createCodexHostEnvironment, CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../core/agents/codex-startup-arguments.mjs";
 import { assertCodexNativeProfilePolicy, assertCodexNativeProfileBinding, buildCodexNativeProfileArguments,
   assertCodexNativeProfileVerification } from "./codex-native-profile-policy.mjs";
 
@@ -58,8 +59,7 @@ export function createCodexWorkerEnvironment({ host = process.env, codexHome, te
       || Number(new URL(admission.endpoint).port) > 65535 || !/^[a-f0-9]{64}$/.test(admission.token ?? "")
       || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(admission.attemptId ?? "")
       || !/^[a-f0-9]{64}$/.test(admission.requestSha256 ?? "")) fail("CODEX_ENVIRONMENT_INVALID");
-  const names = new Set(["systemroot", "windir", "comspec", "path", "pathext", "userprofile", "localappdata", "appdata", "programdata"]);
-  const env = Object.fromEntries(Object.entries(host).filter(([key, value]) => names.has(key.toLowerCase()) && typeof value === "string"));
+  const env = createCodexHostEnvironment(host);
   return { ...env, CODEX_HOME: codexHome, TEMP: tempDirectory, TMP: tempDirectory,
     AIDN_AGENT_ADMISSION_ENDPOINT: admission.endpoint, AIDN_AGENT_ADMISSION_TOKEN: admission.token,
     AIDN_AGENT_ATTEMPT_ID: admission.attemptId, AIDN_AGENT_REQUEST_SHA256: admission.requestSha256 };
@@ -191,8 +191,8 @@ export function createCodexCliTaskExecutor({ runtime, controller, qualify, prepa
         if (!prepared || prepared.request_sha256 !== fingerprintAgentExecutionValue(request)
             || !prepared.env || typeof prepared.env !== "object") fail("CODEX_PREPARATION_INVALID");
         // The environment must be produced by the allowlist builder, not inherited.
-        const allowed = /^(?:systemroot|windir|comspec|path|pathext|userprofile|localappdata|appdata|programdata|CODEX_HOME|TEMP|TMP|AIDN_AGENT_ADMISSION_ENDPOINT|AIDN_AGENT_ADMISSION_TOKEN|AIDN_AGENT_ATTEMPT_ID|AIDN_AGENT_REQUEST_SHA256)$/i;
-        if (Object.entries(prepared.env).some(([key, value]) => !allowed.test(key) || typeof value !== "string")
+        const allowed = new Set(CODEX_STARTUP_ENVIRONMENT_PROFILES.worker.map(name => name.toLowerCase()));
+        if (Object.entries(prepared.env).some(([key, value]) => !allowed.has(key.toLowerCase()) || typeof value !== "string")
             || prepared.env.AIDN_AGENT_ATTEMPT_ID !== request.attempt_id
             || prepared.env.AIDN_AGENT_REQUEST_SHA256 !== fingerprintAgentExecutionValue(request)) fail("CODEX_ENVIRONMENT_INVALID");
         const rebuilt = createCodexWorkerEnvironment({ host: prepared.env, codexHome: prepared.env.CODEX_HOME,

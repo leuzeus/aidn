@@ -87,6 +87,7 @@ export function projectWorkflowAgentView(payload, receipt = null, projectionProf
     skills: payload.skills, workspace: payload.workspace, summary: payload.summary,
     observation_scope: payload.observation?.scope ?? "per-skill", write_authorization: false,
     ...(payload.observation ? { observation: payload.observation } : {}),
+    ...(payload.transaction ? { transaction: structuredClone(payload.transaction) } : {}),
     admissions: Object.entries(payload.admissions ?? {}).map(([skill, admission]) => ({
       skill, ok: admission.ok === true, admission_status: admission.admission_status ?? "unknown",
       admission_kind: admission.admission_kind ?? "generic", context: pick(admission.context, CONTEXT_FIELDS),

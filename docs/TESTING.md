@@ -25,6 +25,16 @@ lifecycle gate includes this suite. These are host-injected fixture proofs;
 actual installed CLI, native hooks, live PostgreSQL and token gains require
 separate native evidence. See [the experiment](ORDERED_CLOSURE_EXPERIMENT.md).
 
+Runtime-state projection converts hydrated audit-relative keys into repository-
+relative digest references before handoff consumption. Projector fixtures cover
+legacy prefixes, path separators, Unicode, de-duplication and unsafe path refusal.
+The typed invalid-cache JSON error retains the actual invocation effect class,
+explicit write intent and unchanged outputs in read, write and preview variants.
+Canonical handoff fixtures exercise the producer/consumer boundary against the
+injected PostgreSQL store with stale visible projections, and retain rejection
+when a hydrated priority is genuinely absent from canonical state. These are
+fixtures; a restored live native handoff remains a separate qualification.
+
 The cycle-close completion fixtures exercise clean, cached terminal branches in
 `files`, `dual` and `db-only` with gate evaluation forced. A successful recent
 COMMITTING drift check on the same branch must remain visible on that path;
@@ -33,6 +43,36 @@ drift check. Terminal ownership does not reactivate the cycle or admit ordinary
 implementation.
 
 ## Explicit agent working memory
+
+The startup-argument and Codex task-executor fixtures retain Windows
+`SystemDrive` through the shared OS allowlist, prepared worker environment and
+final shell filter, while excluding credentials and inherited native-home/temp
+selection. The runtime metadata observer uses that same host filter. A separate
+manual MXC OS probe can establish command startup and bounded workspace writes;
+it is neither native model evidence nor supervised-agent qualification.
+
+`npm run perf:verify-workflow-transaction` compares the historical, grouped,
+scoped and `--transaction` source CLI preparations on the same activated fixture.
+It checks exact admission/recommendation parity, compact.v2 schema, preset
+conflicts, no view-implied receipt/cache write, strict missing-policy refusal
+and final JSON budget accounting. The existing task-context-profile suite
+includes it in the Codex integration gate. Its descriptive clocks and byte
+counts are fixture microbenchmarks; provider tokens and native quality remain
+separate measurements.
+
+For an explicitly requested native comparison, the manual source benchmark also
+accepts `--include-transaction --execute-native --native-samples 2 --binary
+<absolute-app-binary> --codex-home <existing-home> --native-output
+<new-external-directory>`. It compares the same bounded preparation task on fresh
+native threads, rotates variant order, runs actual source CLI preparation inside
+each arm clock, submits the same exact-field oracle, checks unchanged runtime
+source hashes, and records unique completed-response usage through the existing
+observer. Root model/reasoning settings stay fixed; no fallback, native trust
+override, external app, nested agent or transcript edit is permitted. Cleanup
+removes the temporary authentication copy and verifies the source config/auth.
+Raw native events and account metadata stay outside the source checkout. This
+is a manual native source-preparation experiment, not the 034/036 application
+benchmark, an installed-client qualification or production rollover approval.
 
 `node tools/perf/verify-agent-working-memory-fixtures.mjs` checks real fixture
 checkpoint/handoff CLI, explicit write intent, fresh admission refusal, revision
@@ -69,7 +109,8 @@ stale files/dual rule copies, canonical dual digests over stale visible state,
 and the typed agent refusal without retaining a stale diagnostic receipt.
 
 `npm run perf:verify-task-context-profile` exercises accepted task policies and
-the real grouped source CLI: complete mandatory dependencies, additive operation
+the real grouped source CLI: missing or uncovered task policies refuse with
+remediation and zero hydration, without widening the budget; complete mandatory dependencies, additive operation
 and affected-path needs, optional omission, insufficient budgets, foreign scope,
 unaccepted policy, explicit retained receipts and exact final UTF-8 JSON counters
 including transport metadata. Native tokens and installed-client qualification
@@ -128,7 +169,11 @@ Native context qualification is manual via
 before any files, authentication copy or model turn. Use a new absolute output
 outside the source checkout. The driver records native model/client identity,
 raw local events, exact answers, checkpoints, repeated windows, tokens and
-configuration/credential cleanup. Optional compaction hook probes retain
+configuration/credential cleanup. Checkpoint admission outcomes and bounded
+child-process returns are saved before assertions; complete synthetic CLI
+stdout/stderr remain in local diagnostic files with byte counts and hashes,
+never injected into the model as a repair instruction. Source dirtiness is
+observed from Git rather than assumed. Optional compaction hook probes retain
 `UNAVAILABLE` separately from compaction success; a partial required probe exits
 2. Their invocation-only hook option cannot establish persistent human trust.
 The driver additionally proves ordinary untrusted hooks do not dispatch, denied
@@ -1011,6 +1056,12 @@ The pack topology verifier checks the package tarball surface, the published doc
 Package topology also requires the dedicated local research qualifier and its
 external-pilot/resource helpers to remain outside distributed packages. They
 are source-checkout test tools; the release input detector remains unchanged.
+Local temporary roots may share the source checkout's parent. Pure native
+qualification contract paths therefore use synthetic labels independent of
+TEMP, while still refusing all real profile/output overlaps. Start-session's
+nested failure probe keeps a short unique parent prefix so Git Windows can
+reach the intended injected child call under a long G-only temporary root;
+its cleanup/process assertions and bounded child-error diagnostics remain.
 The documentation-reference verifier resolves active local Markdown links and
 literal `npm run` references against the tracked tree and `package.json`; its
 negative probes prove that a missing link and a missing script are rejected.
@@ -1441,6 +1492,16 @@ second admission invocation.
 
 ## Artifact efficiency intent
 
+`node tools/perf/measure-artifact-query-parsing.mjs --out <new-file>` measures
+whole active-state.v2 selection on the tracked four-source corpus, after warmup,
+in five batches of forty selections. Every output must remain exactly equal.
+The ordinary artifact-query corpus covers invalid hashes, stale supplied JSON,
+duplicate fields, fenced examples, foreign scope, changed source and contract
+compatibility. Normalized field-analysis reuse is scoped to one synchronous
+selection and keyed by source path/hash/extractor kind; no persistent entry or
+cross-invocation freshness is inferred. The benchmark measures CPU fixture
+latency only and never reports model tokens or DB transaction savings.
+
 The same runtime gate includes the contract-bound artifact-query corpus. It
 checks consumed field identities/types/meanings and section dependencies against
 the locked compatibility fixture, rejects unsupported source versions, and
@@ -1538,3 +1599,12 @@ manual proof in an owned ephemeral PostgreSQL cluster. It executes all three
 profiles, counts one common canonical transaction plus its fresh publication
 fence, verifies unchanged canonical rows, and refuses a concurrent canonical
 change. Its real database evidence remains outside PR admission.
+
+
+The installed skill namespace fixture checks the compatible startup admission
+and eleven ordinary hook examples after the combined nominal compact-selector
+experiment was withdrawn. Activation and fresh admission guards remain required.
+The agent-view fixture independently compares actual full/agent strict admission,
+activation, source binding, blockers, checks and unchanged target bytes; explicit
+compact APIs remain available. Source procedure verification does not qualify a
+new package, native lifecycle, or whole-task performance result.

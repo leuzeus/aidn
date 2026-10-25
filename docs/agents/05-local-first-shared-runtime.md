@@ -10,6 +10,7 @@ Shared runtime is opt-in and must not weaken checkout-bound auditability or loca
 
 - PostgreSQL is optional
 - once `runtime.persistence.backend=postgres` is configured, runtime continuity reads use PostgreSQL as the canonical backend and stop on unavailable or ambiguous canonical context
+- the asynchronous DB-first continuity reader defaults to the canonical backend even when an older client omitted `localProjectionPolicy`; a compatibility SQLite projection is never its implicit authority
 - shared runtime is opt-in
 - local checkout-bound artifacts stay local unless a rule explicitly says otherwise
 - shared runtime may carry coordination metadata, not implicit copies of checkout-bound state

@@ -1,8 +1,8 @@
 # Start or resume
 
-Apply COMMON.md. Perform its initial activation/admission guard before context.
-Then request one grouped observation for context-reload, start-session and any
-other skills already known to be needed. Inspect each separate admission, the
+Apply COMMON.md. Its initial transaction supplies the actual activation/admission
+guard before context. Include context-reload, start-session and any other skills
+already known to be needed in that one consultation. Inspect each admission, the
 coordinator stop and the shared context once. Do not infer that start-session
 was performed from its admission or from hydration.
 

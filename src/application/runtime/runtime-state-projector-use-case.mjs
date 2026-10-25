@@ -460,6 +460,19 @@ function normalizeBacklogArtifactPath(activeBacklog) {
     : `docs/audit/${normalized.replace(/\\/g, "/").replace(/^\/+/, "")}`;
 }
 
+function hydratedArtifactRepositoryReference(value) {
+  const normalized = String(value ?? "").trim().replace(/\\/g, "/");
+  if (!normalized) return "";
+  // Hydration selects canonical audit keys. Digest and handoff priorities are
+  // repository-relative references; keep legacy already-prefixed keys readable.
+  const relative = normalized.startsWith("docs/audit/") ? normalized.slice("docs/audit/".length) : normalized;
+  if (relative.includes("\0") || /^[a-z][a-z\d+.-]*:/i.test(relative)
+      || relative.split("/").some(part => !part || part === "." || part === "..")) {
+    throw Object.assign(new Error("Invalid hydrated audit artifact path"), { code: "RUNTIME_HYDRATED_ARTIFACT_PATH_INVALID" });
+  }
+  return `docs/audit/${relative}`;
+}
+
 export function deriveRuntimeStatePrioritizedArtifacts(consistency, hydrated, options = {}) {
   const values = [
     "docs/audit/HANDOFF-PACKET.md",
@@ -481,7 +494,7 @@ export function deriveRuntimeStatePrioritizedArtifacts(consistency, hydrated, op
     values.push(String(options.contextFile).replace(/\\/g, "/"));
   }
   const artifactPaths = Array.isArray(hydrated?.artifacts)
-    ? hydrated.artifacts.map((artifact) => String(artifact?.path ?? "").trim()).filter(Boolean)
+    ? hydrated.artifacts.map((artifact) => hydratedArtifactRepositoryReference(artifact?.path)).filter(Boolean)
     : [];
   return uniqueItems([...values, ...artifactPaths.slice(0, 6)]);
 }

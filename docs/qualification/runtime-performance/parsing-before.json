@@ -1,0 +1,20 @@
+{
+  "evidence": "source-fixture-cpu-microbenchmark",
+  "operation": "complete active-state.v2 selection with exact output parity",
+  "trials": 5,
+  "selections_per_trial": 40,
+  "elapsed_per_selection_ms": [
+    7.834692500000001,
+    7.591922500000001,
+    7.503100000000003,
+    7.545445000000001,
+    7.262965000000003
+  ],
+  "p50_ms": 7.545445000000001,
+  "p95_ms": 7.834692500000001,
+  "input_bytes": 45195,
+  "output_bytes": 4939,
+  "native_tokens": null,
+  "db_round_trips": null,
+  "end_to_end_gain": "not_established"
+}

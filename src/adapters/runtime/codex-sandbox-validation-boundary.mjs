@@ -29,7 +29,7 @@ const HELPER_SOURCE = path.resolve(import.meta.dirname, "../agents/process-tree/
 const HASH = /^[a-f0-9]{64}$/u;
 const IDENTIFIER = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}$/u;
 const EXECUTION_ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/u;
-const LAUNCH_NAMES = ["SYSTEMROOT", "WINDIR", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA", "CODEX_HOME", "TEMP", "TMP"];
+const LAUNCH_NAMES = ["SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA", "CODEX_HOME", "TEMP", "TMP"];
 const CHILD_NAMES = ["SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "TZ", "NO_COLOR"];
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const requireThat = (condition, code) => { if (!condition) fail(code); };

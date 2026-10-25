@@ -7,7 +7,7 @@ import {
   loadSharedStateSnapshot,
   loadSharedStateSnapshotAsync,
 } from "../../src/application/runtime/shared-state-backend-service.mjs";
-import { loadSqliteIndexPayloadSafe } from "../runtime/db-first-runtime-view-lib.mjs";
+import { loadSqliteIndexPayloadSafe, loadDbIndexPayloadSafe } from "../runtime/db-first-runtime-view-lib.mjs";
 import { assessDbOnlyReadiness } from "../../src/application/runtime/db-only-readiness-service.mjs";
 import { createRuntimeArtifactStore } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { writeSharedRuntimeLocator } from "../../src/lib/config/shared-runtime-locator-config-lib.mjs";
@@ -253,6 +253,10 @@ async function main() {
       localProjectionPolicy: "none",
       clientFactory: fakePg.factory,
     };
+    const { localProjectionPolicy, ...defaultCanonicalOptions } = sharedStateOptions;
+    const defaultCanonical = await loadDbIndexPayloadSafe(postgresNoneTarget, defaultCanonicalOptions);
+    assert(defaultCanonical.exists === true, "canonical continuity read must not require a compatibility projection preference");
+    assert(defaultCanonical.backend?.projection_backend_kind === "postgres", "default continuity read must not fall back to SQLite");
     const runtimeState = await withEnv({
       AIDN_STATE_MODE: "db-only",
       AIDN_INDEX_STORE_MODE: "sqlite",

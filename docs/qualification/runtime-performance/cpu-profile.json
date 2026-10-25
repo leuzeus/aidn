@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "evidence": "instrumented-v8-source-diagnostic",
+  "source_commit": "9aa43cfd3b583d10073a3c64aeac8db83294e138",
+  "groups": {
+    "launcher-or-other-descendant": {
+      "profiles": [
+        {
+          "sha256": "cc2c8e0c33efabf4e6c2fd50da18fde5a4f4d30d7850df595f495f17e559c153",
+          "samples": 1009
+        },
+        {
+          "sha256": "252efa7f734b5529618383f00fd40810bb752b9fcc0fa9a854b90c4ecccdc4b8",
+          "samples": 2099
+        },
+        {
+          "sha256": "8e0dae4edc3b9d46d98d7fba917c5e9973b397bc8271034f8e1de16c29a349ba",
+          "samples": 2385
+        },
+        {
+          "sha256": "e3a58c8c4e59c50fd272d408a78507b54a69eb8cd31465fe346f7cd48cb3499d",
+          "samples": 2454
+        },
+        {
+          "sha256": "44dc04c2a158891692af7dc975f2af079b4018319832f563b147e243fa5c978d",
+          "samples": 2265
+        },
+        {
+          "sha256": "c4a8fbcb37e51e2a7d291fc5f87b8f284bbd4bb8f6412aa7cd9845250441fbf8",
+          "samples": 2571
+        },
+        {
+          "sha256": "e32f6ec80ab3651ac914eba420d829b21378a3eae9acb82f0adff004485cabcf",
+          "samples": 3144
+        },
+        {
+          "sha256": "8987632eb5c7eb5f2126c0be4695518f3ccad1f2d089278de191876f267360ae",
+          "samples": 1146
+        },
+        {
+          "sha256": "aa8c2b9496ba6a7fbbca8b637177493fd596009a2ab09ee7cdef62f749a5e70d",
+          "samples": 2342
+        },
+        {
+          "sha256": "f88b172ea8482b64675e5c3e97119a842829a9d03fb0042bf9f77f9d409417a4",
+          "samples": 2391
+        },
+        {
+          "sha256": "40a3732e8327fd05d0ec8fce8106f9a1b9aefff57decf5572403b4a435252224",
+          "samples": 939
+        },
+        {
+          "sha256": "e4f122421be4ae4e7eae18d67798543ea530192aa413d1cc43682345d26de959",
+          "samples": 2064
+        },
+        {
+          "sha256": "8c945ac3dc31e71de1657ddb6c95951b2a0f29842310ff80da492fdc5e432999",
+          "samples": 2024
+        },
+        {
+          "sha256": "95d664d8508d8718852663508ec84705a15bf3b2ba38d18973444e2983c0b188",
+          "samples": 360
+        },
+        {
+          "sha256": "725e5045b96b9f76dca1cc9f2442221ee85b126c368a5ec3b7b818118f53600f",
+          "samples": 333
+        },
+        {
+          "sha256": "a610bdf4a1a33f4f504706df998053bc55ab8fdf8996912a84f1aa28a8cb3b30",
+          "samples": 1990
+        }
+      ],
+      "samples": 29516,
+      "inclusive_named_samples": {
+        "stringify": 2
+      },
+      "top_leaf_sample_sites": [
+        {
+          "function": "spawnSync",
+          "source": "node:internal/child_process",
+          "samples": 27480,
+          "fraction": 0.9310204634774359
+        },
+        {
+          "function": "lstat",
+          "source": "",
+          "samples": 1235,
+          "fraction": 0.04184171296923703
+        },
+        {
+          "function": "compileSourceTextModule",
+          "source": "node:internal/modules/esm/utils",
+          "samples": 50,
+          "fraction": 0.0016939964764873289
+        },
+        {
+          "function": "existsSync",
+          "source": "",
+          "samples": 47,
+          "fraction": 0.0015923566878980893
+        },
+        {
+          "function": "compileForInternalLoader",
+          "source": "node:internal/bootstrap/realm",
+          "samples": 45,
+          "fraction": 0.001524596828838596
+        },
+        {
+          "function": "(garbage collector)",
+          "source": "",
+          "samples": 38,
+          "fraction": 0.00128743732213037
+        },
+        {
+          "function": "update",
+          "source": "node:internal/crypto/hash",
+          "samples": 37,
+          "fraction": 0.0012535573926006234
+        },
+        {
+          "function": "open",
+          "source": "",
+          "samples": 35,
+          "fraction": 0.0011857975335411303
+        },
+        {
+          "function": "stable",
+          "source": "src/application/install/project-activation-service.mjs",
+          "samples": 31,
+          "fraction": 0.001050277815422144
+        },
+        {
+          "function": "internalModuleStat",
+          "source": "",
+          "samples": 24,
+          "fraction": 0.0008131183087139179
+        },
+        {
+          "function": "stat",
+          "source": "",
+          "samples": 23,
+          "fraction": 0.0007792383791841713
+        },
+        {
+          "function": "(program)",
+          "source": "",
+          "samples": 16,
+          "fraction": 0.0005420788724759452
+        },
+        {
+          "function": "reallyExit",
+          "source": "",
+          "samples": 16,
+          "fraction": 0.0005420788724759452
+        },
+        {
+          "function": "normalizeString",
+          "source": "node:path",
+          "samples": 14,
+          "fraction": 0.0004743190134164521
+        },
+        {
+          "function": "read",
+          "source": "",
+          "samples": 14,
+          "fraction": 0.0004743190134164521
+        }
+      ]
+    },
+    "workflow-step": {
+      "profiles": [
+        {
+          "sha256": "8a28ed7cbfe8cb4a8381aeea2f8eaf9dc33d2dc155807314e141b7b1832261a2",
+          "samples": 770
+        },
+        {
+          "sha256": "57a753c7b09c23e72cc60182b6bea050647a3fa30bdee37c4b707e592bb91d48",
+          "samples": 1883
+        },
+        {
+          "sha256": "8a558958934ee282ea48e326f1ebc09e2881e33bda13a15c7d16615b6f271aba",
+          "samples": 2144
+        },
+        {
+          "sha256": "291e265f2a1cae2b8bd4e717434caf80e9d70d0b252ad15d863cdceb2712f893",
+          "samples": 2186
+        },
+        {
+          "sha256": "9261628ad85f9359948e94f9d301445caa864e6e7b786601f9697669576abae8",
+          "samples": 2048
+        },
+        {
+          "sha256": "3e9789e3c6ae3ac7ce1dadb9eef25b75da65f89506dc5b23a273feb404abd31c",
+          "samples": 2409
+        },
+        {
+          "sha256": "6a48008923bdf462913f0f8beb7e816fab65b7425aa314c444a239227187ddda",
+          "samples": 2797
+        },
+        {
+          "sha256": "7e2f78baf24a2c31758af86edb4d4d5e9ad9b4e62a1b0caa4429b18309041c7a",
+          "samples": 879
+        },
+        {
+          "sha256": "23fa18888e1666130df6b3a64798a4b3178c9c695c7d6e9ac707fa6ea4dff50e",
+          "samples": 2093
+        },
+        {
+          "sha256": "3c300d0a5934be08367dcffd514e690853db37ca8bc52251557d6419b3b8eb28",
+          "samples": 2106
+        },
+        {
+          "sha256": "878f718878ed4a58373bb9a566f58e06d887378f413e9bf11480f343a827c630",
+          "samples": 726
+        },
+        {
+          "sha256": "07b49703c276f320b9fbfdcb267ae344cf97e1d61e3b87e368a79a359b43e764",
+          "samples": 1846
+        },
+        {
+          "sha256": "8841e44cabdee1bd3b508f49ec459217da39e40286d5d77fe217b2c7a48898c3",
+          "samples": 1793
+        },
+        {
+          "sha256": "ad92c409bfb9bac83d115bd7c06720d5e0379a1928b04feba518130a113f2487",
+          "samples": 131
+        },
+        {
+          "sha256": "ae3a7daf74a175f1b8788e810a64b13f9b59eb69647dcd687b68ebb6c40472ed",
+          "samples": 108
+        },
+        {
+          "sha256": "e81da8354414b5de0b6964fa6f2c6a60d0f10aefa3a442ed7ddfc50365b915a6",
+          "samples": 1769
+        }
+      ],
+      "samples": 25688,
+      "inclusive_named_samples": {
+        "stringify": 10,
+        "resolveRuntimeProjectContext": 18,
+        "finalizeWorkflowContextBudget": 5,
+        "measure": 3
+      },
+      "top_leaf_sample_sites": [
+        {
+          "function": "spawnSync",
+          "source": "node:internal/child_process",
+          "samples": 13354,
+          "fraction": 0.5198536281532233
+        },
+        {
+          "function": "lstat",
+          "source": "",
+          "samples": 5163,
+          "fraction": 0.20098878853939584
+        },
+        {
+          "function": "existsSync",
+          "source": "",
+          "samples": 1581,
+          "fraction": 0.061546247274992215
+        },
+        {
+          "function": "open",
+          "source": "",
+          "samples": 1078,
+          "fraction": 0.04196511990034257
+        },
+        {
+          "function": "read",
+          "source": "",
+          "samples": 454,
+          "fraction": 0.01767362192463407
+        },
+        {
+          "function": "readdir",
+          "source": "",
+          "samples": 328,
+          "fraction": 0.012768607910308314
+        },
+        {
+          "function": "compileSourceTextModule",
+          "source": "node:internal/modules/esm/utils",
+          "samples": 305,
+          "fraction": 0.011873248209280598
+        },
+        {
+          "function": "close",
+          "source": "",
+          "samples": 292,
+          "fraction": 0.01136717533478667
+        },
+        {
+          "function": "update",
+          "source": "node:internal/crypto/hash",
+          "samples": 202,
+          "fraction": 0.00786359389598256
+        },
+        {
+          "function": "internalModuleStat",
+          "source": "",
+          "samples": 177,
+          "fraction": 0.006890376829648085
+        },
+        {
+          "function": "(garbage collector)",
+          "source": "",
+          "samples": 171,
+          "fraction": 0.006656804733727811
+        },
+        {
+          "function": "fstat",
+          "source": "",
+          "samples": 149,
+          "fraction": 0.005800373715353473
+        },
+        {
+          "function": "compileForInternalLoader",
+          "source": "node:internal/bootstrap/realm",
+          "samples": 122,
+          "fraction": 0.004749299283712239
+        },
+        {
+          "function": "stableContextJson",
+          "source": "src/core/context/working-memory-policy.mjs",
+          "samples": 98,
+          "fraction": 0.003815010900031143
+        },
+        {
+          "function": "stat",
+          "source": "",
+          "samples": 92,
+          "fraction": 0.0035814388041108688
+        }
+      ]
+    }
+  },
+  "method": "External --import preload sets cpu-prof NODE_OPTIONS only for workflow-step invocations and their Node descendants; three rotated samples per four variants plus refusal controls. Unmodified executable source.",
+  "limitations": [
+    "Do not sum overlapping parent/child profile durations into task time.",
+    "Sampling sites are descriptive, not exact per-function CPU or elapsed-time allocation.",
+    "Native JSON.stringify may execute inside caller/native frames.",
+    "No production PostgreSQL query profile: the corpus is files-mode.",
+    "No optimization justified solely by these diagnostic samples."
+  ]
+}
