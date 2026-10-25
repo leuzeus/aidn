@@ -118,7 +118,7 @@
     "src/application/runtime/controlled-codex-profile-metadata.mjs": "ffcd567112bb5d61cefaafbabe1c19869a37e951e6ccb2e0fd4247adef747f22",
     "src/adapters/runtime/codex-sandbox-validation-boundary.mjs": "28e07cf5022b7dd6592f13822f8c05f8631903a057c88f71d71f2ec2cdb2327c"
   },
-  "full_application_ab": "NOT_EXECUTED",
+  "full_application_ab": "ATTEMPTED_NO_VALID_SAMPLES",
   "production_rollover": "NOT_QUALIFIED",
   "current_application_candidate": {
     "source_head": "09043656e1295cae2ee2152ff7d9addcff6eb6c7",
@@ -173,11 +173,148 @@
     "system_volume_preparation": {
       "native_metadata_readiness": "ready",
       "hook_definitions_and_handlers_identical": true,
-      "native_project_review": "PENDING",
+      "native_project_review": "WITHDRAWN_OWNER_G_ONLY_CONSTRAINT",
       "profile_effects_consent": "PREVIOUSLY_RECEIVED",
       "model_calls": 0,
-      "review_sha256": "d823a238df47bea9c3ef322778583f08dd239f3589ef595e89d41d0bce71c985"
+      "review_sha256": "d823a238df47bea9c3ef322778583f08dd239f3589ef595e89d41d0bce71c985",
+      "status": "RETIRED_DIAGNOSTIC_ONLY"
     },
-    "comparative_application_samples": "NOT_EXECUTED"
-  }
+    "comparative_application_samples": "NONE_VALID"
+  },
+  "owner_storage_scope": "G_ONLY_PROJECTS_AND_EXPERIMENTAL_STATE",
+  "system_volume_workaround": "EXCLUDED_BY_OWNER",
+  "current_g_minimal_reproduction": [
+    {
+      "trial": "g-builtin-versus-custom-001",
+      "raw_sha256": "af08874cf1853c1888c64010ee3e45e9359ea7b161d2a81f52d9b8c49e5b9c4a",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "builtin-workspace",
+          "permission": ":workspace",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        },
+        {
+          "id": "custom-workspace",
+          "permission": "g_probe",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        }
+      ]
+    },
+    {
+      "trial": "g-environment-comparison-001",
+      "raw_sha256": "a6635232b9a4bbc114665c0200df01726919ac958bc1ad553baf151ecad7096f",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "closed-host",
+          "permission": ":workspace",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        },
+        {
+          "id": "historical-inherited-host",
+          "permission": ":workspace",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        }
+      ]
+    }
+  ],
+  "stopped_application_baseline_004": {
+    "execution": "EXECUTED_AND_STOPPED",
+    "verdict": "FAIL_PRECONDITION",
+    "comparative_sample": "EXCLUDED",
+    "oracle": "NOT_RUN",
+    "phase2": "NOT_RUN",
+    "completed_native_responses": 12,
+    "diagnostic_usage_not_task_performance": {
+      "inputTokens": 285900,
+      "cachedInputTokens": 265984,
+      "outputTokens": 14109,
+      "reasoningOutputTokens": 1881
+    },
+    "native_patch_failures": 3,
+    "cleanup": "confirmed",
+    "active_descendants": 0,
+    "protected_configuration_change": "NEW_PROJECT_TRUST_OBSERVED_NOT_HUMAN_APPROVAL",
+    "authentication_changed": false,
+    "frozen_controls_preserved": true
+  },
+  "retired_c_copies": {
+    "archives_verified": 2,
+    "automatic_cleanup": "REJECTED_BLOCKED_BY_POLICY",
+    "copies": "INERT_NO_FURTHER_EXECUTION",
+    "personal_profile": "NOT_MOVED_OR_REMOVED"
+  },
+  "whole_authority_policy_probe": {
+    "status": "PASS",
+    "scope": "Pure current-engine policy/selection probe over complete actual installed authorities; no native worker, PostgreSQL, application or startup-route qualification",
+    "model_calls": 0,
+    "client_config_writes": 0,
+    "whole_authority_documents": 6,
+    "source_bytes": 42139,
+    "explicit_64k_bytes": 64608,
+    "changed_hash_refused": true,
+    "missing_mandatory_refused": true,
+    "unaccepted_policy_refused": true,
+    "unknown_skill_refused": true,
+    "nominal_16k": "REFUSED"
+  },
+  "native_component_patch_probes": [
+    {
+      "trial": "native-patch-explicit-root-001",
+      "status": "FAIL_NATIVE_MARKER",
+      "configuration_preserved": true,
+      "scope": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "trial": "native-patch-absolute-root-002",
+      "status": "FAIL_NATIVE_MARKER",
+      "configuration_preserved": true,
+      "scope": "DIAGNOSTIC_ONLY"
+    },
+    {
+      "trial": "native-patch-sibling-omittedcwd-003",
+      "status": "FAIL_NATIVE_MARKER",
+      "configuration_preserved": true,
+      "scope": "DIAGNOSTIC_ONLY"
+    }
+  ]
 }

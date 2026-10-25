@@ -1,5 +1,32 @@
 # Runtime performance campaign â€” 2026-10-24
 
+## Current execution scope (2026-10-25)
+
+The owner requires all project clients and experimental work to remain on the
+original non-system volume. System-volume workarounds are excluded. Previously
+created temporary system-volume clients are retired diagnostic evidence only;
+the request to review their hooks is withdrawn. Their bytes have verified
+recoverable archives on the permitted evidence volume. Automatic cleanup was
+rejected by policy, so the original copies remain inert; the personal Codex
+profile was neither moved nor removed.
+
+The current native application campaign has **no valid comparative samples**.
+The smallest non-system-volume reproduction now fails native physical-path
+resolution with both the official `:workspace` profile and a custom profile,
+on the same binary, cwd and Node executable. Replaying the historical inherited
+environment pattern also fails. These are separate OS-only executions with no
+AIDN, model, main-profile launch, setup or login. JavaScript realpath, lstat and
+read/write/remove pass; `fs.realpathSync.native` returns EPERM under MXC while
+the host call succeeds. All four owned process trees close with zero descendants
+and the main configuration stays unchanged. This excludes the custom AIDN
+profile and its closed host-variable list as sufficient explanations; it does
+not identify a repaired client version or justify removing physical identity.
+
+Source/native preparation measurements below remain valid within their stated
+scope. No system-volume diagnostic, stopped application attempt or microbenchmark
+is a successful end-to-end task measurement. Public native worker/rollover
+promotion and a default-startup replacement remain unqualified.
+
 ## Baseline and scope
 
 Source: `origin/dev` at `04753926d342a72af58d415e605aec532cd84d3a`, version
@@ -582,3 +609,72 @@ consents remain applicable; human review of this new repository through native
 controls is pending under `CODEX_NATIVE_QUALIFICATION.md`. No trust entry or
 approved hash was injected. Its OS/activation success remains preparation
 evidence, with zero model calls and no application verdict.
+
+### Historical method and subsequent G-only diagnosis
+
+Inspection of both retained `prepared.json` and `execution.json` establishes
+that campaigns 034/036 stored source and evidence on the non-system volume,
+but actually ran their application clients, installed runtime and two isolated
+Codex homes on the system volume. They used Codex 0.163.0-alpha.10.2,
+gpt-6.1-sol/medium and an explicit MXC profile extending `:workspace` with
+`network_proxy = true`. The historical Python controller inherited the host
+environment and overrode only the declared trial values. Native project hooks
+used the explicit reviewed invocation mode. Private PostgreSQL governed AIDN;
+both applications used SQLite, two actual conversations and the same fixed
+oracle. Each completed 20/20 on that oracle. The later published 0.14.0 native
+continuity pilot also used system-volume clients. Those paths are historical
+facts, not permission to use that volume now.
+
+The attempted current baseline 004 used Codex 0.164.0-alpha.11.1 with
+gpt-6.1-sol/high. Its actual pre-dispatch observations confirmed zero hooks,
+the selected model/effort and MXC readiness. Native `apply_patch` repeatedly
+failed before a required write; the model then tried its underlying CLI helper
+through the shell. The operator stopped the owned Job and excluded the attempt.
+Phase 2 and the fixed external oracle were not run. The stopped baseline is
+not reused as a successful comparator, even though some shell-helper writes
+occurred. The Job confirms zero remaining descendants and the frozen controls
+remain unchanged.
+
+A new trusted-project entry appeared in the personal configuration during
+that attempt. It is not human hook approval. The
+[public server processor](https://github.com/openai/codex/blob/970111f6cb62cc02fe36a82ea7d71b37a2889c97/codex-rs/app-server/src/request_processors/thread_processor.rs#L1408)
+contains an automatic project-trust write when an explicit requested cwd is
+writable and lacks a trust decision. That branch is consistent with the observed
+change; the selected executable is not claimed bit-identical to this public
+source commit. Later single-marker diagnostics omit the redundant thread cwd
+while starting the server in the exact owned directory. The returned cwd/roots
+match and the configuration stays unchanged. No agent config/trust write or
+reconciliation was attempted. Their native edit still fails, including with
+explicit relative and absolute root grants and a sibling workspace outside the
+readonly runtime tree. Each stops on its first native failure, with no shell
+fallback. These negative component cases do not establish a shared cause with
+the non-system-volume identity failure.
+
+The historical profile also explicitly enabled the network proxy. A loopback
+HTTP success alone does not establish outbound-domain enforcement for the
+current experimental profile; that profile has no such qualification. A future
+campaign must verify its actual proxy/network controls as well as native edits.
+
+The source/selection preparation continues independently: six complete installed
+authority documents total 42,139 bytes. A pure current-engine test using the
+official formatter retains all six and all declared dependencies. It refuses
+the 16 KiB nominal target and requires an explicit expansion; the tested
+64 KiB response is 64,608 bytes. Missing/changed units, unaccepted policies and
+unknown skills refuse. This is a controlled fixture-policy probe with zero
+client-configuration writes or model calls, not acceptance on behalf of a real
+client, replacement of mandatory startup reads, or application evidence.
+The external control suite passes 312 tests, including refusal of untrusted,
+wrong-source or unexpected integration hooks before `thread/start` can invoke
+SessionStart. These controls remain preparation evidence.
+
+The decisive G-only minimal reproduction uses an empty owned Codex home and
+temporary directory on the permitted volume. Both `:workspace` and custom
+profiles reproduce EPERM for native realpath. Both the bounded non-secret host
+environment and the historical full-inheritance pattern reproduce it as well;
+past environment values are not reconstructed. No authentication is copied.
+A separate system-volume worktree linked to the already reviewed original Git
+common directory still fails native identity on that common directory; it was
+removed after the OS-only probe. That route cannot transfer the original trust
+while preserving the current physical-identity check. No fallback to JavaScript
+identity, weaker sandbox, setup, alternate client installation or public native
+promotion is claimed.
