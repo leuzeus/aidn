@@ -416,5 +416,61 @@
       "configuration_preserved": true,
       "scope": "DIAGNOSTIC_ONLY"
     }
+  ],
+  "g_legacy_readiness_refresh": [
+    {
+      "trial": "g-legacy-readiness-refresh-001",
+      "raw_summary_sha256": "3201a25710dad542d34961d1b8d80e0b99132fd0d1eab944f09f9bcb62648c97",
+      "raw_status": "REFUSED",
+      "reason": "PROFILE_MANIFEST_BINDING_MISMATCH",
+      "model_calls": 0,
+      "worker_launches": 0,
+      "main_configuration_preserved": true,
+      "classification": "precondition_failure",
+      "metadata_processes": 0,
+      "cleanup": "NOT_STARTED",
+      "correction_sha256": "6f174ced1a35943ecb1455355b15ea5b43fa213cd8755fc1311f2a199e71de00"
+    },
+    {
+      "trial": "g-legacy-readiness-refresh-002",
+      "raw_summary_sha256": "7cd04e4b97f7101c75fff3ba12ceeaf8552c212ef29e1e7a466323be551b7500",
+      "raw_status": "REFUSED",
+      "reason": "PROFILE_TREE_TIMEOUT",
+      "model_calls": 0,
+      "worker_launches": 0,
+      "main_configuration_preserved": true,
+      "classification": "metadata_precondition_failure",
+      "metadata_budget_ms": 10000,
+      "readiness": null,
+      "cleanup": "confirmed",
+      "active_descendants": 0,
+      "protected_sources": "NOT_FULLY_VERIFIED"
+    },
+    {
+      "trial": "g-legacy-readiness-refresh-003",
+      "raw_summary_sha256": "06c79a33e0a1caba8be5b3ae6b277ffafd606d7ae653a55779d2e571badb98e5",
+      "raw_status": "REFUSED",
+      "reason": "PROFILE_BACKEND_NOT_READY",
+      "model_calls": 0,
+      "worker_launches": 0,
+      "main_configuration_preserved": true,
+      "classification": "metadata_precondition_failure",
+      "metadata_budget_ms": 60000,
+      "readiness": {
+        "status": "updateRequired"
+      },
+      "cleanup": "confirmed",
+      "active_descendants": 0,
+      "protected_sources": "PASS",
+      "phase": "bootstrap",
+      "verification_10s": "NOT_RUN_AFTER_BOOTSTRAP_REFUSAL",
+      "response_count": 5,
+      "hook_entries_per_worker": [
+        2,
+        2
+      ],
+      "all_observed_hooks_enabled_and_trusted": true,
+      "qualification": "NOT_GRANTED"
+    }
   ]
 }

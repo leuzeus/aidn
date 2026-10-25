@@ -748,3 +748,36 @@ complete clean-source qualification keeps all 59 required and three optional
 gates. Native application/model campaigns remain distinct manual evidence.
 No gate is removed, obligation lowered, deadline relaxed or coverage reduction
 claimed from this cost analysis.
+
+
+### Current legacy-backend observation on reviewed G roots
+
+A separate metadata-only refresh uses the frozen installed candidate from
+source `09043656e1295cae2ee2152ff7d9addcff6eb6c7` and the original reviewed
+non-system-volume roots. It retains the existing main-profile and v2
+Codex-managed maintenance consents; no native worker or model is launched.
+The first preflight selected the original isolated-home manifest by mistake
+and refused `PROFILE_MANIFEST_BINDING_MISMATCH` before any metadata process.
+Its raw failure and explicit `NOT_STARTED` correction remain separate.
+
+With the already reviewed main-profile binding, the ten-second controlled
+metadata observation times out. Its Windows Job confirms zero descendants;
+main configuration hashes are unchanged. It yields no readiness result and
+is not counted as proof that the backend is ready or unavailable.
+A new attempt uses the existing distinct metadata-bootstrap provision of at
+most 60 seconds, without extending the ordinary ten-second verification.
+That bootstrap returns five complete responses and confirms **updateRequired**
+for the selected legacy backend. Each original worker surface reports two
+enabled, trusted native hook entries. Protected configuration/rules/hook
+snapshots are unchanged, and the Job closes with zero descendants. The backend
+precondition refuses; ordinary verification and worker/model execution do not
+follow. Native hook approval alone cannot satisfy backend readiness.
+
+This distinguishes the legacy-backend obstacle from the independently reproduced
+MXC physical-identity refusal. No manual setup, login, trust write, profile
+relocation or sandbox downgrade is performed. All new observation evidence and
+attempt-scoped state remain on the permitted volume. The
+[official Windows sandbox guidance](https://learn.chatgpt.com/docs/windows/windows-sandbox)
+describes administrator-approved setup for the legacy elevated backend;
+readiness alone neither diagnoses a specific provisioning defect nor authorizes
+AIDN to perform that setup under the retained consent boundary.
