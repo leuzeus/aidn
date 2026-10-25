@@ -17,10 +17,15 @@ on the same binary, cwd and Node executable. Replaying the historical inherited
 environment pattern also fails. These are separate OS-only executions with no
 AIDN, model, main-profile launch, setup or login. JavaScript realpath, lstat and
 read/write/remove pass; `fs.realpathSync.native` returns EPERM under MXC while
-the host call succeeds. All four owned process trees close with zero descendants
-and the main configuration stays unchanged. This excludes the custom AIDN
+the host call succeeds. All retained owned process trees close with zero
+descendants and the main configuration stays unchanged. This excludes the custom AIDN
 profile and its closed host-variable list as sufficient explanations; it does
 not identify a repaired client version or justify removing physical identity.
+An explicit selected workspace-roots mapping, relocating identical executable
+bytes to the permitted volume, and an official older-client comparison also
+fail the same native operation. The older public executable carries the
+historical version label but differs from the archived application binary;
+this is not a bit-for-bit historical replay.
 
 Source/native preparation measurements below remain valid within their stated
 scope. No system-volume diagnostic, stopped application attempt or microbenchmark
@@ -600,14 +605,13 @@ non-system volume. An explicit volume-root entry is refused by MXC as not
 representable losslessly. No identity resolver, activation rule or sandbox is
 weakened to conceal these observations.
 
-The identical archive is now prepared in a fresh disposable system-volume
-repository. Its native physical identity and real AIDN activation both PASS
-under MXC; metadata reports ready. Exact hook definitions and all three handler
-hashes match the original reviewed definitions. Native discovery currently
-excludes the new untrusted project layer. The existing profile/maintenance
-consents remain applicable; human review of this new repository through native
-controls is pending under `CODEX_NATIVE_QUALIFICATION.md`. No trust entry or
-approved hash was injected. Its OS/activation success remains preparation
+The identical archive was also prepared in a fresh disposable system-volume
+repository before the owner's G-only correction. Native physical identity and
+real AIDN activation passed there; metadata reported ready. Exact hook
+definitions and all three handler hashes matched the reviewed definitions,
+but native discovery excluded that new untrusted project layer. The review
+request is withdrawn and this candidate is retired. No trust entry or approved
+hash was injected. Its OS/activation success remains historical preparation
 evidence, with zero model calls and no application verdict.
 
 ### Historical method and subsequent G-only diagnosis
@@ -678,3 +682,35 @@ removed after the OS-only probe. That route cannot transfer the original trust
 while preserving the current physical-identity check. No fallback to JavaScript
 identity, weaker sandbox, setup, alternate client installation or public native
 promotion is claimed.
+
+The final G-only discriminating probes additionally retain the following:
+
+| Controlled change | Native physical identity | Other file operations |
+| --- | --- | --- |
+| Explicit selected `workspace_roots` for the exact cwd | EPERM | PASS |
+| Current executable on system volume versus identical SHA-256 copy on G | EPERM in both | PASS in both |
+| Current 0.164.0-alpha.11.1 versus official 0.163.0-alpha.10.2, both executable images on G | EPERM in both | PASS in both |
+
+The official older archive and extracted executable match the digests published
+by [the exact upstream release](https://github.com/openai/codex/releases/tag/rust-v0.163.0-alpha.10.2).
+Its executable SHA-256 is
+`76b4bfc83785f31c59ec384760003109410132bab602a2115d83e88e04a6dc47`,
+whereas the historical installed application executable was
+`f6dbf48cb70f62649c645f26c87dc9bf84cc36986202dfad8e12fb5b8ca70312`.
+Only the version label matches. The current executable copy retains SHA-256
+`1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098`.
+The probes use no model, copied authentication, setup, login or global
+installation. Their homes, temporary state, binaries and receipts are all on G;
+the main configuration is preserved and every owned Job closes with zero
+remaining descendants. These controls rule out executable placement and this
+older public version as sufficient repairs in the present environment.
+
+A [public upstream issue](https://github.com/openai/codex/issues/52593) reports
+the same JavaScript/native-realpath split inside Windows sandboxing. That is
+external corroboration, not proof of this host's Windows syscall cause or a
+verified fixed build. The present native application comparison is unavailable
+because a required physical-identity precondition fails before the workflow;
+its application oracle and end-to-end engineering targets remain unevaluated.
+The retained controls provide a reproducible precondition check for a future
+compatible runtime, without removing the identity check or changing storage
+scope.

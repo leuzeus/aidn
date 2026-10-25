@@ -255,6 +255,106 @@
           "active_descendants": 0
         }
       ]
+    },
+    {
+      "trial": "g-explicit-workspace-roots-001",
+      "raw_sha256": "ae15e01e682c40d14245203b008258ac157e489748c5da518b4cc73646ff1c38",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "explicit-workspace-roots",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0
+        }
+      ]
+    },
+    {
+      "trial": "current-client-location-probe-001",
+      "raw_sha256": "69139370c39defd0b0b3ed5d4fa197cc7cb98d45d8147a881668463e7a95f664",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "installed-system-program",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0,
+          "executable_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098"
+        },
+        {
+          "id": "identical-program-copy-on-g",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0,
+          "executable_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098"
+        }
+      ],
+      "same_binary_bytes": true
+    },
+    {
+      "trial": "old-client-version-comparison-001",
+      "raw_sha256": "891a8fffc96c89ae9629723f31ac162e36b1ae554d849824b3adef785d9c7f5e",
+      "status": "FAIL_NATIVE_IDENTITY",
+      "model_calls": 0,
+      "all_generated_state_on_g": true,
+      "main_configuration_preserved": true,
+      "cases": [
+        {
+          "id": "current-0164-public-app",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0,
+          "version": "codex-cli 0.164.0-alpha.11.1",
+          "executable_sha256": "1103e9e09c71fa2cd0afd6d8f3b9a2d63174fe8efd7cb5bd09f1cb14ef58a098"
+        },
+        {
+          "id": "official-0163-public-release",
+          "native_realpath": {
+            "status": "FAIL",
+            "code": "EPERM"
+          },
+          "javascript_realpath": "PASS",
+          "lstat": "PASS",
+          "write_read_remove": "PASS",
+          "cleanup": "confirmed",
+          "active_descendants": 0,
+          "version": "codex-cli 0.163.0-alpha.10.2",
+          "executable_sha256": "76b4bfc83785f31c59ec384760003109410132bab602a2115d83e88e04a6dc47"
+        }
+      ],
+      "old_version_is_not_bit_identical_to_historical_app_binary": true,
+      "official_release": "https://github.com/openai/codex/releases/tag/rust-v0.163.0-alpha.10.2",
+      "official_asset_digests_verified": true
     }
   ],
   "stopped_application_baseline_004": {
