@@ -2,54 +2,39 @@
 
 ## Current execution scope (2026-10-25)
 
-The owner requires all project clients and experimental work to remain on the
-original non-system volume. System-volume workarounds are excluded. Previously
-created temporary system-volume clients are retired diagnostic evidence only;
-the request to review their hooks is withdrawn. Their bytes have verified
-recoverable archives on the permitted evidence volume. Automatic cleanup was
-rejected by policy, so the original copies remain inert; the personal Codex
-profile was neither moved nor removed.
+The closed result and delivery decision are in
+[the consolidated performance report](RUNTIME_OPTIMIZATION_2026-10-25_RESULTS.md).
+Four predeclared native application trials are strictly qualified, each with
+actual coordinator handoff, two fresh worker threads, cycle/session closure,
+oracle20/20, owned process cleanup, private PostgreSQL removal and unchanged
+protected configuration/Git resources.
 
-Strict whole-application protocol qualification of the optimized candidate is
-currently **NOT ESTABLISHED**. A new historical-runtime calibration now passes
-all strict workflow and twenty application checks on the corrected Git path;
-its exact scope and measurements are recorded below.
-A former optimized-candidate driver PASS is preserved, but independent review found two native Git
-metadata-lock permission refusals with exit zero before implementation. The
-phase guard missed stderr denials. Its actual 20/20 oracle, specific patch
-admissions and terminal hook executions remain valid component observations;
-continuing after the unhandled refusal cannot establish strict protocol success.
-The no-AIDN pilot has no corresponding Git denial. Neither pilot is promoted to
-a predeclared repeated A/B cohort.
+The combined compact admission/hook default-adoption experiment is withdrawn.
+Across two trials per procedure, it reduces model responses7.9% but increases
+cumulative input14.0%, uncached input16.0% and workflow time10.0%. The historical
+control includes the common hydration correctness fix and already allows some
+explicit compact views. These descriptive results do not establish a global
+speedup or isolate either selector's individual causal effect. Ordinary source
+procedures are restored; explicit compact APIs, bounded transaction preparation,
+supported continuation, invocation caches and correctness fixes are retained
+within their proven scopes. The numerical engineering targets remain unmet.
 
-The current native application campaign has **no valid comparative samples**.
-The retained MXC non-system-volume reproduction fails native physical-path
-resolution with both the official `:workspace` profile and a custom profile,
-on the same binary, cwd and Node executable. Replaying the historical inherited
-environment pattern also fails. These are separate OS-only executions with no
-AIDN, model, main-profile launch, setup or login. JavaScript realpath, lstat and
-read/write/remove pass; `fs.realpathSync.native` returns EPERM under MXC while
-the host call succeeds. All retained owned process trees close with zero
-descendants and the main configuration stays unchanged. This excludes the custom AIDN
-profile and its closed host-variable list as sufficient explanations; it does
-not identify a repaired client version or justify removing physical identity.
-An explicit selected workspace-roots mapping, relocating identical executable
-bytes to the permitted volume, and an official older-client comparison also
-fail the same native operation. The older public executable carries the
-historical version label but differs from the archived application binary;
-this is not a bit-for-bit historical replay.
+Native clients, logs, caches and databases remain on the owner-approved G volume.
+The official elevated backend was repaired after explicit owner authorization;
+these qualified trials explicitly use that backend with MXC preference disabled.
+The separately retained MXC physical-path refusal is not relabelled repaired.
+Old system-volume diagnostic clients remain inert, with verified archives on G;
+automatic cleanup was rejected, so no deletion workaround is used. One host
+patch-preparation fixture inherited system TEMP before final verification was
+corrected to G; its normal scoped cleanup completed. This exception does not
+describe the native trial environments, which explicitly bind TEMP/TMP to G.
 
-After a subsequent explicit owner authorization, the official elevated sandbox
-setup completes successfully. Fresh metadata reports ready on the reviewed G
-roots; native physical identity and a single genuine native edit now pass on G
-with explicit legacy selection and no MXC preference. These are component
-preconditions, not valid full-application comparison samples. The independently
-retained MXC refusal is not relabelled or repaired by this different backend.
-
-Source/native preparation measurements below remain valid within their stated
-scope. No system-volume diagnostic, stopped application attempt or microbenchmark
-is a successful end-to-end task measurement. Public native worker/rollover
-promotion and a default-startup replacement remain unqualified.
+Earlier driver passes invalidated by real Git stderr refusals, stopped attempts,
+preparation-only byte reductions and native-ledger research remain separate.
+The measured experimental archive stays unchanged after source default-adoption
+withdrawal. Source restoration is checked separately; no new package/native
+promotion or remote release is inferred. The chronological evidence below is
+retained rather than rewritten as successful whole-task history.
 
 ## Baseline and scope
 
@@ -1614,3 +1599,24 @@ No performance feature is backported. The old historical calibration remains
 separate. Two samples per variant are declared in compact/historical/historical/
 compact order, with unchanged task, oracle, model, deadlines and preservation
 checks. Its sealed preparation is not an executed comparison or a gain claim.
+
+
+## Closed cohort033 and withdrawn default adoption
+
+All four declared applications pass the original strict guard and oracle20/20.
+The control source is the historical runtime plus only the common hydration
+namespace/typed-error correction. Actual historical calls already use opt-in
+agent format for22/27 hooks; all35 admissions stay full. The experimental
+procedure uses agent format for all45 admissions and27 hooks. This is a
+combined nominal-procedure comparison, not an isolated formatting experiment.
+
+Mean historical/experimental costs are2,201.737/2,421.454 seconds,
+89/82 responses,11,153,072/12,715,893 cumulative input and400,880/464,821
+uncached input. Lower delivered tool bytes did not produce a global gain.
+The source startup and managed procedures therefore return to their preceding
+selectors. Explicit compact APIs and their decision parity remain available;
+the benchmark archives and unfavorable observations are preserved.
+
+See the consolidated report for per-trial numbers, ranges, unavailable metrics,
+retained/rejected changes and the next bounded experiment. Source checks after
+restoration do not invent a native execution of a new package.

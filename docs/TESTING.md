@@ -1601,8 +1601,10 @@ fence, verifies unchanged canonical rows, and refuses a concurrent canonical
 change. Its real database evidence remains outside PR admission.
 
 
-The installed skill namespace fixture also checks the deployed startup admission
-selectors. The agent-view fixture compares actual full/agent strict admission,
-activation, source binding, blockers, checks and unchanged target bytes. Compact
-admission defaults in source assets are separate from opt-in grouped transaction
-qualification and from activation or upgrade of an existing installed client.
+The installed skill namespace fixture checks the compatible startup admission
+and eleven ordinary hook examples after the combined nominal compact-selector
+experiment was withdrawn. Activation and fresh admission guards remain required.
+The agent-view fixture independently compares actual full/agent strict admission,
+activation, source binding, blockers, checks and unchanged target bytes; explicit
+compact APIs remain available. Source procedure verification does not qualify a
+new package, native lifecycle, or whole-task performance result.

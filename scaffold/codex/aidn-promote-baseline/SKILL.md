@@ -9,9 +9,7 @@ metadata:
 
 ## Project Activation
 
-Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill promote-baseline --view agent --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
-
-The nominal admission response uses the existing compact agent view. Inspect its actual activation, decision, checks, blockers and observed sources. Expand full diagnostics explicitly only when needed; a view never grants reusable write permission or replaces the complete artifact reads and fresh action admissions below.
+Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill promote-baseline --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
 
 If activation is absent, false or unknown, stop this skill without loading workflow state or creating artifacts. Report the activation reason; `aidn bootstrap --diagnose --json` is the explicit read-only diagnostic. Do not install or activate the project automatically. A blocked admission allows only the read-only diagnostics it recommends, within the user's scope.
 
@@ -27,7 +25,7 @@ Safely “publish” completed work into baseline.
 
 ## Pre-Write Admission
 Before the first durable write in this skill, run:
-- `npx aidn runtime pre-write-admit --target . --skill promote-baseline --view agent --json`
+- `npx aidn runtime pre-write-admit --target . --skill promote-baseline --json`
 - If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
 - If the block mentions `usage matrix`, treat it as a hard gate: update the target cycle `status.md` so `usage_matrix_state=VERIFIED` or `WAIVED` with an explicit rationale before trying to promote again.
 
@@ -66,7 +64,7 @@ Before the first durable write in this skill, run:
 - keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 5) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill promote-baseline --mode COMMITTING --target . --view agent --json`
+- run `npx aidn codex run-json-hook --skill promote-baseline --mode COMMITTING --target . --json`
 - the runtime `aidn-promote-baseline` hook validates target-cycle selection, open-gap closure, and traceability readiness before delegating to generic checkpoint/index/repair behavior
 - expect machine-visible outcomes such as `promote_baseline_allowed`, `choose_cycle`, or `blocked_open_gap`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).

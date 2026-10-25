@@ -9,9 +9,7 @@ metadata:
 
 ## Project Activation
 
-Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill cycle-create --view agent --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
-
-The nominal admission response uses the existing compact agent view. Inspect its actual activation, decision, checks, blockers and observed sources. Expand full diagnostics explicitly only when needed; a view never grants reusable write permission or replaces the complete artifact reads and fresh action admissions below.
+Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill cycle-create --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
 
 If activation is absent, false or unknown, stop this skill without loading workflow state or creating artifacts. Report the activation reason; `aidn bootstrap --diagnose --json` is the explicit read-only diagnostic. Do not install or activate the project automatically. A blocked admission allows only the read-only diagnostics it recommends, within the user's scope.
 
@@ -28,7 +26,7 @@ Create a clean cycle scaffold fast and correctly.
 
 ## Pre-Write Admission
 Before the first durable write in this skill, run:
-- `npx aidn runtime pre-write-admit --target . --skill cycle-create --view agent --json`
+- `npx aidn runtime pre-write-admit --target . --skill cycle-create --json`
 - If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
 
 ## Inputs (ask user if missing)
@@ -133,7 +131,7 @@ discovery and every required read. Consultation never replaces admission.
 - do not change a frozen plan to expand an edit's own permission; use the governed scope-change process
 
 9) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --view agent --json`
+- run `npx aidn codex run-json-hook --skill cycle-create --mode COMMITTING --target . --json`
 - the runtime `aidn-cycle-create` hook applies continuity admission before delegating to generic checkpoint/index/repair behavior
 - in DB-backed modes, continuity admission reads the configured canonical runtime backend before visible session/cycle projections and reports `continuity_context_source`, `continuity_context_backend`, `canonical_continuity_status`, and any `canonical_continuity_ambiguities`
 - in strict `db-only`, STOP when the canonical runtime is unavailable or has ambiguous active session/cycle candidates; do not infer continuity from stale visible anchors or latest-row timestamps

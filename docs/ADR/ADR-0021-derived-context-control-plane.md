@@ -80,14 +80,16 @@ requires a fresh full read and claims no retained record, source revision or
 authorization. View selection creates no persistence. An unavailable decision
 stops with a typed diagnostic instead of implying canonical fallback or success.
 
-The source startup contract and managed skills now select that existing compact
-standalone admission view. This changes presentation of the same activation
-boundary, not its canonical evaluation, required reads, effects or fresh-write
-checks. Full CLI defaults remain compatible and explicit full diagnostics stay
-available. Source fixture/CLI parity and an installed native selector check are
-distinct evidence; a frozen older package is not retroactively qualified. This
-small admission default does not promote the experimental grouped procedure or
-its native lifecycle integration.
+An experiment selected that compact admission view and the existing hook agent
+view in the source startup contract and managed procedures. On 2026-10-25,
+cohort 033 completed two qualified trials per variant: forcing those selectors
+reduced responses but increased cumulative/uncached input and elapsed time.
+The combined nominal adoption is withdrawn; ordinary source procedures retain
+their compatible defaults. Explicit compact views remain available and keep
+their independent decision/contract parity. This outcome does not identify which
+individual selector or candidate code change caused a difference, promote a grouped procedure, alter
+mandatory reads or fresh admission, or rewrite the frozen experimental package.
+See the [closed performance result](../performance/RUNTIME_OPTIMIZATION_2026-10-25_RESULTS.md).
 
 An explicitly grouped workflow consultation can share one complete canonical
 snapshot and each needed shared planning/relay observation within its private

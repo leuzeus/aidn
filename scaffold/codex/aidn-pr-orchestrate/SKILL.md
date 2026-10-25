@@ -9,9 +9,7 @@ metadata:
 
 ## Project Activation
 
-Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill pr-orchestrate --view agent --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
-
-The nominal admission response uses the existing compact agent view. Inspect its actual activation, decision, checks, blockers and observed sources. Expand full diagnostics explicitly only when needed; a view never grants reusable write permission or replaces the complete artifact reads and fresh action admissions below.
+Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill pr-orchestrate --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
 
 If activation is absent, false or unknown, stop this skill without loading workflow state or creating artifacts. Report the activation reason; `aidn bootstrap --diagnose --json` is the explicit read-only diagnostic. Do not install or activate the project automatically. A blocked admission allows only the read-only diagnostics it recommends, within the user's scope.
 
@@ -43,7 +41,7 @@ Drive the session branch through the explicit PR lifecycle without skipping push
 - `post_merge_sync_status`
 
 3) Run the runtime admission:
-- `npx aidn codex run-json-hook --skill pr-orchestrate --mode <THINKING|EXPLORING|COMMITTING> --target . --view agent --json`
+- `npx aidn codex run-json-hook --skill pr-orchestrate --mode <THINKING|EXPLORING|COMMITTING> --target . --json`
 - read `.aidn/runtime/context/codex-context.json` and use these signals to drive the next action.
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).
 - hydrate db-backed context with `npx aidn codex hydrate-context --target . --skill pr-orchestrate --project-runtime-state --json`.

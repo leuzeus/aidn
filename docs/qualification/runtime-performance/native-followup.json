@@ -1634,7 +1634,7 @@
     }
   },
   "predeclared_repeated_comparison_033": {
-    "status": "PREPARED_NOT_EXECUTED",
+    "status": "COMPLETE_ALL_FOUR_QUALIFIED",
     "protocol": "native-comparison-033.v1",
     "protocol_sha256": "210fc4b77099e21d635d14aee8aca2988929a9f3caddb62a5d4127fb0c09b5cb",
     "guard": "benchmark-phase-continuation.v17",
@@ -1678,6 +1678,495 @@
     "prior_cohort_included": false,
     "application_qualification": "REQUIRED_IN_FIRST_ALLOCATED_SAMPLE",
     "all_evidence_on_G": true,
-    "complete_gain_comparison": "NOT_ESTABLISHED"
+    "complete_gain_comparison": "MIXED_RESPONSES_DOWN_BUT_TIME_AND_INPUT_UP",
+    "executed_samples": 4,
+    "qualified_samples": 4,
+    "failed_samples": 0,
+    "skipped_samples": 0,
+    "all_oracles": "20/20",
+    "closed_result_sha256": "d481d3b3297678670ddb455e337f5c173e7f3e8061f57dc6dc7e31fed163ea9a",
+    "aggregate_sha256": "fca7876661fb8205e58c79176e575c434a55c0419a7f09da62c16e8a0e618b99",
+    "rows": [
+      {
+        "id": "pilot-001",
+        "variant": "compact",
+        "status": "WORKFLOW_PASS",
+        "accepted": true,
+        "reasons": [],
+        "seconds": 2496.757,
+        "responses": 91,
+        "input_tokens": 11926718,
+        "cached_input_tokens": 11529344,
+        "output_tokens": 43762,
+        "reasoning_output_tokens": 5718,
+        "uncached_input_tokens": 397374,
+        "cli_calls": 110,
+        "coordinator_cli_calls": 6,
+        "model_cli_span_seconds_sum": 691.1730000000001,
+        "coordinator_cli_span_seconds_sum": 35.851,
+        "cli_p50_seconds": 5.4045000000000005,
+        "cli_p95_seconds": 11.42965,
+        "cli_counts": {
+          "runtime pre-write-admit": 25,
+          "runtime artifact-fetch": 7,
+          "runtime artifact-store": 4,
+          "runtime db-first-artifact": 44,
+          "runtime project-runtime-state": 7,
+          "codex run-json-hook": 14,
+          "codex hydrate-context": 5,
+          "runtime sync-db-first-selective": 3,
+          "runtime handoff-admit": 1
+        },
+        "tool_output_bytes": 1115508,
+        "hook_text_bytes": 8483,
+        "input_per_response_p50": 129423,
+        "input_per_response_p95": 191909,
+        "new_context_calls": 0,
+        "fresh_threads": 2,
+        "oracle": {
+          "status": "PASS",
+          "passed": 20,
+          "expected": 20,
+          "reasons": []
+        },
+        "measurement_sha256": "d7d8c5fdc911e6a9dc617824c87af26042f02f912547df0b9246b4ac69877205"
+      },
+      {
+        "id": "pilot-002",
+        "variant": "historical",
+        "status": "WORKFLOW_PASS",
+        "accepted": true,
+        "reasons": [],
+        "seconds": 2259.255,
+        "responses": 92,
+        "input_tokens": 11375996,
+        "cached_input_tokens": 10985344,
+        "output_tokens": 41768,
+        "reasoning_output_tokens": 4999,
+        "uncached_input_tokens": 390652,
+        "cli_calls": 96,
+        "coordinator_cli_calls": 6,
+        "model_cli_span_seconds_sum": 627.548,
+        "coordinator_cli_span_seconds_sum": 38.864000000000004,
+        "cli_p50_seconds": 5.681,
+        "cli_p95_seconds": 12.035499999999999,
+        "cli_counts": {
+          "runtime pre-write-admit": 18,
+          "runtime artifact-store": 3,
+          "runtime artifact-fetch": 6,
+          "codex run-json-hook": 13,
+          "runtime db-first-artifact": 44,
+          "runtime project-runtime-state": 5,
+          "codex hydrate-context": 4,
+          "runtime sync-db-first-selective": 2,
+          "runtime handoff-admit": 1
+        },
+        "tool_output_bytes": 1138323,
+        "hook_text_bytes": 8163,
+        "input_per_response_p50": 131957.5,
+        "input_per_response_p95": 179750.4,
+        "new_context_calls": 0,
+        "fresh_threads": 2,
+        "oracle": {
+          "status": "PASS",
+          "passed": 20,
+          "expected": 20,
+          "reasons": []
+        },
+        "measurement_sha256": "95615fbc57aa35db393487292077f1cd1fb6fb7b8ba207b4f46e0a05fc3dadc1"
+      },
+      {
+        "id": "pilot-003",
+        "variant": "historical",
+        "status": "WORKFLOW_PASS",
+        "accepted": true,
+        "reasons": [],
+        "seconds": 2144.218,
+        "responses": 86,
+        "input_tokens": 10930148,
+        "cached_input_tokens": 10519040,
+        "output_tokens": 42546,
+        "reasoning_output_tokens": 4021,
+        "uncached_input_tokens": 411108,
+        "cli_calls": 91,
+        "coordinator_cli_calls": 6,
+        "model_cli_span_seconds_sum": 550.795,
+        "coordinator_cli_span_seconds_sum": 34.422,
+        "cli_p50_seconds": 5.227,
+        "cli_p95_seconds": 11.352,
+        "cli_counts": {
+          "runtime pre-write-admit": 17,
+          "runtime artifact-store": 4,
+          "runtime artifact-fetch": 7,
+          "runtime project-runtime-state": 4,
+          "runtime db-first-artifact": 37,
+          "codex run-json-hook": 14,
+          "codex hydrate-context": 4,
+          "runtime sync-db-first-selective": 3,
+          "runtime handoff-admit": 1
+        },
+        "tool_output_bytes": 1146608,
+        "hook_text_bytes": 8273,
+        "input_per_response_p50": 137267.5,
+        "input_per_response_p95": 199929.75,
+        "new_context_calls": 0,
+        "fresh_threads": 2,
+        "oracle": {
+          "status": "PASS",
+          "passed": 20,
+          "expected": 20,
+          "reasons": []
+        },
+        "measurement_sha256": "90058d4ddc9fd9a26c8cfe105c6427094ddf88ea31d08225e23dfcc00e3ebe4b"
+      },
+      {
+        "id": "pilot-004",
+        "variant": "compact",
+        "status": "WORKFLOW_PASS",
+        "accepted": true,
+        "reasons": [],
+        "seconds": 2346.151,
+        "responses": 73,
+        "input_tokens": 13505068,
+        "cached_input_tokens": 12972800,
+        "output_tokens": 45476,
+        "reasoning_output_tokens": 6708,
+        "uncached_input_tokens": 532268,
+        "cli_calls": 107,
+        "coordinator_cli_calls": 6,
+        "model_cli_span_seconds_sum": 616.4290000000001,
+        "coordinator_cli_span_seconds_sum": 34.553,
+        "cli_p50_seconds": 5.055,
+        "cli_p95_seconds": 10.8057,
+        "cli_counts": {
+          "runtime pre-write-admit": 20,
+          "runtime artifact-store": 4,
+          "runtime artifact-fetch": 6,
+          "runtime db-first-artifact": 48,
+          "codex run-json-hook": 13,
+          "runtime project-runtime-state": 6,
+          "codex hydrate-context": 4,
+          "runtime sync-db-first-selective": 5,
+          "runtime handoff-admit": 1
+        },
+        "tool_output_bytes": 1021212,
+        "hook_text_bytes": 8683,
+        "input_per_response_p50": 148154,
+        "input_per_response_p95": 340646.6,
+        "new_context_calls": 0,
+        "fresh_threads": 2,
+        "oracle": {
+          "status": "PASS",
+          "passed": 20,
+          "expected": 20,
+          "reasons": []
+        },
+        "measurement_sha256": "42c2a8ce8306f6a2fbeb19e2d131f9e37d94e5783d1349ef1a5cf80deeff2c16"
+      }
+    ],
+    "groups": {
+      "historical": {
+        "allocated": 2,
+        "executed": 2,
+        "qualified": 2,
+        "failed": 0,
+        "successful_task_cost_statistics": {
+          "seconds": {
+            "n": 2,
+            "mean": 2201.7365,
+            "min": 2144.218,
+            "max": 2259.255,
+            "p50": 2201.7365,
+            "p95": 2253.50315,
+            "sample_stddev": 81.34344278735705
+          },
+          "responses": {
+            "n": 2,
+            "mean": 89,
+            "min": 86,
+            "max": 92,
+            "p50": 89,
+            "p95": 91.7,
+            "sample_stddev": 4.242640687119285
+          },
+          "input_tokens": {
+            "n": 2,
+            "mean": 11153072,
+            "min": 10930148,
+            "max": 11375996,
+            "p50": 11153072,
+            "p95": 11353703.6,
+            "sample_stddev": 315262.1441784598
+          },
+          "cached_input_tokens": {
+            "n": 2,
+            "mean": 10752192,
+            "min": 10519040,
+            "max": 10985344,
+            "p50": 10752192,
+            "p95": 10962028.8,
+            "sample_stddev": 329726.7204944119
+          },
+          "uncached_input_tokens": {
+            "n": 2,
+            "mean": 400880,
+            "min": 390652,
+            "max": 411108,
+            "p50": 400880,
+            "p95": 410085.2,
+            "sample_stddev": 14464.576315952016
+          },
+          "output_tokens": {
+            "n": 2,
+            "mean": 42157,
+            "min": 41768,
+            "max": 42546,
+            "p50": 42157,
+            "p95": 42507.1,
+            "sample_stddev": 550.129075763134
+          },
+          "reasoning_output_tokens": {
+            "n": 2,
+            "mean": 4510,
+            "min": 4021,
+            "max": 4999,
+            "p50": 4510,
+            "p95": 4950.1,
+            "sample_stddev": 691.5504320004435
+          },
+          "cli_calls": {
+            "n": 2,
+            "mean": 93.5,
+            "min": 91,
+            "max": 96,
+            "p50": 93.5,
+            "p95": 95.75,
+            "sample_stddev": 3.5355339059327378
+          },
+          "model_cli_span_seconds_sum": {
+            "n": 2,
+            "mean": 589.1714999999999,
+            "min": 550.795,
+            "max": 627.548,
+            "p50": 589.1714999999999,
+            "p95": 623.71035,
+            "sample_stddev": 54.27256677641111
+          },
+          "tool_output_bytes": {
+            "n": 2,
+            "mean": 1142465.5,
+            "min": 1138323,
+            "max": 1146608,
+            "p50": 1142465.5,
+            "p95": 1146193.75,
+            "sample_stddev": 5858.379682130546
+          }
+        }
+      },
+      "compact": {
+        "allocated": 2,
+        "executed": 2,
+        "qualified": 2,
+        "failed": 0,
+        "successful_task_cost_statistics": {
+          "seconds": {
+            "n": 2,
+            "mean": 2421.4539999999997,
+            "min": 2346.151,
+            "max": 2496.757,
+            "p50": 2421.4539999999997,
+            "p95": 2489.2267,
+            "sample_stddev": 106.49452388738133
+          },
+          "responses": {
+            "n": 2,
+            "mean": 82,
+            "min": 73,
+            "max": 91,
+            "p50": 82,
+            "p95": 90.1,
+            "sample_stddev": 12.727922061357855
+          },
+          "input_tokens": {
+            "n": 2,
+            "mean": 12715893,
+            "min": 11926718,
+            "max": 13505068,
+            "p50": 12715893,
+            "p95": 13426150.5,
+            "sample_stddev": 1116061.9880857873
+          },
+          "cached_input_tokens": {
+            "n": 2,
+            "mean": 12251072,
+            "min": 11529344,
+            "max": 12972800,
+            "p50": 12251072,
+            "p95": 12900627.2,
+            "sample_stddev": 1020677.5259444092
+          },
+          "uncached_input_tokens": {
+            "n": 2,
+            "mean": 464821,
+            "min": 397374,
+            "max": 532268,
+            "p50": 464821,
+            "p95": 525523.3,
+            "sample_stddev": 95384.46214137814
+          },
+          "output_tokens": {
+            "n": 2,
+            "mean": 44619,
+            "min": 43762,
+            "max": 45476,
+            "p50": 44619,
+            "p95": 45390.3,
+            "sample_stddev": 1211.9810229537425
+          },
+          "reasoning_output_tokens": {
+            "n": 2,
+            "mean": 6213,
+            "min": 5718,
+            "max": 6708,
+            "p50": 6213,
+            "p95": 6658.5,
+            "sample_stddev": 700.035713374682
+          },
+          "cli_calls": {
+            "n": 2,
+            "mean": 108.5,
+            "min": 107,
+            "max": 110,
+            "p50": 108.5,
+            "p95": 109.85,
+            "sample_stddev": 2.1213203435596424
+          },
+          "model_cli_span_seconds_sum": {
+            "n": 2,
+            "mean": 653.8010000000002,
+            "min": 616.4290000000001,
+            "max": 691.1730000000001,
+            "p50": 653.8010000000002,
+            "p95": 687.4358000000001,
+            "sample_stddev": 52.851989253007325
+          },
+          "tool_output_bytes": {
+            "n": 2,
+            "mean": 1068360,
+            "min": 1021212,
+            "max": 1115508,
+            "p50": 1068360,
+            "p95": 1110793.2,
+            "sample_stddev": 66677.34103876668
+          }
+        }
+      }
+    },
+    "mean_deltas": {
+      "seconds": {
+        "historical_mean": 2201.7365,
+        "compact_mean": 2421.4539999999997,
+        "compact_change_percent": 9.979282261978195
+      },
+      "responses": {
+        "historical_mean": 89,
+        "compact_mean": 82,
+        "compact_change_percent": -7.86516853932584
+      },
+      "input_tokens": {
+        "historical_mean": 11153072,
+        "compact_mean": 12715893,
+        "compact_change_percent": 14.012471182827468
+      },
+      "cached_input_tokens": {
+        "historical_mean": 10752192,
+        "compact_mean": 12251072,
+        "compact_change_percent": 13.940227257846583
+      },
+      "uncached_input_tokens": {
+        "historical_mean": 400880,
+        "compact_mean": 464821,
+        "compact_change_percent": 15.950159648772711
+      },
+      "output_tokens": {
+        "historical_mean": 42157,
+        "compact_mean": 44619,
+        "compact_change_percent": 5.840074009061369
+      },
+      "reasoning_output_tokens": {
+        "historical_mean": 4510,
+        "compact_mean": 6213,
+        "compact_change_percent": 37.76053215077606
+      },
+      "cli_calls": {
+        "historical_mean": 93.5,
+        "compact_mean": 108.5,
+        "compact_change_percent": 16.042780748663098
+      },
+      "model_cli_span_seconds_sum": {
+        "historical_mean": 589.1714999999999,
+        "compact_mean": 653.8010000000002,
+        "compact_change_percent": 10.96955640250763
+      },
+      "tool_output_bytes": {
+        "historical_mean": 1142465.5,
+        "compact_mean": 1068360,
+        "compact_change_percent": -6.486454076731418
+      }
+    },
+    "default_adoption": "WITHDRAWN_IN_SOURCE",
+    "current_nominal_procedure": "Compatible previous admission/hook source assets restored; explicit compact APIs retained",
+    "new_context_function_calls": 0,
+    "fresh_threads_per_task": 2,
+    "model_and_coordinator_cli_calls_all_exit_zero": true,
+    "all_preservation_and_cleanup": true,
+    "view_coverage": {
+      "compact": {
+        "admissions": 45,
+        "agent_admissions": 45,
+        "hooks": 27,
+        "agent_hooks": 27
+      },
+      "historical": {
+        "admissions": 35,
+        "agent_admissions": 0,
+        "hooks": 27,
+        "agent_hooks": 22
+      },
+      "interpretation": "Historical procedure already permits existing opt-in agent views; this is combined nominal adoption, not all-full versus all-compact"
+    }
+  },
+  "current_delivery_disposition": {
+    "complete_application_comparison": "FOUR_QUALIFIED_SAMPLES",
+    "global_performance_target": "NOT_ACHIEVED_IN_AVAILABLE_OBSERVATIONS",
+    "combined_nominal_compact_selector_adoption": "REJECTED_AFTER_MEASURED_TIME_AND_INPUT_REGRESSION",
+    "explicit_compact_interfaces": "RETAINED_WITH_PARITY_TESTS",
+    "bounded_workflow_transaction": "RETAINED_OPT_IN_COLD_TASK_REFUSAL_PRESERVED",
+    "supported_continuation": "ACTUAL_COORDINATOR_AND_TWO_FRESH_THREADS_IN_EACH_TASK; separate ledger research not promoted",
+    "snapshot_and_parse_cache": "RETAINED_INVOCATION_ONLY",
+    "postgres_and_hydration_correctness_fixes": "RETAINED",
+    "next_experiment": "Bounded installed native ordered closure and staged preparation; retain fresh per-write admissions, fences, explicit intent, original deadline and full audit receipts",
+    "new_public_release_or_remote_admission": false,
+    "native_package_after_source_default_withdrawal": "NOT_EXECUTED_NO_EXACT_NEW_PACKAGE_CLAIM",
+    "native_trials_new_work_volume": "G",
+    "host_preflight_temp_exception": "One patch-preparation fixture inherited system TEMP before final correction; its scoped finally cleanup completed. Native trials used G TEMP/TMP. Final verification explicitly uses G TEMP/TMP/npm cache.",
+    "restored_source_validation": {
+      "counts": {
+        "PASS": 7,
+        "FAIL": 0,
+        "SKIP": 0
+      },
+      "result_sha256": "74208a89e63f04220c8c0736df13dc554052a99ab38a967b0d865cf0cef57251",
+      "scope": "Source assets, official installer/renderer, explicit CLI view parity; no new native package claim",
+      "thirteen_skills_and_startup_match_historical_source_bytes": true,
+      "reference_commit": "04753926d342a72af58d415e605aec532cd84d3a",
+      "scratch_and_npm_cache_volume": "G",
+      "patch_preparation_G_replay": {
+        "PASS": 7,
+        "FAIL": 0,
+        "SKIP": 0
+      }
+    },
+    "causal_limit": "Whole package/procedure comparison; neither individual selector nor their exclusive combined contribution among other code changes is isolated"
   }
 }

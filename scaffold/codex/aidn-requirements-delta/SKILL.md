@@ -9,9 +9,7 @@ metadata:
 
 ## Project Activation
 
-Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill requirements-delta --view agent --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
-
-The nominal admission response uses the existing compact agent view. Inspect its actual activation, decision, checks, blockers and observed sources. Expand full diagnostics explicitly only when needed; a view never grants reusable write permission or replaces the complete artifact reads and fresh action admissions below.
+Before loading workflow context or running the steps below, run `aidn runtime pre-write-admit --target . --skill requirements-delta --json`. Continue only when `activation.active` is `true` and `admission_status` is `admitted` or `admitted_with_warnings`.
 
 If activation is absent, false or unknown, stop this skill without loading workflow state or creating artifacts. Report the activation reason; `aidn bootstrap --diagnose --json` is the explicit read-only diagnostic. Do not install or activate the project automatically. A blocked admission allows only the read-only diagnostics it recommends, within the user's scope.
 
@@ -27,7 +25,7 @@ Handle “we revised an old plan” without losing traceability.
 
 ## Pre-Write Admission
 Before the first durable write in this skill, run:
-- `npx aidn runtime pre-write-admit --target . --skill requirements-delta --view agent --json`
+- `npx aidn runtime pre-write-admit --target . --skill requirements-delta --json`
 - If `admission_status` is `blocked`, STOP and continue with read-only re-anchor or repair steps only.
 
 ## When to use
@@ -92,7 +90,7 @@ Rules:
 - keep `repair_layer_status` and `repair_primary_reason` aligned with the latest hydrated/runtime digest when repair context is relevant
 
 8) Performance hook (mandatory in dual/db-only; optional in files):
-- run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --view agent --json`
+- run `npx aidn codex run-json-hook --skill requirements-delta --mode COMMITTING --target . --json`
 - the runtime `aidn-requirements-delta` hook applies ownership/impact admission before delegating to generic checkpoint/index/repair behavior
 - expect machine-visible outcomes such as `continue_same_cycle`, `recommend_new_cycle`, or `stop_choose_cycle_or_branch`
 - state mode is resolved via `.aidn/config.json` (`runtime.stateMode`) or `AIDN_STATE_MODE` (`files|dual|db-only`).

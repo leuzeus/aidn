@@ -14,9 +14,7 @@ Agents MUST:
 
 ## Project Activation Comes First
 
-Before loading workflow context or invoking any AIDN skill, run `aidn runtime pre-write-admit --target . --skill context-reload --view agent --json`. Require `activation.active` to be `true` and `admission_status` to be `admitted` or `admitted_with_warnings`. An installed skill, this file, or a cache does not activate a project.
-
-The nominal admission response uses the existing compact agent view. Inspect its actual activation, decision, checks, blockers and observed sources. Expand full diagnostics explicitly only when needed; a view never grants reusable write permission or replaces the complete artifact reads and fresh action admissions below.
+Before loading workflow context or invoking any AIDN skill, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Require `activation.active` to be `true` and `admission_status` to be `admitted` or `admitted_with_warnings`. An installed skill, this file, or a cache does not activate a project.
 
 If inactive or unknown, stop the AIDN workflow and report the activation reason. `aidn bootstrap --diagnose --json` is the explicit read-only diagnostic; installation or activation requires separate user intent. Do not load workflow state or create workflow artifacts to infer activation.
 

@@ -15,29 +15,29 @@ discovery, native approval and operational qualification are separate claims.
 See [ADR-0011](ADR/ADR-0011-codex-installation-ownership-and-native-boundary.md)
 and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIES.md).
 
-## Nominal compact admission and hook responses
+## Ordinary procedures and explicit compact views
 
-Installed startup and the thirteen skill procedures select the existing compact
-`runtime pre-write-admit --view agent` response by default. It retains actual
-activation, admission, checks, blockers, scope and observed sources. Full CLI
-defaults remain compatible; full diagnostics are an explicit expansion. This
-source-asset change requires installation/upgrade to take effect and does not
-requalify an already frozen package or change native trust.
+Startup and the thirteen managed skills retain their compatible admission
+procedure. The eleven documented hook invocations also retain their ordinary
+view selector. An experiment forced `--view agent` on those admissions and
+hooks; the four qualified trials in
+[the performance report](performance/RUNTIME_OPTIMIZATION_2026-10-25_RESULTS.md)
+found fewer model responses but higher cumulative/uncached inputs and elapsed
+time. That combined default-adoption experiment is withdrawn. The comparison
+does not isolate the individual effects of admission/hook formatting or their
+exclusive contribution among the candidate's other code changes.
 
-The eleven skill procedures that invoke `codex run-json-hook` also select its
-existing `--view agent` response. Inspect the actual overall decision, command
-status, strict/repair findings, advice, synchronization result and raw evidence
-reference. Complete context-file reads, hydration and final nested-hook checks
-remain prescribed by each procedure. Diagnostic expansion explicitly selects
-`--view full`; it does not require another hook execution solely to reformat an
-already retained result. View selection preserves the hook's existing effects
-and does not add a diagnostic receipt write.
+The existing `runtime pre-write-admit --view agent` and
+`codex run-json-hook --view agent` interfaces remain explicit options with their
+same decisions, effects and complete diagnostics. A projection cannot replace
+activation, required authority reads, hydration, strict nested-hook checks or
+fresh write admission. Source asset changes require an installation/upgrade to
+affect a client; a frozen experimental package remains unchanged.
 
-This admission presentation change does not promote the grouped transaction as
-ordinary startup. Activation still precedes workflow loading; all prescribed
-complete artifact reads and fresh action admissions remain necessary. The
-retained native whole-authority fixture exceeds the 64 KiB transaction budget,
-so grouped default adoption and its application-level gains remain open.
+The grouped transaction remains an explicit experiment. The retained cold
+whole-authority fixture exceeds its 64 KiB hard limit; no broad fallback or
+truncation is introduced to make it fit. Warm preparation evidence and the
+ordinary complete application comparison are separate qualifications.
 
 ## Opt-in compact agent views
 
@@ -317,7 +317,7 @@ uses the ordinary consumer and preserves client adoption history.
 
 ## Project activation and skill names
 
-Before loading workflow context, run `aidn runtime pre-write-admit --target . --skill context-reload --view agent --json`. Continue only when `activation.active` is true and admission is admissible. The thirteen public skills now use `aidn-*` names, such as `aidn-context-reload` and `aidn-start-session`; their internal CLI `--skill context-reload` and `--skill start-session` identifiers stay compatible.
+Before loading workflow context, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Continue only when `activation.active` is true and admission is admissible. The thirteen public skills now use `aidn-*` names, such as `aidn-context-reload` and `aidn-start-session`; their internal CLI `--skill context-reload` and `--skill start-session` identifiers stay compatible.
 
 Context reload reconstructs a mode rather than requiring one to exist already.
 An unknown mode remains unknown in the read-only admission output. Activation,
