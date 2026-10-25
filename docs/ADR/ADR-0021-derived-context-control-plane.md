@@ -116,9 +116,7 @@ composition is the nominal entry point, with explicit failure and remediation
 instead of an implicit full fallback. CLI defaults alone do not prove reduced
 native turns or installed procedure adoption.
 
-The profile derives
-known admitted skills' context needs from client-owned accepted adoption data.
-Its `taskContextPolicies` extension declares a stable mandatory minimum and
+The `taskContextPolicies` extension declares a stable mandatory minimum and
 additive per-skill/task obligations. Operation/path labels cannot remove that
 minimum, accept an authority or grant admission. Existing complete Markdown
 selection enforces the accepted unit bindings, scope and dependency closure.

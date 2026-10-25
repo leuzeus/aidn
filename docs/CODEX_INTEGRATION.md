@@ -17,6 +17,13 @@ and the dated [capability evidence](rfc/codex-integration-2026-09-23/CAPABILITIE
 
 ## Opt-in compact agent views
 
+`workflow-step --transaction --skills <known-skills> --json` composes grouped
+consultation, compact.v2, token-efficiency.v1 and transition history in one
+bounded preparation. It is read-only by default and refuses missing accepted
+policy or conflicting full selectors. Its additive preparation descriptor grants
+no write authority; every actual writer still needs current admission and fences.
+It exits nonzero on a blocked result. `--write` alone adds diagnostic retention.
+
 `workflow-step --view agent --grouped --json` additionally opts into one
 invocation-local observation. It evaluates separate admissions and the
 coordinator before hydrating the union of admitted skills once. Blocked skills
@@ -96,8 +103,10 @@ client's adoption revision/history process. A task query such as
 with `--context-task-file <local.json>` (bounded local JSON, at most 64 KiB).
 Rules can also match canonical `modes`, `cycleStates` or the presence of a
 `blocked` skill. They only add obligations; the stable mandatory set remains.
-Unknown skills or missing mappings use historical full selection. Invalid or
-unaccepted declared policies refuse. No client policy is created automatically.
+Unknown skills, absent policies or missing mappings block the bounded route with
+remediation and no hydration. Invalid or unaccepted declared policies refuse.
+There is no implicit full fallback or budget expansion. Explicit full diagnostics
+remain available without this profile. No client policy is created automatically.
 
 The experimental final compact JSON target is 16,384 bytes with a maximum of
 65,536. `--bundle-target-bytes` and `--bundle-hard-limit-bytes` can select smaller

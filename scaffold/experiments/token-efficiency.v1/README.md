@@ -24,4 +24,6 @@ These procedures change scheduling of known consultations and deterministic
 controls. They do not decide a cycle outcome, choose competing work, create an
 accepted context policy, suppress a control or grant reusable write authority.
 Missing complete mandatory context requires explicit expansion. Unknown skills
-keep the full route. Keep the default startup/recovery route available.
+or missing task policies block the bounded route. Explicit full diagnostics
+remain available outside this profile, together with the ordinary startup and
+recovery procedures; never fall back to them silently.
