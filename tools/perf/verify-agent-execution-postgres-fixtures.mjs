@@ -922,15 +922,35 @@ async function runSuite({ connectionString, version, root }) {
     });
     await check("canonical lock wait permits a bounded verifier but refuses unbounded contention",async()=>{
       const context=await seed(), claimed=await claim(context);
-      for(const milliseconds of [2500,5500]){
+      const blocker=(await client.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+      for(const mustReject of [false,true]){
         await client.query("BEGIN");await client.query("LOCK TABLE aidn_runtime.artifacts IN SHARE ROW EXCLUSIVE MODE");
-        let timer;const released=new Promise((resolve,rejectRelease)=>{timer=setTimeout(()=>client.query("COMMIT").then(resolve,rejectRelease),milliseconds);});
+        let renew, released=false, settled=false;
         try {
-          const renew=context.store.renewAttempt(owned(claimed));
-          if(milliseconds===2500)assert.equal((await renew).attempt.attempt_id,claimed.attempt.attempt_id);
-          else await reject(renew,"AGENT_EXECUTION_TRANSACTION_CONFLICT");
-          await released;
-        } finally {clearTimeout(timer);await client.query("ROLLBACK");}
+          renew=context.store.renewAttempt(owned(claimed));
+          renew.then(()=>{settled=true;},()=>{settled=true;});
+          // Start the test's hold interval only after PostgreSQL observes the
+          // actual contested query. Connection/readiness time is not lock wait.
+          const deadline=performance.now()+10000;
+          let observed=false;
+          while(performance.now()<deadline){
+            await client.query('SELECT pg_stat_clear_snapshot()');
+            const row=(await client.query(`SELECT EXISTS(SELECT 1 FROM pg_stat_activity a
+              WHERE $1::integer=ANY(pg_blocking_pids(a.pid))
+                AND a.query LIKE 'LOCK TABLE aidn_runtime.artifacts%') AS blocked`,[blocker])).rows[0];
+            if(row.blocked){observed=true;break;}
+            assert.equal(settled,false,'canonical mutation settled without an observed lock wait');
+            await delay(20);
+          }
+          assert.equal(observed,true,'canonical lock wait must be observed before timing contention');
+          if(!mustReject){
+            await delay(2500);await client.query('COMMIT');released=true;
+            assert.equal((await renew).attempt.attempt_id,claimed.attempt.attempt_id);
+          }else await bounded(reject(renew,"AGENT_EXECUTION_TRANSACTION_CONFLICT"),5500);
+        } finally {
+          if(!released)await client.query("ROLLBACK");
+          if(renew)await bounded(renew.catch(()=>{}),10000);
+        }
       }
     });
     await check("two-process task claim has one attempt and enforces concurrency", async () => {
