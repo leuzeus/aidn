@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { initGitRepo, removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture, prepareNpmActivationFixture, fixtureNpmEnvironment, prepareWorkflowDocumentsFixture, completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
 
 const CI_TRUNCATION_CHARACTER_COUNT = 219264;
@@ -398,7 +398,8 @@ function main() {
     const roleBlockedTarget = path.join(tempRoot, "role-blocked");
     for (const [name, target] of [["ready", readyTarget], ["ready", escalatedTarget], ["ready", resumedTarget], ["warn", roleBlockedTarget]]) {
       const sourceRoot = path.join(handoffFixturesRoot, name);
-      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+      const tracked = createTrackedFixtureFilter(sourceRoot, repoRoot);
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => tracked(source) && isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
     }
     initGitRepo(readyTarget, { workingBranch: "feature/C101-alpha" });
     initGitRepo(escalatedTarget, { workingBranch: "feature/C101-alpha" });

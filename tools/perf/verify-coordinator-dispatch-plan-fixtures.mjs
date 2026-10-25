@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { removePathWithRetry } from "./test-git-fixture-lib.mjs";
+import { removePathWithRetry, createTrackedFixtureFilter } from "./test-git-fixture-lib.mjs";
 import { isActivationFixtureSource, prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
 function parseArgs(argv) {
@@ -91,7 +91,8 @@ function main() {
       [path.join(integrationFixturesRoot, "direct-merge"), directMergeIntegrationTarget], [path.join(integrationFixturesRoot, "integration-cycle"), integrationCycleTarget],
       [path.join(handoffFixturesRoot, "ready"), dbOnlyFilelessTarget],
     ]) {
-      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
+      const tracked = createTrackedFixtureFilter(sourceRoot, repoRoot);
+      fs.cpSync(sourceRoot, target, { recursive: true, filter: (source) => tracked(source) && isActivationFixtureSource(sourceRoot, source, { freshCoordination: true }) });
       prepareActivationFixture(target, repoRoot);
     }
 
