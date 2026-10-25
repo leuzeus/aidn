@@ -738,7 +738,8 @@ async function main() {
       message: String(error.message ?? error),
     };
     const viewIndex = originalArgv.lastIndexOf("--view");
-    if ((parsedArgs?.view ?? (viewIndex >= 0 ? originalArgv[viewIndex + 1] : originalArgv.includes("--transaction") ? "agent" : "full")) === "agent") {
+    if (originalArgv.includes("--transaction")
+        || (parsedArgs?.view ?? (viewIndex >= 0 ? originalArgv[viewIndex + 1] : "full")) === "agent") {
       const targetIndex = originalArgv.lastIndexOf("--target"), candidate = targetIndex < 0 ? "." : originalArgv[targetIndex + 1];
       const target = parsedArgs?.target ?? (candidate && !candidate.startsWith("--") ? candidate : ".");
       const code = String(error.code ?? "").startsWith("WORKFLOW_") ? error.code

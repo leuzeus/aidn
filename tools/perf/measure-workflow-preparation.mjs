@@ -15,6 +15,7 @@ import { parseArgs } from '../codex/workflow-step.mjs';
 import { resolveCliEffectClass } from '../../src/core/cli/effect-policy.mjs';
 import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
 import transactionSchema from '../../src/core/contracts/cli-output/codex-workflow-step-agent-compact.v2.schema.json' with { type: 'json' };
+import errorSchema from '../../src/core/contracts/cli-output/codex-workflow-step-agent-error.v1.schema.json' with { type: 'json' };
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const arg = (name, fallback) => process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : fallback;
@@ -114,6 +115,11 @@ try {
       return JSON.parse(result.stdout);
     };
     const budgetRefusal = refused(['--bundle-target-bytes', '256']);
+    const conflictingView = refused(['--view', 'full']);
+    assert.equal(conflictingView.contract_version, 'codex-workflow-step-agent-error.v1');
+    assert.equal(conflictingView.code, 'WORKFLOW_ARGUMENT_INVALID');
+    assert.equal(conflictingView.write_authorization, false);
+    assert.deepEqual(validateJsonSchema(conflictingView, errorSchema, '$'), []);
     assert.equal(budgetRefusal.bundle_budget.status, 'blocked');
     assert.equal(budgetRefusal.bundle_budget.hard_limit_bytes, 65536);
     assert.equal(refused(['--bundle-hard-limit-bytes', '65537']).code, 'WORKFLOW_STEP_FAILED');
