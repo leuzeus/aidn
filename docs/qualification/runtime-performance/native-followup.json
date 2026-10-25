@@ -939,5 +939,67 @@
     "next_attempt": "Separate fresh G client; fixed declared source/session/cycle branches and immutable exact grant/profile evidence",
     "application_qualified": false,
     "comparative_sample": false
+  },
+  "canonical_preimage_transport_followup": {
+    "closed_attempt": {
+      "status": "FAIL",
+      "execution": "Native Git/session/canonical preparation ran; application implementation not started",
+      "product_verdict": "not_assessed",
+      "native_transport_status": "PASS",
+      "worker_seconds": 272.277,
+      "unique_provider_responses": 10,
+      "input_tokens": 711411,
+      "cached_input_tokens": 613888,
+      "uncached_input_tokens": 97523,
+      "output_tokens": 3497,
+      "reasoning_output_tokens": 285,
+      "canonical_calls": 14,
+      "product_edits": 0,
+      "application_tests": "NOT_EXECUTED",
+      "phase2": "NOT_STARTED",
+      "process_cleanup": "confirmed",
+      "private_postgres_removed": true,
+      "frozen_controls_preserved": true,
+      "protected_configuration": true,
+      "git_preservation": {
+        "status": "PASS",
+        "protected_refs": 11,
+        "changed_refs": 0,
+        "protected_git_files": 115,
+        "changed_git_files": 0
+      },
+      "result_sha256": "5e1bf90ff3307ca2b62781903c9df26ca0e33f64faff55b694b5f086c5a0f336"
+    },
+    "cause": "Benchmark preimage filter accepted only its old MXC label, discarding complete actual app-server receipts; agent then incorrectly continued after an unexecuted invalid proposal and a real strict admission refused unknown mode/freshness",
+    "diagnostic_replay": {
+      "status": "TRANSPORT_FILTER_CAUSE_CONFIRMED",
+      "request_index": 11,
+      "prior_receipts": 11,
+      "complete_preimage_receipt_index": 3,
+      "preimage_sha256": "9320abd84f47c077e0c7494762066e79f59d757fec89827f29d637643ea91a4f",
+      "writes": 0,
+      "failed_attempt_requalified": false,
+      "raw_sha256": "7d75ffad4c634859faa7ef6aac4b590ddb0a2aacd5e64879d9344a15232e7bc4"
+    },
+    "new_control": {
+      "pass": 350,
+      "fail": 0,
+      "skip": 0,
+      "added_cases": 12,
+      "binding": "Explicit selected backend/profile, actual app-server route, pinned CLI entry and generation, genuine released installed-runtime lease and current source-module hash; existing target/backend/full-content/hash/CAS checks retained",
+      "legacy_receipts": "Accepted only in historical/explicit MXC contexts; an elevated phase cannot pass using the old label",
+      "scope": "Read-only observed preimage; never freshness or action permission",
+      "current_status": "Fresh installed pilot running; strict first-cycle admission observed positive, application oracle still open"
+    }
+  },
+  "historical_runtime_baseline_staging": {
+    "status": "BUILT_NOT_NATIVE_QUALIFIED",
+    "source_commit": "04753926d342a72af58d415e605aec532cd84d3a",
+    "version": "0.16.0",
+    "input_files": 1043,
+    "tarball_sha256": "cc87ef837a269d83f6d4b8a73fe83aa8af01ea740772a805c4e87bab72dbf8d0",
+    "source_clean": true,
+    "storage": "permitted non-system volume",
+    "meaning": "Actual pre-optimization dev package; separate from current-candidate historical-composed procedure and unmatched historical native benchmark observations"
   }
 }

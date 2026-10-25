@@ -1035,3 +1035,41 @@ whole-common-directory, all-refs, foreign-namespace and foreign-metadata grants;
 the original network and deny policies survive the inline-profile composition.
 The G control set now passes 338 assertions. Another fresh installed pilot must
 still demonstrate admitted product edits, complete relay/closure and the oracle.
+
+
+### Actual preimage receipts after the transport change
+
+The next pilot passes the Git boundary and creates its session. It then stops
+before product implementation: read-only preparation reports no observed
+canonical CURRENT-STATE preimage, and the agent incorrectly proceeds to a strict
+cycle admission before resolving the unexecuted proposal. The admission correctly
+refuses unknown canonical mode/freshness. No application oracle, product edits
+or second phase executes. The 272.277-second invocation is retained as failed
+integration preparation; its transport PASS does not override the semantic guard.
+The Job, PostgreSQL, frozen controls, principal files and protected Git resources
+are reconciled independently.
+
+A deterministic replay establishes a benchmark adapter defect. The exact
+proposal's complete prior PostgreSQL preimage is already present in captured
+receipt 3, with a verified content SHA. The preimage filter still accepts only
+the old MXC transport label and discards every actual app-server receipt. An
+in-memory diagnostic changing that label alone makes preparation valid; it
+executes no CLI or write and does not rewrite/requalify the failed attempt.
+
+The next separately staged harness recognizes the actual route using the
+explicit selected backend/profile, pinned installed CLI/generation, genuine
+released runtime lease and hash of the lease implementation. The original
+canonical target, PostgreSQL source, complete-text/hash, replacement uniqueness
+and writer admission/CAS checks remain. Legacy labels cannot satisfy an elevated
+phase. Twelve additional controls cover the exact retained proposal and missing,
+foreign or unverifiable lease/entry/source evidence; all 350 assertions pass.
+A new native pilot has subsequently passed strict first-cycle admission. Its
+application and complete workflow results remain open.
+
+For the eventual runtime comparison, the actual pre-optimization dev commit
+`04753926d342a72af58d415e605aec532cd84d3a` is now independently rebuilt from a
+clean G checkout: 1,043 package inputs, version 0.16.0, tarball SHA-256
+`cc87ef837a269d83f6d4b8a73fe83aa8af01ea740772a805c4e87bab72dbf8d0`.
+This is a staged unpublished historical baseline, not native execution evidence.
+It is distinct from running a historical-composed procedure on the current
+candidate and from the older unmatched model/backend observations.
