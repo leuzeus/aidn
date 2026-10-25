@@ -11,7 +11,7 @@ rejected by policy, so the original copies remain inert; the personal Codex
 profile was neither moved nor removed.
 
 The current native application campaign has **no valid comparative samples**.
-The smallest non-system-volume reproduction now fails native physical-path
+The retained MXC non-system-volume reproduction fails native physical-path
 resolution with both the official `:workspace` profile and a custom profile,
 on the same binary, cwd and Node executable. Replaying the historical inherited
 environment pattern also fails. These are separate OS-only executions with no
@@ -1073,3 +1073,65 @@ clean G checkout: 1,043 package inputs, version 0.16.0, tarball SHA-256
 This is a staged unpublished historical baseline, not native execution evidence.
 It is distinct from running a historical-composed procedure on the current
 candidate and from the older unmatched model/backend observations.
+
+
+## Actual application phase and independent review (2026-10-25)
+
+The current local package remains bound to source `10419336b5d98809c4995b16433a3d6f21aca794`
+and archive `aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576`.
+No later evidence-only source commit is substituted for that candidate.
+
+A closed native phase implements the reservation API on the permitted volume.
+Seven actual native patches each carry a positive specific-scope admission;
+51 actual canonical CLI calls succeed, including eleven CAS delta writes.
+All 81 native hooks complete with maximum concurrency one. Fourteen application
+self-tests pass. An independent, owned-process oracle run subsequently passes
+all twenty functional criteria, preserving product files and the principal
+configuration/authentication files. Its process tree closes with zero descendants.
+
+The native phase takes 1,345.938 seconds and exposes forty unique completed
+provider responses: 5,260,145 input tokens, 5,086,336 cached input tokens,
+173,809 uncached input tokens, 31,021 output tokens and 3,606 reasoning output
+tokens. These are reported cumulative response counters, not billed-cost or
+window-residence estimates. This is one phase, not a matched before/after result.
+
+The original parent driver remains **FAIL**: its post-execution checker rejected
+a leading `// @exec` output-limit comment on the otherwise exact prepare/apply
+script. A separate strict validator accepts only the pinned, non-executable
+metadata line before comparing the complete body. It rejects extra keys,
+malformed metadata, altered prepared patches and appended code. Independent
+review of the retained seven scripts, 51 canonical receipts and native scope
+admissions passes. The failed attempt is neither rewritten nor resumed; no
+second phase, final governed closure or comparative sample is inferred.
+
+A separate zero-model canonical-state diagnostic confirms the published cycle
+initialization order: complete the actual session relationship, CURRENT cycle
+pointers and fresh generated runtime digest before asking for another cycle
+admission. The diagnostic's original driver remains FAIL because it expected
+the prose value `fresh` instead of the public enum `ok`; an independently retained
+semantic check verifies the actual positive admission and eight CAS replacements.
+No freshness/repair override or closed-attempt requalification is allowed.
+
+## Native bounded-envelope limitation (2026-10-25)
+
+A zero-model installed-client probe first refuses an unsupported `checkpoint`
+skill identity. Checkpoint remains a runtime action; it is not in the managed
+skill registry. The corrected prospective harness rejects this combination
+before execution. Its 390 assertions pass, including strict patch-script and
+functional-oracle integrity controls.
+
+The fresh two-skill probe (`context-reload,branch-cycle-audit`, COMMITTING) then
+admits both skills and selects the accepted complete six-document authority
+closure, but refuses the final envelope: its mandatory minimum is **70,395
+bytes**, exceeding the explicit 65,536-byte target/hard limit. The refusal
+response is 17,280 bytes and the checkout stays unchanged. This is an observed
+native budget limitation, not a successful transaction sample. No authority is
+truncated, policy weakened, implicit full fallback selected or limit increased.
+The first launcher retry also retains a pre-client preparation failure caused
+by an absent temporary directory; the new directory and all subsequent work
+remain on the permitted volume.
+
+The next discriminating control verifies the coordinator transport separately
+on a fresh, explicitly restored fixture. A fixture relay cannot establish a
+new model implementation, end-to-end gain, default installed-route adoption or
+recovery of the closed failed application attempt.

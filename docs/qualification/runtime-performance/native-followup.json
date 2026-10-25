@@ -1001,5 +1001,119 @@
     "source_clean": true,
     "storage": "permitted non-system volume",
     "meaning": "Actual pre-optimization dev package; separate from current-candidate historical-composed procedure and unmatched historical native benchmark observations"
+  },
+  "actual_application_phase_followup": {
+    "candidate_source": "10419336b5d98809c4995b16433a3d6f21aca794",
+    "candidate_sha256": "aa9b36144e597fdab819f8b042375d84a63a4e2aa6ae62565b34e8c0f4991576",
+    "original_parent_status": "FAIL",
+    "phase_elapsed_seconds": 1345.938,
+    "unique_provider_responses": 40,
+    "tokens": {
+      "input": 5260145,
+      "cached_input": 5086336,
+      "uncached_input": 173809,
+      "output": 31021,
+      "reasoning_output": 3606
+    },
+    "specific_native_patch_admissions": 7,
+    "actual_canonical_calls": 51,
+    "actual_cas_delta_writes": 11,
+    "native_hooks_completed": 81,
+    "maximum_concurrent_hooks": 1,
+    "self_tests_passed": 14,
+    "independent_oracle": {
+      "status": "PASS_APPLICATION_ORACLE",
+      "scope": "Independent application functionality only; the closed native phase remains failed and no phase2/workflow/A-B claim is made",
+      "passed": 20,
+      "expected": 20,
+      "missing": 0,
+      "application_files_preserved": true,
+      "principal_config_preserved": true,
+      "principal_auth_preserved": true,
+      "process_cleanup": "confirmed",
+      "active_descendants": 0,
+      "model_calls": 0
+    },
+    "independent_trace_review_status": "PASS_INDEPENDENT_TRACE_REVIEW",
+    "independent_trace_sha256": "6e81204f9a671575dded252f5c2947c6a46785146c39f1fa5242a2dea0f64510",
+    "original_driver_rewritten": false,
+    "original_attempt_continuation_allowed": false,
+    "phase2": "NOT_EXECUTED",
+    "final_governed_closure": "NOT_EXECUTED",
+    "comparative_sample": false,
+    "default_installed_route_promoted": false
+  },
+  "cold_initialization_semantic_control": {
+    "status": "SEMANTIC_CONTROL_PASS",
+    "original_driver_status": "FAIL",
+    "driver_error": "Diagnostic expected prose label fresh; actual existing public field value is ok",
+    "original_driver_rewritten": false,
+    "actual_cli_calls": 22,
+    "cli_interval_sum_ms": 82701,
+    "before": {
+      "exit_code": 1,
+      "admission": "blocked",
+      "blocking_reasons": [
+        "current state freshness is unknown in DB-backed mode"
+      ]
+    },
+    "after": {
+      "exit_code": 0,
+      "admission": "admitted_with_warnings",
+      "context": {
+        "mode": "COMMITTING",
+        "active_session": "S001",
+        "active_cycle": "C001",
+        "branch_kind": "cycle",
+        "current_state_freshness": "ok",
+        "repair_layer_status": "clean",
+        "dor_state": "NOT_READY"
+      }
+    },
+    "actual_corrective_replacements": 8,
+    "freshness_or_repair_override": false,
+    "model_calls": 0,
+    "product_edits": 0,
+    "native_permission_qualification": false,
+    "closed_native_attempts_requalified": false,
+    "raw_receipts_sha256": "4d4e6fee515ccac63d709b9163b5b12428ed9433936ca4820f8b8cd45d80dc3f",
+    "driver_result_sha256": "c601a1b71109168a8ab9613f44b243928391c85e366a7c9bc812c1fb63b57e6b",
+    "preservation": {
+      "git": {
+        "status": "PASS",
+        "protected_refs": 16,
+        "changed_refs": 0,
+        "protected_git_files": 139,
+        "changed_git_files": 0
+      },
+      "postgres_removed": true,
+      "principal_config_auth_preserved": true
+    }
+  },
+  "native_transaction_budget_probe": {
+    "model_calls": 0,
+    "unsupported_runtime_action_as_skill": "checkpoint explicitly refused; prospective harness corrected",
+    "supported_skills": [
+      "context-reload",
+      "branch-cycle-audit"
+    ],
+    "mode": "COMMITTING",
+    "skill_admissions": "PASS_BOTH",
+    "policy": "accepted whole six-authority closure",
+    "status": "FAIL_BUDGET_EXCEEDED",
+    "mandatory_minimum_bytes": 70395,
+    "target_bytes": 65536,
+    "hard_limit_bytes": 65536,
+    "refusal_response_bytes": 17280,
+    "checkout_unchanged": true,
+    "private_postgres_removed": true,
+    "config_auth_preserved": true,
+    "old_results_rewritten": false,
+    "new_harness_assertions": {
+      "PASS": 390,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "result_sha256": "bb5b249657b58f7d105bba4925c96576e375ca513dd50938d8553ce33a95f78e"
   }
 }
