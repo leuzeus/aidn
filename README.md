@@ -5,6 +5,14 @@ It combines a continuous audit philosophy with an audit-driven control layer, de
 The model structures work through bounded cycles, session discipline, baseline anchoring, snapshot reload, canonical state handling, and clear separation between product specification and project adapter.
 The current runtime baseline also includes admission-first workflow hooks for session start/close, cycle continuity, requirements delta, baseline promotion, spike conversion, explicit multi-agent handoff relays, bounded coordinator/orchestration commands, deterministic project adapter generation, and runtime persistence/shared-coordination operations for SQLite and PostgreSQL-backed deployments.
 
+Sequential host composition may explicitly request an observed reuse decision:
+retain one eligible execution for compatible roles, recommend separation when
+required, or wait without weakening assurance. Execution identity, contributions,
+context provenance and effective rights remain distinct from adapter selection.
+This source/offline capability adds no automatic installed activation, native
+agent launch or performance claim. See
+[ADR-0021](docs/ADR/ADR-0021-sequential-agent-reuse-decision.md).
+
 Start with [installation](docs/INSTALL.md) and [global setup](docs/GLOBAL_SETUP.md):
 install one verified engine for the user, then attach each project explicitly.
 Existing local clients use [the migration guide](docs/UPGRADE.md#move-a-09x-project-to-the-global-engine).

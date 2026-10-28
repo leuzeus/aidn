@@ -286,7 +286,7 @@ const METADATA_POLICIES = freezeDeep([
     required: ["record_id", "agent_id", "action", "status", "created_at", "source_of_truth", "lifecycle_status"],
     sourceOfTruthConcept: "coordination_records",
     evidenceTargets: ["src/core/ports/shared-coordination-store-port.mjs"],
-    recommended: ["session_id", "cycle_id", "result_ref", "privacy_classification", "retention_policy"],
+    recommended: ["session_id", "cycle_id", "result_ref", "privacy_classification", "retention_policy", "execution_assignment", "assignment_checks"],
     lifecycle: "created -> processed -> archived",
   }),
   policy({

@@ -11,6 +11,10 @@ function buildCoordinationLogEntry(result) {
   lines.push(`execution_status: ${result.execution_status}`);
   lines.push(`entrypoint: ${result.entrypoint_kind}:${result.entrypoint_name}`);
   lines.push(`goal: ${result.coordinator_recommendation.goal}`);
+  if (result.execution_assignment) {
+    lines.push(`execution_assignment: ${JSON.stringify(result.execution_assignment)}`);
+    lines.push(`assignment_checks: ${JSON.stringify(result.assignment_checks ?? [])}`);
+  }
   lines.push(`preferred_dispatch_source: ${result.preferred_dispatch_source ?? "workflow"}`);
   if (result.shared_planning_candidate?.candidate_ready) {
     lines.push(`shared_planning_candidate: ${result.shared_planning_candidate.next_dispatch_scope} + ${result.shared_planning_candidate.next_dispatch_action}`);
@@ -56,6 +60,8 @@ function buildCoordinationHistoryEvent(result) {
     shared_planning_next_dispatch_action: result.shared_planning_candidate?.next_dispatch_action ?? "none",
     stop_required: Boolean(result.coordinator_recommendation.stop_required),
     executed: Boolean(result.executed),
+    ...(result.execution_assignment ? { execution_assignment: structuredClone(result.execution_assignment),
+      assignment_checks: structuredClone(result.assignment_checks ?? []) } : {}),
     executed_steps: Array.isArray(result.executed_steps)
       ? result.executed_steps.map((step) => ({
         label: step.label,
