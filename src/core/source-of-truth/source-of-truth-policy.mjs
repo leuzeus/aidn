@@ -230,7 +230,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain shared records under the configured shared coordination policy",
     migration: "use explicit shared coordination backup, migrate or restore commands",
     replacement: "legacy shared rows may be upserted and do not establish immutable attempt evidence; execution_events have a separate append-only contract",
-    evidence_targets: ["src/core/ports/shared-coordination-store-port.mjs"],
+    evidence_targets: ["src/core/ports/shared-coordination-store-port.mjs", "src/core/agents/agent-reuse-policy.mjs", "src/application/runtime/agent-reuse-decision-service.mjs"],
   },
   execution_run: {
     owner: "supervising coordinator",

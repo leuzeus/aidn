@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.18.0 (2026-10-27)
+
+- Add opt-in sequential host decisions to reuse an eligible execution,
+  recommend separation or wait. Keep execution identity distinct from adapter
+  scoring, logical roles and session labels. Ordinary CLI callers do not opt in.
+- Require bounded authenticated observations of scope, revision, artifact,
+  criteria, assurance, context provenance and effective rights. Missing authority
+  waits; no production native authority or persistent agent pool is supplied.
+- Preserve contributor and lineage exclusions for independent review, required
+  context isolation, protected verdict authority and existing write admissions.
+  Refresh eligibility before each command and retain the initial observations,
+  first refusal, changed identities and partial execution evidence.
+- Extend closed context-resilience coverage with one explicit agent-reuse
+  verifier while preserving all 43 historical invocations, argv and order.
+  Reject omissions, duplicates, changed arguments and incorrect placement.
+- Retain the independent review of the source and correction, plus 34 offline
+  functional assertions and catalog mutation checks. Native identity, OS
+  confinement, actual persistent reuse and end-to-end tokens/time benefits remain
+  unqualified. Publication does not activate the feature in installed clients.
+
 ## 0.17.0 (2026-10-25)
 
 - Add explicit bounded workflow-transaction preparation, invocation-local

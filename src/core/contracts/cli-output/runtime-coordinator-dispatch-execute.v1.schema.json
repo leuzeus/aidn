@@ -36,6 +36,386 @@
     "dispatch_execute_diagnostic"
   ],
   "properties": {
+    "execution_assignment": {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "policy",
+        "decision",
+        "reason_code",
+        "request_sha256",
+        "observation_sha256",
+        "authority_id",
+        "observation_id",
+        "execution_id",
+        "agent_id",
+        "lineage_id",
+        "session_id",
+        "adapter_id",
+        "role",
+        "action",
+        "contribution_sha256",
+        "evidence_refs",
+        "rejected",
+        "write_authorization",
+        "native_qualification"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "agent-reuse-decision.v1"
+        },
+        "policy": {
+          "const": "sequential-agent-reuse.v1"
+        },
+        "decision": {
+          "enum": [
+            "reuse",
+            "separate",
+            "wait"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z_]+$",
+          "maxLength": 96
+        },
+        "request_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "observation_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "authority_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "observation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "execution_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "agent_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "lineage_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "session_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "adapter_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "role": {
+          "enum": [
+            "coordinator",
+            "executor",
+            "auditor",
+            "repair",
+            null
+          ]
+        },
+        "action": {
+          "enum": [
+            "reanchor",
+            "implement",
+            "audit",
+            "analyze",
+            "repair",
+            "relay",
+            "close",
+            "coordinate",
+            null
+          ]
+        },
+        "contribution_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "rejected": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": [
+              "execution_id",
+              "reason_code"
+            ],
+            "properties": {
+              "execution_id": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "reason_code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z_]+$"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "write_authorization": {
+          "const": false
+        },
+        "native_qualification": {
+          "const": "NOT_PROVEN"
+        }
+      },
+      "additionalProperties": false
+    },
+    "assignment_checks": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "required": [
+          "contract_version",
+          "policy",
+          "decision",
+          "reason_code",
+          "request_sha256",
+          "observation_sha256",
+          "authority_id",
+          "observation_id",
+          "execution_id",
+          "agent_id",
+          "lineage_id",
+          "session_id",
+          "adapter_id",
+          "role",
+          "action",
+          "contribution_sha256",
+          "evidence_refs",
+          "rejected",
+          "write_authorization",
+          "native_qualification"
+        ],
+        "properties": {
+          "contract_version": {
+            "const": "agent-reuse-decision.v1"
+          },
+          "policy": {
+            "const": "sequential-agent-reuse.v1"
+          },
+          "decision": {
+            "enum": [
+              "reuse",
+              "separate",
+              "wait"
+            ]
+          },
+          "reason_code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z_]+$",
+            "maxLength": 96
+          },
+          "request_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "observation_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "authority_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256
+          },
+          "observation_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256
+          },
+          "execution_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256
+          },
+          "agent_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256
+          },
+          "lineage_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256
+          },
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256
+          },
+          "adapter_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256
+          },
+          "role": {
+            "enum": [
+              "coordinator",
+              "executor",
+              "auditor",
+              "repair",
+              null
+            ]
+          },
+          "action": {
+            "enum": [
+              "reanchor",
+              "implement",
+              "audit",
+              "analyze",
+              "repair",
+              "relay",
+              "close",
+              "coordinate",
+              null
+            ]
+          },
+          "contribution_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "required": [
+                "ref",
+                "sha256"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "rejected": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "required": [
+                "execution_id",
+                "reason_code"
+              ],
+              "properties": {
+                "execution_id": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "reason_code": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z_]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "write_authorization": {
+            "const": false
+          },
+          "native_qualification": {
+            "const": "NOT_PROVEN"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "target_root": { "type": "string" },
     "selected_agent": { "type": "object", "additionalProperties": true },
     "coordinator_recommendation": { "type": "object", "additionalProperties": true },

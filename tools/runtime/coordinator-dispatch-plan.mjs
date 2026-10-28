@@ -16,6 +16,7 @@ import {
 import { deriveCoordinatorDispatchPlanDiagnostic } from "../../src/application/runtime/coordinator-diagnostics-lib.mjs";
 import { resolveWorkspaceContext } from "../../src/application/runtime/workspace-resolution-service.mjs";
 import { selectAgentAdapter } from "../../src/core/agents/agent-selection-policy.mjs";
+import { decideAgentReuse } from "../../src/application/runtime/agent-reuse-decision-service.mjs";
 import { computeCoordinatorLoopState } from "./coordinator-loop.mjs";
 import { buildAgentHealthMap, verifyAgentRoster } from "./verify-agent-roster.mjs";
 import {
@@ -589,6 +590,9 @@ export async function computeCoordinatorDispatchPlan({
   agentRosterFile = "docs/audit/AGENT-ROSTER.md",
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  assignmentRequest = null,
+  assignmentAuthority = null,
+  assignmentPhase = "assignment",
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const workspace = resolveWorkspaceContext({
@@ -627,8 +631,12 @@ export async function computeCoordinatorDispatchPlan({
     roster,
     ignoreLoadFailures: true,
   });
+  const requestedAgent = String(agent).trim().toLowerCase() || "auto";
+  const executionAssignment = await decideAgentReuse({ request: assignmentRequest, authority: assignmentAuthority,
+    recommendation: { ...recommendation, mode: loopState.context?.mode }, scope: loopState.scope,
+    requestedAgent, adapters, roster, adapterHealth, phase: assignmentPhase });
   const selection = resolveSelectedAgent({
-    requestedAgent: String(agent).trim().toLowerCase() || "auto",
+    requestedAgent: executionAssignment?.decision === "reuse" ? executionAssignment.adapter_id : requestedAgent,
     recommendation,
     roster,
     adapters,
@@ -675,6 +683,7 @@ export async function computeCoordinatorDispatchPlan({
     sharedPlanning,
     loopState,
     dispatchPlan: dispatch,
+    executionAssignment,
   });
   return {
     ...result,
