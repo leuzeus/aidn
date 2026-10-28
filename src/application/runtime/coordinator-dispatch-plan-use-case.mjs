@@ -304,6 +304,7 @@ export function buildCoordinatorDispatchPlanResult({
   sharedPlanning,
   loopState,
   dispatchPlan,
+  executionAssignment = null,
 } = {}) {
   const dispatch = {
     entrypoint_kind: dispatchPlan.entrypoint_kind,
@@ -390,6 +391,13 @@ export function buildCoordinatorDispatchPlanResult({
   }
 
   const supported = selection.status === "selected" && Boolean(profile);
+  if (executionAssignment && executionAssignment.decision !== "reuse") {
+    dispatch.entrypoint_kind = "manual";
+    dispatch.entrypoint_name = "execution-assignment";
+    dispatch.steps = [];
+    dispatch.commands = [];
+    dispatch.notes.push(`Execution assignment ${executionAssignment.decision}: ${executionAssignment.reason_code}. No executor is launched or rights granted.`);
+  }
   const dispatchStatus = (loopState.loop?.escalation?.level === "user_arbitration_required"
     || recommendedRoleCoverage.status === "blocked"
     || integrationRiskGate.active
@@ -397,10 +405,11 @@ export function buildCoordinatorDispatchPlanResult({
     ? "escalated"
     : (!supported
       ? "unsupported"
-      : (recommendation.stop_required ? "gated" : "ready"));
+      : (recommendation.stop_required || executionAssignment && executionAssignment.decision !== "reuse" ? "gated" : "ready"));
 
   return {
     target_root: targetRoot,
+    ...(executionAssignment ? { execution_assignment: executionAssignment } : {}),
     selected_agent: {
       id: profile?.id ?? "unsupported",
       label: profile?.label ?? "Unsupported Agent",

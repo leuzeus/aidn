@@ -17,6 +17,7 @@ import {
   resolveDbBackedMode,
 } from "./db-first-runtime-view-lib.mjs";
 import { computeCoordinatorDispatchPlan } from "./coordinator-dispatch-plan.mjs";
+import { agentReuseWait } from "../../src/core/agents/agent-reuse-policy.mjs";
 import { projectCoordinationSummary } from "./project-coordination-summary.mjs";
 import { projectMultiAgentStatus } from "./project-multi-agent-status.mjs";
 import {
@@ -265,6 +266,8 @@ async function runCoordinatorDispatch({
   execute = false,
   sharedCoordination = null,
   sharedCoordinationOptions = {},
+  assignmentRequest = null,
+  assignmentAuthority = null,
 } = {}) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot ?? ".");
   const workspace = resolveWorkspaceContext({
@@ -295,6 +298,8 @@ async function runCoordinatorDispatch({
     packetFile,
     agentRosterFile,
     sharedCoordination: sharedCoordinationResolution,
+    assignmentRequest,
+    assignmentAuthority,
   });
   const sharedPlanningCandidate = deriveSharedPlanningCandidate(dispatch);
   const coordinationLogPath = resolveTargetPath(absoluteTargetRoot, coordinationLogFile);
@@ -414,7 +419,7 @@ async function runCoordinatorDispatch({
       multi_agent_status: null,
       coordination_history_appended: false,
       coordination_history_event: null,
-      execution_status: "no_steps",
+      execution_status: dispatch.execution_assignment && dispatch.execution_assignment.decision !== "reuse" ? "gated" : "no_steps",
       executed: false,
       executed_steps: [],
     };
@@ -429,8 +434,33 @@ async function runCoordinatorDispatch({
   });
 
   const executedSteps = [];
+  const assignmentChecks = dispatch.execution_assignment ? [structuredClone(dispatch.execution_assignment)] : [];
   let overallStatus = "executed";
   for (const step of dispatch.steps) {
+    if (dispatch.execution_assignment) {
+      let fresh;
+      try {
+        fresh = await computeCoordinatorDispatchPlan({ targetRoot: absoluteTargetRoot, agent, currentStateFile,
+          runtimeStateFile, packetFile, agentRosterFile, sharedCoordination: sharedCoordinationResolution,
+          assignmentRequest, assignmentAuthority, assignmentPhase: "before_step" });
+      } catch { fresh = { execution_assignment: agentReuseWait("ASSIGNMENT_RECHECK_FAILED", assignmentRequest) }; }
+      const checked = fresh.execution_assignment;
+      const sameExecutor = fresh.dispatch_status === "ready" && checked?.decision === "reuse"
+        && ["request_sha256", "authority_id", "execution_id", "agent_id", "lineage_id", "session_id", "adapter_id"]
+          .every(key => checked[key] === dispatch.execution_assignment[key]);
+      const retained = !checked ? agentReuseWait("ASSIGNMENT_RECHECK_FAILED", assignmentRequest)
+        : !sameExecutor && checked.decision === "reuse"
+          ? { ...checked, decision: "wait", reason_code: fresh.dispatch_status !== "ready"
+            ? "DISPATCH_PRECONDITION_CHANGED" : "EXECUTION_BINDING_CHANGED" }
+          : checked;
+      assignmentChecks.push(retained);
+      if (!sameExecutor) {
+        overallStatus = "gated";
+        dispatch.dispatch_status = "gated";
+        dispatch.execution_assignment = retained;
+        break;
+      }
+    }
     const result = agentAdapter.runCommand({
       cwd: absoluteTargetRoot,
       command: step.command,
@@ -457,6 +487,7 @@ async function runCoordinatorDispatch({
 
   const finalResult = {
     ...dispatch,
+    ...(dispatch.execution_assignment ? { assignment_checks: assignmentChecks } : {}),
     coordination_log_file: coordinationLogPath,
     coordination_summary_file: coordinationSummaryPath,
     coordination_history_file: coordinationHistoryPath,

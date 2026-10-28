@@ -73,6 +73,17 @@ Contract coverage is closed in both directions:
 
 If the payload shape changes, update the schema, the fixture coverage, and the relevant gate in the same change set.
 
+## Internal Agent Reuse Decision
+
+ADR-0021 adds the closed nested `agent-reuse-decision.v1` contract under
+`src/core/contracts/agent-reuse/`. Sequential dispatch plan/execute v1 roots may
+include `execution_assignment`; executed checks retain the same shape. These
+optional fields distinguish execution identity from adapter selection and never
+grant writes or native qualification. Legacy CLI calls do not opt in. Internal
+request/observation guards and authority composition are specified in ADR-0021;
+authored JSON alone is not evidence. No new root CLI case or persistent authority
+is introduced.
+
 ## Internal Shadow Workflow Definition
 
 ADR-0020 exposes the experimental `runtime-workflow-inspect.v1`,

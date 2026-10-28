@@ -627,6 +627,10 @@ separate DB-first write operation; a successful admission does not create them.
 - `aidn runtime coordinator-loop --json`
 - `aidn runtime coordinator-dispatch-plan --json`
 - `aidn runtime coordinator-dispatch-execute --json`
+    - sequential host composition can explicitly supply an observed reuse
+      request and authority. Optional assignment decisions keep execution IDs
+      separate from adapter IDs; separation/wait never launches an agent.
+      Existing CLI calls have no implicit opt-in or new effect (ADR-0021).
   - with explicit execution, built-in adapters run each child in the resolved
     target worktree; the caller's current directory does not select the child's
     working directory. This is execution context, not a filesystem sandbox.

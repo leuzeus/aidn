@@ -1,5 +1,17 @@
 # Testing Guide
 
+## Sequential agent reuse decisions
+
+`npm run perf:verify-agent-reuse` executes pure policy, authenticated-observation
+port doubles and real sequential consumers with isolated temporary fixtures and
+a no-process command adapter. It covers reuse, separation, missing/foreign
+identity, contributor/lineage exclusion, context provenance, effective permission
+ceilings, stale revisions/criteria, authority timeout, verdict/step revalidation,
+JSON contracts, partial evidence and legacy behavior. The context-coordination
+family includes this focused gate once. Fixture setup writes temporary clients
+only; no installed client/plugin is activated. Native identity, OS isolation,
+persistent agent reuse and tokens/latency benefits remain NOT_PROVEN (ADR-0021).
+
 The runtime-state projector fixtures validate its public JSON contract in
 `files`, `dual` and `db-only` modes. Files mode reports `shared_state_backend:
 null`; default/explicit reads and preview remain read-only, while explicit
