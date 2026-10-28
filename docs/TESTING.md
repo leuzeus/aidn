@@ -12,6 +12,15 @@ family includes this focused gate once. Fixture setup writes temporary clients
 only; no installed client/plugin is activated. Native identity, OS isolation,
 persistent agent reuse and tokens/latency benefits remain NOT_PROVEN (ADR-0021).
 
+The closed context-resilience authority retains all 43 historical invocations
+and their argv/order. An explicit addition places the agent-reuse verifier once
+at the start of the coordination group, for 44 invocations in the manual wrapper.
+`node tools/verify/verify-gate-catalog.mjs` checks this exact extension and rejects
+omission or duplication of every invocation, altered addition argv/placement,
+group routing/obligation changes and wrapper duplication. Its Git-fetch and
+PostgreSQL prerequisite probes use injected doubles; this catalog check does not
+perform network fetches, start PostgreSQL or run the catalog's native gates.
+
 The runtime-state projector fixtures validate its public JSON contract in
 `files`, `dual` and `db-only` modes. Files mode reports `shared_state_backend:
 null`; default/explicit reads and preview remain read-only, while explicit

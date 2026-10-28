@@ -1,6 +1,8 @@
 // Coverage authority for splitting the 43-command context-resilience chain
 // recorded at 5f768d3. Keep argv and order explicit: package script names alone
 // cannot prove that a renamed, nested or shortened group retains its coverage.
+// Keep this historical list intact; explicit additions below extend coverage
+// without making any historical invocation, argv or ordering optional.
 const REQUIRED_INVOCATIONS = Object.freeze([
   "node tools/perf/verify-reanchor-template.mjs",
   "node tools/perf/verify-current-state-skill-coverage.mjs --root scaffold/codex",
@@ -58,6 +60,16 @@ const GROUPS = Object.freeze([
   script: `perf:verify-context-${group.name}`,
 })));
 const WRAPPER = "perf:verify-context-resilience";
+const GROUP_ADDITIONS = Object.freeze({
+  coordination: Object.freeze(["node tools/perf/verify-agent-reuse-fixtures.mjs"]),
+});
+
+function expectedGroupInvocations(group) {
+  return [
+    ...(GROUP_ADDITIONS[group.name] ?? []),
+    ...REQUIRED_INVOCATIONS.slice(group.start, group.end),
+  ];
+}
 
 // The governed scripts use a deliberately small grammar: blocking && chains
 // of literal node argv or npm run references. Shell fallbacks, conditions and
@@ -111,12 +123,16 @@ export function validateContextResiliencePolicy({ catalog, packageJson }) {
   if (scripts[WRAPPER] !== expectedWrapper) {
     issues.push(`${WRAPPER}: manual wrapper must invoke the four groups once in order`);
   }
-  for (const group of [...GROUPS, { script: WRAPPER, start: 0, end: 43 }]) {
+  const coverageChecks = GROUPS.map((group) => ({
+    script: group.script,
+    expected: expectedGroupInvocations(group),
+  }));
+  coverageChecks.push({ script: WRAPPER, expected: GROUPS.flatMap(expectedGroupInvocations) });
+  for (const { script, expected } of coverageChecks) {
     try {
-      const actual = expandScript(scripts, group.script);
-      const expected = REQUIRED_INVOCATIONS.slice(group.start, group.end);
+      const actual = expandScript(scripts, script);
       if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-        issues.push(`${group.script}: ordered invocation coverage or argv changed`);
+        issues.push(`${script}: ordered invocation coverage or argv changed`);
       }
     } catch (error) {
       issues.push(error.message);

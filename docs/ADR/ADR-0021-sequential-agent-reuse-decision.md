@@ -118,3 +118,26 @@ Rollback: stop supplying the opt-in dependencies and retain records, without
 bypassing required review/isolation. ADR-0014 executor-instance checks, native
 task lifecycle/sandbox, existing admissions and closed audit validations remain
 unchanged. No installed client/plugin, old proof or Windows state is modified.
+
+## Gate integration follow-up
+
+Independent review of `4ba1821` returned REQUEST_CHANGES: the new coordination
+invocation was not included in the closed context-resilience coverage authority.
+The complete offline catalog verifier reproduced exit 1 with two ordered-coverage
+errors and two failed positive probes. That review and the initial commit remain
+historical evidence; the later correction does not replace their results.
+
+The correction keeps the 43 historical invocation literals, argv and order
+unchanged. A separate frozen addition declares the agent-reuse verifier at the
+start of coordination. Each group and the manual wrapper are still compared to
+an exact ordered list: 43 historical invocations plus this one addition. Routing,
+required obligations, wrapper ordering, duplicate-gate and npm lifecycle rules
+retain their previous checks. No package script or gate obligation is removed.
+
+The complete offline catalog verifier passes after this correction, including
+the original positive/negative checks, equivalent nested invocation of the new
+verifier, rejection of its omission/duplication/argv/position changes and removal
+or duplication of each of the 44 invocations. The 34 agent-reuse assertions and
+documentation-reference checks also pass; the checks leave the checkout
+unchanged. These are source and fixture results, not an independent acceptance
+verdict, full CI admission, native qualification or installed activation.

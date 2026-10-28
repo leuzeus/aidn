@@ -226,14 +226,19 @@ function contextPolicyProbe(mutate) {
   return validateContextResiliencePolicy(candidate);
 }
 const admissionGroup = "perf:verify-context-admission";
-function nestFirstContextInvocation(candidate, duplicate = false) {
-  const commands = candidate.packageJson.scripts[admissionGroup].split(" && ");
+const coordinationGroup = "perf:verify-context-coordination";
+const reuseInvocation = "node tools/perf/verify-agent-reuse-fixtures.mjs";
+function nestFirstContextInvocation(candidate, duplicate = false, group = admissionGroup) {
+  const commands = candidate.packageJson.scripts[group].split(" && ");
   const first = commands.shift();
   candidate.packageJson.scripts["fixture:context-leaf"] = duplicate ? `${first} && ${first}` : first;
-  candidate.packageJson.scripts[admissionGroup] = ["npm run fixture:context-leaf", ...commands].join(" && ");
+  candidate.packageJson.scripts[group] = ["npm run fixture:context-leaf", ...commands].join(" && ");
 }
 const contextPositiveProbes = {
   current_43_invocations_preserved: contextPolicyProbe(() => {}).length === 0,
+  agent_reuse_addition_equivalent_transitive_accepted: contextPolicyProbe((candidate) => {
+    nestFirstContextInvocation(candidate, false, coordinationGroup);
+  }).length === 0,
   equivalent_transitive_invocation_accepted: contextPolicyProbe((candidate) => {
     nestFirstContextInvocation(candidate);
   }).length === 0,
@@ -242,6 +247,32 @@ for (const [probe, passed] of Object.entries(contextPositiveProbes)) {
   if (!passed) issues.push(`context resilience positive probe failed: ${probe}`);
 }
 const contextNegativeProbes = {
+  context_agent_reuse_omission_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts[coordinationGroup] = candidate.scripts[coordinationGroup].split(" && ")
+      .filter((command) => command !== reuseInvocation).join(" && ");
+  }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
+  context_agent_reuse_duplicate_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts[coordinationGroup] += ` && ${reuseInvocation}`;
+  }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
+  context_agent_reuse_argument_change_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    candidate.scripts[coordinationGroup] = candidate.scripts[coordinationGroup].replace(reuseInvocation, `${reuseInvocation} --json`);
+  }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
+  context_agent_reuse_position_change_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
+    const commands = candidate.scripts[coordinationGroup].split(" && ");
+    commands.push(commands.shift()); candidate.scripts[coordinationGroup] = commands.join(" && ");
+  }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
+  context_every_invocation_omission_rejected: ["admission", "completion", "coordination", "projection"].every((name) => {
+    const script = `perf:verify-context-${name}`, commands = packageJson.scripts[script].split(" && ");
+    return commands.every((_, index) => contextPolicyProbe(({ packageJson: candidate }) => {
+      candidate.scripts[script] = commands.filter((_, position) => position !== index).join(" && ");
+    }).some((issue) => issue.includes("ordered invocation coverage or argv changed")));
+  }),
+  context_every_invocation_duplicate_rejected: ["admission", "completion", "coordination", "projection"].every((name) => {
+    const script = `perf:verify-context-${name}`, commands = packageJson.scripts[script].split(" && ");
+    return commands.every((command) => contextPolicyProbe(({ packageJson: candidate }) => {
+      candidate.scripts[script] = [...commands, command].join(" && ");
+    }).some((issue) => issue.includes("ordered invocation coverage or argv changed")));
+  }),
   context_invocation_omission_rejected: contextPolicyProbe(({ packageJson: candidate }) => {
     candidate.scripts[admissionGroup] = candidate.scripts[admissionGroup].split(" && ").slice(1).join(" && ");
   }).some((issue) => issue.includes("ordered invocation coverage or argv changed")),
