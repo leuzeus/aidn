@@ -144,24 +144,41 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       fs.mkdirSync(output); // wx-style allocation: existing control folder refuses
       const stop = new AbortController(), responseIds = new Set(); let firstFailure = null, retainedBytes = 0, sequence = 0, diagnostics = 0;
       let canonicalPayloadAttempted = 0, canonicalPayloadAcknowledged = 0;
+      let vanishedStorageEntries = 0, storageReadFailure = null;
       const reviewDirectories = [];
-      function diskBytes(file) {
-        if (!fs.existsSync(file)) return 0;
+      function diskBytes(file, required = false) {
         let visited = 0;
-        const count = entry => {
-          if (++visited > 10000) fail("PROCESS_EXECUTION_STORAGE_ENTRY_LIMIT");
-          const stat = fs.lstatSync(entry);
-          if (stat.isSymbolicLink()) fail("PROCESS_EXECUTION_STORAGE_SYMLINK");
-          return stat.isDirectory() ? fs.readdirSync(entry).reduce((sum, name) => sum + count(path.join(entry, name)), 0) : stat.size;
+        const read = (operation, entry, rootEntry) => {
+          try { return fs[operation](entry); }
+          catch (error) {
+            // Live journals may disappear after readdir. Their retained size
+            // is zero; disappearing roots and every other error still refuse.
+            if (error.code === "ENOENT" && (!rootEntry || !required)) {
+              if (!rootEntry) vanishedStorageEntries++;
+              return null;
+            }
+            storageReadFailure ??= { error_code: /^[A-Z][A-Z0-9_]{0,63}$/.test(error.code ?? "") ? error.code : "UNKNOWN",
+              operation, entry_sha256: hash(Buffer.from(entry)), observed_at_ms: Date.now() };
+            fail("PROCESS_EXECUTION_STORAGE_UNVERIFIABLE");
+          }
         };
-        return count(file);
+        const count = (entry, rootEntry = false) => {
+          if (++visited > 10000) fail("PROCESS_EXECUTION_STORAGE_ENTRY_LIMIT");
+          const stat = read("lstatSync", entry, rootEntry);
+          if (stat === null) return 0;
+          if (stat.isSymbolicLink()) fail("PROCESS_EXECUTION_STORAGE_SYMLINK");
+          if (!stat.isDirectory()) return stat.size;
+          const names = read("readdirSync", entry, rootEntry);
+          return names === null ? 0 : names.reduce((sum, name) => sum + count(path.join(entry, name)), 0);
+        };
+        return count(file, true);
       }
       const databaseFiles = persistence.backend === "sqlite" ? ["", "-wal", "-shm"].map(suffix => path.join(targetRoot, ".aidn/runtime/index/workflow-index.sqlite" + suffix)) : [];
-      const baseline = databaseFiles.map(diskBytes);
-      const productBaseline = diskBytes(productRoot);
-      const localUsed = () => diskBytes(output) + reviewDirectories.reduce((sum, directory) => sum + diskBytes(directory), 0)
+      const baseline = databaseFiles.map(file => diskBytes(file));
+      const productBaseline = diskBytes(productRoot, true);
+      const localUsed = () => diskBytes(output, true) + reviewDirectories.reduce((sum, directory) => sum + diskBytes(directory, true), 0)
         + diskBytes(path.join(targetRoot, "docs/audit/workflows/process-instances", config.instance_id + ".json"))
-        + Math.max(0, diskBytes(productRoot) - productBaseline)
+        + Math.max(0, diskBytes(productRoot, true) - productBaseline)
         + databaseFiles.reduce((sum, file, index) => sum + Math.max(0, diskBytes(file) - baseline[index]), 0);
       const used = () => localUsed() + (persistence.backend === "postgres" ? canonicalPayloadAttempted : 0);
       const requestStop = code => { firstFailure ??= code; stop.abort(); };
@@ -313,6 +330,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         workflow_deadline_ms: authorization.workflow_deadline_ms,
         native_parent_closure: closure, process_tree_closure: "OUTER_CONTROLLER_REQUIRED", bytes_retained: retained,
         storage_budget_debit_bytes: debit,
+        storage_observation: { vanished_entries: vanishedStorageEntries, first_read_failure: storageReadFailure },
         consumption: sessions.metrics(),
         provider_consumption: "client-reported only; missing/in-flight counters remain unknown", retry: false };
       // The reserved footer is permitted even after a preventive storage stop.

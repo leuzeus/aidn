@@ -153,6 +153,7 @@ function transport(f, options = {}) {
         await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "final_answer", text: JSON.stringify({ outcome: options.reject && index === 2 ? "rejected" : "completed", summary: "Fixture result." }) } });
         await notify("turn/completed", { threadId: thread, turn: { id: turn, status: "completed" } });
         if (options.unverifiableStorage) fs.symlinkSync(f.base, path.join(f.dirs.control, "case/unverifiable-link"), "junction");
+        if (options.transientStorage) put(f.dirs.control, "case/transient.tmp", "transient");
         return { turn: { id: turn } };
       },
       notify() {}, async flush() {}, async close() { session.closed = true; return { closed: !options.closeFailure }; },
@@ -245,6 +246,35 @@ try {
     assert.equal(result.first_failure, "PROCESS_EXECUTION_CANCELLED"); assert.equal(result.status, "FAILED");
     assert.equal(result.responses_observed, 0); assert.equal(sessions.length, 0); assert.equal(calls.length, 0);
     assert.equal(result.instance_sha256, null);
+  });
+  await check("live metadata disappearance is zero retained bytes; permission errors and missing required roots still stop", async () => {
+    for (const mode of ["child-ENOENT", "child-EACCES", "root-ENOENT"]) {
+      const f = fixture(), output = path.join(f.dirs.control, "case"), transient = path.join(output, "transient.tmp"), original = fs.lstatSync;
+      let injected = false;
+      fs.lstatSync = function(file, ...args) {
+        if (!injected && file === (mode === "root-ENOENT" ? output : transient) && fs.existsSync(transient)) {
+          injected = true;
+          if (mode === "child-ENOENT") fs.unlinkSync(transient);
+          throw Object.assign(Error("fixture metadata race"), { code: mode.endsWith("EACCES") ? "EACCES" : "ENOENT" });
+        }
+        return original.call(this, file, ...args);
+      };
+      try {
+        const { result } = await run(f, { transientStorage: true }); assert.equal(injected, true);
+        if (mode === "child-ENOENT") {
+          assert.equal(result.status, "COMPLETED", JSON.stringify(result)); assert.equal(result.responses_observed, 3);
+          assert.ok(result.storage_observation.vanished_entries >= 1); assert.equal(result.storage_observation.first_read_failure, null);
+        } else {
+          assert.equal(result.first_failure, "PROCESS_EXECUTION_STORAGE_UNVERIFIABLE"); assert.equal(result.status, "FAILED");
+          const diagnostic = result.storage_observation.first_read_failure;
+          assert.equal(diagnostic.error_code, mode.endsWith("EACCES") ? "EACCES" : "ENOENT");
+          assert.equal(diagnostic.operation, "lstatSync"); assert.equal(diagnostic.entry_sha256, sha(Buffer.from(mode === "root-ENOENT" ? output : transient)));
+          assert.ok(Number.isSafeInteger(diagnostic.observed_at_ms)); assert.equal(Object.hasOwn(diagnostic, "path"), false);
+          assert.equal(result.responses_observed, 1); assert.equal(result.consumption.thread_counters.length, 1);
+        }
+        assert.equal(result.native_parent_closure.closed, true);
+      } finally { fs.lstatSync = original; }
+    }
   });
   await check("unverifiable storage retains first failure, known usage and explicit unknown bytes on stdout", async () => {
     const { result } = await run(fixture(), { unverifiableStorage: true });

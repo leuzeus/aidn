@@ -21,6 +21,10 @@ path refusal, cancellation during configuration observation, pre-aborted entry,
 expired pre-turn deadlines, unobservable storage and failed footer writes. These
 retain the first failure and known usage without launching a paid turn or
 turning unknown bytes into zero.
+Live storage fixtures distinguish a listed child disappearing with ENOENT from
+an unreadable child or a missing required root, and verify bounded diagnostics
+and retained consumption on refusal. They do not attribute an earlier native
+failure whose filesystem error was not recorded.
 Keep the existing agent-reuse and workflow-instance regression suites intact.
 The production composition also runs files/dual/db-only over real temporary
 SQLite and over the real PostgreSQL artifact adapter with an offline SQL wire

@@ -235,6 +235,14 @@ or fallback. The resolved backend/reference binding is pinned across the parent,
 worker, reads and writes; changing it requires reconciliation. PostgreSQL being
 unavailable never makes a local SQLite file authoritative.
 
+Live journal children removed between inventory and metadata inspection
+contribute zero retained bytes. Missing required roots, unreadable entries,
+symlinks and entry-count overflow still refuse; missing optional SQLite sidecars
+remain zero. During execution, a failed metadata read retains only its bounded
+error code, operation, path hash and time in the partial result, never a raw path
+or body. A synthetic disappearance check does not establish the cause of an
+earlier native failure lacking those diagnostics.
+
 | Backend | Canonical process state | Concurrency and required controls |
 | --- | --- | --- |
 | SQLite/local files | Files in files mode; SQLite in dual/db-only | Local exclusive lock or transactional CAS; contention/stale locks refuse and require reconciliation. This is not shared supervision authority. |
