@@ -13,6 +13,14 @@ This source/offline capability adds no automatic installed activation, native
 agent launch or performance claim. See
 [ADR-0021](docs/ADR/ADR-0021-sequential-agent-reuse-decision.md).
 
+The opt-in [structured agentic process](docs/AGENTIC_PROCESS.md) adds explicit
+owned native execution: compatible activities can share a live thread while
+independent review receives a fresh read-only context. The host retains control
+of routing, canonical persistence, budgets and cleanup. Its
+[bounded qualification](https://github.com/leuzeus/aidn/blob/v0.19.0/docs/qualification/agentic-process/v0.19.0.md)
+does not establish general native support or a performance gain. Ordinary
+installed workflows are unchanged.
+
 Start with [installation](docs/INSTALL.md) and [global setup](docs/GLOBAL_SETUP.md):
 install one verified engine for the user, then attach each project explicitly.
 Existing local clients use [the migration guide](docs/UPGRADE.md#move-a-09x-project-to-the-global-engine).
@@ -362,7 +370,7 @@ For Windows setup including optional PostgreSQL preparation, follow
 [per-project Windows setup](docs/WINDOWS_PROJECT_SETUP.md) is historical 0.9.x guidance.
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.18.0` source also executes dispatched agent commands in their target
+The `v0.19.0` source also executes dispatched agent commands in their target
 worktree, including Windows paths with spaces and accents. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -444,7 +452,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.18.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.19.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 
