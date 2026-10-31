@@ -10,7 +10,7 @@ export const artifactMetadataHash = artifact => artifactContentHash(JSON.stringi
 ].map(key => [key, artifact?.[key] ?? null]))));
 
 export const isWorkflowRecordArtifactPath = value => typeof value === "string"
-  && /^workflows\/(instances|definitions)\/[a-z][a-z0-9_-]{0,95}\.json$/.test(value);
+  && /^workflows\/(instances|process-instances|definitions)\/[a-z][a-z0-9_-]{0,95}\.json$/.test(value);
 
 // Bulk projections may reproduce a checkpoint, never replace it with a stale
 // visible copy. Only the dedicated CAS writer advances these canonical records.

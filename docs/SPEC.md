@@ -23,6 +23,18 @@ If an agent or user deviates from it, the session is considered **NON-COMPLIANT*
 
 ## System Model
 
+Process participants and roles describe logical responsibilities, not physical
+agent counts. An agent is an identified technical executor; its session, context
+generation, tools and effective permissions are separate properties. A gateway
+routes control tokens and never creates agents by itself. Compatible roles may
+reuse one eligible execution; mandatory independent review excludes contributors
+and requires its declared context, authority and permission guarantees.
+
+The opt-in internal [structured agentic process](AGENTIC_PROCESS.md) implements
+these distinctions with a declared execution profile. It does not reinterpret
+existing workflow instances, replace skill/write admission or activate a native
+executor. Unsupported constructs refuse explicitly.
+
 1. **Audit-Informed Development (Primary Philosophy)**
    - Active before, during, and after implementation.
    - Reduces entropy and scope drift before irreversible decisions.

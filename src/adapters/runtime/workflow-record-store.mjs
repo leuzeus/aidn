@@ -11,19 +11,26 @@ import { workflowInstanceFail as fail } from "../../core/workflow/workflow-insta
 
 // A lock abandoned by process termination is retained for explicit operator
 // reconciliation. Never infer owner death from a PID or automatically replay.
-export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor }) {
+export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, env = process.env, deadlineMs,
+  artifactStoreFactory = createProjectArtifactStore }) {
   const { pathForId, validate, idOf, hashOf, kind } = descriptor;
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   if (!["files", "dual", "db-only"].includes(stateMode)) fail("WORKFLOW_INSTANCE_STATE_MODE_INVALID");
-  const database = stateMode !== "files" || resolveEffectiveRuntimePersistence({ targetRoot: root }).backend === "postgres";
+  const resolution = () => resolveEffectiveRuntimePersistence({ targetRoot: root, env });
+  const binding = value => JSON.stringify([value.backend, value.source, value.connectionRef]);
+  const selected = resolution(), initialBinding = binding(selected);
+  const assertBinding = () => { if (binding(resolution()) !== initialBinding) fail("WORKFLOW_INSTANCE_PERSISTENCE_CHANGED"); };
+  const database = stateMode !== "files" || selected.backend === "postgres";
+  const artifactStore = options => { assertBinding(); return artifactStoreFactory({ targetRoot: root, env, ...(deadlineMs === undefined ? {} : { deadlineMs }), ...options }); };
   const location = id => agentRunPhysicalPath(path.join(root, "docs/audit", pathForId(id)), { missing: true });
   function read(id) {
+    assertBinding();
     let text = null;
     if (!database) {
       const file = location(id);
       if (fs.existsSync(file)) text = readAgentRunFile(file, { json: false }).value.toString("utf8");
     } else {
-      const store = createProjectArtifactStore({ targetRoot: root, readOnly: true });
+      const store = artifactStore({ readOnly: true });
       try { const row = store.getArtifact(pathForId(id));
         if (row && (row.content_format !== "utf8" || typeof row.content !== "string")) fail("WORKFLOW_INSTANCE_ARTIFACT_INVALID");
         text = row?.content ?? null;
@@ -36,11 +43,12 @@ export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor })
   return Object.freeze({
     read,
     compareAndSwap(instance, expectedContentHash) {
+      assertBinding();
       validate(instance);
       const artifact = { path: pathForId(idOf(instance)), kind, family: "runtime",
         content_format: "utf8", content: JSON.stringify(instance) + "\n" };
       if (database) {
-        const store = assertProjectArtifactCompareSwap(createProjectArtifactStore({ targetRoot: root, existingOnly: true }));
+        const store = assertProjectArtifactCompareSwap(artifactStore({ existingOnly: true }));
         try { store.compareAndSwapArtifact({ artifact, expectedSha256: expectedContentHash }); }
         finally { store.close(); }
         // Canonical commit precedes its derived projection. A failed projection

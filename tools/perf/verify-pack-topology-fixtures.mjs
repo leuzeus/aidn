@@ -172,6 +172,7 @@ function inspectPackageDocsAllowlist(files) {
     "docs/INSTALL.md",
     "docs/CODEX_INTEGRATION.md",
     "docs/AGENT_WORKING_MEMORY.md",
+    "docs/AGENTIC_PROCESS.md",
     "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
     "docs/WINDOWS_PROJECT_SETUP.md",

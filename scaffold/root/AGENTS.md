@@ -12,6 +12,26 @@ Agents MUST:
 - treat workflow skills and runtime hooks as the mutating enforcement path
 - use this file for stable startup rules, precedence, and write-stop conditions
 
+## Participants, Roles And Execution Resources
+
+A participant/pool owns a logical process; a role/lane owns an activity's
+responsibility. An agent is an identified executor, with a separate session,
+context and effective permissions. A skill is a reusable procedure. Neither a
+role, a skill, a pool nor a gateway requires creating another agent.
+
+Continue compatible analysis, implementation and coordination in the current
+agent when its capability, context and permissions remain admissible. Use a
+separate resource only for required independent review, required isolation or
+useful concurrency. Do not accumulate earlier roles' permissions. A model call
+is not needed for deterministic routing or waiting for an event.
+
+Independent review excludes contributors and requires the declared input,
+authority and access guarantees. A renamed author, new session or reviewer role
+does not establish those guarantees. A reviewer who edits the reviewed work is
+a contributor; an old verdict cannot approve a new revision automatically.
+Missing eligibility blocks the required review; it never authorizes self-review
+or removes the existing admissions below. No new native client is implied.
+
 ## Project Activation Comes First
 
 Before loading workflow context or invoking any AIDN skill, run `aidn runtime pre-write-admit --target . --skill context-reload --json`. Require `activation.active` to be `true` and `admission_status` to be `admitted` or `admitted_with_warnings`. An installed skill, this file, or a cache does not activate a project.
