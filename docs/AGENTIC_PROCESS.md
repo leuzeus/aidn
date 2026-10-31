@@ -355,6 +355,8 @@ stale revisions, rollback and projection reconciliation are covered. This does
 not prove live PostgreSQL concurrency. It also tests the real RPC parser against
 in-memory pipes. No Codex
 executable, model or network is used by these checks; activation fixtures are
-disposable and do not alter installations. Native policy enforcement, real tree
-cleanup and provider reception remain NOT_RUN. No consumption metric or
-performance benefit is inferred, and closed benchmark lots remain closed.
+disposable and do not alter installations. These fixtures do not qualify native
+policy enforcement, real tree cleanup or provider reception. A separate bounded
+pre-release case observed those paths; its scope, retained failure and remaining
+NOT_RUN limits are in the [qualification record](https://github.com/leuzeus/aidn/blob/v0.19.0/docs/qualification/agentic-process/v0.19.0.md).
+No general performance benefit is inferred, and closed benchmark lots remain closed.

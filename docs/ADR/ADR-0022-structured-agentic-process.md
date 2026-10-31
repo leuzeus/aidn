@@ -3,8 +3,10 @@
 ## Status
 
 Implemented as an opt-in internal source API and explicit owned native
-composition, verified offline. Native execution remains NOT_RUN. No default
-client activation or general BPMN interpreter.
+composition, verified offline. One bounded pre-release Windows native case
+completed; the exact published archive and general native profile remain
+unqualified. See [the qualification record](../qualification/agentic-process/v0.19.0.md).
+No default client activation or general BPMN interpreter.
 
 ## Context
 

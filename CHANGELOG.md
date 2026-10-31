@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.19.0 (2026-10-31)
+
+- Add the opt-in structured agentic process model, deterministic gateway/event/
+  loop semantics and revision-bound resource assignment. Compatible activities
+  can reuse a native thread; independent review receives a fresh read-only
+  context with contributor exclusions and common acceptance criteria.
+- Preserve configured SQLite/PostgreSQL canonical authority, existing CAS and
+  reservation fences without implicit migration or fallback. Keep historical
+  workflow formats, standard installed behavior and PostgreSQL optional.
+- Add owned native execution, exact product snapshots and Windows byte-identical
+  broker publication, absolute deadlines, bounded response/storage accounting
+  and process-tree closure. Preserve first failures, unknown consumption and
+  structured stdout results when storage or sealing becomes unavailable.
+- Correct cancellation before a paid turn, executable occurrence-ID limits and
+  disappearing live metadata entries. Retain unreadable-root, permission,
+  symlink and entry-count refusals and bounded filesystem diagnostics.
+- Recognize the typed canonical process-store adapter in the DB-only readiness
+  source heuristic while retaining operational checks and file-only warnings.
+- Retain the [bounded qualification record](https://github.com/leuzeus/aidn/blob/v0.19.0/docs/qualification/agentic-process/v0.19.0.md):
+  one corrected pre-release Windows case completed with independent machine
+  review and external oracle 20/20; an earlier storage-guard stop remains
+  recorded with in-flight consumption unknown. Historical comparisons are not
+  paired and establish no global, causal or financial gain. The exact published
+  0.19.0 archive is not natively benchmarked by this release, and publication
+  does not activate the opt-in engine in personal installations.
+
 ## 0.18.0 (2026-10-27)
 
 - Add opt-in sequential host decisions to reuse an eligible execution,
