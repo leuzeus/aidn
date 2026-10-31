@@ -22,6 +22,7 @@ const REQUIRED_OBLIGATIONS = Object.freeze({
   "codex-pack-topology": ["dev", "main", "release"],
   "runtime-db-runtime-cli": ["dev", "main", "release"],
   "runtime-agent-execution-contracts": ["dev", "main", "release"],
+  "runtime-agentic-process": ["dev", "main", "release"],
   "runtime-agent-execution-postgres": ["dev", "main", "release"],
   "runtime-agent-worker-fixtures": ["dev", "main", "release"],
   "runtime-agent-execution-scheduler": ["dev", "main", "release"],
@@ -44,6 +45,7 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
   "effects-policy": "perf:verify-cli-effect-policy",
   "runtime-db-runtime-cli": "perf:verify-db-runtime-cli",
   "runtime-agent-execution-contracts": "perf:verify-agent-execution-contracts",
+  "runtime-agentic-process": "perf:verify-agentic-process",
   "runtime-agent-execution-postgres": "perf:verify-agent-execution-postgres",
   "runtime-agent-worker-fixtures": "perf:verify-agent-worker-fixtures",
   "runtime-agent-execution-scheduler": "perf:verify-agent-execution-scheduler-fixtures",
@@ -64,6 +66,7 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
 
 const REQUIRED_GATE_CONDITIONS = Object.freeze({
   "runtime-agent-execution-contracts": "always",
+  "runtime-agentic-process": "always",
   "runtime-agent-execution-postgres": "always",
   "runtime-agent-worker-fixtures": "always",
   "runtime-agent-execution-scheduler": "always",
@@ -78,6 +81,7 @@ const REQUIRED_GATE_CONDITIONS = Object.freeze({
 
 const GOVERNED_RUNTIME_COMMANDS = Object.freeze({
   "runtime-agent-execution-contracts": "node tools/perf/verify-agent-execution-contracts-fixtures.mjs",
+  "runtime-agentic-process": "node tools/perf/verify-agentic-process-fixtures.mjs && node tools/perf/verify-agentic-process-execution-fixtures.mjs",
   "runtime-agent-execution-postgres": "node tools/perf/verify-agent-execution-postgres-fixtures.mjs",
   "runtime-agent-worker-fixtures": "node tools/perf/verify-codex-task-executor-fixtures.mjs && node tools/perf/verify-delegated-agent-admission-fixtures.mjs && node tools/perf/verify-agent-native-qualification-fixtures.mjs",
   "runtime-agent-execution-scheduler": "node tools/perf/verify-agent-execution-scheduler-fixtures.mjs",

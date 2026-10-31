@@ -791,6 +791,7 @@ for (const [probe, passed] of Object.entries(postgresRuntimeProbes)) {
 
 const persistenceNegativeProbes = {};
 for (const [id, script] of [
+  ["runtime-agentic-process", "perf:verify-agentic-process"],
   ["runtime-agent-execution-postgres", "perf:verify-agent-execution-postgres"],
   ["runtime-agent-worker-fixtures", "perf:verify-agent-worker-fixtures"],
   ["runtime-agent-execution-scheduler", "perf:verify-agent-execution-scheduler-fixtures"],

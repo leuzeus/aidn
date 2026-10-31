@@ -86,6 +86,13 @@ is introduced.
 
 ## Internal Shadow Workflow Definition
 
+ADR-0022 adds closed `agentic-process-model.v1` and
+`agentic-process-instance.v1` contracts in the `workflow-definition` namespace.
+Nested models, assignment requests/decisions and typed events receive their own
+schema/semantic checks during replay. These internal APIs add no root CLI case.
+The structured execution profile is distinct from the descriptive shadow format;
+neither a hash nor an authored declaration authenticates a resource or verdict.
+
 ADR-0020 exposes the experimental `runtime-workflow-inspect.v1`,
 `runtime-workflow-action.v1` and `runtime-workflow-dashboard.v1` public roots.
 The common derived view retains exact IDs, reason codes and independent run

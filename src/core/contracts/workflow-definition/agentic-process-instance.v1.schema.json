@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/agentic-process-instance.v1",
+  "title": "Internal structured agentic process instance",
+  "x-aidn-contract-version": "agentic-process-instance.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "profile",
+    "instance_id",
+    "model",
+    "model_sha256",
+    "policy_pins",
+    "scope_id",
+    "initial_facts",
+    "revision",
+    "events",
+    "instance_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "agentic-process-instance.v1"
+    },
+    "profile": {
+      "const": "structured-agentic-process.v1"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "model": {
+      "type": "object"
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "policy_pins": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "initial_facts": {
+      "type": "object",
+      "maxProperties": 128,
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "kind"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "kind": {
+            "enum": [
+              "cancel",
+              "facts",
+              "message",
+              "assign",
+            "result",
+            "refusal"
+            ]
+          },
+          "occurrence_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "correlation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "event_key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "facts": {
+            "type": "object",
+            "maxProperties": 128,
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "request": {
+            "type": "object"
+          },
+          "decision": {
+            "type": "object"
+          },
+        "stage": { "enum": ["assignment", "verdict"] },
+        "reason_code": { "type": "string", "pattern": "^[A-Z][A-Z_]{0,95}$" },
+        "request_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "result": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

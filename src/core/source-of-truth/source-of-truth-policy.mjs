@@ -52,6 +52,15 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     replacement: "compare canonical content hash and append a typed checkpoint; ambiguous effects require supervisor reconciliation",
     evidence_targets: ["src/core/workflow/workflow-instance.mjs", "src/adapters/runtime/workflow-instance-store.mjs", "src/application/runtime/workflow-instance-composition.mjs"],
   },
+  agentic_process_instance: {
+    owner: "project workflow maintainer and trusted execution host",
+    lifecycle: "READY|RUNNING|WAITING -> COMPLETED|FAILED|CANCELLED; admitted assignments and authenticated results remain distinct",
+    scope: "one canonical runtime scope, pinned model/profile, policy fingerprints and scoped activity occurrences",
+    retention: "retain ordered routing, assignment, result and cancellation events; no automatic purge",
+    migration: "separate versioned format; no conversion of existing instances or automatic installation activation",
+    replacement: "explicit write and canonical artifact compare-and-swap; historical instances retain their model and policy pins",
+    evidence_targets: ["src/core/workflow/agentic-process.mjs", "src/adapters/runtime/agentic-process-store.mjs", "src/application/runtime/agentic-process-service.mjs"],
+  },
   project_activation: {
     owner: "project maintainer",
     lifecycle: "absent -> authorized -> revoked; local preparation determines active or degraded status",
@@ -353,6 +362,14 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "docs/audit/workflows/instances/<id>.json in dual or files with configured PostgreSQL; common CLI/dashboard read model is derived, never write authority",
     notes: "ADR-0018 internal opt-in composition; SPEC remains rule authority. SQLite uses existing artifact tables; PostgreSQL uses existing contextual artifacts and reservation fence. Sequential human checkpoints require no PostgreSQL. Agent segments retain exclusive existing supervisor admission. No new shared coordination table or automatic client activation.",
+  }),
+  policy({
+    concept: "agentic_process_instance", label: "Structured agentic process instance",
+    files: "docs/audit/workflows/process-instances/<id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is a derived projection",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "workflows/process-instances/<id>.json only through the existing explicit artifact materialization",
+    notes: "ADR-0022. Versioned internal API, existing project artifact CAS/fence and backend selection. Model and policy hashes are retained, never native authority. Trusted assignment/result ports are mandatory; no model-selected provider, new shared table, native launcher or worker allocation.",
   }),
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
     concept,
