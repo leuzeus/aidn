@@ -219,7 +219,10 @@ pre-turn observation, prohibits a new model turn. Exhausted deadlines also
 refuse before turn/start. If storage becomes unobservable, the partial stdout
 result preserves the first failure and observed consumption with null byte
 counts. If the footer cannot be written, that same structured result travels
-on stdout; its seal status does not replace an earlier failure.
+on stdout; its seal status does not replace an earlier failure. The outer
+controller propagates these stdout-only states without an unbudgeted write,
+and preserves worker consumption and process-tree closure if its own footer
+cannot be measured or written.
 
 Storage accounting covers retained evidence/native scratch, review snapshots,
 product-size growth, the instance projection and local SQLite file/WAL growth.

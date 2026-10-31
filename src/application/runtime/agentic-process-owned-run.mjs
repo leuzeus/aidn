@@ -69,9 +69,18 @@ export async function runOwnedAgenticProcess({ configuration, authorization, exe
   const file = path.join(cwd, `${configuration.instance_id}-CLOSURE.json`);
   const footer = Buffer.from(JSON.stringify(final) + "\n"), workerFooter = path.join(cwd, configuration.instance_id, "RESULT.json");
   const used = result?.storage_budget_debit_bytes ?? result?.bytes_retained;
-  if (result?.seal === "STDOUT_ONLY_STORAGE_LIMIT" || Number.isSafeInteger(used)
-    && used + (fs.existsSync(workerFooter) ? fs.statSync(workerFooter).size : 0) + footer.length > authorization.max_bytes) {
-    final.first_failure ??= "PROCESS_EXECUTION_SEAL_STORAGE_LIMIT"; final.status = "FAILED"; final.seal = "STDOUT_ONLY_STORAGE_LIMIT";
-  } else fs.writeFileSync(file, footer, { flag: "wx" });
+  if (["STDOUT_ONLY_STORAGE_LIMIT", "STDOUT_ONLY_STORAGE_UNVERIFIABLE", "STDOUT_ONLY_WRITE_FAILED"].includes(result?.seal)) {
+    final.first_failure ??= "PROCESS_EXECUTION_SEAL_STORAGE_LIMIT"; final.status = "FAILED"; final.seal = result.seal;
+  } else {
+    let workerFooterBytes = null;
+    try { if (Number.isSafeInteger(used) && used >= 0) workerFooterBytes = fs.existsSync(workerFooter) ? fs.statSync(workerFooter).size : 0; }
+    catch { /* Unknown storage must retain the structured result without another write. */ }
+    if (workerFooterBytes === null) {
+      final.first_failure ??= "PROCESS_EXECUTION_STORAGE_UNVERIFIABLE"; final.status = "FAILED"; final.seal = "STDOUT_ONLY_STORAGE_UNVERIFIABLE";
+    } else if (used + workerFooterBytes + footer.length > authorization.max_bytes) {
+      final.first_failure ??= "PROCESS_EXECUTION_SEAL_STORAGE_LIMIT"; final.status = "FAILED"; final.seal = "STDOUT_ONLY_STORAGE_LIMIT";
+    } else try { fs.writeFileSync(file, footer, { flag: "wx" }); }
+    catch { final.first_failure ??= "PROCESS_EXECUTION_SEAL_WRITE_FAILED"; final.status = "FAILED"; final.seal = "STDOUT_ONLY_WRITE_FAILED"; }
+  }
   return final;
 }

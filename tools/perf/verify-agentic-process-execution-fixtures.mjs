@@ -443,12 +443,44 @@ try {
       const result = await runOwnedAgenticProcess({ configuration: f.configuration, authorization: auth, execute: true }, { controllerFactory: () => ({
         async checkAvailability() { return { available: true }; },
         async run(request, { onEvent }) { sent = JSON.parse(request.stdin); assert.ok(request.maxDurationMs <= auth.global_deadline_ms - Date.now());
-          await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify({ contract_version: "agentic-process-execution-result.v1", status: "COMPLETED", first_failure: null, global_deadline_ms: sent.authorization.global_deadline_ms })) });
+          await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify({ contract_version: "agentic-process-execution-result.v1", status: "COMPLETED", first_failure: null, storage_budget_debit_bytes: 0, global_deadline_ms: sent.authorization.global_deadline_ms })) });
           return { outcome: "completed", termination_state: confirmed ? "confirmed" : "unknown", termination_proof: confirmed ? { active_processes: 0 } : null }; },
       }) });
       assert.equal(sent.authorization.global_deadline_ms, auth.global_deadline_ms);
       assert.equal(result.first_failure, confirmed ? null : "PROCESS_EXECUTION_TREE_CLOSE_UNCONFIRMED");
       assert.ok(result.elapsed_global_ms >= 12000);
+    }
+  });
+  await check("owned footer preserves stdout-only worker results, unknown bytes and closure write failures", async () => {
+    for (const mode of ["STDOUT_ONLY_STORAGE_LIMIT", "STDOUT_ONLY_STORAGE_UNVERIFIABLE", "STDOUT_ONLY_WRITE_FAILED", "outer-write-failure", "outer-first-failure", "unknown-bytes", "outer-stat-failure"]) {
+      const f = fixture(), worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
+      f.configuration.controller = { node_sha256: sha(fs.readFileSync(process.execPath)), worker_sha256: sha(fs.readFileSync(worker)), helper_path: "fixture", helper_sha256: "a".repeat(64), helper_source_sha256: "b".repeat(64) };
+      const auth = f.authorize(), originalWrite = fs.writeFileSync, originalExists = fs.existsSync;
+      let closureWrites = 0;
+      fs.writeFileSync = function(file, ...args) {
+        if (file === path.join(f.dirs.control, "case-CLOSURE.json")) { closureWrites++; throw Object.assign(Error("fixture full disk"), { code: "ENOSPC" }); }
+        return originalWrite.call(this, file, ...args);
+      };
+      fs.existsSync = function(file) {
+        if (mode === "outer-stat-failure" && file === path.join(f.dirs.control, "case/RESULT.json")) throw Object.assign(Error("fixture unreadable"), { code: "EACCES" });
+        return originalExists.call(this, file);
+      };
+      try {
+        const prior = mode === "outer-first-failure" ? null : "PROCESS_EXECUTION_CANCELLED";
+        const payload = { contract_version: "agentic-process-execution-result.v1", status: prior ? "FAILED" : "COMPLETED", first_failure: prior,
+          global_deadline_ms: auth.global_deadline_ms, storage_budget_debit_bytes: mode === "unknown-bytes" || mode === "STDOUT_ONLY_STORAGE_UNVERIFIABLE" ? null : 100,
+          responses_observed: 1, consumption: { observed_tokens: 42 }, ...(mode.startsWith("STDOUT_ONLY") ? { seal: mode } : {}) };
+        const result = await runOwnedAgenticProcess({ configuration: f.configuration, authorization: auth, execute: true }, { controllerFactory: () => ({
+          async checkAvailability() { return { available: true }; },
+          async run(request, { onEvent }) { await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(payload)) });
+            return { outcome: "completed", termination_state: "confirmed", termination_proof: { active_processes: 0 } }; },
+        }) });
+        assert.equal(result.first_failure, prior ?? "PROCESS_EXECUTION_SEAL_WRITE_FAILED"); assert.equal(result.status, "FAILED");
+        assert.deepEqual(result.worker_result, payload); assert.equal(result.process_tree.termination_proof.active_processes, 0);
+        assert.equal(result.seal, mode.startsWith("STDOUT_ONLY") ? mode : ["unknown-bytes", "outer-stat-failure"].includes(mode) ? "STDOUT_ONLY_STORAGE_UNVERIFIABLE" : "STDOUT_ONLY_WRITE_FAILED");
+        assert.equal(closureWrites, mode.startsWith("outer-") && mode !== "outer-stat-failure" ? 1 : 0);
+        assert.ok(Buffer.byteLength(JSON.stringify(result)) < 65536);
+      } finally { fs.writeFileSync = originalWrite; fs.existsSync = originalExists; }
     }
   });
   await check("real RPC parser correlates numeric reply IDs, rejects foreign IDs and stops on malformed notification", async () => {
