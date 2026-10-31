@@ -209,6 +209,18 @@ tree proof prevents success. Deadline, response and storage guards stop further
 activities and retain the first reason and available consumption. There is no
 activity retry, favorable-state search or replacement attempt.
 
+Executable occurrence paths must fit the unchanged 256-character assignment
+activity-ID contract, including the longest loop and collection suffixes. The
+model loader refuses an oversized possible path before resource assignment;
+paths are never shortened or hashed into an ambiguous identity.
+
+Cancellation already requested at entry, or received during the asynchronous
+pre-turn observation, prohibits a new model turn. Exhausted deadlines also
+refuse before turn/start. If storage becomes unobservable, the partial stdout
+result preserves the first failure and observed consumption with null byte
+counts. If the footer cannot be written, that same structured result travels
+on stdout; its seal status does not replace an earlier failure.
+
 Storage accounting covers retained evidence/native scratch, review snapshots,
 product-size growth, the instance projection and local SQLite file/WAL growth.
 It uses a preventive reserve and sampled metadata, not an OS disk quota; a native

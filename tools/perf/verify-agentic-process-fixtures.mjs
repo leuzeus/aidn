@@ -98,6 +98,21 @@ await check("G08: unstructured shared OR child and cycles are explicitly refused
   assert.throws(() => initial(m), /PROCESS_NOT_STRUCTURED/);
   assert.throws(() => initial(model({ id: "cycle", kind: "call", participant_ref: "delivery", child: "cycle" })), /PROCESS_NOT_STRUCTURED/);
 });
+await check("occurrence paths respect the assignment contract before execution, including the exact boundary", () => {
+  const nested = width => {
+    const nodes = [];
+    for (let i = 0; i < 4; i++) {
+      nodes.push({ id: `gate-${i}`, kind: "and", participant_ref: "delivery", branches: [
+        { flow_id: "f".repeat(width), node_id: i === 3 ? "final" : `gate-${i + 1}` },
+        { flow_id: "side", node_id: `side-${i}` }] }, leaf(`side-${i}`));
+    }
+    return model(nodes[0], [...nodes.slice(1), leaf("final")]);
+  };
+  const accepted = nested(62); assertAgenticProcessModel(accepted);
+  assert.equal(Math.max(...inspect(initial(accepted)).ready.map(id => id.length)), 256);
+  const refused = nested(64); assertAgenticProcessModel(refused, { executable: false });
+  assert.throws(() => initial(refused), /PROCESS_OCCURRENCE_ID_LIMIT/);
+});
 await check("G09/G10: correlated event winner survives serialization; losing signal and conflicting duplicate refuse", () => {
   let state = initial(gateway("event")); assert.deepEqual(inspect(state).waiting, ["root"]);
   const signal = event({ kind: "message", occurrence_id: "root", correlation_id: "fixture:root", event_key: "message-0" });

@@ -166,6 +166,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const used = () => localUsed() + (persistence.backend === "postgres" ? canonicalPayloadAttempted : 0);
       const requestStop = code => { firstFailure ??= code; stop.abort(); };
       const onAbort = () => requestStop("PROCESS_EXECUTION_CANCELLED"); signal?.addEventListener("abort", onAbort, { once: true });
+      if (signal?.aborted) onAbort();
       const timer = setTimeout(() => requestStop("PROCESS_EXECUTION_GLOBAL_DEADLINE"), Math.max(1, workDeadline - Date.now()));
       const storageTimer = setInterval(() => {
         try { if (used() > authorization.max_bytes - 262144) requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); }
@@ -267,6 +268,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       let current = null, closure = null;
       const requireProjection = () => { if (current?.projection === "reconciliation_required") fail("PROCESS_EXECUTION_PROJECTION_RECONCILIATION_REQUIRED"); };
       try {
+        if (stop.signal.aborted) fail(firstFailure ?? "PROCESS_EXECUTION_CANCELLED");
         const initial = service.initialize({ instanceId: config.instance_id, model, write: false });
         current = service.initialize({ instanceId: config.instance_id, model, write: true, expectedResultSha256: initial.record.instance_sha256 });
         requireProjection();
@@ -297,6 +299,9 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         try { closure = await host.close(); } catch { firstFailure ??= "PROCESS_HOST_CLOSE_UNCONFIRMED"; }
         clearTimeout(timer); clearInterval(storageTimer); signal?.removeEventListener("abort", onAbort);
       }
+      let retained = null, debit = null;
+      try { retained = localUsed(); debit = retained + (persistence.backend === "postgres" ? canonicalPayloadAttempted : 0); }
+      catch { firstFailure ??= "PROCESS_EXECUTION_STORAGE_UNVERIFIABLE"; }
       const result = { contract_version: "agentic-process-execution-result.v1", status: firstFailure ? "FAILED" : current?.status ?? current?.cursor.status ?? "FAILED",
         implementation_sha256: config.implementation_sha256,
         persistence: { ...persistence, state_mode: authorityAtCreation.stateMode,
@@ -306,20 +311,23 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         first_failure: firstFailure, instance_sha256: current?.record?.instance_sha256 ?? null, responses_observed: responseIds.size,
         elapsed_global_ms: Date.now() - authorization.authorized_at_ms, global_deadline_ms: authorization.global_deadline_ms,
         workflow_deadline_ms: authorization.workflow_deadline_ms,
-        native_parent_closure: closure, process_tree_closure: "OUTER_CONTROLLER_REQUIRED", bytes_retained: localUsed(),
-        storage_budget_debit_bytes: used(),
+        native_parent_closure: closure, process_tree_closure: "OUTER_CONTROLLER_REQUIRED", bytes_retained: retained,
+        storage_budget_debit_bytes: debit,
         consumption: sessions.metrics(),
         provider_consumption: "client-reported only; missing/in-flight counters remain unknown", retry: false };
       // The reserved footer is permitted even after a preventive storage stop.
       // Never delete evidence to make room or replace the first failure.
+      if (debit === null) { result.seal = "STDOUT_ONLY_STORAGE_UNVERIFIABLE"; return result; }
       const footer = Buffer.from(JSON.stringify(result) + "\n");
-      if (footer.length > 65536 || used() + footer.length > authorization.max_bytes) {
+      if (footer.length > 65536 || debit + footer.length > authorization.max_bytes) {
         // Retain the structured partial result on the owned stdout channel. A
         // storage breach is never hidden by deleting files or a sealing error.
         result.first_failure ??= "PROCESS_EXECUTION_SEAL_STORAGE_LIMIT"; result.status = "FAILED";
         result.seal = "STDOUT_ONLY_STORAGE_LIMIT"; return result;
       }
-      fs.writeFileSync(path.join(output, "RESULT.json"), footer, { flag: "wx" }); return result;
+      try { fs.writeFileSync(path.join(output, "RESULT.json"), footer, { flag: "wx" }); }
+      catch { result.first_failure ??= "PROCESS_EXECUTION_SEAL_WRITE_FAILED"; result.status = "FAILED"; result.seal = "STDOUT_ONLY_WRITE_FAILED"; }
+      return result;
     },
   });
 }

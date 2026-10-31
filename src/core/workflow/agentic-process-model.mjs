@@ -92,10 +92,18 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
   if (!nodes.has(model.entry) || references.has(model.entry)
     || [...nodes.keys()].some(id => id !== model.entry && references.get(id) !== 1)) fail("PROCESS_NOT_STRUCTURED");
   const visited = new Set();
-  function visit(id, depth) {
+  function visit(id, depth, occurrence = "root") {
     if (visited.has(id) || depth > 16) fail("PROCESS_NOT_STRUCTURED");
+    // Occurrences are passed intact to agent-reuse activity_id (max 256).
+    // Validate every possible suffix before execution, without truncation.
+    if (executable && occurrence.length > 256) fail("PROCESS_OCCURRENCE_ID_LIMIT");
     visited.add(id); const node = nodes.get(id);
-    for (const child of node.children ?? (node.child ? [node.child] : node.branches?.map(b => b.node_id) ?? [])) visit(child, depth + 1);
+    if (node.kind === "sequence") node.children.forEach((child, index) => visit(child, depth + 1, `${occurrence}/${index}`));
+    else if (node.child) {
+      const suffix = node.kind === "loop" ? `iteration-${node.max_iterations}`
+        : node.kind === "multi_instance" ? `item-${Math.max(0, node.items.length - 1)}` : "call";
+      visit(node.child, depth + 1, `${occurrence}/${suffix}`);
+    } else for (const branch of node.branches ?? []) visit(branch.node_id, depth + 1, `${occurrence}/${branch.flow_id}`);
   }
   visit(model.entry, 0);
   if (visited.size !== nodes.size) fail("PROCESS_NOT_STRUCTURED");

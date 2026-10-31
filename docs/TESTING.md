@@ -16,6 +16,11 @@ missing usage, protected rejection, original deadlines, closure and partial
 storage/timeout stops. The real RPC parser uses in-memory pipes. These are not
 native identity, provider reception or OS-isolation evidence; all remain NOT_RUN.
 See [the execution profile](AGENTIC_PROCESS.md) for the exact support boundaries.
+The suites also cover the exact 256-character occurrence boundary and oversized
+path refusal, cancellation during configuration observation, pre-aborted entry,
+expired pre-turn deadlines, unobservable storage and failed footer writes. These
+retain the first failure and known usage without launching a paid turn or
+turning unknown bytes into zero.
 Keep the existing agent-reuse and workflow-instance regression suites intact.
 The production composition also runs files/dual/db-only over real temporary
 SQLite and over the real PostgreSQL artifact adapter with an offline SQL wire

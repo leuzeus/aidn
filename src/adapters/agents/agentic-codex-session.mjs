@@ -144,11 +144,15 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
       async run({ instruction, request_sha256, signal }) {
         if (active || closed || signal?.aborted) fail("PROCESS_SESSION_BUSY_OR_CANCELLED");
         await observe();
+        // Observation awaits RPC: an abort/close during it must prohibit the
+        // next paid turn, even though no abort listener was installed yet.
+        if (active || closed || signal?.aborted) fail("PROCESS_SESSION_BUSY_OR_CANCELLED");
+        const turnRemaining = Math.min(budget.maxTurnMs, deadline - Date.now());
+        if (turnRemaining <= 0) fail("PROCESS_SESSION_DEADLINE");
         let resolve, reject;
         const completion = new Promise((yes, no) => { resolve = yes; reject = no; });
         completion.catch(() => {}); // rejection may precede the turn/start reply
         active = { turnId: null, pending: [], answers: [], usage: null, resolve, reject };
-        const turnRemaining = Math.min(budget.maxTurnMs, deadline - Date.now());
         const timer = setTimeout(() => reject(Object.assign(Error("PROCESS_SESSION_DEADLINE"), { code: "PROCESS_SESSION_DEADLINE" })), Math.max(1, turnRemaining));
         const abort = () => reject(Object.assign(Error("PROCESS_SESSION_CANCELLED"), { code: "PROCESS_SESSION_CANCELLED" })); signal?.addEventListener("abort", abort, { once: true });
         try {

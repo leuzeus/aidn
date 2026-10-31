@@ -16,7 +16,7 @@ import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/p
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
 import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
-import { normalizePermissionProfile, buildAgenticNativePermissionProfile } from "../../src/adapters/agents/agentic-codex-session.mjs";
+import { normalizePermissionProfile, buildAgenticNativePermissionProfile, createAgenticCodexSessions } from "../../src/adapters/agents/agentic-codex-session.mjs";
 import { applyAuthorization, planAuthorization, resolveActivationTarget, readActivation } from "../../src/application/install/project-activation-service.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { artifactContentHash, assertWorkflowRecordProjection } from "../../src/core/workflow/artifact-compare-swap.mjs";
@@ -132,7 +132,7 @@ function transport(f, options = {}) {
           if (options.noAdmission) hooks[0].eventName = "unrelatedEvent";
           return { data: [{ cwd: configuration.cwd, hooks, errors: [], warnings: [] }] };
         }
-        if (method === "config/read") { if (options.badProfile) return { config: {} }; return { config: cfg }; }
+        if (method === "config/read") { options.onConfigRead?.(); if (options.badProfile) return { config: {} }; return { config: cfg }; }
         if (method === "thread/start") return { thread: { id: thread }, model: cfg.model, approvalPolicy: "never", activePermissionProfile: { id: profile },
           sandbox: { type: Object.values(parsed.filesystem).includes("write") ? "workspaceWrite" : "readOnly", networkAccess: false } };
         if (method !== "turn/start") throw Error("unexpected method");
@@ -152,6 +152,7 @@ function transport(f, options = {}) {
         await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "commentary", text: "Working on the admitted activity." } });
         await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "final_answer", text: JSON.stringify({ outcome: options.reject && index === 2 ? "rejected" : "completed", summary: "Fixture result." }) } });
         await notify("turn/completed", { threadId: thread, turn: { id: turn, status: "completed" } });
+        if (options.unverifiableStorage) fs.symlinkSync(f.base, path.join(f.dirs.control, "case/unverifiable-link"), "junction");
         return { turn: { id: turn } };
       },
       notify() {}, async flush() {}, async close() { session.closed = true; return { closed: !options.closeFailure }; },
@@ -164,9 +165,9 @@ async function run(f, options = {}) {
   if (options.maxResponses) auth.max_responses = options.maxResponses;
   if (options.silence) auth.max_turn_ms = 25;
   const result = await createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory,
-    ...(f.artifactStoreFactory ? { artifactStoreFactory: f.artifactStoreFactory } : {}), ...(f.environment ? { environment: f.environment } : {}) }).run({ execute: true, authorization: auth });
+    ...(f.artifactStoreFactory ? { artifactStoreFactory: f.artifactStoreFactory } : {}), ...(f.environment ? { environment: f.environment } : {}) }).run({ execute: true, authorization: auth, signal: options.signal });
   assert.equal(t.sessions.every(session => session.closed), true);
-  assert.equal(fs.existsSync(path.join(f.dirs.control, "case/RESULT.json")), !options.storage);
+  assert.equal(fs.existsSync(path.join(f.dirs.control, "case/RESULT.json")), !result.seal?.startsWith("STDOUT_ONLY"));
   return { result, ...t };
 }
 
@@ -219,6 +220,56 @@ try {
     assert.equal(refused.status, 1); assert.equal(JSON.parse(refused.stdout).first_failure, "PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
     assert.match(refused.stderr, /PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED/);
     assert.deepEqual(fs.readdirSync(f.dirs.control), []);
+  });
+  await check("abort during pre-turn observation and exhausted deadline prohibit turn/start", async () => {
+    for (const expired of [false, true]) {
+      const f = fixture(), controller = new AbortController(); let armed = false;
+      const t = transport(f, { onConfigRead() { if (armed && !expired) controller.abort(); } });
+      const model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+      const sessions = createAgenticCodexSessions({ native: f.configuration.native, targetRoot: f.configuration.target_root,
+        productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
+        evidence: { async retain() { return { ref: "fixture/native", sha256: "a".repeat(64) }; }, diagnostic() {} },
+        budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
+      try {
+        const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
+          input: { developer_instructions: "Common fixture authority." }, deadline: Date.now() + (expired ? -1 : 60000) });
+        armed = true;
+        await assert.rejects(() => session.run({ instruction: "Never start this turn.", request_sha256: "b".repeat(64), signal: controller.signal }),
+          expired ? /PROCESS_SESSION_DEADLINE/ : /PROCESS_SESSION_BUSY_OR_CANCELLED/);
+        assert.equal(t.calls.filter(row => row.method === "turn/start").length, 0);
+      } finally { assert.equal((await sessions.close()).closed, true); }
+    }
+  });
+  await check("pre-aborted composition retains cancellation without canonical initialization or native allocation", async () => {
+    const f = fixture(), { result, sessions, calls } = await run(f, { signal: AbortSignal.abort() });
+    assert.equal(result.first_failure, "PROCESS_EXECUTION_CANCELLED"); assert.equal(result.status, "FAILED");
+    assert.equal(result.responses_observed, 0); assert.equal(sessions.length, 0); assert.equal(calls.length, 0);
+    assert.equal(result.instance_sha256, null);
+  });
+  await check("unverifiable storage retains first failure, known usage and explicit unknown bytes on stdout", async () => {
+    const { result } = await run(fixture(), { unverifiableStorage: true });
+    assert.equal(result.first_failure, "PROCESS_EXECUTION_STORAGE_SYMLINK"); assert.equal(result.status, "FAILED");
+    assert.equal(result.responses_observed, 1); assert.equal(result.consumption.thread_counters.length, 1);
+    assert.equal(result.native_parent_closure.closed, true); assert.equal(result.bytes_retained, null);
+    assert.equal(result.storage_budget_debit_bytes, null); assert.equal(result.seal, "STDOUT_ONLY_STORAGE_UNVERIFIABLE");
+    assert.ok(Buffer.byteLength(JSON.stringify(result)) < 65536);
+  });
+  await check("failed footer write preserves the structured result and an earlier cancellation", async () => {
+    for (const cancelled of [false, true]) {
+      const f = fixture(), original = fs.writeFileSync;
+      fs.writeFileSync = function(file, ...args) {
+        if (file === path.join(f.dirs.control, "case/RESULT.json")) throw Object.assign(Error("fixture full disk"), { code: "ENOSPC" });
+        return original.call(this, file, ...args);
+      };
+      try {
+        const { result } = await run(f, cancelled ? { signal: AbortSignal.abort() } : {});
+        assert.equal(result.first_failure, cancelled ? "PROCESS_EXECUTION_CANCELLED" : "PROCESS_EXECUTION_SEAL_WRITE_FAILED");
+        assert.equal(result.status, "FAILED"); assert.equal(result.seal, "STDOUT_ONLY_WRITE_FAILED");
+        assert.equal(result.native_parent_closure.closed, true); assert.ok(result.bytes_retained >= 0);
+        if (!cancelled) { assert.equal(result.responses_observed, 3); assert.equal(result.consumption.thread_counters.length, 2); }
+        assert.ok(Buffer.byteLength(JSON.stringify(result)) < 65536);
+      } finally { fs.writeFileSync = original; }
+    }
   });
   await check("real composition: same session across compatible roles; distinct independent reviewer and canonical results", async () => {
     const f = fixture(), { result, sessions } = await run(f);
