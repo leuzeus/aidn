@@ -17,14 +17,16 @@ export function createProjectArtifactStore(options = {}) {
   if (resolution.backend !== 'postgres') throw new Error('ARTIFACT_BACKEND_UNSUPPORTED');
   const call = (action, input) => {
     if (options.readOnly && ['upsert', 'compare-and-swap', 'replace'].includes(action)) throw new Error('Artifact store is read-only');
-    const child = spawnSync(process.execPath, [fileURLToPath(new URL('./project-artifact-store-worker.mjs', import.meta.url))], {
+    const remaining = options.deadlineMs === undefined ? 60000 : Math.min(60000, options.deadlineMs - Date.now());
+    if (!Number.isSafeInteger(remaining) || remaining <= 0) throw new Error('ARTIFACT_DEADLINE_EXCEEDED');
+    const child = (options.workerRunner ?? spawnSync)(process.execPath, [fileURLToPath(new URL('./project-artifact-store-worker.mjs', import.meta.url))], {
       input: JSON.stringify({ targetRoot, action, options: input }),
-      encoding: 'utf8', shell: false, windowsHide: true, timeout: 60000,
+      encoding: 'utf8', shell: false, windowsHide: true, timeout: remaining,
       maxBuffer: 32 * 1024 * 1024, env: options.env ?? process.env,
     });
     let response;
     try { response = JSON.parse(child.stdout); } catch { throw new Error('ARTIFACT_POSTGRES_WORKER_UNAVAILABLE'); }
-    if (child.status !== 0 || !response.ok) throw new Error(response.code || 'ARTIFACT_POSTGRES_COMMAND_FAILED');
+    if (child.status !== 0 || !response.ok) throw new Error(/^ARTIFACT_[A-Z_]+$/.test(response.code ?? '') ? response.code : 'ARTIFACT_POSTGRES_COMMAND_FAILED');
     return response.result;
   };
   return assertProjectArtifactStore({

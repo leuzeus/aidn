@@ -1,6 +1,6 @@
 {
   "name": "aidn-workflow",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "aidâ€™n â€” Audit-driven, session-based workflow packaging system for structured AI-assisted development",
   "license": "MIT",
   "repository": {
@@ -20,6 +20,7 @@
     "docs/INSTALL.md",
     "docs/CODEX_INTEGRATION.md",
     "docs/AGENT_WORKING_MEMORY.md",
+    "docs/AGENTIC_PROCESS.md",
     "docs/CODEX_NATIVE_QUALIFICATION.md",
     "docs/CODEX_CLIENT_MIGRATION.md",
     "docs/WINDOWS_PROJECT_SETUP.md",
@@ -68,6 +69,7 @@
     "pg": ">=8 <9"
   },
   "scripts": {
+    "perf:verify-agentic-process": "node tools/perf/verify-agentic-process-fixtures.mjs && node tools/perf/verify-agentic-process-execution-fixtures.mjs",
     "perf:verify-workflow-transaction": "node tools/perf/verify-workflow-transaction-fixtures.mjs",
     "aidn": "node bin/aidn.mjs",
     "bootstrap": "node tools/bootstrap.mjs",

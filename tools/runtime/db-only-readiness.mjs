@@ -31,6 +31,10 @@ const DB_FIRST_MARKERS = [
   // Canonical artifact port resolves SQLite/PostgreSQL without visible-file
   // fallback; console fixtures exercise both transports and DB-only reads.
   "createProjectArtifactStore(",
+  // Structured process records use the same backend-resolved artifact CAS
+  // through their typed adapter. Local file reads in the composition inspect
+  // product/evidence bytes and optional projection size, not canonical state.
+  "createAgenticProcessStore(",
   "decodeEmbeddedArtifactContent(",
   "preWriteAdmit(",
   // Specific admission receives backend-resolved canonical artifacts and rejects

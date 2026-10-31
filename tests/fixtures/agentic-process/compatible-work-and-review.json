@@ -1,0 +1,103 @@
+{
+  "contract_version": "agentic-process-model.v1",
+  "model_id": "compatible-work-and-review",
+  "revision": 1,
+  "participants": [
+    {
+      "id": "delivery"
+    }
+  ],
+  "roles": [
+    {
+      "id": "analysis",
+      "role": "auditor",
+      "action": "analyze",
+      "skills": [
+        "architecture",
+        "tests"
+      ]
+    },
+    {
+      "id": "implementation",
+      "role": "executor",
+      "action": "implement",
+      "skills": [
+        "architecture",
+        "tests"
+      ]
+    },
+    {
+      "id": "review",
+      "role": "auditor",
+      "action": "audit",
+      "skills": [
+        "architecture",
+        "tests"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "id": "work",
+      "version": 1,
+      "assurance_profile": "compatible-work.v1",
+      "mode": "EXPLORING",
+      "independent_review": false,
+      "context_isolation_required": false,
+      "required_permissions": [
+        "read:product"
+      ],
+      "allowed_permissions": [
+        "read:product"
+      ]
+    },
+    {
+      "id": "review",
+      "version": 1,
+      "assurance_profile": "independent-review.v1",
+      "mode": "EXPLORING",
+      "independent_review": true,
+      "context_isolation_required": true,
+      "required_permissions": [
+        "read:product"
+      ],
+      "allowed_permissions": [
+        "read:product"
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "delivery",
+      "kind": "sequence",
+      "participant_ref": "delivery",
+      "children": [
+        "analyze",
+        "implement",
+        "review"
+      ]
+    },
+    {
+      "id": "analyze",
+      "kind": "activity",
+      "participant_ref": "delivery",
+      "role_ref": "analysis",
+      "policy_ref": "work"
+    },
+    {
+      "id": "implement",
+      "kind": "activity",
+      "participant_ref": "delivery",
+      "role_ref": "implementation",
+      "policy_ref": "work"
+    },
+    {
+      "id": "review",
+      "kind": "activity",
+      "participant_ref": "delivery",
+      "role_ref": "review",
+      "policy_ref": "review"
+    }
+  ],
+  "entry": "delivery"
+}

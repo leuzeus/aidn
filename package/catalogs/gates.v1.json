@@ -152,6 +152,15 @@
   },
   "gates": [
     {
+      "id": "runtime-agentic-process",
+      "family": "runtime",
+      "script": "perf:verify-agentic-process",
+      "job": "governance-admission/gates",
+      "surfaces": ["src/core/workflow/agentic-process", "src/application/runtime/agentic-process-service.mjs", "src/application/runtime/agentic-process-execution-composition.mjs", "src/adapters/agents/agentic-codex-session.mjs", "src/adapters/runtime/agentic-process-store.mjs", "structured control, owned execution and constrained resource assignment"],
+      "condition": "always",
+      "obligation": { "dev": "required", "main": "required", "release": "required" }
+    },
+    {
       "id": "contracts-workflow-compilation",
       "family": "contracts",
       "script": "perf:verify-workflow-compilation",

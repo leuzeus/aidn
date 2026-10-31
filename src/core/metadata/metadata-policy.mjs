@@ -99,6 +99,14 @@ const METADATA_POLICIES = freezeDeep([
     notes: "Pinned definition, compilation and context with ordered human decisions, segment intents and observed supervisor results. Revision equals event count plus one. Run identities cannot repeat within an instance. CAS rejects competing revisions; abandoned file locks and uncertain effects require explicit reconciliation. Preserve execution, acceptance, integration, validation and cleanup distinctions. Internal API and durable fixtures do not establish native qualification.",
   }),
   policy({
+    concept: "agentic_process_instance", label: "Structured agentic process instance",
+    required: ["contract_version", "profile", "instance_id", "model", "model_sha256", "policy_pins", "scope_id", "initial_facts", "revision", "events", "instance_sha256"],
+    sourceOfTruthConcept: "agentic_process_instance",
+    evidenceTargets: ["src/core/contracts/workflow-definition/agentic-process-instance.v1.schema.json", "src/core/workflow/agentic-process.mjs", "src/application/runtime/agentic-process-service.mjs"],
+    lifecycle: "READY|RUNNING|WAITING -> COMPLETED|FAILED|CANCELLED",
+    notes: "Participants, roles/skills and technical executions remain separate. Structured occurrences bind loop/collection/call scope and event correlation. Append-only events, explicit writes, deduplication and canonical CAS protect progress. Authority ports revalidate contributor/context/permission and revision bindings at result acceptance. No native or independent-review guarantee follows from authored JSON alone.",
+  }),
+  policy({
     concept: "execution_run",
     label: "Bounded execution run",
     required: ["contract_version", "run_id", "plan_id", "plan_sha256", "authority_backend", "canonical", "task_ids", "lifecycle_status"],

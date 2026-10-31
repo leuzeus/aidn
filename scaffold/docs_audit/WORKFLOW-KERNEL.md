@@ -21,6 +21,20 @@ Otherwise:
 
 Agent-to-agent handoff is advisory only. The receiving agent must still complete the mandatory restatement before any durable write.
 
+## Logical Roles And Resource Reuse
+
+Activities and gateways define work and control flow, not an agent count. Keep
+compatible roles in the current executor when capability, context and effective
+rights permit. Skills and tools can be shared without a new agent per skill.
+Logical parallel branches may be interleaved; an event wait must not block other
+ready work. Deterministic routing and waiting require no model polling.
+
+Independent review remains a distinct activity: exclude contributors, bind the
+revision and criteria, and verify the required context, authority and access.
+A role/session change does not erase contribution or copied production context.
+Required isolation or review needs an admissible separate resource; if unavailable,
+block/escalate without weakening assurance. Preserve all admissions below.
+
 ## Procedure Routing
 
 Keep the Read Order above as the default and recovery route. The table locates

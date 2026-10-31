@@ -1,5 +1,38 @@
 # Testing Guide
 
+## Structured agentic process
+
+`npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
+gate without a Codex client, model, network or installed activation. It verifies
+versioned model/instance contracts, distinct participant/role/resource identities,
+compatible reuse, structured XOR/AND/OR, correlated event races and deduplication,
+bounded loop/multi-instance/call occurrences, rejection of unsupported semantics,
+revision-bound authenticated results and real canonical artifact CAS/restart.
+Core fixtures inject authority ports. The execution suite instead exercises
+production host authorities, canonical bindings and actual artifact CAS with a
+fake native wire/controller. It verifies session reuse, separate review and
+snapshot integrity, preexisting backend/profile/hook refusals, foreign events,
+missing usage, protected rejection, original deadlines, closure and partial
+storage/timeout stops. The real RPC parser uses in-memory pipes. These are not
+native identity, provider reception or OS-isolation evidence; all remain NOT_RUN.
+See [the execution profile](AGENTIC_PROCESS.md) for the exact support boundaries.
+The suites also cover the exact 256-character occurrence boundary and oversized
+path refusal, cancellation during configuration observation, pre-aborted entry,
+expired pre-turn deadlines, unobservable storage and failed footer writes. These
+retain the first failure and known usage without launching a paid turn or
+turning unknown bytes into zero.
+Live storage fixtures distinguish a listed child disappearing with ENOENT from
+an unreadable child or a missing required root, and verify bounded diagnostics
+and retained consumption on refusal. They do not attribute an earlier native
+failure whose filesystem error was not recorded.
+Keep the existing agent-reuse and workflow-instance regression suites intact.
+The production composition also runs files/dual/db-only over real temporary
+SQLite and over the real PostgreSQL artifact adapter with an offline SQL wire
+double. It checks canonical selection, CAS conflicts, reservations, rollback,
+projection failure, backend drift, unavailable PostgreSQL without SQLite fallback,
+local lock refusal and credential exclusion from model inputs. PostgreSQL physical
+storage/concurrency and native/provider execution remain separate NOT_RUN gates.
+
 ## Sequential agent reuse decisions
 
 `npm run perf:verify-agent-reuse` executes pure policy, authenticated-observation

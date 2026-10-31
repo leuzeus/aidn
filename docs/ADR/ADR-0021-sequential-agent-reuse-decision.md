@@ -49,6 +49,12 @@ criteria/profile, full contributor history, effective tool/data rights and
 context provenance, and retain immutable source observations. No production
 provider is supplied or inferred here; missing evidence waits.
 
+ADR-0022 may additionally pass explicit `requiredSkills`. For a non-empty list,
+observe/verify receive the same closed `requirements.skills`; authentication
+must also bind `requirements_sha256`. The provider verifies that returned
+candidates satisfy those capabilities. A missing/mismatched binding waits.
+Legacy callers supply no requirements and retain their verification contract.
+
 Authority reads share a timeout (default 1 second, maximum 5) and AbortSignal.
 Observation validity may cover at most 10 seconds and is rechecked after
 authentication; stale/future data refuses. These bounds do not extend workflow
