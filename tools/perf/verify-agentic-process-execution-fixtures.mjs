@@ -272,6 +272,14 @@ try {
     await assert.rejects(() => service.run({ execute: true, authorization: {} }), /EXPLICIT_AUTHORIZATION_REQUIRED/);
     assert.equal(t.sessions.length, 0);
   });
+  await check("native-only composition refuses the operation profile before native allocation", () => {
+    const f = fixture(), model = { contract_version: "agentic-process-model.v2", model_id: "operations", revision: 1, participants: [{ id: "project" }], roles: [], policies: [],
+      entry: "reload", operation_pins: { reload: "a".repeat(64) }, nodes: [{ id: "reload", kind: "operation", participant_ref: "project", binding_ref: "reload" }] };
+    const text = JSON.stringify(model); fs.writeFileSync(f.configuration.model.path, text); f.configuration.model.sha256 = sha(text);
+    const t = transport(f);
+    assert.throws(() => createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory }), /PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED/);
+    assert.equal(t.sessions.length, 0); assert.deepEqual(fs.readdirSync(f.dirs.control), []);
+  });
   await check("actual internal CLI preview and fixed worker EOF path stay offline and reject unauthenticated execution", () => {
     const f = fixture(), text = JSON.stringify(f.configuration), file = put(f.base, "configuration.json", text);
     const runner = fileURLToPath(new URL("../runtime/run-agentic-process.mjs", import.meta.url));

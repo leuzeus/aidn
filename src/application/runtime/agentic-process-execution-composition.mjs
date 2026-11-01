@@ -77,6 +77,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     if ([targetRoot, reviewRoot, controlRoot, config.native.home].some(other => inside(root, other) || inside(other, root))) fail("PROCESS_EXECUTION_TOOL_ROOT_OVERLAP");
   }
   const model = JSON.parse(pinned(config.model, [productRoot, reviewRoot]).toString("utf8")); assertAgenticProcessModel(model);
+  if (model.contract_version !== "agentic-process-model.v1") fail("PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED");
   const controlScenario = Object.hasOwn(config, "control_scenario")
     ? assertAgenticControlScenario(JSON.parse(pinned(config.control_scenario, [productRoot, reviewRoot]).toString("utf8")))
     : { initial_facts: {}, events: [] };

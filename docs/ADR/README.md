@@ -22,3 +22,4 @@ Architectural decisions for the workflow product.
 - [ADR-0021-derived-context-control-plane.md](ADR-0021-derived-context-control-plane.md) (proposed; explicit derived working memory)
 - [ADR-0023-bpmn-execution-profile-and-simulation.md](ADR-0023-bpmn-execution-profile-and-simulation.md) (implemented; bounded XML compilation and synthetic replay)
 - [ADR-0024-default-agentic-workflow-engine.md](ADR-0024-default-agentic-workflow-engine.md) (implemented; default for every new workflow)
+- [ADR-0025-standard-workflow-runtime-binding.md](ADR-0025-standard-workflow-runtime-binding.md) (L1 contracts; typed operations/control, actual standard adapters and resume pending)

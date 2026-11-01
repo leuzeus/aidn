@@ -2,10 +2,12 @@ import { checkShadowJson, freezeShadow, shadowHash } from "./shadow-json.mjs";
 import { canAgentRolePerform, normalizeAgentRole, normalizeAgentAction } from "../agents/agent-role-model.mjs";
 import { isKnownAgentMode } from "../agents/agent-transition-policy.mjs";
 import schema from "../contracts/workflow-definition/agentic-process-model.v1.schema.json" with { type: "json" };
+import schemaV2 from "../contracts/workflow-definition/agentic-process-model.v2.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { DEFAULT_BPMN_EXECUTION_PROFILE, BPMN_EXECUTION_PROFILES } from "./bpmn-profile.mjs";
 
 export const AGENTIC_PROCESS_PROFILE = "structured-agentic-process.v1";
+export const AGENTIC_PROCESS_OPERATION_PROFILE = "structured-agentic-process.v2";
 export const processFail = code => { throw Object.assign(new Error(code), { code }); };
 const fail = processFail;
 export const processId = value => typeof value === "string" && /^[a-z][a-z0-9_-]{0,63}$/.test(value);
@@ -17,24 +19,29 @@ export const exactKeys = (value, required, optional = []) => value && typeof val
 const implemented = ["activity", "sequence", "xor", "and", "or", "event", "loop", "multi_instance", "call"];
 const descriptive = ["complex", "mixed", "event_start_exclusive", "event_start_parallel", "message_review"];
 export const agenticProcessCapabilities = () => freezeShadow({ profile: AGENTIC_PROCESS_PROFILE,
-  formats: ["agentic-process-model.v1"], bpmn_xml_import: true, bpmn_xml_profile: DEFAULT_BPMN_EXECUTION_PROFILE,
+  profiles: [AGENTIC_PROCESS_PROFILE, AGENTIC_PROCESS_OPERATION_PROFILE],
+  formats: ["agentic-process-model.v1", "agentic-process-model.v2"], bpmn_xml_import: true, bpmn_xml_profile: DEFAULT_BPMN_EXECUTION_PROFILE,
   bpmn_xml_profiles: [...BPMN_EXECUTION_PROFILES],
   constructs: [...implemented, ...descriptive].map(kind => ({ kind, representable: true, validatable: true,
     executable: implemented.includes(kind), tested: implemented.includes(kind),
-    verification: implemented.includes(kind) ? "offline_runtime_fixtures" : "explicit_execution_refusal" })),
+    verification: implemented.includes(kind) ? "offline_runtime_fixtures" : "explicit_execution_refusal" })).concat([
+    { kind: "operation", profile: AGENTIC_PROCESS_OPERATION_PROFILE, representable: true, validatable: true, executable: true, tested: true, verification: "offline_contract_service_fixtures" },
+  ]),
+  operations: { contract: "agentic-process-model.v2", reducer: true, trusted_authority_required: true, native_only_host_support: false },
   limits: { structured_single_entry: true, cross_pool_sequence: false, arbitrary_graphs: false,
     physical_parallelism_required: false, native_execution_qualified: false } });
 
 export function assertAgenticProcessModel(model, { executable = true, policyPins = null } = {}) {
-  if (checkShadowJson(model) || validateJsonSchema(model, schema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(model, ["contract_version", "model_id", "revision", "participants", "roles", "policies", "nodes", "entry"])
-    || model.contract_version !== "agentic-process-model.v1" || !processId(model.model_id)
+  const v2 = model?.contract_version === "agentic-process-model.v2";
+  if (checkShadowJson(model) || validateJsonSchema(model, v2 ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(model, ["contract_version", "model_id", "revision", "participants", "roles", "policies", "nodes", "entry", ...(v2 ? ["operation_pins"] : [])])
+    || !["agentic-process-model.v1", "agentic-process-model.v2"].includes(model.contract_version) || !processId(model.model_id)
     || !Number.isSafeInteger(model.revision) || model.revision < 1) fail("PROCESS_MODEL_INVALID");
-  const table = (rows, max) => {
-    if (!Array.isArray(rows) || !rows.length || rows.length > max || rows.some(row => !processId(row?.id))
+  const table = (rows, max, allowEmpty = false) => {
+    if (!Array.isArray(rows) || !allowEmpty && !rows.length || rows.length > max || rows.some(row => !processId(row?.id))
       || new Set(rows.map(row => row.id)).size !== rows.length) fail("PROCESS_IDS_INVALID");
     return new Map(rows.map(row => [row.id, row]));
   };
-  const participants = table(model.participants, 32), roles = table(model.roles, 32), policies = table(model.policies, 32), nodes = table(model.nodes, 128);
+  const participants = table(model.participants, 32), roles = table(model.roles, 32, v2), policies = table(model.policies, 32, v2), nodes = table(model.nodes, 128);
   for (const participant of participants.values()) if (!exactKeys(participant, ["id"])) fail("PROCESS_PARTICIPANT_INVALID");
   for (const role of roles.values()) if (!exactKeys(role, ["id", "role", "action", "skills"])
     || normalizeAgentRole(role.role) !== role.role || normalizeAgentAction(role.action) !== role.action
@@ -51,12 +58,14 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
     || [...policies].some(([id, policy]) => policyPins[id] !== shadowHash(policy)))) fail("PROCESS_REQUIRED_POLICY_CHANGED");
   const references = new Map();
   for (const node of nodes.values()) {
-    if (!participants.has(node.participant_ref) || ![...implemented, ...descriptive].includes(node.kind)) fail("PROCESS_NODE_INVALID");
+    if (!participants.has(node.participant_ref) || ![...implemented, ...descriptive, ...(v2 ? ["operation"] : [])].includes(node.kind)) fail("PROCESS_NODE_INVALID");
     const base = ["id", "kind", "participant_ref"];
     let children = [];
     if (descriptive.includes(node.kind)) {
       if (!exactKeys(node, [...base, "specification"]) || !node.specification || typeof node.specification !== "object") fail("PROCESS_DESCRIPTION_INVALID");
       if (executable) fail("PROCESS_CONSTRUCT_UNSUPPORTED");
+    } else if (node.kind === "operation") {
+      if (!exactKeys(node, [...base, "binding_ref"]) || !processId(node.binding_ref)) fail("PROCESS_OPERATION_NODE_INVALID");
     } else if (node.kind === "activity") {
       if (!exactKeys(node, [...base, "role_ref", "policy_ref"]) || !roles.has(node.role_ref) || !policies.has(node.policy_ref)) fail("PROCESS_ACTIVITY_INVALID");
       const role = roles.get(node.role_ref), policy = policies.get(node.policy_ref);
@@ -88,6 +97,10 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
       if (!nodes.has(child) || nodes.get(child).participant_ref !== node.participant_ref) fail("PROCESS_CROSS_PARTICIPANT_SEQUENCE");
       references.set(child, (references.get(child) ?? 0) + 1);
     }
+  }
+  if (v2) {
+    const bindings = [...new Set(model.nodes.filter(node => node.kind === "operation").map(node => node.binding_ref))];
+    if (!exactKeys(model.operation_pins, bindings) || Object.entries(model.operation_pins).some(([id, sha]) => !processId(id) || !/^[a-f0-9]{64}$/.test(sha))) fail("PROCESS_OPERATION_PINS_INVALID");
   }
   // A tree gives every split a bounded, unambiguous join. Unsupported arbitrary
   // graphs must not be silently interpreted as structured OR or as AND.

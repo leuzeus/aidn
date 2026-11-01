@@ -67,7 +67,7 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
             reviews: selection.activations.map(row => row.review) };
         });
         const rows = records.instances.map(instance => {
-          if (instance.contract_version === "agentic-process-instance.v1") {
+          if (["agentic-process-instance.v1", "agentic-process-instance.v2"].includes(instance.contract_version)) {
             const cursor = inspectAgenticProcess(instance), blockers = [...admission.blockers];
             if (records.agenticScopeId && instance.scope_id !== records.agenticScopeId) blockers.push("PROCESS_AUTHORITY_CHANGED");
             if (records.agenticAdmissionError) blockers.push(records.agenticAdmissionError);

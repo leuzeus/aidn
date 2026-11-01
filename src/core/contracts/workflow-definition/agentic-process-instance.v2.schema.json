@@ -1,0 +1,431 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/agentic-process-instance.v2",
+  "title": "Structured process instance v2",
+  "x-aidn-contract-version": "agentic-process-instance.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "profile",
+    "instance_id",
+    "model",
+    "model_sha256",
+    "policy_pins",
+    "scope_id",
+    "initial_facts",
+    "revision",
+    "events",
+    "instance_sha256"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "agentic-process-instance.v2"
+    },
+    "profile": {
+      "const": "structured-agentic-process.v2"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "model": {
+      "type": "object"
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "policy_pins": {
+      "type": "object",
+      "minProperties": 0,
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "initial_facts": {
+      "type": "object",
+      "maxProperties": 128,
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "kind"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "kind": {
+            "enum": [
+              "cancel",
+              "facts",
+              "message",
+              "assign",
+              "result",
+              "refusal",
+              "operation_intent",
+              "operation_result",
+              "control"
+            ]
+          },
+          "occurrence_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "correlation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "event_key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "facts": {
+            "type": "object",
+            "maxProperties": 128,
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "request": {
+            "type": "object"
+          },
+          "decision": {
+            "type": "object"
+          },
+          "stage": {
+            "enum": [
+              "assignment",
+              "verdict"
+            ]
+          },
+          "reason_code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z_]{0,95}$"
+          },
+          "request_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "result": {
+            "type": "object"
+          },
+          "intent": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contract_version",
+              "operation_id",
+              "binding_ref",
+              "binding_sha256",
+              "input_sha256",
+              "preconditions_sha256",
+              "authorization_sha256",
+              "authority_id",
+              "scope_id",
+              "instance_id",
+              "instance_sha256",
+              "model_sha256",
+              "occurrence_id",
+              "instance_revision"
+            ],
+            "properties": {
+              "contract_version": {
+                "const": "process-operation-intent.v1"
+              },
+              "operation_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "binding_ref": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "binding_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "input_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "preconditions_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "authorization_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "authority_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "scope_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "instance_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "instance_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "model_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "occurrence_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "instance_revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 512
+              }
+            }
+          },
+          "receipt": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contract_version",
+              "receipt_id",
+              "operation_id",
+              "intent_sha256",
+              "authority_id",
+              "outcome",
+              "effect_status",
+              "output_sha256",
+              "facts",
+              "evidence_refs"
+            ],
+            "properties": {
+              "contract_version": {
+                "const": "process-operation-receipt.v1"
+              },
+              "receipt_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "operation_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "intent_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "authority_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "outcome": {
+                "enum": [
+                  "completed",
+                  "failed",
+                  "rejected",
+                  "blocked",
+                  "deferred",
+                  "cancelled",
+                  "reconciliation_required"
+                ]
+              },
+              "effect_status": {
+                "enum": [
+                  "no_effect",
+                  "confirmed",
+                  "unknown"
+                ]
+              },
+              "output_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "facts": {
+                "type": "object",
+                "maxProperties": 128,
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ref",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "ref": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "delivery": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contract_version",
+              "delivery_id",
+              "authority_id",
+              "source_kind",
+              "source_event_id",
+              "subject_sha256",
+              "scope_id",
+              "instance_id",
+              "instance_sha256",
+              "model_sha256",
+              "instance_revision",
+              "occurrence_id",
+              "correlation_id",
+              "event_key",
+              "payload_sha256",
+              "evidence_refs"
+            ],
+            "properties": {
+              "contract_version": {
+                "const": "process-control-event.v1"
+              },
+              "delivery_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "authority_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "source_kind": {
+                "enum": [
+                  "human",
+                  "external"
+                ]
+              },
+              "source_event_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+              },
+              "subject_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "scope_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "instance_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "instance_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "model_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "instance_revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 512
+              },
+              "occurrence_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "correlation_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "event_key": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "payload_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ref",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "ref": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "instance_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

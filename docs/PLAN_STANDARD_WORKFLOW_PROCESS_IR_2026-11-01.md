@@ -4,8 +4,29 @@ Date : 2026-11-01. État : **PLAN ENREGISTRÉ — INTÉGRATION STANDARD À RÉAL
 Référence inspectée : commit `dd1dbaba9ae7123c157dd35f8a6f42f34f32d3fa`.
 Catégorie : architecture et intégration runtime ; voie prévue pour la réalisation :
 **ASSURED**, compte tenu des effets, contrats, autorités et persistances concernés.
-Le présent changement enregistre le diagnostic et le travail restant ; il ne
-livre ni le modèle standard ni ses nouveaux ports d’exécution.
+La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
+restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
+qualification de son parcours complet.
+
+### Avancement d’exécution
+
+- L0 : diagnostic terminé, conservé ci-dessous avec sa référence de code.
+- L1 : socle de contrats **VALIDÉ HORS LIGNE**. Contrats
+  binding/intention/reçu/livraison de contrôle, formats
+  modèle/instance v2, événements du réducteur commun et ports de service
+  authentifiés implémentés. Les lecteurs v1 restent séparés, avec hashes de
+  référence `dd1dbab` vérifiés. Voir [ADR-0025](ADR/ADR-0025-standard-workflow-runtime-binding.md).
+- Preuve de cette tranche : fixtures hors ligne sur stores réels et autorités
+  doublées ; attentes, reports, refus, effets inconnus, réconciliation, simulation,
+  replay, timeout et course CAS. Aucun adaptateur métier standard n’est qualifié
+  par ces doubles. L’enveloppe de livraison est authentifiée par un port hôte
+  borné ; les adaptateurs réels et l’inbox durable restent à réaliser en L2/L4.
+- L2 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
+  générale du lanceur et les preuves natives/package installé restent ouverts.
+- Vérifications L1 : 27 cas dédiés, 38 régressions du réducteur/service, 51 de
+  composition native sur transport simulé, 14 du compilateur, 10 du défaut moteur
+  et 12 de console. Aucun appel modèle réel. Les contrôles de gouvernance et
+  documentation accompagnent cette tranche ; ils ne qualifient pas L2–L8.
 
 ## 1. Résultat attendu et limite du travail déjà réalisé
 
@@ -223,7 +244,7 @@ silencieux des tables/ports de coordination partagée ; PostgreSQL reste optionn
 
 ## 6. Lots, dépendances et sorties vérifiables
 
-Tous les lots d’implémentation restent **À FAIRE**. L0 est le diagnostic documenté
+L1 est **VALIDÉ HORS LIGNE** ; les lots L2 à L8 restent **À FAIRE**. L0 est le diagnostic documenté
 ici, pas une qualification d’intégration. Les chemins existants sont à modifier
 seulement dans le lot concerné ; les nouveaux chemins de la section 4 sont proposés.
 
@@ -321,8 +342,8 @@ attentes/reprises satisfont A1–A10 et les niveaux de qualification revendiqué
 `reference_only` / `unsupported` ou exécuter un modèle générique ne satisfait pas
 cette condition.
 
-**Prochain lot à ouvrir : L1**, avec matrice de traçabilité initiale des activités
-ci-dessus et décision de contrats D/A/H et de reprise. Puis réaliser une tranche
+**Prochain lot : L2**, sur les contrats D/A/H fixés par ADR-0025 et la matrice
+initiale des activités ci-dessus. Réaliser une tranche
 verticale courte « rechargement → admission → session effective → attente de choix
 → arrêt/reprise » sur projet jetable avant d’étendre le modèle au parcours complet.
 Cette tranche fournit une première preuve de raccordement ; elle ne remplace pas

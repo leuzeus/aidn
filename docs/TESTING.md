@@ -2,6 +2,17 @@
 
 ## Structured agentic process
 
+The required gate includes `tools/perf/verify-process-operation-fixtures.mjs`
+for the L1 v2 operation foundation: closed bindings/intents/receipts, explicit
+non-success outcomes, unknown-effect reconciliation, exact shared-reducer
+replay/simulation, authenticated bounded ports, receipt CAS races and durable
+waits in files/dual/db-only. It uses real local stores with authority doubles
+and checks v1 hashes against a frozen `dd1dbab` oracle, mixed native/operation
+semantics, authenticated control delivery and provider-event reuse refusal.
+It does not use the standard business adapters. The native-only composition also refuses
+the operation profile before allocation. These checks do not qualify the
+standard workflow or native/installed mixed-host execution.
+
 The required agentic-process gate also runs
 `tools/perf/verify-workflow-engine-fixtures.mjs`: direct JSON creation defaults to
 the structured engine through the common composition, console and actual public

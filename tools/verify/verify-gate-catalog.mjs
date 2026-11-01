@@ -838,6 +838,12 @@ for (const [name, candidate] of Object.entries({
 }
 
 const negativeProbes = {
+  operation_contract_invocation_omission_rejected: (() => {
+    const candidate = clone(packageJson);
+    candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]
+      .replace("node tools/perf/verify-process-operation-fixtures.mjs && ", "");
+    return candidateRejected({ candidatePackageJson: candidate });
+  })(),
   default_workflow_engine_invocation_omission_rejected: (() => {
     const candidate = clone(packageJson);
     candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]

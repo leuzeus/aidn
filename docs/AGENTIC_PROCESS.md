@@ -62,6 +62,19 @@ installation/upgrade; this change does not edit an installed project.
 
 ## Model
 
+The L1 foundation for the standard workflow adds versioned
+`agentic-process-model.v2` / `agentic-process-instance.v2` readers to the same
+reducer. An `operation` references a fixed host binding for deterministic, human
+or external work, with an authenticated intent/receipt protocol. It requires no
+fake agent or native session. Deferred/blocked/unknown outcomes retain explicit
+waits; raw caller facts/messages cannot authorize v2 control through the service.
+V1 models, instances, native assignments and hashes retain their existing format.
+See [ADR-0025](ADR/ADR-0025-standard-workflow-runtime-binding.md).
+
+These contracts and trusted service ports do not yet implement the standard
+model or its real adapters. The native-only owned composition refuses v2 before
+native allocation; mixed-host execution and general resume remain in the plan.
+
 The closed `agentic-process-model.v1` contract declares participants, reusable
 roles/skills, versioned policies and a structured tree of nodes. Every node has
 its participant. Sequence edges stay within that participant. A call scopes a

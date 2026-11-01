@@ -1,11 +1,13 @@
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertProcessResult } from "../../core/workflow/agentic-process.mjs";
-import { processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
+import { processFail as fail, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { decideAgentReuse } from "./agent-reuse-decision-service.mjs";
+import { assertProcessOperationBinding, assertProcessOperationIntent, assertProcessOperationReceipt, assertProcessControlEvent } from "../../core/workflow/process-operation-contracts.mjs";
+import { checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 
 // Host-composed trusted ports, never modules/attestations selected by a model.
 // This service records admission and accepted results; it launches no executor.
-export function createAgenticProcessService({ store, readAuthority, readBinding, assignmentAuthority, resultAuthority,
+export function createAgenticProcessService({ store, readAuthority, readBinding, assignmentAuthority, resultAuthority, operationAuthority, controlAuthority,
   adapters, roster, adapterHealth, now = Date.now, authorityTimeoutMs = 1000 }) {
   if (!Number.isSafeInteger(authorityTimeoutMs) || authorityTimeoutMs < 1 || authorityTimeoutMs > 5000) fail("PROCESS_AUTHORITY_TIMEOUT_INVALID");
   function current(instanceId, expectedSha256) {
@@ -85,6 +87,29 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
       fail(codes.includes(error?.code) ? error.code : "PROCESS_RESULT_AUTHORITY_UNAVAILABLE");
     } finally { clearTimeout(timer); stop.abort(); }
   }
+  // Bounded observation/authentication only. Neither method executes an operation
+  // or accepts a receipt supplied in the request. The host owns the fixed port.
+  async function authorityObservation(port, callback, prefix = "PROCESS_OPERATION") {
+    const stop = new AbortController(); let timer;
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { stop.abort(); reject(Object.assign(new Error(prefix + "_AUTHORITY_TIMEOUT"), { code: prefix + "_AUTHORITY_TIMEOUT" })); }, authorityTimeoutMs); });
+    const invoke = async (method, input) => {
+      if (typeof port?.[method] !== "function") fail(prefix + "_AUTHORITY_UNAVAILABLE");
+      const observed = await Promise.race([Promise.resolve().then(() => port[method]({ ...structuredClone(input), signal: stop.signal })), timeout]);
+      if (checkShadowJson(observed)) fail(prefix + "_AUTHORITY_INVALID");
+      return structuredClone(observed);
+    };
+    try { return await callback(invoke); }
+    catch (cause) {
+      fail(/^PROCESS_(OPERATION|CONTROL)_[A-Z_]+$/.test(cause?.code ?? "") ? cause.code : prefix + "_AUTHORITY_UNAVAILABLE");
+    } finally { clearTimeout(timer); stop.abort(); }
+  }
+  function operationFrame(instance, occurrenceId) {
+    authority(instance);
+    const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId);
+    const node = frame && instance.model.nodes.find(row => row.id === frame.node_id);
+    if (node?.kind !== "operation") fail("PROCESS_OPERATION_NOT_FOUND");
+    return { frame, node };
+  }
   return Object.freeze({
     inspect(instanceId) {
       const previous = store.read(instanceId);
@@ -105,7 +130,66 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
     signal({ instanceId, expectedSha256, event, write = false, expectedResultSha256 = null }) {
       if (!["facts", "message", "cancel"].includes(event?.kind)) fail("PROCESS_CONTROL_EVENT_REQUIRED");
       const previous = current(instanceId, expectedSha256);
+      if (previous.record.contract_version === "agentic-process-instance.v2" && event.kind !== "cancel") fail("PROCESS_AUTHENTICATED_CONTROL_REQUIRED");
       return commit(advanceAgenticProcess(previous.record, event), previous, write, expectedResultSha256);
+    },
+    async prepareOperation({ instanceId, expectedSha256, occurrenceId, eventId, write = false, expectedResultSha256 = null }) {
+      if (!processId(eventId)) fail("PROCESS_OPERATION_REQUEST_INVALID");
+      const previous = current(instanceId, expectedSha256), { frame, node } = operationFrame(previous.record, occurrenceId);
+      const retained = previous.record.events.find(row => row.event_id === eventId);
+      if (retained?.kind === "operation_intent" && retained.occurrence_id === occurrenceId)
+        return commit(previous.record, previous, write, expectedResultSha256);
+      if (!(frame.status === "READY" || frame.status === "WAITING" && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
+      const { intent } = await authorityObservation(operationAuthority, async invoke => {
+        const observed = await invoke("prepare", { instance: previous.record, occurrence: frame, binding_ref: node.binding_ref });
+        assertProcessOperationBinding(observed.binding);
+        assertProcessOperationIntent(observed.intent, { instance: previous.record, node, occurrenceId: frame.occurrence_id });
+        if (observed.binding.id !== node.binding_ref || shadowHash(observed.binding) !== observed.intent.binding_sha256
+          || !["read-only", "preview"].includes(observed.binding.effect_class) && observed.intent.authorization_sha256 === null) fail("PROCESS_OPERATION_INTENT_BINDING_CHANGED");
+        const proof = await invoke("verifyIntent", { binding: observed.binding, intent: observed.intent, instance: previous.record, occurrence: frame });
+        if (proof.outcome !== "verified" || proof.authority_id !== observed.intent.authority_id
+          || proof.intent_sha256 !== shadowHash(observed.intent) || proof.binding_sha256 !== shadowHash(observed.binding)) fail("PROCESS_OPERATION_INTENT_NOT_AUTHENTICATED");
+        return observed;
+      });
+      return commit(advanceAgenticProcess(previous.record, { kind: "operation_intent", event_id: eventId, occurrence_id: occurrenceId, intent }), previous, write, expectedResultSha256);
+    },
+    async acceptOperation({ instanceId, expectedSha256, occurrenceId, eventId, receiptId, write = false, expectedResultSha256 = null }) {
+      if (!processId(eventId) || !processId(receiptId)) fail("PROCESS_OPERATION_REQUEST_INVALID");
+      const previous = current(instanceId, expectedSha256), { frame } = operationFrame(previous.record, occurrenceId);
+      const retained = previous.record.events.find(row => row.event_id === eventId);
+      if (retained?.kind === "operation_result" && retained.occurrence_id === occurrenceId && retained.receipt.receipt_id === receiptId)
+        return commit(previous.record, previous, write, expectedResultSha256);
+      if (frame.status !== "WAITING" || !frame.operation || frame.operation.receipt && frame.operation.receipt.outcome !== "reconciliation_required") fail("PROCESS_OPERATION_ORDER_INVALID");
+      const receipt = await authorityObservation(operationAuthority, async invoke => {
+        const observed = await invoke("readReceipt", { receipt_id: receiptId, instance: previous.record, occurrence: frame, intent: frame.operation.intent });
+        assertProcessOperationReceipt(observed, frame.operation.intent);
+        if (observed.receipt_id !== receiptId) fail("PROCESS_OPERATION_RECEIPT_BINDING_CHANGED");
+        const proof = await invoke("verifyReceipt", { receipt: observed, instance: previous.record, occurrence: frame, intent: frame.operation.intent });
+        if (proof.outcome !== "verified" || proof.authority_id !== observed.authority_id
+          || proof.intent_sha256 !== shadowHash(frame.operation.intent) || proof.receipt_sha256 !== shadowHash(observed)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
+        return observed;
+      });
+      return commit(advanceAgenticProcess(previous.record, { kind: "operation_result", event_id: eventId, occurrence_id: occurrenceId, receipt }), previous, write, expectedResultSha256);
+    },
+    async deliverControl({ instanceId, expectedSha256, occurrenceId, eventId, deliveryId, write = false, expectedResultSha256 = null }) {
+      if (!processId(eventId) || !processId(deliveryId)) fail("PROCESS_CONTROL_REQUEST_INVALID");
+      const previous = current(instanceId, expectedSha256);
+      authority(previous.record);
+      const retained = previous.record.events.find(row => row.event_id === eventId);
+      if (retained?.kind === "control" && retained.occurrence_id === occurrenceId && retained.delivery.delivery_id === deliveryId)
+        return commit(previous.record, previous, write, expectedResultSha256);
+      const occurrence = inspectAgenticProcess(previous.record).occurrences.find(row => row.occurrence_id === occurrenceId);
+      const node = occurrence && previous.record.model.nodes.find(row => row.id === occurrence.node_id);
+      if (previous.record.contract_version !== "agentic-process-instance.v2" || node?.kind !== "event" || occurrence.status !== "WAITING") fail("PROCESS_CONTROL_ORDER_INVALID");
+      const delivery = await authorityObservation(controlAuthority, async invoke => {
+        const observed = await invoke("read", { delivery_id: deliveryId, instance: previous.record, occurrence });
+        assertProcessControlEvent(observed, { instance: previous.record, occurrence });
+        if (observed.delivery_id !== deliveryId) fail("PROCESS_CONTROL_BINDING_CHANGED");
+        const proof = await invoke("verify", { delivery: observed, instance: previous.record, occurrence });
+        if (proof.outcome !== "verified" || proof.authority_id !== observed.authority_id || proof.delivery_sha256 !== shadowHash(observed)) fail("PROCESS_CONTROL_NOT_AUTHENTICATED");
+        return observed;
+      }, "PROCESS_CONTROL");
+      return commit(advanceAgenticProcess(previous.record, { event_id: eventId, kind: "control", occurrence_id: occurrenceId, delivery }), previous, write, expectedResultSha256);
     },
     async assign({ instanceId, expectedSha256, occurrenceId, eventId, write = false, expectedResultSha256 = null }) {
       const previous = current(instanceId, expectedSha256), frame = frameFor(previous.record, occurrenceId);
