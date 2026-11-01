@@ -12,6 +12,9 @@ execution profile in [AGENTIC_PROCESS.md](../AGENTIC_PROCESS.md) supports struct
 blocks only. The [explicit XML execution profile](../BPMN_EXECUTION_PROFILE.md)
 compiles a smaller structured subset; these operating diagrams do not themselves
 claim conformance or XML execution/import qualification.
+The normal executable XML path selects the v2 compiler and the delivered agentic
+reducer. Explicit v1 compiler compatibility uses the same IR/reducer; historical
+sequential workflow readers remain separate compatibility surfaces.
 
 - A `task` should have exactly `1` incoming sequence flow and `1` outgoing sequence flow.
 - A `startEvent` should have `0` incoming sequence flows and `1` outgoing sequence flow.

@@ -12,7 +12,7 @@ tracked offline fixtures; graphical editor import, new native model execution
 and installed-package qualification are NOT_RUN. See
 [the profile](BPMN_EXECUTION_PROFILE.md) for separate compiler/IR support levels.
 
-The same compiler suite also pins v1 compatibility and challenges the opt-in
+The same compiler suite also pins v1 compatibility and challenges the
 [default v2 XML mappings](BPMN_EXECUTION_PROFILE_V2.md): message correlation scopes,
 post-test loop polarity and explicit limit failures, fixed item identities,
 repeated/nested calls, recursion and expansion limits. The canonical service
@@ -41,6 +41,12 @@ The separate [BPMN v2 benchmark record](qualification/agentic-process/bpmn-v2-im
 retains real installed-candidate execution, usage counters, native rejection and
 corrections, plus one successful IR/XML pair. Its native evidence does not change
 the offline suites' NOT_RUN labels or qualify a public release.
+The [controlled follow-up](qualification/agentic-process/bpmn-v2-controlled-2026-11-01.md)
+uses four counterbalanced native cases, a fixed batched verification command and
+same-context evidence reuse on unchanged inputs. All ten activities retain their
+own authenticated result. The benchmark-only instruction builder is
+`tools/perf/agentic-process-benchmark-protocol.mjs`; ordinary work and independent
+review policy are not replaced by a global cache.
 
 `npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
 gate without a Codex client, model, network or installed activation. It verifies

@@ -1,5 +1,9 @@
 # BPMN v2 impact benchmark — 2026-11-01
 
+A later [controlled four-case comparison](bpmn-v2-controlled-2026-11-01.md)
+diagnoses the nine-response difference and measures the corrected protocol.
+The observations and costs below remain the original one-pair record.
+
 The bounded installed-candidate benchmark completed two native workflows with identical IR and activity-input hashes, exact canonical-journal simulation replay, an unchanged product and a 28-case independent oracle. Each workflow accepted ten activity results using one reused author thread and a separate independent reviewer. Two earlier infrastructure failures and one valid independent product rejection remain terminal and are accounted for separately. The corpus was corrected before the retained pair.
 
 The native comparison is **direct IR versus compiled XML on the same candidate runtime**. It is not an old-release/candidate native comparison. The frozen baseline comparison is restricted to the deterministic CPU reducer.

@@ -113,3 +113,11 @@ Native qualification now retains redacted completed-tool observations and
 distinct response counts per activity. This resolves the previous inability to
 separate tool granularity and repeated verification costs from compilation.
 No raw command, output or reasoning text is added to governed evidence.
+
+The delivered reference was verified against public v0.19.1, not merely the last
+local v0.19.0 tag: `src/core/workflow/agentic-process.mjs` is byte-identical
+(SHA-256 `cb62e240fbe52916f83921e0a7707468bbba17692bd1366cc4f364fbe573d94e`).
+The [controlled comparison](../qualification/agentic-process/bpmn-v2-controlled-2026-11-01.md)
+therefore isolates XML preparation above that same engine. It does not reopen
+the engine-selection decision or claim qualification of the entire public
+v0.19.1 package/dependency archive.

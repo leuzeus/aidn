@@ -326,7 +326,7 @@ events refuse rather than silently producing a successful benchmark. An absent
 scenario retains the previous durable-wait behavior. This is deterministic host
 input for a controlled run, not a broker, timer scheduler or native resume API.
 ADR-0014's fresh-attempt rule for the existing supervised task executor remains
-unchanged: this separate opt-in process profile does not retrofit persistent
+unchanged: this process profile does not retrofit persistent
 sessions into that executor.
 
 Native initialization has a 90-second ceiling clipped by the original workflow
@@ -397,3 +397,10 @@ workers and independent review. It retains three earlier failed attempts and one
 successful IR/XML pair, including higher observed XML-case time and token usage.
 Its sample size and fresh Windows product roots limit the qualification; it does
 not establish a general performance gain or same-root reuse after review.
+
+The [controlled follow-up](qualification/agentic-process/bpmn-v2-controlled-2026-11-01.md)
+isolates XML above that same delivered agentic reducer using four counterbalanced
+cases. Each uses 12 native responses, one author verification command and one
+independent review command; unchanged-input verification evidence is reused
+within the author context. It records tool/exchange parity as well as functional
+results, and distinguishes protocol savings from compiler cost.
