@@ -1,0 +1,474 @@
+{
+  "title": "StockFlow: descriptive benchmark consolidation",
+  "as_of": "2026-11-01",
+  "aidn_release": "0.19.0",
+  "source_checkout_base": "e3f8f32985fdbf501f12392c22befe4020af5426",
+  "status": "HISTORICAL_NON_NORMATIVE_REPORT",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "scope": "StockFlow backend, UI, C1 identity design and C2 identity application; prerequisite qualification retained separately",
+  "definitions": {
+    "total_tokens": "inputTokens + outputTokens; latest cumulative snapshot per native thread, once",
+    "cached_input": "subset of inputTokens, not added again",
+    "reasoning": "subset of outputTokens, not added again",
+    "financial_cost": "NON_MESURE",
+    "audit_and_interactive_chat_tokens": "NON_MESURE",
+    "initial_state_matched": "NOT_ESTABLISHED",
+    "cross_stage_total": "NOT_CERTIFIED; do not infer a global gain from these stage extracts"
+  },
+  "stages": {
+    "backend": {
+      "source": "backend",
+      "status": "APPLICATION_VALIDATION_COMPLETE_WITH_DOCUMENTED_EXECUTION_DEVIATION",
+      "aidn": {
+        "tokens": {
+          "inputTokens": 1112868,
+          "cachedInputTokens": 1019264,
+          "outputTokens": 32345,
+          "reasoningOutputTokens": 8460,
+          "totalTokens": 1145213,
+          "uncachedInputTokens": 93604
+        },
+        "responses": 23,
+        "source_review": "ACCEPT",
+        "functional": {
+          "pass": 28,
+          "total": 28
+        },
+        "generated_tests": 42,
+        "workflow_ms": 1072613,
+        "native_ms": 996338
+      },
+      "plain": {
+        "tokens": {
+          "inputTokens": 1005732,
+          "cachedInputTokens": 895104,
+          "outputTokens": 37923,
+          "reasoningOutputTokens": 12374,
+          "totalTokens": 1043655,
+          "uncachedInputTokens": 110628
+        },
+        "responses": 27,
+        "source_review": "ACCEPT",
+        "functional": {
+          "pass": 28,
+          "total": 28
+        },
+        "generated_tests": 104,
+        "initial_native_ms": 920531,
+        "complement_native_ms": 131613,
+        "reconstructed_native_ms": 1052144,
+        "calendar_until_complement_close_ms": 2042954
+      },
+      "tokens_by_phase": {
+        "aidn": {
+          "analysis": {
+            "totalTokens": 32222,
+            "inputTokens": 31651,
+            "cachedInputTokens": 0,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 571,
+            "reasoningOutputTokens": 130
+          },
+          "implementation_delta_same_thread": {
+            "totalTokens": 903801,
+            "inputTokens": 872918,
+            "cachedInputTokens": 863872,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 30883,
+            "reasoningOutputTokens": 7838
+          },
+          "review": {
+            "totalTokens": 209190,
+            "inputTokens": 208299,
+            "cachedInputTokens": 155392,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 891,
+            "reasoningOutputTokens": 492
+          }
+        },
+        "plain": {
+          "analysis": {
+            "totalTokens": 14603,
+            "inputTokens": 14100,
+            "cachedInputTokens": 0,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 503,
+            "reasoningOutputTokens": 186
+          },
+          "implementation_delta_same_thread": {
+            "totalTokens": 819349,
+            "inputTokens": 783763,
+            "cachedInputTokens": 730496,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 35586,
+            "reasoningOutputTokens": 11359
+          },
+          "supplementary_review": {
+            "totalTokens": 209703,
+            "inputTokens": 207869,
+            "cachedInputTokens": 164608,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 1834,
+            "reasoningOutputTokens": 829
+          }
+        }
+      },
+      "aidn_vs_plain_total_tokens_pct": 9.730993479646052,
+      "original_failure": "UNDECLARED_PRODUCT_DIRECTORY",
+      "original_status": "FAILED",
+      "unknown_in_flight_consumption": true,
+      "human_verdict": "NOT_RUN"
+    },
+    "ui": {
+      "source": "ui",
+      "status": "PRODUCT_ASSURANCE_COMPLETED_WITH_POSTHOC_B_REVIEW",
+      "aidn": {
+        "arm": "aidn",
+        "source_review": "ACCEPTED",
+        "functional_oracle": "20/20 PASS",
+        "generated_node_tests": 17,
+        "responses": 19,
+        "tokens": {
+          "inputTokens": 869813,
+          "cachedInputTokens": 780416,
+          "outputTokens": 21326,
+          "reasoningOutputTokens": 2810,
+          "totalTokens": 891139,
+          "uncachedInputTokens": 89397
+        },
+        "workflow_ms": 717685,
+        "native_ms": 649497
+      },
+      "plain": {
+        "arm": "plain",
+        "source_review": "ACCEPTED_IN_COMPLEMENT",
+        "functional_oracle": "20/20 PASS (prior immutable source evidence)",
+        "generated_node_tests": 39,
+        "responses": 27,
+        "tokens": {
+          "inputTokens": 1013541,
+          "cachedInputTokens": 863616,
+          "outputTokens": 58408,
+          "reasoningOutputTokens": 13462,
+          "totalTokens": 1071949,
+          "uncachedInputTokens": 149925
+        },
+        "initial_workflow_ms": 1027452,
+        "complement_envelope_ms": 131751,
+        "active_duration_reconstruction_ms": 1159203,
+        "calendar_from_B_start_to_complement_close_ms": 4097242
+      },
+      "plain_complement": {
+        "responses": 9,
+        "elapsed_ms": 131751,
+        "tokens": {
+          "inputTokens": 311182,
+          "cachedInputTokens": 254208,
+          "uncachedInputTokens": 56974,
+          "outputTokens": 2581,
+          "reasoningOutputTokens": 591,
+          "totalTokens": 313763
+        },
+        "files_read": 9
+      },
+      "plain_harness_partition_tokens": {
+        "inputTokens": 80014,
+        "cachedInputTokens": 47104,
+        "uncachedInputTokens": 32910,
+        "outputTokens": 1241,
+        "reasoningOutputTokens": 121,
+        "totalTokens": 81255
+      },
+      "plain_generation_and_accepted_review_tokens": {
+        "inputTokens": 933527,
+        "cachedInputTokens": 816512,
+        "outputTokens": 57167,
+        "reasoningOutputTokens": 13341,
+        "totalTokens": 990694,
+        "uncachedInputTokens": 117015
+      },
+      "aidn_vs_plain_total_tokens_pct": -16.867406938203217,
+      "aidn_vs_plain_without_identified_harness_partition_pct": -10.049016144238282,
+      "original_stop_rule_deviation_preserved": true,
+      "human_verdict": "NOT_RUN"
+    },
+    "c1": {
+      "source": "c1",
+      "status": "C1_BOTH_TECHNICALLY_ACCEPTED_HUMAN_SELECTION_PENDING",
+      "aidn": {
+        "status": "COMPLETED_ACCEPTED",
+        "tokens": {
+          "inputTokens": 1125577,
+          "cachedInputTokens": 1027328,
+          "outputTokens": 35515,
+          "reasoningOutputTokens": 5662,
+          "totalTokens": 1161092,
+          "uncachedInputTokens": 98249
+        },
+        "responses": 24,
+        "workflow_ms": 917283,
+        "global_ms": 1173085,
+        "oracle": {
+          "status": "PASS",
+          "passed": 8,
+          "total": 8
+        },
+        "previous_partial_tokens": 65273,
+        "previous_partial_additional_usage": "UNKNOWN",
+        "all_observed_tokens_lower_bound": 1226365
+      },
+      "plain": {
+        "status": "ACCEPTED_AFTER_RECOVERY",
+        "tokens": {
+          "inputTokens": 1059899,
+          "cachedInputTokens": 888832,
+          "outputTokens": 46150,
+          "reasoningOutputTokens": 10128,
+          "totalTokens": 1106049,
+          "uncachedInputTokens": 171067
+        },
+        "responses": 33,
+        "cumulative_execution_ms": 1368804,
+        "final_supplement_ms": 133558,
+        "oracle": {
+          "status": "PASS",
+          "passed": 8,
+          "total": 8,
+          "browser_closed": true
+        },
+        "files_read": 20
+      },
+      "historical_deviations": [
+        {
+          "code": "B_INITIAL_TIME_OVERRUN",
+          "detail": "B reached 1235246 ms before its later allowance amendment, exceeding initial 1200000 ms by 35246 ms. Later approval does not retroactively validate the overrun."
+        },
+        {
+          "code": "FIRST_TEMP_GOVERNANCE_DUMP_BYTES_LOST",
+          "detail": "Recovery-001 reused governance-FINAL.sql. Initial receipt remains; exact first export bytes are unavailable. Current replacement is pinned in recovery-002/DUMP-PROVENANCE.json. B sources and final review/captures remain verified."
+        },
+        {
+          "code": "A_CAPTURE_INCOMPLETE",
+          "detail": "Storage cancellation ended A before worker summary. Native-usage receipts recover 65273 observed tokens; additional consumption remains unknown."
+        }
+      ],
+      "h1_choices": {
+        "aidn": "Relais",
+        "plain": "Cadence",
+        "status": "EXPLICIT_USER_SELECTION; subsequent C2 inputs, not a comparative quality score"
+      },
+      "equal_budget_comparison": false
+    },
+    "c2": {
+      "source": "c2",
+      "aidn": {
+        "version": "0.19.0",
+        "engine": "opt-in PostgreSQL",
+        "identity": "Relais",
+        "workflow_initial_ms": 839648,
+        "native_author_and_review_ms": 770616,
+        "original_oracle_ms": 12686,
+        "responses": 24,
+        "tokens": {
+          "inputTokens": 1449703,
+          "cachedInputTokens": 1312640,
+          "outputTokens": 20636,
+          "reasoningOutputTokens": 2556,
+          "totalTokens": 1470339,
+          "uncachedInputTokens": 137063
+        },
+        "source_review": "ACCEPTED",
+        "functional": {
+          "pass": 20,
+          "total": 20
+        },
+        "brand": {
+          "pass": 8,
+          "total": 8,
+          "provenance": "Additional local verification after correction on exact unchanged 16-file retained product; not included in original workflow duration"
+        },
+        "additional_local_verification_ms": 95925,
+        "models_in_additional_verification": 0,
+        "human": "NOT_RUN"
+      },
+      "plain": {
+        "identity": "Cadence",
+        "coding": "NEW_FROM_ORIGINAL_FROZEN_UI",
+        "workflow_ms": 929672,
+        "native_author_and_review_ms": 913792,
+        "oracle_ms": 13594,
+        "global_run_ms": 1066184,
+        "responses": 26,
+        "tokens": {
+          "inputTokens": 2018475,
+          "cachedInputTokens": 1823488,
+          "outputTokens": 38358,
+          "reasoningOutputTokens": 4673,
+          "totalTokens": 2056833,
+          "uncachedInputTokens": 194987
+        },
+        "source_review": "completed",
+        "source_read_files": 16,
+        "functional": {
+          "pass": 20,
+          "total": 20
+        },
+        "brand": {
+          "pass": 8,
+          "total": 8
+        },
+        "human": "NOT_RUN"
+      },
+      "previous_plain": {
+        "status": "INTERRUPTED_ON_ORACLE_COVERAGE_DEFECT",
+        "workflow_ms": 351776,
+        "tokens_observed": {
+          "inputTokens": 742177,
+          "cachedInputTokens": 668416,
+          "outputTokens": 17751,
+          "reasoningOutputTokens": 2279,
+          "totalTokens": 759928
+        },
+        "responses": "UNKNOWN",
+        "additional_in_flight_usage": "UNKNOWN"
+      },
+      "observed_tokens_successful_a_and_new_b": 3527172,
+      "observed_tokens_including_interrupted_b": 4287100,
+      "complete_history_total": "UNKNOWN",
+      "aidn_vs_plain_total_tokens_pct": -28.514419984510166,
+      "aidn_vs_plain_native_author_and_review_pct": -15.66833590138675,
+      "comparability": {
+        "type": "DESCRIPTIVE_NOT_MATCHED_A_B",
+        "ui_baseline_bytes": {
+          "aidn": 57696,
+          "plain": 101004
+        },
+        "identities_differ": true,
+        "provider_initial_state": "NOT_ESTABLISHED",
+        "cache_equal": "NOT_ESTABLISHED_NOT_PURGED",
+        "aidn_brand_verification_completed_later": true,
+        "global_timings_not_directly_comparable": true,
+        "causal_global_financial_gain_claim": false
+      },
+      "budget": {
+        "plain_workflow_ms": 929672,
+        "plain_max_workflow_ms": 1500000,
+        "plain_responses": 26,
+        "plain_max_responses": 60,
+        "plain_elapsed_including_reporting_and_seal_ms": 1786608,
+        "plain_global_max_ms": 2400000,
+        "plain_budget_overrun": false,
+        "validation_resources_closed": true,
+        "display_servers_separate": true
+      }
+    }
+  },
+  "prerequisite": {
+    "source": "precursor_010",
+    "status": "PASS",
+    "application_backend": "sqlite",
+    "governance_backend": "postgres",
+    "tokens": {
+      "inputTokens": 757715,
+      "cachedInputTokens": 679936,
+      "outputTokens": 21388,
+      "reasoningOutputTokens": 4387,
+      "totalTokens": 779103
+    },
+    "responses": 20,
+    "case_to_oracle_ms": 947723,
+    "native_ms": 779679,
+    "prior_006_status": "PARTIAL_APPLICATION_PASS_WORKFLOW_FAILED",
+    "prior_006_tokens": {
+      "inputTokens": 714566,
+      "cachedInputTokens": 660096,
+      "outputTokens": 20401,
+      "reasoningOutputTokens": 4860,
+      "totalTokens": 734967
+    },
+    "prior_006_review": "FAILED_BEFORE_INSPECTION",
+    "release_time_report": "../../agentic-process/v0.19.0.md"
+  },
+  "attempts": [
+    {
+      "source": "backend_preparation",
+      "status": "CLOSED_PREPARATION_FAILURE_NO_NATIVE_BENCHMARK",
+      "benchmark_model_calls": 0
+    },
+    {
+      "source": "backend_failed",
+      "status": "CLOSED_FAILED",
+      "first_failure": "PROCESS_ACTIVITY_FAILED",
+      "tokens_observed": 86763,
+      "additional_in_flight_usage": "UNKNOWN",
+      "responses": 3,
+      "global_ms": 721118
+    },
+    {
+      "source": "backend",
+      "status": "ORIGINAL_CLOSED_FAILED_THEN_SEPARATELY_AUTHORIZED_REVIEW",
+      "first_failure": "UNDECLARED_PRODUCT_DIRECTORY",
+      "review_complement_tokens": 209703,
+      "review_complement_responses": 7
+    },
+    {
+      "source": "ui_preparation",
+      "status": "FAILED",
+      "first_failure": "HUMAN_ACK_CHANGED",
+      "model_trials": 0,
+      "global_ms": 666393
+    },
+    {
+      "source": "ui",
+      "status": "INCOMPLETE_ACCESS_DENIED_THEN_SEPARATELY_AUTHORIZED_REVIEW",
+      "raw_label": "QUALITY_FAIL",
+      "blocked_review_tokens": 48652,
+      "read_access_qualification_tokens": 32603,
+      "accepted_review_tokens": 281160,
+      "original_stop_rule_deviation": true
+    },
+    {
+      "source": "c1_preparation",
+      "status": "FAILED_CLOSED",
+      "first_failure": "FINAL_PREFLIGHT_REFERENCE_ERROR",
+      "global_ms": 2134206
+    },
+    {
+      "source": "c1",
+      "status": "RECOVERIES_AND_AUTHORIZATION_AMENDMENTS_RETAINED",
+      "previous_a_observed_tokens": 65273,
+      "previous_a_additional_usage": "UNKNOWN",
+      "plain_initial_workflow_overrun_ms": 35246,
+      "first_governance_dump_bytes": "LOST; replacement does not restore original"
+    },
+    {
+      "source": "c2_preparation",
+      "status": "FAILED_CLOSED",
+      "first_failure": "HUMAN_ACK_CHANGED",
+      "model_trials": 0
+    },
+    {
+      "source": "c2_original",
+      "status": "FAILED",
+      "initiating_cause": "ORACLE_APPROVED_LOGO_VARIANT_NOT_COVERED; see c2_correction",
+      "old_a_label": "QUALITY_FAIL; false logo rejection",
+      "prior_plain_observed_tokens": 759928,
+      "prior_plain_additional_usage": "UNKNOWN"
+    },
+    {
+      "source": "c2_retained_a",
+      "status": "NO_MODEL_RECHECK_ON_UNCHANGED_PRODUCT",
+      "functional": "20/20",
+      "brand": "8/8",
+      "elapsed_ms": 95925
+    },
+    {
+      "source": "c2_seal",
+      "status": "PASS_AUTOMATED_HUMAN_VISUAL_NOT_RUN",
+      "responses": 26,
+      "observed_tokens": 2056833,
+      "closed_within_authorization": true
+    }
+  ]
+}

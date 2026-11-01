@@ -2,6 +2,12 @@
 
 This folder tracks workflow performance rollout artifacts.
 
+The [StockFlow report for v0.19.0](../qualification/benchmarks/2026-11-01-stockflow/README.md)
+consolidates backend, UI, identity design and brand-application results. It keeps
+successful executions, interrupted attempts and recovery costs separate, with
+portable measurements and screenshots. Its favorable UI observations and
+unfavorable backend token result are descriptive, not causal or financial gains.
+
 The [2026-10-20 context efficiency benchmark reports](../qualification/benchmarks/README.md)
 retain completed comparisons 034/036, incomplete attempt 035, candidate
 provenance and unfavorable time/token results. Native continuation is reported
