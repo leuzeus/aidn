@@ -46,6 +46,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 
 - [Workflow console and guarded actions](./WORKFLOW_CONSOLE.md)
 - [Participants, roles, gateways and constrained assignment](./AGENTIC_PROCESS.md)
+- [Remaining standard workflow IR integration, operation ports and durable resume](./PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md)
 - [Shared runtime migration guide](./MIGRATION_SHARED_RUNTIME_POSTGRESQL.md)
 - [Runtime persistence migration guide](./MIGRATION_RUNTIME_PERSISTENCE_POSTGRESQL.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)

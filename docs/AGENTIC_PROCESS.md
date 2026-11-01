@@ -22,6 +22,15 @@ contracts select their historical readers; a default change never converts them.
 The v2 adoption does not rename the existing versioned IR or reducer profile.
 Loading a model or previewing a command does not allocate a native client.
 
+Default engine selection does not yet mean that AIDN's standard session/cycle/PR
+lifecycle is driven by a shipped process IR model. Its historical shadow
+definition remains descriptive; the native launcher currently admits only a
+matching pristine initial checkpoint, rather than general eventful resume.
+The remaining deliverable is explicitly tracked in the
+[standard workflow IR integration plan](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md):
+versioned standard model, actual skill/operation ports, durable human/external
+waits and resume, and separate offline/native/installed-package qualification.
+
 ```text
 aidn runtime workflow-run --target <root> --configuration <execution.json> --authorization <authorization.json> --json
 aidn runtime workflow-run --target <root> --configuration <execution.json> --execute --authorization <authorization.json> --expect-plan <action_sha256> --json

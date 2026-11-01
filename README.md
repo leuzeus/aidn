@@ -29,6 +29,11 @@ historical instances retain their pinned engine and format. Use
 `aidn runtime workflow-run` for normal execution; select `--engine legacy`
 explicitly for a new sequential compatibility run.
 
+AIDN's own standard session/cycle/PR lifecycle still needs its shipped IR model,
+actual operation bindings and durable resume. Engine selection alone does not
+establish that integration; see the
+[remaining integration plan](docs/PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
+
 The explicit [BPMN execution profile](docs/BPMN_EXECUTION_PROFILE.md) compiles
 structured task and XOR/AND/OR diagrams into that IR, with role/policy bindings
 and source maps. Synthetic simulation uses the same event reducer. Unsupported

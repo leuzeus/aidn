@@ -7,6 +7,14 @@ fixtures verify adoption. Existing native qualification remains bounded to its
 recorded implementation. Installed clients require a normal package update;
 this decision does not assert deployment or public-archive qualification.
 
+This status concerns engine selection and generic workflow entrypoints. It does
+not establish that AIDN's own standard lifecycle is controlled by a shipped IR
+model. That integration remains a separate required deliverable in the
+[standard workflow plan](../PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md),
+including actual skill/operation bindings, human/external waits, general durable
+resume and end-to-end qualification. Changing the historical shadow markers or
+reusing generic engine tests cannot close that deliverable.
+
 ## Decision
 
 The delivered structured agentic engine is the default for every new workflow,
