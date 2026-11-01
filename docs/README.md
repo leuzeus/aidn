@@ -40,6 +40,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [Global architecture diagram](./diagrams/01-global-system-architecture.md)
 - [BPMN views](./bpmn/README.md)
 - [BPMN execution profile and shared-reducer simulation](./BPMN_EXECUTION_PROFILE.md)
+- [BPMN v2: events, loops, multi-instance and local calls](./BPMN_EXECUTION_PROFILE_V2.md)
 
 ## Runtime And Operations
 

@@ -31,6 +31,9 @@ The explicit [BPMN execution profile](docs/BPMN_EXECUTION_PROFILE.md) compiles
 structured task and XOR/AND/OR diagrams into that IR, with role/policy bindings
 and source maps. Synthetic simulation uses the same event reducer. Unsupported
 BPMN semantics refuse explicitly; compilation does not authorize execution.
+The opt-in [v2 XML profile](docs/BPMN_EXECUTION_PROFILE_V2.md) adds correlated
+message races, guarded post-test loops, fixed multi-instance collections and
+local procedure calls, using the existing IR and reducer.
 
 The later [StockFlow benchmark report](docs/qualification/benchmarks/2026-11-01-stockflow/README.md)
 follows v0.19.0 through a PostgreSQL backend, a functional UI, identity design and

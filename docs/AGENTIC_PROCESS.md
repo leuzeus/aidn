@@ -63,7 +63,7 @@ author. All roles can reference the same skills.
 | Complex, mixed, instantiating event gateways | yes | Explicit refusal; no silent fallback or automatic normalization |
 | Autonomous participant review | yes | Explicit refusal pending a supported participant message/authority contract |
 | Unstructured graph, shared OR child, cross-pool sequence | no | Explicit refusal |
-| BPMN XML profile compilation | yes, bounded subset | Explicit `aidn-bpmn-structured.v1` compiler produces validated IR; see [the profile](BPMN_EXECUTION_PROFILE.md) |
+| BPMN XML profile compilation | yes, bounded subset | V1 remains default; opt-in [v2](BPMN_EXECUTION_PROFILE_V2.md) also compiles message races, guarded loops, collections and local calls |
 | General BPMN XML import/export | no | Unsupported semantics refuse; no XML export or general interpreter |
 
 `agenticProcessCapabilities()` exposes `representable`, `validatable`,

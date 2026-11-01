@@ -3,7 +3,7 @@ import { canAgentRolePerform, normalizeAgentRole, normalizeAgentAction } from ".
 import { isKnownAgentMode } from "../agents/agent-transition-policy.mjs";
 import schema from "../contracts/workflow-definition/agentic-process-model.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
-import { BPMN_EXECUTION_PROFILE } from "./bpmn-profile.mjs";
+import { BPMN_EXECUTION_PROFILE, BPMN_EXECUTION_PROFILES } from "./bpmn-profile.mjs";
 
 export const AGENTIC_PROCESS_PROFILE = "structured-agentic-process.v1";
 export const processFail = code => { throw Object.assign(new Error(code), { code }); };
@@ -18,6 +18,7 @@ const implemented = ["activity", "sequence", "xor", "and", "or", "event", "loop"
 const descriptive = ["complex", "mixed", "event_start_exclusive", "event_start_parallel", "message_review"];
 export const agenticProcessCapabilities = () => freezeShadow({ profile: AGENTIC_PROCESS_PROFILE,
   formats: ["agentic-process-model.v1"], bpmn_xml_import: true, bpmn_xml_profile: BPMN_EXECUTION_PROFILE,
+  bpmn_xml_profiles: [...BPMN_EXECUTION_PROFILES],
   constructs: [...implemented, ...descriptive].map(kind => ({ kind, representable: true, validatable: true,
     executable: implemented.includes(kind), tested: implemented.includes(kind),
     verification: implemented.includes(kind) ? "offline_runtime_fixtures" : "explicit_execution_refusal" })),

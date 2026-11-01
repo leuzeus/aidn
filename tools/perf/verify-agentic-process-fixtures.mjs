@@ -17,6 +17,9 @@ import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 
 const example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
+const extendedXml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8");
+const extendedModel = (xml = extendedXml) => compileBpmnProcess({ xml, profile: "aidn-bpmn-structured.v2", processRef: "ExtendedDelivery",
+  modelId: "extended-delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies }).model;
 const H = "a".repeat(64), OTHER = "b".repeat(64), NOW = Date.now();
 const cases = []; let serial = 0;
 async function check(name, run) { await run(); cases.push(name); console.log("PASS " + name); }
@@ -50,6 +53,12 @@ function completed(state, occurrence = inspect(state).ready[0], outcome = "compl
   const active = assigned(state, occurrence, resource), frame = inspect(active).occurrences.find(row => row.occurrence_id === occurrence);
   return advanceAgenticProcess(active, event({ kind: "result", occurrence_id: occurrence, result: resultFor(frame, outcome) }));
 }
+function signalExtended(state, key = "approved") {
+  const frame = inspect(state).occurrences.find(row => row.wait_reason === "event");
+  return advanceAgenticProcess(state, event({ kind: "message", occurrence_id: frame.occurrence_id, correlation_id: frame.correlation_id, event_key: key }));
+}
+const simulationOf = state => simulateAgenticProcess({ instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins,
+  scopeId: state.scope_id, facts: state.initial_facts, events: state.events });
 function gateway(kind, size = 2) { return model({ id: "gate", kind, participant_ref: "delivery", branches: Array.from({ length: size }, (_, index) => ({ flow_id: "flow-" + index,
   node_id: "task-" + index, ...(["xor", "or"].includes(kind) ? { condition: "condition-" + index } : kind === "event" ? { event_key: "message-" + index } : {}) })) },
   Array.from({ length: size }, (_, index) => leaf("task-" + index))); }
@@ -206,6 +215,66 @@ await check("simulation preserves waits, races, failures, duplicate idempotence 
   // Public contract validation remains separate; these are internal workflow envelopes.
   assert.deepEqual(validateJsonSchema(simulate(race), schema, "$", { contractKind: "workflow-definition" }), []);
 });
+await check("V2 XML event race waits, correlates one winner, disables alternatives and rejects late signals", () => {
+  const state = initial(extendedModel()); const frame = inspect(state).occurrences.find(row => row.wait_reason === "event");
+  assert.equal(inspect(state).ready.length, 0);
+  assert.throws(() => advanceAgenticProcess(state, event({ kind: "message", occurrence_id: frame.occurrence_id,
+    correlation_id: "foreign", event_key: "approved" })), /PROCESS_EVENT_CORRELATION_INVALID/);
+  for (const key of ["approved", "reconsider"]) {
+    const winner = signalExtended(state, key), cursor = inspect(winner);
+    assert.equal(cursor.ready.length, 1);
+    assert.equal(cursor.occurrences.find(row => row.occurrence_id === frame.occurrence_id).skipped_flows.length, 1);
+    assert.throws(() => advanceAgenticProcess(winner, event({ kind: "message", occurrence_id: frame.occurrence_id,
+      correlation_id: frame.correlation_id, event_key: key === "approved" ? "reconsider" : "approved" })), /PROCESS_EVENT_CORRELATION_INVALID/);
+    assert.deepEqual(simulationOf(winner).trace.at(-1).cursor, cursor);
+  }
+});
+await check("V2 XML loop executes body first, waits for missing fact, repeats and fails at its explicit guard", () => {
+  let state = completed(signalExtended(initial(extendedModel()))); // winner completes; loop body is READY
+  assert.equal(inspect(state).ready[0].endsWith("iteration-1"), true);
+  const firstLoop = completed(state);
+  assert.equal(inspect(firstLoop).ready.length, 0);
+  assert.equal(inspect(firstLoop).occurrences.some(row => row.wait_reason === "routing_fact"), true);
+  state = advanceAgenticProcess(firstLoop, event({ kind: "facts", facts: { refinement_done: false } }));
+  assert.equal(inspect(state).ready[0].endsWith("iteration-2"), true);
+  const exhausted = completed(state);
+  assert.equal(inspect(exhausted).first_failure, "PROCESS_LOOP_LIMIT");
+  assert.equal(simulationOf(exhausted).trace.at(-1).cursor.status, "FAILED");
+  const stop = advanceAgenticProcess(state, event({ kind: "facts", facts: { refinement_done: true } }));
+  const finished = completed(stop);
+  assert.equal(inspect(finished).first_failure, null); assert.equal(inspect(finished).ready.length, 2);
+  assert.deepEqual(simulationOf(finished).trace.at(-1).cursor, inspect(finished));
+});
+await check("V2 XML multi-instance and nested calls retain distinct scopes, ordering, failure and empty success", () => {
+  for (const sequential of [false, true]) {
+    const m = extendedModel(sequential ? extendedXml.replace('isSequential="false"', 'isSequential="true"') : extendedXml);
+    let state = completed(completed(signalExtended(initial(m, { refinement_done: true }))));
+    assert.equal(inspect(state).ready.length, sequential ? 1 : 2);
+    assert.equal(inspect(state).ready.every(ref => ref.includes("item-") && ref.endsWith("/call/0/call")), true);
+    const failed = completed(state, inspect(state).ready[0], "failed");
+    assert.equal(inspect(failed).first_failure, "PROCESS_ACTIVITY_FAILED");
+    assert.deepEqual(simulationOf(failed).trace.at(-1).cursor, inspect(failed));
+    if (!sequential) {
+      state = completed(state, inspect(state).ready[1]);
+      assert.equal(inspect(state).ready.some(ref => ref.includes("item-0")), true);
+    }
+    const ids = new Set(); let bound = 0;
+    while (inspect(state).ready.length && bound++ < 10) {
+      const ready = inspect(state).ready[0]; ids.add(ready);
+      const frame = inspect(state).occurrences.find(row => row.occurrence_id === ready), node = m.nodes.find(n => n.id === frame.node_id);
+      state = completed(state, ready, "completed", executor(node.policy_ref === "review" ? "reviewer" : "author"));
+    }
+    assert.equal(inspect(state).status, "COMPLETED");
+    assert.equal([...ids].some(ref => ref.includes("/item-1/")), true);
+    assert.equal(inspect(state).occurrences.filter(row => m.nodes.find(n => n.id === row.node_id).kind === "call").length, 6);
+    const simulation = simulationOf(state); assert.deepEqual(simulation.trace.at(-1).cursor, inspect(state));
+    assert.equal(simulation.trace.at(-1).instance_sha256, state.instance_sha256);
+  }
+  const emptyModel = extendedModel(extendedXml.replace('items="first second"', 'items=""').replace('>2</bpmn:loopCardinality>', '>0</bpmn:loopCardinality>'));
+  const empty = completed(completed(signalExtended(initial(emptyModel, { refinement_done: true }))));
+  assert.equal(inspect(empty).occurrences.some(row => row.occurrence_id.includes("item-")), false);
+  assert.equal(inspect(empty).ready[0].includes("/call/"), true); // ordinary FollowUp, after empty Batch
+});
 await check("R12: call procedure creates a scoped occurrence, never independent identity", () => {
   const state = assigned(initial(model({ id: "call", kind: "call", participant_ref: "delivery", child: "task" }, [leaf("task")])));
   assert.equal(inspect(state).occurrences.at(-1).assignment.decision.agent_id, "author");
@@ -236,6 +305,36 @@ function composition(m = model(), { stateMode = "files", resultTimeoutMs = 1000 
   return { service, store, state, targetRoot, initialize: (write = true) => service.initialize({ instanceId: "fixture", model: m, write }) };
 }
 try {
+  for (const stateMode of ["files", "dual", "db-only"]) await check("V2 XML event/loop/collection/calls use canonical authorities and deterministic simulation: " + stateMode, async () => {
+    const m = extendedModel(), c = composition(m, { stateMode });
+    assert.equal(c.initialize(false).written, false);
+    let current = c.initialize();
+    const wait = current.cursor.occurrences.find(row => row.wait_reason === "event");
+    current = c.service.signal({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, write: true,
+      event: event({ kind: "message", occurrence_id: wait.occurrence_id, correlation_id: wait.correlation_id, event_key: "approved" }) });
+    current = c.service.signal({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, write: true,
+      event: event({ kind: "facts", facts: { refinement_done: true } }) });
+    let step = 0;
+    while (current.cursor.ready.length && step < 12) {
+      const occurrenceId = current.cursor.ready[0], frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
+      const node = m.nodes.find(row => row.id === frame.node_id);
+      if (node.policy_ref === "review") {
+        c.state.binding.reviewed_contributors = [{ agent_id: "author", lineage_id: "lineage-author" }];
+        const refusal = await c.service.assign({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, occurrenceId, eventId: "self-review" });
+        assert.equal(refusal.decision.decision, "wait"); c.state.resource = executor("reviewer");
+      }
+      const assignment = await c.service.assign({ instanceId: "fixture", expectedSha256: current.record.instance_sha256,
+        occurrenceId, eventId: `assign-${step}`, write: true });
+      c.state.result = resultFor(assignment.cursor.occurrences.find(row => row.occurrence_id === occurrenceId));
+      current = await c.service.accept({ instanceId: "fixture", expectedSha256: assignment.record.instance_sha256, occurrenceId,
+        eventId: `accept-${step++}`, resultId: c.state.result.result_id, write: true });
+    }
+    assert.equal(step, 9); assert.equal(current.cursor.status, "COMPLETED");
+    const retained = createAgenticProcessStore({ targetRoot: c.targetRoot, stateMode }).read("fixture").record;
+    const simulation = simulationOf(retained);
+    assert.equal(simulation.trace.at(-1).instance_sha256, current.record.instance_sha256);
+    assert.deepEqual(simulation.trace.at(-1).cursor, current.cursor);
+  });
   for (const stateMode of ["files", "dual", "db-only"]) await check("compiled BPMN uses canonical service authorities and simulation parity: " + stateMode, async () => {
     const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/structured-delivery.bpmn", import.meta.url), "utf8");
     const { model: m } = compileBpmnProcess({ xml, modelId: "delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies });

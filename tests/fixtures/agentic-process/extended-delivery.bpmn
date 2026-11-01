@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:aidn="urn:aidn:bpmn:execution:v1" targetNamespace="urn:aidn:fixtures">
+  <bpmn:message id="approved"/>
+  <bpmn:message id="reconsider"/>
+  <bpmn:process id="ExtendedDelivery" isExecutable="true">
+    <bpmn:startEvent id="StartExtended"/>
+    <bpmn:eventBasedGateway id="AwaitDecision" instantiate="false" eventGatewayType="Exclusive"/>
+    <bpmn:intermediateCatchEvent id="CatchApproved"><bpmn:messageEventDefinition messageRef="approved"/></bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="CatchReconsider"><bpmn:messageEventDefinition messageRef="reconsider"/></bpmn:intermediateCatchEvent>
+    <bpmn:task id="ApprovedWork"><bpmn:extensionElements><aidn:execution roleRef="implementation" policyRef="work"/></bpmn:extensionElements></bpmn:task>
+    <bpmn:task id="ReconsiderWork"><bpmn:extensionElements><aidn:execution roleRef="analysis" policyRef="work"/></bpmn:extensionElements></bpmn:task>
+    <bpmn:exclusiveGateway id="DecisionMerge"/>
+    <bpmn:task id="Refine">
+      <bpmn:extensionElements>
+        <aidn:execution roleRef="implementation" policyRef="work"/>
+        <aidn:iterationLimit maxIterations="2" onLimit="fail"/>
+      </bpmn:extensionElements>
+      <bpmn:standardLoopCharacteristics testBefore="false">
+        <bpmn:loopCondition language="urn:aidn:bpmn:execution:v1">not(refinement_done)</bpmn:loopCondition>
+      </bpmn:standardLoopCharacteristics>
+    </bpmn:task>
+    <bpmn:callActivity id="Batch" calledElement="Procedure">
+      <bpmn:extensionElements><aidn:collection items="first second"/></bpmn:extensionElements>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="false"><bpmn:loopCardinality>2</bpmn:loopCardinality></bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:callActivity>
+    <bpmn:callActivity id="FollowUp" calledElement="Procedure"/>
+    <bpmn:task id="ReviewExtended"><bpmn:extensionElements><aidn:execution roleRef="review" policyRef="review"/></bpmn:extensionElements></bpmn:task>
+    <bpmn:endEvent id="EndExtended"/>
+    <bpmn:sequenceFlow id="EnterDecision" sourceRef="StartExtended" targetRef="AwaitDecision"/>
+    <bpmn:sequenceFlow id="ApprovedBranch" sourceRef="AwaitDecision" targetRef="CatchApproved"/>
+    <bpmn:sequenceFlow id="ReconsiderBranch" sourceRef="AwaitDecision" targetRef="CatchReconsider"/>
+    <bpmn:sequenceFlow id="ApprovedCaught" sourceRef="CatchApproved" targetRef="ApprovedWork"/>
+    <bpmn:sequenceFlow id="ReconsiderCaught" sourceRef="CatchReconsider" targetRef="ReconsiderWork"/>
+    <bpmn:sequenceFlow id="ApprovedMerged" sourceRef="ApprovedWork" targetRef="DecisionMerge"/>
+    <bpmn:sequenceFlow id="ReconsiderMerged" sourceRef="ReconsiderWork" targetRef="DecisionMerge"/>
+    <bpmn:sequenceFlow id="EnterRefinement" sourceRef="DecisionMerge" targetRef="Refine"/>
+    <bpmn:sequenceFlow id="EnterBatch" sourceRef="Refine" targetRef="Batch"/>
+    <bpmn:sequenceFlow id="EnterFollowUp" sourceRef="Batch" targetRef="FollowUp"/>
+    <bpmn:sequenceFlow id="EnterReview" sourceRef="FollowUp" targetRef="ReviewExtended"/>
+    <bpmn:sequenceFlow id="FinishExtended" sourceRef="ReviewExtended" targetRef="EndExtended"/>
+  </bpmn:process>
+  <bpmn:process id="Procedure" isExecutable="true">
+    <bpmn:startEvent id="ProcedureStart"/>
+    <bpmn:callActivity id="NestedCall" calledElement="LeafProcedure"/>
+    <bpmn:task id="ProcedureFinish"><bpmn:extensionElements><aidn:execution roleRef="implementation" policyRef="work"/></bpmn:extensionElements></bpmn:task>
+    <bpmn:endEvent id="ProcedureEnd"/>
+    <bpmn:sequenceFlow id="ProcedureEnter" sourceRef="ProcedureStart" targetRef="NestedCall"/>
+    <bpmn:sequenceFlow id="ProcedureContinue" sourceRef="NestedCall" targetRef="ProcedureFinish"/>
+    <bpmn:sequenceFlow id="ProcedureExit" sourceRef="ProcedureFinish" targetRef="ProcedureEnd"/>
+  </bpmn:process>
+  <bpmn:process id="LeafProcedure" isExecutable="true">
+    <bpmn:startEvent id="LeafStart"/>
+    <bpmn:task id="InspectItem"><bpmn:extensionElements><aidn:execution roleRef="implementation" policyRef="work"/></bpmn:extensionElements></bpmn:task>
+    <bpmn:endEvent id="LeafEnd"/>
+    <bpmn:sequenceFlow id="LeafEnter" sourceRef="LeafStart" targetRef="InspectItem"/>
+    <bpmn:sequenceFlow id="LeafExit" sourceRef="InspectItem" targetRef="LeafEnd"/>
+  </bpmn:process>
+</bpmn:definitions>

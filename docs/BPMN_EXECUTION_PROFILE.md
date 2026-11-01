@@ -1,5 +1,10 @@
 # BPMN to executable AIDN processes
 
+The default profile documented here remains `aidn-bpmn-structured.v1`.
+The explicit [v2 profile](BPMN_EXECUTION_PROFILE_V2.md) additionally compiles
+correlated message races, post-test guarded loops, fixed multi-instance
+collections and same-participant local procedure calls into the existing IR.
+
 ## Architecture
 
 BPMN is the modeling and interchange language. `agentic-process-model.v1` is
@@ -171,7 +176,8 @@ store, table, durable concept or migration is introduced.
 
 The research report's proposed `agentic-process-model.v2` is unnecessary for
 this first lossless subset: v1 already expresses its semantics. Future profile
-versions can add XML mappings for existing event/loop/multi-instance/call nodes.
+versions can add XML mappings for existing event/loop/multi-instance/call nodes;
+the opt-in [v2 profile](BPMN_EXECUTION_PROFILE_V2.md) now implements those mappings.
 Executable participant collaboration and durable boundary/timer semantics need
 their own message/authority, correlation, clock, cancellation and persistence
 contracts before they can be advertised. Neither is approximated with AND.

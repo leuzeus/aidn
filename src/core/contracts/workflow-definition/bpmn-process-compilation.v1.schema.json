@@ -8,7 +8,7 @@
   "required": ["contract_version", "profile", "source_sha256", "model_sha256", "model", "source_map"],
   "properties": {
     "contract_version": { "const": "bpmn-process-compilation.v1" },
-    "profile": { "const": "aidn-bpmn-structured.v1" },
+    "profile": { "enum": ["aidn-bpmn-structured.v1", "aidn-bpmn-structured.v2"] },
     "source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "model_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "model": { "type": "object" },

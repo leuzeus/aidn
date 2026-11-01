@@ -12,6 +12,15 @@ tracked offline fixtures; graphical editor import, new native model execution
 and installed-package qualification are NOT_RUN. See
 [the profile](BPMN_EXECUTION_PROFILE.md) for separate compiler/IR support levels.
 
+The same compiler suite also pins v1 compatibility and challenges the opt-in
+[v2 XML mappings](BPMN_EXECUTION_PROFILE_V2.md): message correlation scopes,
+post-test loop polarity and explicit limit failures, fixed item identities,
+repeated/nested calls, recursion and expansion limits. The canonical service
+suite executes the combined v2 model in files/dual/db-only with real temporary
+stores and authority doubles, then compares the exact journal cursor/hash with
+synthetic simulation. Native execution, live PostgreSQL, graphical import and
+installed-package qualification remain NOT_RUN.
+
 `npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
 gate without a Codex client, model, network or installed activation. It verifies
 versioned model/instance contracts, distinct participant/role/resource identities,

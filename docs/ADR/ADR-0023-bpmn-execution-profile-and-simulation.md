@@ -57,3 +57,27 @@ execution, installed archive or live PostgreSQL concurrency.
 Stop calling the compiler/simulator to roll back adoption. Existing pinned v1
 models and journals continue using their current reader; there is no automatic
 conversion, data removal or historical reinterpretation.
+
+## V2 XML mappings (2026-11-01)
+
+Add explicit `aidn-bpmn-structured.v2` selection while retaining v1 as the default
+and preserving its model/source-map fingerprints. The existing compilation
+envelope adds v2 to its profile enum; IR, instances and event schemas remain v1.
+
+V2 maps exclusive message races, post-test loops, constant multi-instance
+collections and local same-participant calls to existing reducer primitives.
+It validates authored declarations before normalization and reuses v1's graph
+checker. Repeated procedures expand into distinct IR subtrees; recursion,
+unreachable definitions and oversized expansion refuse.
+
+Standard loop condition polarity is preserved with `not(stop_fact)` mapping to
+the IR's `until`. An explicit AIDN `iterationLimit` declares failure on exhaustion;
+BPMN `loopMaximum` is refused because its normal exit differs from the IR guard.
+Message delivery remains a correlated trusted-host input. No broker, durable
+timer, broadcast signal, participant collaboration or capacity scheduler is added.
+
+The complete syntax and bounds are in [the v2 profile](../BPMN_EXECUTION_PROFILE_V2.md).
+Compiler/refusal fixtures and canonical files/dual/db-only service tests compare
+the retained execution journal with the exact synthetic replay cursor and hash.
+Native and installed-client qualification remain separate. Rollback selects v1
+for future compilations; already pinned IR instances retain their semantics.
