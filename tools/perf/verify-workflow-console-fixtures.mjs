@@ -81,12 +81,12 @@ try {
     for (const changed of ["request", "token", "instance"]) {
       const pendingPreview = get("preview").onclick(); get(changed).listeners.input();
       // Even an edit reverted to its original value invalidates the pending result.
-      respond({ can_apply: true, action_sha256: "a".repeat(64) }); await pendingPreview;
+      respond({ can_apply: true, action_sha256: "a".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await pendingPreview;
       get("approve").checked = true; get("approve").onchange(); assert.equal(get("apply").disabled, true);
       const before = requests.length; await get("apply").onclick(); assert.equal(requests.length, before);
     }
     const preview = get("preview").onclick(); get("approve").checked = true;
-    respond({ can_apply: true, action_sha256: "b".repeat(64) }); await preview;
+    respond({ can_apply: true, action_sha256: "b".repeat(64), action: { effects: ["canonical_workflow_checkpoint"] } }); await preview;
     assert.equal(get("approve").checked, false); get("approve").checked = true; get("approve").onchange(); assert.equal(get("apply").disabled, false);
     const application = get("apply").onclick(); assert.deepEqual(requests.at(-1).request, request); assert.equal(requests.at(-1).expectPlan, "b".repeat(64));
     respond({ written: true }); await application; assert.equal(get("apply").disabled, true);
@@ -95,7 +95,7 @@ try {
     const target = path.join(root, mode); activateWorkflowConsoleFixture(target, path.join(root, "package"));
     put(path.join(target, ".aidn/config.json"), { runtime: { stateMode: mode } });
     if (mode !== "files") createArtifactStore({ sqliteFile: path.join(target, ".aidn/runtime/index/workflow-index.sqlite") }).close();
-    const requestFile = path.join(root, mode + "-request.json"), request = { operation: "initialize", input: { instanceId: "sample", definition, context: { ...context, state_mode: mode } } };
+    const requestFile = path.join(root, mode + "-request.json"), request = { operation: "initialize", input: { engine: "legacy", instanceId: "sample", definition, context: { ...context, state_mode: mode } } };
     put(requestFile, request);
     const server = await startWorkflowDashboard({ targetRoot: target });
     const api = async (route, body, headers = {}) => fetch(server.url + "/api/" + route, { method: "POST", headers: { Origin: server.url, "Content-Type": "application/json", Authorization: "Bearer " + server.token, ...headers }, body: JSON.stringify(body) });

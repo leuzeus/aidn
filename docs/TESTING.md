@@ -2,6 +2,16 @@
 
 ## Structured agentic process
 
+The required agentic-process gate also runs
+`tools/perf/verify-workflow-engine-fixtures.mjs`: direct JSON creation defaults to
+the structured engine through the common composition, console and actual public
+CLI dispatch. It checks explicit legacy creation, historical readers, config
+override validation, ambiguous IDs, exact preview/authorization delegation and
+pristine initial-checkpoint admission. The production-host fake-wire suite also
+executes an instance created through that default composition. No native model
+call is made by these selection tests. See
+[ADR-0024](ADR/ADR-0024-default-agentic-workflow-engine.md).
+
 The same gate includes `verify-bpmn-process-fixtures.mjs`: strict namespace
 parsing, supported structured XML compilation, role/policy bindings, source
 maps, nested joins and explicit refusal of unsupported graphs/semantics. The

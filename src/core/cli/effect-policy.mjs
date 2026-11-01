@@ -90,6 +90,13 @@ function commandPolicy({
 }
 
 const CLI_EFFECT_POLICIES = freezeDeep([
+  commandPolicy({
+    id: "runtime-workflow-run", command: "aidn runtime workflow-run --json", surfaceDefault: true, stability: "experimental",
+    effectClass: "preview", surfaceDefaultEffect: "preview",
+    effectVariants: [{ whenArgs: ["--execute"], effectClass: "executor" }],
+    jsonContract: "runtime-workflow-run.v1.schema.json", safeArgs: ["runtime", "workflow-run", "--json"], allowNonZero: true,
+    notes: "Default structured agentic execution for JSON models and compiled BPMN. Preview starts no native session. Explicit execution requires a matching preview, authorization and bounded owned process tree. Legacy execution requires explicit selection.",
+  }),
   ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => commandPolicy({
     id: "runtime-" + name, command: "aidn runtime " + name + " --json", surfaceDefault: true, stability: "experimental",
     effectClass: name === "workflow-inspect" ? "read-only" : "preview", surfaceDefaultEffect: name === "workflow-inspect" ? "read-only" : "preview",

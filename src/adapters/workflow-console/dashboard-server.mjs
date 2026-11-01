@@ -30,7 +30,7 @@ export async function startWorkflowDashboard({ targetRoot, createService = creat
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       if (!body || typeof body !== "object" || Array.isArray(body)) return send(400, { errors: ["WORKFLOW_DASHBOARD_REQUEST_INVALID"] });
       if (request.url === "/api/inspect") {
-        if (Object.keys(body).some(key => !["instanceId", "workflowId", "configuration", "run"].includes(key))) return send(400, { errors: ["WORKFLOW_DASHBOARD_REQUEST_INVALID"] });
+        if (Object.keys(body).some(key => !["instanceId", "workflowId", "configuration", "run", "engine"].includes(key))) return send(400, { errors: ["WORKFLOW_DASHBOARD_REQUEST_INVALID"] });
         return send(200, await service.inspect(body));
       }
       if (Object.keys(body).some(key => !["request", "write", "execute", "syncRelay", "expectPlan"].includes(key))) return send(400, { errors: ["WORKFLOW_DASHBOARD_REQUEST_INVALID"] });

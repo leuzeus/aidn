@@ -12,12 +12,38 @@
 | Gateway | Routing and synchronization of logical control flows | A model call or a number of workers |
 | Review | An activity bound to work, criteria and an assurance policy | Independence from a new label, pool or session alone |
 
-`structured-agentic-process.v1` is the normal execution engine for BPMN processes,
-exposed through an internal application API. It is
-separate from shadow workflow descriptions and existing sequential instances.
-Existing callers and installed projects keep their behavior. The explicit owned
-runner below composes a native adapter; importing the engine or loading a model
-does not start a client or change an installed activation.
+`structured-agentic-process.v1` is the default execution engine for all new AIDN
+workflows, including directly authored JSON models. BPMN v2 compilation is one
+authoring route into this same engine. The public `aidn runtime workflow-run`
+entry and console select `agentic` without an engine flag. Explicit
+`--engine legacy`, `engine: "legacy"` on initialization, or project configuration
+`runtime.workflowEngine: "legacy"` selects sequential compatibility. Persisted
+contracts select their historical readers; a default change never converts them.
+The v2 adoption does not rename the existing versioned IR or reducer profile.
+Loading a model or previewing a command does not allocate a native client.
+
+```text
+aidn runtime workflow-run --target <root> --configuration <execution.json> --authorization <authorization.json> --json
+aidn runtime workflow-run --target <root> --configuration <execution.json> --execute --authorization <authorization.json> --expect-plan <action_sha256> --json
+```
+
+The configuration and authorization retain the owned runner's existing contracts,
+implementation/authority/model/criteria pins, native permission checks, deadlines,
+response/storage budgets and process-tree closure. Preview pins the target,
+configuration, authorization content and product observation, and displays the
+typed budget fields. A preview without authorization lists that requirement and
+cannot be applied; provide the authorization and repeat the preview before
+execution. An explicit execution rechecks the exact
+preview before delegating to the owned host. No PostgreSQL or shared relay is
+introduced by this default; the configured canonical backend remains authoritative.
+`codex workflow-step` remains the admission/context observation port and does not
+start native work implicitly. The previous `agent-run*` commands are explicit
+sequential compatibility entrypoints.
+
+Console initialization writes an unstarted agentic instance only with `--write`.
+It may enter the owned runner when instance/model/facts/scope/policies exactly
+match its pristine initial checkpoint. Existing events or changed bindings require
+reconciliation; an execution is never restarted over historical results.
 
 The package's source startup contract and minimal workflow kernel also instruct
 agents to retain the current execution for compatible roles, without changing
@@ -287,7 +313,8 @@ compatibility is retained and checked separately.
 The internal entry is `tools/runtime/run-agentic-process.mjs`. It requires exactly
 one of `--preview` (read only) and `--execute`; configuration bytes are pinned by
 `--configuration` and `--configuration-sha256`. Execution additionally requires
-`--authorization` and `--authorization-sha256`. Nothing is activated by default.
+`--authorization` and `--authorization-sha256`. Selecting the default engine does
+not allocate a native client; preview and execution retain distinct admissions.
 The configuration is closed at the root and includes:
 
 | Field | Required content |

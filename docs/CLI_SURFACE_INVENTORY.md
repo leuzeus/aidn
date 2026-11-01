@@ -327,6 +327,11 @@ finalization; `--verify` retains its read-only verification behavior.
 - `aidn runtime shared-coordination-projects --json`
 - `aidn runtime agent-run --configuration <file> --plan <file> --json`
 - `aidn runtime workflow-inspect --target <root> --json`
+- `aidn runtime workflow-run --target <root> --configuration <file> --json`
+  - Defaults to the structured agentic engine for every new workflow. Execution
+    requires `--execute --authorization <file> --expect-plan <sha256>`; JSON and
+    preview start no native client. `--engine legacy` explicitly selects the
+    sequential compatibility lifecycle and retains its plan/shared-sync admission.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
 - `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`

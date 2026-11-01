@@ -4,8 +4,9 @@ import { agentRunPhysicalPath } from "./agent-run-configuration-service.mjs";
 import { createWorkflowRecordStore } from "../../adapters/runtime/workflow-record-store.mjs";
 import { createWorkflowInstanceStore, workflowInstanceArtifactPath } from "../../adapters/runtime/workflow-instance-store.mjs";
 import { assertWorkflowSelection } from "../../core/workflow/workflow-selection.mjs";
-import { createProjectWorkflowInstanceService, readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
+import { createLegacyProjectWorkflowInstanceService, readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
 import { createWorkflowCandidateService } from "./workflow-candidate-service.mjs";
+import { resolveWorkflowEngine } from "../../core/workflow/workflow-engine-policy.mjs";
 
 export function createWorkflowSelectionStore(options) {
   return createWorkflowRecordStore({ ...options, descriptor: {
@@ -18,7 +19,12 @@ export function createWorkflowSelectionStore(options) {
 export function createProjectWorkflowCandidateService({ targetRoot }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   const options = { targetRoot: root, stateMode: resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "files" };
-  const lifecycle = createProjectWorkflowInstanceService({ targetRoot: root });
-  return createWorkflowCandidateService({ selections: createWorkflowSelectionStore(options), instances: createWorkflowInstanceStore(options),
+  const lifecycle = createLegacyProjectWorkflowInstanceService({ targetRoot: root });
+  const service = createWorkflowCandidateService({ selections: createWorkflowSelectionStore(options), instances: createWorkflowInstanceStore(options),
     readAuthority: () => readWorkflowProjectAuthority({ targetRoot: root }), initializeInstance: request => lifecycle.initialize(request) });
+  return Object.freeze({ ...service, initializeSelected(input) {
+    if (resolveWorkflowEngine({ engine: input.engine, config: readAidnProjectConfig(root).data }) !== "legacy")
+      throw new Error("WORKFLOW_LEGACY_ENGINE_SELECTION_REQUIRED");
+    return service.initializeSelected(input);
+  } });
 }

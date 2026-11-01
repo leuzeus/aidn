@@ -369,7 +369,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: "configured runtime artifact store; visible JSON is a derived projection",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/process-instances/<id>.json only through the existing explicit artifact materialization",
-    notes: "ADR-0022/ADR-0023. Existing project artifact CAS/fence and backend selection. The instance pins canonical IR and policy hashes; authored BPMN and in-memory compilation/source maps are modeling inputs and derived values, never native authority. Synthetic simulation traces are reference evidence, not canonical process state. Trusted assignment/result ports remain mandatory; no new durable concept, shared table or implicit activation.",
+    notes: "ADR-0022/ADR-0023/ADR-0024. Default engine for every new workflow, including direct JSON. Existing project artifact CAS/fence and backend selection. Historical sequential instances retain their reader; new sequential creation requires explicit compatibility selection. The instance pins canonical IR and policy hashes; authored BPMN and in-memory compilation/source maps are modeling inputs and derived values, never native authority. Synthetic simulation traces are reference evidence, not canonical process state. Trusted assignment/result ports remain mandatory; no new durable concept, shared table or implicit activation.",
   }),
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
     concept,

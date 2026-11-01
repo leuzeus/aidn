@@ -14,6 +14,7 @@ import { agenticProcessImplementationPins } from "./agentic-process-implementati
 import { agenticProcessPersistence, createAgenticProcessWorkerEnvironment } from "./agentic-process-persistence.mjs";
 import { assertAgenticControlScenario } from "../../core/workflow/agentic-process-control-scenario.mjs";
 import { republishBrokerProductFile } from "../../adapters/runtime/broker-product-file.mjs";
+import { assertAgenticProcessStart } from "../../core/workflow/agentic-process-start.mjs";
 
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
@@ -145,7 +146,10 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const storeEnvironment = createAgenticProcessWorkerEnvironment({ targetRoot, expectedBinding: persistenceBinding, env: environment });
       const store = createAgenticProcessStore({ targetRoot, stateMode: authorityAtCreation.stateMode, env: storeEnvironment,
         deadlineMs: workDeadline, ...(artifactStoreFactory ? { artifactStoreFactory } : {}) });
-      if (store.read(config.instance_id).record) fail("PROCESS_EXECUTION_EXISTING_INSTANCE_REQUIRES_RECONCILIATION");
+      const creation = { instanceId: config.instance_id, model, facts: controlScenario.initial_facts,
+        scopeId, policyPins: agenticPolicyPins(model) };
+      const retainedAtStart = store.read(config.instance_id).record;
+      assertAgenticProcessStart(retainedAtStart, creation);
       const output = path.join(controlRoot, config.instance_id);
       fs.mkdirSync(output); // wx-style allocation: existing control folder refuses
       const stop = new AbortController(), responseIds = new Set(); let firstFailure = null, retainedBytes = 0, sequence = 0, diagnostics = 0;
@@ -294,8 +298,11 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const requireProjection = () => { if (current?.projection === "reconciliation_required") fail("PROCESS_EXECUTION_PROJECTION_RECONCILIATION_REQUIRED"); };
       try {
         if (stop.signal.aborted) fail(firstFailure ?? "PROCESS_EXECUTION_CANCELLED");
-        const initial = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: false });
-        current = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: true, expectedResultSha256: initial.record.instance_sha256 });
+        if (retainedAtStart) { current = service.inspect(config.instance_id); assertAgenticProcessStart(current.record, creation); }
+        else {
+          const initial = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: false });
+          current = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: true, expectedResultSha256: initial.record.instance_sha256 });
+        }
         requireProjection();
         while (!["COMPLETED", "FAILED", "CANCELLED"].includes(current.cursor.status)) {
           if (stop.signal.aborted) fail(firstFailure ?? "PROCESS_EXECUTION_CANCELLED");

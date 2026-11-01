@@ -113,6 +113,11 @@ The common derived view retains exact IDs, reason codes and independent run
 status axes. CLI and HTTP fixtures compare complete objects; existing internal
 schemas still validate nested instances and selections before projection.
 
+ADR-0024 adds `runtime-workflow-run.v1` for ordinary structured-agentic execution.
+Its selected engine, exact preview, requirements and owned-host result remain
+explicit. The console's derived instances carry `engine`; their nested agentic
+or sequential records are validated through their own versioned contracts.
+
 ADR-0019 adds closed internal `workflow-candidate.v1`,
 `workflow-candidate-preview.v1`, `workflow-projection.v1` and
 `workflow-selection.v1` contracts. Nested definitions and compilations use the

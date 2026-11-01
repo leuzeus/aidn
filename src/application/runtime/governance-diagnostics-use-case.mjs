@@ -210,8 +210,8 @@ export const GOVERNED_CONCEPTS = Object.freeze([
 ]);
 
 export const GOVERNANCE_RUNTIME_SURFACES = Object.freeze([
-  ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => ({
-    id: `runtime-${name}`, linked_concepts: ["workflow_instance", "workflow_selection", "workflow_rules", "execution_run", "delegated_task", "execution_attempt", "project_activation", "cli_output_contract"],
+  ...["workflow-inspect", "workflow-action", "workflow-dashboard", "workflow-run"].map(name => ({
+    id: `runtime-${name}`, linked_concepts: ["agentic_process_instance", "workflow_instance", "workflow_selection", "workflow_rules", "execution_run", "delegated_task", "execution_attempt", "project_activation", "cli_output_contract"],
   })),
   ...["agent-run", "agent-run-status", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].map(name => ({
     id: `runtime-${name}`, linked_concepts: ["execution_run", "delegated_task", "execution_attempt", "workspace", "project_activation", "cli_output_contract"],

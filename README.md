@@ -19,13 +19,15 @@ This source/offline capability adds no automatic installed activation, native
 agent launch or performance claim. See
 [ADR-0021](docs/ADR/ADR-0021-sequential-agent-reuse-decision.md).
 
-The [structured agentic process](docs/AGENTIC_PROCESS.md), the normal engine for BPMN workflows, adds explicit
+The [structured agentic process](docs/AGENTIC_PROCESS.md), the default engine for all new workflows, provides
 owned native execution: compatible activities can share a live thread while
 independent review receives a fresh read-only context. The host retains control
 of routing, canonical persistence, budgets and cleanup. Its
 [bounded qualification](https://github.com/leuzeus/aidn/blob/v0.19.0/docs/qualification/agentic-process/v0.19.0.md)
 does not establish general native support or a performance gain. Ordinary
-installed workflows are unchanged.
+historical instances retain their pinned engine and format. Use
+`aidn runtime workflow-run` for normal execution; select `--engine legacy`
+explicitly for a new sequential compatibility run.
 
 The explicit [BPMN execution profile](docs/BPMN_EXECUTION_PROFILE.md) compiles
 structured task and XOR/AND/OR diagrams into that IR, with role/policy bindings

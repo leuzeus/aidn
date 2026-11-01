@@ -20,6 +20,7 @@ const files = [
   "src/core/agents/agent-role-model.mjs", "src/core/agents/codex-startup-arguments.mjs",
   "src/core/workflow/agentic-process-model.mjs", "src/core/workflow/agentic-process.mjs", "src/core/workflow/shadow-json.mjs",
   "src/core/workflow/agentic-process-control-scenario.mjs",
+  "src/core/workflow/agentic-process-start.mjs", "src/core/workflow/workflow-engine-policy.mjs",
   "src/core/contracts/workflow-definition/agentic-process-control-scenario.v1.schema.json",
   "src/adapters/runtime/broker-product-file.mjs",
   "src/core/contracts/workflow-definition/agentic-process-model.v1.schema.json",

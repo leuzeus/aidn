@@ -192,7 +192,7 @@ try {
   await check("real composition refuses an uninstalled source-style directory without mutation", () => {
     const targetRoot = path.join(root, "uninstalled"); fs.mkdirSync(targetRoot);
     const service = createProjectWorkflowInstanceService({ targetRoot });
-    assert.throws(() => service.initialize({ instanceId: "fixture", definition, context, write: true }), /ACTIVATION_REQUIRED/);
+    assert.throws(() => service.initialize({ engine: "legacy", instanceId: "fixture", definition, context, write: true }), /ACTIVATION_REQUIRED/);
     assert.deepEqual(fs.readdirSync(targetRoot), []);
   });
   await check("real composition persists human checkpoints in an activated disposable client fixture", () => {
@@ -220,9 +220,9 @@ try {
     put(targetRoot, `.aidn/install/transactions/${tx.id}.json`, seal(tx)); put(targetRoot, ".aidn/install/receipt.json", seal(receipt));
     assert.equal(readActivation({ targetRoot }).state, "active");
     const service = createProjectWorkflowInstanceService({ targetRoot });
-    const state = service.initialize({ instanceId: "fixture", definition: currentDefinition, context: currentContext, write: true }).instance;
+    const state = service.initialize({ engine: "legacy", instanceId: "fixture", definition: currentDefinition, context: currentContext, write: true }).instance;
     assert.equal(createProjectWorkflowInstanceService({ targetRoot }).inspect("fixture").instance.instance_sha256, state.instance_sha256);
-    const human = service.initialize({ instanceId: "human", definition: currentDefinition, context: currentContext, write: true }).instance;
+    const human = service.initialize({ engine: "legacy", instanceId: "human", definition: currentDefinition, context: currentContext, write: true }).instance;
     const decided = service.decide({ instanceId: "human", expectedSha256: human.instance_sha256, outcome: "rejected", evidence, write: true });
     assert.equal(decided.cursor.status, "terminal"); assert.equal(decided.instance.revision, 2);
     applyAuthorization(planAuthorization({ targetRoot, action: "revoke" }));

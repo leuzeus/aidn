@@ -2,11 +2,15 @@
 
 ## Status
 
-Implemented as an opt-in internal source API and explicit owned native
+Initially implemented as an opt-in internal source API and explicit owned native
 composition, verified offline. One bounded pre-release Windows native case
 completed; the exact published archive and general native profile remain
 unqualified. See [the qualification record](../qualification/agentic-process/v0.19.0.md).
 No default client activation or general BPMN interpreter.
+
+[ADR-0024](ADR-0024-default-agentic-workflow-engine.md) supersedes the opt-in
+selection decision: this same engine is now the default for all new workflows,
+including direct JSON models. Historical readers and native admission remain.
 
 ## Context
 
@@ -72,8 +76,9 @@ suites remain separate regression checks. G03, general BPMN XML, message review 
 gateway semantics are not claimed as implemented; their boundaries are published
 in `docs/AGENTIC_PROCESS.md`. No native qualification or cost claim is made.
 
-Adoption is explicit composition, never automatic instance conversion. Stop new
-writes to disable adoption and retain the versioned reader for historical state.
+Original adoption used explicit composition. ADR-0024 makes selection the default
+for new workflows, without automatic instance conversion. Select compatibility
+for new sequential work and retain versioned readers for historical state.
 Neither rollback nor a new model hash weakens required policy pins or approves
 old verdicts for new revisions.
 

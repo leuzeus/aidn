@@ -29,6 +29,7 @@ import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/work
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { assertAgenticControlScenario } from "../../src/core/workflow/agentic-process-control-scenario.mjs";
 import { republishBrokerProductFile } from "../../src/adapters/runtime/broker-product-file.mjs";
+import { createProjectWorkflowInstanceService } from "../../src/application/runtime/workflow-instance-composition.mjs";
 
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
@@ -277,6 +278,12 @@ try {
     const command = spawnSync(process.execPath, [runner, "--preview", "--configuration", file, "--configuration-sha256", sha(text)],
       { encoding: "utf8", timeout: 10000, windowsHide: true });
     assert.equal(command.status, 0, command.stderr); assert.equal(JSON.parse(command.stdout).native_started, false);
+    const publicCli = fileURLToPath(new URL("../../bin/aidn.mjs", import.meta.url));
+    const ordinary = spawnSync(process.execPath, [publicCli, "runtime", "workflow-run", "--target", f.configuration.target_root,
+      "--configuration", file, "--json"], { encoding: "utf8", timeout: 10000, windowsHide: true });
+    assert.equal(ordinary.status, 0, ordinary.stderr + ordinary.stdout);
+    const selected = JSON.parse(ordinary.stdout);
+    assert.equal(selected.engine, "agentic"); assert.equal(selected.preview.native_started, false); assert.equal(selected.written, false);
     assert.deepEqual(fs.readdirSync(f.dirs.control), []);
     const worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
     const refused = spawnSync(process.execPath, [worker], { input: JSON.stringify({ configuration: f.configuration, authorization: {} }),
@@ -363,6 +370,15 @@ try {
         assert.ok(Buffer.byteLength(JSON.stringify(result)) < 65536);
       } finally { fs.writeFileSync = original; }
     }
+  });
+  await check("default JSON creation enters the actual production host without replacing its pristine checkpoint", async () => {
+    const f = fixture(), model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+    const service = createProjectWorkflowInstanceService({ targetRoot: f.configuration.target_root });
+    const initial = service.initialize({ instanceId: f.configuration.instance_id, model, write: true });
+    assert.equal(initial.record.events.length, 0);
+    const { result, sessions } = await run(f);
+    assert.equal(result.status, "COMPLETED", JSON.stringify(result)); assert.equal(sessions.length, 2);
+    assert.equal(service.inspect(f.configuration.instance_id).cursor.status, "COMPLETED");
   });
   await check("real composition: same session across compatible roles; distinct independent reviewer and canonical results", async () => {
     const f = fixture(), { result, sessions } = await run(f);

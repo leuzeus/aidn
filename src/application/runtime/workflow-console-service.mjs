@@ -2,16 +2,18 @@ import { inspectWorkflowInstance, assertCurrentWorkflowCompilation, workflowInst
 import { assertWorkflowSelection } from "../../core/workflow/workflow-selection.mjs";
 import { getWorkflowShadowRegistry } from "../../core/workflow/workflow-shadow-compiler.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
+import { inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 
 const operations = Object.freeze({
-  initialize: ["instanceId", "definition", "context"],
+  initialize: ["instanceId", "model", "facts", "engine", "definition", "context"],
+  signal: ["instanceId", "expectedSha256", "event", "engine"],
   decide: ["instanceId", "expectedSha256", "outcome", "evidence"],
   "prepare-segment": ["instanceId", "expectedSha256", "configurationPath", "planPath"],
   reconcile: ["instanceId", "expectedSha256"],
   propose: ["definition", "explanation", "baseInstanceId"],
   activate: ["definition", "explanation", "baseInstanceId", "expectedPreviewSha256", "review"],
-  "initialize-selected": ["workflowId", "instanceId", "expectedSelectionSha256"],
-  run: ["command", "configuration", "plan", "run"],
+  "initialize-selected": ["workflowId", "instanceId", "expectedSelectionSha256", "engine"],
+  run: ["command", "engine", "configuration", "authorization", "plan", "run"],
 });
 export const workflowConsoleCode = cause => {
   const value = cause?.code ?? cause?.message;
@@ -21,7 +23,7 @@ export function validateWorkflowConsoleRequest(request) {
   if (checkShadowJson(request) || !request || Array.isArray(request) || Object.keys(request).some(k => !["operation", "input"].includes(k))
     || !Object.hasOwn(operations, request.operation) || !request.input || Array.isArray(request.input) || typeof request.input !== "object"
     || Object.keys(request.input).some(k => !operations[request.operation].includes(k))) fail("WORKFLOW_CONSOLE_REQUEST_INVALID");
-  if (request.operation === "run" && !["agent-run", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].includes(request.input.command)) fail("WORKFLOW_CONSOLE_REQUEST_INVALID");
+  if (request.operation === "run" && request.input.command != null && !["workflow-run", "agent-run", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].includes(request.input.command)) fail("WORKFLOW_CONSOLE_REQUEST_INVALID");
   return structuredClone(request);
 }
 export function workflowConsoleEnvelope(name, effect = "read-only") {
@@ -33,26 +35,28 @@ export function workflowConsoleEnvelope(name, effect = "read-only") {
 // Both transports use this application port. No browser-supplied module, SQL,
 // scope, target or effect flag can select a different implementation.
 export function createWorkflowConsoleService({ targetIdentity, readRecords, readAuthority, instances, candidates, readRun, invokeRun }) {
-  async function invoke(request, apply = false, delegatedHash = null, expectedResultSha256 = null) {
+  async function invoke(request, apply = false, delegatedHash = null, expectedResultSha256 = null, syncRelay = false) {
     const input = request.input;
     const checkpoint = { ...input, write: apply, expectedResultSha256 };
     switch (request.operation) {
       case "initialize": return instances.initialize(checkpoint);
+      case "signal": return instances.signal(checkpoint);
       case "decide": return instances.decide(checkpoint);
       case "prepare-segment": return instances.prepareSegment(checkpoint);
       case "reconcile": return instances.reconcile(checkpoint);
       case "propose": return candidates.propose(input);
       case "activate": return candidates.activate({ ...input, write: apply });
       case "initialize-selected": return candidates.initializeSelected(checkpoint);
-      case "run": return invokeRun(input, { apply, expectPlan: delegatedHash });
+      case "run": return invokeRun(input, { apply, expectPlan: delegatedHash, syncRelay });
     }
   }
   return Object.freeze({
-    async inspect({ instanceId = null, workflowId = null, configuration = null, run = null } = {}) {
+    async inspect({ instanceId = null, workflowId = null, configuration = null, run = null, engine = null } = {}) {
       const output = { ...workflowConsoleEnvelope("inspect"), view: null };
       try {
         if (Boolean(configuration) !== Boolean(run)) fail("WORKFLOW_CONSOLE_RUN_SELECTOR_REQUIRED");
-        const records = readRecords({ instanceId, workflowId });
+        if (engine != null && (!instanceId || !["agentic", "legacy"].includes(engine))) fail("WORKFLOW_CONSOLE_ENGINE_SELECTOR_INVALID");
+        const records = readRecords({ instanceId, workflowId, engine });
         let authority = null, admission = { status: "unavailable", blockers: [] };
         try { authority = readAuthority(); admission.status = "observed"; }
         catch (cause) { admission.blockers.push(workflowConsoleCode(cause)); }
@@ -63,13 +67,21 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
             reviews: selection.activations.map(row => row.review) };
         });
         const rows = records.instances.map(instance => {
+          if (instance.contract_version === "agentic-process-instance.v1") {
+            const cursor = inspectAgenticProcess(instance), blockers = [...admission.blockers];
+            if (records.agenticScopeId && instance.scope_id !== records.agenticScopeId) blockers.push("PROCESS_AUTHORITY_CHANGED");
+            if (records.agenticAdmissionError) blockers.push(records.agenticAdmissionError);
+            return { engine: "agentic", instance_id: instance.instance_id, instance_sha256: instance.instance_sha256,
+              revision: instance.revision, model: instance.model, model_sha256: instance.model_sha256,
+              scope_id: instance.scope_id, policy_pins: instance.policy_pins, cursor, blockers, evidence: instance.events };
+          }
           const cursor = inspectWorkflowInstance(instance), blockers = [...admission.blockers];
           if (authority && (shadowHash(authority.scope) !== shadowHash(instance.scope) || authority.stateMode !== instance.compilation.context.state_mode
             || authority.productVersion !== instance.compilation.context.product_version)) blockers.push("WORKFLOW_INSTANCE_AUTHORITY_CHANGED");
           try { assertCurrentWorkflowCompilation(instance); } catch (cause) { blockers.push(workflowConsoleCode(cause)); }
           if (cursor.status === "handler_unavailable") blockers.push("WORKFLOW_INSTANCE_HANDLER_UNAVAILABLE");
           if (cursor.pending) blockers.push("WORKFLOW_INSTANCE_RECONCILIATION_REQUIRED");
-          return { instance_id: instance.instance_id, instance_sha256: instance.instance_sha256, revision: instance.revision,
+          return { engine: "legacy", instance_id: instance.instance_id, instance_sha256: instance.instance_sha256, revision: instance.revision,
             definition: instance.compilation.definition, compilation_sha256: instance.compilation.compilation_sha256,
             context: instance.compilation.context, scope: instance.scope, cursor, blockers,
             steps: instance.compilation.steps, transitions: instance.compilation.transitions,
@@ -80,7 +92,7 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
         });
         const live = configuration ? await readRun({ configuration, run }) : null;
         const view = { contract_version: "workflow-console-view.v1", authority: "derived", consistency: "per_record",
-          registry: getWorkflowShadowRegistry(), admission, selections, instances: rows, live_run: live,
+          default_engine: records.defaultEngine ?? "agentic", registry: getWorkflowShadowRegistry(), admission, selections, instances: rows, live_run: live,
           limits: ["SPEC_REMAINS_RULE_AUTHORITY", "NO_AUTOMATIC_INSTANCE_MIGRATION", "RETAINED_RUN_STATUS_IS_NOT_LIVE",
             "NATIVE_QUALIFICATION_NOT_INFERRED", "EXECUTION_ACCEPTANCE_INTEGRATION_VALIDATION_CLEANUP_ARE_DISTINCT",
             ...(records.truncated ? ["CATALOG_TRUNCATED_USE_EXACT_SELECTORS"] : [])] };
@@ -94,13 +106,16 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
       try {
         const request = validateWorkflowConsoleRequest(raw);
         const run = request.operation === "run", cleanup = run && request.input.command === "agent-run-cleanup", apply = write || execute;
+        const legacyRun = run && request.input.command != null && request.input.command !== "workflow-run";
         if ([write, execute, syncRelay].some(value => typeof value !== "boolean") || write && execute
           || run && (cleanup ? execute : write) || !run && (execute || syncRelay)
-          || apply && (!/^[a-f0-9]{64}$/.test(expectPlan ?? "") || run && !syncRelay)
+          || apply && (!/^[a-f0-9]{64}$/.test(expectPlan ?? "") || legacyRun && !syncRelay)
           || !apply && (syncRelay || expectPlan) || request.operation === "propose" && apply) fail("WORKFLOW_CONSOLE_EXPLICIT_EFFECT_REQUIRED");
         const preview = await invoke(request);
+        const needsSharedSync = legacyRun || run && preview.engine === "legacy";
+        if (apply && needsSharedSync && !syncRelay) fail("WORKFLOW_CONSOLE_EXPLICIT_EFFECT_REQUIRED");
         const action = { request, target_sha256: targetIdentity, preview,
-          effects: request.operation === "propose" ? [] : run ? [cleanup ? "retained_run_cleanup" : "supervised_run_command", "explicit_shared_sync"] : ["canonical_workflow_checkpoint"] };
+          effects: request.operation === "propose" ? [] : run ? [cleanup ? "retained_run_cleanup" : "supervised_run_command", ...(needsSharedSync ? ["explicit_shared_sync"] : [])] : ["canonical_workflow_checkpoint"] };
         output.action = action; output.action_sha256 = shadowHash(action);
         output.can_apply = request.operation !== "propose" && !preview.errors?.length && (preview.can_apply ?? true);
         if (!apply) return output;
@@ -108,7 +123,7 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
         if (!output.can_apply) fail("WORKFLOW_CONSOLE_PRECONDITIONS_FAILED");
         // Dedicated services recheck current authority/CAS and the supervisor
         // repeats its exact delegated action hash before any execution effect.
-        output.result = await invoke(request, true, preview.action_sha256, preview.instance?.instance_sha256 ?? null);
+        output.result = await invoke(request, true, preview.action_sha256, preview.record?.instance_sha256 ?? preview.instance?.instance_sha256 ?? null, syncRelay);
         output.written = output.result.written === true;
         output.shared_coordination_sync = output.result.shared_coordination_sync === true;
         output.dry_run = false; output.can_apply = false;

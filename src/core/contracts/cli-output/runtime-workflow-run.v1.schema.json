@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/cli-output/runtime-workflow-run.v1",
+  "title": "aidn runtime workflow-run --json",
+  "x-aidn-command": "aidn runtime workflow-run --json",
+  "x-aidn-contract-version": "cli-output-v1",
+  "type": "object",
+  "required": ["contract_version", "command", "effect_class", "engine", "dry_run", "written", "shared_coordination_sync", "action_sha256", "can_apply", "preview", "result", "requirements", "errors", "warnings"],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "const": "runtime-workflow-run.v1" },
+    "command": { "const": "aidn runtime workflow-run" },
+    "effect_class": { "enum": ["read-only", "preview", "executor"] },
+    "engine": { "enum": ["agentic", "legacy", null] },
+    "dry_run": { "type": "boolean" },
+    "written": { "type": "boolean" },
+    "shared_coordination_sync": { "type": "boolean" },
+    "action_sha256": { "type": ["string", "null"] },
+    "can_apply": { "type": "boolean" },
+    "preview": { "type": ["object", "null"] },
+    "result": { "type": ["object", "null"] },
+    "requirements": { "type": "array", "items": { "type": "string" } },
+    "errors": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "usage": { "type": "string" }
+  }
+}

@@ -23,6 +23,13 @@ Agent-to-agent handoff is advisory only. The receiving agent must still complete
 
 ## Logical Roles And Resource Reuse
 
+New workflows use AIDN's structured agentic engine by default, whether authored
+directly as JSON or compiled from BPMN. Use `aidn runtime workflow-run` to preview
+normal execution; native work requires explicit execution authorization, the
+exact preview and bounded budgets. Sequential compatibility requires explicit
+legacy selection. Historical instances retain their pinned engine and journal.
+Context/admission observations never start a native executor implicitly.
+
 Activities and gateways define work and control flow, not an agent count. Keep
 compatible roles in the current executor when capability, context and effective
 rights permit. Skills and tools can be shared without a new agent per skill.

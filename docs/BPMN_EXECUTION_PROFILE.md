@@ -1,6 +1,9 @@
 # BPMN to executable AIDN processes
 
 The normal BPMN path compiles to the structured agentic process engine.
+This engine is also the default for directly authored JSON and every new AIDN
+workflow; BPMN compilation is one authoring route. See
+[the default-engine decision](ADR/ADR-0024-default-agentic-workflow-engine.md).
 The default compiler is now the [v2 profile](BPMN_EXECUTION_PROFILE_V2.md), which additionally compiles
 correlated message races, post-test guarded loops, fixed multi-instance
 collections and same-participant local procedure calls into the existing IR.

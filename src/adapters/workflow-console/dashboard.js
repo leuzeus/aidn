@@ -26,6 +26,14 @@ function render(output) {
   }
   if (!view.instances.length) $("instances").append(node("p", "Aucune instance canonique dans cette sélection.", "empty"));
   for (const row of view.instances) {
+    if (row.engine === "agentic") {
+      const element = card(row.instance_id, ["agentique", row.cursor.status, "révision · " + row.revision]);
+      element.append(node("p", row.model.model_id + " · modèle " + row.model.revision), node("p", row.instance_sha256, "hash"));
+      if (row.blockers.length) element.append(node("p", row.blockers.join(" · "), "error"));
+      for (const occurrence of row.cursor.occurrences) element.append(node("p", occurrence.node_id + " / " + occurrence.status));
+      element.append(details("Modèle et politique", { model: row.model, policy_pins: row.policy_pins }), details("Événements et preuves", row.evidence));
+      $("instances").append(element); continue;
+    }
     const element = card(row.instance_id, [row.cursor.status, "étape · " + row.cursor.step_id, "révision · " + row.revision]);
     element.append(node("p", row.definition.workflow_id + " · définition " + row.definition.revision), node("p", row.instance_sha256, "hash"));
     if (row.blockers.length) element.append(node("p", row.blockers.join(" · "), "error"));
@@ -62,15 +70,16 @@ $("preview").onclick = async () => {
   catch (error) { $("preview-output").textContent = error.message; }
   finally { pending = false; }
 };
-function allowApply() { $("apply").disabled = pending || !prepared || !$("approve").checked || prepared.request.operation === "run" && !$("sync").checked; }
+const needsSync = selected => selected.output.action.effects.includes("explicit_shared_sync");
+function allowApply() { $("apply").disabled = pending || !prepared || !$("approve").checked || needsSync(prepared) && !$("sync").checked; }
 $("approve").onchange = allowApply; $("sync").onchange = allowApply;
 $("apply").onclick = async () => {
   if (pending || !prepared || !$("approve").checked || prepared.text !== $("request").value || prepared.token !== $("token").value) return;
   const selected = prepared, run = selected.request.operation === "run";
-  if (run && !$("sync").checked) return;
+  if (needsSync(selected) && !$("sync").checked) return;
   invalidate(); pending = true;
   try { const execute = run && selected.request.input.command !== "agent-run-cleanup";
-    const output = await call("action", { request: selected.request, expectPlan: selected.output.action_sha256, write: !execute, execute, syncRelay: run }); $("result").textContent = json(output);
+    const output = await call("action", { request: selected.request, expectPlan: selected.output.action_sha256, write: !execute, execute, syncRelay: needsSync(selected) }); $("result").textContent = json(output);
   } catch (error) { $("result").textContent = error.message + "\nRésultat incertain : consulter l’état avant toute nouvelle action."; }
   finally { pending = false; }
 };

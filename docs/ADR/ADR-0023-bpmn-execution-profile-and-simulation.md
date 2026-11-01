@@ -121,3 +121,7 @@ The [controlled comparison](../qualification/agentic-process/bpmn-v2-controlled-
 therefore isolates XML preparation above that same engine. It does not reopen
 the engine-selection decision or claim qualification of the entire public
 v0.19.1 package/dependency archive.
+
+[ADR-0024](ADR-0024-default-agentic-workflow-engine.md) generalizes the default
+selection to all new workflows, including direct JSON models. BPMN v2 is an
+authoring profile for that common engine, not the scope of its default adoption.

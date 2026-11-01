@@ -30,8 +30,10 @@ routes control tokens and never creates agents by itself. Compatible roles may
 reuse one eligible execution; mandatory independent review excludes contributors
 and requires its declared context, authority and permission guarantees.
 
-The internal [structured agentic process](AGENTIC_PROCESS.md), the normal BPMN execution engine, implements
-these distinctions with a declared execution profile. It does not reinterpret
+The [structured agentic process](AGENTIC_PROCESS.md), the default execution engine
+for every new workflow, implements these distinctions with a declared execution
+profile. Direct JSON authoring and BPMN compilation share this engine.
+Sequential compatibility requires explicit selection. It does not reinterpret
 existing workflow instances, replace skill/write admission or activate a native
 executor. Unsupported constructs refuse explicitly.
 
