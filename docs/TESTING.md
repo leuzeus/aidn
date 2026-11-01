@@ -37,6 +37,11 @@ EXDEV/EACCES failures without changing original bytes or leaving temporary
 files. A real cross-volume probe and native review remain separate qualification
 evidence; a same-volume filesystem fixture alone cannot prove that boundary.
 
+The separate [BPMN v2 benchmark record](qualification/agentic-process/bpmn-v2-impact-2026-11-01.md)
+retains real installed-candidate execution, usage counters, native rejection and
+corrections, plus one successful IR/XML pair. Its native evidence does not change
+the offline suites' NOT_RUN labels or qualify a public release.
+
 `npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
 gate without a Codex client, model, network or installed activation. It verifies
 versioned model/instance contracts, distinct participant/role/resource identities,

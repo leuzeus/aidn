@@ -384,3 +384,10 @@ policy enforcement, real tree cleanup or provider reception. A separate bounded
 pre-release case observed those paths; its scope, retained failure and remaining
 NOT_RUN limits are in the [qualification record](https://github.com/leuzeus/aidn/blob/v0.19.0/docs/qualification/agentic-process/v0.19.0.md).
 No general performance benefit is inferred, and closed benchmark lots remain closed.
+
+The separate [BPMN v2 candidate benchmark](qualification/agentic-process/bpmn-v2-impact-2026-11-01.md)
+executes the XML/IR event, loop, multi-instance and call model with real native
+workers and independent review. It retains three earlier failed attempts and one
+successful IR/XML pair, including higher observed XML-case time and token usage.
+Its sample size and fresh Windows product roots limit the qualification; it does
+not establish a general performance gain or same-root reuse after review.
