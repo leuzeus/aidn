@@ -128,6 +128,13 @@
       "bytes": 76831,
       "sha256": "4da615a4f0ec3baa7902b1e8ae062576aaa236affbd3302d7d68da3e7aa59f80",
       "publication": "byte_identical_demo_screenshot; synthetic application data"
+    },
+    {
+      "id": "human_validation",
+      "repository_artifact": "human-validation.json",
+      "bytes": 1003,
+      "sha256": "bc7214fa648da87438f0df6aa3ed072f0979ee0866ba123e2dae20b120117a9f",
+      "publication": "User confirmation retained verbatim with an English translation; recorded separately from historical automated receipts."
     }
   ]
 }
