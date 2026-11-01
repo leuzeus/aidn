@@ -13,6 +13,7 @@ import { assertCodexStartupArgumentsConfiguration } from "../../core/agents/code
 import { agenticProcessImplementationPins } from "./agentic-process-implementation-pins.mjs";
 import { agenticProcessPersistence, createAgenticProcessWorkerEnvironment } from "./agentic-process-persistence.mjs";
 import { assertAgenticControlScenario } from "../../core/workflow/agentic-process-control-scenario.mjs";
+import { republishBrokerProductFile } from "../../adapters/runtime/broker-product-file.mjs";
 
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
@@ -150,7 +151,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const stop = new AbortController(), responseIds = new Set(); let firstFailure = null, retainedBytes = 0, sequence = 0, diagnostics = 0;
       let canonicalPayloadAttempted = 0, canonicalPayloadAcknowledged = 0;
       let vanishedStorageEntries = 0, storageReadFailure = null;
-      const reviewDirectories = [];
+      const reviewDirectories = []; let brokerRepublishFailure = null;
       function diskBytes(file, required = false) {
         let visited = 0;
         const read = (operation, entry, rootEntry) => {
@@ -226,15 +227,17 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
               // Files created by the sandbox account can retain explicit
               // creator grants. Re-publish identical bytes through the trusted
               // broker before applying the independent reader's filesystem policy.
-              const staging = path.join(output, `broker-review-${sequence + 1}`); fs.mkdirSync(staging);
               const republished = [];
               for (const row of snapshot.filter(row => row.present)) {
                 const original = path.join(productRoot, row.path), data = bytes(original, 1024 * 1024);
                 if (hash(data) !== row.sha256) fail("PROCESS_EXECUTION_REVIEW_SNAPSHOT_CHANGED");
                 if (used() + data.length > authorization.max_bytes - 262144) fail("PROCESS_EXECUTION_STORAGE_LIMIT");
-                const staged = path.join(staging, String(republished.length)); fs.writeFileSync(staged, data, { flag: "wx" });
-                if (hash(bytes(staged, 1024 * 1024)) !== row.sha256) fail("PROCESS_EXECUTION_BROKER_COPY_CHANGED");
-                fs.renameSync(staged, original);
+                try { republishBrokerProductFile(original, data); }
+                catch (error) {
+                  brokerRepublishFailure = { fs_code: error.fs_code ?? "UNKNOWN", path_sha256: error.path_sha256 ?? null,
+                    ...(error.cleanup_fs_code ? { cleanup_fs_code: error.cleanup_fs_code } : {}) };
+                  throw error;
+                }
                 if (hash(bytes(original, 1024 * 1024)) !== row.sha256) fail("PROCESS_EXECUTION_BROKER_COPY_CHANGED");
                 republished.push({ path: row.path, bytes: row.bytes, sha256: row.sha256 });
               }
@@ -345,6 +348,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
           server_physical_bytes: persistence.backend === "postgres" ? "NON_MESURE" : "NOT_APPLICABLE" },
         first_failure: firstFailure, instance_sha256: current?.record?.instance_sha256 ?? null, responses_observed: responseIds.size,
         ...(config.control_scenario ? { control_scenario: { sha256: config.control_scenario.sha256, events_applied: controlIndex, events_expected: controlScenario.events.length } } : {}),
+        ...(brokerRepublishFailure ? { broker_republish_failure: brokerRepublishFailure } : {}),
         elapsed_global_ms: Date.now() - authorization.authorized_at_ms, global_deadline_ms: authorization.global_deadline_ms,
         workflow_deadline_ms: authorization.workflow_deadline_ms,
         native_parent_closure: closure, process_tree_closure: "OUTER_CONTROLLER_REQUIRED", bytes_retained: retained,

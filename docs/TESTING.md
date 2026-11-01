@@ -32,6 +32,11 @@ counterbalances CPU samples, and reports XML compilation separately from IR
 parsing. Its synthetic CPU stage has no model calls and cannot establish native
 token savings.
 
+Broker fixtures require product-adjacent atomic staging and retain bounded
+EXDEV/EACCES failures without changing original bytes or leaving temporary
+files. A real cross-volume probe and native review remain separate qualification
+evidence; a same-volume filesystem fixture alone cannot prove that boundary.
+
 `npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
 gate without a Codex client, model, network or installed activation. It verifies
 versioned model/instance contracts, distinct participant/role/resource identities,

@@ -351,6 +351,9 @@ refusals. Product-ancestor directory names can remain listable; original
 product contents must remain inaccessible.
 Before independent review on Windows the trusted broker re-publishes each
 declared product file through a newly created staging file and atomic rename.
+The exclusive temporary file is a sibling of the product file so publication
+works when the control directory resides on another volume. Failed staging is
+cleaned; bounded diagnostics retain the filesystem code and a path hash.
 It verifies the original, staging and resulting hashes and the complete product
 revision, and retains a publication receipt. This changes filesystem metadata,
 including creator ownership, but no product bytes. It is part of the explicitly

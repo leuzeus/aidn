@@ -28,6 +28,7 @@ import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-
 import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { assertAgenticControlScenario } from "../../src/core/workflow/agentic-process-control-scenario.mjs";
+import { republishBrokerProductFile } from "../../src/adapters/runtime/broker-product-file.mjs";
 
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
@@ -177,6 +178,21 @@ async function run(f, options = {}) {
 }
 
 try {
+  await check("broker replacement preserves bytes across distinct control/product roots and cleans failed atomic staging", () => {
+    const base = fs.mkdtempSync(path.join(root, "broker-")), product = path.join(base, "product"), control = path.join(base, "control");
+    fs.mkdirSync(product); fs.mkdirSync(control);
+    const file = path.join(product, "app.mjs"), data = Buffer.from("export const value = 2;\n"); fs.writeFileSync(file, data);
+    republishBrokerProductFile(file, data, { fsPort: { ...fs, renameSync(from, to) {
+      if (path.dirname(from) !== path.dirname(to)) throw Object.assign(Error("cross-volume"), { code: "EXDEV" });
+      fs.renameSync(from, to);
+    } } });
+    assert.deepEqual(fs.readFileSync(file), data); assert.deepEqual(fs.readdirSync(product), ["app.mjs"]);
+    for (const code of ["EXDEV", "EACCES"]) {
+      assert.throws(() => republishBrokerProductFile(file, Buffer.from("replacement"), { fsPort: { ...fs, renameSync() { throw Object.assign(Error("private path must not escape"), { code }); } } }),
+        error => error.code === "PROCESS_EXECUTION_BROKER_REPUBLISH_FAILED" && error.fs_code === code && /^[a-f0-9]{64}$/.test(error.path_sha256) && !error.message.includes("private"));
+      assert.deepEqual(fs.readFileSync(file), data); assert.deepEqual(fs.readdirSync(product), ["app.mjs"]);
+    }
+  });
   await check("explicit pinned host scenario drives XML event, two loop iterations, collections and calls without model polling", async () => {
     const f = fixture(), example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
     example.policies[0].allowed_permissions.push("write:product");

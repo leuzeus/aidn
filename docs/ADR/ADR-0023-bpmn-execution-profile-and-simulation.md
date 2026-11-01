@@ -92,3 +92,10 @@ binds its reference; model-selected ports, assignments and verdicts remain
 forbidden. Service/CAS/correlation checks remain authoritative. No scenario means
 the original wait behavior. Pending/unreachable scenario steps prevent a success
 claim. This adds no live broker, timer, automatic retry or historical migration.
+
+Native qualification also exposed Windows broker publication across volumes:
+control-directory staging cannot be atomically renamed onto another drive.
+Publication now stages an exclusive temporary sibling of each product file,
+preserving the existing byte/hash, storage-budget and review-boundary checks.
+Filesystem failures stop execution with bounded diagnostics and cleanup; they
+do not weaken the review permissions or trigger an automatic model retry.
