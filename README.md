@@ -1,9 +1,15 @@
 # aid’n
 
-aid’n is an audit-informed workflow runtime platform for structured AI-assisted development.
-It combines a continuous audit philosophy with an audit-driven control layer, deterministic template distribution, and local runtime state management to regulate entropy, preserve long-term coherence, and stabilize AI-assisted execution.
-The model structures work through bounded cycles, session discipline, baseline anchoring, snapshot reload, canonical state handling, and clear separation between product specification and project adapter.
-The current runtime baseline also includes admission-first workflow hooks for session start/close, cycle continuity, requirements delta, baseline promotion, spike conversion, explicit multi-agent handoff relays, bounded coordinator/orchestration commands, deterministic project adapter generation, and runtime persistence/shared-coordination operations for SQLite and PostgreSQL-backed deployments.
+aid’n is a local-first workflow runtime for AI-assisted development.
+It organizes work into bounded cycles and sessions, keeps decisions anchored to
+baselines, and restores context through snapshots and canonical state.
+Its installer distributes templates and generates project adapters while
+keeping the product specification separate from project-specific configuration.
+
+Workflow hooks check admission at session and cycle boundaries. The runtime also
+handles requirements changes, baseline promotion, spikes, explicit handoffs and
+bounded orchestration, with persistence and shared coordination backed by SQLite
+or PostgreSQL.
 
 Sequential host composition may explicitly request an observed reuse decision:
 retain one eligible execution for compatible roles, recommend separation when
@@ -20,6 +26,13 @@ of routing, canonical persistence, budgets and cleanup. Its
 [bounded qualification](https://github.com/leuzeus/aidn/blob/v0.19.0/docs/qualification/agentic-process/v0.19.0.md)
 does not establish general native support or a performance gain. Ordinary
 installed workflows are unchanged.
+
+The later [StockFlow benchmark report](docs/qualification/benchmarks/2026-11-01-stockflow/README.md)
+follows v0.19.0 through a PostgreSQL backend, a functional UI, identity design and
+brand application, using temporary installations and independent reviews.
+The retained UI executions show lower token consumption with AIDN; the backend
+uses more tokens. The report includes screenshots, interruptions and recovery
+costs so these early results can be assessed without assuming a general speedup.
 
 Start with [installation](docs/INSTALL.md) and [global setup](docs/GLOBAL_SETUP.md):
 install one verified engine for the user, then attach each project explicitly.
@@ -370,7 +383,7 @@ For Windows setup including optional PostgreSQL preparation, follow
 [per-project Windows setup](docs/WINDOWS_PROJECT_SETUP.md) is historical 0.9.x guidance.
 
 Version 0.10.0 introduced one user-level engine shared by registered projects.
-The `v0.19.0` source also executes dispatched agent commands in their target
+The source introduced in 0.19.0 also executes dispatched agent commands in their target
 worktree, including Windows paths with spaces and accents. Install from a published release with verified checksums; a source
 version or branch name alone is not proof of publication.
 Follow [the global setup guide](docs/GLOBAL_SETUP.md) for installation and
@@ -452,7 +465,7 @@ Notes:
 - skip import with `--skip-artifact-import`
 - install auto-creates/updates `../client/.aidn/config.json` so runtime commands can work without extra env vars
 - `SOURCE_BRANCH` resolution order is: `--source-branch` > existing project metadata > Git remote default branch > current branch > `main`
-- prefer a published tagged install (`#v0.19.0` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
+- prefer a published tagged install (`#v0.19.1` after publication) for stable consumers; use a branch ref only when you explicitly want an in-flight runtime baseline
 - if the client repo already contains `AGENTS.override.md`, Codex will prefer it over the installed `AGENTS.md`
 - `aidn` does not install a `.codex/config.toml` by default; fallback filenames and instruction-byte limits remain an opt-in Codex project config concern
 

@@ -53,6 +53,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 ## Performance And Gates
 
 - [Performance README](./performance/README.md)
+- [StockFlow benchmarks and progress in v0.19.0](./qualification/benchmarks/2026-11-01-stockflow/README.md)
 - [Performance plan](./performance/WORKFLOW_PERFORMANCE_PLAN.md)
 - [Prioritization matrix](./performance/PRIORITIZATION_MATRIX.md)
 

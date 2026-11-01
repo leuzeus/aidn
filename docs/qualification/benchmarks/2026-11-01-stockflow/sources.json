@@ -1,0 +1,140 @@
+{
+  "as_of": "2026-11-01",
+  "purpose": "Provenance of curated historical extracts; no raw traces or secret-bearing material is included",
+  "originals": "Operator-owned local archives, not published with this report. SHA256 pins identify the exact source documents; they do not make those archives publicly accessible.",
+  "sources": [
+    {
+      "id": "backend",
+      "archive_artifact": "stockflow-plain-completion-run-001/analysis/COMPARAISON.json",
+      "bytes": 15683,
+      "sha256": "be91ebc95baf901fd9d2a8a5729849cac37ddf5674498aede01a01b042c4cf97",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "backend_failed",
+      "archive_artifact": "stockflow-optin-pg-vs-plain-run-001/analysis/BILAN.json",
+      "bytes": 11382,
+      "sha256": "a5cfd26bfe0088d2be7fd188bb6fb7ba52ccfc83ae4ac4850353fff0a535d669",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "backend_preparation",
+      "archive_artifact": "complex-stock-pg-v0190-vs-plain-001/FINAL-RESULT.json",
+      "bytes": 4438,
+      "sha256": "715410ef7a8c8abd6a866eb333a7863995f944b1a11bc63f3c1229f20c94ba9a",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "ui",
+      "archive_artifact": "stockflow-ui-comparison-final-001/COMPARAISON-FINALE.json",
+      "bytes": 18695,
+      "sha256": "ae11eb15c26b2e85da58b58b2e58bb27447bf54c8bd99bdcdd1a96a040a75144",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "ui_preparation",
+      "archive_artifact": "stockflow-ui-optin-pg-vs-plain-run-001/private/RESULT.json",
+      "bytes": 2959,
+      "sha256": "333b6dd8f2354b00594d9d62a950f21fef802a96b151e11be6d23051b5be8880",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c1",
+      "archive_artifact": "stockflow-brand-design-run-002/C1-CONSOLIDATION-002/SUMMARY.json",
+      "bytes": 33801,
+      "sha256": "ba29c3c220fc7368aa3a1fa55b3fe8cc66acb6a020503a5092a7efefd1033b67",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c1_preparation",
+      "archive_artifact": "stockflow-brand-design-run-001/COHORT-STOP.json",
+      "bytes": 1475,
+      "sha256": "7215a1cd4377b3f10c9b0815a55163f6420fc5aff495379d0f59de7d43bff0a9",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c2",
+      "archive_artifact": "stockflow-c2-plain-recode-run-001/COMPARAISON-A-B.json",
+      "bytes": 5509,
+      "sha256": "c24d713e43eb2fcd7c814e844683bdbdd5c2ad557f490a473770da15d96df359",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c2_seal",
+      "archive_artifact": "stockflow-c2-plain-recode-run-001/FINAL-SEAL.json",
+      "bytes": 1017,
+      "sha256": "9d45bb7d6c1679200dee8d0bfd956304ef2716a9ea7425b3ba22c7c384b158e7",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c2_original",
+      "archive_artifact": "stockflow-brand-apply-run-002/private/RESULT.json",
+      "bytes": 41335,
+      "sha256": "8ab14837c47eac8a4dd0915b13a42ba70ac6b8e0e725e96369c2a02bc625102f",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c2_preparation",
+      "archive_artifact": "stockflow-brand-apply-run-001/COHORT-STOP.json",
+      "bytes": 2379,
+      "sha256": "1a9b6a5a401c8015bd177e5888bd863c3683f7c804806d387874a72be236916b",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c2_correction",
+      "archive_artifact": "stockflow-brand-apply-launcher-004/LOGO-CORRECTION-RESULT.json",
+      "bytes": 2377,
+      "sha256": "3b5fd6914c7a3d7b6b85978e9ff168b44dcb23fd945269c459a098a2bfb25d9b",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c2_retained_a",
+      "archive_artifact": "stockflow-c2-retained-a-check-001/RESULT.json",
+      "bytes": 4185,
+      "sha256": "85c745ec41962817c22cb3ca517bdf9e3c85bd1eebd765f5eec95389152cea9b",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "c2_review_context",
+      "archive_artifact": "stockflow-c2-plain-recode-run-001/ROLE-CONTEXT-EVIDENCE.json",
+      "bytes": 270,
+      "sha256": "1388456927cff835c0dc8eeb39b491a43a075d5a90a308cace0d855cde04906f",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "precursor_failed",
+      "archive_artifact": "agentic-process-revision006-run-001/FINAL-RESULT.json",
+      "bytes": 7975,
+      "sha256": "388d2e6aba0d737275f520d092d227486011085133a147368be4538ab51efdea",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "precursor_010",
+      "archive_artifact": "agentic-process-revision010-run-001/FINAL-RESULT.json",
+      "bytes": 12166,
+      "sha256": "30b3a63dd778706260a6b54343f3ba31c9573071f61c65073bacea5e2e39fa4c",
+      "publication": "selected_fields_only; original archive retained by operator"
+    },
+    {
+      "id": "aidn-relais.png",
+      "archive_artifact": "stockflow-brand-apply-run-002/private/oracle-aidn/desktop-stock-initial.png",
+      "bytes": 77155,
+      "sha256": "a701dd1a186163da8797468f421b9cedaa5e1a8ca41c3de3839800f5488206b4",
+      "publication": "byte_identical_demo_screenshot; synthetic application data"
+    },
+    {
+      "id": "plain-cadence.png",
+      "archive_artifact": "stockflow-c2-plain-recode-run-001/private/oracle-plain/brand-desktop-stock.png",
+      "bytes": 76831,
+      "sha256": "4da615a4f0ec3baa7902b1e8ae062576aaa236affbd3302d7d68da3e7aa59f80",
+      "publication": "byte_identical_demo_screenshot; synthetic application data"
+    },
+    {
+      "id": "human_validation",
+      "repository_artifact": "human-validation.json",
+      "bytes": 1003,
+      "sha256": "bc7214fa648da87438f0df6aa3ed072f0979ee0866ba123e2dae20b120117a9f",
+      "publication": "User confirmation retained verbatim with an English translation; recorded separately from historical automated receipts."
+    }
+  ]
+}
