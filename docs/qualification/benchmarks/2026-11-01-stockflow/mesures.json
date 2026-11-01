@@ -118,7 +118,9 @@
       "original_failure": "UNDECLARED_PRODUCT_DIRECTORY",
       "original_status": "FAILED",
       "unknown_in_flight_consumption": true,
-      "human_verdict": "NOT_RUN"
+      "human_verdict": "APPROVED_BY_USER_CONFIRMATION",
+      "source_snapshot_human_verdict": "NOT_RUN",
+      "human_validation_source": "human-validation.json"
     },
     "ui": {
       "source": "ui",
@@ -191,11 +193,12 @@
       "aidn_vs_plain_total_tokens_pct": -16.867406938203217,
       "aidn_vs_plain_without_identified_harness_partition_pct": -10.049016144238282,
       "original_stop_rule_deviation_preserved": true,
-      "human_verdict": "NOT_RUN"
+      "human_verdict": "APPROVED_BY_USER_CONFIRMATION",
+      "source_snapshot_human_verdict": "NOT_RUN",
+      "human_validation_source": "human-validation.json"
     },
     "c1": {
       "source": "c1",
-      "status": "C1_BOTH_TECHNICALLY_ACCEPTED_HUMAN_SELECTION_PENDING",
       "aidn": {
         "status": "COMPLETED_ACCEPTED",
         "tokens": {
@@ -258,7 +261,10 @@
         "plain": "Cadence",
         "status": "EXPLICIT_USER_SELECTION; subsequent C2 inputs, not a comparative quality score"
       },
-      "equal_budget_comparison": false
+      "equal_budget_comparison": false,
+      "source_snapshot_status": "C1_BOTH_TECHNICALLY_ACCEPTED_HUMAN_SELECTION_PENDING",
+      "human_verdict": "APPROVED_BY_USER_CONFIRMATION",
+      "human_validation_source": "human-validation.json"
     },
     "c2": {
       "source": "c2",
@@ -290,7 +296,9 @@
         },
         "additional_local_verification_ms": 95925,
         "models_in_additional_verification": 0,
-        "human": "NOT_RUN"
+        "human": "APPROVED_BY_USER_CONFIRMATION",
+        "source_snapshot_human": "NOT_RUN",
+        "human_validation_source": "human-validation.json"
       },
       "plain": {
         "identity": "Cadence",
@@ -318,7 +326,9 @@
           "pass": 8,
           "total": 8
         },
-        "human": "NOT_RUN"
+        "human": "APPROVED_BY_USER_CONFIRMATION",
+        "source_snapshot_human": "NOT_RUN",
+        "human_validation_source": "human-validation.json"
       },
       "previous_plain": {
         "status": "INTERRUPTED_ON_ORACLE_COVERAGE_DEFECT",
@@ -470,5 +480,17 @@
       "observed_tokens": 2056833,
       "closed_within_authorization": true
     }
-  ]
+  ],
+  "human_validation_update": {
+    "status": "APPROVED_BY_USER_CONFIRMATION",
+    "source": "human-validation.json",
+    "confirmed_on": "2026-11-01",
+    "scope": [
+      "backend",
+      "ui",
+      "c1",
+      "c2"
+    ],
+    "original_receipts": "Retained unchanged; historical human-review flags below are explicitly labeled as source-snapshot values."
+  }
 }

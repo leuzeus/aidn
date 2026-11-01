@@ -1,0 +1,21 @@
+{
+  "record_type": "USER_CONFIRMATION_OF_COMPLETED_HUMAN_REVIEWS",
+  "confirmed_on": "2026-11-01",
+  "date_meaning": "Date of confirmation in this conversation, not the dates of the individual reviews.",
+  "source": "Explicit user message in the conversation that produced this report",
+  "recorded_by": "assistant",
+  "original_statement": "A noter que les controle humain ont bien été effectué a chaque étape et validé",
+  "english_translation": "Human review was performed at each stage and the results were approved.",
+  "outcome": "APPROVED",
+  "scope": {
+    "report": "StockFlow benchmark report",
+    "stages": [
+      "backend",
+      "ui",
+      "c1",
+      "c2"
+    ],
+    "results": "Retained stage results for the AIDN and without-AIDN arms covered by the report"
+  },
+  "interpretation": "Records the user-confirmed human approvals. It does not change sealed automated receipts, failed or superseded trial outcomes, consumption counters, timing boundaries or causal comparability."
+}
