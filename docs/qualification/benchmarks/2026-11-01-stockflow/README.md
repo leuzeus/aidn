@@ -7,8 +7,10 @@ multi-site, multi-tenant inventory application. All displayed data is demo data.
 AIDN 0.19.0 is beginning to show its value on work beyond a small coding exercise.
 Using a temporary installation, its opt-in agentic engine ran compatible
 activities in the same context, followed by review in an independent context.
-The resulting applications pass the common functional checks. In the retained
-UI executions, AIDN also consumed fewer tokens than the runs without AIDN.
+The resulting applications pass the common functional checks. The user has
+also confirmed that human review was performed and approved at every stage.
+In the retained UI executions, AIDN consumed fewer tokens than the runs without
+AIDN.
 
 The results are encouraging, with a counterexample to keep in view: the backend
 consumed 9.7% more tokens with AIDN. The campaigns include stops and separately
@@ -43,6 +45,22 @@ CALCULATED means an operation on that data; HYPOTHESIS means an explanation that
 still needs evidence; NOT MEASURED means missing data; REFUTED means an
 interpretation contradicted by a check. An automatic verdict and a human choice
 remain separate results.
+
+### Human approval confirmed by the user
+
+On 1 November 2026, the user confirmed that human checks had been performed at
+each stage and that the results were approved. This covers the retained backend,
+UI, identity-design and brand-application results in this report. The
+[confirmation record](human-validation.json) preserves the user's statement
+verbatim, with an English translation.
+
+The report therefore records these stage results as human-approved. The sealed
+automated receipts still contain the human-review flags recorded when they were
+produced, including `NOT_RUN` and a pending-selection status. Those historical
+values are retained as source-snapshot fields in the measurement data, alongside
+the user-confirmed approval. The confirmation date does not replace the dates
+of the reviews themselves. Human approval does not change recorded technical
+stops, budget deviations or the limits of the performance comparison.
 
 ## Overview
 
@@ -188,7 +206,7 @@ files. Its earlier interrupted coding run is retained separately.
 | Native author and review | 770 616 ms | 913 792 ms |
 | Functional / identity | 20/20 and 8/8 | 20/20 and 8/8 |
 | Independent review | Accepted | Accepted |
-| Final human visual verdict | NOT_RUN | NOT_RUN |
+| Human approval, confirmed by the user | Approved | Approved |
 
 CALCULATED: A uses 586 494 fewer tokens, or 28.5%, and its native author-review
 time is lower by 143.176 seconds, or 15.7%. These are the most favorable signals
@@ -219,8 +237,8 @@ Without AIDN, Cadence direction:
 ![StockFlow interface produced without AIDN and with the Cadence identity](plain-cadence.png)
 
 These captures come from the oracles, without retouching. They illustrate the
-deliverables at different times and with different data states. Final visual
-judgment belongs to the user; automatic scores do not replace it.
+deliverables at different times and with different data states. Human approval
+is confirmed by the user; automatic scores remain separate from that review.
 
 Sources: `c2`, `c2_original`, `c2_correction`, `c2_retained_a` and `c2_seal`
 in the [index](sources.json).
@@ -323,7 +341,8 @@ benchmarks. This consolidation gives no earlier A/B comparison causal validity.
 
 At this stage, AIDN 0.19.0 has demonstrated that it can take this agentic work
 profile through to verified deliverables, with controlled reuse and separate
-review. That is the established progress. The UI stages provide a measured
+review. The user has also confirmed human approval at each stage. That is the
+established progress. The UI stages provide a measured
 reason to continue using it within this scope. General superiority in quality,
 overall time savings and financial savings remain NOT MEASURED or unvalidated.
 
