@@ -21,6 +21,17 @@ stores and authority doubles, then compares the exact journal cursor/hash with
 synthetic simulation. Native execution, live PostgreSQL, graphical import and
 installed-package qualification remain NOT_RUN.
 
+The production-composition suite also executes the combined v2 XML model with
+an explicitly pinned host scenario: a correlated message, two loop iterations,
+multi-instance calls and independent review, with ten accepted native-wire-double
+results. It checks no polling during waits, exact result-triggered facts,
+scenario mutation refusal and forbidden assignment inputs. Real provider tokens
+remain a separate benchmark. `tools/perf/benchmark-bpmn-process.mjs` compares a
+frozen baseline reducer and the candidate over the same ten-result event log,
+counterbalances CPU samples, and reports XML compilation separately from IR
+parsing. Its synthetic CPU stage has no model calls and cannot establish native
+token savings.
+
 `npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
 gate without a Codex client, model, network or installed activation. It verifies
 versioned model/instance contracts, distinct participant/role/resource identities,

@@ -12,6 +12,7 @@ import { AGENT_ROLES, buildAgentProfile, canAgentRolePerform } from "../../core/
 import { assertCodexStartupArgumentsConfiguration } from "../../core/agents/codex-startup-arguments.mjs";
 import { agenticProcessImplementationPins } from "./agentic-process-implementation-pins.mjs";
 import { agenticProcessPersistence, createAgenticProcessWorkerEnvironment } from "./agentic-process-persistence.mjs";
+import { assertAgenticControlScenario } from "../../core/workflow/agentic-process-control-scenario.mjs";
 
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
@@ -39,7 +40,7 @@ function pinned(reference, roots) {
 export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env } = {}) {
   if (checkShadowJson(configuration) || configuration.contract_version !== "agentic-process-execution.v1") fail("PROCESS_EXECUTION_CONFIGURATION_INVALID");
   const config = structuredClone(configuration);
-  const fields = ["contract_version", "instance_id", "target_root", "product_root", "control_root", "review_root", "product_files", "model", "criteria", "authorities", "skills", "instructions", "native", "controller", "implementation_sha256"];
+  const fields = ["contract_version", "instance_id", "target_root", "product_root", "control_root", "review_root", "product_files", "model", "criteria", "authorities", "skills", "instructions", "native", "controller", "implementation_sha256", "control_scenario"];
   if (Object.keys(config).some(key => !fields.includes(key)) || !digest(config.implementation_sha256)
     || config.implementation_sha256 !== loadedImplementationSha256
     || config.implementation_sha256 !== agenticProcessImplementationPins().sha256) fail("PROCESS_EXECUTION_IMPLEMENTATION_CHANGED");
@@ -74,6 +75,9 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     if ([targetRoot, reviewRoot, controlRoot, config.native.home].some(other => inside(root, other) || inside(other, root))) fail("PROCESS_EXECUTION_TOOL_ROOT_OVERLAP");
   }
   const model = JSON.parse(pinned(config.model, [productRoot, reviewRoot]).toString("utf8")); assertAgenticProcessModel(model);
+  const controlScenario = Object.hasOwn(config, "control_scenario")
+    ? assertAgenticControlScenario(JSON.parse(pinned(config.control_scenario, [productRoot, reviewRoot]).toString("utf8")))
+    : { initial_facts: {}, events: [] };
   for (const policy of model.policies) if (!["compatible-work.v1", "independent-review.v1"].includes(policy.assurance_profile)) fail("PROCESS_EXECUTION_ASSURANCE_PROFILE_UNSUPPORTED");
   for (const [key, value] of Object.entries(config.instructions)) if (!model.nodes.some(node => node.id === key && node.kind === "activity")
     || typeof value !== "string" || Buffer.byteLength(value) > 16384) fail("PROCESS_EXECUTION_INSTRUCTION_INVALID");
@@ -95,6 +99,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       fail("PROCESS_EXECUTION_AUTHORITY_CHANGED");
     for (const reference of Object.values(config.skills)) pinned(reference, [productRoot, reviewRoot]);
     for (const reference of Object.values(config.authorities)) pinned(reference, [productRoot, reviewRoot]);
+    if (config.control_scenario) pinned(config.control_scenario, [productRoot, reviewRoot]);
     return { scope_id: scopeId, model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
   }
   function productSnapshot(root = productRoot) {
@@ -282,18 +287,29 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const service = createAgenticProcessService({ store: guardedStore, readAuthority, readBinding: host.readBinding,
         assignmentAuthority: host.assignmentAuthority, resultAuthority: host.resultAuthority,
         authorityTimeoutMs: 5000, adapters: [{ getProfile: () => profile, canHandleRole: ({ role, action }) => canAgentRolePerform(role, action) }] });
-      let current = null, closure = null;
+      let current = null, closure = null, completedResults = 0, controlIndex = 0;
       const requireProjection = () => { if (current?.projection === "reconciliation_required") fail("PROCESS_EXECUTION_PROJECTION_RECONCILIATION_REQUIRED"); };
       try {
         if (stop.signal.aborted) fail(firstFailure ?? "PROCESS_EXECUTION_CANCELLED");
-        const initial = service.initialize({ instanceId: config.instance_id, model, write: false });
-        current = service.initialize({ instanceId: config.instance_id, model, write: true, expectedResultSha256: initial.record.instance_sha256 });
+        const initial = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: false });
+        current = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: true, expectedResultSha256: initial.record.instance_sha256 });
         requireProjection();
         while (!["COMPLETED", "FAILED", "CANCELLED"].includes(current.cursor.status)) {
           if (stop.signal.aborted) fail(firstFailure ?? "PROCESS_EXECUTION_CANCELLED");
-          if (responseIds.size >= authorization.max_responses) fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
+          while (controlIndex < controlScenario.events.length && controlScenario.events[controlIndex].after_results === completedResults) {
+            current = service.signal({ instanceId: config.instance_id, expectedSha256: current.record.instance_sha256,
+              event: controlScenario.events[controlIndex].event, write: true });
+            controlIndex++;
+            requireProjection();
+            if (["COMPLETED", "FAILED", "CANCELLED"].includes(current.cursor.status)) break;
+          }
+          if (["COMPLETED", "FAILED", "CANCELLED"].includes(current.cursor.status)) break;
           const occurrenceId = current.cursor.ready[0];
-          if (!occurrenceId) break; // durable event wait, no model polling
+          if (!occurrenceId) {
+            if (controlIndex < controlScenario.events.length) fail("PROCESS_EXECUTION_CONTROL_EVENT_UNREACHABLE");
+            break; // durable event wait, no model polling
+          }
+          if (responseIds.size >= authorization.max_responses) fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
           const frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = model.nodes.find(row => row.id === frame.node_id);
           const role = model.roles.find(row => row.id === node.role_ref), policy = model.policies.find(row => row.id === node.policy_ref);
           await host.prepare({ instance: current.record, frame, node, role, policy });
@@ -306,8 +322,10 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
             eventId: `result-${current.record.revision}`, resultId: executed.resultId, write: true });
           requireProjection();
           if (current.status === "RESULT_NOT_ACCEPTED") break;
+          completedResults++;
         }
         if (current?.cursor.status === "FAILED") firstFailure ??= current.cursor.first_failure;
+        if (current?.cursor.status === "COMPLETED" && controlIndex < controlScenario.events.length) fail("PROCESS_EXECUTION_CONTROL_EVENTS_PENDING");
       } catch (error) {
         const code = error.code ?? error.message;
         requestStop(/^(PROCESS_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(code ?? "") ? code : "PROCESS_EXECUTION_FAILED");
@@ -326,6 +344,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
           accounting: persistence.backend === "postgres" ? "local retained bytes plus cumulative attempted canonical payload; server physical storage/WAL not measured" : "local retained bytes and SQLite/WAL file growth",
           server_physical_bytes: persistence.backend === "postgres" ? "NON_MESURE" : "NOT_APPLICABLE" },
         first_failure: firstFailure, instance_sha256: current?.record?.instance_sha256 ?? null, responses_observed: responseIds.size,
+        ...(config.control_scenario ? { control_scenario: { sha256: config.control_scenario.sha256, events_applied: controlIndex, events_expected: controlScenario.events.length } } : {}),
         elapsed_global_ms: Date.now() - authorization.authorized_at_ms, global_deadline_ms: authorization.global_deadline_ms,
         workflow_deadline_ms: authorization.workflow_deadline_ms,
         native_parent_closure: closure, process_tree_closure: "OUTER_CONTROLLER_REQUIRED", bytes_retained: retained,

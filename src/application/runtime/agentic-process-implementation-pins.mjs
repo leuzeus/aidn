@@ -19,6 +19,8 @@ const files = [
   "src/adapters/runtime/workflow-record-store.mjs", "src/core/agents/agent-reuse-policy.mjs", "src/core/agents/agent-transition-policy.mjs",
   "src/core/agents/agent-role-model.mjs", "src/core/agents/codex-startup-arguments.mjs",
   "src/core/workflow/agentic-process-model.mjs", "src/core/workflow/agentic-process.mjs", "src/core/workflow/shadow-json.mjs",
+  "src/core/workflow/agentic-process-control-scenario.mjs",
+  "src/core/contracts/workflow-definition/agentic-process-control-scenario.v1.schema.json",
   "src/core/contracts/workflow-definition/agentic-process-model.v1.schema.json",
   "src/core/contracts/workflow-definition/agentic-process-instance.v1.schema.json", "VERSION", "package.json",
 ];

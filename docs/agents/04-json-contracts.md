@@ -102,6 +102,10 @@ or creates a public CLI case. See [the BPMN profile](../BPMN_EXECUTION_PROFILE.m
 The opt-in v2 XML compiler adds a second recognized profile value to the same
 compilation envelope. V1 remains the default; existing model/instance/event
 contracts and required execution authorities retain their versions and meaning.
+The optional internal `agentic-process-control-scenario.v1` file uses a closed
+root/step schema and semantic control-event guard. It is a pinned operational
+input to the owned composition, not a public CLI output, executor credential or
+new durable authority. Delivered events retain the existing instance contract.
 
 ADR-0020 exposes the experimental `runtime-workflow-inspect.v1`,
 `runtime-workflow-action.v1` and `runtime-workflow-dashboard.v1` public roots.

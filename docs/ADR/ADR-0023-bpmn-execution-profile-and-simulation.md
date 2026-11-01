@@ -81,3 +81,14 @@ Compiler/refusal fixtures and canonical files/dual/db-only service tests compare
 the retained execution journal with the exact synthetic replay cursor and hash.
 Native and installed-client qualification remain separate. Rollback selects v1
 for future compilations; already pinned IR instances retain their semantics.
+
+## Bounded host inputs for native qualification
+
+The comparative benchmark exposed the one-batch native composition's missing
+input path for a modeled message wait or loop fact. Add an optional pinned
+`agentic-process-control-scenario.v1` input: explicit initial facts and ordered
+control events after accepted-result counts. Existing configuration authorization
+binds its reference; model-selected ports, assignments and verdicts remain
+forbidden. Service/CAS/correlation checks remain authoritative. No scenario means
+the original wait behavior. Pending/unreachable scenario steps prevent a success
+claim. This adds no live broker, timer, automatic retry or historical migration.

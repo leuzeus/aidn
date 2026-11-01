@@ -24,6 +24,10 @@ import { CODEX_STARTUP_ENVIRONMENT_PROFILES, createCodexHostEnvironment } from "
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { spawnSync } from "node:child_process";
+import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
+import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
+import { assertAgenticControlScenario } from "../../src/core/workflow/agentic-process-control-scenario.mjs";
 
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
@@ -173,6 +177,41 @@ async function run(f, options = {}) {
 }
 
 try {
+  await check("explicit pinned host scenario drives XML event, two loop iterations, collections and calls without model polling", async () => {
+    const f = fixture(), example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
+    example.policies[0].allowed_permissions.push("write:product");
+    const model = compileBpmnProcess({ xml: fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8"),
+      modelId: "native-control-fixture", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies,
+      profile: "aidn-bpmn-structured.v2", processRef: "ExtendedDelivery" }).model;
+    const modelPath = put(f.base, "extended-model.json", JSON.stringify(model));
+    f.configuration.model = { path: modelPath, sha256: sha(fs.readFileSync(modelPath)) };
+    f.configuration.instructions = Object.fromEntries(model.nodes.filter(n => n.kind === "activity").map(n => [n.id, n.policy_ref === "review" ? "Review without correcting the work." : "Change value to 2."]));
+    const initial = createAgenticProcess({ instanceId: "case", model, scopeId: "fixture", policyPins: agenticPolicyPins(model), facts: { refinement_done: false } });
+    const wait = inspectAgenticProcess(initial).occurrences.find(row => row.wait_reason === "event");
+    const scenario = { contract_version: "agentic-process-control-scenario.v1", initial_facts: { refinement_done: false }, events: [
+      { after_results: 0, event: { event_id: "host-message", kind: "message", occurrence_id: wait.occurrence_id, correlation_id: wait.correlation_id, event_key: "approved" } },
+      { after_results: 2, event: { event_id: "host-facts", kind: "facts", facts: { refinement_done: true } } }] };
+    assertAgenticControlScenario(scenario);
+    for (const invalid of [{ ...scenario, events: [...scenario.events].reverse() },
+      { ...scenario, events: [{ after_results: 0, event: { event_id: "spoof", kind: "assign" } }] }]) {
+      assert.throws(() => assertAgenticControlScenario(invalid), /PROCESS_CONTROL_SCENARIO_INVALID/);
+    }
+    const scenarioPath = put(f.base, "control-scenario.json", JSON.stringify(scenario));
+    f.configuration.control_scenario = { path: scenarioPath, sha256: sha(fs.readFileSync(scenarioPath)) };
+    const t = transport(f), auth = { ...f.authorize(), max_responses: 20, global_deadline_ms: Date.now() + 120000, workflow_deadline_ms: Date.now() + 110000 };
+    const composition = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory });
+    assert.equal(composition.preview().written, false); assert.equal(t.sessions.length, 0);
+    const result = await composition.run({ execute: true, authorization: auth });
+    assert.equal(result.status, "COMPLETED", JSON.stringify(result)); assert.equal(result.responses_observed, 10);
+    assert.equal(result.control_scenario.events_applied, 2); assert.deepEqual(t.sessions.map(s => s.turns), [9, 1]);
+    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    assert.equal(retained.events.filter(e => e.kind === "message").length, 1);
+    assert.equal(retained.events.filter(e => e.kind === "facts").length, 1);
+    assert.equal(retained.events.filter(e => e.kind === "result").length, 10);
+    assert.equal(t.sessions.every(s => s.closed), true);
+    fs.appendFileSync(scenarioPath, " ");
+    assert.throws(() => composition.preview(), /PROCESS_EXECUTION_INPUT_CHANGED/);
+  });
   await check("Windows root-read requirement retains explicit private, author and home denials", () => {
     const original = path.join(root, "profile-project"), product = path.join(original, "app"), slash = p => p.replaceAll("\\", "/");
     put(product, "server.mjs", "// private original\n"); put(product, "tmp/input.txt", "temporary original\n"); put(original, "metadata/common.md", "original metadata\n");
