@@ -39,6 +39,7 @@ Use this page as the first stop when you need to navigate the repository docs.
 - [ADR-0013 global user runtime](./ADR/ADR-0013-global-user-runtime.md)
 - [Global architecture diagram](./diagrams/01-global-system-architecture.md)
 - [BPMN views](./bpmn/README.md)
+- [BPMN execution profile and shared-reducer simulation](./BPMN_EXECUTION_PROFILE.md)
 
 ## Runtime And Operations
 

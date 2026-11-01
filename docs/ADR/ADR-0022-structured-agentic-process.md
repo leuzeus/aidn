@@ -25,6 +25,11 @@ Complex/mixed/instantiating gateways and autonomous participant review remain
 descriptive and refuse execution. Arbitrary graphs, cross-pool sequence and XML
 import are rejected, never translated silently.
 
+ADR-0023 subsequently adds explicit bounded XML compilation into this unchanged
+IR, plus synthetic simulation with the same reducer. Direct XML interpretation
+and generic BPMN import remain outside this engine. See
+[the profile decision](ADR-0023-bpmn-execution-profile-and-simulation.md).
+
 The reducer uses stable scoped occurrences, distinct flow identities, recorded
 conditions and replayed events. Concurrency is logical readiness, not an agent
 count. A join never reconciles contents. Failure/cancellation never masquerades
@@ -63,7 +68,7 @@ native observations are documented in `docs/AGENTIC_PROCESS.md`.
 
 The required `runtime-agentic-process` gate executes portable contracts, reducer,
 service, durable-store and production-composition/fake-wire fixtures. The existing agent-reuse and workflow-instance
-suites remain separate regression checks. G03, XML, message review and unsupported
+suites remain separate regression checks. G03, general BPMN XML, message review and unsupported
 gateway semantics are not claimed as implemented; their boundaries are published
 in `docs/AGENTIC_PROCESS.md`. No native qualification or cost claim is made.
 

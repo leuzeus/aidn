@@ -838,6 +838,12 @@ for (const [name, candidate] of Object.entries({
 }
 
 const negativeProbes = {
+  bpmn_profile_invocation_omission_rejected: (() => {
+    const candidate = clone(packageJson);
+    candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]
+      .replace("node tools/perf/verify-bpmn-process-fixtures.mjs && ", "");
+    return candidateRejected({ candidatePackageJson: candidate });
+  })(),
   agent_run_lifecycle_required: (() => {
     const candidate = clone(catalog);
     candidate.gates = candidate.gates.filter(gate => gate.id !== "runtime-agent-run-lifecycle");

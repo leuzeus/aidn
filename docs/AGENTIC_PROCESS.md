@@ -63,7 +63,8 @@ author. All roles can reference the same skills.
 | Complex, mixed, instantiating event gateways | yes | Explicit refusal; no silent fallback or automatic normalization |
 | Autonomous participant review | yes | Explicit refusal pending a supported participant message/authority contract |
 | Unstructured graph, shared OR child, cross-pool sequence | no | Explicit refusal |
-| BPMN XML import/export | no | No XML interpreter or import qualification |
+| BPMN XML profile compilation | yes, bounded subset | Explicit `aidn-bpmn-structured.v1` compiler produces validated IR; see [the profile](BPMN_EXECUTION_PROFILE.md) |
+| General BPMN XML import/export | no | Unsupported semantics refuse; no XML export or general interpreter |
 
 `agenticProcessCapabilities()` exposes `representable`, `validatable`,
 `executable` and `tested` separately. Unsupported constructs have `tested:false`;
@@ -78,6 +79,12 @@ wait; a completed activity can supply a later facts event through the host.
 No expression evaluation, generated code, model polling, thread creation or
 implicit resource allocation occurs at a gateway. The host delivers messages
 and timer outcomes; this profile does not itself schedule wall-clock timers.
+
+The [BPMN execution profile](BPMN_EXECUTION_PROFILE.md) connects modeling XML to
+this IR through explicit role/policy bindings and source maps. Its compiler
+subset is smaller than the IR capability set. `simulateAgenticProcess` produces
+bounded synthetic event traces with this same reducer, without host effects or
+write authorization. See ADR-0023 for authority and compatibility boundaries.
 
 Activity results are not merged at a join. If reconciliation requires judgment,
 declare another activity. A failed child fails the process and cancels remaining

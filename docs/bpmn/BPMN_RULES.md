@@ -9,7 +9,9 @@ Pools represent participants and lanes represent responsibilities. Neither
 determines an executor, session or worker count. Gateways control logical flow;
 independent review is an activity with an assignment policy. The internal JSON
 execution profile in [AGENTIC_PROCESS.md](../AGENTIC_PROCESS.md) supports structured
-blocks only; these diagrams do not claim XML execution/import support.
+blocks only. The [explicit XML execution profile](../BPMN_EXECUTION_PROFILE.md)
+compiles a smaller structured subset; these operating diagrams do not themselves
+claim conformance or XML execution/import qualification.
 
 - A `task` should have exactly `1` incoming sequence flow and `1` outgoing sequence flow.
 - A `startEvent` should have `0` incoming sequence flows and `1` outgoing sequence flow.

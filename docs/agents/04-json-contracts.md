@@ -93,6 +93,13 @@ schema/semantic checks during replay. These internal APIs add no root CLI case.
 The structured execution profile is distinct from the descriptive shadow format;
 neither a hash nor an authored declaration authenticates a resource or verdict.
 
+ADR-0023 adds `bpmn-process-compilation.v1` and
+`agentic-process-simulation.v1` in this same internal namespace. Compilation
+validates its nested executable model with the existing IR schema/guard;
+simulation validates each replayed instance/event before exposing its cursor.
+Source maps are derived, traces synthetic, and neither envelope grants writes
+or creates a public CLI case. See [the BPMN profile](../BPMN_EXECUTION_PROFILE.md).
+
 ADR-0020 exposes the experimental `runtime-workflow-inspect.v1`,
 `runtime-workflow-action.v1` and `runtime-workflow-dashboard.v1` public roots.
 The common derived view retains exact IDs, reason codes and independent run

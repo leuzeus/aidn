@@ -20,3 +20,4 @@ Architectural decisions for the workflow product.
 - `ADR-0016-shadow-workflow-compilation.md` (proposed; pure internal compilation)
 - `ADR-0017-explicit-workflow-segment-selection.md` (proposed; opt-in run-local segment selection)
 - [ADR-0021-derived-context-control-plane.md](ADR-0021-derived-context-control-plane.md) (proposed; explicit derived working memory)
+- [ADR-0023-bpmn-execution-profile-and-simulation.md](ADR-0023-bpmn-execution-profile-and-simulation.md) (implemented; bounded XML compilation and synthetic replay)

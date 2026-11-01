@@ -11,8 +11,10 @@ import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-pr
 import { evaluateAgentReuse, fingerprintAgentReuse } from "../../src/core/agents/agent-reuse-policy.mjs";
 import { AGENT_ROLES, buildAgentProfile, canAgentRolePerform } from "../../src/core/agents/agent-role-model.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
-import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
+import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
+import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
+import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 
 const example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
 const H = "a".repeat(64), OTHER = "b".repeat(64), NOW = Date.now();
@@ -44,8 +46,8 @@ function assigned(state, occurrence = inspect(state).ready[0], resource = execut
 function resultFor(frame, outcome = "completed") { return { result_id: "result-" + ++serial, request_sha256: fingerprintAgentReuse(frame.assignment.request),
   execution_id: frame.assignment.decision.execution_id, revision: frame.assignment.request.revision, artifact_sha256: frame.assignment.request.artifact_sha256,
   criteria_sha256: frame.assignment.request.criteria_sha256, outcome, evidence_refs: [{ ref: "fixture/result", sha256: H }] }; }
-function completed(state, occurrence = inspect(state).ready[0], outcome = "completed") {
-  const active = assigned(state, occurrence), frame = inspect(active).occurrences.find(row => row.occurrence_id === occurrence);
+function completed(state, occurrence = inspect(state).ready[0], outcome = "completed", resource = executor()) {
+  const active = assigned(state, occurrence, resource), frame = inspect(active).occurrences.find(row => row.occurrence_id === occurrence);
   return advanceAgenticProcess(active, event({ kind: "result", occurrence_id: occurrence, result: resultFor(frame, outcome) }));
 }
 function gateway(kind, size = 2) { return model({ id: "gate", kind, participant_ref: "delivery", branches: Array.from({ length: size }, (_, index) => ({ flow_id: "flow-" + index,
@@ -165,6 +167,45 @@ await check("R10: missing or altered required policy cannot be hidden by import/
   assert.throws(() => createAgenticProcess({ instanceId: "fixture", model: changed, policyPins: pins, scopeId: "scope-1" }), /PROCESS_REQUIRED_POLICY_CHANGED/);
   changed.policies = []; assert.throws(() => assertAgenticProcessModel(changed), /PROCESS_MODEL_INVALID/);
 });
+await check("BPMN to IR to execution and simulation: parallel readiness, author reuse and independent review", () => {
+  const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/structured-delivery.bpmn", import.meta.url), "utf8");
+  const compilation = compileBpmnProcess({ xml, modelId: "delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies });
+  let state = completed(initial(compilation.model));
+  assert.equal(inspect(state).ready.length, 2);
+  state = completed(state); assert.equal(inspect(state).ready.length, 1);
+  state = completed(state); assert.equal(inspect(state).ready.length, 1);
+  assert.throws(() => assigned(state), /PROCESS_ASSIGNMENT_NOT_ADMISSIBLE/);
+  state = completed(state, inspect(state).ready[0], "completed", executor("reviewer"));
+  assert.equal(inspect(state).status, "COMPLETED");
+  const input = { instanceId: "fixture", model: compilation.model, policyPins: agenticPolicyPins(compilation.model), scopeId: "scope-1", facts: {}, events: state.events };
+  const simulation = simulateAgenticProcess(input);
+  assert.equal(simulation.evidence_kind, "synthetic"); assert.equal(simulation.write_authorization, false);
+  assert.equal(simulation.trace.length, state.events.length + 1);
+  assert.deepEqual(simulation.trace.at(-1).cursor, inspect(state));
+  assert.equal(simulation.trace.at(-1).instance_sha256, state.instance_sha256);
+  assert.deepEqual(simulation, simulateAgenticProcess(input));
+  assert.equal(Object.isFrozen(simulation.trace), true);
+  const assignments = simulation.trace.at(-1).cursor.occurrences.filter(row => row.assignment).map(row => row.assignment.decision.execution_id);
+  assert.equal(new Set(assignments).size, 2);
+});
+await check("simulation preserves waits, races, failures, duplicate idempotence and malformed-event refusals", () => {
+  const simulate = state => simulateAgenticProcess({ instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins,
+    scopeId: state.scope_id, facts: state.initial_facts, events: state.events });
+  for (const m of [gateway("event"), gateway("xor"), gateway("or")]) {
+    const state = initial(m); assert.deepEqual(simulate(state).trace.at(-1).cursor, inspect(state));
+  }
+  let race = initial(gateway("event"));
+  race = advanceAgenticProcess(race, event({ kind: "message", occurrence_id: "root", correlation_id: "fixture:root", event_key: "message-1" }));
+  race = completed(race, inspect(race).ready[0], "failed");
+  assert.equal(simulate(race).trace.at(-1).cursor.first_failure, "PROCESS_ACTIVITY_FAILED");
+  const input = { instanceId: race.instance_id, model: race.model, policyPins: race.policy_pins, scopeId: race.scope_id, events: [race.events[0], race.events[0]] };
+  const duplicated = simulateAgenticProcess(input); assert.equal(duplicated.trace[1].instance_sha256, duplicated.trace[2].instance_sha256);
+  assert.throws(() => simulateAgenticProcess({ ...input, events: [race.events[0], { ...race.events[0], event_key: "message-0" }] }), /PROCESS_EVENT_ID_CONFLICT/);
+  assert.throws(() => simulateAgenticProcess({ ...input, events: Array(513).fill(race.events[0]) }), /PROCESS_SIMULATION_INPUT_INVALID/);
+  const schema = JSON.parse(fs.readFileSync(new URL("../../src/core/contracts/workflow-definition/agentic-process-simulation.v1.schema.json", import.meta.url)));
+  // Public contract validation remains separate; these are internal workflow envelopes.
+  assert.deepEqual(validateJsonSchema(simulate(race), schema, "$", { contractKind: "workflow-definition" }), []);
+});
 await check("R12: call procedure creates a scoped occurrence, never independent identity", () => {
   const state = assigned(initial(model({ id: "call", kind: "call", participant_ref: "delivery", child: "task" }, [leaf("task")])));
   assert.equal(inspect(state).occurrences.at(-1).assignment.decision.agent_id, "author");
@@ -195,6 +236,32 @@ function composition(m = model(), { stateMode = "files", resultTimeoutMs = 1000 
   return { service, store, state, targetRoot, initialize: (write = true) => service.initialize({ instanceId: "fixture", model: m, write }) };
 }
 try {
+  for (const stateMode of ["files", "dual", "db-only"]) await check("compiled BPMN uses canonical service authorities and simulation parity: " + stateMode, async () => {
+    const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/structured-delivery.bpmn", import.meta.url), "utf8");
+    const { model: m } = compileBpmnProcess({ xml, modelId: "delivery", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies });
+    const c = composition(m, { stateMode });
+    assert.equal(c.initialize(false).written, false);
+    let current = c.initialize(); let step = 0;
+    while (current.cursor.ready.length && step < 5) {
+      const occurrenceId = current.cursor.ready[0], frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
+      const node = m.nodes.find(row => row.id === frame.node_id);
+      if (node.policy_ref === "review") {
+        c.state.binding.reviewed_contributors = [{ agent_id: "author", lineage_id: "lineage-author" }];
+        const refusal = await c.service.assign({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, occurrenceId, eventId: "self-review" });
+        assert.equal(refusal.decision.decision, "wait"); c.state.resource = executor("reviewer");
+      }
+      const assignedState = await c.service.assign({ instanceId: "fixture", expectedSha256: current.record.instance_sha256, occurrenceId, eventId: `assign-${step}`, write: true });
+      c.state.result = resultFor(assignedState.cursor.occurrences.find(row => row.occurrence_id === occurrenceId));
+      current = await c.service.accept({ instanceId: "fixture", expectedSha256: assignedState.record.instance_sha256, occurrenceId,
+        eventId: `accept-${step++}`, resultId: c.state.result.result_id, write: true });
+    }
+    assert.equal(current.cursor.status, "COMPLETED");
+    const record = c.store.read("fixture").record;
+    const simulated = simulateAgenticProcess({ instanceId: record.instance_id, model: record.model, policyPins: record.policy_pins,
+      scopeId: record.scope_id, facts: record.initial_facts, events: record.events });
+    assert.deepEqual(simulated.trace.at(-1).cursor, current.cursor);
+    assert.equal(simulated.trace.at(-1).instance_sha256, record.instance_sha256);
+  });
   await check("required skill snapshot cannot be weakened while authority observation is pending", async () => {
     const request = requestFor(initial(), "root"), requiredSkills = ["tests"];
     const result = await decideAgentReuse({ request, requiredSkills, adapters: [adapter], now: () => NOW,

@@ -27,6 +27,11 @@ of routing, canonical persistence, budgets and cleanup. Its
 does not establish general native support or a performance gain. Ordinary
 installed workflows are unchanged.
 
+The explicit [BPMN execution profile](docs/BPMN_EXECUTION_PROFILE.md) compiles
+structured task and XOR/AND/OR diagrams into that IR, with role/policy bindings
+and source maps. Synthetic simulation uses the same event reducer. Unsupported
+BPMN semantics refuse explicitly; compilation does not authorize execution.
+
 The later [StockFlow benchmark report](docs/qualification/benchmarks/2026-11-01-stockflow/README.md)
 follows v0.19.0 through a PostgreSQL backend, a functional UI, identity design and
 brand application, using temporary installations and independent reviews.

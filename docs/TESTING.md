@@ -2,6 +2,16 @@
 
 ## Structured agentic process
 
+The same gate includes `verify-bpmn-process-fixtures.mjs`: strict namespace
+parsing, supported structured XML compilation, role/policy bindings, source
+maps, nested joins and explicit refusal of unsupported graphs/semantics. The
+reducer suite checks BPMN → IR → synthetic trace parity, parallel readiness,
+compatible reuse, contributor exclusion and independent review. Simulation
+retains waits, event races, failures and duplicate-event semantics. These are
+tracked offline fixtures; graphical editor import, new native model execution
+and installed-package qualification are NOT_RUN. See
+[the profile](BPMN_EXECUTION_PROFILE.md) for separate compiler/IR support levels.
+
 `npm run perf:verify-agentic-process` runs the required `runtime-agentic-process`
 gate without a Codex client, model, network or installed activation. It verifies
 versioned model/instance contracts, distinct participant/role/resource identities,

@@ -35,6 +35,11 @@ these distinctions with a declared execution profile. It does not reinterpret
 existing workflow instances, replace skill/write admission or activate a native
 executor. Unsupported constructs refuse explicitly.
 
+The explicit [BPMN profile](BPMN_EXECUTION_PROFILE.md) compiles supported modeling
+constructs into that same IR. Simulation replays synthetic events with the
+execution reducer. XML, lane placement and synthetic traces grant no authority;
+retained instances keep their pinned model, policies and canonical journal.
+
 1. **Audit-Informed Development (Primary Philosophy)**
    - Active before, during, and after implementation.
    - Reduces entropy and scope drift before irreversible decisions.

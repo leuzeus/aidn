@@ -3,6 +3,13 @@
 This directory contains BPMN 2.0 XML files intended for import into `bpmn.io`.
 They are aligned with the current runtime baseline, not just the original target vision.
 
+These operating views remain distinct from the executable
+[BPMN profile](../BPMN_EXECUTION_PROFILE.md). That explicit compiler accepts a
+bounded structured subset with role/policy extensions and produces the existing
+IR. It does not automatically make the diagrams in this directory executable.
+Simulation and execution share the existing occurrence reducer; resource
+assignment remains a separate trusted host concern.
+
 Execution uses the user-level engine; each project retains its activation,
 configuration, extensions and canonical data. Native hook review is separate.
 Installation, explicit project migration, global update/rollback and CI/worktree

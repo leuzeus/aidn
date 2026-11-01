@@ -102,7 +102,7 @@ const METADATA_POLICIES = freezeDeep([
     concept: "agentic_process_instance", label: "Structured agentic process instance",
     required: ["contract_version", "profile", "instance_id", "model", "model_sha256", "policy_pins", "scope_id", "initial_facts", "revision", "events", "instance_sha256"],
     sourceOfTruthConcept: "agentic_process_instance",
-    evidenceTargets: ["src/core/contracts/workflow-definition/agentic-process-instance.v1.schema.json", "src/core/workflow/agentic-process.mjs", "src/application/runtime/agentic-process-service.mjs"],
+    evidenceTargets: ["src/core/contracts/workflow-definition/agentic-process-instance.v1.schema.json", "src/core/workflow/agentic-process.mjs", "src/application/runtime/agentic-process-service.mjs", "src/core/contracts/workflow-definition/bpmn-process-compilation.v1.schema.json", "src/core/contracts/workflow-definition/agentic-process-simulation.v1.schema.json"],
     lifecycle: "READY|RUNNING|WAITING -> COMPLETED|FAILED|CANCELLED",
     notes: "Participants, roles/skills and technical executions remain separate. Structured occurrences bind loop/collection/call scope and event correlation. Append-only events, explicit writes, deduplication and canonical CAS protect progress. Authority ports revalidate contributor/context/permission and revision bindings at result acceptance. No native or independent-review guarantee follows from authored JSON alone.",
   }),
