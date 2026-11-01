@@ -1,14 +1,15 @@
 # BPMN execution profile v2
 
-## Explicit adoption and compatibility
+## Default agentic execution path and compatibility
 
 `aidn-bpmn-structured.v2` adds XML mappings for the existing `event`, `loop`,
-`multi_instance` and `call` IR nodes. The default remains
-[`aidn-bpmn-structured.v1`](BPMN_EXECUTION_PROFILE.md). Select v2 explicitly:
+`multi_instance` and `call` IR nodes. It is the default compiler, targeting
+the structured agentic process engine for normal BPMN workflows. Select
+[`aidn-bpmn-structured.v1`](BPMN_EXECUTION_PROFILE.md) explicitly for compatibility.
 
 ```js
 const compiled = compileBpmnProcess({
-  xml, profile: "aidn-bpmn-structured.v2", processRef: "ExtendedDelivery",
+  xml, processRef: "ExtendedDelivery",
   modelId: "delivery", revision: 1, participantId: "delivery", roles, policies,
 });
 ```
@@ -22,7 +23,10 @@ The closed `bpmn-process-compilation.v1` envelope accepts either profile; its
 shape is unchanged. Both produce `agentic-process-model.v1` and use the same
 reducer, simulation, policy pins and trusted execution authorities. V1's original
 model hash and source map are pinned by a compatibility fixture. Existing
-instances and the default compiler are not reinterpreted.
+instances are not reinterpreted. Selecting the normal agentic engine does not
+authorize writes or native calls; execution still requires pinned inputs and
+explicit host authorization. Historical sequential workflow records retain
+their versioned reader rather than being silently converted into agentic models.
 
 ## Mapping to the existing engine
 

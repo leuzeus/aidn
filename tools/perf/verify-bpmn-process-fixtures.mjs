@@ -10,7 +10,7 @@ import { assertAgenticProcessModel, agenticProcessCapabilities } from "../../src
 const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/structured-delivery.bpmn", import.meta.url), "utf8");
 const extendedXml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8");
 const { roles, policies } = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
-const compile = (source = xml, overrides = {}) => compileBpmnProcess({ xml: source, modelId: "delivery", revision: 1, participantId: "delivery", roles, policies, ...overrides });
+const compile = (source = xml, overrides = {}) => compileBpmnProcess({ xml: source, modelId: "delivery", revision: 1, participantId: "delivery", roles, policies, profile: "aidn-bpmn-structured.v1", ...overrides });
 const extended = (source = extendedXml, overrides = {}) => compile(source, { profile: "aidn-bpmn-structured.v2", processRef: "ExtendedDelivery", ...overrides });
 function refusesExtended(source, code, overrides) { assert.throws(() => extended(source, overrides), error => error.code === code); }
 let count = 0;
@@ -41,11 +41,15 @@ check("BPMN compilation is deterministic, immutable, source mapped and schema va
     }
   }
 });
-check("V2 is opt-in, preserves V1 output and publishes separate capabilities", () => {
+check("BPMN defaults to V2 on the agentic IR path and preserves explicit V1 compatibility", () => {
   const v1 = compile(), v2 = compile(xml, { profile: "aidn-bpmn-structured.v2" });
   assert.deepEqual(v1.model, v2.model); assert.deepEqual(v1.source_map, v2.source_map);
   assert.equal(v1.profile, "aidn-bpmn-structured.v1"); assert.equal(v2.profile, "aidn-bpmn-structured.v2");
   assert.deepEqual(agenticProcessCapabilities().bpmn_xml_profiles, [v1.profile, v2.profile]);
+  assert.equal(agenticProcessCapabilities().bpmn_xml_profile, v2.profile);
+  const defaults = { modelId: "delivery", revision: 1, participantId: "delivery", roles, policies };
+  assert.deepEqual(compileBpmnProcess({ xml, ...defaults }), v2);
+  assert.deepEqual(compileBpmnProcess({ xml: extendedXml, ...defaults, processRef: "ExtendedDelivery" }), extended());
   refuses(extendedXml, "BPMN_PROFILE_ELEMENT_UNSUPPORTED");
   assert.throws(() => compile(xml, { profile: "unknown" }), /BPMN_PROFILE_UNSUPPORTED/);
   assert.throws(() => compile(xml, { profile: null }), /BPMN_PROFILE_UNSUPPORTED/);

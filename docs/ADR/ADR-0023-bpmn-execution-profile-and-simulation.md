@@ -99,3 +99,17 @@ Publication now stages an exclusive temporary sibling of each product file,
 preserving the existing byte/hash, storage-budget and review-boundary checks.
 Filesystem failures stop execution with bounded diagnostics and cleanup; they
 do not weaken the review permissions or trigger an automatic model retry.
+
+## Normal BPMN path and measured native exchanges
+
+The user's adoption decision supersedes the earlier opt-in/default-v1 choice:
+normal BPMN compilation selects v2 and targets the structured agentic engine
+for execution and simulation. Explicit v1 keeps its original output and hashes.
+This is one IR/reducer path, not a separate XML interpreter. Retained historical
+sequential instances keep their versioned reader; changing the normal BPMN
+path does not convert those records or authorize model calls and writes.
+
+Native qualification now retains redacted completed-tool observations and
+distinct response counts per activity. This resolves the previous inability to
+separate tool granularity and repeated verification costs from compilation.
+No raw command, output or reasoning text is added to governed evidence.

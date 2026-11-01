@@ -13,7 +13,7 @@ and installed-package qualification are NOT_RUN. See
 [the profile](BPMN_EXECUTION_PROFILE.md) for separate compiler/IR support levels.
 
 The same compiler suite also pins v1 compatibility and challenges the opt-in
-[v2 XML mappings](BPMN_EXECUTION_PROFILE_V2.md): message correlation scopes,
+[default v2 XML mappings](BPMN_EXECUTION_PROFILE_V2.md): message correlation scopes,
 post-test loop polarity and explicit limit failures, fixed item identities,
 repeated/nested calls, recursion and expansion limits. The canonical service
 suite executes the combined v2 model in files/dual/db-only with real temporary
@@ -61,6 +61,10 @@ path refusal, cancellation during configuration observation, pre-aborted entry,
 expired pre-turn deadlines, unobservable storage and failed footer writes. These
 retain the first failure and known usage without launching a paid turn or
 turning unknown bytes into zero.
+The native adapter fixtures also check completed-tool observations: only bounded
+labels, counts and hashes survive, with no raw command, argument, output or
+reasoning text. The combined XML composition uses the default compiler and the
+same agentic engine without a profile opt-in.
 Live storage fixtures distinguish a listed child disappearing with ENOENT from
 an unreadable child or a missing required root, and verify bounded diagnostics
 and retained consumption on refusal. They do not attribute an earlier native

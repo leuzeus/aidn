@@ -30,7 +30,7 @@ routes control tokens and never creates agents by itself. Compatible roles may
 reuse one eligible execution; mandatory independent review excludes contributors
 and requires its declared context, authority and permission guarantees.
 
-The opt-in internal [structured agentic process](AGENTIC_PROCESS.md) implements
+The internal [structured agentic process](AGENTIC_PROCESS.md), the normal BPMN execution engine, implements
 these distinctions with a declared execution profile. It does not reinterpret
 existing workflow instances, replace skill/write admission or activate a native
 executor. Unsupported constructs refuse explicitly.

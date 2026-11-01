@@ -99,8 +99,8 @@ validates its nested executable model with the existing IR schema/guard;
 simulation validates each replayed instance/event before exposing its cursor.
 Source maps are derived, traces synthetic, and neither envelope grants writes
 or creates a public CLI case. See [the BPMN profile](../BPMN_EXECUTION_PROFILE.md).
-The opt-in v2 XML compiler adds a second recognized profile value to the same
-compilation envelope. V1 remains the default; existing model/instance/event
+The default v2 XML compiler uses the same
+compilation envelope. Explicit v1 remains compatible; existing model/instance/event
 contracts and required execution authorities retain their versions and meaning.
 The optional internal `agentic-process-control-scenario.v1` file uses a closed
 root/step schema and semantic control-event guard. It is a pinned operational

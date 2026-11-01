@@ -15,7 +15,7 @@ const output = path.resolve(value("--out")); assert(!fs.existsSync(output), "new
 const baseline = await import(pathToFileURL(path.join(path.resolve(value("--baseline-root")), "src/core/workflow/agentic-process.mjs")));
 const example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
 const xml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8");
-const compile = () => compileBpmnProcess({ xml, profile: "aidn-bpmn-structured.v2", processRef: "ExtendedDelivery", modelId: "benchmark",
+const compile = () => compileBpmnProcess({ xml, processRef: "ExtendedDelivery", modelId: "benchmark",
   revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies });
 const compilation = compile(), model = compilation.model, policyPins = agenticPolicyPins(model), H = "a".repeat(64), NOW = 1793534400000;
 const initial = api => api.createAgenticProcess({ instanceId: "benchmark", model, policyPins, scopeId: "benchmark", facts: { refinement_done: false } });

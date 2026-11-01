@@ -16,7 +16,7 @@ import { createPostgresRuntimeArtifactStore } from "../../src/adapters/runtime/p
 import { createRuntimePersistenceFakePgClientFactory } from "./runtime-persistence-fake-pg-lib.mjs";
 import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
 import { createAgenticCodexRpc } from "../../src/adapters/agents/agentic-codex-rpc.mjs";
-import { normalizePermissionProfile, buildAgenticNativePermissionProfile, createAgenticCodexSessions } from "../../src/adapters/agents/agentic-codex-session.mjs";
+import { normalizePermissionProfile, buildAgenticNativePermissionProfile, createAgenticCodexSessions, summarizeAgenticNativeToolItem } from "../../src/adapters/agents/agentic-codex-session.mjs";
 import { applyAuthorization, planAuthorization, resolveActivationTarget, readActivation } from "../../src/application/install/project-activation-service.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { artifactContentHash, assertWorkflowRecordProjection } from "../../src/core/workflow/artifact-compare-swap.mjs";
@@ -154,6 +154,7 @@ function transport(f, options = {}) {
         const usage = { inputTokens: 10 * session.turns, cachedInputTokens: 0, outputTokens: session.turns, reasoningOutputTokens: 0, totalTokens: 11 * session.turns };
         if (!options.noUsage) await notify("thread/tokenUsage/updated", { threadId: thread, turnId: options.foreignTurn ? "other-turn" : turn,
           tokenUsage: { total: usage, last: usage } });
+        await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "functionCallOutput", name: "exec", id: "fixture-tool", output: "private command/output must not be retained" } });
         await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "commentary", text: "Working on the admitted activity." } });
         await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "final_answer", text: JSON.stringify({ outcome: options.reject && index === 2 ? "rejected" : "completed", summary: "Fixture result." }) } });
         await notify("turn/completed", { threadId: thread, turn: { id: turn, status: "completed" } });
@@ -178,6 +179,13 @@ async function run(f, options = {}) {
 }
 
 try {
+  await check("native tool observations retain counts and hashes without commands, outputs, arguments or reasoning", () => {
+    const observation = summarizeAgenticNativeToolItem({ type: "functionCallOutput", name: "exec", output: 'private-secret Process running with session ID 123' });
+    assert.equal(observation.tool, "exec"); assert.equal(observation.poll_marker_observed, true);
+    assert.equal(JSON.stringify(observation).includes("private-secret"), false);
+    assert.equal(summarizeAgenticNativeToolItem({ type: "reasoning", content: ["private-secret"] }), null);
+    assert.equal(summarizeAgenticNativeToolItem({ type: "dynamicToolCall", tool: { secret: "private-secret" }, arguments: { password: "private-secret" } }).tool, "other");
+  });
   await check("broker replacement preserves bytes across distinct control/product roots and cleans failed atomic staging", () => {
     const base = fs.mkdtempSync(path.join(root, "broker-")), product = path.join(base, "product"), control = path.join(base, "control");
     fs.mkdirSync(product); fs.mkdirSync(control);
@@ -198,7 +206,7 @@ try {
     example.policies[0].allowed_permissions.push("write:product");
     const model = compileBpmnProcess({ xml: fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8"),
       modelId: "native-control-fixture", revision: 1, participantId: "delivery", roles: example.roles, policies: example.policies,
-      profile: "aidn-bpmn-structured.v2", processRef: "ExtendedDelivery" }).model;
+      processRef: "ExtendedDelivery" }).model;
     const modelPath = put(f.base, "extended-model.json", JSON.stringify(model));
     f.configuration.model = { path: modelPath, sha256: sha(fs.readFileSync(modelPath)) };
     f.configuration.instructions = Object.fromEntries(model.nodes.filter(n => n.kind === "activity").map(n => [n.id, n.policy_ref === "review" ? "Review without correcting the work." : "Change value to 2."]));
@@ -360,6 +368,13 @@ try {
     const f = fixture(), { result, sessions } = await run(f);
     assert.equal(result.status, "COMPLETED", JSON.stringify(result)); assert.equal(sessions.length, 2);
     assert.deepEqual(sessions.map(session => session.turns), [2, 1]); assert.equal(result.responses_observed, 3);
+    const receipts = fs.readdirSync(path.join(f.dirs.control, "case")).filter(name => name.endsWith("-native-result.json"))
+      .map(name => JSON.parse(fs.readFileSync(path.join(f.dirs.control, "case", name))));
+    assert.equal(receipts.length, 3);
+    assert(receipts.every(row => row.exchanges.native_responses === 1 && row.exchanges.observed_tool_items === 1));
+    const observations = fs.readdirSync(path.join(f.dirs.control, "case")).filter(name => name.endsWith("-native-tool.json"))
+      .map(name => fs.readFileSync(path.join(f.dirs.control, "case", name), "utf8"));
+    assert.equal(observations.length, 3); assert(observations.every(text => !text.includes("private command/output")));
     assert.notEqual(sessions[0].configuration.cwd, sessions[1].configuration.cwd);
     assert.equal(fs.readFileSync(path.join(sessions[1].configuration.cwd, "app.mjs"), "utf8"), "export const value = 2;\n");
     const state = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;

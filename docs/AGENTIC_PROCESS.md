@@ -12,7 +12,8 @@
 | Gateway | Routing and synchronization of logical control flows | A model call or a number of workers |
 | Review | An activity bound to work, criteria and an assurance policy | Independence from a new label, pool or session alone |
 
-`structured-agentic-process.v1` is an opt-in internal application API. It is
+`structured-agentic-process.v1` is the normal execution engine for BPMN processes,
+exposed through an internal application API. It is
 separate from shadow workflow descriptions and existing sequential instances.
 Existing callers and installed projects keep their behavior. The explicit owned
 runner below composes a native adapter; importing the engine or loading a model
@@ -63,7 +64,7 @@ author. All roles can reference the same skills.
 | Complex, mixed, instantiating event gateways | yes | Explicit refusal; no silent fallback or automatic normalization |
 | Autonomous participant review | yes | Explicit refusal pending a supported participant message/authority contract |
 | Unstructured graph, shared OR child, cross-pool sequence | no | Explicit refusal |
-| BPMN XML profile compilation | yes, bounded subset | V1 remains default; opt-in [v2](BPMN_EXECUTION_PROFILE_V2.md) also compiles message races, guarded loops, collections and local calls |
+| BPMN XML profile compilation | yes, bounded subset | Default [v2](BPMN_EXECUTION_PROFILE_V2.md) compiles to the agentic engine, including message races, guarded loops, collections and local calls; explicit v1 remains compatible |
 | General BPMN XML import/export | no | Unsupported semantics refuse; no XML export or general interpreter |
 
 `agenticProcessCapabilities()` exposes `representable`, `validatable`,
@@ -195,6 +196,11 @@ commentary/partial-answer phases are not final answers; an ambiguous capture
 refuses. Native cumulative usage snapshots are retained per thread and never
 summed across turns as if they were independent totals. Missing or in-flight
 usage remains unknown. Streaming deltas are not duplicated into evidence files.
+Completed tool items additionally retain bounded kind/name labels, payload and
+output hashes, byte counts, native status/exit/duration when available, and an
+observed polling marker. Raw commands, arguments, outputs and reasoning are not
+copied. Each activity receipt counts distinct native responses and observed
+tool items; these are diagnostic observations, never result authority.
 
 The adapter checks effective configuration, allowed permission profile, existing
 Windows sandbox readiness and exact trusted project-hook hashes before a model

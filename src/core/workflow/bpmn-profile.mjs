@@ -2,6 +2,7 @@ export const BPMN_NS = "http://www.omg.org/spec/BPMN/20100524/MODEL";
 export const AIDN_BPMN_NS = "urn:aidn:bpmn:execution:v1";
 export const BPMN_EXECUTION_PROFILE = "aidn-bpmn-structured.v1";
 export const BPMN_EXTENDED_EXECUTION_PROFILE = "aidn-bpmn-structured.v2";
+export const DEFAULT_BPMN_EXECUTION_PROFILE = BPMN_EXTENDED_EXECUTION_PROFILE;
 export const BPMN_EXECUTION_PROFILES = Object.freeze([BPMN_EXECUTION_PROFILE, BPMN_EXTENDED_EXECUTION_PROFILE]);
 export const bpmnAttribute = (node, name) => node.attributes.find(a => a.name === name && !a.uri)?.value;
 export const bpmnId = node => bpmnAttribute(node, "id") ?? null;

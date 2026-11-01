@@ -19,7 +19,7 @@ This source/offline capability adds no automatic installed activation, native
 agent launch or performance claim. See
 [ADR-0021](docs/ADR/ADR-0021-sequential-agent-reuse-decision.md).
 
-The opt-in [structured agentic process](docs/AGENTIC_PROCESS.md) adds explicit
+The [structured agentic process](docs/AGENTIC_PROCESS.md), the normal engine for BPMN workflows, adds explicit
 owned native execution: compatible activities can share a live thread while
 independent review receives a fresh read-only context. The host retains control
 of routing, canonical persistence, budgets and cleanup. Its
@@ -31,7 +31,7 @@ The explicit [BPMN execution profile](docs/BPMN_EXECUTION_PROFILE.md) compiles
 structured task and XOR/AND/OR diagrams into that IR, with role/policy bindings
 and source maps. Synthetic simulation uses the same event reducer. Unsupported
 BPMN semantics refuse explicitly; compilation does not authorize execution.
-The opt-in [v2 XML profile](docs/BPMN_EXECUTION_PROFILE_V2.md) adds correlated
+The default [v2 XML profile](docs/BPMN_EXECUTION_PROFILE_V2.md) adds correlated
 message races, guarded post-test loops, fixed multi-instance collections and
 local procedure calls, using the existing IR and reducer.
 
