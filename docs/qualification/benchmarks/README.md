@@ -1,4 +1,10 @@
-# Context efficiency benchmarks, 2026-10-20
+# Benchmark reports
+
+The [StockFlow report, 2026-11-01](2026-11-01-stockflow/README.md) follows AIDN
+v0.19.0 from backend coding through UI and identity work. It includes stage
+measurements, screenshots, interrupted attempts and limits on comparison.
+
+## Context efficiency benchmarks, 2026-10-20
 
 These reports preserve three distinct local attempts associated with PR #148.
 They describe pre-release candidates based on 0.13.3, not the published 0.13.3
