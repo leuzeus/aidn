@@ -1,0 +1,165 @@
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { createProjectAgenticProcessExecution } from "./agentic-process-execution-composition.mjs";
+import { runOwnedAgenticProcess } from "./agentic-process-owned-run.mjs";
+import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
+import { createNativeAllocationJournalStore } from "../../adapters/runtime/native-allocation-journal-store.mjs";
+import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
+import { createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
+import { nativeJournalId, assertNativeCheckpointEvidence } from "../../core/workflow/native-allocation-journal.mjs";
+import { createAgenticProcess, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
+import { agenticPolicyPins } from "../../core/workflow/agentic-process-model.mjs";
+import { assertAgenticProcessStart } from "../../core/workflow/agentic-process-start.mjs";
+import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
+import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
+
+const fail = code => { throw Object.assign(new Error(code), { code }); };
+const limitKeys = ["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms", "max_turn_ms", "max_responses", "max_bytes"];
+const limitsOf = auth => Object.fromEntries(limitKeys.map(key => [key, auth[key]]));
+const json = file => { const data = readAgentRunFile(file, { json: false, maxBytes: 262144 }); return { value: JSON.parse(data.value.toString("utf8")), sha256: data.sha256 }; };
+// The controller and RPC seams belong to the trusted embedding, never authored
+// configuration. The observer only denies launches or retains actual observations;
+// it cannot replace the worker's assignment/result or termination verdicts.
+export function createJournaledNativeAllocation({ configuration, readSigningKey, environment = process.env }, { controllerFactory } = {}) {
+  if (checkShadowJson(configuration)) fail("NATIVE_ALLOCATION_CONFIGURATION_INVALID");
+  const config = structuredClone(configuration), configurationSha = shadowHash(config);
+  const executor = createProjectAgenticProcessExecution(config, { environment }), preview = executor.preview();
+  const model = json(config.model.path).value;
+  if (model.contract_version !== "agentic-process-model.v2") fail("NATIVE_ALLOCATION_PROFILE_UNSUPPORTED");
+  const initial = readWorkflowProjectAuthority({ targetRoot: config.target_root }), signer = createOperationJournalSigner(readSigningKey);
+  const options = { targetRoot: config.target_root, stateMode: initial.stateMode, env: environment };
+  const store = createNativeAllocationJournalStore(options), instances = createAgenticProcessStore(options);
+  const journalId = nativeJournalId({ instance_id: config.instance_id, scope_id: preview.scope_id });
+  const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && preview.persistence.backend === "postgres";
+  function read() {
+    const current = executor.preview();
+    if (current.scope_id !== preview.scope_id || current.model_sha256 !== preview.model_sha256) fail("NATIVE_ALLOCATION_AUTHORITY_CHANGED");
+    const value = store.read(journalId);
+    if (value.record) {
+      signer.verify(value.record);
+      if (value.record.instance_id !== config.instance_id || value.record.scope_id !== current.scope_id || value.record.model_sha256 !== current.model_sha256) fail("NATIVE_ALLOCATION_SCOPE_CHANGED");
+    }
+    return value;
+  }
+  function write(body, before) {
+    const record = signer.seal(body); store.compareAndSwap(record, before);
+    if (projectionRequired) store.materialize(journalId, { write: true });
+    return record;
+  }
+  function checkpoint(entry) {
+    if (!entry.checkpoint || !entry.closure_ref) fail("NATIVE_ALLOCATION_CHECKPOINT_UNAVAILABLE");
+    const data = json(entry.checkpoint.path), closure = json(entry.closure_ref.path);
+    if (data.sha256 !== entry.checkpoint.sha256 || closure.sha256 !== entry.closure_ref.sha256
+      || shadowHash(closure.value) !== entry.owned_result_sha256 || shadowHash(closure.value.process_tree) !== entry.tree_proof_sha256) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
+    assertNativeCheckpointEvidence(data.value, { instanceId: config.instance_id, scopeId: preview.scope_id, modelSha256: preview.model_sha256,
+      authorizationSha256: entry.authorization_sha256, limits: entry.limits });
+    if (shadowHash(data.value.state) !== entry.checkpoint.state_sha256 || data.value.state.instance.instance_sha256 !== entry.checkpoint.instance_sha256) fail("NATIVE_ALLOCATION_CHECKPOINT_CHANGED");
+    verifyNativeEvidence(data.value.state);
+    return data.value;
+  }
+  function verifyNativeEvidence(state) {
+    for (const row of state.results) for (const ref of [row.reference, ...row.result.evidence_refs]) {
+      const match = new RegExp("^execution/" + config.instance_id + "/([0-9]{5}-[a-z-]+\\.json)$").exec(ref.ref);
+      if (!match || json(path.join(config.control_root, config.instance_id, match[1])).sha256 !== ref.sha256) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
+    }
+  }
+  function totals(record) {
+    const entries = record?.allocations ?? [];
+    if (entries.some(entry => entry.phase !== "closed" || !entry.consumption)) return { known: false, responses: null, bytes: null };
+    return { known: true, responses: entries.reduce((sum, entry) => sum + entry.consumption.responses_observed, 0),
+      bytes: entries.reduce((sum, entry) => sum + entry.consumption.storage_debit_bytes, 0) };
+  }
+  return Object.freeze({
+    preview() { const value = read(); return { ...executor.preview(), journal_id: journalId, journal_sha256: value.record ? shadowHash(value.record) : null,
+      generation: value.record?.allocations.length ?? 0, phase: value.record?.allocations.at(-1)?.phase ?? "absent", consumption: totals(value.record), native_started: false, written: false }; },
+    inspect() { const value = read(); return value.record ? structuredClone(value.record) : null; },
+    readCheckpoint(generation) {
+      const record = read().record, entry = record?.allocations.find(row => row.generation === generation);
+      if (!entry) fail("NATIVE_ALLOCATION_GENERATION_UNAVAILABLE");
+      return structuredClone(checkpoint(entry));
+    },
+    async run({ execute = false, authorization, signal } = {}) {
+      if (!execute) return this.preview();
+      const before = read(), previous = before.record?.allocations.at(-1), consumed = totals(before.record);
+      if (previous && previous.phase !== "closed") fail(previous.phase === "failed" ? "NATIVE_ALLOCATION_TERMINAL_FAILURE" : "NATIVE_ALLOCATION_RECONCILIATION_REQUIRED");
+      if (!consumed.known) fail("NATIVE_ALLOCATION_CONSUMPTION_UNKNOWN");
+      if (before.record?.allocations.length >= 32) fail("NATIVE_ALLOCATION_GENERATION_LIMIT");
+      const auth = structuredClone(authorization);
+      if (checkShadowJson(auth) || auth?.approved !== true || auth.model_allowed !== true || auth.configuration_sha256 !== configurationSha) fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
+      if (previous) {
+        const ceiling = before.record.allocations[0].limits;
+        if (["max_responses", "max_bytes", "max_turn_ms", "global_deadline_ms", "workflow_deadline_ms"].some(key => auth[key] > ceiling[key])) fail("NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED");
+        auth.max_responses -= consumed.responses; auth.max_bytes -= consumed.bytes;
+      }
+      if (!Number.isSafeInteger(auth.max_responses) || auth.max_responses < 1 || !Number.isSafeInteger(auth.max_bytes) || auth.max_bytes < 1048576) fail("NATIVE_ALLOCATION_BUDGET_EXHAUSTED");
+      let claim = null, observed = null;
+      const observer = {
+        beforeLaunch({ preview: actual }) {
+          const now = read();
+          if (now.content_sha256 !== before.content_sha256 || actual.scope_id !== preview.scope_id || actual.model_sha256 !== preview.model_sha256) fail("NATIVE_ALLOCATION_REVISION_CHANGED");
+          const creation = { instanceId: config.instance_id, model, scopeId: actual.scope_id, policyPins: agenticPolicyPins(model), facts: {} };
+          const canonical = instances.read(config.instance_id).record;
+          // Until native history admission is composed, a signed closure alone
+          // cannot waive the existing pristine-start guard.
+          assertAgenticProcessStart(canonical, creation);
+          const entry = { generation: (now.record?.allocations.length ?? 0) + 1, owner_id: randomUUID(), configuration_sha256: configurationSha,
+            authorization_sha256: shadowHash(auth), initial_instance_sha256: canonical?.instance_sha256 ?? createAgenticProcess(creation).instance_sha256,
+            limits: limitsOf(auth), phase: "reserved", owned_result_sha256: null, tree_proof_sha256: null, tree_closed: false, owned_status: null,
+            first_failure: null, checkpoint: null, closure_ref: null, consumption: null };
+          const body = { contract_version: "native-allocation-journal.v1", journal_id: journalId, instance_id: config.instance_id, scope_id: actual.scope_id,
+            model_sha256: actual.model_sha256, revision: (now.record?.revision ?? 0) + 1, allocations: [...(now.record?.allocations ?? []), entry] };
+          write(body, now.content_sha256); claim = entry; return { generation: entry.generation, owner_id: entry.owner_id };
+        },
+        afterClosure({ allocation, result }) {
+          observed = structuredClone(result);
+          const now = read(), last = now.record?.allocations.at(-1);
+          if (!last || last.phase !== "reserved" || last.generation !== allocation?.generation || last.owner_id !== allocation.owner_id) fail("NATIVE_ALLOCATION_OWNER_CHANGED");
+          const entry = { ...last, owned_result_sha256: shadowHash(result), tree_proof_sha256: shadowHash(result.process_tree),
+            tree_closed: result.process_tree?.termination_state === "confirmed" && result.process_tree?.termination_proof?.active_processes === 0,
+            owned_status: result.status, first_failure: result.first_failure ?? null };
+          entry.phase = !entry.tree_closed ? "unresolved" : result.status === "FAILED" || entry.first_failure ? "failed" : "closed";
+          try {
+            const closurePath = path.join(config.control_root, `${config.instance_id}-CLOSURE.json`), closure = json(closurePath);
+            if (shadowHash(closure.value) !== shadowHash(result)) fail("NATIVE_ALLOCATION_CLOSURE_CHANGED");
+            entry.closure_ref = { path: closurePath, sha256: closure.sha256 };
+            const worker = result.worker_result, ref = worker?.native_checkpoint;
+            const match = ref && new RegExp("^execution/" + config.instance_id + "/([0-9]{5}-native-host-state\\.json)$").exec(ref.ref);
+            if (!match) fail("NATIVE_ALLOCATION_CHECKPOINT_UNAVAILABLE");
+            const file = path.join(config.control_root, config.instance_id, match[1]), data = json(file);
+            if (data.sha256 !== ref.sha256) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
+            assertNativeCheckpointEvidence(data.value, { instanceId: config.instance_id, scopeId: preview.scope_id, modelSha256: preview.model_sha256,
+              authorizationSha256: last.authorization_sha256, limits: last.limits });
+            verifyNativeEvidence(data.value.state);
+            const current = instances.read(config.instance_id).record;
+            if (!current || current.instance_sha256 !== data.value.state.instance.instance_sha256 || worker.instance_sha256 !== current.instance_sha256
+              || worker.responses_observed !== data.value.responses_observed) fail("NATIVE_ALLOCATION_CANONICAL_CHANGED");
+            entry.checkpoint = { path: file, sha256: data.sha256, state_sha256: shadowHash(data.value.state), instance_sha256: current.instance_sha256 };
+            const workerFooter = readAgentRunFile(path.join(config.control_root, config.instance_id, "RESULT.json"), { json: false, maxBytes: 131072 });
+            if (!Number.isSafeInteger(worker.storage_budget_debit_bytes) || worker.storage_budget_debit_bytes < 0) fail("NATIVE_ALLOCATION_CONSUMPTION_UNKNOWN");
+            entry.consumption = { responses_observed: data.value.responses_observed, response_sha256: data.value.response_sha256,
+              storage_debit_bytes: worker.storage_budget_debit_bytes + workerFooter.value.length + readAgentRunFile(closurePath, { json: false, maxBytes: 131072 }).value.length,
+              native_usage_sha256: data.value.state.native_usage === null ? null : shadowHash(data.value.state.native_usage) };
+            if (entry.phase === "closed" && (!data.value.state.parent_closed || !worker.native_parent_closure?.closed)) fail("NATIVE_ALLOCATION_PARENT_UNCONFIRMED");
+            if (worker.status === "COMPLETED" && inspectAgenticProcess(current).status !== "COMPLETED") fail("NATIVE_ALLOCATION_CANONICAL_CHANGED");
+          } catch (error) { if (entry.phase === "closed") entry.phase = "unresolved"; entry.first_failure ??= error.code ?? "NATIVE_ALLOCATION_OBSERVATION_UNCONFIRMED"; }
+          const { authentication, key_id, ...body } = now.record;
+          write({ ...body, revision: body.revision + 1, allocations: [...body.allocations.slice(0, -1), entry] }, now.content_sha256);
+        },
+      };
+      try {
+        const result = await runOwnedAgenticProcess({ configuration: config, authorization: auth, execute: true, signal },
+          { environment, allocationObserver: observer, ...(controllerFactory ? { controllerFactory } : {}) });
+        const record = read().record;
+        const last = record?.allocations.at(-1), phase = last?.phase ?? "absent";
+        return { contract_version: "journaled-native-allocation-result.v1", owned_result: result, journal_id: journalId,
+          generation: claim?.generation ?? null, journal_phase: phase, journal_sha256: record ? shadowHash(record) : null,
+          status: phase === "closed" ? result.status : phase === "failed" ? "FAILED" : "WAITING_FOR_RECONCILIATION",
+          first_failure: last?.first_failure ?? result.first_failure, retry: false };
+      } catch (error) {
+        if (!claim) throw error;
+        return { contract_version: "journaled-native-allocation-result.v1", owned_result: observed, journal_id: journalId, generation: claim.generation,
+          journal_phase: "reconciliation_required", status: "WAITING_FOR_RECONCILIATION", first_failure: error.code ?? "NATIVE_ALLOCATION_UNCONFIRMED", retry: false };
+      }
+    },
+  });
+}

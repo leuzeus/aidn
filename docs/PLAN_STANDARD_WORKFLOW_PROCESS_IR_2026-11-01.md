@@ -8,6 +8,11 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
+Dernier état relu : `45d538a` et tranche courante du journal d’allocation
+native. Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
+addenda et l’avancement distinguent les composants livrés des raccordements
+encore ouverts.
+
 ### Avancement d’exécution
 
 - L0 : diagnostic terminé, conservé ci-dessous avec sa référence de code.
@@ -22,7 +27,9 @@ qualification de son parcours complet.
   par ces doubles. L’enveloppe de livraison est authentifiée par un port hôte
   borné ; ces doubles ne qualifient pas les adaptateurs métier L2/L4.
 - L2/L4 : en cours. Ports de bootstrap/cycle, journal de dispatch signé, choix
-  de mode/hook et inbox de contrôle durable décrits dans les addenda ci-dessous.
+  de mode/hook, inbox de contrôle durable et conservation de l'état natif décrits
+  dans les addenda ci-dessous. Le journal d'allocation signé constitue une tranche
+  supplémentaire ; il ne lève pas la garde native d'historique.
 - L3 : en cours, composants IR de démarrage et de squelette de cycle distribués
   et consommés par les tests de ports réels ; le modèle standard complet reste à livrer.
 - L5 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
@@ -838,3 +845,71 @@ références documentaires, sensibilité et topologie package : PASS. Route du d
 préparé : ASSURED. Client natif réel, arbre de processus réel et archive installée :
 NOT_RUN. Le modèle standard complet, le dispatcher mixte et la reprise native
 authentifiée restent incomplets ; aucun de ces PASS ne les clôt.
+
+
+## Addendum — journal authentifié des allocations natives
+
+Tranche interne de L4 : `journaled-native-allocation.mjs` compose le superviseur
+owned réel avec une réservation CAS avant lancement et une observation après
+fermeture. La clé hôte externe ne passe ni dans le JSON du modèle ni au worker.
+Le journal signé `native-allocation-journal.v1` lie génération, owner, instance,
+scope/modèle, configuration, autorisation et plafonds. Il référence les octets du
+checkpoint et du footer owned, conserve les empreintes du résultat et de la
+preuve d'arbre, ainsi que les identités hashées des réponses et le débit de
+stockage observé. La lecture demandée revérifie aussi les références natives
+transitives du checkpoint.
+
+Fichiers : composition et store dédiés, contrat/validateur du journal,
+`agentic-process-owned-run.mjs`, couverture des pins directs, règles source de
+vérité/métadonnées/diagnostics, protection CAS et producteurs d'index SQLite/PG,
+ignore des fichiers privés du client et fixtures natives/stockage. Les catalogues
+des composants startup et cycle reçoivent une révision explicite de leurs pins
+d'implémentation après modification de la protection des artifacts ; aucun
+runtime ne répare ses pins ou ne convertit une instance historique.
+
+Une réservation interrompue bloque le prochain lancement. Une fermeture d'arbre
+inconnue reste unresolved ; un rejet reste failed. Une panne d'enregistrement
+après un worker terminé conserve son résultat observé et produit au niveau de
+la composition WAITING_FOR_RECONCILIATION, jamais une réussite implicite. Les
+lectures/preview ne réservent rien. Aucun PID ou délai n'autorise une reprise.
+Les générations sont bornées à 32, les plafonds et délais initiaux ne peuvent
+augmenter implicitement, les consommations connues antérieures sont débitées et
+une consommation inconnue bloque. Ces compteurs ne prétendent pas mesurer la
+facturation ni la taille physique d'un serveur PostgreSQL.
+
+Cette tranche ne termine pas L4. Restent explicitement : admission authentifiée
+d'un historique natif dans le nouvel hôte, restauration des contributions et
+exclusions de revue sans réutiliser une ressource fermée, scope commun du
+modèle/ports natifs/opérations/inbox, dispatcher mixte, autorité d'une nouvelle
+allocation après attente longue et budget de continuation. La garde actuelle
+refuse toujours un historique non vierge. Le branchement des entrées ordinaires
+CLI/console et le modèle standard complet restent L3/L5 à livrer ; un journal
+signé n'en tient pas lieu. A1–A10, fournisseur/humain réel, natif réel et archive
+installée exacte restent nécessaires. La composition interne n'est pas encore
+le chemin standard par défaut.
+
+
+Limite comptable explicite : `storage_debit_bytes` reprend le débit du worker
+existant, augmenté des footers worker et owned. Le journal d'allocation lui-même
+est un artifact canonique borné séparément ; il n'est pas inclus dans ce débit.
+Le contrat de continuation L4 doit préciser le quota total de métadonnées et
+ses coûts de projection avant d'exposer ce compteur comme budget global du
+workflow. Le temps de réservation, lui, est déduit du délai original avant
+lancement ; une réservation qui consomme la réserve de fermeture interdit le
+lancement et reste à réconcilier.
+
+
+Validation de cette tranche, hors ligne : la suite native complète a passé ses
+72 contrôles avant la correction finale du délai/plafond. Après cette correction,
+les 17 contrôles ciblés owned/journal passent, dont attente persistée, refus du
+reset de plafond, réserve de fermeture et conservation du résultat observé lors
+d'une panne de clôture canonique. Les 14 contrôles des producteurs de stockage
+(SQLite réel et transport PostgreSQL doublé), 20 du catalogue/modèle publié et
+44 du composant de démarrage passent. Le schéma du journal est validé. Source de
+vérité, métadonnées, complétude des 38 concepts, diagnostics de gouvernance et CLI,
+catalogue/guard des invocations, références documentaires, sensibilité et
+topologie package : PASS. Les rafraîchissements de pins sont ensuite des no-op
+sans écriture (startup révision 6, cycle révision 4). Route du diff préparé :
+ASSURED. Le gate agentique agrégé et l'ensemble des familles de PR ne sont pas
+revendiqués comme exécutés sur cette tranche ciblée. Client/arbre natifs réels,
+PostgreSQL réel et parcours standard complet sur archive installée : NOT_RUN.

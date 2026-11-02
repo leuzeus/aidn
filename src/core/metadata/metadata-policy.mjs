@@ -83,6 +83,14 @@ const METADATA_POLICIES = freezeDeep([
     notes: "Exact model/catalog hashes and SPEC/skill/code identities are retained by the trusted host source descriptor. Its hash participates in host scope and its body enters signed operation snapshots. Existing instances retain their model; changed package bindings require a new explicit source revision, never silent conversion or runtime repair.",
   }),
   policy({
+    concept: "native_allocation_journal", label: "Authenticated native allocation state",
+    required: ["contract_version", "journal_id", "instance_id", "scope_id", "model_sha256", "revision", "allocations", "key_id", "authentication"],
+    sourceOfTruthConcept: "native_allocation_journal",
+    evidenceTargets: ["src/core/contracts/workflow-definition/native-allocation-journal.v1.schema.json", "src/application/runtime/journaled-native-allocation.mjs", "tools/perf/verify-agentic-process-execution-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
+    lifecycle: "reserved -> closed|failed|unresolved; closed is allocation termination, not workflow success",
+    notes: "Host MAC binds scope, generation, original ceilings, observed response identities/storage debit and exact protected checkpoint/closure hashes. The signing capability never enters authored JSON or the worker. Unknown accounting remains unresolved. This foundation supplies no native-history admission, anti-rollback, business approval or restart-after-expiration authority.",
+  }),
+  policy({
     concept: "process_control_inbox", label: "Authenticated process control source",
     required: ["contract_version", "inbox_id", "source_ref", "request", "source", "delivery", "phase", "delivered_instance_sha256", "key_id", "authentication"],
     sourceOfTruthConcept: "process_control_inbox",

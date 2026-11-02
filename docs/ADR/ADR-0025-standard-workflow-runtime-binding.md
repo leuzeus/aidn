@@ -364,3 +364,37 @@ resume authority is not established. A future authenticated allocation journal
 must bind this evidence to actual owned closure, fences, cumulative budgets and
 an explicit next-allocation grant before restoring historical identities or
 lifting the pristine-start guard. Default execution still cannot resume history.
+
+### Authenticated owned-allocation reservation
+
+`createJournaledNativeAllocation` is an internal opt-in composition of the actual
+owned supervisor and canonical artifact store. A trusted parent supplies the
+32-byte signing capability; neither model/configuration nor native worker receives
+it. The parent's observer reserves a generation with artifact CAS before worker
+launch. Reservation, closure observations and bounded references are governed by
+`native_allocation_journal`, using the existing artifact backend and projection
+rules. There is no additional shared coordination table.
+
+The signed generation binds scope/model/instance, configuration and authorization,
+original ceilings, owner token, actual owned result/tree-proof hashes, protected
+checkpoint/closure bytes and observed response/storage accounting. Reads verify
+the MAC and requested checkpoint's transitive native result evidence. Closed
+means the allocation terminated with verified retained observations; it does not
+mean a waiting workflow completed. Failed or uncertain allocations cannot start
+another generation, and incomplete persistence retains reconciliation even when
+the worker's observed result was completed. There is no PID/time takeover or
+automatic retry. The journal is bounded to 32 generations, without truncation.
+
+Later admitted generations must preserve original deadlines/ceilings and debit
+known prior response/storage consumption. Unknown accounting blocks allocation.
+This is not a new authority to extend a deadline after a human/external wait.
+That contract, restoration of closed identities/contributions, native-history
+admission and a common mixed-host scope remain required L4 work. The current
+composition continues enforcing the existing pristine-start guard. Ordinary
+CLI/console paths have not been switched to this internal composition. Historical
+instance readers, unsigned snapshots and old scopes are not silently adopted.
+
+The journal authenticates a trusted supervisor observation, not human identity,
+business approval, anti-rollback storage or OS confinement. Offline production
+composition with transport/controller doubles must remain separately labelled
+from live native execution and exact installed-package qualification.

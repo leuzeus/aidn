@@ -7,6 +7,8 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
 import { runOwnedAgenticProcess } from "../../src/application/runtime/agentic-process-owned-run.mjs";
+import { createJournaledNativeAllocation } from "../../src/application/runtime/journaled-native-allocation.mjs";
+import { assertNativeAllocationJournal, nativeJournalPath } from "../../src/core/workflow/native-allocation-journal.mjs";
 import { agenticProcessImplementationPins } from "../../src/application/runtime/agentic-process-implementation-pins.mjs";
 import { agenticProcessPersistence, createAgenticProcessWorkerEnvironment } from "../../src/application/runtime/agentic-process-persistence.mjs";
 import { createProjectArtifactStore } from "../../src/application/runtime/project-artifact-store-service.mjs";
@@ -23,6 +25,7 @@ import { artifactContentHash, assertWorkflowRecordProjection } from "../../src/c
 import { CODEX_STARTUP_ENVIRONMENT_PROFILES, createCodexHostEnvironment } from "../../src/core/agents/codex-startup-arguments.mjs";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
+import { performance } from "node:perf_hooks";
 import { spawnSync } from "node:child_process";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
 import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
@@ -39,6 +42,8 @@ let serial = 0;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
+  if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
+  if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
   await callback(); checks.push(name); console.log("PASS " + name); }
 function fixture() {
   const base = path.join(root, "case-" + ++serial), targetRoot = path.join(base, "project"), packageRoot = path.join(base, "package");
@@ -190,7 +195,144 @@ async function run(f, options = {}) {
   return { result, ...t };
 }
 
+function journalFixture(options = {}) {
+  const f = fixture(), model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+  if (options.stateMode) persistenceFixture(f, "sqlite", options.stateMode);
+  model.contract_version = "agentic-process-model.v2"; model.operation_pins = {};
+  if (options.wait) {
+    const activity = model.nodes.find(node => node.kind === "activity");
+    model.nodes.push({ id: "journal_wait", kind: "sequence", participant_ref: activity.participant_ref, children: [model.entry, "external_wait"] },
+      { id: "external_wait", kind: "event", participant_ref: activity.participant_ref, branches: [
+        { flow_id: "review", node_id: "late_review", event_key: "review_snapshot" }, { flow_id: "cancel", node_id: "late_cancel", event_key: "cancel_snapshot" }] },
+      { ...activity, id: "late_review" }, { ...activity, id: "late_cancel" });
+    model.entry = "journal_wait";
+  }
+  fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
+  const worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
+  f.configuration.controller = { node_sha256: sha(fs.readFileSync(process.execPath)), worker_sha256: sha(fs.readFileSync(worker)),
+    helper_path: "fixture", helper_sha256: "a".repeat(64), helper_source_sha256: "b".repeat(64) };
+  const key = Buffer.alloc(32, 73), t = transport(f, options), native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, ...(f.environment ? { environment: f.environment } : {}) });
+  const controllerFactory = () => ({ async checkAvailability() { return { available: true }; },
+    async run(request, { onEvent }) {
+      f.launches = (f.launches ?? 0) + 1; await options.beforeWorker?.(f);
+      if (options.controllerFailure) throw Object.assign(new Error("FIXTURE_CONTROLLER_INTERRUPTED"), { code: "FIXTURE_CONTROLLER_INTERRUPTED" });
+      const sent = JSON.parse(request.stdin), result = await native.run({ execute: true, authorization: sent.authorization });
+      await options.afterWorker?.(f, result);
+      await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(result)) });
+      return { outcome: "completed", termination_state: options.treeUnknown ? "unknown" : "confirmed", termination_proof: options.treeUnknown ? null : { active_processes: 0 } };
+    } });
+  const open = (readSigningKey = () => key) => createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey,
+    ...(f.environment ? { environment: f.environment } : {}) }, { controllerFactory });
+  Object.assign(f, { key, t, open, actor: open() }); return f;
+}
+
 try {
+  await check("journal preview retains no files, reservation or native allocation", async () => {
+    const f = journalFixture(), view = f.actor.preview(); assert.equal(view.phase, "absent"); assert.equal(view.written, false);
+    assert.equal(f.actor.inspect(), null); assert.equal(f.launches, undefined); assert.equal(f.t.sessions.length, 0);
+    assert.equal(fs.existsSync(path.join(f.configuration.target_root, "docs/audit/workflows/native-allocations")), false);
+    await assert.rejects(f.actor.run({ execute: true, authorization: { approved: true } }), /EXPLICIT_AUTHORIZATION_REQUIRED/);
+  });
+  await check("journal seals actual owned observations and reopens in a new Node process without effects", async () => {
+    const f = journalFixture(), result = await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(result.journal_phase, "closed", JSON.stringify(result)); assert.equal(result.owned_result.status, "COMPLETED");
+    const record = f.actor.inspect(), entry = record.allocations[0]; assertNativeAllocationJournal(record);
+    assert.equal(entry.consumption.responses_observed, 3); assert.equal(entry.tree_closed, true); assert.equal(entry.phase, "closed");
+    assert.ok(entry.consumption.storage_debit_bytes > result.owned_result.worker_result.storage_budget_debit_bytes);
+    assert.equal(f.actor.readCheckpoint(1).state.results.length, 3);
+    const file = put(f.base, "reopen.json", JSON.stringify({ configuration: f.configuration, key: f.key.toString("hex") }));
+    const module = new URL("../../src/application/runtime/journaled-native-allocation.mjs", import.meta.url).href;
+    const script = `import fs from 'node:fs'; import {createJournaledNativeAllocation} from ${JSON.stringify(module)};
+      const c=JSON.parse(fs.readFileSync(process.argv[1])); const h=createJournaledNativeAllocation({configuration:c.configuration,readSigningKey:()=>Buffer.from(c.key,'hex')});
+      console.log(JSON.stringify({journal:h.inspect(),checkpoint:h.readCheckpoint(1)}));`;
+    const reopened = spawnSync(process.execPath, ["--input-type=module", "-e", script, file], { encoding: "utf8", shell: false });
+    assert.equal(reopened.status, 0, reopened.stderr); assert.deepEqual(JSON.parse(reopened.stdout).journal, record);
+    assert.equal(JSON.parse(reopened.stdout).checkpoint.state.parent_closed, true); assert.equal(f.launches, 1);
+    const auth = f.authorize(); auth.global_deadline_ms = entry.limits.global_deadline_ms; auth.workflow_deadline_ms = entry.limits.workflow_deadline_ms;
+    await assert.rejects(f.open().run({ execute: true, authorization: auth }), /EXISTING_INSTANCE_REQUIRES_RECONCILIATION/); assert.equal(f.launches, 1);
+  });
+  await check("journal reservation fences a competing launch before any native effect", async () => {
+    const f = journalFixture({ async beforeWorker(f) {
+      assert.equal(f.open().inspect().allocations[0].phase, "reserved");
+      await assert.rejects(f.open().run({ execute: true, authorization: f.authorize() }), /RECONCILIATION_REQUIRED/);
+      assert.equal(f.t.sessions.length, 0);
+    } });
+    const result = await f.actor.run({ execute: true, authorization: f.authorize() }); assert.equal(result.journal_phase, "closed", JSON.stringify(result)); assert.equal(f.launches, 1);
+  });
+  await check("journal retains an interrupted reservation and never infers owner death or retries", async () => {
+    const f = journalFixture({ controllerFailure: true }), result = await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(result.journal_phase, "reconciliation_required"); assert.equal(result.owned_result, null);
+    assert.equal(f.open().inspect().allocations[0].phase, "reserved"); assert.equal(f.actor.preview().consumption.known, false);
+    await assert.rejects(f.open().run({ execute: true, authorization: f.authorize() }), /RECONCILIATION_REQUIRED/); assert.equal(f.launches, 1);
+  });
+  await check("journal never promotes unknown tree termination to a successful allocation", async () => {
+    const f = journalFixture({ treeUnknown: true }), result = await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(result.owned_result.worker_result.status, "COMPLETED"); assert.equal(result.journal_phase, "unresolved");
+    assert.equal(result.status, "WAITING_FOR_RECONCILIATION"); assert.equal(result.retry, false);
+    assert.equal(f.actor.inspect().allocations[0].tree_closed, false);
+    await assert.rejects(f.open().run({ execute: true, authorization: f.authorize() }), /RECONCILIATION_REQUIRED/);
+  });
+  await check("journal rejected results stay failed with contributions retained and no fresh attempt", async () => {
+    const f = journalFixture({ reject: true }), result = await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(result.journal_phase, "failed", JSON.stringify(result)); assert.equal(f.actor.readCheckpoint(1).state.results.at(-1).result.outcome, "rejected");
+    await assert.rejects(f.open().run({ execute: true, authorization: f.authorize() }), /TERMINAL_FAILURE/);
+  });
+  await check("journal refuses self-hashed records and changed signing capabilities", async () => {
+    const f = journalFixture(); await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.throws(() => f.open(() => Buffer.alloc(32, 74)).inspect(), /NOT_AUTHENTICATED/);
+    const record = f.actor.inspect(), file = path.join(f.configuration.target_root, "docs/audit", nativeJournalPath(record.journal_id));
+    record.revision++; fs.writeFileSync(file, JSON.stringify(record)); assert.throws(() => f.actor.inspect(), /NOT_AUTHENTICATED/);
+  });
+  await check("journal authenticates checkpoint, owned closure and nested native evidence bytes after restart", async () => {
+    for (const kind of ["checkpoint", "closure", "native-result"]) {
+      const f = journalFixture(); await f.actor.run({ execute: true, authorization: f.authorize() }); const record = f.actor.inspect();
+      const file = kind === "checkpoint" ? record.allocations[0].checkpoint.path : kind === "closure" ? record.allocations[0].closure_ref.path
+        : path.join(f.dirs.control, "case", fs.readdirSync(path.join(f.dirs.control, "case")).find(name => name.endsWith("-native-result.json")));
+      fs.appendFileSync(file, "\n"); assert.throws(() => f.open().readCheckpoint(1), /EVIDENCE_CHANGED/);
+    }
+  });
+  await check("journal retains reconciliation when canonical state disappears after the native worker", async () => {
+    const f = journalFixture({ afterWorker(f) { fs.unlinkSync(path.join(f.configuration.target_root, "docs/audit/workflows/process-instances/case.json")); } });
+    const result = await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(result.owned_result.status, "COMPLETED"); assert.equal(result.journal_phase, "unresolved");
+    assert.equal(f.actor.inspect().allocations[0].first_failure, "NATIVE_ALLOCATION_CANONICAL_CHANGED");
+  });
+  await check("journal refuses budget resets and malformed generation history", async () => {
+    const f = journalFixture(); await f.actor.run({ execute: true, authorization: f.authorize() }); const record = f.actor.inspect();
+    const auth = f.authorize(); auth.max_responses++; await assert.rejects(f.open().run({ execute: true, authorization: auth }), /LIMIT_INCREASE_UNAUTHORIZED/);
+    const bad = structuredClone(record); bad.allocations[0].generation = 2; assert.throws(() => assertNativeAllocationJournal(bad), /GENERATION_INVALID/);
+    const unknown = structuredClone(record); unknown.allocations[0].consumption = null; assert.throws(() => assertNativeAllocationJournal(unknown), /CLOSURE_UNCONFIRMED/);
+    const excess = structuredClone(record); excess.allocations[0].consumption.storage_debit_bytes = excess.allocations[0].limits.max_bytes + 1;
+    assert.throws(() => assertNativeAllocationJournal(excess), /CONSUMPTION_EXCEEDS_LIMIT/);
+    const turn = f.authorize(); turn.global_deadline_ms = record.allocations[0].limits.global_deadline_ms;
+    turn.workflow_deadline_ms = record.allocations[0].limits.workflow_deadline_ms; turn.max_turn_ms++;
+    await assert.rejects(f.open().run({ execute: true, authorization: turn }), /LIMIT_INCREASE_UNAUTHORIZED/);
+  });
+  await check("journal event wait closes only the allocation and retains an uncompleted workflow", async () => {
+    const f = journalFixture({ wait: true }), result = await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(result.journal_phase, "closed", JSON.stringify(result)); assert.equal(result.status, "WAITING");
+    assert.equal(inspectAgenticProcess(f.open().readCheckpoint(1).state.instance).status, "WAITING");
+    assert.equal(f.actor.inspect().allocations[0].consumption.responses_observed, 3); assert.equal(f.launches, 1);
+  });
+  for (const stateMode of ["dual", "db-only"]) await check(`journal canonical SQLite/${stateMode} retains authenticated allocation and projection policy`, async () => {
+    const f = journalFixture({ stateMode }), result = await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(result.journal_phase, "closed", JSON.stringify(result)); const record = f.open().inspect();
+    assert.equal(f.open().readCheckpoint(1).state.instance.instance_sha256, record.allocations[0].checkpoint.instance_sha256);
+    assert.equal(fs.existsSync(path.join(f.configuration.target_root, "docs/audit", nativeJournalPath(record.journal_id))), stateMode === "dual");
+    assert.equal(record.allocations.length, 1); assert.equal(f.launches, 1);
+  });
+  await check("journal keeps actual completed worker outcome when canonical closure recording fails", async () => {
+    const f = journalFixture({ stateMode: "db-only", async afterWorker(f) {
+      const { DatabaseSync } = await import("node:sqlite"); const db = new DatabaseSync(path.join(f.configuration.target_root, ".aidn/runtime/index/workflow-index.sqlite"));
+      try { db.exec("CREATE TRIGGER refuse_native_closure BEFORE UPDATE ON artifacts WHEN NEW.path LIKE 'workflows/native-allocations/%' BEGIN SELECT RAISE(ABORT, 'fixture allocation closure refusal'); END;"); }
+      finally { db.close(); }
+    } });
+    const result = await f.actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(result.journal_phase, "reconciliation_required"); assert.equal(result.owned_result.status, "COMPLETED");
+    assert.equal(result.status, "WAITING_FOR_RECONCILIATION"); assert.equal(result.retry, false);
+    assert.equal(f.open().inspect().allocations[0].phase, "reserved");
+    await assert.rejects(f.open().run({ execute: true, authorization: f.authorize() }), /RECONCILIATION_REQUIRED/); assert.equal(f.launches, 1);
+  });
   function checkpoint(f, result) {
     assert.ok(result.native_checkpoint);
     const match = /^execution\/case\/([0-9]{5}-native-host-state\.json)$/.exec(result.native_checkpoint.ref); assert.ok(match);
@@ -670,6 +812,22 @@ try {
     assert.equal(t.sessions.length, 0);
     f.configuration.implementation_sha256 = "a".repeat(64);
     assert.throws(() => createProjectAgenticProcessExecution(f.configuration), /IMPLEMENTATION_CHANGED/);
+  });
+  await check("owned reservation cannot spend the closure reserve and still launch a worker", async () => {
+    const f = fixture(), worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
+    f.configuration.controller = { node_sha256: sha(fs.readFileSync(process.execPath)), worker_sha256: sha(fs.readFileSync(worker)),
+      helper_path: "fixture", helper_sha256: "a".repeat(64), helper_source_sha256: "b".repeat(64) };
+    const originalDate = Date.now, descriptor = Object.getOwnPropertyDescriptor(performance, "now"), originalMono = performance.now.bind(performance);
+    let offset = 0, launched = false, reserved = false;
+    try {
+      Date.now = () => originalDate() + offset;
+      Object.defineProperty(performance, "now", { configurable: true, value: () => originalMono() + offset });
+      await assert.rejects(runOwnedAgenticProcess({ configuration: f.configuration, authorization: f.authorize(), execute: true }, {
+        controllerFactory: () => ({ async checkAvailability() { return { available: true }; }, async run() { launched = true; throw Error("must not launch"); } }),
+        allocationObserver: { beforeLaunch() { reserved = true; offset = 45000; return { generation: 1 }; }, afterClosure() { throw Error("no closure exists"); } },
+      }), /CLOSURE_RESERVE/);
+      assert.equal(reserved, true); assert.equal(launched, false);
+    } finally { Date.now = originalDate; if (descriptor) Object.defineProperty(performance, "now", descriptor); else delete performance.now; }
   });
   await check("owned entry transmits the original deadline and requires process-tree termination proof", async () => {
     for (const confirmed of [true, false]) {

@@ -17,6 +17,9 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "native_allocation_journal", source_of_truth_concept: "native_allocation_journal", metadata_concept: "native_allocation_journal",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Internal signed CAS reservation and actual owned-supervisor observation, not general resume or workflow success. Unknown generations block redispatch. Historical readers and pristine-start admission remain unchanged. Fixture transport is not live native or installed qualification." },
   { concept: "standard_workflow_model", source_of_truth_concept: "standard_workflow_model", metadata_concept: "standard_workflow_model",
     required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
     coverage_note: "Versioned package JSON startup/cycle scaffold components, fixed code/skill bindings and pinned authorities. These components are not the full standard workflow or its ordinary default entrypoint. Signed source provenance and fixture consumers do not qualify native or installed-archive execution." },

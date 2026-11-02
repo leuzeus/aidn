@@ -34,6 +34,15 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     replacement: "reviewed model/catalog source update; implementation-only refresh increments revision and refuses changed authority or binding semantics",
     evidence_targets: ["package/catalogs/process-models/aidn-standard-startup.v1.json", "package/catalogs/standard-workflow-startup.v1.json", "src/application/runtime/standard-workflow-startup-composition.mjs", "tools/perf/verify-standard-workflow-model-fixtures.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs", "package/catalogs/process-models/aidn-standard-cycle-create.v1.json", "package/catalogs/standard-workflow-cycle-create.v1.json", "src/application/runtime/standard-workflow-cycle-composition.mjs", "tools/perf/verify-standard-workflow-cycle-fixtures.mjs"],
   },
+  native_allocation_journal: {
+    owner: "trusted owned native allocation supervisor",
+    lifecycle: "reserved -> closed|failed|unresolved; unknown termination or recording requires explicit reconciliation",
+    scope: "one physical process scope and instance; up to 32 allocation generations under the original ceilings",
+    retention: "retain signed generation reservations, closure observations and protected checkpoint references without automatic purge",
+    migration: "new explicit artifact records only; no adoption of unsigned host snapshots or historical instance conversion",
+    replacement: "canonical artifact CAS and host MAC; no PID, elapsed-time takeover, deadline reset or automatic retry",
+    evidence_targets: ["src/core/workflow/native-allocation-journal.mjs", "src/adapters/runtime/native-allocation-journal-store.mjs", "src/application/runtime/journaled-native-allocation.mjs", "tools/perf/verify-agentic-process-execution-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
+  },
   process_control_inbox: {
     owner: "trusted process human/external delivery host",
     lifecycle: "reserved after source verification -> delivered; missing acknowledgement is reconciled from the canonical event",
@@ -431,6 +440,14 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dbOnly: "same versioned package assets; no fallback from canonical project state to package fixtures",
     projection: "source descriptor retained in signed operation previews; component IR embedded in its process instance",
     notes: "Fresh-session startup and cycle scaffold components only, not the complete standard model, full cycle-create skill or ordinary default workflow selection. Catalog pins model, exact code bindings, SPEC and skill sources. Loading refuses changed bytes instead of repairing pins. Metadata never grants effects, human identity or native qualification. No new runtime table.",
+  }),
+  policy({
+    concept: "native_allocation_journal", label: "Authenticated native allocation journal",
+    files: "docs/audit/workflows/native-allocations/<id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is derived",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "workflows/native-allocations/<id>.json only when the configured projection is required",
+    notes: "Canonical CAS reservation precedes owned worker launch. A trusted external key authenticates actual supervisor closure and bounded checkpoint references, not business results or human approval. Unknown or failed allocations cannot retry. Host snapshot resources remain closed and the native pristine-history guard stays enforced. General mixed resume, provider identity and live native/installed qualification remain separate. Existing artifact backend only, no shared coordination table or anti-rollback guarantee.",
   }),
   policy({
     concept: "process_control_inbox", label: "Authenticated process control inbox",

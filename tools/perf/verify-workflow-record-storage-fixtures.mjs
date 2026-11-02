@@ -14,7 +14,7 @@ import { artifactContentHash, assertWorkflowRecordProjection } from "../../src/c
 const temporary = fs.realpathSync(os.tmpdir()), owned = [];
 let checks = 0;
 try {
-  for (const directory of ["instances", "definitions", "process-instances", "operation-records", "decision-inbox", "control-inbox"]) {
+  for (const directory of ["instances", "definitions", "process-instances", "operation-records", "decision-inbox", "control-inbox", "native-allocations"]) {
     const root = createStandardWorkflowFixture("dual", owned), sqliteFile = resolveRuntimeSqliteFile({ targetRoot: root });
     const row = content => ({ path: `workflows/${directory}/checkpoint.json`, kind: "runtime", family: "runtime", content_format: "utf8",
       content, sha256: artifactContentHash(content), size_bytes: Buffer.byteLength(content) });

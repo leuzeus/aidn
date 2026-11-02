@@ -2,6 +2,17 @@
 
 ## Structured agentic process
 
+The production native-composition suite also tests the internal authenticated
+allocation composition: canonical reservation before owned launch, a competing
+launch refusal, signed closure/checkpoint reopening in a new Node process,
+interrupted/unknown/rejected outcomes, record/key/evidence tampering, cumulative
+ceiling refusal and canonical storage failures. Real files/SQLite and the actual
+owned/native code are exercised with controller/RPC transport doubles. No native
+model or real process tree is allocated by these checks. `--journal-only` is a
+focused selector; the required gate retains the entire suite. A successful
+allocation journal does not qualify general native resume or mixed dispatch;
+the pristine-history guard remains enforced.
+
 The production native-composition fixtures include native-only v2 role execution,
 exact replay, resource closure on an event wait, refusal to restart that history
 as pristine, and pre-allocation refusal of raw v2 facts/events. They retain the
@@ -38,8 +49,8 @@ drift from R05 remains an explicit remaining route.
 
 `verify-workflow-record-storage-fixtures.mjs` exercises the actual SQLite index
 writer and PostgreSQL bulk producer (SQL transport double). It protects both
-historical instance namespaces, definitions, operation journals, decision and
-control inboxes against stale
+historical instance namespaces, definitions, operation journals, decision/control
+inboxes and native allocation journals against stale
 visible replacement. SQLite preserves omitted canonical artifacts; PostgreSQL
 full replacement refuses omission. This covers producer SQL selection as well
 as the common predicate and does not establish live PostgreSQL qualification.

@@ -16,7 +16,8 @@ const validHash = value => /^[a-f0-9]{64}$/.test(value ?? "");
 
 // Only this entry owns the complete worker + native-client descendant tree.
 // A controller double is a test seam, never selectable through configuration.
-export async function runOwnedAgenticProcess({ configuration, authorization, execute = false, signal }, { controllerFactory = createWindowsProcessTreeController, environment = process.env } = {}) {
+export async function runOwnedAgenticProcess({ configuration, authorization, execute = false, signal }, { controllerFactory = createWindowsProcessTreeController, environment = process.env, allocationObserver } = {}) {
+  if (allocationObserver != null && (typeof allocationObserver.beforeLaunch !== "function" || typeof allocationObserver.afterClosure !== "function")) fail("PROCESS_EXECUTION_ALLOCATION_OBSERVER_INVALID");
   const allocatedAt = Date.now(), allocatedMono = performance.now();
   const preview = createProjectAgenticProcessExecution(configuration, { environment }).preview();
   if (!execute) return preview;
@@ -38,11 +39,19 @@ export async function runOwnedAgenticProcess({ configuration, authorization, exe
   const cwd = configuration.control_root;
   const availability = await controller.checkAvailability({ cwd, executable: process.execPath, executableSha256: pins.node_sha256, signal });
   if (!availability.available) fail("PROCESS_EXECUTION_TREE_CONTROL_UNAVAILABLE");
-  const remaining = Math.floor(authorization.global_deadline_ms - allocatedAt - (performance.now() - allocatedMono));
+  const remainingBudget = () => Math.floor(authorization.global_deadline_ms - allocatedAt
+    - Math.max(performance.now() - allocatedMono, Date.now() - allocatedAt));
+  let remaining = remainingBudget();
   if (remaining <= 30000) fail("PROCESS_EXECUTION_CLOSURE_RESERVE");
   let stdout = Buffer.alloc(0), firstFailure = null;
   const workerEnvironment = createAgenticProcessWorkerEnvironment({ targetRoot: configuration.target_root,
     expectedBinding: preview.persistence.binding_sha256, env: environment });
+  // Only the trusted embedding composes this persistence port. No configuration
+  // or model selects it. Its canonical reservation must precede worker launch.
+  const allocation = allocationObserver ? await allocationObserver.beforeLaunch({ configuration: structuredClone(configuration),
+    authorization: structuredClone(authorization), preview: structuredClone(preview) }) : null;
+  remaining = remainingBudget();
+  if (remaining <= 30000 || Date.now() >= authorization.workflow_deadline_ms) fail("PROCESS_EXECUTION_CLOSURE_RESERVE");
   const proof = await controller.run({ runnerId: `agentic-${randomUUID()}`, executable: process.execPath, executableSha256: pins.node_sha256,
     args: [worker], cwd, env: { ...workerEnvironment, TEMP: cwd, TMP: cwd },
     stdin: JSON.stringify({ configuration, authorization, persistenceBinding: preview.persistence.binding_sha256 }), maxDurationMs: remaining - 10000, maxOutputBytes: 131072,
@@ -82,5 +91,7 @@ export async function runOwnedAgenticProcess({ configuration, authorization, exe
     } else try { fs.writeFileSync(file, footer, { flag: "wx" }); }
     catch { final.first_failure ??= "PROCESS_EXECUTION_SEAL_WRITE_FAILED"; final.status = "FAILED"; final.seal = "STDOUT_ONLY_WRITE_FAILED"; }
   }
+  if (allocationObserver) await allocationObserver.afterClosure({ allocation, configuration: structuredClone(configuration),
+    authorization: structuredClone(authorization), result: structuredClone(final) });
   return final;
 }
