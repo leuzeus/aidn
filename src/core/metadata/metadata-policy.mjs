@@ -75,6 +75,14 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "process_operation_journal", label: "Authenticated operation journal",
+    required: ["contract_version", "operation_id", "revision", "phase", "preview", "intent", "grant", "owner", "results", "key_id", "authentication"],
+    sourceOfTruthConcept: "process_operation_journal",
+    evidenceTargets: ["src/core/contracts/workflow-definition/process-operation-journal.v1.schema.json", "src/core/contracts/workflow-definition/standard-operation-preview.v1.schema.json", "src/application/runtime/standard-workflow-operation-host.mjs", "tools/perf/verify-standard-workflow-host-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
+    lifecycle: "staged -> dispatching -> receipted; retained uncertainty requires explicit reconciliation",
+    notes: "Opaque business payload stays outside reducer events. The host signs its exact hash and receipt; key bytes never enter the project journal. Existing artifact CAS/projection is reused. No human/provider authentication, anti-rollback storage or process-tree termination proof follows from a MAC or PID.",
+  }),
+  policy({
     concept: "process_local_effect_owner", label: "Local process operation owner",
     required: ["contract_version", "token", "pid", "scope_sha256", "plan_sha256", "created_at"],
     sourceOfTruthConcept: "process_local_effect_owner",

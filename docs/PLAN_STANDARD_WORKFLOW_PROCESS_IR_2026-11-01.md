@@ -109,31 +109,30 @@ de règles, ni une deuxième orchestration complète dans les skills.
 
 ## 4. Modèle et contrats à livrer
 
-Les chemins suivants sont **proposés, à créer**, et ne désignent pas des capacités
-actuellement livrées :
+Les chemins suivants restent **proposés, à créer** pour le modèle standard
+complet et son raccordement ordinaire :
 
 ```text
 package/catalogs/process-models/aidn-standard.v1.json
 package/catalogs/standard-workflow.v1.json
 docs/architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md
 src/application/runtime/standard-workflow-composition.mjs
-src/application/runtime/standard-workflow-operations.mjs
 src/application/runtime/agentic-process-resume-service.mjs
 src/adapters/runtime/standard-workflow-github-adapter.mjs
-src/core/contracts/workflow-definition/process-operation-binding.v1.schema.json
-src/core/contracts/workflow-definition/process-operation-receipt.v1.schema.json
-src/core/contracts/workflow-definition/process-control-event.v1.schema.json
-docs/ADR/ADR-0025-standard-workflow-runtime-binding.md
 ```
+
+Les contrats `process-operation-binding.v1`, `process-operation-receipt.v1` et
+`process-control-event.v1`, ADR-0025, `standard-workflow-operations.mjs` et
+`standard-workflow-operation-host.mjs` existent maintenant comme fondations
+partielles décrites en section 9. Leur présence ne livre pas les chemins restants.
 
 Le catalogue standard sélectionnera le modèle et ses bindings versionnés. Il
 épinglera modèle, règles, politiques et procédures, sans transformer une fixture
 de test en autorité runtime. Les fixtures seront des consommateurs de ce modèle
 livré. L’instance conservera ses épingles historiques.
 
-Le lot L1 décidera la version minimale des contrats : si les activités non
-agentiques et leurs événements nécessitent une évolution de l’IR ou de l’instance,
-livrer des schémas versionnés et un dispatch explicite des lecteurs. Ne pas ajouter
+Le lot L1 a retenu les contrats modèle/instance v2 et le dispatch explicite
+des lecteurs dans ADR-0025. Ne pas ajouter
 des champs inconnus au format v1 ni inventer un faux agent pour une commande ou un
 humain. Une évolution de format conserve le réducteur commun ; elle ne crée pas
 un moteur spécifique au parcours standard. Le modèle standard `v1` et la version
@@ -245,7 +244,8 @@ silencieux des tables/ports de coordination partagée ; PostgreSQL reste optionn
 ## 6. Lots, dépendances et sorties vérifiables
 
 L1 est **VALIDÉ HORS LIGNE** ; L2 est **EN COURS**, avec une tranche de ports locaux
-décrite ci-dessous. Les lots L3 à L8 restent **À FAIRE**. L0 est le diagnostic documenté
+décrite ci-dessous. Les lots L3 à L8 restent **À TERMINER** ; L4 dispose de la
+fondation partielle de journal décrite en section 9. L0 est le diagnostic documenté
 ici, pas une qualification d’intégration. Les chemins existants sont à modifier
 seulement dans le lot concerné ; les nouveaux chemins de la section 4 sont proposés.
 
@@ -385,10 +385,9 @@ concurrence locale et panne réelle injectée dans SQLite après un premier effe
 Cette preuve est **hors ligne, dérivée du scaffold et de fixtures** ; elle ne
 qualifie pas une archive installée, PostgreSQL réel ou un hôte natif.
 
-**Reste requis pour fermer L2 puis continuer L3–L5 :** raccorder ces composants
-à l’autorité des intentions/reçus, livrer les autres activités du catalogue et
+**Reste requis pour fermer L2 puis continuer L3–L5 :** livrer les autres activités du catalogue et
 leurs vrais ports, fournir le modèle standard JSON complet et l’attente humaine,
-puis l’inbox, le journal et la reprise durable avec authentification et propriété
+puis l’inbox, étendre le journal et la reprise durable avec authentification et propriété
 d’exécution. Les entrées ordinaires ne consomment pas encore ce modèle standard.
 La tranche n’est donc pas une preuve A1–A10 du workflow intégré. Les lots L7 et
 L8 restent NOT_RUN ; leurs preuves ne sont pas remplacées par ces fixtures.
@@ -405,3 +404,74 @@ Validation de cette tranche, exécutée le 2026-11-02 UTC :
 - **NOT_RUN** : workflow standard via hôte natif, concurrence PostgreSQL réelle,
   installation et parcours standard depuis une archive exacte. La vérification
   de topologie ne vaut pas qualification de cette archive.
+
+### Raccordement L2 et fondation partielle de L4 : journal et hôte des opérations
+
+`standard-workflow-operation-host.mjs` consomme désormais les trois bindings
+réels par le service/réducteur commun. `process-operation-journal.mjs`, son
+adaptateur de stockage et les contrats `standard-operation-preview.v1` /
+`process-operation-journal.v1` conservent l’aperçu, l’intention avant effet,
+la propriété de dispatch et le résultat authentifié. Ils utilisent le CAS et
+les règles de projection existants, sans nouvelle table de coordination.
+Le concept `process_operation_journal` est couvert dans les politiques,
+métadonnées, diagnostics et la matrice de scope.
+
+La clé est une capacité d’hôte hors projet ; le scope épingle son identité et le
+mode de stockage. Le JSON d’un modèle ne peut la sélectionner. Le port de grant
+est revérifié avant intention, dispatch et acceptation. Une réouverture vérifie
+les résultats antérieurs contre les journaux authentifiés, pas seulement leur
+hash de structure. Un reçu durable peut être accepté par un nouveau processus
+Node sans reproduire l’effet. Un dispatch sans reçu ne reprend pas son effet
+par expiration ou PID. Le résultat d’un effet partiel reste inconnu et interdit
+une nouvelle exécution de cette occurrence.
+
+`verify-standard-workflow-host-fixtures.mjs` est ajouté à la gate requise. Son
+modèle IR de **fixture de ports** exécute réellement rechargement, admission et
+création, atteint une attente durable et retrouve exactement le même curseur en
+simulation/rejeu. Les scénarios couvrent fichiers, SQLite dual/db-only,
+acceptation dans de nouveaux processus Node, concurrence, faux reçus/historiques,
+grant retiré, dispatch arrêté et effet SQLite partiel. Les grants restent des
+doubles de capacité ; l’état « dispatch arrêté » est une fixture, pas une preuve
+de terminaison d’arbre OS. Ces preuves sont hors ligne.
+
+**La fin de L4 n’est pas revendiquée.** Restent les décisions humaines et leur
+inbox authentifiée, les événements GitHub, la réconciliation d’un propriétaire
+ambigu avec preuve de cessation, les résultats/contributions natifs, l’hôte
+mixte, ses budgets et la protection/provision des clés sur hôte natif. Le modèle
+standard complet L3, les entrées ordinaires L5 et la qualification A1–A10 restent
+requis. Aucun modèle de fixture ne remplace leur livraison.
+
+L’import d’index protège également les journaux contre une projection visible
+périmée : le prédicat commun et les sélections SQLite/PostgreSQL incluent
+`workflows/operation-records/`. La sélection SQLite couvre aussi explicitement
+`workflows/process-instances/`. `verify-workflow-record-storage-fixtures.mjs`
+exerce les producteurs réels sur les quatre namespaces protégés : refus d’une
+version périmée, conservation des omissions SQLite et refus des omissions du
+remplacement complet PostgreSQL. Le transport PostgreSQL est un double SQL ;
+aucune qualification de concurrence PostgreSQL réelle n’en découle.
+
+Prochain raccordement L2 : lier le choix de mode à une décision opérateur
+authentifiée, appliquer cette décision aux artefacts canoniques, puis exécuter
+le composant final du démarrage par `runSkillHookUseCase` et le hook existant
+`start-session-hook.mjs`. Ce hook compose admission, `runWorkflowHookUseCase`,
+checkpoint et chaîne de contraintes ; il ne réalise pas lui-même la création
+de session. Son code de sortie JSON peut rester zéro sur un refus métier : le
+port devra contrôler l’action et le résultat de l’admission, l’exécution réelle
+du hook et les résultats imbriqués requis avant d’attester le démarrage complet.
+Un choix de cycle attendu conservera son attente ; un checkpoint manquant ou
+une chaîne de contraintes échouée ne deviendra pas un succès du skill.
+
+Validation de la fondation de journal et de son raccordement, 2026-11-02 UTC :
+
+- **PASS hors ligne** : `perf:verify-agentic-process` complète à huit suites,
+  dont 20 scénarios de l’hôte des opérations et huit cas des producteurs de
+  stockage. Les 14 scénarios des ports isolés et les régressions du moteur,
+  du compilateur et de l’hôte natif sur transport simulé restent passants.
+- **PASS** : définitions des deux nouveaux schémas, source de vérité,
+  métadonnées, complétude de gouvernance, catalogues, documentation,
+  sensibilité des fichiers suivis et topologie du package.
+- **NOT_RUN** : workflow standard complet, autorisation native/opérateur réelle,
+  inbox humaine/GitHub, cessation/réconciliation générale des propriétaires,
+  PostgreSQL réel et qualification du parcours depuis une archive exacte.
+  Le redémarrage de processus Node est une preuve de durabilité de ces reçus
+  locaux ; il ne qualifie pas la reprise générale d’un hôte natif.

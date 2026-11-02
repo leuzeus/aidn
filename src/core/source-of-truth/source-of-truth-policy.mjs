@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  process_operation_journal: {
+    owner: "trusted operation execution host",
+    lifecycle: "staged -> dispatching -> receipted; interrupted dispatch remains explicitly unresolved",
+    scope: "one pinned process occurrence, physical project and canonical runtime authority",
+    retention: "retain signed previews, intent, dispatch owner and authenticated results without automatic purge",
+    migration: "new versioned artifact records; no historical instance conversion or key rotation fallback",
+    replacement: "canonical artifact CAS, trusted host authentication and explicit phase progression; no dispatch takeover by PID or time",
+    evidence_targets: ["src/core/workflow/process-operation-journal.mjs", "src/adapters/runtime/process-operation-journal-store.mjs", "src/application/runtime/standard-workflow-operation-host.mjs", "tools/perf/verify-standard-workflow-host-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
+  },
   process_local_effect_owner: {
     owner: "trusted local workflow operation host",
     lifecycle: "absent -> exclusively acquired -> released|retained for explicit reconciliation",
@@ -387,6 +396,14 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dbOnly: ".aidn/runtime/standard-workflow/effects.lock",
     projection: "none; machine-local collision guard only",
     notes: "Versioned token, process id, physical-root hash, exact plan hash and acquisition time. The token grants no admission or permission. It neither fences external tools nor supplies a durable effect journal or distributed ownership. Unknown effects retain the record; the L4 recovery protocol remains required before ordinary workflow integration.",
+  }),
+  policy({
+    concept: "process_operation_journal", label: "Authenticated process operation journal",
+    files: "docs/audit/workflows/operation-records/<id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is derived",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "workflows/operation-records/<id>.json for required dual projection only",
+    notes: "No shared coordination table. Trusted host signs exact preview/intent, owner and output/receipt using an out-of-product key capability. Hashes alone do not authenticate results or human decisions. A receipted result can be accepted after restart without dispatch; dispatching requires reconciliation, never automatic retry. Native host, key isolation, distributed ownership and provider recovery remain separately qualified.",
   }),
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
     concept,

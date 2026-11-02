@@ -838,6 +838,18 @@ for (const [name, candidate] of Object.entries({
 }
 
 const negativeProbes = {
+  workflow_record_storage_invocation_omission_rejected: (() => {
+    const candidate = clone(packageJson);
+    candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]
+      .replace(" && node tools/perf/verify-workflow-record-storage-fixtures.mjs", "");
+    return candidateRejected({ candidatePackageJson: candidate });
+  })(),
+  standard_workflow_host_invocation_omission_rejected: (() => {
+    const candidate = clone(packageJson);
+    candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]
+      .replace("node tools/perf/verify-standard-workflow-host-fixtures.mjs && ", "");
+    return candidateRejected({ candidatePackageJson: candidate });
+  })(),
   standard_workflow_ports_invocation_omission_rejected: (() => {
     const candidate = clone(packageJson);
     candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]

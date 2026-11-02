@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-operation-preview.v1",
+  "x-aidn-contract-version": "standard-operation-preview.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "instance_id", "instance_sha256", "scope_id", "model_sha256", "occurrence_id", "binding", "input", "prepared", "snapshot", "prepared_at_ms", "key_id", "authentication"],
+  "properties": {
+    "contract_version": { "const": "standard-operation-preview.v1" },
+    "instance_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+    "instance_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "scope_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "model_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "occurrence_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "binding": { "type": "object" }, "input": { "type": "object" }, "prepared": { "type": ["object", "null"] },
+    "snapshot": { "type": "object" }, "prepared_at_ms": { "type": "integer", "minimum": 0 },
+    "key_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "authentication": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

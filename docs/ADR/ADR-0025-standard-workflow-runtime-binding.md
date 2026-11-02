@@ -129,6 +129,59 @@ ownership, permission, authenticated result evidence or an effect journal. L4 mu
 provide durable dispatch/reconciliation and ownership before ordinary entrypoints
 can execute the full mixed standard workflow. No automatic lock repair is supplied.
 
-L2 fixtures use real local ports and deliberately partial SQLite effects. They
-neither issue authenticated reducer receipts nor consume a shipped standard
-model. Native, shared concurrency and installed archive qualification remain open.
+The initial bootstrap-port suite uses real local ports and deliberately partial
+SQLite effects; by itself it issues no reducer receipt. The additional host
+suite below supplies that consumer. Neither suite consumes a shipped full
+standard model. Native, shared concurrency and archive qualification remain open.
+
+## Durable operation host foundation
+
+The additional `standard-workflow-operation-host.mjs` now composes those three
+fixed business adapters with `createAgenticProcessService`. Routing remains in
+the common reducer. No authored JSON selects a module, shell, signing key or
+authorization adapter. A trusted outer host must supply `readSigningKey` and
+`authorize` capabilities. The latter binds an explicit effect grant and principal
+to the exact signed preview; the native/operator adapter is not yet supplied.
+
+`standard-operation-preview.v1` pins the canonical instance revision, occurrence,
+binding, input, business plan and artifact snapshot. Preview has no writes.
+Explicit staging requires its exact hash and a fresh grant. Before dispatch,
+`process-operation-journal.v1` persists the intent and then claims its dispatch
+owner through the existing canonical artifact CAS. Execution calls the real
+business port. The host retains the output and authenticated receipt before
+the common service accepts its result event. Bulk business output stays outside
+reducer events; their receipt binds its hash and retained evidence reference.
+`aidn:operation-output/<operation-id>/<index>` resolves through the authenticated
+host to `journal.results[index].output`; its SHA identifies the exact retained
+business payload.
+
+The `process_operation_journal` concept owns these records, their projections,
+retention and metadata. HMAC authentication uses a 32-byte key obtained only via
+the trusted capability; no key bytes are retained in product state. The host
+scope additionally pins storage mode and key identity. It does not silently
+adopt instances created through a different host scope. Historical generic
+readers remain unchanged. Direct implementation pins cover this host, journal
+adapter, signing code and schemas as well as the business adapters.
+
+On reopening, the host authenticates every earlier operation intent/result
+against its journal. A structurally valid, self-hashed instance or journal is
+insufficient. Initial routing facts and human/native result histories cannot
+be injected through this deterministic host. A receipted result can be accepted
+in a new Node process without dispatching again. A claimed operation with no
+receipt remains `reconciliation_required`; PID and age cannot permit replay.
+Unknown business effects retain their unknown receipt and stop fresh dispatch.
+Bulk index producers protect operation journals alongside process instances and
+definitions: a stale visible projection cannot reset a canonical dispatch phase.
+Both the common predicate and SQLite/PostgreSQL selection queries are covered by
+the actual producer fixtures. SQLite preserves omitted records; PostgreSQL full
+replacement refuses their omission. This is ordinary import protection, not a
+claim of protection against arbitrary trusted-storage rollback.
+
+This is an internal deterministic-operation host, not the delivered full standard
+workflow or general mixed/native resume. Human/provider inbox and history
+authentication, ambiguous-owner cessation/reconciliation, protected native key
+provisioning, trusted operator grants, distributed fencing and native budgets
+remain L2–L5 work. HMAC does not prove storage anti-rollback, OS isolation, human
+identity or process-tree death. The stopped-dispatch fixture is an authored
+stopped state, not an observed OS kill. Live PostgreSQL, native Codex and exact
+installed-archive qualification remain NOT_RUN.

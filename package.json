@@ -71,7 +71,7 @@
     "pg": ">=8 <9"
   },
   "scripts": {
-    "perf:verify-agentic-process": "node tools/perf/verify-bpmn-process-fixtures.mjs && node tools/perf/verify-agentic-process-fixtures.mjs && node tools/perf/verify-process-operation-fixtures.mjs && node tools/perf/verify-standard-workflow-ports-fixtures.mjs && node tools/perf/verify-workflow-engine-fixtures.mjs && node tools/perf/verify-agentic-process-execution-fixtures.mjs",
+    "perf:verify-agentic-process": "node tools/perf/verify-bpmn-process-fixtures.mjs && node tools/perf/verify-agentic-process-fixtures.mjs && node tools/perf/verify-process-operation-fixtures.mjs && node tools/perf/verify-standard-workflow-ports-fixtures.mjs && node tools/perf/verify-standard-workflow-host-fixtures.mjs && node tools/perf/verify-workflow-engine-fixtures.mjs && node tools/perf/verify-agentic-process-execution-fixtures.mjs && node tools/perf/verify-workflow-record-storage-fixtures.mjs",
     "perf:verify-workflow-transaction": "node tools/perf/verify-workflow-transaction-fixtures.mjs",
     "aidn": "node bin/aidn.mjs",
     "bootstrap": "node tools/bootstrap.mjs",

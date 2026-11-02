@@ -17,6 +17,9 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "process_operation_journal", source_of_truth_concept: "process_operation_journal", metadata_concept: "process_operation_journal",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Explicit, signed host-operation records use the existing canonical artifact CAS. Completed results survive host restart; an interrupted dispatch never acquires a new owner implicitly. Human/external inbox, native isolation and general recovery remain separate deliveries." },
   { concept: "process_local_effect_owner", source_of_truth_concept: "process_local_effect_owner", metadata_concept: "process_local_effect_owner",
     required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
     coverage_note: "Internal worktree-local cooperative collision guard. Retained uncertainty blocks retry; a PID or timestamp never authorizes takeover. No distributed fence, durable effect journal or general recovery qualification is inferred." },

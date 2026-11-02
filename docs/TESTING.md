@@ -2,6 +2,26 @@
 
 ## Structured agentic process
 
+`verify-workflow-record-storage-fixtures.mjs` exercises the actual SQLite index
+writer and PostgreSQL bulk producer (SQL transport double). It protects both
+historical instance namespaces, definitions and operation journals against stale
+visible replacement. SQLite preserves omitted canonical artifacts; PostgreSQL
+full replacement refuses omission. This covers producer SQL selection as well
+as the common predicate and does not establish live PostgreSQL qualification.
+
+`verify-standard-workflow-host-fixtures.mjs` adds an IR consumer of the three
+real bootstrap ports. It uses canonical files/SQLite in files/dual/db-only,
+signed previews, journal CAS and actual business effects. Acceptance runs in
+new Node processes with the retained host key; it verifies no business replay,
+single dispatch under contention, durable waits and exact reducer simulation.
+It rejects self-hashed journal/process forgeries and revoked fixture grants.
+A stopped-state fixture refuses PID takeover; an injected real SQLite partial
+effect retains an unknown result. The authorization capability is a fixture
+double and the key resides outside the disposable product. This does not prove
+native key isolation or human identity. The consumed model is explicitly a
+bootstrap port fixture, not the shipped full standard model. Full mixed-host
+resume, inbox, native Codex, live PostgreSQL and archive qualification remain open.
+
 The required gate also includes `tools/perf/verify-standard-workflow-ports-fixtures.mjs`
 for the partial L2 bootstrap ports. It uses real local business use cases,
 Git branches, canonical files/SQLite, CAS and projection, plus actual activation
