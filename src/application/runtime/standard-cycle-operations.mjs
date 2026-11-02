@@ -97,7 +97,7 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     const targets = [...new Set([...(details?.integration_target_cycles ?? []), input.cycle_id])];
     const attached = [...new Set([...(details?.attached_cycles ?? []), input.cycle_id])];
     let sessionText = observed.row.content;
-    for (const [key, value] of Object.entries({ updated_at: at, integration_target_cycles: "\n" + targets.map(id => "  - " + id).join("\n"),
+    for (const [key, value] of Object.entries({ updated_at: at, branch_kind: "cycle", integration_target_cycles: "\n" + targets.map(id => "  - " + id).join("\n"),
       integration_target_cycle: targets.length === 1 ? input.cycle_id : "none", primary_focus_cycle: input.cycle_id,
       attached_cycles: "\n" + attached.map(id => "  - " + id).join("\n"), cycle_branch: branch })) sessionText = replaceField(sessionText, key, value);
     changes.push({ path: observed.row.path, before_sha256: observed.row.sha256, after: sessionText });

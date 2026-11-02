@@ -14,6 +14,8 @@ import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { readStandardDriftContext, evaluateStandardDriftReport } from "./standard-drift-report.mjs";
 import { DRIFT_REPORT_CONTRACT, nativeActivityOutputSkill, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
 import { CYCLE_PLAN_CONTRACT } from "../../core/workflow/standard-cycle-planning.mjs";
+import { evaluateStandardCycleReadiness } from "../../core/workflow/standard-cycle-readiness.mjs";
+import { runStartSessionAdmitUseCase } from "./start-session-admit-use-case.mjs";
 import { readStandardCyclePlanContext, evaluateStandardCyclePlan } from "./standard-cycle-plan-context.mjs";
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { assertStandardWorkflowModelSource } from "../../core/workflow/standard-workflow-model-catalog.mjs";
@@ -182,10 +184,51 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_DRIFT_EVALUATION_STALE");
     return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
   }
+  function acceptedOperation(instance, id, binding) {
+    authenticate(instance);
+    const record = operationStore.read(id).record; signer.verify(record);
+    const result = record.results.at(-1);
+    if (record.intent.binding_ref !== binding || record.intent.scope_id !== instance.scope_id || record.intent.instance_id !== instance.instance_id
+      || record.phase !== "receipted" || result?.receipt.outcome !== "completed"
+      || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail("STANDARD_CYCLE_READINESS_AUTHENTICATED_RESULT_REQUIRED");
+    return { record, output: result.output };
+  }
+  function readinessContext(observed) {
+    const context = { ...observed.context, metadata_pins: observed.context.documents.map(row => ({ ref: row.ref, sha256: artifacts.metadataHash(row.ref.slice(6)) })) };
+    return { ...observed, context, context_sha256: shadowHash(context) };
+  }
+  async function evaluateCycleReadiness(instance, input) {
+    assertStandardOperationInput("cycle_readiness_evaluate", input);
+    const recorded = acceptedOperation(instance, input.record_operation_id, "cycle_plan_record");
+    if (recorded.output.effect_status !== "confirmed" || recorded.output.facts.cycle_plan_recorded !== true) fail("STANDARD_CYCLE_READINESS_RECORD_REQUIRED");
+    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate");
+    const native = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT);
+    if (shadowHash(native.report) !== shadowHash(evaluated.output.observations.proposal)) fail("STANDARD_CYCLE_READINESS_RECORD_REQUIRED");
+    const observed = await prepareActivityOutput({ contractRef: CYCLE_PLAN_CONTRACT, productSha256: readProductSha256?.() });
+    if (recorded.output.observations.causal_transition.after_context_sha256 !== observed.context_sha256
+      || recorded.record.preview.prepared.plan.changes.some(row => !observed.context.documents.some(doc => doc.ref === "audit:" + row.path && doc.sha256 === row.after_sha256)))
+      fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+    const context = readinessContext(observed), proposal = native.report;
+    const admitted = await createStandardWorkflowOperations({ targetRoot: configuration.target_root }).auditCycle({ session_id: proposal.session_id, cycle_id: proposal.cycle_id });
+    const start = await runStartSessionAdmitUseCase({ targetRoot: configuration.target_root, mode: "COMMITTING" });
+    return evaluateStandardCycleReadiness({ proposal, recordSha256: shadowHash(recorded.output), recordOperationId: input.record_operation_id,
+      context: context.context, contextSha256: context.context_sha256, branchAdmitted: admitted.outcome === "completed" && start.ok === true && start.action === "resume_current_cycle" });
+  }
+  async function readCycleReadinessEvaluation(instance, input) {
+    assertStandardOperationInput("cycle_implementation_enter", input);
+    const verified = acceptedOperation(instance, input.evaluation_operation_id, "cycle_readiness_evaluate");
+    const output = await evaluateCycleReadiness(instance, verified.record.preview.input);
+    if (output.facts.cycle_readiness_satisfied !== true || shadowHash(output) !== shadowHash(verified.output)) fail("STANDARD_CYCLE_READINESS_EVALUATION_STALE");
+    const observed = await observeCycleReadinessContext();
+    if (observed.context_sha256 !== output.observations.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
+    return { output, evaluation_sha256: shadowHash(output), context: observed.context, context_sha256: observed.context_sha256 };
+  }
+  const observeCycleReadinessContext = async () => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+    productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment, readinessTransition: true }));
   const observeDriftContext = () => readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   const observeCyclePlanContext = () => readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
-    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, observeDriftContext, modelSource: source });
+    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, observeDriftContext, modelSource: source });
 }

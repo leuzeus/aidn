@@ -676,3 +676,11 @@ with adaptive R04 depth; they are not executed validation or DoR approval.
 The cycle remains OPEN/NOT_READY and unfrozen. The existing native configuration
 bounds product paths, and the complete standard graph and ordinary entries
 remain separately required.
+
+The deterministic `cycle_readiness_evaluate` component now checks the recorded
+plan and its authenticated provenance against SPEC-R04 and actual branch
+admission. A separate granted `cycle_implementation_enter` transitions canonical
+status/current state to IMPLEMENTING/READY with frozen scope. Every native
+product write still needs specific admission for the exact task and operations;
+planned tests remain distinct from executed validation. Neither component
+completes the standard workflow graph or its installed qualification.

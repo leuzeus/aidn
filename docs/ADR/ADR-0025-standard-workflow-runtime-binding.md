@@ -782,3 +782,34 @@ The current native configuration bounds admitted product files; deriving a new
 dynamic work scope and ordinary standard entry points remains separate work.
 Qualification IRs using this component do not replace the complete standard
 model/catalog or native/provider and exact installed-archive qualification.
+
+### Deterministic readiness and explicit implementation phase
+
+`cycle_readiness_evaluate` implements the start-session Core DoR component from
+SPEC-R04 against an authenticated, accepted `cycle_plan_record`, its evaluation
+and native producer, and the current canonical planning documents. It invokes
+the actual branch-cycle admission and evaluates intent, first implementation
+task, constraints/risks, adaptive depth and planned cross-usage coverage. A
+shared/high-risk matrix needs the nominal, alternate and context classes stated
+in SPEC-R04's minimum structure; an incomplete recorded proposal stays blocked.
+No model call or canonical readiness write is needed for this evaluation.
+
+`cycle_implementation_enter` consumes the accepted evaluation through IR data
+mapping. An explicit reviewed grant authorizes exactly the cycle status and
+CURRENT-STATE transition: OPEN/NOT_READY/unfrozen becomes
+IMPLEMENTING/READY/frozen. Canonical content and metadata preimages, actual
+projections, the process identity and the unchanged surrounding context are
+checked under the existing local effect owner. Partial writes and unconfirmed
+projections retain ownership and require reconciliation. A retained receipt
+prevents an implicit repeat after restart.
+
+The frozen plan remains unchanged. Every subsequent native product modification
+still requires its own specific admission against that task's exact file
+operations. Readiness is neither test execution nor cycle completion, and this
+component does not supply the remaining ordinary workflow graph, dynamic scope,
+closure/PR ports or full native/installed qualification.
+
+This component currently targets the directly owned cycle branch in COMMITTING,
+without a DoR override. Intermediate/session integration and explicit override
+paths remain separate obligations of the complete standard workflow; refusing
+them here is not evidence that those required paths are delivered.

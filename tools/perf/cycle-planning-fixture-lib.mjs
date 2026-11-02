@@ -12,6 +12,9 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { assertStandardCyclePlan, renderStandardCyclePlan, CYCLE_PLAN_CONTRACT } from "../../src/core/workflow/standard-cycle-planning.mjs";
 import { assertNativeActivityAnswer, nativeActivityAnswerSchema } from "../../src/core/workflow/native-activity-output.mjs";
 import { evaluateStandardCyclePlan } from "../../src/application/runtime/standard-cycle-plan-context.mjs";
+import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
+import { evaluateStandardCycleReadiness } from "../../src/core/workflow/standard-cycle-readiness.mjs";
+import { evaluateCurrentStateConsistency } from "./verify-current-state-consistency.mjs";
 import { analyzeStructuredArtifact } from "../../src/lib/workflow/structured-artifact-parser-lib.mjs";
 
 export function cyclePlanProposal(observed) {
@@ -74,12 +77,39 @@ export async function verifyCyclePlanningContracts(check) {
   });
 }
 
-export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script }) {
-  for (const selected of ["files", "dual", "db-only", "partial", "projection"]) await check(`cycle plan ${selected}: authenticated native proposal records canonical planning and retains readiness barriers`, async () => {
+export async function verifyCycleReadinessContracts(check) {
+  const base = { context_sha256: "a".repeat(64), context: { session_id: "S001", cycle_id: "C001", cycle_type: "feature", mode: "COMMITTING",
+    original_objective: "Local change", allowed_product_files: ["product/app.mjs"] }, evidence_refs: [{ ref: "audit:SPEC.md", sha256: "b".repeat(64) }] };
+  function run(proposal, overrides = {}, change = () => {}) {
+    const brief = fs.readFileSync(new URL("../../scaffold/docs_audit/cycles/TEMPLATE_brief.md", import.meta.url), "utf8").replace("## Objective\n- ", "## Objective\n- Local change");
+    const cyclePath = `cycles/C001-${proposal.cycle_type}-plan`, rendered = renderStandardCyclePlan(proposal, cyclePath, { "brief.md": brief });
+    const context = { ...base.context, context_use: "active_cycle", cycle_state: "OPEN", cycle_path: cyclePath, cycle_type: proposal.cycle_type,
+      documents: Object.entries(rendered).map(([path, content]) => ({ ref: "audit:" + path, content, sha256: shadowHash(content) })), ...overrides };
+    change(context);
+    return evaluateStandardCycleReadiness({ proposal, context, contextSha256: shadowHash(context), recordSha256: "c".repeat(64), recordOperationId: "op_" + "d".repeat(40), branchAdmitted: true });
+  }
+  await check("cycle readiness contract: core and adaptive evidence are required without effects", async () => {
+    const proposal = cyclePlanProposal(base), result = run(proposal);
+    assert.equal(result.outcome, "completed"); assert.deepEqual(result.facts, { cycle_readiness_satisfied: true }); assert.equal(result.effect_status, "no_effect");
+    for (const overrides of [{ mode: "EXPLORING" }, { cycle_state: "IMPLEMENTING" }, { original_objective: "Different goal" }]) {
+      const blocked = run(proposal, overrides); assert.equal(blocked.outcome, "blocked"); assert.deepEqual(blocked.facts, {});
+    }
+    assert.equal(run(proposal, {}, context => { context.documents[1].content += "\n"; }).outcome, "blocked");
+    const security = { ...proposal, cycle_type: "security" }; assert.throws(() => run(security), /ADAPTIVE_INVALID/);
+    assert.equal(run({ ...security, impact_notes: ["Public impact acknowledged"], rollback_strategy: "Restore the previous value", compatibility_strategy: "Preserve the interface" }).outcome, "completed");
+    assert.equal(run({ ...proposal, cycle_type: "spike", spike: { learning_goal: "Observe the local behavior", timebox: "30 minutes", decision_target: "Retain or discard the approach" } }).outcome, "completed");
+    const shared = { ...proposal, surface: "shared", usage_matrix: [...proposal.usage_matrix, { ...proposal.usage_matrix[0], kind: "alternate" }] };
+    assert.equal(run(shared).outcome, "blocked");
+    shared.usage_matrix.push({ ...shared.usage_matrix[0], kind: "context" }); assert.equal(run(shared).outcome, "completed");
+  });
+}
+
+export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false }) {
+  for (const selected of (readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${readiness ? "cycle readiness" : "cycle plan"} ${selected}: authenticated native proposal records canonical planning and retains readiness barriers`, async () => {
     const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : selected;
     let allowed = true, tamper = false, root;
     const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
-    const f = mixedFixture(mode, { planning: true, authorize: async request => {
+    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, authorize: async request => {
       if (tamper && request.binding.id === "cycle_plan_record") {
         tamper = false; const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
         try { const row = store.getArtifact("CURRENT-STATE.md"); store.upsertArtifact({ ...row, classification_reason: "fixture-planning-race" }); }
@@ -87,7 +117,9 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
       }
       return { ...grant, authorized: allowed };
     }, answer({ params }) { const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
-      return { outcome: "completed", summary: "Read-only typed planning fixture", report: cyclePlanProposal(observed) }; } });
+      const report = cyclePlanProposal(observed);
+      if (readiness && selected === "refusal") { report.surface = "shared"; report.usage_matrix.push({ ...report.usage_matrix[0], kind: "alternate" }); }
+      return { outcome: "completed", summary: "Read-only typed planning fixture", report }; } });
     root = f.configuration.target_root;
     const auth = await bootstrapMixed(f), operations = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
     const git = (...args) => { const result = spawnSync("git", ["-C", root, "-c", "core.hooksPath=NUL", ...args], { encoding: "utf8", shell: false, windowsHide: true });
@@ -108,7 +140,7 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     prepared = await operations.prepareCycleContext({ session_id: "S001" });
     assert.equal((await operations.refreshCycleContext(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
     const cyclePath = "cycles/C001-feature-planning", names = ["brief", "plan", "audit-spec", "traceability", "status"].map(name => `${cyclePath}/${name}.md`).concat("CURRENT-STATE.md");
-    if (mode !== "files") {
+    if (!["files", "refusal", "stale"].includes(mode)) {
       const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
       try { for (const name of names) { const row = store.getArtifact(name); store.upsertArtifact({ ...row, classification_reason: "fixture-planning-annotation", gate_relevance: 1 }); } }
       finally { store.close(); }
@@ -116,6 +148,7 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     const before = new Map(names.map(name => [name, artifacts.read(name).sha256])), product = fs.readFileSync(path.join(f.dirs.product, "app.mjs"));
     console.log(`STEP cycle plan ${selected}: real session, mode and cycle preconditions prepared`);
     const native = await f.open().step({ write: true, authorization: auth }); assert.equal(native.journal_phase, "closed", JSON.stringify(native));
+    if (readiness) console.log(`STEP cycle readiness ${selected}: native planning allocation closed`);
     assert.ok(f.t.sessions.length > 0); assert.ok(f.t.sessions.every(session => session.closed));
     assert.deepEqual(fs.readFileSync(path.join(f.dirs.product, "app.mjs")), product);
     const evaluated = await f.open().step({ write: true }), evaluation = f.open().readOperation(evaluated.operation_id);
@@ -126,12 +159,12 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     allowed = false;
     await assert.rejects(f.open().step({ write: true }), { code: "STANDARD_HOST_AUTHORIZATION_REQUIRED" }); allowed = true;
     assert.deepEqual(names.map(name => artifacts.read(name).sha256), [...before.values()]); assert.equal(artifacts.ownerPending(), false);
-    if (selected === "dual") {
+    if (selected === "dual" && !readiness) {
       tamper = true; const blocked = await f.open().step({ write: true }), output = f.open().readOperation(blocked.operation_id).results.at(-1).output;
       assert.equal(output.outcome, "blocked", JSON.stringify(output)); assert.deepEqual(output.facts, {}); assert.equal(output.effect_status, "no_effect");
       assert.deepEqual(names.map(name => artifacts.read(name).sha256), [...before.values()]); assert.equal(artifacts.ownerPending(), false);
     }
-    if (selected === "partial") {
+    if (selected === "partial" && !readiness) {
       const DatabaseSync = getDatabaseSync(), db = new DatabaseSync(resolveRuntimeSqliteFile({ targetRoot: root }));
       try { db.exec("CREATE TRIGGER fixture_abort_plan_current BEFORE INSERT ON artifacts WHEN NEW.path='CURRENT-STATE.md' BEGIN SELECT RAISE(ABORT,'fixture current write refused'); END"); }
       finally { db.close(); }
@@ -139,22 +172,23 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     let recorded;
     const writeFile = fs.writeFileSync;
     try {
-      if (selected === "projection") fs.writeFileSync = (file, ...args) => {
+      if (selected === "projection" && !readiness) fs.writeFileSync = (file, ...args) => {
         if (typeof file === "string" && path.resolve(file) === path.resolve(root, "docs/audit", cyclePath, "plan.md")) return;
         return writeFile(file, ...args);
       };
-      if (selected === "files") {
+      if (selected === "files" && !readiness) {
         const file = path.join(f.base, "planning-restart.json"); fs.writeFileSync(file, JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex") }));
         const child = spawnSync(process.execPath, [script, "--recovery-record", file], { encoding: "utf8", shell: false, windowsHide: true, timeout: 300000 });
         assert.equal(child.status, 0, child.stderr); const result = JSON.parse(child.stdout);
         assert.equal(result.status, "WAITING"); assert.equal(result.launches, 0); assert.equal(result.sessions, 0); recorded = { operation_id: result.operation_id };
       } else recorded = await f.open().step({ write: true });
     } finally { fs.writeFileSync = writeFile; }
-    const journal = f.open().readOperation(recorded.operation_id), output = journal.results.at(-1).output, state = f.open().inspect();
+    const journal = f.open().readOperation(recorded.operation_id), output = journal.results.at(-1).output;
+    let state = f.open().inspect();
     assert.equal(journal.preview.input.evaluation_operation_id, evaluated.operation_id);
     assert.equal(journal.preview.input_resolution.sources[0].operation_id, evaluated.operation_id);
-    assert.equal(state.cursor.status, "WAITING");
-    if (["partial", "projection"].includes(selected)) {
+    assert.equal(state.cursor.status, readiness ? "RUNNING" : "WAITING");
+    if (["partial", "projection"].includes(selected) && !readiness) {
       assert.equal(output.effect_status, "unknown", JSON.stringify(output)); assert.equal(output.outcome, "reconciliation_required"); assert.deepEqual(output.facts, {});
       assert.equal(artifacts.ownerPending(), true);
       if (selected === "partial") {
@@ -177,12 +211,15 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
       assert.match(artifacts.read(`${cyclePath}/status.md`).content, /^scope_frozen: false$/m);
       assert.match(artifacts.read(`${cyclePath}/status.md`).content, /^state: OPEN$/m);
       assert.match(artifacts.read("CURRENT-STATE.md").content, /^first_plan_step: Update the admitted product value$/m);
-      if (mode !== "files") {
+      if (!["files", "refusal", "stale"].includes(mode)) {
         const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
-        try { for (const name of names) { const row = store.getArtifact(name); assert.equal(row.classification_reason, selected === "dual" && name === "CURRENT-STATE.md" ? "fixture-planning-race" : "fixture-planning-annotation"); assert.equal(row.gate_relevance, 1); } }
+        try { for (const name of names) { const row = store.getArtifact(name); assert.equal(row.classification_reason, selected === "dual" && !readiness && name === "CURRENT-STATE.md" ? "fixture-planning-race" : "fixture-planning-annotation"); assert.equal(row.gate_relevance, 1); } }
         finally { store.close(); }
       }
     }
+    if (readiness) await verifyReadinessTransition({ f, artifacts, operations, selected, root, cyclePath, recorded, script,
+      setAllowed: value => { allowed = value; } });
+    state = f.open().inspect();
     const retained = shadowHash(journal), afterProduct = fs.readFileSync(path.join(f.dirs.product, "app.mjs"));
     assert.deepEqual(afterProduct, product); assert.equal((await f.open().dispatchOperation(recorded.operation_id, { write: true })).status, "retained_result");
     assert.equal(shadowHash(f.open().readOperation(recorded.operation_id)), retained);
@@ -191,4 +228,85 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     assert.equal(simulation.trace.at(-1).instance_sha256, state.record.instance_sha256);
     assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(session => session.closed));
   });
+}
+
+async function verifyReadinessTransition({ f, artifacts, operations, selected, root, cyclePath, recorded, script, setAllowed }) {
+  console.log(`STEP cycle readiness ${selected}: authenticated canonical planning recorded`);
+  if (["files", "refusal", "stale"].includes(selected)) {
+    const consistency = evaluateCurrentStateConsistency({ targetRoot: root });
+    assert.equal(consistency.pass, true, JSON.stringify(consistency));
+  }
+  const paths = [`${cyclePath}/status.md`, "CURRENT-STATE.md"], before = paths.map(name => artifacts.read(name).sha256);
+  const request = file => ({ tool_name: "apply_patch", cwd: root, tool_input: { command: `*** Begin Patch\n*** Update File: ${file}\n@@\n-export const value = 1;\n+export const value = 2;\n*** End Patch` } });
+  const specific = file => preWriteAdmit({ targetRoot: root, skill: "start-session", nativeRequest: request(file) });
+  const denied = await specific("product/app.mjs");
+  assert.equal(denied.write_decision.outcome, "deny");
+  assert.ok(denied.write_decision.reasons.some(row => row.code === "PHASE_EXCLUDES_IMPLEMENTATION"));
+  if (selected === "stale") {
+    const row = artifacts.read(`${cyclePath}/plan.md`);
+    fs.writeFileSync(path.join(root, "docs/audit", row.path), row.content + "\n");
+  }
+  const evaluated = await f.open().step({ write: true }), evaluation = f.open().readOperation(evaluated.operation_id), output = evaluation.results.at(-1).output;
+  console.log(`STEP cycle readiness ${selected}: deterministic evaluation returned ${output.outcome}`);
+  assert.equal(evaluation.preview.input.record_operation_id, recorded.operation_id);
+  assert.equal(evaluation.preview.input_resolution.sources[0].operation_id, recorded.operation_id);
+  assert.deepEqual(paths.map(name => artifacts.read(name).sha256), before);
+  if (["refusal", "stale"].includes(selected)) {
+    assert.equal(output.outcome, "blocked", JSON.stringify(output)); assert.deepEqual(output.facts, {});
+    assert.equal(output.effect_status, "no_effect"); assert.equal(f.open().inspect().cursor.status, "WAITING");
+    assert.equal(artifacts.ownerPending(), false);
+    if (selected === "refusal") assert.equal(output.observations.checks.find(row => row.id === "usage_matrix").satisfied, false);
+    else assert.equal(output.observations.reason_code, "STANDARD_CYCLE_READINESS_SOURCE_STALE");
+    return;
+  }
+  assert.equal(output.outcome, "completed", JSON.stringify(output)); assert.deepEqual(output.facts, { cycle_readiness_satisfied: true });
+  const preview = await f.open().step({ write: false }); assert.equal(preview.preview.prepared.can_apply, true, JSON.stringify(preview));
+  assert.deepEqual(preview.preview.prepared.plan.changes.map(row => row.path), paths);
+  setAllowed(false); await assert.rejects(f.open().step({ write: true }), { code: "STANDARD_HOST_AUTHORIZATION_REQUIRED" }); setAllowed(true);
+  assert.deepEqual(paths.map(name => artifacts.read(name).sha256), before); assert.equal(artifacts.ownerPending(), false);
+  if (selected === "partial") {
+    const DatabaseSync = getDatabaseSync(), db = new DatabaseSync(resolveRuntimeSqliteFile({ targetRoot: root }));
+    try { db.exec("CREATE TRIGGER fixture_abort_readiness_current BEFORE INSERT ON artifacts WHEN NEW.path='CURRENT-STATE.md' BEGIN SELECT RAISE(ABORT,'fixture readiness current refused'); END"); }
+    finally { db.close(); }
+  }
+  let entered;
+  const writeFile = fs.writeFileSync;
+  try {
+    if (selected === "projection") fs.writeFileSync = (file, ...args) => {
+      if (typeof file === "string" && path.resolve(file) === path.resolve(root, "docs/audit/CURRENT-STATE.md")) return;
+      return writeFile(file, ...args);
+    };
+    if (selected === "files") {
+      const file = path.join(f.base, "readiness-restart.json"); fs.writeFileSync(file, JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex") }));
+      const child = spawnSync(process.execPath, [script, "--recovery-record", file], { encoding: "utf8", shell: false, windowsHide: true, timeout: 300000 });
+      assert.equal(child.status, 0, child.stderr); const result = JSON.parse(child.stdout);
+      assert.equal(result.status, "WAITING"); assert.equal(result.launches, 0); assert.equal(result.sessions, 0); entered = result;
+    } else entered = await f.open().step({ write: true });
+  } finally { fs.writeFileSync = writeFile; }
+  const record = f.open().readOperation(entered.operation_id), result = record.results.at(-1).output;
+  assert.equal(record.preview.input.evaluation_operation_id, evaluated.operation_id);
+  if (["partial", "projection"].includes(selected)) {
+    assert.equal(result.outcome, "reconciliation_required", JSON.stringify(result)); assert.equal(result.effect_status, "unknown"); assert.deepEqual(result.facts, {});
+    assert.equal(result.observations.committed.length, selected === "partial" ? 1 : 2);
+    assert.equal(artifacts.ownerPending(), true); assert.equal((await f.open().step({ write: true })).kind, "reconciliation");
+    if (selected === "partial") assert.equal(artifacts.read("CURRENT-STATE.md").sha256, before[1]);
+    else assert.equal(result.observations.reason_code, "STANDARD_CYCLE_READINESS_PROJECTION_UNCONFIRMED");
+  } else {
+    assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.deepEqual(result.facts, { cycle_dor_ready: true, cycle_implementation_started: true });
+    const status = artifacts.read(paths[0]).content;
+    assert.match(status, /^state: IMPLEMENTING$/m); assert.match(status, /^scope_frozen: true$/m); assert.match(status, /^dor_state: READY$/m);
+    assert.match(artifacts.read("CURRENT-STATE.md").content, /^dor_state: READY$/m); assert.equal(artifacts.ownerPending(), false);
+    const refreshed = await operations.prepareCycleContext({ session_id: "S001" });
+    assert.equal((await operations.refreshCycleContext(refreshed, { write: true, expectPlan: refreshed.plan_sha256 })).outcome, "completed");
+    const admitted = await specific("product/app.mjs");
+    assert.equal(admitted.write_decision.outcome, "allow", JSON.stringify(admitted.write_decision));
+    const wrongOperation = await preWriteAdmit({ targetRoot: root, skill: "start-session", nativeRequest: { tool_name: "apply_patch", cwd: root,
+      tool_input: { command: "*** Begin Patch\n*** Delete File: product/app.mjs\n*** End Patch" } } });
+    assert.equal(wrongOperation.write_decision.outcome, "deny");
+    assert.ok(wrongOperation.write_decision.reasons.some(row => row.code === "PATH_OR_OPERATION_OUTSIDE_TASK"));
+  }
+  const retained = shadowHash(record);
+  assert.equal((await f.open().dispatchOperation(entered.operation_id, { write: true })).status, "retained_result");
+  assert.equal(shadowHash(f.open().readOperation(entered.operation_id)), retained);
+  console.log(`STEP cycle readiness ${selected}: actual DoR admission, explicit phase transition and durable receipt verified`);
 }

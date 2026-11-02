@@ -6,6 +6,7 @@ import { createStandardDriftRecovery } from "./standard-drift-recovery.mjs";
 import { createStandardDriftChangeRequest } from "./standard-drift-change-request.mjs";
 import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
+import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
@@ -60,6 +61,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const cyclePlanRecord = processAuthority ? createStandardCyclePlanRecord({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readCyclePlanEvaluation(instance, input),
     observeContext: () => processAuthority.observeCyclePlanContext(), readCurrent: id => current(id).record }) : null;
+  const cycleImplementation = processAuthority ? createStandardCycleImplementation({ targetRoot, now,
+    readEvaluation: (instance, input) => processAuthority.readCycleReadinessEvaluation(instance, input),
+    observeContext: () => processAuthority.observeCycleReadinessContext(), readCurrent: id => current(id).record }) : null;
   const recoveryCycle = processAuthority ? createStandardDriftCycle({ targetRoot, operations, now,
     readSource: (instance, operation, input) => cycleRecoverySource(instance, operation, input),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
@@ -358,7 +362,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_context_refresh" ? await operations.prepareCycleContext(input)
         : binding.id === "cycle_initialize" ? await operations.prepareCycle(input)
         : binding.id === "cycle_checkpoint_finalize" ? await operations.prepareCycleCheckpoint(input)
-        : binding.id === "cycle_plan_record" ? await cyclePlanRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE") : null;
+        : binding.id === "cycle_plan_record" ? await cyclePlanRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE")
+        : binding.id === "cycle_implementation_enter" ? await cycleImplementation?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE") : null;
       return signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instanceId, instance_sha256: expectedSha256,
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
         input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input,
@@ -413,6 +418,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "branch_cycle_audit") output = await operations.auditCycle(record.preview.input);
         else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_plan_evaluate") output = await processAuthority?.evaluateCyclePlan(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE");
+        else if (record.intent.binding_ref === "cycle_readiness_evaluate") output = await processAuthority?.evaluateCycleReadiness(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "drift_change_request_record") output = await changeRequest.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
@@ -435,6 +441,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         } else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_plan_record") output = await cyclePlanRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "cycle_implementation_enter") output = await cycleImplementation.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_checkpoint_finalize") output = await operations.finalizeCycleCheckpoint(record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record),

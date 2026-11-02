@@ -1,5 +1,14 @@
 # Testing Guide
 
+`--cycle-readiness-mode=contract|files|dual|db-only|partial|projection|refusal|stale`
+in the agentic execution corpus selects deterministic DoR and explicit phase
+transition checks. The integrated cases reuse authenticated native planning,
+real canonical/branch/admission ports, refused grants, cold Node continuation,
+partial writes, missing projection and common-reducer simulation. The native
+transport and granting identity remain fixture capabilities; they do not prove
+real provider or installed-archive execution. Run results are recorded in the
+standard workflow implementation plan.
+
 `--cycle-plan-mode=contract|files|dual|db-only|partial|projection` in the existing
 agentic execution corpus selects typed planning checks. Contract checks exercise
 adaptive depth, REQ/test mapping, usage classes, stale/foreign scope, a single

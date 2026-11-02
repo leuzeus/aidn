@@ -5,7 +5,8 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // Bounded direct implementation closure. Existing runtime dependencies retain
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
-const files = [
+const files = ["src/application/runtime/standard-cycle-implementation.mjs", "src/core/workflow/standard-cycle-readiness.mjs", "src/core/contracts/workflow-definition/standard-cycle-readiness-evaluate-input.v1.schema.json", "src/core/contracts/workflow-definition/standard-cycle-implementation-enter-input.v1.schema.json", "src/core/contracts/workflow-definition/standard-cycle-readiness-output.v1.schema.json", "src/core/contracts/workflow-definition/standard-cycle-implementation-plan.v1.schema.json",
+
   "src/application/runtime/standard-cycle-plan-context.mjs", "src/application/runtime/standard-cycle-plan-record.mjs", "src/core/workflow/standard-cycle-planning.mjs",
   ...["standard-cycle-plan-proposal.v1", "standard-cycle-plan-evaluate-input.v1", "standard-cycle-plan-record-input.v1", "standard-cycle-plan-record-plan.v1", "standard-cycle-planning-output.v1"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/standard-cycle-checkpoint.mjs", "tools/perf/cycle-create-hook.mjs",

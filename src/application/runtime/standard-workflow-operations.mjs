@@ -25,7 +25,8 @@ const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.
   "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
-  const refs = [...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url), new URL("../../../tools/runtime/project-runtime-state.mjs", import.meta.url),
+  const refs = [new URL("standard-cycle-implementation.mjs", import.meta.url), new URL("../../core/workflow/standard-cycle-readiness.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-cycle-readiness-evaluate-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-cycle-implementation-enter-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-cycle-readiness-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-cycle-implementation-plan.v1.schema.json", import.meta.url),
+...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url), new URL("../../../tools/runtime/project-runtime-state.mjs", import.meta.url),
     new URL("../../core/workflow/standard-cycle-planning.mjs", import.meta.url),
     ...["standard-cycle-plan-proposal.v1", "standard-cycle-plan-evaluate-input.v1", "standard-cycle-plan-record-input.v1", "standard-cycle-plan-record-plan.v1", "standard-cycle-planning-output.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../../tools/perf/cycle-create-hook.mjs", import.meta.url),
@@ -56,6 +57,8 @@ export function assertStandardWorkflowImplementation() {
   if (implementation() !== loadedImplementation) fail("STANDARD_IMPLEMENTATION_CHANGED");
 }
 const definitions = [
+  ["cycle_readiness_evaluate", "start-session", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-cycle-readiness-evaluate-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
+  ["cycle_implementation_enter", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R04"], "standard-cycle-implementation-enter-input.v1", "deterministic", "standard-cycle-readiness-output.v1"],
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
   ["session_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-empty-input.v1"],
   ["session_initialize", "start-session", "mutating", ["SPEC-R01", "SPEC-R07"], "standard-session-initialize-input.v1"],
@@ -81,7 +84,7 @@ const definitions = [
 export function standardWorkflowOperationBindings() {
   return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract, executor_kind = "deterministic", output_contract = "standard-operation-output.v1"]) => {
     const binding = { contract_version: "process-operation-binding.v1", id, revision: 1, executor_kind, effect_class, skill_id,
-      input_contract, output_contract, rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : id === "drift_change_request_record" ? ["COMMITTING"] : ["standard-cycle-output.v1", "standard-drift-cycle-output.v1", "standard-cycle-checkpoint-output.v1", "standard-cycle-planning-output.v1"].includes(output_contract) ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
+      input_contract, output_contract, rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : id === "drift_change_request_record" || output_contract === "standard-cycle-readiness-output.v1" ? ["COMMITTING"] : ["standard-cycle-output.v1", "standard-drift-cycle-output.v1", "standard-cycle-checkpoint-output.v1", "standard-cycle-planning-output.v1"].includes(output_contract) ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
     assertProcessOperationBinding(binding); return binding;
   });
 }

@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `637aff2` et tranche courante de proposition native de
-planification et d'enregistrement canonique, avant admission DoR/implémentation.
+Dernier état relu : `e118917` et tranche courante d'évaluation DoR déterministe
+et de transition explicite vers l'implémentation après planification authentifiée.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -1982,3 +1982,74 @@ Le modèle standard complet, les entrées ordinaires et A1–A10 restent obligat
 Native réelle, archive installée exacte et qualifications du parcours complet
 restent NOT_RUN ; le transport natif, l'identité et les grants du corpus sont
 des capacités de fixture, pas des preuves de provider/humain réels.
+
+## Addendum — DoR déterministe et entrée explicite en implémentation
+
+La tranche suivante raccorde `cycle_readiness_evaluate` (composant du skill
+start-session, SPEC-R03/R04) et `cycle_implementation_enter` (cycle-create,
+SPEC-R03/R04). Aucun appel au modèle n'est requis par ces deux opérations.
+L'évaluation consomme l'identité du plan enregistré via l'IR, authentifie les
+résultats acceptés de record/evaluate et le producteur natif, et exige que leurs
+post-images correspondent encore au contexte canonique. L'admission réelle de
+branche et les invariants de mode/cycle restent applicables.
+
+Les contrôles portent sur l'intention, le premier pas d'implémentation, les
+contraintes/risques, la profondeur adaptative et les classes d'usage de SPEC-R04.
+Un plan partagé à deux classes peut être enregistré, mais ne satisfait pas la
+structure minimale nominal/alternate/context avant cette entrée en implémentation.
+Un refus ou une source périmée laisse l'instance en attente sans fait de réussite.
+
+La transition exige un résultat DoR accepté, frais et corrélé, un plan de mutation
+revu et un grant explicite. Elle écrit seulement status.md et CURRENT-STATE.md,
+sous owner local et CAS des contenus/métadonnées : OPEN/NOT_READY/non gelé devient
+IMPLEMENTING/READY/gelé. Les quatre documents de planification restent intacts.
+Le hash du périmètre exact et la provenance de l'évaluation sont conservés.
+Chaque modification native ultérieure reste soumise à l'admission spécifique
+de sa tâche, de son chemin et de son opération. Ni les tests prévus, ni le DoR,
+ni la phase IMPLEMENTING ne prouvent une validation ou une clôture du cycle.
+
+Les quatre schémas privés et les 27 contrôles du réducteur/opérations sont PASS.
+Le contrôle pur adaptatif est PASS après correction de la stabilité du rendu
+des sections optionnelles (impact, rollback, compatibilité et apprentissage).
+Les parcours dual et DB-only ont passé avec les pins 45/43. Le premier parcours
+files a confirmé le DoR, la transition et la reprise froide, puis l'admission
+native a refusé une incohérence de contexte : la création de cycle laissait
+branch_kind=session dans la session alors que CURRENT-STATE passait à cycle.
+La création aligne désormais ce champ ; le contrôle n'est pas assoupli.
+Avec les pins 46/44, files, écriture partielle, projection perdue, refus de
+couverture et source périmée sont PASS. Le cas files vérifie la cohérence réelle
+après planification, la transition dans un nouveau processus Node sans nouvelle
+allocation native, puis l'admission effective de l'update prévu et le refus du
+delete hors périmètre. Le cas partiel conserve une écriture canonique et refuse
+la seconde. Le cas de projection perdue conserve les deux écritures canoniques
+et refuse leur confirmation. Ces deux derniers cas restent unknown, sans fait
+de réussite, avec owner retenu, attente de réconciliation et dispatch conservé.
+Les deux refus restent blocked/no_effect, sans changement de status/CURRENT,
+sans owner résiduel et sans appel supplémentaire au modèle. Chaque parcours
+est simulé avec le même modèle et le même réducteur et retrouve son hash final.
+
+Les premiers échecs de corpus sont distingués des défauts produit : le statut
+global d'une séquence avec une opération prête est RUNNING, et le diagnostic de
+cohérence expose un objet checks, pas un tableau. Ces assertions ont été
+corrigées. Le défaut réel de branch_kind a été observé grâce à l'admission
+spécifique et corrigé dans l'initialisation de cycle.
+
+Les cinq contrôles de planification, le contrôle DoR core/adaptatif, les quatre
+schémas privés, 27 contrôles réducteur/opérations, 22 contrôles de modèles et
+14 contrôles de ports sont PASS. Politiques de source de vérité (35), métadonnées
+(37), complétude conceptuelle (38), références/Markdown, sensibilité (1 736
+fichiers suivis), topologie du package courant et fraîcheur des pins sont PASS.
+La complétude conceptuelle ne prouve pas le workflow complet. Les parcours
+dual/DB-only précèdent la correction de branch_kind et la normalisation des
+fins de lignes ; leur qualification 45/43 ne remplace pas A1–A10 sur le modèle
+final livré. L'exécution native réelle, l'arbre de processus natif, l'archive
+installée exacte et le parcours standard complet restent NOT_RUN. La suite
+monolithique complète et l'admission complète d'une PR ne sont pas revendiquées.
+Le modèle standard complet, les parcours A1–A10 et les véritables qualifications
+natives et sur archive installée restent à réaliser.
+
+Ce raccord vise actuellement la branche de cycle directement possédée en
+COMMITTING, sans override DoR. Les parcours intermédiaires, l'intégration sur
+branche de session et les exceptions explicitement autorisées conservent leurs
+raccordements à livrer dans le modèle complet ; leur refus dans ce composant
+ne vaut pas couverture de ces exigences.

@@ -41,7 +41,7 @@ reject("catalog does not select executable modules", x => { x.catalog.module = "
 reject("authority paths cannot escape the fixed package assets", x => { x.catalog.specification.path = "../SPEC.md"; }, "STANDARD_STARTUP_CATALOG_INVALID");
 reject("changed SPEC bytes require a reviewed authority update", x => { x.specification += "\n"; }, "STANDARD_STARTUP_SPECIFICATION_CHANGED");
 reject("changed skill bytes require a reviewed authority update", x => { x.skills[x.catalog.bindings[0].skill_source.path] += "\n"; }, "STANDARD_STARTUP_SKILL_CHANGED");
-reject("stale code bindings fail instead of being repaired at load time", x => { x.bindings[0].implementation_sha256 = "f".repeat(64); }, "STANDARD_STARTUP_IMPLEMENTATION_CHANGED");
+reject("stale code bindings fail instead of being repaired at load time", x => { x.bindings.find(row => row.id === "context_reload").implementation_sha256 = "f".repeat(64); }, "STANDARD_STARTUP_IMPLEMENTATION_CHANGED");
 reject("duplicate activity traceability is rejected", x => { x.catalog.bindings[1].node_id = x.catalog.bindings[0].node_id; }, "STANDARD_STARTUP_COVERAGE_INVALID");
 reject("traceability cannot point to a structural node instead of its operation", x => { x.catalog.bindings[0].node_id = x.model.entry; }, "STANDARD_STARTUP_BINDING_CHANGED");
 reject("a skill source cannot be substituted by another declared skill", x => { x.catalog.bindings[0].skill_source.path = x.catalog.bindings[1].skill_source.path; }, "STANDARD_STARTUP_BINDING_CHANGED");
@@ -50,9 +50,9 @@ test("source descriptors reject self-hash substitutions", () => {
   assert.throws(() => assertStandardWorkflowModelSource(source, assets.model), { code: "STANDARD_MODEL_SOURCE_INVALID" });
 });
 test("implementation refresh creates an explicit new revision while preserving the authored graph", () => {
-  const input = fresh(), original = shadowHash(input.model); input.bindings[0].implementation_sha256 = "f".repeat(64);
+  const input = fresh(), original = shadowHash(input.model); input.bindings.find(row => row.id === "context_reload").implementation_sha256 = "f".repeat(64);
   const next = refreshStandardWorkflowStartupBindings(input);
-  assert.deepEqual(next.changed, [input.bindings[0].id]); assert.equal(next.model.revision, input.model.revision + 1);
+  assert.deepEqual(next.changed, [input.bindings.find(row => row.id === "context_reload").id]); assert.equal(next.model.revision, input.model.revision + 1);
   assert.equal(next.catalog.revision, next.model.revision); assert.deepEqual(next.model.nodes, input.model.nodes);
   assert.equal(shadowHash(input.model), original);
   verifyStandardWorkflowStartupAssets({ ...input, ...next });
@@ -62,11 +62,11 @@ test("refresh is a no-op when exact bindings already match", () => {
   assert.deepEqual(next.changed, []); assert.deepEqual(next.model, input.model); assert.deepEqual(next.catalog, input.catalog);
 });
 test("refresh cannot silently accept a different effect class", () => {
-  const input = fresh(); input.bindings[0].effect_class = "mutating";
+  const input = fresh(); input.bindings.find(row => row.id === "context_reload").effect_class = "mutating";
   assert.throws(() => refreshStandardWorkflowStartupBindings(input), { code: "STANDARD_STARTUP_BINDING_REVIEW_REQUIRED" });
 });
 test("refresh cannot silently accept a different contract", () => {
-  const input = fresh(); input.bindings[0].input_contract = "different-input.v1";
+  const input = fresh(); input.bindings.find(row => row.id === "context_reload").input_contract = "different-input.v1";
   assert.throws(() => refreshStandardWorkflowStartupBindings(input), { code: "STANDARD_STARTUP_BINDING_REVIEW_REQUIRED" });
 });
 test("refresh cannot silently accept a changed SPEC", () => {

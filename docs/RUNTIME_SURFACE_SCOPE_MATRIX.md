@@ -1,5 +1,11 @@
 # Runtime Surface Scope Matrix
 
+Cycle readiness reads the existing authenticated planning operation and canonical
+artifacts. Its separate implementation transition uses the same journal, local
+owner and metadata-preserving CAS/projection ports for cycle status and current
+state. It freezes the recorded scope; individual native writes retain their
+specific admission. No new persistence table or shared synchronization is added.
+
 Typed cycle planning reuses owned native evidence and the signed operation
 journal. Its read-only proposal is evaluated against canonical cycle context;
 the explicit record operation writes only the admitted cycle planning documents,

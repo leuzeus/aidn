@@ -44,7 +44,7 @@ export function renderStandardCyclePlan(proposal, cyclePath, existing) {
     return text.replace(regex, (_match, heading) => heading + "\n" + body + "\n\n");
   };
   const optionalSection = (value, title, body) => new RegExp("^## " + title + "\\r?$", "m").test(value)
-    ? section(value, title, body) : value.trimEnd() + `\n\n## ${title}\n${body}\n`;
+    ? section(value, title, body) : value.trimEnd() + `\n\n## ${title}\n\n${body}\n\n`;
   const text = value => value.replaceAll(":", "&#58;");
   const bullets = values => values.map(value => "- " + text(value)).join("\n");
   let brief = existing["brief.md"];
