@@ -15,6 +15,11 @@ const chunks = text => text.match(/[\s\S]{1,8192}/g) ?? [""];
 // Only this fixed writer may discount its two consented documents. No authored
 // input chooses excluded paths. Their exact canonical post-images are checked.
 export function recoveryBoundary(options) { return documentBoundary(options, controls); }
+export function cycleWorkBoundary(options, paths) {
+  if (!Array.isArray(paths) || !paths.length || paths.some(name => typeof name !== "string" || /[:\\\0]/.test(name) || name.toLowerCase().startsWith("docs/audit/")
+    || name.split("/").some(part => !part || [".", "..", ".git", ".aidn", ".codex", ".agents"].includes(part.toLowerCase())))) fail("STANDARD_CYCLE_WORK_SCOPE_INVALID");
+  return documentBoundary({ ...options, context: { ...options.context, product_sha256: null } }, paths, false, true);
+}
 export function recoveryRuntimeBoundary(options) { return documentBoundary(options, ["RUNTIME-STATE.md"]); }
 export function cyclePlanningBoundary(options, cyclePath) {
   if (!/^cycles\/C[0-9]{3,6}-[a-z]+-[A-Za-z0-9._-]+$/.test(cyclePath)) fail("STANDARD_CYCLE_PLAN_PATH_INVALID");
@@ -41,7 +46,7 @@ export function changeRequestBoundary(options) {
   if (matches.length !== 1) fail("STANDARD_CHANGE_REQUEST_OWNER_REQUIRED");
   return documentBoundary(options, [matches[0].ref.slice(6), "CURRENT-STATE.md"]);
 }
-function documentBoundary({ root, context, environment = process.env }, controls, branchTransition = false) {
+function documentBoundary({ root, context, environment = process.env }, controls, branchTransition = false, product = false) {
   if (Object.keys(environment).some(key => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(key))) fail("STANDARD_GIT_ENV_SCOPE_CONFLICT");
   const git = args => {
     try { return execFileSync("git", ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),
@@ -49,7 +54,7 @@ function documentBoundary({ root, context, environment = process.env }, controls
         env: { ...environment, GIT_OPTIONAL_LOCKS: "0" }, stdio: ["ignore", "pipe", "pipe"] }); } catch { fail("STANDARD_RECOVERY_GIT_UNAVAILABLE"); }
   };
   const normalize = name => process.platform === "win32" ? name.toLowerCase() : name;
-  const own = new Set(controls.map(name => normalize("docs/audit/" + name)));
+  const own = new Set(controls.map(name => normalize(product ? name : "docs/audit/" + name)));
   const isOwn = name => own.has(normalize(name));
   const entries = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]).split("\0"), outside = [];
   for (let i = 0; i < entries.length; i++) {
@@ -60,9 +65,9 @@ function documentBoundary({ root, context, environment = process.env }, controls
   const names = git(["diff", "--name-only", "-z", "--no-renames", "HEAD", "--"]).split("\0").filter(name => name && !isOwn(name));
   if (names.length > 512) fail("STANDARD_RECOVERY_GIT_LIMIT");
   const outsideDiff = names.length ? git(["diff", "--no-ext-diff", "--no-textconv", "--no-renames", "HEAD", "--", ...names]) : "";
-  const ownIndex = git(["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-renames", "HEAD", "--", ...controls.map(name => "docs/audit/" + name)]);
+  const ownIndex = git(["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-renames", "HEAD", "--", ...controls.map(name => product ? name : "docs/audit/" + name)]);
   const { git: ignoredGit, documents, ...body } = context;
-  return shadowHash({ body, documents: documents.filter(row => !controls.includes(row.ref.slice(6))),
+  return shadowHash({ body, documents: product ? documents : documents.filter(row => !controls.includes(row.ref.slice(6))),
     git: { branch: branchTransition ? null : git(["branch", "--show-current"]).trim(), head: git(["rev-parse", "HEAD"]).trim(),
       outside_status_sha256: shadowHash(outside), outside_diff_sha256: artifactContentHash(outsideDiff), own_index_sha256: artifactContentHash(ownIndex) } });
 }

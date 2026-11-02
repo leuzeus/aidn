@@ -1,5 +1,13 @@
 # Participants, roles and agentic control
 
+Explicit `process-data-bindings.v2` also maps accepted operation identities into
+native activity inputs; v1 keeps its operation-only rules. Standard coding binds
+the accepted implementation-phase result and receives the frozen canonical first
+task. Its typed report is checked against host-observed file snapshots and the
+surrounding context by `cycle_work_evaluate`. That observation requires separate
+deterministic validation and does not authenticate a per-file writer. Product
+changes are retained when confirmation refuses; no rollback is inferred.
+
 ## Vocabulary and behavior
 
 | Concept | Meaning in AIDN | Does not imply |

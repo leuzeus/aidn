@@ -1,5 +1,12 @@
 # Runtime Surface Scope Matrix
 
+Frozen task input uses explicit activity data links and the existing signed
+operation/native allocation journals. Native context and observed product
+snapshots stay in owned execution evidence. The read-only work evaluator adds
+no business writes, table, export or shared synchronization; native product
+effects require the ordinary explicit allocation and specific patch admission.
+Observing code is separate from running deterministic validation.
+
 Cycle readiness reads the existing authenticated planning operation and canonical
 artifacts. Its separate implementation transition uses the same journal, local
 owner and metadata-preserving CAS/projection ports for cycle status and current

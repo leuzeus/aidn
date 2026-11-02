@@ -25,12 +25,16 @@ import { assertAgenticProcessModel, agenticPolicyPins } from "../../core/workflo
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import previewSchema from "../../core/contracts/workflow-definition/standard-operation-preview.v1.schema.json" with { type: "json" };
+import path from "node:path";
+import { resolveProcessOperationInput } from "../../core/workflow/process-input-resolution.mjs";
+import { CYCLE_WORK_CONTRACT, assertWorkProductSnapshot, observeStandardCycleWork } from "../../core/workflow/standard-cycle-work.mjs";
+import { cycleWorkBoundary } from "./standard-drift-recovery.mjs";
 import { assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // New mixed instances have one authority. Legacy operation/native scopes remain
 // unchanged; no caller-authored module, key, scope or history is accepted.
-export function createStandardProcessAuthority({ configuration: suppliedConfiguration, model: supplied, modelSource = null, readSigningKey, readProductSha256, environment = process.env }) {
+export function createStandardProcessAuthority({ configuration: suppliedConfiguration, model: supplied, modelSource = null, readSigningKey, readProductSha256, environment = process.env, nativeReservation = null }) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = freezeShadow(structuredClone(supplied)); assertAgenticProcessModel(model);
@@ -115,7 +119,8 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     });
     return result.value;
   }
-  async function prepareActivityOutput({ contractRef, productSha256 }) {
+  async function prepareActivityOutput({ contractRef, productSha256, instance, occurrenceId, productSnapshot }) {
+    if (contractRef === CYCLE_WORK_CONTRACT) return prepareWorkActivity({ instance, occurrenceId, productSha256, productSnapshot });
     const skill = nativeActivityOutputSkill(contractRef);
     if (!skill) fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
     // A proposal for an existing cycle is read-only. The whole cycle-create
@@ -129,8 +134,8 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment }),
       admission: { status: admission.admission_status, observation_sha256: shadowHash(admission) } };
   }
-  function readActivityOutput(instance, occurrenceId, contractRef = DRIFT_REPORT_CONTRACT) {
-    const state = authenticate(instance), event = instance.events.find(row => row.kind === "result" && row.occurrence_id === occurrenceId);
+  function readActivityOutput(instance, occurrenceId, contractRef = DRIFT_REPORT_CONTRACT, authenticationOptions = {}) {
+    const state = authenticate(instance, authenticationOptions), event = instance.events.find(row => row.kind === "result" && row.occurrence_id === occurrenceId);
     if (!state || !event || event.result.outcome !== "completed") fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId), node = model.nodes.find(row => row.id === frame?.node_id);
     if (configuration.activity_outputs?.[node?.id] !== contractRef) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
@@ -184,8 +189,8 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_DRIFT_EVALUATION_STALE");
     return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
   }
-  function acceptedOperation(instance, id, binding) {
-    authenticate(instance);
+  function acceptedOperation(instance, id, binding, authenticationOptions = {}) {
+    authenticate(instance, authenticationOptions);
     const record = operationStore.read(id).record; signer.verify(record);
     const result = record.results.at(-1);
     if (record.intent.binding_ref !== binding || record.intent.scope_id !== instance.scope_id || record.intent.instance_id !== instance.instance_id
@@ -223,12 +228,58 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (observed.context_sha256 !== output.observations.context_sha256) fail("STANDARD_CYCLE_READINESS_SOURCE_STALE");
     return { output, evaluation_sha256: shadowHash(output), context: observed.context, context_sha256: observed.context_sha256 };
   }
-  const observeCycleReadinessContext = async () => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+  const observeCycleReadinessContext = async (productSha256 = readProductSha256?.()) => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment, readinessTransition: true }));
+  async function prepareWorkActivity({ instance, occurrenceId, productSha256, productSnapshot }) {
+    const auth = nativeReservation ? { reservation: nativeReservation } : {};
+    authenticate(instance, auth); assertWorkProductSnapshot(productSnapshot);
+    const resolution = resolveProcessOperationInput({ instance, occurrenceId, readOperation: id => { const row = operationStore.read(id).record; signer.verify(row); return row; } });
+    if (Object.keys(resolution.input).join(",") !== "implementation_operation_id" || shadowHash(productSnapshot) !== productSha256) fail("STANDARD_CYCLE_WORK_INPUT_INVALID");
+    const id = resolution.input.implementation_operation_id, phase = acceptedOperation(instance, id, "cycle_implementation_enter", auth);
+    if (phase.output.effect_status !== "confirmed" || phase.output.facts.cycle_implementation_started !== true) fail("STANDARD_CYCLE_WORK_PHASE_REQUIRED");
+    const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth);
+    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record", auth);
+    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth);
+    const proposal = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth).report;
+    const observed = await observeCycleReadinessContext(productSha256), task = proposal.tasks[0];
+    if (observed.context.mode !== "COMMITTING" || observed.context.cycle_state !== "IMPLEMENTING"
+      || phase.output.observations.causal_transition.after_context_sha256 !== observed.context_sha256
+      || phase.record.preview.prepared.plan.scope_sha256 !== shadowHash(proposal.tasks.map(({ task, intent, paths }) => ({ task, intent, paths })))
+      || task.intent !== "implementation" || task.paths.some(row => row.operations.some(op => !["update", "add", "delete"].includes(op)))) fail("STANDARD_CYCLE_WORK_SOURCE_STALE");
+    const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "start-session" });
+    if (admission.ok !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status)) fail("STANDARD_CYCLE_WORK_ADMISSION_BLOCKED");
+    const prefix = path.relative(configuration.target_root, configuration.product_root).replaceAll("\\", "/");
+    if (prefix.startsWith("../") || path.isAbsolute(prefix)) fail("STANDARD_CYCLE_WORK_SCOPE_INVALID");
+    const context = { contract_version: "standard-cycle-work-context.v1", implementation_operation_id: id, input_resolution: resolution,
+      scope_sha256: phase.record.preview.prepared.plan.scope_sha256, task, source_context: observed.context, product_prefix: prefix, product_snapshot: productSnapshot,
+      boundary_sha256: cycleWorkBoundary({ root: artifacts.root, context: observed.context, environment }, task.paths.map(row => row.path)) };
+    return { context, context_sha256: shadowHash(context) };
+  }
+  async function evaluateCycleWork(instance, input) {
+    assertStandardOperationInput("cycle_work_evaluate", input);
+    const authenticated = readActivityOutput(instance, input.report_occurrence_id, CYCLE_WORK_CONTRACT);
+    const event = instance.events.find(row => row.kind === "result" && row.occurrence_id === input.report_occurrence_id);
+    const journal = allocations.read(nativeJournalId(instance)).record;
+    const get = suffix => {
+      const refs = event.result.evidence_refs.filter(row => row.ref.endsWith(suffix));
+      if (refs.length !== 1 || refs[0].ref.split("/")[1] !== authenticated.reference.ref.split("/")[1]) fail("STANDARD_CYCLE_WORK_EVIDENCE_REQUIRED");
+      const file = readAgentRunFile(nativeEvidenceFile(configuration, refs[0], journal.allocations.length), { maxBytes: 1048576 });
+      if (file.sha256 !== refs[0].sha256) fail("STANDARD_CYCLE_WORK_EVIDENCE_REQUIRED");
+      return { value: file.value, ref: refs[0] };
+    };
+    const source = get("-activity-context.json"), output = get("-artifact-output.json"), context = source.value.context;
+    if (source.value.occurrence_id !== input.report_occurrence_id || output.value.occurrence_id !== input.report_occurrence_id || context.input_resolution.occurrence_id !== input.report_occurrence_id
+      || source.value.context_sha256 !== authenticated.report.context_sha256 || shadowHash(output.value.files) !== output.value.artifact_sha256
+      || output.value.artifact_sha256 !== readProductSha256?.()) fail("STANDARD_CYCLE_WORK_SOURCE_STALE");
+    const observed = await observeCycleReadinessContext(output.value.artifact_sha256);
+    return observeStandardCycleWork({ report: authenticated.report, context, contextSha256: source.value.context_sha256, after: output.value.files,
+      boundarySha256: cycleWorkBoundary({ root: artifacts.root, context: observed.context, environment }, context.task.paths.map(row => row.path)),
+      producer: authenticated.producer, evidenceRefs: [authenticated.reference, source.ref, output.ref] });
+  }
   const observeDriftContext = () => readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   const observeCyclePlanContext = () => readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
-    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, observeDriftContext, modelSource: source });
+    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, observeDriftContext, modelSource: source });
 }

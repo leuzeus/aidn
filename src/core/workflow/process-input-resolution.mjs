@@ -9,7 +9,7 @@ export function resolveProcessOperationInput({ instance, occurrenceId, readOpera
   const cursor = inspectAgenticProcess(instance), frames = new Map(cursor.occurrences.map(row => [row.occurrence_id, row]));
   const nodes = new Map(instance.model.nodes.map(row => [row.id, row])), target = frames.get(occurrenceId);
   const spec = instance.model.data_bindings?.inputs.find(row => row.node_id === target?.node_id);
-  if (!spec || nodes.get(target.node_id).kind !== "operation") fail("PROCESS_INPUT_BINDING_REQUIRED");
+  if (!spec || !["operation", ...(instance.model.data_bindings?.contract_version === "process-data-bindings.v2" ? ["activity"] : [])].includes(nodes.get(target.node_id).kind)) fail("PROCESS_INPUT_BINDING_REQUIRED");
   if (!(target.status === "READY" || target.status === "WAITING" && ["blocked", "deferred"].includes(target.operation?.receipt?.outcome))) fail("PROCESS_INPUT_TARGET_NOT_READY");
   function scopes(frame) {
     const result = [];
@@ -74,6 +74,6 @@ export function resolveProcessOperationInput({ instance, occurrenceId, readOpera
     input[field] = structuredClone(value);
     sources.push({ field, source: expr.source, occurrence_id: frame?.occurrence_id ?? null, operation_id: operationId, sha256: shadowHash(observed) });
   }
-  return freezeShadow(assertResolvedProcessInput({ contract_version: "process-resolved-input.v1", instance_sha256: instance.instance_sha256,
+  return freezeShadow(assertResolvedProcessInput({ contract_version: instance.model.data_bindings.contract_version === "process-data-bindings.v2" ? "process-resolved-input.v2" : "process-resolved-input.v1", instance_sha256: instance.instance_sha256,
     occurrence_id: occurrenceId, bindings_sha256: shadowHash(instance.model.data_bindings), input, sources }, { instance, occurrenceId }));
 }

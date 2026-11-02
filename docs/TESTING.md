@@ -1,5 +1,14 @@
 # Testing Guide
 
+`--cycle-work-mode=contract|files|dual|db-only|report|source` selects native task
+input and observed-work checks in the existing agentic execution corpus. The
+native transport is a fixture capability; canonical operations, admissions,
+source authentication and work evaluation use production ports. The task's
+product update is real, its report cannot claim tests passed, and the evaluator
+must refuse a mismatched report or changed surrounding context without erasing
+the product. A fresh Node resumes files evaluation without a third allocation.
+These checks do not qualify a real native provider or deterministic code tests.
+
 `--cycle-readiness-mode=contract|files|dual|db-only|partial|projection|refusal|stale`
 in the agentic execution corpus selects deterministic DoR and explicit phase
 transition checks. The integrated cases reuse authenticated native planning,

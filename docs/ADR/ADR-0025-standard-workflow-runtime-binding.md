@@ -813,3 +813,36 @@ This component currently targets the directly owned cycle branch in COMMITTING,
 without a DoR override. Intermediate/session integration and explicit override
 paths remain separate obligations of the complete standard workflow; refusing
 them here is not evidence that those required paths are delivered.
+
+### Frozen task input and native work observation
+
+`process-data-bindings.v2` and `process-resolved-input.v2` explicitly extend data
+links to activity inputs. Version 1 retains operation-only semantics and its
+fingerprints. The standard work activity links to the accepted
+`cycle_implementation_enter` operation in its IR, rather than selecting an
+operation identity from a prompt. The registered work output requires an
+executor/implement role, a writable product policy, and that exact ordered link.
+It requires no fabricated lifecycle skill on the coding role.
+
+The trusted host authenticates phase, readiness, recorded plan and native
+producer. It requires the exact canonical post-phase context and a fresh
+admission before supplying the frozen first task. Only update/add/delete within
+the configured product inventory are currently supported. An authenticated
+context reference and host-observed before/after product snapshots accompany
+the correlated native result. The worker's reservation is a private IPC
+capability verified against the signed allocation journal, not authored JSON.
+
+`cycle_work_evaluate` consumes that native occurrence through IR data links. It
+checks the unchanged surrounding canonical context, Git head/index and files
+outside the task, the current product digest, actual changed paths/operations
+and agreement with the typed report. It emits only work-observed and
+validation-required facts. It neither runs tests nor marks the cycle verified.
+Observation does not authenticate the identity of a per-file writer. A refused
+confirmation retains any product changes already observed; it performs no
+implicit rollback. Durable result dispatch and common-reducer simulation remain
+separate from full workflow, real native/provider and installed qualification.
+
+Subsequent deterministic validation must use trusted, pinned check descriptors
+and the existing qualified execution/snapshot ports. Free-form test methods in
+a native plan never select executable commands. The full model still needs
+validation, task advancement, review, closure and exception routes.

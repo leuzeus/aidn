@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `e118917` et tranche courante d'évaluation DoR déterministe
-et de transition explicite vers l'implémentation après planification authentifiée.
+Dernier état relu : `0958812` et tranche courante de travail natif borné par la
+tâche gelée, avec confirmation authentifiée des fichiers observés.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -2053,3 +2053,84 @@ COMMITTING, sans override DoR. Les parcours intermédiaires, l'intégration sur
 branche de session et les exceptions explicitement autorisées conservent leurs
 raccordements à livrer dans le modèle complet ; leur refus dans ce composant
 ne vaut pas couverture de ces exigences.
+
+## Addendum — tâche gelée vers activité native et observation du travail
+
+La tranche courante raccorde le travail de la première tâche après la transition
+d'implémentation. L'IR déclare son entrée depuis l'opération
+cycle_implementation_enter avec process-data-bindings.v2. Cette nouvelle version
+autorise explicitement les entrées d'activités ; v1 conserve ses cibles
+opérationnelles, ses refus et ses empreintes. Le résolveur commun conserve les
+contrôles d'ordre, de scope de boucle/appel et de résultat accepté. Le modèle
+ou un prompt ne choisit aucun module ni adaptateur.
+
+L'activité exige executor/implement, une politique produit writable et le lien
+IR exact. Le producteur vérifie la réservation native par le canal IPC privé,
+les reçus signés de phase/DoR/plan et le résultat de planification natif. Il
+exige le contexte canonique exact après phase, une admission fraîche et la
+première tâche du plan gelé. Le code natif reçoit les documents comme preuves,
+avec interdiction de modifier le workflow, élargir le scope, effectuer les hooks
+de cycle ou annoncer une validation. Chaque patch reste soumis à l'admission
+spécifique réelle. Aucune procédure de skill fictive n'est attribuée au rôle de
+codage ; ses opérations relèvent de l'exécuteur natif et de SPEC-R02/R03/R04.
+
+Le contrat standard-cycle-work-report.v1 décrit les chemins et opérations
+annoncés, pas une réussite de tests. Le résultat corrélé porte des références
+authentifiées vers le contexte d'entrée et le snapshot de sortie observé par
+l'hôte. cycle_work_evaluate, déterministe et en lecture seule, consomme cette
+occurrence par l'IR. Il compare la matière avant/après, son digest courant, les
+opérations de la tâche, le rapport et le contexte extérieur (documents,
+métadonnées, branche, HEAD/index et changements hors tâche). Il émet seulement
+cycle_work_observed et cycle_validation_required. Cela n'authentifie pas l'auteur
+de chaque écriture de fichier. Une confirmation refusée conserve les changements
+déjà observés et ne provoque aucun rollback implicite.
+
+Les opérations actuellement couvertes sont update/add/delete dans l'inventaire
+produit explicitement configuré. L'élargissement dynamique du périmètre, les
+déplacements, l'avancement de plusieurs tâches, EXPLORING, les branches
+intermédiaires et les exceptions restent à livrer dans le parcours complet.
+Le modèle standard distribué et ses entrées ordinaires restent obligatoires.
+
+Les trois contrôles de contrat (rapport/provenance, données v2 avec refus v1,
+rôle/politique/lien refusés avant session), les cinq nouveaux schémas et les
+27 contrôles réducteur/opérations sont PASS. Les cinq parcours files, dual,
+DB-only, rapport mensonger et source changée sont PASS avec les pins 48/46.
+Chaque cas effectue réellement l'update du produit après admission spécifique,
+ferme deux allocations simulées et conserve les preuves de contexte et de
+matière. Files reprend l'évaluation en nouveau processus Node sans troisième
+allocation. Les cas négatifs conservent le produit modifié, mais restent en
+attente sans fait de confirmation. Leurs journaux canoniques ont également été
+lus avant nettoyage : STANDARD_CYCLE_WORK_SCOPE_UNCONFIRMED et
+STANDARD_CYCLE_WORK_SOURCE_STALE sont bien les causes observées ; le corpus
+exige désormais ces codes explicitement. L'assertion de cause et le libellé des
+cas ont été renforcés après ces exécutions, sans changement du runtime testé.
+Les cinq simulations retrouvent exactement le hash final du même modèle.
+
+Les 22 contrôles de modèles, les 14 contrôles de ports, les politiques de source
+de vérité (35), métadonnées (37) et complétude conceptuelle (38), les références,
+Markdown, la sensibilité (1 743 fichiers suivis) et la topologie du package
+courant sont PASS. Cette topologie ne qualifie pas une archive installée exacte.
+Le transport natif, l'identité et les preuves de clôture du processus restent
+des capacités de fixture : fournisseur natif réel, arbre natif et archive
+installée exacte restent NOT_RUN. La suite monolithique et l'admission complète
+d'une PR ne sont pas revendiquées. La complétude conceptuelle ne termine pas
+l'intégration du workflow standard.
+
+Le livrable suivant doit raccorder la validation déterministe sur un snapshot
+du code observé, avec des descripteurs de checks approuvés et épinglés, limites,
+preuves de terminaison et résultats authentifiés. Les ports existants
+local-agent-verification et codex-sandbox-validation-boundary constituent le
+point de départ à réutiliser. Les méthodes de tests en prose du plan natif ne
+sélectionneront jamais une commande. Leurs scripts/profils, la préparation du
+snapshot, le raccord à l'hôte et le résultat consommable par la même IR doivent
+être livrés et qualifiés, sans appeler un modèle pour exécuter un contrôle.
+
+Fichiers prévus : `src/application/runtime/standard-cycle-validation.mjs`,
+schémas privés versionnés de profil/check/résultat, compositions et hôte
+d'opérations existants, adaptateurs de vérification/sandbox ci-dessus et corpus
+de validation dédié intégré aux gates pertinentes. Dépendances : résultat de
+travail accepté, snapshot exact courant et profil de checks approuvé. Critères :
+refus avant processus si autorisation/source/profil manquant ou périmé ; vraies
+commandes bornées sans modèle ; verdicts passed/failed/unavailable distincts ;
+protection des ressources, terminaison et reçus authentifiés ; reprise sans
+réexécuter un effet incertain ; simulation/replay avec le même modèle/réducteur.

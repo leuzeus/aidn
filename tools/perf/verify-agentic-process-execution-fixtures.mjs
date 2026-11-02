@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { CYCLE_PLAN_CONTRACT } from "../../src/core/workflow/standard-cycle-planning.mjs";
+import { CYCLE_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
+import { verifyCycleWorkContracts } from "./cycle-work-contract-fixture-lib.mjs";
 import { verifyCyclePlanningContracts, verifyCyclePlanExecution, verifyCycleReadinessContracts } from "./cycle-planning-fixture-lib.mjs";
 import fs from "node:fs";
 import os from "node:os";
@@ -59,6 +61,8 @@ if (selectedChangeRequestMode !== undefined && !["files", "dual", "db-only"].inc
 const selectedRecoveryCycleMode = process.argv.find(value => value.startsWith("--drift-cycle-mode="))?.slice("--drift-cycle-mode=".length);
 const selectedCyclePlanMode = process.argv.find(value => value.startsWith("--cycle-plan-mode="))?.slice("--cycle-plan-mode=".length);
 const selectedCycleReadinessMode = process.argv.find(value => value.startsWith("--cycle-readiness-mode="))?.slice("--cycle-readiness-mode=".length);
+const selectedCycleWorkMode = process.argv.find(value => value.startsWith("--cycle-work-mode="))?.slice("--cycle-work-mode=".length);
+if (selectedCycleWorkMode !== undefined && !["contract", "files", "dual", "db-only", "report", "source"].includes(selectedCycleWorkMode)) throw Error("CYCLE_WORK_FIXTURE_MODE_INVALID");
 if (selectedCycleReadinessMode !== undefined && !["contract", "files", "dual", "db-only", "partial", "projection", "refusal", "stale"].includes(selectedCycleReadinessMode)) throw Error("CYCLE_READINESS_FIXTURE_MODE_INVALID");
 if (selectedCyclePlanMode !== undefined && !["contract", "files", "dual", "db-only", "partial", "projection"].includes(selectedCyclePlanMode)) throw Error("CYCLE_PLAN_FIXTURE_MODE_INVALID");
 if (selectedRecoveryCycleMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryCycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
@@ -70,6 +74,7 @@ const put = (base, name, text) => { const file = path.join(base, name); fs.mkdir
 async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (selectedCyclePlanMode && !name.startsWith(`cycle plan ${selectedCyclePlanMode}`)) return;
   if (selectedCycleReadinessMode && !name.startsWith(`cycle readiness ${selectedCycleReadinessMode}:`)) return;
+  if (selectedCycleWorkMode && !name.startsWith(`cycle work ${selectedCycleWorkMode}:`)) return;
   if (selectedChangeRequestMode && !name.startsWith(`drift CR ${selectedChangeRequestMode}:`)) return;
   if (selectedRecoveryCycleMode && !name.startsWith(`drift cycle ${selectedRecoveryCycleMode}:`)) return;
   if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
@@ -78,7 +83,7 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
-  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan |cycle readiness )/.test(name)) return;
+  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan |cycle readiness |cycle work )/.test(name)) return;
   const dataflowMode = process.argv.find(value => value.startsWith("--dataflow-mode="))?.slice("--dataflow-mode=".length);
   if (dataflowMode && !name.startsWith(`dataflow ${dataflowMode}:`)) return;
   const recoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
@@ -229,7 +234,7 @@ function transport(f, options = {}) {
           tokenUsage: { total: usage, last: usage } });
         await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "functionCallOutput", name: "exec", id: "fixture-tool", output: "private command/output must not be retained" } });
         await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "commentary", text: "Working on the admitted activity." } });
-        const answer = options.answer ? options.answer({ params, index }) : { outcome: options.reject && index === 2 ? "rejected" : "completed", summary: "Fixture result." };
+        const answer = options.answer ? await options.answer({ params, index }) : { outcome: options.reject && index === 2 ? "rejected" : "completed", summary: "Fixture result." };
         await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "final_answer", text: JSON.stringify(answer) } });
         await notify("turn/completed", { threadId: thread, turn: { id: turn, status: "completed" } });
         if (options.unverifiableStorage) fs.symlinkSync(f.base, path.join(f.dirs.control, "case/unverifiable-link"), "junction");
@@ -430,15 +435,28 @@ function mixedFixture(stateMode = "files", options = {}) {
         model.data_bindings.inputs.push({ node_id, fields: { [key]: { source: "operation_id", node_id: source } } });
       model.operation_pins = Object.fromEntries(standardWorkflowOperationBindings().filter(row => model.nodes.some(node => node.binding_ref === row.id)).map(row => [row.id, shadowHash(row)]));
     }
+    if (options.work) {
+      model.roles.push({ ...original.roles.find(row => row.id === "implementation"), skills: [] });
+      model.policies.push({ ...structuredClone(model.policies[0]), id: "work_policy", allowed_permissions: ["read:product", "write:product"] });
+      model.nodes[0].children.splice(-1, 0, "implement", "work_evaluate");
+      model.nodes.push({ ...native("implement"), policy_ref: "work_policy" }, op("work_evaluate", "cycle_work_evaluate"));
+      model.data_bindings.contract_version = "process-data-bindings.v2";
+      model.data_bindings.inputs.push({ node_id: "implement", fields: { implementation_operation_id: { source: "operation_id", node_id: "implementation_enter" } } },
+        { node_id: "work_evaluate", fields: { report_occurrence_id: { source: "occurrence_id", node_id: "implement" } } });
+      model.operation_pins = Object.fromEntries(standardWorkflowOperationBindings().filter(row => model.nodes.some(node => node.binding_ref === row.id)).map(row => [row.id, shadowHash(row)]));
+    }
     const content = fs.readFileSync(new URL("../../scaffold/codex/aidn-cycle-create/SKILL.md", import.meta.url));
     f.configuration.skills["cycle-create"] = { path: put(f.base, "package/cycle-create.md", content), sha256: sha(content) };
     f.configuration.activity_outputs = { analyze: CYCLE_PLAN_CONTRACT };
+    if (options.work) f.configuration.activity_outputs.implement = CYCLE_WORK_CONTRACT;
     fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   }
   f.configuration.instructions = options.planning ? { analyze: "Propose only the typed plan; never write files or declare DoR ready." }
     : options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
     : { analyze: "Analyze without writing.", review: "Review without correcting." };
-  fs.writeFileSync(f.configuration.criteria.path, "Read the product without changing any bytes."); f.configuration.criteria.sha256 = sha("Read the product without changing any bytes.");
+  if (options.work) f.configuration.instructions.implement = "Implement the frozen first task only; leave deterministic validation to the host.";
+  const criteriaText = options.work ? "The admitted local value becomes 2; validation remains a separate host operation." : "Read the product without changing any bytes.";
+  fs.writeFileSync(f.configuration.criteria.path, criteriaText); f.configuration.criteria.sha256 = sha(criteriaText);
   const worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
   f.configuration.controller = { node_sha256: sha(fs.readFileSync(process.execPath)), worker_sha256: sha(fs.readFileSync(worker)), helper_path: "fixture", helper_sha256: "a".repeat(64), helper_source_sha256: "b".repeat(64) };
   const committed = spawnSync("git", ["add", "product/app.mjs"], { cwd: projectRoot, encoding: "utf8", shell: false }); assert.equal(committed.status, 0, committed.stderr);
@@ -554,6 +572,7 @@ if (process.argv[2] === "--mixed-continue") {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
   await verifyCyclePlanningContracts(check);
+  await verifyCycleWorkContracts(check, { mixedFixture });
   await verifyCycleReadinessContracts(check);
   await check("cycle plan contract refuses a writable native planning profile before any session", async () => {
     const f = mixedFixture("files", { planning: true }), model = structuredClone(f.model);
@@ -563,6 +582,7 @@ if (process.argv[2] === "--mixed-continue") {
   });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url) });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true });
+  await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true });
   for (const mode of ["files", "dual", "db-only"]) await check(`dataflow ${mode}: the IR resolves durable parameters and accepted result identities through real ports`, async () => {
     const f = finalizationFixture(mode, { dataBindings: true, inputSource: mode === "dual" ? "operation_input" : "operation_output" });
     const parameters = { session: { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" } };

@@ -138,7 +138,7 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     resource.role = frame.request.role; resource.action = frame.request.action;
     const result = { result_id: `result-${randomUUID()}`, request_sha256: shadowHash(frame.request), execution_id: resource.id,
       revision: frame.request.revision, artifact_sha256: frame.request.artifact_sha256, criteria_sha256: frame.request.criteria_sha256,
-      outcome: completion.outcome, evidence_refs: completion.evidence_refs };
+      outcome: completion.outcome, evidence_refs: [...completion.evidence_refs, ...(task.input.evidence_refs ?? [])] };
     const reference = await evidence.retain("protected-result", { result, session_id: resource.sessionId,
       native_receipt_sha256: shadowHash(completion) });
     results.set(result.result_id, { result: structuredClone(result), resource: resource.id, reference,

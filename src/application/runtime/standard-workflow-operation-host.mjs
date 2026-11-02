@@ -419,6 +419,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_plan_evaluate") output = await processAuthority?.evaluateCyclePlan(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_readiness_evaluate") output = await processAuthority?.evaluateCycleReadiness(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE");
+        else if (record.intent.binding_ref === "cycle_work_evaluate") output = await processAuthority?.evaluateCycleWork(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_WORK_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "drift_change_request_record") output = await changeRequest.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,

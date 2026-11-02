@@ -25,7 +25,7 @@ export function createNativeAllocationWorkerAuthority({ configuration, authoriza
   const options = { targetRoot: configuration.target_root, stateMode: project.stateMode, env: environment };
   const store = createNativeAllocationJournalStore(options), controls = createProcessControlInboxStore(options);
   const processAuthority = mixed ? createStandardProcessAuthority({ configuration, model: readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value,
-    modelSource: admission.model_source, readSigningKey: () => key, environment }) : undefined;
+    modelSource: admission.model_source, readSigningKey: () => key, environment, nativeReservation: admission }) : undefined;
   return Object.freeze({
     processAuthority,
     admit({ creation, retained, scopeId, modelSha256, productSha256 }) {

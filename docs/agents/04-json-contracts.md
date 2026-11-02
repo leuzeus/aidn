@@ -158,6 +158,12 @@ refusals; a valid shadow envelope grants no authority to execute.
 
 ## Internal Agent Execution Contracts
 
+The workflow-definition namespace separately adds explicit
+`process-data-bindings.v2` / `process-resolved-input.v2` activity targets, preserving
+v1 operation-only validation. `standard-cycle-work-report.v1` and its evaluation
+input/output are internal native/application contracts. They confer no CLI
+command, authority, validation success or lifecycle completion.
+
 ADR-0014 defines internal schemas under `src/core/contracts/agent-execution/`.
 They use the explicit `agent-execution` validator profile and
 `aidn://contracts/agent-execution/` identifiers. The default `cli-output` profile
