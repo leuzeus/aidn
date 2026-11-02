@@ -14,16 +14,21 @@ import { assertProcessOperationBinding } from "../../core/workflow/process-opera
 import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardSessionPlan } from "../../core/workflow/standard-operation-contracts.mjs";
 import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
+import { createStandardSessionModeOperations } from "./standard-session-mode-operations.mjs";
 
 const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
   "standard-workflow-operation-host.mjs",
+  "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
+  "standard-workflow-human-decisions.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url),
     new URL("../../lib/workflow/markdown-render-lib.mjs", import.meta.url), new URL("../../core/skills/skill-policy.mjs", import.meta.url),
     new URL("../../core/workflow/standard-operation-contracts.mjs", import.meta.url),
     new URL("../../core/workflow/process-operation-journal.mjs", import.meta.url), new URL("../../adapters/runtime/process-operation-journal-store.mjs", import.meta.url),
-    ...["standard-empty-input.v1", "standard-session-initialize-input.v1", "standard-session-initialize-plan.v1", "standard-operation-output.v1", "process-local-effect-owner.v1", "standard-operation-preview.v1", "process-operation-journal.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url))];
+    new URL("../../core/workflow/process-decision-inbox.mjs", import.meta.url), new URL("../../adapters/runtime/process-decision-inbox-store.mjs", import.meta.url),
+    new URL("../../../tools/perf/start-session-hook.mjs", import.meta.url),
+    ...["standard-empty-input.v1", "standard-session-initialize-input.v1", "standard-session-initialize-plan.v1", "standard-operation-output.v1", "process-local-effect-owner.v1", "standard-operation-preview.v1", "process-operation-journal.v1", "standard-operation-output.v2", "standard-session-reference-input.v1", "standard-mode-apply-input.v1", "standard-session-mode-plan.v1", "human-mode-decision.v1", "process-decision-inbox.v1", "standard-mode-question.v1", "standard-session-start-plan.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url))];
   const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
   return shadowHash(refs.map(url => ({ path: path.relative(packageRoot, fileURLToPath(url)).replaceAll("\\", "/"), sha256: createHash("sha256").update(fs.readFileSync(url)).digest("hex") })));
 }
@@ -32,11 +37,14 @@ const definitions = [
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
   ["session_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-empty-input.v1"],
   ["session_initialize", "start-session", "mutating", ["SPEC-R01", "SPEC-R07"], "standard-session-initialize-input.v1"],
+  ["mode_decision", "start-session", "read-only", ["SPEC-R01", "SPEC-R02"], "standard-session-reference-input.v1", "human", "standard-operation-output.v2"],
+  ["session_mode_apply", "start-session", "mutating", ["SPEC-R01", "SPEC-R02"], "standard-mode-apply-input.v1", "deterministic", "standard-operation-output.v2"],
+  ["session_start_finalize", "start-session", "executor", ["SPEC-R01", "SPEC-R04", "SPEC-R11"], "standard-session-reference-input.v1", "deterministic", "standard-operation-output.v2"],
 ];
 export function standardWorkflowOperationBindings() {
-  return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract]) => {
-    const binding = { contract_version: "process-operation-binding.v1", id, revision: 1, executor_kind: "deterministic", effect_class, skill_id,
-      input_contract, output_contract: "standard-operation-output.v1", rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
+  return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract, executor_kind = "deterministic", output_contract = "standard-operation-output.v1"]) => {
+    const binding = { contract_version: "process-operation-binding.v1", id, revision: 1, executor_kind, effect_class, skill_id,
+      input_contract, output_contract, rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
     assertProcessOperationBinding(binding); return binding;
   });
 }
@@ -97,9 +105,9 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
     artifacts.read("CURRENT-STATE.md", { required: true });
     return { project, persistence, branch: git(["branch", "--show-current"]), head: git(["rev-parse", "HEAD"]) };
   }
-  async function admission() {
+  async function admission(mode = "UNKNOWN") {
     const prewrite = await preWriteAdmit({ targetRoot: root, skill: "start-session" });
-    const lifecycle = await runStartSessionAdmitUseCase({ targetRoot: root, mode: "UNKNOWN" });
+    const lifecycle = await runStartSessionAdmitUseCase({ targetRoot: root, mode });
     return { prewrite, lifecycle, allowed: prewrite.ok === true && ["admitted", "admitted_with_warnings"].includes(prewrite.admission_status) && lifecycle.result === "ok" };
   }
   async function build(input, preparedAt, acquired = false) {
@@ -138,6 +146,7 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
       branch, head, admission: active };
   }
   return Object.freeze({
+    ...createStandardSessionModeOperations({ artifacts, scope, admission, replaceField, now }),
     bindings: standardWorkflowOperationBindings,
     observeScope: scope,
     async reload(input = {}) {

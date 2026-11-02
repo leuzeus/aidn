@@ -4,7 +4,8 @@
 
 `verify-workflow-record-storage-fixtures.mjs` exercises the actual SQLite index
 writer and PostgreSQL bulk producer (SQL transport double). It protects both
-historical instance namespaces, definitions and operation journals against stale
+historical instance namespaces, definitions, operation journals and decision
+inboxes against stale
 visible replacement. SQLite preserves omitted canonical artifacts; PostgreSQL
 full replacement refuses omission. This covers producer SQL selection as well
 as the common predicate and does not establish live PostgreSQL qualification.
@@ -20,7 +21,23 @@ effect retains an unknown result. The authorization capability is a fixture
 double and the key resides outside the disposable product. This does not prove
 native key isolation or human identity. The consumed model is explicitly a
 bootstrap port fixture, not the shipped full standard model. Full mixed-host
-resume, inbox, native Codex, live PostgreSQL and archive qualification remain open.
+resume, provider inbox, native Codex, live PostgreSQL and archive qualification remain open.
+
+`verify-standard-workflow-mode-fixtures.mjs` extends the offline IR consumer to
+authenticated human mode capture, real canonical mode application and the actual
+start-session hook/checkpoint/constraint route. The files/dual startup paths use
+actual ports with fixture human-source and explicit-grant capabilities. The
+db-only legacy corpus has an open canonical cycle without a defined goal; its
+real nested gate warns and the host retains an unknown effect and WAITING cursor,
+even though the outer hook reports success. This is a refusal proof, not a
+successful db-only standard startup or a reason to relax the gate.
+Acceptance runs in new Node processes; redispatch returns retained results.
+Absent/unverified/wrong-question/reused sources cannot complete an operation.
+Refusal and cancellation stop; deferral waits for a new explicit intent and
+authenticated answer. Every resulting history is simulated by the same reducer.
+These are component fixture models, not a shipped standard workflow or native
+human-channel qualification. Full A1–A10 and exact installed-package proofs remain
+required by the standard workflow plan.
 
 The required gate also includes `tools/perf/verify-standard-workflow-ports-fixtures.mjs`
 for the partial L2 bootstrap ports. It uses real local business use cases,

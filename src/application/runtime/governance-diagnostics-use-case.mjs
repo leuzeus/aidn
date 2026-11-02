@@ -17,6 +17,9 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "process_decision_inbox", source_of_truth_concept: "process_decision_inbox", metadata_concept: "process_decision_inbox",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Explicit trusted human source capture and durable deduplication. Fixture source authentication does not qualify a native human channel or external provider. No implicit success or repeated business effects follows from waiting/reopening." },
   { concept: "process_operation_journal", source_of_truth_concept: "process_operation_journal", metadata_concept: "process_operation_journal",
     required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
     coverage_note: "Explicit, signed host-operation records use the existing canonical artifact CAS. Completed results survive host restart; an interrupted dispatch never acquires a new owner implicitly. Human/external inbox, native isolation and general recovery remain separate deliveries." },

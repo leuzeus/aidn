@@ -26,7 +26,7 @@ const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { enco
 function model() {
   const op = (id, binding_ref) => ({ id, kind: "operation", participant_ref: "project", binding_ref });
   return { contract_version: "agentic-process-model.v2", model_id: "bootstrap-port-fixture", revision: 1, participants: [{ id: "project" }], roles: [], policies: [],
-    operation_pins: Object.fromEntries(standardWorkflowOperationBindings().map(binding => [binding.id, shadowHash(binding)])), entry: "bootstrap",
+    operation_pins: Object.fromEntries(standardWorkflowOperationBindings().filter(binding => ["context_reload", "session_admit", "session_initialize"].includes(binding.id)).map(binding => [binding.id, shadowHash(binding)])), entry: "bootstrap",
     nodes: [{ id: "bootstrap", kind: "sequence", participant_ref: "project", children: ["reload", "admit", "initialize", "operator_wait"] },
       op("reload", "context_reload"), op("admit", "session_admit"), op("initialize", "session_initialize"),
       { id: "operator_wait", kind: "event", participant_ref: "project", branches: [

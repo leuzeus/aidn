@@ -6,6 +6,8 @@ import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
 import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
 import { createProcessOperationJournalStore } from "../../adapters/runtime/process-operation-journal-store.mjs";
+import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-decision-inbox-store.mjs";
+import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash, freezeShadow } from "../../core/workflow/shadow-json.mjs";
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from "../../core/workflow/process-operation-journal.mjs";
@@ -19,7 +21,7 @@ const receiptId = id => "receipt_" + id.slice(3);
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, readSigningKey, authorize, now = Date.now }) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, readSigningKey, authorize, humanSource, now = Date.now }) {
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   if (model.contract_version !== "agentic-process-model.v2" || typeof authorize !== "function") fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const operations = createStandardWorkflowOperations({ targetRoot, now }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
@@ -28,6 +30,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     if (!bindings.has(node.binding_ref) || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_HOST_BINDING_CHANGED");
   const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID(), initial = readWorkflowProjectAuthority({ targetRoot });
   const options = { targetRoot, stateMode: initial.stateMode }, store = createAgenticProcessStore(options), journal = createProcessOperationJournalStore(options);
+  const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource,
+    projectionRequired: initial.stateMode === "dual" || initial.stateMode === "files" && agenticProcessPersistence({ targetRoot }).backend === "postgres" });
   function readAuthority() {
     const project = readWorkflowProjectAuthority({ targetRoot }), persistence = agenticProcessPersistence({ targetRoot });
     if (project.stateMode !== initial.stateMode) fail("STANDARD_HOST_STATE_MODE_CHANGED");
@@ -53,6 +57,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const value = journal.read(id);
     if (!value.record) fail("PROCESS_JOURNAL_NOT_FOUND");
     signer.verify(value.record); validatePreview(value.record.preview);
+    if (value.record.intent.binding_ref === "mode_decision" && value.record.results.length) human.captured(value.record);
     return value;
   }
   function persist(body, expected) {
@@ -67,7 +72,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     if (["read-only", "preview"].includes(preview.binding.effect_class)) return null;
     const controller = new AbortController(); let timer;
     const pending = Promise.resolve().then(() => authorize({ binding: structuredClone(preview.binding), input: structuredClone(preview.input),
-      preview_sha256: shadowHash(preview), scope_id: preview.scope_id, signal: signal ?? controller.signal }));
+      preview_sha256: shadowHash(preview), prepared: structuredClone(preview.prepared), scope_id: preview.scope_id, signal: signal ?? controller.signal }));
     const timeout = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Object.assign(new Error("STANDARD_HOST_AUTHORIZATION_TIMEOUT"), { code: "STANDARD_HOST_AUTHORIZATION_TIMEOUT" })); }, 5000); });
     let grant;
     try { grant = await Promise.race([pending, timeout]); } finally { clearTimeout(timer); controller.abort(); }
@@ -97,6 +102,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     async verifyReceipt({ receipt, intent, instance, signal }) {
       scope(instance); const record = retained(intent.operation_id).record; await verifyGrant(record, signal);
+      if (record.intent.binding_ref === "mode_decision") await human.verifyCaptured(record, signal);
       if (shadowHash(record.results.at(-1)?.receipt) !== shadowHash(receipt) || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
@@ -120,6 +126,26 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return value;
   };
   function requireWrite(write, expected, actual) { if (write !== true || expected !== actual) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED"); }
+  function decisionInput(instance, input) {
+    const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "mode_decision").at(-1);
+    if (!latest || latest.intent.operation_id !== input.decision_operation_id) fail("STANDARD_MODE_DECISION_REQUIRED");
+    const record = retained(input.decision_operation_id).record, receipt = record.results.at(-1)?.receipt;
+    if (receipt?.outcome !== "completed" || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) fail("STANDARD_MODE_DECISION_NOT_ACCEPTED");
+    const source = human.captured(record).source;
+    if (!["THINKING", "EXPLORING", "COMMITTING"].includes(source.choice)) fail("STANDARD_MODE_DECISION_REQUIRED");
+    if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_MODE_DECISION_STALE");
+    return { session_id: record.preview.input.session_id, mode: source.choice };
+  }
+  function resultReceipt(record, output) {
+    assertStandardOperationOutput(output);
+    return { contract_version: "process-operation-receipt.v1", receipt_id: receiptId(record.operation_id), operation_id: record.operation_id,
+      intent_sha256: shadowHash(record.intent), authority_id: record.intent.authority_id, outcome: output.outcome, effect_status: output.effect_status,
+      output_sha256: shadowHash(output), facts: output.facts,
+      // Physical proof filenames belong to the authenticated output document.
+      // The reducer receipt carries its bounded logical reference, not a second
+      // copy constrained by the receipt URI grammar.
+      evidence_refs: [{ ref: operationOutputRef(record.operation_id), sha256: shadowHash(output) }] };
+  }
   async function commitIntent(id, { write = false } = {}) {
     if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
     const record = retained(id).record, state = current(record.intent.instance_id);
@@ -146,10 +172,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const node = occurrence && model.nodes.find(row => row.id === occurrence.node_id), binding = bindings.get(node?.binding_ref);
       if (!binding || !(occurrence.status === "READY" || occurrence.status === "WAITING" && ["blocked", "deferred"].includes(occurrence.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
       assertStandardOperationInput(binding.id, input);
-      const prepared = binding.id === "session_initialize" ? await operations.prepareSession(input) : null;
+      const prepared = binding.id === "session_initialize" ? await operations.prepareSession(input)
+        : binding.id === "session_mode_apply" ? await operations.prepareMode(decisionInput(state.record, input))
+        : binding.id === "session_start_finalize" ? await operations.prepareStart(input) : null;
       return signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instanceId, instance_sha256: expectedSha256,
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
-        input: prepared?.plan?.input ?? input, prepared, snapshot: snapshot(), prepared_at_ms: now() });
+        input: binding.id === "session_initialize" ? prepared?.plan?.input ?? input : input, prepared, snapshot: snapshot(), prepared_at_ms: now() });
     },
     async stage(preview, { write = false, expectedPreviewSha256 } = {}) {
       preview = structuredClone(preview);
@@ -180,6 +208,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.phase !== "staged") return { status: "reconciliation_required", operation_id: id };
       const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
       if (frame?.status !== "WAITING" || !frame.operation || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent)) fail("STANDARD_HOST_CANONICAL_INTENT_REQUIRED");
+      if (record.preview.binding.executor_kind === "human") return { status: "waiting_for_human", question: human.question(record) };
       await verifyGrant(record);
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       const { authentication, key_id, ...body } = record;
@@ -190,25 +219,51 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           throw Object.assign(new Error("STANDARD_HOST_PROCESS_CHANGED"), { code: "STANDARD_HOST_PROCESS_CHANGED", effect_status: "no_effect" });
         if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
-        else if (!record.preview.prepared?.can_apply) output = { contract_version: "standard-operation-output.v1", operation_ref: "session_initialize",
+        else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
           outcome: "blocked", effect_status: "no_effect", facts: {}, observations: record.preview.prepared ?? {}, evidence_refs: [] };
-        else output = await operations.initializeSession(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else if (record.intent.binding_ref === "session_initialize") output = await operations.initializeSession(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else if (record.intent.binding_ref === "session_mode_apply") {
+          if (shadowHash(decisionInput(state.record, record.preview.input)) !== shadowHash(record.preview.prepared.plan.input)) fail("STANDARD_MODE_DECISION_CHANGED");
+          output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        } else output = await operations.finalizeStart(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         if (record.preview.binding.effect_class === "read-only" && shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
           throw Object.assign(new Error("STANDARD_HOST_PRECONDITIONS_CHANGED"), { effect_status: "no_effect" });
       } catch (cause) {
         const noEffect = record.preview.binding.effect_class === "read-only" || cause.effect_status === "no_effect" || cause.code === "STANDARD_PLAN_EXPIRED";
-        output = { contract_version: "standard-operation-output.v1", operation_ref: record.intent.binding_ref,
+        output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
           outcome: noEffect ? "blocked" : "reconciliation_required", effect_status: noEffect ? "no_effect" : "unknown", facts: {},
           observations: { reason_code: /^[A-Z][A-Z0-9_]+$/.test(cause.code ?? "") ? cause.code : "STANDARD_HOST_DISPATCH_UNCONFIRMED" }, evidence_refs: [] };
       }
-      assertStandardOperationOutput(output);
-      const receipt = { contract_version: "process-operation-receipt.v1", receipt_id: receiptId(id), operation_id: id, intent_sha256: shadowHash(record.intent),
-        authority_id: record.intent.authority_id, outcome: output.outcome, effect_status: output.effect_status, output_sha256: shadowHash(output), facts: output.facts,
-        evidence_refs: [{ ref: operationOutputRef(id), sha256: shadowHash(output) }, ...output.evidence_refs] };
+      const receipt = resultReceipt(record, output);
       const retainedClaim = retained(id);
       if (shadowHash(retainedClaim.record) !== shadowHash(claimed)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       const { authentication: oldMac, key_id: oldKey, ...claimedBody } = claimed;
       persist({ ...claimedBody, phase: "receipted", revision: claimed.revision + 1, results: [{ output, receipt }] }, retainedClaim.content_sha256);
+      return { status: "receipted", receipt };
+    },
+    async receiveDecision(id, { sourceRef, write = false } = {}) {
+      if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
+      const before = retained(id), record = before.record, state = current(record.intent.instance_id);
+      if (record.preview.binding.executor_kind !== "human" || record.intent.binding_ref !== "mode_decision") fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.phase === "receipted") {
+        const capture = human.captured(record);
+        if (capture.source_ref !== sourceRef) fail("PROCESS_HUMAN_DECISION_ALREADY_CAPTURED");
+        human.acknowledge(capture.inbox_id, record.results.at(-1).receipt);
+        return { status: "retained_result", receipt: record.results.at(-1).receipt };
+      }
+      const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
+      if (frame?.status !== "WAITING" || !frame.operation || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent)) fail("STANDARD_HOST_CANONICAL_INTENT_REQUIRED");
+      if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      const capture = await human.reserve(record, sourceRef);
+      if (!capture) return { status: "waiting_for_human", question: human.question(record) };
+      if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      const { authentication, key_id, ...body } = record;
+      const claimed = record.phase === "staged" ? persist({ ...body, phase: "dispatching", revision: record.revision + 1, owner: { generation, pid: process.pid } }, before.content_sha256) : record;
+      const output = human.output(claimed, capture), receipt = resultReceipt(claimed, output), latest = retained(id);
+      if (shadowHash(latest.record) !== shadowHash(claimed)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      const { authentication: oldMac, key_id: oldKey, ...claimedBody } = claimed;
+      persist({ ...claimedBody, phase: "receipted", revision: claimed.revision + 1, results: [{ output, receipt }] }, latest.content_sha256);
+      human.acknowledge(capture.inbox_id, receipt);
       return { status: "receipted", receipt };
     },
     async accept(id, { write = false } = {}) {
@@ -220,6 +275,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         eventId: "result_" + id.slice(3), receiptId: receipt.receipt_id, write: true });
     },
     readJournal: id => structuredClone(retained(id).record),
+    readDecisionSource: ref => human.readSource(ref),
     readOutput(ref) {
       const match = /^aidn:operation-output\/(op_[a-f0-9]{40})\/(0|[1-9][0-9]?)$/.exec(ref);
       if (!match || Number(match[2]) >= 32) fail("PROCESS_JOURNAL_OUTPUT_REF_INVALID");

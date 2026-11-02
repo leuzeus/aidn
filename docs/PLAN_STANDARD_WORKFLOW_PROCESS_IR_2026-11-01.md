@@ -20,13 +20,16 @@ qualification de son parcours complet.
   doublées ; attentes, reports, refus, effets inconnus, réconciliation, simulation,
   replay, timeout et course CAS. Aucun adaptateur métier standard n’est qualifié
   par ces doubles. L’enveloppe de livraison est authentifiée par un port hôte
-  borné ; les adaptateurs réels et l’inbox durable restent à réaliser en L2/L4.
-- L2 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
+  borné ; ces doubles ne qualifient pas les adaptateurs métier L2/L4.
+- L2/L4 : en cours. Ports réels de bootstrap, journal de dispatch signé et
+  raccordement du choix de mode/hook décrits dans les addenda ci-dessous.
+- L3 et L5 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
   générale du lanceur et les preuves natives/package installé restent ouverts.
 - Vérifications L1 : 27 cas dédiés, 38 régressions du réducteur/service, 51 de
   composition native sur transport simulé, 14 du compilateur, 10 du défaut moteur
   et 12 de console. Aucun appel modèle réel. Les contrôles de gouvernance et
-  documentation accompagnent cette tranche ; ils ne qualifient pas L2–L8.
+  documentation accompagnent cette tranche ; ces seuls résultats L1 ne
+  qualifient pas L2–L8.
 
 ## 1. Résultat attendu et limite du travail déjà réalisé
 
@@ -475,3 +478,66 @@ Validation de la fondation de journal et de son raccordement, 2026-11-02 UTC :
   PostgreSQL réel et qualification du parcours depuis une archive exacte.
   Le redémarrage de processus Node est une preuve de durabilité de ces reçus
   locaux ; il ne qualifie pas la reprise générale d’un hôte natif.
+
+### Addendum L2/L4 — choix de mode et finalisation du démarrage
+
+Le raccordement ajoute trois bindings internes, en complément des trois ports
+de bootstrap :
+
+| Activité | Port réel ou capacité | Résultat et limite |
+|---|---|---|
+| `mode_decision` | capacité hôte `humanSource.read/verify`, question fermée et inbox canonique | Aucun appel modèle. Absence : attente inchangée. Refus, report et annulation : reçus distincts sans succès implicite. Le canal d'identité reste un double de fixture. |
+| `session_mode_apply` | CAS des artefacts session/état, admission réelle, grant explicite et propriétaire local | Le mode provient exclusivement du dernier choix authentifié et accepté de la même instance. Un JSON de mode fourni directement est refusé. |
+| `session_start_finalize` | `runSkillHookUseCase` et `start-session-hook.mjs` existants | Exécute le hook, le checkpoint et les contraintes applicables ; contrôle les résultats imbriqués et les preuves. Un effet non confirmé conserve son propriétaire et exige réconciliation. |
+
+Fichiers principaux : `standard-session-mode-operations.mjs`,
+`standard-workflow-human-decisions.mjs`, hôte des opérations et contrats fermés
+de question, source, inbox, plans et sortie v2. Les formats historiques ne sont
+pas élargis. Le champ explicite UNKNOWN reste distinct d’un mode choisi, sans
+modifier le lecteur historique qui le normalise à null.
+
+`process_decision_inbox` couvre la source immuable, sa corrélation exacte à la
+question, sa déduplication par autorité/type/identifiant externe et
+l’acquittement réservé → reçu. Le CAS/projection existant est réutilisé ; les
+producteurs d’index protègent ce cinquième namespace contre les projections
+périmées. La référence logique `aidn:decision-source/<id>` résout la source
+immuable. Le reçu du réducteur référence le document de résultat authentifié,
+qui conserve les chemins physiques des preuves du hook.
+
+La reprise de capture humaine en lecture seule n’autorise aucun rejeu des
+effets déterministes. Un report exige une nouvelle intention explicite et une
+nouvelle réponse authentifiée. Une reprise d’acceptation utilise le reçu retenu,
+dans un nouveau processus Node, puis le même modèle/réducteur pour la simulation.
+
+**Constat important sur le corpus db-only :** sa continuité canonique infère
+un cycle ouvert dont l’objectif n’est pas défini. Le checkpoint signale
+`uncertain_intent` avec une gate `warn`, bien que le hook extérieur retourne
+`ok`. Ce parcours reste WAITING avec effet inconnu ; il ne prouve pas un
+démarrage réussi. Le contrôle imbriqué est conservé. Les parcours THINKING
+fichiers et dual constituent les cas positifs de cette tranche ; le db-only
+constitue aussi un cas de refus après exécution du hook.
+
+**Livrable restant explicite :** L3 doit encore livrer le modèle IR standard
+distribué, ses décisions de cycle/carryover et ses branches de dérive/incident,
+puis les autres parcours prévus par le plan. Aucun modèle de fixture séquentiel
+ne constitue ce livrable. Il faut notamment un cas positif db-only sur contexte
+cohérent, les modes/cycles applicables, le canal humain natif, les événements
+GitHub, la reprise mixte générale et la cessation/réconciliation avant de
+qualifier L2/L4 dans leur ensemble. L5 ne doit pas sélectionner cette tranche
+partielle comme workflow standard complet. L6–L8 gardent leurs critères A1–A10,
+natif et archive installée exacte.
+
+Validation de cet addendum, 2026-11-02 UTC :
+
+- **PASS hors ligne** : `npm run perf:verify-agentic-process`, neuf suites et
+  217 contrôles, dont 33 scénarios du raccordement de mode, 20 de l’hôte des
+  opérations et dix des producteurs de stockage. Le refus db-only est une
+  assertion négative attendue ; aucun succès de démarrage n’en est déduit.
+- **PASS** : huit définitions de schéma, source de vérité, métadonnées,
+  complétude de gouvernance, catalogues de gates/surfaces, références
+  documentaires, sensibilité des fichiers suivis et topologie du package.
+  La route du changement est ASSURED.
+- **NOT_RUN** : modèle standard complet distribué, démarrage standard positif
+  db-only sur contexte cohérent, canal humain natif, Codex réel, PostgreSQL
+  réel, reprise mixte générale et parcours depuis une archive installée exacte.
+  La topologie sur clients jetables issus des sources ne remplace pas L8.

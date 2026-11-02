@@ -64,8 +64,9 @@ try {
     assert.equal((await ops.prepareSession({ ...input, session_id: "S002", session_branch: "S002-next" })).can_apply, false);
   });
   await check("closed typed operation bindings", () => {
-    const bindings = standardWorkflowOperationBindings(); assert.equal(bindings.length, 3);
-    assert.ok(bindings.every(binding => binding.executor_kind === "deterministic" && /^[a-f0-9]{64}$/.test(binding.implementation_sha256)));
+    const bindings = standardWorkflowOperationBindings(); assert.equal(bindings.length, 6);
+    assert.equal(bindings.find(binding => binding.id === "mode_decision").executor_kind, "human");
+    assert.ok(bindings.every(binding => /^[a-f0-9]{64}$/.test(binding.implementation_sha256)));
   });
   await check("untrusted session input cannot select code or paths", async () => {
     for (const patch of [{ session_id: "../../escape" }, { session_branch: "-unsafe" }, { objective: "first\nsecond" }, { mode: "EXECUTE" }, { mode: "COMMITTING" }, { module: "dynamic.mjs" }])

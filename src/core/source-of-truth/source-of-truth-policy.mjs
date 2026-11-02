@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  process_decision_inbox: {
+    owner: "trusted human decision capture host",
+    lifecycle: "reserved -> receipted; absent or unverified source never completes an operation",
+    scope: "physical project, authenticated source event and exact process operation/question",
+    retention: "retain immutable source, deduplication identity and receipt acknowledgement without automatic purge",
+    migration: "new explicit inbox only; never infer a decision from historical text or convert old instances",
+    replacement: "signed canonical artifact CAS; source identity cannot be reused for another operation",
+    evidence_targets: ["src/core/workflow/process-decision-inbox.mjs", "src/adapters/runtime/process-decision-inbox-store.mjs", "src/application/runtime/standard-workflow-human-decisions.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs"],
+  },
   process_operation_journal: {
     owner: "trusted operation execution host",
     lifecycle: "staged -> dispatching -> receipted; interrupted dispatch remains explicitly unresolved",
@@ -396,6 +405,14 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dbOnly: ".aidn/runtime/standard-workflow/effects.lock",
     projection: "none; machine-local collision guard only",
     notes: "Versioned token, process id, physical-root hash, exact plan hash and acquisition time. The token grants no admission or permission. It neither fences external tools nor supplies a durable effect journal or distributed ownership. Unknown effects retain the record; the L4 recovery protocol remains required before ordinary workflow integration.",
+  }),
+  policy({
+    concept: "process_decision_inbox", label: "Authenticated human decision inbox",
+    files: "docs/audit/workflows/decision-inbox/<id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is derived",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "workflows/decision-inbox/<id>.json for required dual projection only",
+    notes: "Existing artifact CAS, no new coordination table. Source identity and exact question are verified through trusted host capabilities, then retained under the host MAC. No raw model/user JSON authenticates itself. Absence waits; refusal, deferral and cancellation have explicit non-success receipts. Native human channel, provider events and general effect-owner recovery remain separate qualifications.",
   }),
   policy({
     concept: "process_operation_journal", label: "Authenticated process operation journal",

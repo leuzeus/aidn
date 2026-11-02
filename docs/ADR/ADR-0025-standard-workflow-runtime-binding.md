@@ -6,7 +6,8 @@ L1 contract foundation implemented under the
 [standard workflow plan](../PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
 Versioned operation contracts, reducer events and trusted service ports are
 implemented and verified offline. L2 now has partial local business adapters for
-reload, admission and session initialization, described below. The standard model,
+reload, admission, session initialization, authenticated mode capture/application
+and start-session hook finalization, described below. The standard model,
 the remaining business adapters,
 authenticated external inbox, general owned-host resume and installed/native
 qualification remain outstanding. This decision does not claim those deliveries.
@@ -178,10 +179,58 @@ replacement refuses their omission. This is ordinary import protection, not a
 claim of protection against arbitrary trusted-storage rollback.
 
 This is an internal deterministic-operation host, not the delivered full standard
-workflow or general mixed/native resume. Human/provider inbox and history
+workflow or general mixed/native resume. Provider inbox, general mixed history
 authentication, ambiguous-owner cessation/reconciliation, protected native key
 provisioning, trusted operator grants, distributed fencing and native budgets
 remain L2–L5 work. HMAC does not prove storage anti-rollback, OS isolation, human
 identity or process-tree death. The stopped-dispatch fixture is an authored
 stopped state, not an observed OS kill. Live PostgreSQL, native Codex and exact
 installed-archive qualification remain NOT_RUN.
+
+## Human mode decision and startup hook component
+
+Three additional fixed bindings extend the internal host. `mode_decision` is a
+read-only human operation. Dispatch persists its intent and returns a closed
+`standard-mode-question.v1`, without polling a source or allocating a model.
+Only an explicit source reference invokes the trusted `humanSource.read/verify`
+capabilities. The source must authenticate the exact operation question and
+subject. Raw authored JSON, a self-hash or a model response cannot supply this
+authentication. A missing source keeps the same waiting state and journal.
+
+`process_decision_inbox` retains a signed `process-decision-inbox.v1` under the
+existing canonical artifact CAS. The immutable source includes its authority,
+event identity, subject, question hash and choice. Authority/kind/event identity
+is deduplicated across operations. Its acknowledgement progresses from reserved
+to receipted; ordinary index producers cannot overwrite it from stale visible
+data. `aidn:decision-source/<inbox-id>` resolves to that immutable source through
+`readDecisionSource`; its hash does not describe the mutable acknowledgement
+envelope. A restart may finish this read-only capture from a dispatch claim:
+this repeats no business effect and grants no takeover of deterministic effects.
+
+Refusal becomes rejected/FAILED; deferral remains WAITING and requires a fresh
+explicit intent/question and a new authenticated source; cancellation becomes
+CANCELLED. No answer produces no receipt. Only a completed, canonically accepted
+mode decision from the same instance supplies `session_mode_apply`. Caller mode
+JSON is rejected. That deterministic mutating port separately requires a current
+effect grant, exact plan and fresh admissions; it updates session and current
+state under the existing local effect owner. It observes an explicitly declared
+UNKNOWN field without changing historical readers that normalize UNKNOWN to null.
+
+`session_start_finalize` executes the actual fixed `runSkillHookUseCase` route
+and `start-session-hook.mjs`, including checkpoint and the required constraint
+pipeline. Its versioned effect plan binds the selected mode, canonical session,
+current state, scope and expected effects. Completion requires successful
+admission, an actually executed hook, checkpoint/gate/reload/sync postconditions
+and required constraint artifacts. Exit zero alone is insufficient. Unknown
+post-effect status retains the owner and requires reconciliation. Bulky hook
+results and physical proof paths remain in authenticated operation output; the
+reducer receipt references that document through its bounded logical URI.
+
+The mode suite uses real disposable business ports and files/SQLite stores, with
+a fixture human authority and effect grant. It covers capture, non-success
+choices, restart acceptance in a new Node process and exact reducer simulation.
+It does not deliver a protected native human channel, GitHub events, general
+cessation/reconciliation, full skill planning, cycle/carryover orchestration or
+the shipped standard IR. No ordinary entrypoint selects this partial fixture as
+the full workflow. Native Codex, live PostgreSQL and exact archive qualification
+remain separate acceptance work.

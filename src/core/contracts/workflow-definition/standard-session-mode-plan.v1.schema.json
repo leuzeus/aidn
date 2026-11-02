@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-mode-plan.v1",
+  "x-aidn-contract-version": "standard-session-mode-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "prepared_at_ms",
+    "scope",
+    "changes"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-mode-plan.v1"
+    },
+    "operation_ref": {
+      "const": "session_mode_apply"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "mode"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "mode": {
+          "enum": [
+            "THINKING",
+            "EXPLORING",
+            "COMMITTING"
+          ]
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "persistence",
+        "branch",
+        "head"
+      ],
+      "properties": {
+        "project": {
+          "type": "object"
+        },
+        "persistence": {
+          "type": "object"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "before_sha256",
+          "after",
+          "after_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 192
+          },
+          "before_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "after": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "after_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

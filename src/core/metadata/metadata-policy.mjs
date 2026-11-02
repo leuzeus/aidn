@@ -75,6 +75,14 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "process_decision_inbox", label: "Authenticated human decision source",
+    required: ["contract_version", "inbox_id", "operation_id", "source_ref", "source", "phase", "receipt_sha256", "key_id", "authentication"],
+    sourceOfTruthConcept: "process_decision_inbox",
+    evidenceTargets: ["src/core/contracts/workflow-definition/process-decision-inbox.v1.schema.json", "src/core/contracts/workflow-definition/human-mode-decision.v1.schema.json", "src/core/contracts/workflow-definition/standard-mode-question.v1.schema.json", "src/application/runtime/standard-workflow-human-decisions.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs"],
+    lifecycle: "reserved -> receipted; source and operation identity remain immutable",
+    notes: "Deduplicate authority/source-kind/source-event identity across operations. Bind subject, exact question and choice through a trusted verifier. A MAC retains that capture; it does not itself establish human identity, native isolation or provider authentication. Logical decision-source evidence resolves to the immutable source member, not the mutable acknowledgement envelope.",
+  }),
+  policy({
     concept: "process_operation_journal", label: "Authenticated operation journal",
     required: ["contract_version", "operation_id", "revision", "phase", "preview", "intent", "grant", "owner", "results", "key_id", "authentication"],
     sourceOfTruthConcept: "process_operation_journal",
