@@ -8,7 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `4a4fa9e` et tranche courante d'hôte mixte interne.
+Dernier état relu : `6c4cb31` et tranche courante de diagnostic R05 typé.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -1111,3 +1111,85 @@ revendiqués comme tous exécutés localement. Aucun test de cette tranche ne re
 actif. Client/arbre natifs réels, PostgreSQL réel, fournisseur PR réel et parcours
 standard complet depuis une archive installée exacte : **NOT_RUN**. Le livrable
 standard complet reste ouvert.
+
+## Addendum — résultat métier R05 avant finalisation
+
+Le contrat `standard-drift-report.v1` et le mapping interne `activity_outputs`
+relient une activité portant le skill source exact à une sortie métier bornée.
+L'hôte observe les documents canoniques, le but de session ou du brief de cycle,
+le diff/statut Git et les fichiers produit contrôlés après admission réelle
+`drift-check`. Le rapport porte le hash de ce contexte, les objectifs comparés,
+la dérive, les éléments keep/discard, les recommandations de séparation et les
+preuves observées. `changes` désigne les écarts diagnostiqués ; le diff observé
+constitue une entrée distincte. Un résultat failed/rejected conserve une sortie
+nulle ; un simple summary ne peut devenir un rapport completed.
+
+Le binding déterministe `drift_report_evaluate` ne reçoit que l'identité de
+l'occurrence productrice. Il authentifie son résultat accepté et ses références
+via le checkpoint d'allocation, réobserve admission/contexte/preuves et publie
+des faits de routage. Aucun appel modèle supplémentaire, aucune écriture métier
+de récupération et aucun acquittement du hook R05. Le rapport est une preuve
+d'activité protégée et son évaluation demeure dans le journal d'opérations ;
+`native_activity_output` est explicitement subsumé sous l'instance de processus.
+
+Le futur catalogue standard L3 doit distribuer les bindings de sortie native et
+leur mapping vers les activités, avec les pins SPEC/skill/code ; la présence de
+ces mécanismes dans l'hôte n'en tient pas lieu. Restent L2 : canal humain de
+récupération/arbitrage, écritures autorisées du rapport/CR/parking-lot, véritable
+finalisation R05, cycle/DoR/travail/clôtures/promotion/PR/synchronisation. Restent
+aussi le modèle complet, son entrée ordinaire et toutes les preuves A1–A10,
+natives et sur archive installée exacte. Les résultats ciblés sont consignés
+ci-dessous ; ils ne qualifient pas la réalisation complète de R05.
+
+La livraison de données au diagnostic est bornée : seul le diff des fichiers
+produit configurés est transmis en clair ; les autres changements restent des
+empreintes/comptages. Les racines privées interdisent aussi la livraison des
+documents de diagnostic. Une couverture partielle publie
+`drift_context_complete: false` et impose le routage de récupération, même si le
+rapport ne constate pas de dérive dans son contexte observé. Un cycle terminal
+qui possède encore la branche est refusé explicitement : son contexte de
+diagnostic après transition reste à raccorder avec la finalisation R05.
+
+Preuves finales ciblées : **PASS**, deux contrôles rapides (contrat/sémantique
+structurelle et frontière Git privée), trois parcours de production files/dual/
+db-only sur projets jetables installés depuis les sources, puis les quatre
+régressions natives v2 sans sortie métier. Le parcours files contient réellement
+une modification privée protégée : son contenu est absent du contexte natif et
+le rapport none conduit à l'attente de récupération. Les trois parcours vérifient
+une seule session native doublée, l'évaluation déterministe sans nouvel appel
+modèle, l'attente et le replay/simulation exacts. Les références inventées,
+contexte périmé, sortie manquante/incohérente, mapping de schéma arbitraire et
+preuves natives modifiées sont refusés.
+
+Régressions complémentaires **PASS** : 83 contrôles natifs antérieurs sur la
+candidate avant le dernier raffinement de couverture privée et de prévalidation,
+20 contrôles de l'hôte d'opérations et 38 du réducteur/service. Les régressions v2
+et les cinq contrôles R05 ci-dessus portent sur le code final de la tranche ;
+ces ensembles ne sont pas revendiqués comme une exécution agrégée sans filtre.
+Le catalogue final passe ses 20 contrôles et les pins startup 12/cycle 10 sont
+exacts sans réparation à l'exécution. Source de vérité, métadonnées, complétude
+(38 concepts gouvernés, sortie typée subsumée), CLI de gouvernance, catalogue de
+gates, contrat Markdown, références, sensibilité et topologie package : PASS.
+Une annotation non prise en charge a été corrigée en title ; la prévalidation
+du schéma précède désormais l'allocation native. Aucun test de cette tranche ne
+reste actif. Route ASSURED sans issue ; les 60 gates de PR sélectionnés ne sont
+pas tous exécutés ici. Modèle natif réel, confinement/Job Windows réel,
+PostgreSQL/fournisseur PR réels, workflow standard complet et archive installée
+exacte : **NOT_RUN**.
+
+Prochaine étape L2 : consommer cette évaluation authentifiée pour persister le
+rapport métier et finaliser le vrai hook R05, seulement après contexte courant,
+autorisation d'effets et récupération/arbitrage humain requis. Couvrir le cas
+sans dérive, les refus/reports/annulations, les effets inconnus et le diagnostic
+après transition du cycle. Les ports DoR/travail/clôture/promotion/PR/sync et le
+modèle standard complet restent ensuite explicitement ouverts.
+
+Raccord de données L3/L5 à livrer explicitement : le modèle/catalogue standard
+doit déclarer comment les paramètres de démarrage, observations canoniques et
+résultats antérieurs alimentent chaque entrée d'opération. Le pilote de
+qualification fournit aujourd'hui explicitement `report_occurrence_id` ; cela
+ne prouve pas une résolution générale par le modèle. Prévoir un résolveur commun
+borné, sans code/JSONPath arbitraire, avec corrélation d'instance et de portée de
+boucle/appel. Les entrées effectivement résolues restent liées aux intentions,
+aperçus et reçus authentifiés. L'acceptation du workflow standard doit montrer
+ce raccord sans ordre de nœuds ni routage métier recodés dans un pilote ad hoc.

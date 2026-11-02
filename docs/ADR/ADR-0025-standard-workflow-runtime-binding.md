@@ -461,3 +461,45 @@ Qualification uses a bootstrap IR on real disposable project application ports
 with controller/native/provider doubles. It does not deliver the full standard
 IR, missing business adapters, ordinary CLI/console selection, live native/PR
 channels or exact installed-package A1–A10. Those remain explicit plan items.
+
+### Typed diagnostic output before R05 completion
+
+The internal execution configuration may explicitly map an activity to the fixed
+`standard-drift-report.v1` output contract through `activity_outputs`. This mapping
+requires the mixed authority, an activity role carrying `drift-check` and the exact
+distributed skill bytes. It selects no authored schema or module. Existing
+configurations retain their closed outcome/summary response; historical instance
+formats and hashes do not change.
+
+The trusted adapter observes canonical session/cycle, rule/baseline/snapshot
+documents, Git status/diff and controlled product hash. It bounds the diagnostic
+input and binds the native answer to its exact context hash. Reports retain
+original/current objectives, level, findings, keep/discard and split/recovery
+recommendations with observed evidence references. Invalid, incomplete, refused
+or inconsistent output cannot become a completed report.
+
+Only the configured product diff enters the diagnostic input. Other Git changes
+are represented by hashes/counts, without their paths or contents; configured
+private roots also deny diagnostic document delivery. Changes outside observed
+product/governance scope set `drift_context_complete: false` and require recovery
+review even when the scoped report says none. The complete standard model must
+consume that flag. A terminal cycle still owning the branch is explicitly refused
+until the post-transition diagnostic context is implemented; it never falls back
+silently to an unrelated session goal. Fixed output schemas are validated before
+native allocation. The trusted developer instructions scope this allocation to
+diagnosis, leaving the skill's effectful/finalization steps to the application.
+
+`drift_report_evaluate` consumes only accepted native output authenticated by the
+owned checkpoint and its transitive evidence. It reobserves current canonical
+context and verifies all reported references before issuing typed routing facts.
+It needs no model call. Authenticated provenance and structural consistency do
+not prove semantic truth. The report remains protected activity evidence,
+subsumed under the process instance; the signed operation journal retains its
+evaluation. No additional canonical workflow state or coordination table exists.
+
+Evaluation explicitly leaves skill completion pending. R05 hook finalization,
+human recovery/arbitration, authorized CR/parking-lot changes and DoR/work
+admission remain separate ports. A clean report cannot acknowledge that hook,
+and confirmed drift cannot authorize its own recovery writes. Native/provider
+transport fixtures qualify this wiring only; live semantic/native and installed
+standard-workflow qualification remain required.

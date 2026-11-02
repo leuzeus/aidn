@@ -16,6 +16,14 @@ existing physical worktree effect owner with mutating application ports. This
 adds no shared table or distributed ownership. It does not select the complete
 standard workflow through ordinary CLI/console entrypoints; see ADR-0025.
 
+Typed native activity outputs are protected result evidence in the allocation's
+external control root. A signed operation journal may retain their authenticated
+evaluation. This creates no additional canonical process state or shared table.
+The diagnostic adapter passes configured product diffs and canonical governance
+documents, while other Git changes retain hashes/counts and configured private
+roots remain denied. Coverage and diagnostic availability grant no R05 completion
+or recovery effects.
+
 Date: 2026-03-28  
 Status: current codebase inventory
 

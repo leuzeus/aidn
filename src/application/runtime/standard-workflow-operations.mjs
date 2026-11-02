@@ -19,7 +19,7 @@ import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
 
 const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
   "standard-cycle-operations.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
-  "standard-workflow-operation-host.mjs",
+  "standard-workflow-operation-host.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
   "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
@@ -27,6 +27,8 @@ function implementation() {
   const refs = [...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url), new URL("../../../tools/runtime/project-runtime-state.mjs", import.meta.url),
     new URL("../../lib/workflow/markdown-render-lib.mjs", import.meta.url), new URL("../../core/skills/skill-policy.mjs", import.meta.url),
     new URL("../../core/workflow/standard-operation-contracts.mjs", import.meta.url),
+    new URL("../../core/workflow/native-activity-output.mjs", import.meta.url),
+    ...["standard-drift-report.v1", "standard-drift-evaluate-input.v1", "standard-drift-output.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../core/workflow/standard-workflow-model-catalog.mjs", import.meta.url),
     new URL("../../core/workflow/process-operation-journal.mjs", import.meta.url), new URL("../../adapters/runtime/process-operation-journal-store.mjs", import.meta.url),
     new URL("../../core/workflow/process-decision-inbox.mjs", import.meta.url), new URL("../../adapters/runtime/process-decision-inbox-store.mjs", import.meta.url),
@@ -52,6 +54,7 @@ const definitions = [
   ["cycle_context_refresh", "context-reload", "projector", ["SPEC-R01", "SPEC-R04", "SPEC-R11"], "standard-session-reference-input.v1", "deterministic", "standard-cycle-output.v1"],
   ["cycle_initialize", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R06"], "standard-cycle-initialize-input.v1", "deterministic", "standard-cycle-output.v1"],
   ["branch_cycle_audit", "branch-cycle-audit", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-cycle-reference-input.v1", "deterministic", "standard-cycle-output.v1"],
+  ["drift_report_evaluate", "drift-check", "read-only", ["SPEC-R05"], "standard-drift-evaluate-input.v1", "deterministic", "standard-drift-output.v1"],
 ];
 export function standardWorkflowOperationBindings() {
   return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract, executor_kind = "deterministic", output_contract = "standard-operation-output.v1"]) => {

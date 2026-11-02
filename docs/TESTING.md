@@ -2,6 +2,23 @@
 
 ## Structured agentic process
 
+`--drift-only` selects typed R05 output checks in the production native suite.
+Closed report/schema negatives cover missing output, wrong context, invented
+evidence, inconsistent diagnosis and failed/refused responses. Disposable
+source-installed files/dual/db-only projects execute actual bootstrap ports,
+produce a native report through the production adapter with a transport double,
+and evaluate it through the deterministic signed operation port. The same IR
+routes clean and confirmed drift to explicit finalization/recovery waits and
+replays/simulates exactly. Context changes and modified protected evidence must
+refuse. A report or routing fact is not R05 completion, recovery authorization
+or DoR. No real model, provider or exact archive installation is qualified.
+`--drift-contract-only`, `--drift-git-only` and `--drift-mode=<files|dual|db-only>`
+split this set without altering the required default. A tracked private-file
+change must stay absent from the native diagnostic input and make a clean scoped
+report enter recovery wait. Git observations retain hashes/counts outside the
+declared product scope. These are adapter data-boundary proofs, not native OS
+confinement or semantic diagnostic qualification.
+
 `--mixed-only` selects the production mixed-host checks in
 `verify-agentic-process-execution-fixtures.mjs`; the required unfiltered suite
 retains them. A disposable source-installed project supplies actual activation,

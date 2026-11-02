@@ -523,3 +523,30 @@ combines actual application ports with native/provider transport doubles.
 Full business coverage, ordinary selection, long-wait budget continuation,
 real native isolation/provider channels and exact installed-package acceptance
 remain separate deliveries in the integration plan.
+
+### Typed R05 diagnostic component
+
+An internal mixed execution may pin `activity_outputs` to
+`{ "diagnostic_node": "standard-drift-report.v1" }`. The node must carry the
+exact distributed `drift-check` skill. This selects a fixed host contract; model
+data cannot supply a schema or module. Existing activities keep their original
+outcome/summary answer. The adapter runs actual drift-check admission before
+loading canonical diagnostic context and binds the report to that context.
+
+The deterministic `drift_report_evaluate` binding accepts only a producer
+occurrence, not a caller-authored report. It authenticates the accepted native
+result through the owned checkpoint, rechecks admission, canonical context and
+reported evidence, then emits typed routing facts without another model call.
+`changes` describes reported deviations from the objective/baseline; the observed
+Git diff remains separate input evidence. Authentication is provenance, not
+semantic proof. Evaluation leaves R05 completion pending and grants no recovery
+writes or DoR. Human arbitration, authorized artifact changes, report retention
+in business records and the actual finalization hook remain separate work.
+
+The diagnostic receives raw diffs only for configured product files. Other
+changes retain hashes/counts, and private roots cannot be delivered as diagnostic
+documents. A partial observation emits `drift_context_complete: false` and
+`drift_recovery_required: true`; the standard IR must route it to review rather
+than finalization. Post-transition cycle context remains explicitly unsupported
+instead of silently using a session objective. Neither this component nor its
+configuration mapping selects the complete standard workflow by default.

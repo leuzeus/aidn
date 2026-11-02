@@ -258,7 +258,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const node = occurrence && model.nodes.find(row => row.id === occurrence.node_id), binding = bindings.get(node?.binding_ref);
       if (!binding || !(occurrence.status === "READY" || occurrence.status === "WAITING" && ["blocked", "deferred"].includes(occurrence.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
       assertStandardOperationInput(binding.id, input);
-      const prepared = binding.id === "session_initialize" ? await operations.prepareSession(input)
+      const prepared = binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "session_initialize" ? await operations.prepareSession(input)
         : binding.id === "session_mode_apply" ? await operations.prepareMode(decisionInput(state.record, input))
         : binding.id === "session_start_finalize" ? await operations.prepareStart(input)
         : binding.id === "cycle_context_refresh" ? await operations.prepareCycleContext(input)
@@ -309,6 +310,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "cycle_admit") output = await operations.admitCycle(record.preview.input);
         else if (record.intent.binding_ref === "branch_cycle_audit") output = await operations.auditCycle(record.preview.input);
+        else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
         else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
           outcome: "blocked", effect_status: "no_effect", facts: {}, observations: record.preview.prepared ?? {}, evidence_refs: [] };
         else if (record.intent.binding_ref === "session_initialize") output = await operations.initializeSession(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });

@@ -23,7 +23,7 @@ try {
 } catch (error) {
   // No raw error/body/configuration is written to stderr.
   const candidate = error?.code ?? error?.message;
-  const code = /^(PROCESS_|STANDARD_PROCESS_|NATIVE_ALLOCATION_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(candidate ?? "") ? candidate : "PROCESS_WORKER_FAILED";
+  const code = /^(PROCESS_|STANDARD_PROCESS_|STANDARD_DRIFT_|NATIVE_ALLOCATION_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(candidate ?? "") ? candidate : "PROCESS_WORKER_FAILED";
   process.stderr.write(code + "\n");
   process.stdout.write(JSON.stringify({ contract_version: "agentic-process-execution-result.v1", status: "FAILED", first_failure: code,
     global_deadline_ms: Number.isSafeInteger(specification?.authorization?.global_deadline_ms) ? specification.authorization.global_deadline_ms : null,

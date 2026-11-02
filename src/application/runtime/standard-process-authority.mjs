@@ -9,10 +9,14 @@ import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-
 import { createNativeAllocationJournalStore } from "../../adapters/runtime/native-allocation-journal-store.mjs";
 import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
 import { nativeJournalId } from "../../core/workflow/native-allocation-journal.mjs";
-import { readNativeAllocationCheckpoint } from "./native-allocation-evidence.mjs";
+import { readNativeAllocationCheckpoint, nativeEvidenceFile } from "./native-allocation-evidence.mjs";
+import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
+import { readStandardDriftContext, evaluateStandardDriftReport } from "./standard-drift-report.mjs";
+import { DRIFT_REPORT_CONTRACT, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
+import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { assertStandardWorkflowModelSource } from "../../core/workflow/standard-workflow-model-catalog.mjs";
 import { assertStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
-import { assertAgenticProcessInstance, agenticProcessPrefixSha256 } from "../../core/workflow/agentic-process.mjs";
+import { assertAgenticProcessInstance, agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
@@ -105,5 +109,38 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     });
     return result.value;
   }
-  return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, modelSource: source });
+  async function prepareActivityOutput({ contractRef, productSha256 }) {
+    if (contractRef !== DRIFT_REPORT_CONTRACT) fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
+    read(); const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "drift-check" });
+    if (admission.ok !== true || admission.activation?.active !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status))
+      fail("STANDARD_DRIFT_ADMISSION_BLOCKED");
+    return { ...readStandardDriftContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
+      productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment }),
+      admission: { status: admission.admission_status, observation_sha256: shadowHash(admission) } };
+  }
+  function readActivityOutput(instance, occurrenceId) {
+    const state = authenticate(instance), event = instance.events.find(row => row.kind === "result" && row.occurrence_id === occurrenceId);
+    if (!state || !event || event.result.outcome !== "completed") fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
+    const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId), node = model.nodes.find(row => row.id === frame?.node_id);
+    if (configuration.activity_outputs?.[node?.id] !== DRIFT_REPORT_CONTRACT) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
+    const retained = state.results.find(row => row.result.result_id === event.result.result_id);
+    if (!retained || shadowHash(retained.result) !== shadowHash(event.result)) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
+    const references = event.result.evidence_refs.filter(row => /-native-result\.json$/.test(row.ref));
+    if (references.length !== 1) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
+    const journal = allocations.read(nativeJournalId(instance)).record;
+    const data = readAgentRunFile(nativeEvidenceFile(configuration, references[0], journal.allocations.length), { maxBytes: 262144 });
+    const answer = data.value;
+    if (data.sha256 !== references[0].sha256 || answer.request_sha256 !== event.result.request_sha256 || answer.output_contract !== DRIFT_REPORT_CONTRACT)
+      fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
+    assertNativeActivityAnswer(answer.answer, DRIFT_REPORT_CONTRACT, answer.output_context_sha256);
+    if (answer.answer.outcome !== "completed") fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
+    return { report: answer.answer.report, reference: references[0], producer: { instance_id: instance.instance_id, model_sha256: instance.model_sha256,
+      occurrence_id: occurrenceId, result_id: event.result.result_id } };
+  }
+  async function evaluateDriftReport(instance, input) {
+    assertStandardOperationInput("drift_report_evaluate", input);
+    return evaluateStandardDriftReport(readActivityOutput(instance, input.report_occurrence_id),
+      await prepareActivityOutput({ contractRef: DRIFT_REPORT_CONTRACT, productSha256: readProductSha256?.() }));
+  }
+  return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, modelSource: source });
 }

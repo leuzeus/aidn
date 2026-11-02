@@ -127,7 +127,8 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     if (!task.policy.independent_review) resource.contributions.push({ scope_id: instance.scope_id,
       revision: frame.request.revision, activity_id: occurrenceId, artifact_sha256: frame.request.artifact_sha256, role: frame.request.role });
     const completion = checked(await resource.session.run({ instruction: task.input.instruction,
-      request_sha256: shadowHash(frame.request), signal, deadline }));
+      request_sha256: shadowHash(frame.request), signal, deadline,
+      ...(task.input.output_contract ? { output_contract: task.input.output_contract, output_context_sha256: task.input.output_context_sha256 } : {}) }));
     remaining();
     if (completion.session_id !== resource.sessionId || completion.binding_sha256 !== resource.binding
       || !["completed", "failed", "rejected"].includes(completion.outcome)

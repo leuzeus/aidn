@@ -10,6 +10,16 @@ function freezeDeep(value) {
 
 const GOVERNANCE_COVERAGE_EXCEPTIONS = freezeDeep([
   {
+    concept: "native_activity_output",
+    coverage_kind: "subsumed",
+    governed_by: "agentic_process_instance",
+    source_of_truth_relation: "typed native answer retained as protected result evidence and authenticated through the owned allocation checkpoint; evaluated business claims stay in the signed operation journal",
+    metadata_relation: "fixed standard-drift-report.v1 contract, exact canonical context hash, observed evidence references and producer occurrence/result identity; output is not a new permission or workflow state",
+    lifecycle_status: "observed -> authenticated retained result -> evaluated|stale|invalid; skill completion remains separate",
+    scope: "one accepted activity occurrence in one pinned model/instance and canonical project context",
+    rationale: "The host authenticates provenance and context, not semantic truth. Diagnostic availability never implies drift recovery, authorized CR/parking-lot writes, R05 completion or admission to product work.",
+  },
+  {
     concept: "native_host_state",
     coverage_kind: "subsumed",
     governed_by: "agentic_process_instance",
