@@ -600,3 +600,23 @@ and rechecks the actual admission before effects. Later cycle inputs come from
 the accepted initialization journal. The common reducer retains all waits and
 refusals. These are versioned components of the remaining full standard model,
 not an ordinary CLI/console selection of that complete model.
+
+### Recovery review and findings
+
+The internal mixed host also accepts `drift_recovery_decision` followed by
+`drift_recovery_record`. The first consumes an accepted evaluation identity and
+asks a human about a fresh confirmed diagnosis and exact documentation proposal.
+Its source cannot be a mode answer or an unverified human claim. A report,
+refusal, deferred answer or cancellation cannot approve recovery effects.
+The second consumes the accepted decision identity and requires a live write
+grant to persist findings in canonical parking-lot and update current-state's
+next-action summary. It records a checked causal context transition and retains
+uncertainty after any unconfirmed effect. Parameters cannot choose writable
+paths or discount other Git/canonical changes.
+
+Questions contain hashes and bounded proposed text edits, not repeated complete
+context documents. New recovery inbox records are v2; mode inbox v1 remains
+readable and unchanged. Subsequent diagnostics read canonical parking-lot too.
+These operations document the decision and findings. They leave the actual
+CR/cycle/rollback operation, fresh diagnosis and R05 checkpoint pending; no
+product-work permission follows from their completion.

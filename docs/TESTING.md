@@ -2,6 +2,29 @@
 
 ## Structured agentic process
 
+`verify-drift-recovery-fixtures.mjs` checks closed recovery questions/plans and
+typed human outcomes with a synthetic source/inbox, real Git boundary checks,
+and actual canonical CAS/projection ports under a doubled evaluation authority.
+It separates MAC retention from live human verification, bounds long append
+text, refuses stale context/authorization, and injects a real partial SQLite
+write that must retain uncertainty and ownership. Seeded canonical annotations
+must survive recording; a metadata-only edit after review must refuse. Its inclusion in the existing
+agentic gate does not qualify a native human source or complete recovery.
+An independent dual project loses a required projection under a filesystem
+fault: no confirmation or owner release is allowed. A redirected projection
+directory must refuse before evaluation/write; unavailable host link privilege
+is reported separately as SKIP.
+
+`--drift-recovery-mode=<files|dual|db-only>` in the execution suite exercises the
+production mixed host, authenticated typed native diagnostic (transport double),
+durable human report/resume and actual canonical findings writer. No operator
+passes evaluation/decision IDs to steps: the qualification IR resolves them.
+Missing/unverified/unoffered choices cannot authorize writes. Accepted decisions
+survive source disappearance; confirmed dispatch is retained, and replay/
+simulation use the same model/reducer. The resulting instance stays waiting for
+actual recovery, with R05 incomplete. Real native/human/provider, exact archive
+and full standard acceptance remain separate proofs.
+
 The published startup/cycle component suites initialize immutable parameters
 once, then select leaves from the common cursor with no operation input. Startup
 resolves its accepted mode decision identity and its fresh db-only scenario

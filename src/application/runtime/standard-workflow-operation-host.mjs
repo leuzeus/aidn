@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { createStandardDriftFinalization } from "./standard-drift-finalization.mjs";
+import { createStandardDriftRecovery } from "./standard-drift-recovery.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
@@ -43,6 +44,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input), readCurrent: id => current(id).record }) : null;
+  const recovery = processAuthority ? createStandardDriftRecovery({ targetRoot, now,
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
   const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
   if (model.contract_version !== "agentic-process-model.v2" || typeof authorize !== "function") fail("STANDARD_HOST_CONFIGURATION_INVALID");
   if (controlSource != null && (typeof controlSource.read !== "function" || typeof controlSource.verify !== "function")) fail("STANDARD_HOST_CONTROL_CONFIGURATION_INVALID");
@@ -86,7 +90,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const value = journal.read(id);
     if (!value.record) fail("PROCESS_JOURNAL_NOT_FOUND");
     signer.verify(value.record); validatePreview(value.record.preview);
-    if (value.record.intent.binding_ref === "mode_decision" && value.record.results.length) human.captured(value.record);
+    if (value.record.preview.binding.executor_kind === "human" && value.record.results.length) human.captured(value.record);
     return value;
   }
   function persist(body, expected) {
@@ -131,7 +135,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     async verifyReceipt({ receipt, intent, instance, signal }) {
       scope(instance); const record = retained(intent.operation_id).record; await verifyGrant(record, signal);
-      if (record.intent.binding_ref === "mode_decision") await human.verifyCaptured(record, signal);
+      if (record.preview.binding.executor_kind === "human") await human.verifyCaptured(record, signal);
       if (shadowHash(record.results.at(-1)?.receipt) !== shadowHash(receipt) || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
@@ -204,6 +208,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       // copy constrained by the receipt URI grammar.
       evidence_refs: [{ ref: operationOutputRef(record.operation_id), sha256: shadowHash(output) }] };
   }
+  async function recoveryDecision(instance, input) {
+    const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_recovery_decision").at(-1);
+    if (!latest || latest.intent.operation_id !== input.decision_operation_id) fail("STANDARD_RECOVERY_DECISION_REQUIRED");
+    const record = retained(input.decision_operation_id).record, receipt = record.results.at(-1)?.receipt;
+    if (receipt?.outcome !== "completed" || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) fail("STANDARD_RECOVERY_DECISION_NOT_ACCEPTED");
+    const choice = human.captured(record).source.choice, review = record.preview.prepared.plan;
+    if (!review.options.some(row => row.choice === choice)) fail("STANDARD_RECOVERY_CHOICE_REQUIRED");
+    await recovery.assertFresh(instance, review);
+    return { review, choice, decision_operation_id: input.decision_operation_id };
+  }
   async function commitIntent(id, { write = false } = {}) {
     if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
     const record = retained(id).record, state = current(record.intent.instance_id);
@@ -267,6 +281,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       input = resolved.input;
       assertStandardOperationInput(binding.id, input);
       const prepared = binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
+          return { ...body, can_apply: true, plan_sha256: shadowHash(body) }; })()
         : binding.id === "drift_check_finalize" ? await driftFinalization?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_initialize" ? await operations.prepareSession(input)
         : binding.id === "session_mode_apply" ? await operations.prepareMode(decisionInput(state.record, input))
@@ -309,7 +326,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.phase !== "staged") return { status: "reconciliation_required", operation_id: id };
       const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
       if (frame?.status !== "WAITING" || !frame.operation || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent)) fail("STANDARD_HOST_CANONICAL_INTENT_REQUIRED");
-      if (record.preview.binding.executor_kind === "human") return { status: "waiting_for_human", question: human.question(record) };
+      if (record.preview.binding.executor_kind === "human") {
+        if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
+        return { status: "waiting_for_human", question: human.question(record) };
+      }
       await verifyGrant(record);
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       const { authentication, key_id, ...body } = record;
@@ -327,6 +347,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           outcome: "blocked", effect_status: "no_effect", facts: {}, observations: record.preview.prepared ?? {}, evidence_refs: [] };
         else if (record.intent.binding_ref === "drift_check_finalize") output = await driftFinalization.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "drift_recovery_record") {
+          try {
+            const selected = await recoveryDecision(state.record, record.preview.input);
+            if (shadowHash(selected.review) !== shadowHash(record.preview.prepared.review) || selected.choice !== record.preview.prepared.choice) fail("STANDARD_RECOVERY_DECISION_CHANGED");
+          } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
+          output = await recovery.apply(state.record, record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        }
         else if (record.intent.binding_ref === "session_initialize") output = await operations.initializeSession(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "session_mode_apply") {
           if (shadowHash(decisionInput(state.record, record.preview.input)) !== shadowHash(record.preview.prepared.plan.input)) fail("STANDARD_MODE_DECISION_CHANGED");
@@ -352,7 +379,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async receiveDecision(id, { sourceRef, write = false } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.preview.binding.executor_kind !== "human" || record.intent.binding_ref !== "mode_decision") fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.preview.binding.executor_kind !== "human" || !["mode_decision", "drift_recovery_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
       if (record.phase === "receipted") {
         const capture = human.captured(record);
         if (capture.source_ref !== sourceRef) fail("PROCESS_HUMAN_DECISION_ALREADY_CAPTURED");
@@ -362,9 +389,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
       if (frame?.status !== "WAITING" || !frame.operation || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent)) fail("STANDARD_HOST_CANONICAL_INTENT_REQUIRED");
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       const capture = await human.reserve(record, sourceRef);
       if (!capture) return { status: "waiting_for_human", question: human.question(record) };
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       const { authentication, key_id, ...body } = record;
       const claimed = record.phase === "staged" ? persist({ ...body, phase: "dispatching", revision: record.revision + 1, owner: { generation, pid: process.pid } }, before.content_sha256) : record;
       const output = human.output(claimed, capture), receipt = resultReceipt(claimed, output), latest = retained(id);

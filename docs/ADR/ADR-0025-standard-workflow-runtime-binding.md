@@ -608,5 +608,52 @@ result authentication still apply. Data selection makes no model call.
 Parameters are preserved by native-start reconstruction, control-prefix checks
 and simulation. Simulation still consumes an explicit offline event scenario;
 it does not authenticate or execute effects. This mechanism supplies L3/L5
-infrastructure. The complete standard model, published component mappings and
+infrastructure. The complete standard model, mappings for the remaining ports and
 ordinary CLI/console parameter entrypoints remain a separate integration task.
+
+### Authenticated recovery review and findings
+
+`drift_recovery_decision` prepares a complete, fresh confirmed diagnosis for
+human review. The question binds the evaluation, context and fixed proposed
+artifact changes. It offers change-request planning only for an active cycle,
+plus new-cycle planning and scope rollback, and keeps refused/deferred/cancelled
+outcomes distinct. A chosen option is an intent to recover, not proof of the
+recovery effect. The decision source and inbox use their own closed contracts;
+new recovery captures write inbox v2 while historical mode captures remain v1.
+Neither source is converted or inferred from model text.
+
+`drift_recovery_record` requires the accepted authenticated choice, a fresh
+preview and live explicit write grant. It appends confirmed findings and the
+recovery proposal to canonical parking-lot and updates only the current-state
+next-action summary/date. The proposal carries bounded text chunks, before/after
+hashes and append/replace intent; it does not duplicate complete SPEC/context
+documents in the human question. Existing string limits stay unchanged. Full
+context/evaluation hashes and trusted re-observation bind those references.
+
+The fixed writer owns exactly these two paths. A private boundary fingerprint
+checks all other observed canonical context, Git changes outside these paths,
+and their unchanged index images. Exact consented post-images are checked after
+CAS/projection. The receipt retains the causal before/after context and file
+hashes. Existing canonical classification/linkage is preserved; the locked CAS
+also binds its metadata preimage and the receipt retains the observed after
+metadata hash. Concurrent changes or partial effects retain uncertainty and the local
+owner. Missing/declined consent never writes findings. Parking-lot is included
+in subsequent diagnostic evidence, so these known governance writes do not
+become unexplained product-scope changes.
+
+Required projection targets pass the existing physical-path/regular-file guard
+before preparation; their actual bytes must match the canonical post-images
+after projection. DB-only does not require or adopt a visible projection. An
+unconfirmed dual projection is an unknown effect, not a confirmed write.
+
+Every new evaluation clears the reducer's earlier R05-completed fact; historical
+events and actual earlier hook receipts are preserved. Recording still reports
+recovery required, R05 incomplete and recovery execution pending. Actual CR/
+requirements changes, cycle choice/creation, authorized rollback, fresh native
+re-evaluation and eventual checkpoint remain separately required. This tranche
+does not finish the standard graph or its ordinary entry integration.
+
+The generic mixed step can prepare a fresh intent for a blocked/deferred
+operation when explicitly invoked with write intent; preview stays read-only.
+It never retries an unknown effect or turns the earlier non-success into a
+success. The same reducer still owns the occurrence and attempt identity.

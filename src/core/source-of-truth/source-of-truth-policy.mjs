@@ -57,9 +57,9 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     lifecycle: "reserved -> receipted; absent or unverified source never completes an operation",
     scope: "physical project, authenticated source event and exact process operation/question",
     retention: "retain immutable source, deduplication identity and receipt acknowledgement without automatic purge",
-    migration: "new explicit inbox only; never infer a decision from historical text or convert old instances",
+    migration: "mode inbox v1 and explicit typed recovery inbox v2 coexist; never infer a decision from historical text or convert old instances",
     replacement: "signed canonical artifact CAS; source identity cannot be reused for another operation",
-    evidence_targets: ["src/core/workflow/process-decision-inbox.mjs", "src/adapters/runtime/process-decision-inbox-store.mjs", "src/application/runtime/standard-workflow-human-decisions.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs"],
+    evidence_targets: ["src/application/runtime/standard-drift-recovery.mjs", "tools/perf/verify-drift-recovery-fixtures.mjs", "src/core/workflow/process-decision-inbox.mjs", "src/adapters/runtime/process-decision-inbox-store.mjs", "src/application/runtime/standard-workflow-human-decisions.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs"],
   },
   process_operation_journal: {
     owner: "trusted operation execution host",

@@ -45,6 +45,8 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
   const objective = brief ? objectiveSection?.replace(/^\s*-\s*/, "").replace(/\s+/gu, " ").trim() : analyzeStructuredArtifact(session.content).key_values.session_objective;
   if (!objective || objective.length > 4096) fail("STANDARD_DRIFT_OBJECTIVE_REQUIRED");
   const documents = ["SPEC.md", "WORKFLOW.md", "baseline/current.md", "snapshots/context-snapshot.md"].map(name => artifacts.read(name, { required: true }));
+  const parking = artifacts.read("parking-lot.md");
+  if (parking.sha256 !== null) documents.push(parking);
   documents.push(current, session); if (cycle) {
     documents.push(cycle, brief);
     for (const name of ["plan.md", "change-requests.md"]) documents.push(artifacts.read(cycle.path.replace(/status\.md$/, name), { required: true }));
@@ -71,7 +73,8 @@ export function evaluateStandardDriftReport(authenticated, current) {
   // This evaluates the diagnostic. It neither completes R05 nor handles recovery.
   const count = current.context.git?.other_changes?.count, complete = Number.isSafeInteger(count) && count === 0;
   return { contract_version: "standard-drift-output.v1", operation_ref: "drift_report_evaluate", outcome: "completed", effect_status: "no_effect",
-    facts: { drift_report_available: true, drift_present: report.drift_level !== "none", drift_recovery_required: report.drift_level !== "none" || !complete, drift_context_complete: complete },
+    facts: { drift_report_available: true, drift_present: report.drift_level !== "none", drift_recovery_required: report.drift_level !== "none" || !complete, drift_context_complete: complete,
+      drift_check_completed: false },
     observations: { report, producer: authenticated.producer, scope: { session_id: current.context.session_id, cycle_id: current.context.cycle_id,
       ...(current.context.context_use ? { context_use: current.context.context_use, cycle_state: current.context.cycle_state } : {}) },
       skill_completion: "pending", recovery_writes_authorized: false, coverage: { context_complete: complete, other_changes: count ?? null,

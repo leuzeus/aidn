@@ -1,9 +1,14 @@
-import { assertHumanModeDecision, assertModeQuestion, decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
+import { assertHumanModeDecision, assertModeQuestion, assertRecoveryQuestion, assertHumanRecoveryDecision, decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
 export function createStandardHumanDecisions({ inbox, signer, source, projectionRequired }) {
-  const question = record => assertModeQuestion({ contract_version: "standard-mode-question.v1", operation_id: record.operation_id, instance_id: record.intent.instance_id,
+  const recovery = record => record.intent.binding_ref === "drift_recovery_decision";
+  const question = record => recovery(record) ? assertRecoveryQuestion({ contract_version: "standard-drift-recovery-question.v1", operation_id: record.operation_id,
+    instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+    session_id: record.preview.prepared.plan.session_id, review: structuredClone(record.preview.prepared.plan),
+    choices: [...record.preview.prepared.plan.options.map(row => row.choice), "refused", "deferred", "cancelled"] })
+    : assertModeQuestion({ contract_version: "standard-mode-question.v1", operation_id: record.operation_id, instance_id: record.intent.instance_id,
     scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
     session_id: record.preview.input.session_id, choices: [...choices] });
   function read(id) {
@@ -26,8 +31,9 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal) {
-    assertHumanModeDecision(claim);
+    if (request.contract_version === "standard-drift-recovery-question.v1") assertHumanRecoveryDecision(claim); else assertHumanModeDecision(claim);
     if (claim.question_sha256 !== shadowHash(request)) fail("PROCESS_HUMAN_QUESTION_CHANGED");
+    if (!request.choices.includes(claim.choice)) fail("PROCESS_HUMAN_CHOICE_NOT_OFFERED");
     const proof = await bounded("verify", { source: claim, sourceRef, question: request }, signal);
     if (proof?.outcome !== "verified" || proof.authority_id !== claim.authority_id || proof.source_sha256 !== shadowHash(claim)) fail("PROCESS_HUMAN_NOT_AUTHENTICATED");
   }
@@ -58,7 +64,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      return write({ contract_version: "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
+      return write({ contract_version: recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
         source: claim, phase: "reserved", receipt_sha256: null }, null);
     },
     acknowledge(id, receipt) {
@@ -75,11 +81,15 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       const value = captured(record); await verify(value.source, value.source_ref, question(record), signal);
     },
     output(record, capture) {
-      const choice = capture.source.choice, accepted = ["THINKING", "EXPLORING", "COMMITTING"].includes(choice);
+      const choice = capture.source.choice, isRecovery = recovery(record);
+      const accepted = (isRecovery ? record.preview.prepared.plan.options.map(row => row.choice) : ["THINKING", "EXPLORING", "COMMITTING"]).includes(choice);
       const outcome = accepted ? "completed" : choice === "refused" ? "rejected" : choice;
-      return { contract_version: "standard-operation-output.v2", operation_ref: "mode_decision", outcome, effect_status: "no_effect",
+      return { contract_version: isRecovery ? "standard-drift-recovery-output.v1" : "standard-operation-output.v2",
+        operation_ref: isRecovery ? "drift_recovery_decision" : "mode_decision", outcome, effect_status: "no_effect",
         observations: { inbox_id: capture.inbox_id, source_ref: capture.source_ref, source_sha256: shadowHash(capture.source), choice },
-        facts: accepted ? { mode_thinking: choice === "THINKING", mode_exploring: choice === "EXPLORING", mode_committing: choice === "COMMITTING" } : {},
+        facts: !accepted ? {} : isRecovery ? { drift_recovery_chosen: true, drift_recovery_requirements_delta: choice === "requirements_delta",
+          drift_recovery_new_cycle: choice === "new_cycle", drift_recovery_rollback: choice === "rollback", drift_recovery_required: true, drift_check_completed: false }
+          : { mode_thinking: choice === "THINKING", mode_exploring: choice === "EXPLORING", mode_committing: choice === "COMMITTING" },
         evidence_refs: [{ ref: `aidn:decision-source/${capture.inbox_id}`, sha256: shadowHash(capture.source) }, ...capture.source.evidence_refs] };
     },
   });

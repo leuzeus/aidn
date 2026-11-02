@@ -50,6 +50,8 @@ import { assertAgenticControlScenario } from "../../src/core/workflow/agentic-pr
 import { republishBrokerProductFile } from "../../src/adapters/runtime/broker-product-file.mjs";
 import { createProjectWorkflowInstanceService } from "../../src/application/runtime/workflow-instance-composition.mjs";
 
+const selectedRecoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
+if (selectedRecoveryMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryMode)) throw Error("RECOVERY_FIXTURE_MODE_INVALID");
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
 const businessRoots = [];
@@ -65,6 +67,8 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow )/.test(name)) return;
   const dataflowMode = process.argv.find(value => value.startsWith("--dataflow-mode="))?.slice("--dataflow-mode=".length);
   if (dataflowMode && !name.startsWith(`dataflow ${dataflowMode}:`)) return;
+  const recoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
+  if (recoveryMode && !name.startsWith(`drift recovery ${recoveryMode}:`)) return;
   if (process.argv.includes("--drift-only") && !name.startsWith("drift ")) return;
   if (process.argv.includes("--drift-git-only") && !name.startsWith("drift controlled Git")) return;
   if (process.argv.includes("--drift-contract-only") && !name.startsWith("drift contract ")) return;
@@ -357,6 +361,23 @@ function mixedFixture(stateMode = "files", options = {}) {
           : { source: "operation_output", node_id: "initialize", path: ["observations", "postconditions", "admission", "active_session"] } } },
       ] };
     }
+    if (options.recovery) {
+      for (const id of ["drift_recovery_decision", "drift_recovery_record"]) model.operation_pins[id] = shadowHash(standardWorkflowOperationBindings().find(row => row.id === id));
+      model.nodes = [{ id: "mixed", kind: "sequence", participant_ref: "delivery", children: ["reload", "admit", "initialize", "analyze", "evaluate", "decide", "record", "recovery_action_pending"] },
+        ...model.nodes.filter(row => ["reload", "admit", "initialize", "analyze", "evaluate"].includes(row.id)),
+        op("decide", "drift_recovery_decision"), op("record", "drift_recovery_record"),
+        { id: "recovery_action_pending", kind: "event", participant_ref: "delivery", branches: [
+          { flow_id: "executed", node_id: "action_executed", event_key: "executed" }, { flow_id: "cancel", node_id: "action_cancelled", event_key: "cancelled" }] },
+        op("action_executed", "context_reload"), op("action_cancelled", "context_reload")];
+      model.data_bindings = { contract_version: "process-data-bindings.v1", parameter_keys: ["session"], inputs: [
+        { node_id: "reload", fields: {} }, { node_id: "admit", fields: {} },
+        { node_id: "initialize", fields: Object.fromEntries(["session_id", "session_branch", "objective"].map(name => [name, { source: "parameter", key: "session", path: [name] }])) },
+        { node_id: "evaluate", fields: { report_occurrence_id: { source: "occurrence_id", node_id: "analyze" } } },
+        { node_id: "decide", fields: { evaluation_operation_id: { source: "operation_id", node_id: "evaluate" } } },
+        { node_id: "record", fields: { decision_operation_id: { source: "operation_id", node_id: "decide" } } },
+        { node_id: "action_executed", fields: {} }, { node_id: "action_cancelled", fields: {} },
+      ] };
+    }
     fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   }
   f.configuration.instructions = options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
@@ -369,7 +390,7 @@ function mixedFixture(stateMode = "files", options = {}) {
   const key = Buffer.alloc(32, 91), t = transport(f, options), controllerFactory = journalController(f, t, options);
   const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
   const open = () => createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key,
-    authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource }, { controllerFactory });
+    authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource }, { controllerFactory });
   Object.assign(f, { open, key, t, model }); return f;
 }
 async function bootstrapMixed(f) {
@@ -449,6 +470,19 @@ if (process.argv[2] === "--mixed-continue") {
     process.stdout.write(JSON.stringify({ native, status: last.cursor.status, instance_sha256: last.record.instance_sha256, launches: f.launches,
       sessions: t.sessions.length, closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+} else if (process.argv[2] === "--recovery-record") {
+  try {
+    const data = JSON.parse(fs.readFileSync(process.argv[3])), f = { ...data.fixture, launches: 0 }, key = Buffer.from(data.key_hex, "hex"), t = transport(f);
+    const host = createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key,
+      authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }) }, { controllerFactory: journalController(f, t) });
+    const result = await host.step({ write: true });
+    process.stdout.write(JSON.stringify({ operation_id: result.operation_id, instance_sha256: result.record.instance_sha256,
+      status: result.cursor.status, launches: f.launches, sessions: t.sessions.length }) + "\n");
+  } finally {
+    const owned = fs.realpathSync(root);
+    assert.equal(path.dirname(owned), fs.realpathSync(os.tmpdir())); assert.ok(path.basename(owned).startsWith("aidn-agentic-execution-"));
+    fs.rmSync(owned, { recursive: true, force: true });
+  }
 } else if (process.argv[2] === "--resume-allocation") {
   try {
     const data = JSON.parse(fs.readFileSync(process.argv[3])), f = { ...data.fixture, launches: 0 }, key = Buffer.from(data.key_hex, "hex"), t = transport(f);
@@ -494,6 +528,72 @@ if (process.argv[2] === "--mixed-continue") {
     const simulation = simulateAgenticProcess({ instanceId: waiting.record.instance_id, scopeId: waiting.record.scope_id, model: waiting.record.model,
       policyPins: waiting.record.policy_pins, parameters: waiting.record.initial_parameters, events: waiting.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, waiting.record.instance_sha256);
+  });
+  for (const mode of ["files", "dual", "db-only"]) await check(`drift recovery ${mode}: authenticated human review records actual findings without completing recovery`, async () => {
+    const claims = new Map(), humanSource = {
+      read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
+      verify: ({ source, sourceRef, question }) => sourceRef !== "forged" && shadowHash(claims.get(sourceRef)) === shadowHash(source) && source.question_sha256 === shadowHash(question)
+        ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" },
+    };
+    const f = mixedFixture(mode, { drift: true, recovery: true, humanSource, answer({ params }) {
+      const context = JSON.parse(params.input[0].text.split("\n").at(-1));
+      return { outcome: "completed", summary: "Recovery diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
+        original_objective: context.context.original_objective, current_objective: context.context.original_objective + " with changed scope", drift_level: "severe", objective_changed: true,
+        changes: ["Confirmed fixture scope expansion."], keep: ["Original scope"], discard: [],
+        split_recommendation: { new_cycle: true, new_branch: true, change_request_required: true, impact: "high" },
+        recommendation: "human_arbitration", rationale: "Typed fixture diagnostic, not a live model verdict.", evidence_refs: context.evidence_refs } };
+    } });
+    const auth = await bootstrapMixed(f), native = await f.open().step({ write: true, authorization: auth }); assert.equal(native.journal_phase, "closed");
+    console.log(`STEP drift recovery ${mode}: native producer closed`);
+    const evaluated = await f.open().step({ write: true }); assert.equal(evaluated.kind, "operation");
+    let waiting = await f.open().step({ write: true }); assert.equal(waiting.status, "waiting_for_human");
+    console.log(`STEP drift recovery ${mode}: authenticated review is waiting`);
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }), beforeParking = artifacts.read("parking-lot.md").sha256,
+      beforeCurrent = artifacts.read("CURRENT-STATE.md").sha256, id = waiting.question.operation_id;
+    assert.equal(waiting.question.contract_version, "standard-drift-recovery-question.v1");
+    assert.deepEqual(waiting.question.choices, ["new_cycle", "rollback", "refused", "deferred", "cancelled"]);
+    assert.equal((await f.open().receiveDecision(id, { sourceRef: "missing", write: true })).status, "waiting_for_human");
+    const claim = choice => ({ contract_version: "human-drift-recovery-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+      source_event_id: `recovery-${mode}-${choice}`, subject_sha256: "a".repeat(64), question_sha256: shadowHash(waiting.question), choice,
+      evidence_refs: [{ ref: "fixture:operator/recovery", sha256: "a".repeat(64) }] });
+    claims.set("forged", claim("new_cycle"));
+    await assert.rejects(f.open().receiveDecision(id, { sourceRef: "forged", write: true }), /PROCESS_HUMAN_NOT_AUTHENTICATED/);
+    claims.set("unoffered", claim("requirements_delta"));
+    await assert.rejects(f.open().receiveDecision(id, { sourceRef: "unoffered", write: true }), /PROCESS_HUMAN_CHOICE_NOT_OFFERED/);
+    claims.set("defer", claim("deferred"));
+    await f.open().receiveDecision(id, { sourceRef: "defer", write: true }); await f.open().acceptOperation(id, { write: true });
+    assert.equal(f.open().inspect().cursor.status, "WAITING"); assert.equal(artifacts.read("parking-lot.md").sha256, beforeParking);
+    waiting = await f.open().step({ write: true }); assert.equal(waiting.status, "waiting_for_human"); assert.notEqual(waiting.question.operation_id, id);
+    claims.set("accept", claim("new_cycle"));
+    const nextId = waiting.question.operation_id;
+    await f.open().receiveDecision(nextId, { sourceRef: "accept", write: true }); await f.open().acceptOperation(nextId, { write: true });
+    console.log(`STEP drift recovery ${mode}: deferred review resumed and accepted`);
+    const beforeRecord = f.open().inspect(); assert.equal(artifacts.read("parking-lot.md").sha256, beforeParking); assert.equal(artifacts.read("CURRENT-STATE.md").sha256, beforeCurrent);
+    claims.clear(); // An accepted, MAC-retained choice survives source disappearance.
+    let recorded;
+    if (mode === "files") {
+      const file = put(f.base, "recovery-restart.json", JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex") }));
+      const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--recovery-record", file], { encoding: "utf8", shell: false, windowsHide: true, timeout: 300000 });
+      assert.equal(child.status, 0, child.stderr); const reopened = JSON.parse(child.stdout);
+      assert.equal(reopened.status, "WAITING"); assert.equal(reopened.launches, 0); assert.equal(reopened.sessions, 0);
+      assert.equal(f.open().inspect().record.instance_sha256, reopened.instance_sha256); recorded = { operation_id: reopened.operation_id };
+    } else recorded = await f.open().step({ write: true });
+    const output = f.open().readOperation(recorded.operation_id).results.at(-1).output;
+    assert.equal(output.outcome, "completed", JSON.stringify(output)); assert.equal(output.effect_status, "confirmed");
+    assert.equal(output.facts.drift_recovery_recorded, true); assert.equal(output.facts.drift_check_completed, false); assert.equal(output.observations.recovery_execution, "pending");
+    assert.notEqual(artifacts.read("parking-lot.md").sha256, beforeParking); assert.notEqual(artifacts.read("CURRENT-STATE.md").sha256, beforeCurrent);
+    assert.equal(artifacts.ownerPending(), false); assert.match(artifacts.read("parking-lot.md").content, /Confirmed fixture scope expansion/);
+    assert.equal(output.observations.causal_transition.before_context_sha256, waiting.question.review.context_sha256);
+    assert.notEqual(output.observations.causal_transition.after_context_sha256, waiting.question.review.context_sha256);
+    const after = f.open().inspect(); assert.equal(after.cursor.status, "WAITING"); assert.ok(after.cursor.occurrences.some(row => row.node_id === "recovery_action_pending"));
+    assert.equal((await f.open().dispatchOperation(recorded.operation_id, { write: true })).status, "retained_result");
+    const simulation = simulateAgenticProcess({ instanceId: after.record.instance_id, model: after.record.model, parameters: after.record.initial_parameters,
+      scopeId: after.record.scope_id, policyPins: after.record.policy_pins, events: after.record.events });
+    assert.equal(simulation.trace.at(-1).instance_sha256, after.record.instance_sha256); assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
+    const context = await readStandardDriftContext({ targetRoot: f.configuration.target_root, productRoot: f.configuration.product_root,
+      productFiles: f.configuration.product_files, productSha256: f.open().previewNative().product_sha256 });
+    assert.equal(context.context.git.other_changes.count, 0); assert.ok(context.evidence_refs.some(row => row.ref === "audit:parking-lot.md"));
+    assert.notEqual(beforeRecord.record.instance_sha256, after.record.instance_sha256);
   });
   for (const [mode, state] of [["files", "DONE"], ["dual", "NO_GO"], ["db-only", "DROPPED"]]) await check(`drift completion ${mode}: terminal owning context drives the authenticated report and real hook without reopening the cycle`, async () => {
     const f = finalizationFixture(mode), auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, state, mode === "db-only");
@@ -667,6 +767,7 @@ if (process.argv[2] === "--mixed-continue") {
     const evaluated = evaluateStandardDriftReport({ report, reference: { ref: "execution:report", sha256: "c".repeat(64) }, producer: {} }, context);
     assert.equal(evaluated.observations.skill_completion, "pending"); assert.equal(evaluated.facts.drift_present, false);
     assert.equal(evaluated.facts.drift_context_complete, true); assert.equal(evaluated.facts.drift_recovery_required, false);
+    assert.equal(evaluated.facts.drift_check_completed, false);
     const partial = evaluateStandardDriftReport({ report, reference: { ref: "execution:report", sha256: "c".repeat(64) }, producer: {} },
       { ...context, context: { ...context.context, git: { other_changes: { count: 1 } } } });
     assert.equal(partial.facts.drift_present, false); assert.equal(partial.facts.drift_context_complete, false); assert.equal(partial.facts.drift_recovery_required, true);

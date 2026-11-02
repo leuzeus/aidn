@@ -50,7 +50,9 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
       const state = inspect(), cursor = state.cursor;
       if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) return { kind: "terminal", ...state, written: false, status: cursor.status };
       const ready = cursor.ready.map(id => cursor.occurrences.find(row => row.occurrence_id === id));
-      const operation = ready.find(frame => nodeFor(frame).kind === "operation");
+      const operation = ready.find(frame => nodeFor(frame).kind === "operation")
+        ?? cursor.occurrences.find(frame => nodeFor(frame).kind === "operation" && frame.status === "WAITING"
+          && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome));
       if (operation) {
         const preview = await operations.preview({ instanceId: configuration.instance_id, expectedSha256: state.record.instance_sha256,
           occurrenceId: operation.occurrence_id, input });

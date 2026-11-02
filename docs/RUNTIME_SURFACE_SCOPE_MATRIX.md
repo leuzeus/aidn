@@ -1,5 +1,13 @@
 # Runtime Surface Scope Matrix
 
+R05 recovery review and findings reuse the existing process instance, operation
+journal, decision inbox and canonical artifact ports. Recovery decisions use an
+explicit v2 inbox source; historical mode v1 records remain separate. Fixed
+authorized writes cover parking-lot and current-state summary only, with causal
+before/after hashes and local unknown-effect retention. This adds no table,
+backend fallback, shared synchronization, actual recovery-action permission or
+native/installed-workflow qualification.
+
 Evidence labels used in reviews and gates are deliberately distinct:
 
 - `source`: package implementation or policy;

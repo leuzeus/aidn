@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `28bb901` et tranche courante d'application des raccords de
-données aux composants publiés.
+Dernier état relu : `843ec2f` et tranche courante de revue humaine R05 et
+conservation des constats.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -30,7 +30,8 @@ encore ouverts.
 - L2/L4 : en cours. Ports de bootstrap/cycle, journal de dispatch signé, choix
   de mode/hook, inbox de contrôle durable et conservation de l'état natif décrits
   dans les addenda ci-dessous, ainsi que diagnostic typé et finalisation R05 sans
-  dérive avec vrai hook. Le journal d'allocation signé constitue une tranche
+  dérive avec vrai hook, revue humaine et conservation canonique des constats.
+  L'exécution de la récupération choisie reste ouverte. Le journal d'allocation signé constitue une tranche
   supplémentaire. La reprise native et l'hôte mixte sont des compositions
   internes explicites ; la garde du démarrage ordinaire reste inchangée.
 - L3 : en cours, composants IR de démarrage et de squelette de cycle distribués,
@@ -1531,3 +1532,96 @@ ses appels/raccords à tous les ports, le choix/reprise de session et de cycle, 
 les entrées ordinaires. L2 conserve récupération R05, DoR/travail/validation,
 transitions/clôtures/promotion/PR/synchronisation ; L4 les inconnus et expirations ;
 L6–L8 les parcours A1–A10, preuves natives réelles et archive installée exacte.
+
+## Addendum — revue R05 et conservation causale des constats
+
+Tranche L2/L4 en cours, dépendante du diagnostic/évaluation authentifiés et des
+raccords de données `28bb901`/`843ec2f`. Deux activités sont ajoutées au registre
+fixe : `drift_recovery_decision` consomme une évaluation complète avec dérive
+confirmée ; `drift_recovery_record` consomme son choix humain accepté. Le premier
+lie contexte/évaluation, options applicables et écritures proposées. Refus,
+report et annulation gardent leurs issues propres. Les nouvelles captures sont
+explicitement en inbox v2 ; les captures de mode restent v1, sans conversion.
+
+Le second conserve les constats et options dans le parking lot canonique et
+actualise uniquement le résumé de prochaine action/date dans CURRENT-STATE,
+sous aperçu exact, grant vivant, propriétaire local et CAS/projection existants.
+Il conserve une transition causale avant/après, vérifie les post-images et la
+stabilité des autres documents/Git, ainsi que l'index des deux chemins concernés.
+Aucun paramètre ne choisit de chemin exclu. Parking-lot entre aussi dans les
+observations diagnostiques suivantes. Toute nouvelle évaluation remet le fait
+R05-completed à false sans supprimer les anciens événements ou reçus de hook.
+
+Fichiers concernés : nouveaux contrats de plan/question/source/sortie/entrée et
+inbox v2, `process-decision-inbox.mjs`, hôte humain, registre/contrats d'opération,
+`standard-drift-recovery.mjs`, contexte/autorité mixte, pins/catalogues, politiques
+de provenance, ADR-0025 et guides. `verify-drift-recovery-fixtures.mjs` entre dans
+le gate agentique existant ; les sélections `--drift-recovery-mode=files|dual|db-only`
+du corpus de production utilisent une IR qui résout les identités sans pilote.
+
+Les premiers essais intégrés ont révélé la copie inutile des documents de
+contexte dans le plan signé : SPEC dépasse la limite existante par chaîne.
+Le plan conserve désormais leurs empreintes et les deltas proposés ; le texte
+est découpé en fragments bornés, sans relever les limites du JSON. Les 11
+contrôles dédiés passent hors ligne : source/inbox doublées, frontière Git réelle,
+long texte, ports canoniques réels, autorisation refusée, contexte périmé et
+écriture SQLite partielle avec incertitude/propriétaire conservés. Le réducteur
+(48), contrats d'opérations (27), catalogue (22) et contrat de diagnostic ciblé
+passent sur les candidats indiqués par les journaux de cette tranche.
+
+Les essais intégrés suivants ont atteint la revue authentifiée dans les trois
+modes, puis exposé une lacune de reprise du dispatcher mixte : il ne sélectionnait
+pas les opérations WAITING avec reçu blocked/deferred pour préparer une nouvelle
+intention explicite. Cette sélection est ajoutée, sans retry d'effet inconnu.
+Un contrôle réel de métadonnées a aussi démontré que le CAS de contenu historique
+réinitialisait famille/subtype/annotations du parking lot. Le nouveau port conserve
+les métadonnées du store canonique, lie leur préimage dans le CAS verrouillé et
+vérifie/retient leur empreinte après écriture. Douze contrôles dédiés passent,
+dont conservation et refus après changement de seules métadonnées.
+
+Validation ciblée finale **PASS** : 15 contrôles dédiés sans SKIP, et les trois
+sélections `--drift-recovery-mode=files|dual|db-only` sur les derniers raccords.
+Les contrôles dédiés couvrent aussi les six choix/contre-choix typés, la perte
+silencieuse d'une projection dual et une jonction Windows refusée avant
+évaluation/écriture. Les parcours intégrés utilisent la vraie autorité mixte,
+son diagnostic natif protégé sur transport substitué et les vrais ports
+canoniques. Ils attendent, refusent sources/choix invalides, reportent puis
+acceptent un nouveau choix. L'IR résout les identités sans intervention du pilote.
+Après disparition de la source humaine, files conserve les constats dans un
+nouveau processus Node sans allocation native ; dual/db-only rouvrent les hôtes.
+Les reçus empêchent une nouvelle exécution et le même modèle/réducteur retrouve
+le même hash en replay/simulation. L'instance reste en attente de l'action réelle,
+avec récupération requise et R05 incomplet. Ces preuves finales remplacent les
+premiers essais interrompus pour ces raccordements.
+
+Réducteur (48), contrats d'opérations (27), catalogue (22), six schémas nouveaux,
+contrat de diagnostic ciblé, source de vérité (35), métadonnées (37), complétude
+(38), références, Markdown, sensibilité et topologie package : **PASS** dans
+cette tranche. Mode v1/démarrage neuf (12) et finalisation propre avec vrai hook
+passent sur les candidats avant les derniers gardes de projection R05 ; leurs
+chemins n'emploient pas ces gardes. Le gate conserve son placement et ses anciens
+contrôles ; son nouveau contrôle dédié est ajouté aussi à la commande immuable
+de la politique de validation. Le catalogue des gates passe. Un sélecteur de mode
+invalide refuse avant de créer une fixture. Routage du diff final : ASSURED sans
+anomalie. Pins finaux startup 30/cycle 28 vérifiés sans écriture ni réparation.
+
+La suite agentique complète non filtrée et l'ensemble des gates de PR restent
+**NON_REJOUÉS**. Preuves natives réelles, canal humain/fournisseur réel,
+confinement/Job Windows, parcours standard complet et archive installée exacte :
+**NOT_RUN**. Les preuves ci-dessus sont hors ligne sur sources, avec transport
+natif et capacité humaine de fixture, et ne valent pas qualification de l'archive.
+
+Cette tranche ne livre pas l'exécution de la récupération choisie. Restent
+explicitement les véritables ports CR/requirements delta, choix/création de cycle,
+rollback autorisé, leurs propres chaînes causales, puis nouvelle analyse native,
+réévaluation et hook. Le modèle de qualification reste en attente de cette
+action ; il n'est pas le modèle standard complet. L3/L5 (graphe et entrées
+ordinaires), inconnus/expirations L4, parcours A1–A10 et preuves natives/archive
+installée L6–L8 restent ouverts. Aucun succès de revue ou de documentation ne
+vaut réalisation de ces livrables.
+
+Dans les lots restants, étendre la qualification de métadonnées/projections aux
+autres mutations L2 : le CAS historique général n'est pas corrigé globalement
+par ce port R05. Les attentes devenues périmées demandent aussi une voie explicite
+d'annulation/invalidation et de reprise, sans inventer une décision humaine ni
+réessayer un effet inconnu. Ces points accompagnent le raccordement L4/L5 complet.

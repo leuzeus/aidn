@@ -88,7 +88,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
             || shadowHash(bindings.get(record.intent.binding_ref)) !== shadowHash(record.preview.binding)) fail("STANDARD_PROCESS_OPERATION_NOT_AUTHENTICATED");
           assertStandardOperationInput(record.intent.binding_ref, record.preview.input);
           assertStandardResolvedPreview(record.preview, model);
-          if (record.intent.binding_ref === "mode_decision" && record.results.length) human.captured(record);
+          if (record.preview.binding.executor_kind === "human" && record.results.length) human.captured(record);
           seen.set(id, record);
         }
         const record = seen.get(id);
@@ -158,5 +158,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_DRIFT_EVALUATION_STALE");
     return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
   }
-  return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation, modelSource: source });
+  const observeDriftContext = () => readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+    productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
+  return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation, observeDriftContext, modelSource: source });
 }
