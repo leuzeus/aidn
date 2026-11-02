@@ -158,6 +158,13 @@ refusals; a valid shadow envelope grants no authority to execute.
 
 ## Internal Agent Execution Contracts
 
+`standard-cycle-validation-profile.v1`, its prepared plan, input and output
+use the private workflow-definition namespace. The host supplies a pinned check
+profile out of band; authored IR carries only the accepted observed-work
+operation identity. Native planning prose cannot supply an executable command.
+The output distinguishes check status from operation completion and identifies
+fixture evidence explicitly. These contracts introduce no public CLI command.
+
 The workflow-definition namespace separately adds explicit
 `process-data-bindings.v2` / `process-resolved-input.v2` activity targets, preserving
 v1 operation-only validation. `standard-cycle-work-report.v1` and its evaluation

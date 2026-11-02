@@ -1,5 +1,13 @@
 # Runtime Surface Scope Matrix
 
+Deterministic cycle validation consumes an accepted signed work evaluation.
+Its trusted host profile, immutable snapshot, bounded check logs and manifest
+remain local owned execution evidence. The existing operation journal signs
+the resulting observations and facts. The port uses the existing local effect
+owner and qualified execution boundary; it adds no table, canonical business
+write, public CLI command, shared synchronization or implicit db-only export.
+The private fixture boundary is always recorded as fixture evidence.
+
 Frozen task input uses explicit activity data links and the existing signed
 operation/native allocation journals. Native context and observed product
 snapshots stay in owned execution evidence. The read-only work evaluator adds

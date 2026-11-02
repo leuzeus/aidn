@@ -9,7 +9,7 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 // The common reducer owns control flow. This adapter selects a port for the
 // cursor's ready leaf; it contains no standard-workflow routing decisions.
 export function createStandardWorkflowMixedHost({ configuration: suppliedConfiguration, modelSource = null, readSigningKey, authorize, humanSource, controlSource,
-  environment = process.env }, { controllerFactory } = {}) {
+  environment = process.env, validationProfile = null }, { controllerFactory, validationBoundaryFactory } = {}) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value;
@@ -19,7 +19,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     readProductSha256: () => native.preview().product_sha256 });
   native = createJournaledNativeAllocation({ configuration, readSigningKey, environment, processAuthority }, { controllerFactory });
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
-    authorize, humanSource, controlSource, processAuthority });
+    authorize, humanSource, controlSource, processAuthority, validationProfile }, { validationBoundaryFactory });
   const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
   const inspect = () => operations.inspect(configuration.instance_id);
   const nodeFor = frame => model.nodes.find(node => node.id === frame.node_id);

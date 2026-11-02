@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `0958812` et tranche courante de travail natif borné par la
-tâche gelée, avec confirmation authentifiée des fichiers observés.
+Dernier état relu : `7049c89` et tranche courante de validation déterministe
+du code observé, avec profil de checks approuvé par l’hôte.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -2134,3 +2134,85 @@ refus avant processus si autorisation/source/profil manquant ou périmé ; vraie
 commandes bornées sans modèle ; verdicts passed/failed/unavailable distincts ;
 protection des ressources, terminaison et reçus authentifiés ; reprise sans
 réexécuter un effet incertain ; simulation/replay avec le même modèle/réducteur.
+
+### Addendum du 2026-11-02 — validation déterministe du travail observé
+
+État : tranche L2/L4 validée hors ligne ; elle ne ferme ni le modèle standard
+complet L3, ni les entrées ordinaires L5, ni les parcours A1–A10/L6–L8.
+
+Le port `cycle_validation_execute` et ses contrats privés sont implémentés dans
+`standard-cycle-validation.mjs`, les compositions/hôtes existants et l'autorité
+de source standard. Son entrée IR est l'identité du résultat accepté de
+`cycle_work_evaluate`. L'autorité relit la chaîne signée et les preuves natives,
+le code courant et le contexte canonique ; le contenu du plan natif ne fournit
+aucune commande. Un profil JSON épinglé, approuvé par l'hôte, associe les refs de
+tests de la tâche gelée à des scripts/arguments et un runner épinglés.
+
+L'exécution copie l'inventaire produit exact et les scripts dans un snapshot
+séparé. Le défaut de production réutilise la sandbox qualifiée existante ; le
+port n'appelle pas de modèle. Le budget d'exécution, la taille du snapshot, les sorties
+et l'attente de terminaison sont bornés. Les inventaires avant/après, les logs,
+les statuts et les empreintes du profil/produit sont liés au manifeste de preuve
+et au résultat signé. Un exit zero ne remplace pas le protocole de verdict typé.
+
+Le résultat d'opération terminé est distinct du succès des checks : failed et
+unavailable ne rendent jamais cycle_validation_passed vrai. Un arrêt inconnu,
+un budget dépassé ou une postcondition non confirmée laisse les faits vides et
+retient le propriétaire d'effet pour réconciliation. Le dispatcher ne rejoue
+pas un résultat déjà conservé. L'état canonique du cycle reste IMPLEMENTING ;
+ni passage VERIFYING/DONE ni clôture ne découlent implicitement de ces checks.
+
+Les onze cas hors ligne ciblés passent : passed/failed, code incorrect, verdict
+indisponible, snapshot modifié, arrêt inconnu, timeout réel de Node, autorisation
+refusée, profil périmé, preuves dans le scratch inscriptible et source modifiée
+pendant l'autorisation. Le vérificateur importe réellement le module produit
+contrôlé. La source d'authentification et la frontière restent des doubles dans
+ce corpus ciblé. Le résultat et les faits incompatibles sont refusés avant de
+libérer le propriétaire d'effet.
+
+Les trois parcours intégrés files/dual/DB-only passent sur le code final et les
+pins 50/48. Ils utilisent les véritables autorités de source, journaux signés,
+ports de session/cycle/DoR et admissions de modification du produit. Les
+transports de planification/travail et les autorisations demeurent des capacités
+de fixture. Un vrai processus Node importe le module du snapshot et vérifie sa
+valeur/interface. Chaque cas garde deux allocations simulées closes, un seul
+lancement du contrôle et un dispatch conservé sans second effet. Files reprend
+la validation en nouveau processus Node sans allocation native supplémentaire.
+Les trois simulations retrouvent exactement le hash final du même modèle et
+du même réducteur. Le cycle reste IMPLEMENTING et l'instance attend son événement.
+
+La source fraîche relue après l'autorisation est réutilisée pendant le prévol,
+pour éviter une double lecture de provenance. Les données de contrôle sont
+refusées dans le scratch inscriptible. Les quatre contrats privés et le résultat
+sont validés avant de libérer le propriétaire d'effet. Les 41 contrôles du
+vérificateur existant passent après correction de son appel interne au parseur
+partagé. Ces résultats ne constituent pas une mesure de gain global de temps
+ou de tokens.
+
+Les quatre définitions de schéma, les 27 contrôles du réducteur/opérations, les
+22 de modèles et les 14 de ports passent sur le code final. Les politiques de
+source/métadonnées/complétude restent PASS. Le catalogue des 63 gates, la route
+ASSURED du diff, les références et la sensibilité sur 1 751 fichiers sont PASS,
+ainsi que la topologie sur cinq clients jetables issus du package courant.
+Cette topologie ne qualifie pas une archive installée exacte.
+Chaque preuve de frontière injectée porte fixture ; aucune qualification native
+ou d'archive installée exacte n'est revendiquée.
+
+Le livrable suivant reste explicite : consommation authentifiée de ces résultats,
+routage failed/unavailable, progression des tâches et transitions de validation
+autorisées, puis revue/clôture/promotion/PR et synchronisation. Dépendances :
+preuve de validation fraîche du code exact, modèle complet traçable aux règles,
+attentes durables et décisions explicites. Critères : aucun report, refus ou
+manque de preuve assimilé à une réussite ; reprise sans effet dupliqué ; parcours
+standard complet sur projet jetable, simulation/replay exacts puis qualification
+native et sur archive installée. Les lecteurs historiques restent séparés.
+
+Fichiers prévus pour cette suite : composant de lecture de preuve
+`standard-cycle-validation-result.mjs`, autorité et hôte d'opérations standard,
+contrats privés, modèle complet et corpus de parcours. La lecture devra vérifier
+le reçu signé, le profil approuvé, les empreintes du manifeste et de ses logs,
+le code/contexte courants, et la qualité fixture/native exigée. Elle devra
+refuser une preuve manquante, périmée, altérée ou d'un autre scope avant toute
+transition canonique. Les preuves natives et sur archive installée restent
+NOT_RUN ; la suite monolithique et l'admission complète d'une PR ne sont pas
+revendiquées par cette tranche.

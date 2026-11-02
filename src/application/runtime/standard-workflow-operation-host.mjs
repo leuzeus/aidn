@@ -7,6 +7,7 @@ import { createStandardDriftChangeRequest } from "./standard-drift-change-reques
 import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
 import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
+import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
@@ -43,7 +44,7 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority }) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null }, { validationBoundaryFactory } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
@@ -64,6 +65,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const cycleImplementation = processAuthority ? createStandardCycleImplementation({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readCycleReadinessEvaluation(instance, input),
     observeContext: () => processAuthority.observeCycleReadinessContext(), readCurrent: id => current(id).record }) : null;
+  const cycleValidation = processAuthority ? createStandardCycleValidation({ targetRoot, now, profileRef: validationProfile,
+    readWork: (instance, input) => processAuthority.readCycleWorkEvaluation(instance, input), readCurrent: id => current(id).record }, { boundaryFactory: validationBoundaryFactory }) : null;
   const recoveryCycle = processAuthority ? createStandardDriftCycle({ targetRoot, operations, now,
     readSource: (instance, operation, input) => cycleRecoverySource(instance, operation, input),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
@@ -363,7 +366,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_initialize" ? await operations.prepareCycle(input)
         : binding.id === "cycle_checkpoint_finalize" ? await operations.prepareCycleCheckpoint(input)
         : binding.id === "cycle_plan_record" ? await cyclePlanRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE")
-        : binding.id === "cycle_implementation_enter" ? await cycleImplementation?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE") : null;
+        : binding.id === "cycle_implementation_enter" ? await cycleImplementation?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE")
+        : binding.id === "cycle_validation_execute" ? await cycleValidation?.prepare(state.record, input) ?? fail("STANDARD_VALIDATION_AUTHORITY_UNAVAILABLE") : null;
       return signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instanceId, instance_sha256: expectedSha256,
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
         input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input,
@@ -444,6 +448,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_plan_record") output = await cyclePlanRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_implementation_enter") output = await cycleImplementation.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "cycle_validation_execute") output = await cycleValidation.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_checkpoint_finalize") output = await operations.finalizeCycleCheckpoint(record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record),

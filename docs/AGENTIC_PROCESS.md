@@ -1,5 +1,14 @@
 # Participants, roles and agentic control
 
+The internal mixed host can bind `cycle_validation_execute` after accepted
+`cycle_work_evaluate` through the same JSON IR. The host supplies a pinned,
+approved validation profile outside authored JSON. Deterministic checks use an
+exact product snapshot and the existing qualified sandbox boundary, without a
+model call. Completed execution can still report failed or unavailable checks;
+only an explicit passed fact can inform subsequent routing. An unknown stop or
+postcondition retains effect ownership for reconciliation. This component does
+not implement the full standard graph, task advancement or lifecycle closure.
+
 Explicit `process-data-bindings.v2` also maps accepted operation identities into
 native activity inputs; v1 keeps its operation-only rules. Standard coding binds
 the accepted implementation-phase result and receives the frozen canonical first

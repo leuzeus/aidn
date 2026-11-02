@@ -276,10 +276,20 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       boundarySha256: cycleWorkBoundary({ root: artifacts.root, context: observed.context, environment }, context.task.paths.map(row => row.path)),
       producer: authenticated.producer, evidenceRefs: [authenticated.reference, source.ref, output.ref] });
   }
+  async function readCycleWorkEvaluation(instance, input) {
+    assertStandardOperationInput("cycle_validation_execute", input);
+    const evaluated = acceptedOperation(instance, input.work_operation_id, "cycle_work_evaluate");
+    const output = await evaluateCycleWork(instance, evaluated.record.preview.input);
+    if (output.facts.cycle_work_observed !== true || shadowHash(output) !== shadowHash(evaluated.output)) fail("STANDARD_VALIDATION_WORK_STALE");
+    const ref = output.evidence_refs.find(row => row.ref.endsWith("-artifact-output.json"));
+    const journal = allocations.read(nativeJournalId(instance)).record;
+    const observed = readAgentRunFile(nativeEvidenceFile(configuration, ref, journal.allocations.length), { sha256: ref.sha256, maxBytes: 1048576 }).value;
+    return { output, evaluation_sha256: shadowHash(output), files: observed.files, product_root: configuration.product_root };
+  }
   const observeDriftContext = () => readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   const observeCyclePlanContext = () => readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
-    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, observeDriftContext, modelSource: source });
+    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, observeDriftContext, modelSource: source });
 }

@@ -17,6 +17,8 @@ import implementationInput from "../contracts/workflow-definition/standard-cycle
 import readinessOutput from "../contracts/workflow-definition/standard-cycle-readiness-output.v1.schema.json" with { type: "json" };
 import workInput from "../contracts/workflow-definition/standard-cycle-work-evaluate-input.v1.schema.json" with { type: "json" };
 import workOutput from "../contracts/workflow-definition/standard-cycle-work-output.v1.schema.json" with { type: "json" };
+import validationInput from "../contracts/workflow-definition/standard-cycle-validation-input.v1.schema.json" with { type: "json" };
+import validationOutput from "../contracts/workflow-definition/standard-cycle-validation-output.v1.schema.json" with { type: "json" };
 import driftInput from "../contracts/workflow-definition/standard-drift-evaluate-input.v1.schema.json" with { type: "json" };
 import driftFollowup from "../contracts/workflow-definition/standard-drift-followup-input.v1.schema.json" with { type: "json" };
 import driftOutput from "../contracts/workflow-definition/standard-drift-output.v1.schema.json" with { type: "json" };
@@ -46,7 +48,7 @@ export function assertStandardOperationInput(operation, value) {
     : operation === "drift_change_request_record" ? changeRequestInput : operation === "drift_recovery_context_refresh" ? driftCycleContext
     : operation === "drift_recovery_cycle_initialize" ? driftCycleInput : operation === "drift_recovery_checkpoint_observe" ? driftCycleCheckpoint
     : operation === "cycle_plan_evaluate" ? cyclePlanInput : operation === "cycle_plan_record" ? cyclePlanRecordInput
-    : operation === "cycle_readiness_evaluate" ? readinessInput : operation === "cycle_implementation_enter" ? implementationInput : operation === "cycle_work_evaluate" ? workInput : null;
+    : operation === "cycle_readiness_evaluate" ? readinessInput : operation === "cycle_implementation_enter" ? implementationInput : operation === "cycle_work_evaluate" ? workInput : operation === "cycle_validation_execute" ? validationInput : null;
   if (!schema || checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length)
     fail(operation === "session_initialize" ? "STANDARD_SESSION_INPUT_INVALID" : "STANDARD_OPERATION_INPUT_INVALID");
   return value;
@@ -54,6 +56,15 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-validation-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, validationOutput, "$", { contractKind: "workflow-definition" }).length
+      || value.outcome !== "completed" && Object.keys(value.facts).length || (value.outcome === "reconciliation_required") !== (value.effect_status === "unknown")
+      || value.outcome === "blocked" && value.effect_status !== "no_effect"
+      || value.outcome === "completed" && (value.effect_status !== "confirmed" || !["passed", "failed", "unavailable"].includes(value.observations.status)
+        || value.facts.cycle_validation_passed !== (value.observations.status === "passed") || value.facts.cycle_validation_available !== (value.observations.status !== "unavailable")
+        || !["fixture", "native"].includes(value.observations.proof_class) || value.evidence_refs.length !== 1)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-cycle-work-output.v1") {
     if (validateJsonSchema(value, workOutput, "$", { contractKind: "workflow-definition" }).length
       || value.outcome !== "completed" && Object.keys(value.facts).length || value.effect_status !== "no_effect") fail("STANDARD_OPERATION_OUTPUT_INVALID");

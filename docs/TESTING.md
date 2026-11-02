@@ -1,5 +1,19 @@
 # Testing Guide
 
+`node tools/perf/verify-standard-cycle-validation-fixtures.mjs` exercises eleven
+offline validation cases: passed/failed/unavailable, changed snapshot, unknown
+termination, a real Node timeout, wrong product behavior, refused authorization,
+a stale pinned profile, an authorization-time source race and writable controls.
+It executes a controlled Node check; source authentication and the execution boundary are
+fixture capabilities. Every result remains labelled `proof_class: fixture`.
+The existing agentic execution corpus includes this suite, selectable with
+`--cycle-validation-mode=contract`, and integrates the real source authority,
+operation journal and IR with `--cycle-validation-mode=files|dual|db-only`.
+Those integrated cases require the admitted product update, no extra model
+allocation, retained dispatch without repeating the verifier, and exact common
+reducer simulation. Files also requires continuation in a fresh Node process.
+Native sandbox/provider and exact installed-archive proofs remain separate.
+
 `--cycle-work-mode=contract|files|dual|db-only|report|source` selects native task
 input and observed-work checks in the existing agentic execution corpus. The
 native transport is a fixture capability; canonical operations, admissions,

@@ -846,3 +846,42 @@ Subsequent deterministic validation must use trusted, pinned check descriptors
 and the existing qualified execution/snapshot ports. Free-form test methods in
 a native plan never select executable commands. The full model still needs
 validation, task advancement, review, closure and exception routes.
+
+### Deterministic validation of observed code
+
+`cycle_validation_execute` consumes the accepted `cycle_work_evaluate` identity
+from IR data links. The actual source authority authenticates the signed
+operation and native evidence, then rechecks current product, canonical context
+and scope. The host supplies an approved, pinned private validation profile;
+the first task's test references select only checks registered in that profile.
+Free-form methods cannot select commands, modules or a different host adapter.
+
+The port copies the exact configured product inventory and pinned check scripts
+to a separate snapshot. It invokes the existing qualified Codex sandbox boundary
+with a pinned runner, explicit arguments/environment, a total deadline and
+bounded output. No model is called. The existing verification verdict parser
+requires the exact check identifier and typed protocol; exit zero alone is
+insufficient. The snapshot and authenticated source must remain unchanged.
+
+Inventory file/byte limits apply to product files. Pinned verifier scripts have
+a separate fixed bound of 64 scripts with at most 1 MiB each; snapshot inventory
+accounts for both sets. The execution budget begins after authorized preflight,
+whose prepared plan separately expires after five minutes.
+
+The selected boundary retains its existing assurance limits. Cooperative
+qualification does not guarantee read isolation, and its v4 profile also does
+not guarantee network isolation. `proof_class: native` identifies qualified
+execution evidence; it does not strengthen the selected assurance profile.
+
+The signed operation result binds check statuses, profile/product fingerprints
+and the digest of an evidence manifest containing logs and before/after
+inventories. Successful execution is distinct from passing verification:
+`failed` and `unavailable` never set `cycle_validation_passed` to true. Uncertain
+termination, deadline or postconditions preserve the effect owner and require
+reconciliation; the durable dispatcher does not repeat an existing effect.
+
+An out-of-band fixture boundary can execute controlled local Node checks; it
+always records `proof_class: fixture`. It cannot establish native sandbox
+qualification or provider identity. The complete standard model still needs
+validation routing, task progression, validation-phase/lifecycle transitions,
+closure and the full native and installed-archive acceptance parcours.
