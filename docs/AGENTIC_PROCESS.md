@@ -76,7 +76,8 @@ through the operation/control host; they do not deliver the complete standard
 model. The native-only owned composition accepts v1 and v2 graphs without
 operation nodes. V2 rejects raw control-scenario facts/events before allocation;
 its human/external control requires authenticated delivery. Mixed execution and
-general native-history resume remain in the plan.
+general native-history resume are not implied by that default entrypoint. The
+internal mixed host below supplies a separate, explicitly authenticated path.
 
 The closed `agentic-process-model.v1` contract declares participants, reusable
 roles/skills, versioned policies and a structured tree of nodes. Every node has
@@ -494,6 +495,31 @@ retained ceilings before reserving another worker. A fresh worker authenticates
 its private reservation capability; native model processes receive no key.
 Historical results/contributions remain evidence, old resources stay closed and
 new sessions carry the writer exclusions into review. Ordinary start, CLI/console
-and mixed-operation integration remain separate. See
+integration remain separate. See
 [ADR-0025](ADR/ADR-0025-standard-workflow-runtime-binding.md) for the trust boundary,
 deadline limits and qualification distinctions.
+
+### Internal mixed operation/native composition
+
+`createStandardWorkflowMixedHost` composes existing operation, decision, control
+and journaled native ports around one v2 model, instance and reducer. It selects
+the port for a ready leaf; workflow routing stays in the IR. Deterministic work
+and human/external waits require no model call. Writes retain explicit intent,
+signed exact previews, trusted grants and authenticated receipts. Native slices
+close at an operation boundary and resume with fresh resources under the retained
+original ceilings and deadlines.
+
+The versioned `standard-mixed.v1` authority binds the actual project/persistence,
+model/source and host key. Reopening verifies every operation/control receipt
+and the native checkpoint covered by the signed allocation journal. A native
+slice holds the existing worktree effect owner also used by mutating business
+ports. Unknown effects or termination retain that owner and require explicit
+reconciliation; no PID/time takeover or automatic retry is provided. Legacy
+scopes and ordinary CLI/console entrypoints are unchanged.
+
+This internal adapter is a prerequisite for the standard workflow, not the
+complete standard model or its qualification. Its offline bootstrap fixture
+combines actual application ports with native/provider transport doubles.
+Full business coverage, ordinary selection, long-wait budget continuation,
+real native isolation/provider channels and exact installed-package acceptance
+remain separate deliveries in the integration plan.

@@ -10,6 +10,12 @@ Evidence labels used in reviews and gates are deliberately distinct:
 
 No scaffold, fixture, cache, projection, or export is promoted to canonical state merely because it exists. PostgreSQL and shared synchronization remain explicit opt-ins.
 
+The internal `standard-mixed.v1` host binds one process instance to the existing
+canonical operation/control/allocation artifacts. Native allocations share the
+existing physical worktree effect owner with mutating application ports. This
+adds no shared table or distributed ownership. It does not select the complete
+standard workflow through ordinary CLI/console entrypoints; see ADR-0025.
+
 Date: 2026-03-28  
 Status: current codebase inventory
 

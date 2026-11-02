@@ -8,20 +8,26 @@ import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs
 import { createAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { readNativeControlContext } from "./native-allocation-controls.mjs";
+import { createStandardProcessAuthority } from "./standard-process-authority.mjs";
+import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // Private, byte-pinned worker IPC. Never a field of authored configuration or a
 // native prompt/environment. The trusted worker already owns canonical DB access;
 // its ephemeral key capability verifies the parent's reservation, not user claims.
 export function createNativeAllocationWorkerAuthority({ configuration, authorization, admission, environment = process.env }) {
-  const fields = ["contract_version", "journal_id", "generation", "owner_id", "key_base64"];
+  const mixed = admission?.contract_version === "native-allocation-worker.v2";
+  const fields = ["contract_version", "journal_id", "generation", "owner_id", "key_base64", ...(mixed ? ["model_source"] : [])];
   if (checkShadowJson(admission) || !admission || Object.keys(admission).length !== fields.length || fields.some(key => !Object.hasOwn(admission, key))
-    || admission.contract_version !== "native-allocation-worker.v1" || !/^[A-Za-z0-9+/]{43}=$/.test(admission.key_base64 ?? "")) fail("PROCESS_WORKER_ALLOCATION_INVALID");
+    || !["native-allocation-worker.v1", "native-allocation-worker.v2"].includes(admission.contract_version) || !/^[A-Za-z0-9+/]{43}=$/.test(admission.key_base64 ?? "")) fail("PROCESS_WORKER_ALLOCATION_INVALID");
   const key = Buffer.from(admission.key_base64, "base64"), signer = createOperationJournalSigner(() => key);
   const project = readWorkflowProjectAuthority({ targetRoot: configuration.target_root });
   const options = { targetRoot: configuration.target_root, stateMode: project.stateMode, env: environment };
   const store = createNativeAllocationJournalStore(options), controls = createProcessControlInboxStore(options);
+  const processAuthority = mixed ? createStandardProcessAuthority({ configuration, model: readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value,
+    modelSource: admission.model_source, readSigningKey: () => key, environment }) : undefined;
   return Object.freeze({
+    processAuthority,
     admit({ creation, retained, scopeId, modelSha256, productSha256 }) {
       const journal = store.read(admission.journal_id).record; signer.verify(journal);
       const entry = journal.allocations.at(-1);
@@ -30,7 +36,12 @@ export function createNativeAllocationWorkerAuthority({ configuration, authoriza
         || entry.configuration_sha256 !== shadowHash(configuration) || entry.authorization_sha256 !== shadowHash(authorization)
         || (retained?.instance_sha256 ?? createAgenticProcess(creation).instance_sha256) !== entry.initial_instance_sha256) fail("PROCESS_WORKER_ALLOCATION_CHANGED");
       let history = null;
-      if (entry.generation === 1) assertAgenticProcessStart(retained, creation);
+      if (processAuthority) {
+        history = processAuthority.authenticate(retained ?? createAgenticProcess(creation), { reservation: admission, productSha256, checkControlContext: true, forNative: true });
+        assertNativeAllocationProjection(retained, configuration, project.stateMode === "dual"
+          || project.stateMode === "files" && agenticProcessPersistence({ targetRoot: configuration.target_root, env: environment }).backend === "postgres");
+      }
+      else if (entry.generation === 1) assertAgenticProcessStart(retained, creation);
       else {
         if (!retained) fail("PROCESS_WORKER_ALLOCATION_CHANGED");
         history = readNativeAllocationHistory({ journal, entry: journal.allocations.at(-2), current: retained, configuration, signer, controls,

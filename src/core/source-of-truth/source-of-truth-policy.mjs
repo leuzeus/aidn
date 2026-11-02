@@ -71,7 +71,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     evidence_targets: ["src/core/workflow/process-operation-journal.mjs", "src/adapters/runtime/process-operation-journal-store.mjs", "src/application/runtime/standard-workflow-operation-host.mjs", "tools/perf/verify-standard-workflow-host-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
   },
   process_local_effect_owner: {
-    owner: "trusted local workflow operation host",
+    owner: "trusted local workflow operation or mixed native allocation host",
     lifecycle: "absent -> exclusively acquired -> released|retained for explicit reconciliation",
     scope: "one physical worktree; cooperative local serialization only, independent of business artifact backend",
     retention: "release after confirmed completion or before-effect refusal; retain after unknown effects or process death",
@@ -447,7 +447,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/native-allocations/<id>.json only when the configured projection is required",
-    notes: "Canonical CAS reservation precedes owned worker launch. A trusted key authenticates actual supervisor closure and bounded checkpoint references, not business approval. Unknown or failed allocations cannot retry. Ordinary start preserves its pristine guard; explicit native-only continuation verifies closed history and signed controls, current context and required projections, debits retained ceilings and uses fresh resources. The fixed trusted worker receives an ephemeral private verification capability, never a model-selected key. Mixed resume, long-wait budget authority, provider identity and live native/installed qualification remain separate. Existing artifact backend only, no shared coordination table or anti-rollback guarantee.",
+    notes: "Canonical CAS reservation precedes owned worker launch. A trusted key authenticates actual supervisor closure and bounded checkpoint references, not business approval. Unknown or failed allocations cannot retry. Ordinary start preserves its pristine guard; explicit continuation verifies closed history and signed controls, current context and required projections, debits retained ceilings and uses fresh resources. The opt-in standard-mixed.v1 scope additionally authenticates operation history and uses the existing worktree effect owner. The fixed trusted worker receives an ephemeral private verification capability, never a model-selected key. Long-wait budget authority, provider identity, full standard integration and live native/installed qualification remain separate. Existing artifact backend only, no shared coordination table or anti-rollback guarantee.",
   }),
   policy({
     concept: "process_control_inbox", label: "Authenticated process control inbox",

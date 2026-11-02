@@ -40,8 +40,9 @@ function pinned(reference, roots) {
 
 // This is the real project composition. Tests may replace native/SQL wires, but
 // not assignmentAuthority, resultAuthority, bindings, CAS or admission policy.
-export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env, allocationAuthority } = {}) {
+export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env, allocationAuthority, processAuthority } = {}) {
   if (allocationAuthority != null && typeof allocationAuthority.admit !== "function") fail("PROCESS_EXECUTION_ALLOCATION_AUTHORITY_INVALID");
+  if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.read !== "function")) fail("PROCESS_EXECUTION_PROCESS_AUTHORITY_INVALID");
   if (checkShadowJson(configuration) || configuration.contract_version !== "agentic-process-execution.v1") fail("PROCESS_EXECUTION_CONFIGURATION_INVALID");
   const config = structuredClone(configuration);
   const fields = ["contract_version", "instance_id", "target_root", "product_root", "control_root", "review_root", "product_files", "model", "criteria", "authorities", "skills", "instructions", "native", "controller", "implementation_sha256", "control_scenario"];
@@ -79,7 +80,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     if ([targetRoot, reviewRoot, controlRoot, config.native.home].some(other => inside(root, other) || inside(other, root))) fail("PROCESS_EXECUTION_TOOL_ROOT_OVERLAP");
   }
   const model = JSON.parse(pinned(config.model, [productRoot, reviewRoot]).toString("utf8")); assertAgenticProcessModel(model);
-  if (model.nodes.some(node => node.kind === "operation")) fail("PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED");
+  if (model.nodes.some(node => node.kind === "operation") && !processAuthority) fail("PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED");
   const controlScenario = Object.hasOwn(config, "control_scenario")
     ? assertAgenticControlScenario(JSON.parse(pinned(config.control_scenario, [productRoot, reviewRoot]).toString("utf8")))
     : { initial_facts: {}, events: [] };
@@ -96,17 +97,25 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
   for (const role of model.roles) if (role.skills.some(skill => !Object.hasOwn(skills, skill))) fail("PROCESS_EXECUTION_SKILL_MISSING");
   const authorityAtCreation = readWorkflowProjectAuthority({ targetRoot });
   const persistence = agenticProcessPersistence({ targetRoot, env: environment });
-  const scopeId = shadowHash({ project: authorityAtCreation.scope, persistence: persistence.binding_sha256 });
+  const scopeId = processAuthority ? processAuthority.read().scope_id : shadowHash({ project: authorityAtCreation.scope, persistence: persistence.binding_sha256 });
   function readAuthority() {
-    const observed = readWorkflowProjectAuthority({ targetRoot });
+    // A mixed instance delegates project authority to its common host port.
+    // Re-reading the same activation here would duplicate that live observation.
+    const observed = processAuthority ? null : readWorkflowProjectAuthority({ targetRoot });
     if (agenticProcessPersistence({ targetRoot, env: environment }).binding_sha256 !== persistence.binding_sha256) fail("PROCESS_EXECUTION_PERSISTENCE_CHANGED");
-    if (observed.stateMode !== authorityAtCreation.stateMode || shadowHash(observed.scope) !== shadowHash(authorityAtCreation.scope)
-      || config.implementation_sha256 !== agenticProcessImplementationPins().sha256 || observed.productVersion !== authorityAtCreation.productVersion
+    if (!processAuthority && (observed.stateMode !== authorityAtCreation.stateMode || shadowHash(observed.scope) !== shadowHash(authorityAtCreation.scope)
+      || observed.productVersion !== authorityAtCreation.productVersion)
+      || config.implementation_sha256 !== agenticProcessImplementationPins().sha256
       || hash(bytes(config.model.path)) !== config.model.sha256 || hash(bytes(config.criteria.path)) !== config.criteria.sha256)
       fail("PROCESS_EXECUTION_AUTHORITY_CHANGED");
     for (const reference of Object.values(config.skills)) pinned(reference, [productRoot, reviewRoot]);
     for (const reference of Object.values(config.authorities)) pinned(reference, [productRoot, reviewRoot]);
     if (config.control_scenario) pinned(config.control_scenario, [productRoot, reviewRoot]);
+    if (processAuthority) {
+      const authority = processAuthority.read();
+      if (authority.scope_id !== scopeId || authority.model_sha256 !== shadowHash(model) || shadowHash(authority.policy_pins) !== shadowHash(agenticPolicyPins(model))) fail("PROCESS_EXECUTION_AUTHORITY_CHANGED");
+      return authority;
+    }
     return { scope_id: scopeId, model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
   }
   function productSnapshot(root = productRoot) {
@@ -135,6 +144,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     preview() { readAuthority(); return { contract_version: "agentic-process-execution-preview.v1", scope_id: scopeId,
       model_sha256: shadowHash(model), criteria_sha256: config.criteria.sha256, product_sha256: shadowHash(productSnapshot()), persistence, native_started: false, written: false }; },
     async run({ execute = false, authorization, signal, persistenceBinding = persistence.binding_sha256 } = {}) {
+      if (execute === true && processAuthority && !allocationAuthority) fail("PROCESS_EXECUTION_ALLOCATION_AUTHORITY_REQUIRED");
       if (execute !== true || authorization?.approved !== true || authorization.model_allowed !== true
         || !Number.isSafeInteger(authorization.authorized_at_ms) || !Number.isSafeInteger(authorization.global_deadline_ms)
         || authorization.authorized_at_ms > Date.now() || authorization.global_deadline_ms <= Date.now()
@@ -333,6 +343,12 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
             if (["COMPLETED", "FAILED", "CANCELLED"].includes(current.cursor.status)) break;
           }
           if (["COMPLETED", "FAILED", "CANCELLED"].includes(current.cursor.status)) break;
+          // The common cursor selects boundaries. Operations are realized by
+          // their application host; this native allocation closes before them.
+          if (processAuthority && current.cursor.ready.some(id => {
+            const frame = current.cursor.occurrences.find(row => row.occurrence_id === id);
+            return model.nodes.find(row => row.id === frame.node_id)?.kind === "operation";
+          })) break;
           const occurrenceId = current.cursor.ready[0];
           if (!occurrenceId) {
             if (controlIndex < controlScenario.events.length) fail("PROCESS_EXECUTION_CONTROL_EVENT_UNREACHABLE");
@@ -357,7 +373,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         if (current?.cursor.status === "COMPLETED" && controlIndex < controlScenario.events.length) fail("PROCESS_EXECUTION_CONTROL_EVENTS_PENDING");
       } catch (error) {
         const code = error.code ?? error.message;
-        requestStop(/^(PROCESS_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(code ?? "") ? code : "PROCESS_EXECUTION_FAILED");
+        requestStop(/^(PROCESS_|STANDARD_PROCESS_|NATIVE_ALLOCATION_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(code ?? "") ? code : "PROCESS_EXECUTION_FAILED");
       }
       finally {
         try { closure = await host.close(); } catch { firstFailure ??= "PROCESS_HOST_CLOSE_UNCONFIRMED"; }

@@ -8,6 +8,11 @@ import { fileURLToPath } from "node:url";
 import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
 import { runOwnedAgenticProcess } from "../../src/application/runtime/agentic-process-owned-run.mjs";
 import { createJournaledNativeAllocation } from "../../src/application/runtime/journaled-native-allocation.mjs";
+import { createStandardWorkflowMixedHost } from "../../src/application/runtime/standard-workflow-mixed-composition.mjs";
+import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
+import { standardWorkflowOperationBindings, createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
+import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
+import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createNativeAllocationWorkerAuthority } from "../../src/application/runtime/native-allocation-worker-authority.mjs";
 import { assertNativeAllocationJournal, nativeJournalPath } from "../../src/core/workflow/native-allocation-journal.mjs";
 import { controlDelivery } from "../../src/core/workflow/process-control-inbox.mjs";
@@ -30,7 +35,7 @@ import { PassThrough } from "node:stream";
 import { performance } from "node:perf_hooks";
 import { spawnSync } from "node:child_process";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
-import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, agenticProcessPrefixSha256 } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { assertNativeHostState } from "../../src/core/workflow/native-host-state.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
@@ -40,6 +45,7 @@ import { createProjectWorkflowInstanceService } from "../../src/application/runt
 
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
+const businessRoots = [];
 let serial = 0;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
@@ -48,9 +54,12 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
+  if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
+  if (process.argv.includes("--nonmixed-only") && name.startsWith("mixed ")) return;
   await callback(); checks.push(name); console.log("PASS " + name); }
 function fixture(options = {}) {
-  const base = path.join(root, "case-" + ++serial), targetRoot = path.join(base, "project"), packageRoot = path.join(base, "package");
+  const base = path.join(root, "case-" + ++serial), targetRoot = options.projectRoot ?? path.join(base, "project"), packageRoot = path.join(base, "package");
+  fs.mkdirSync(base, { recursive: true });
   fs.mkdirSync(targetRoot, { recursive: true });
   if (options.git) {
     const emptyHooks = path.join(base, "empty-hooks"); fs.mkdirSync(emptyHooks);
@@ -58,6 +67,9 @@ function fixture(options = {}) {
       const result = spawnSync("git", ["-c", "core.hooksPath=" + emptyHooks, ...args], { cwd: targetRoot, encoding: "utf8", shell: false }); assert.equal(result.status, 0, result.stderr);
     }
   }
+  let block;
+  if (options.projectRoot) block = fs.readFileSync(path.join(targetRoot, "AGENTS.md"), "utf8");
+  else {
   const version = fs.readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim();
   put(packageRoot, "VERSION", version + "\n"); put(packageRoot, "bin/aidn.mjs", "// fixture, never executed\n");
   applyAuthorization(planAuthorization({ targetRoot, action: "authorize" }));
@@ -65,7 +77,7 @@ function fixture(options = {}) {
   for (const name of [".codex/hooks/aidn-hook-runtime.mjs", ".codex/hooks/aidn-session-start.mjs", ".codex/hooks/aidn-pre-tool-use.mjs", ".agents/skills/context-reload/SKILL.md", ".agents/skills/start-session/SKILL.md"]) {
     const text = "Neutral fixture\n"; put(targetRoot, name, text); assets[name] = { kind: "file", current: Buffer.from(text).toString("base64") };
   }
-  const block = "<!-- CODEX-AUDIT-WORKFLOW START -->\nNeutral fixture\n<!-- CODEX-AUDIT-WORKFLOW END -->";
+  block = "<!-- CODEX-AUDIT-WORKFLOW START -->\nNeutral fixture\n<!-- CODEX-AUDIT-WORKFLOW END -->";
   put(targetRoot, "AGENTS.md", block); assets["AGENTS.md"] = { kind: "agents-block", current: block };
   const hooks = ["SessionStart", "PreToolUse"].map(event => ({ event, group: { matcher: "fixture" }, hook: { type: "command", command: "echo fixture" } }));
   put(targetRoot, ".codex/hooks.json", JSON.stringify({ hooks: Object.fromEntries(hooks.map(h => [h.event, [{ ...h.group, hooks: [h.hook] }]])) }));
@@ -76,6 +88,7 @@ function fixture(options = {}) {
   const tx = { schema_version: 1, id: receipt.last_transaction, scope: "codex-integration", root_id: identity.root_id, status: "complete", operations: [], receipt_after: receipt };
   const seal = value => JSON.stringify({ ...value, integrity_sha256: shadowHash(value) });
   put(targetRoot, `.aidn/install/transactions/${tx.id}.json`, seal(tx)); put(targetRoot, ".aidn/install/receipt.json", seal(receipt));
+  }
   assert.equal(readActivation({ targetRoot }).state, "active");
   const dirs = Object.fromEntries(["product", "control", "review", "home"].map(name => [name, name === "product" ? path.join(targetRoot, name) : path.join(base, name)]));
   for (const directory of Object.values(dirs)) fs.mkdirSync(directory);
@@ -250,7 +263,7 @@ function journalController(f, t, options = {}) {
       }
       const allocationAuthority = createNativeAllocationWorkerAuthority({ configuration: f.configuration, authorization: sent.authorization, admission: sent.allocation,
         ...(f.environment ? { environment: f.environment } : {}) });
-      const native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, ...(f.environment ? { environment: f.environment } : {}) });
+      const native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority: allocationAuthority.processAuthority, ...(f.environment ? { environment: f.environment } : {}) });
       const result = await native.run({ execute: true, authorization: sent.authorization });
       await options.afterWorker?.(f, result);
       await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(result)) });
@@ -275,8 +288,55 @@ async function readyResumeFixture(options = {}) {
   if (!options.undelivered) await f.actor.deliverControl(f.capture.inbox_id, { write: true });
   return f;
 }
+function mixedFixture(stateMode = "files", options = {}) {
+  const projectRoot = createFreshStandardWorkflowFixture(stateMode, businessRoots), f = fixture({ projectRoot }), original = JSON.parse(fs.readFileSync(f.configuration.model.path));
+  const op = (id, binding_ref) => ({ id, kind: "operation", participant_ref: "delivery", binding_ref });
+  const native = id => original.nodes.find(node => node.id === id);
+  original.policies[0].allowed_permissions = ["read:product"];
+  const model = { ...original, contract_version: "agentic-process-model.v2", model_id: "actual-mixed-bootstrap-fixture", revision: 1,
+    roles: original.roles.filter(role => role.id !== "implementation"), entry: "mixed",
+    operation_pins: Object.fromEntries(standardWorkflowOperationBindings().filter(binding => ["context_reload", "session_admit", "session_initialize"].includes(binding.id)).map(binding => [binding.id, shadowHash(binding)])),
+    nodes: [{ id: "mixed", kind: "sequence", participant_ref: "delivery", children: ["reload", "admit", "initialize", "analyze", "after_native", "external_wait"] },
+      op("reload", "context_reload"), op("admit", "session_admit"), op("initialize", "session_initialize"), native("analyze"), op("after_native", "context_reload"),
+      { id: "external_wait", kind: "event", participant_ref: "delivery", branches: [
+        { flow_id: "review", node_id: "review_path", event_key: "review_snapshot" }, { flow_id: "finish", node_id: "finish_without_review", event_key: "finish_snapshot" }] },
+      { id: "review_path", kind: "sequence", participant_ref: "delivery", children: ["review", "after_review"] }, native("review"),
+      op("after_review", "context_reload"), op("finish_without_review", "context_reload")] };
+  fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
+  f.configuration.instructions = { analyze: "Analyze without writing.", review: "Review without correcting." };
+  fs.writeFileSync(f.configuration.criteria.path, "Read the product without changing any bytes."); f.configuration.criteria.sha256 = sha("Read the product without changing any bytes.");
+  const worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
+  f.configuration.controller = { node_sha256: sha(fs.readFileSync(process.execPath)), worker_sha256: sha(fs.readFileSync(worker)), helper_path: "fixture", helper_sha256: "a".repeat(64), helper_source_sha256: "b".repeat(64) };
+  const committed = spawnSync("git", ["add", "product/app.mjs"], { cwd: projectRoot, encoding: "utf8", shell: false }); assert.equal(committed.status, 0, committed.stderr);
+  const commit = spawnSync("git", ["-c", "core.hooksPath=NUL", "commit", "-m", "fixture product"], { cwd: projectRoot, encoding: "utf8", shell: false }); assert.equal(commit.status, 0, commit.stderr);
+  const key = Buffer.alloc(32, 91), t = transport(f), controllerFactory = journalController(f, t, options);
+  const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
+  const open = () => createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key,
+    authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource }, { controllerFactory });
+  Object.assign(f, { open, key, t, model }); return f;
+}
+async function bootstrapMixed(f) {
+  const h = f.open(), initial = h.initialize({ write: false });
+  h.initialize({ write: true, expectedResultSha256: initial.record.instance_sha256 });
+  const input = { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" };
+  for (let count = 0; count < 3; count++) {
+    const result = await f.open().step({ write: true, input: count === 2 ? input : {} });
+    assert.equal(result.kind, "operation"); assert.notEqual(result.cursor.status, "FAILED");
+  }
+  const auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000;
+  return auth;
+}
 
-if (process.argv[2] === "--resume-allocation") {
+if (process.argv[2] === "--mixed-continue") {
+  try {
+    const data = JSON.parse(fs.readFileSync(process.argv[3])), f = { ...data.fixture, launches: 0 }, key = Buffer.from(data.key_hex, "hex"), t = transport(f);
+    const host = createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key,
+      authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }) }, { controllerFactory: journalController(f, t) });
+    const native = await host.step({ write: true, authorization: data.authorization }), last = await host.step({ write: true });
+    process.stdout.write(JSON.stringify({ native, status: last.cursor.status, instance_sha256: last.record.instance_sha256, launches: f.launches,
+      sessions: t.sessions.length, closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+} else if (process.argv[2] === "--resume-allocation") {
   try {
     const data = JSON.parse(fs.readFileSync(process.argv[3])), f = { ...data.fixture, launches: 0 }, key = Buffer.from(data.key_hex, "hex"), t = transport(f);
     const actor = createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey: () => key,
@@ -286,6 +346,75 @@ if (process.argv[2] === "--resume-allocation") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  for (const stateMode of ["files", "dual", "db-only"]) await check(`mixed ${stateMode}: real session bootstrap, native boundaries, signed control and durable review share one IR`, async () => {
+    let claim = null;
+    const controlSource = { async read() { return claim; }, async verify({ source }) { assert.deepEqual(source, claim); return { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) }; } };
+    const f = mixedFixture(stateMode, { controlSource, async beforeWorker(f) {
+      assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).ownerPending(), true);
+      await assert.rejects(f.open().step({ write: true }), /NATIVE_ALLOCATION_ACTIVE/);
+      const blocked = await createStandardWorkflowOperations({ targetRoot: f.configuration.target_root }).prepareSession({ session_id: "S002", session_branch: "S002-other", objective: "Competing operation" });
+      assert.equal(blocked.reason_code, "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+    } });
+    const auth = await bootstrapMixed(f);
+    assert.equal(f.t.sessions.length, 0); assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).sessions().length, 1);
+    const first = await f.open().step({ write: true, authorization: auth }); assert.equal(first.kind, "native"); assert.equal(first.journal_phase, "closed", JSON.stringify(first));
+    assert.equal(f.t.sessions.length, 1); assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).ownerPending(), false);
+    const post = await f.open().step({ write: true }); assert.equal(post.kind, "operation"); assert.equal(post.cursor.status, "WAITING");
+    const state = f.open().inspect(), frame = state.cursor.occurrences.find(row => row.node_id === "external_wait"), request = f.open().prepareControl({ expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id });
+    claim = { contract_version: "process-control-source.v1", source_kind: "external", authority_id: "fixture_review", source_event_id: "review-1", subject_sha256: "a".repeat(64), request_sha256: shadowHash(request), event_key: "review_snapshot", payload_sha256: "b".repeat(64), evidence_refs: [{ ref: "provider:review-1", sha256: "c".repeat(64) }] };
+    const captured = await f.open().captureControl({ expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id, sourceRef: "review", write: true });
+    await f.open().deliverControl(captured.inbox_id, { write: true });
+    let final;
+    if (stateMode === "files") {
+      const file = put(f.base, "mixed-restart.json", JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex"), authorization: { ...auth, authorized_at_ms: Date.now() } }));
+      const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--mixed-continue", file], { encoding: "utf8", shell: false, timeout: 300000 });
+      assert.equal(child.status, 0, child.stderr); const completed = JSON.parse(child.stdout);
+      assert.equal(completed.native.journal_phase, "closed", JSON.stringify(completed)); assert.equal(completed.status, "COMPLETED");
+      assert.equal(completed.sessions, 1); assert.equal(completed.closed, true); assert.equal(completed.leaked_key, false);
+      final = f.open().inspect(); assert.equal(final.record.instance_sha256, completed.instance_sha256);
+    } else {
+      const second = await f.open().step({ write: true, authorization: { ...auth, authorized_at_ms: Date.now() } }); assert.equal(second.journal_phase, "closed", JSON.stringify(second));
+      final = await f.open().step({ write: true }); assert.equal(final.cursor.status, "COMPLETED");
+    }
+    assert.equal(f.t.sessions.length, stateMode === "files" ? 1 : 2); assert.equal(f.open().inspectAllocations().allocations.length, 2);
+    const replay = simulateAgenticProcess({ instanceId: final.record.instance_id, scopeId: final.record.scope_id, model: final.record.model, policyPins: final.record.policy_pins, events: final.record.events });
+    assert.equal(replay.trace.at(-1).instance_sha256, final.record.instance_sha256);
+    for (const row of replay.trace) assert.equal(agenticProcessPrefixSha256(final.record, row.step), row.instance_sha256);
+    assert.throws(() => agenticProcessPrefixSha256(final.record, -1), /PREFIX_CHECKPOINT_INVALID/);
+    const corrupt = structuredClone(final.record); corrupt.instance_sha256 = "0".repeat(64); assert.throws(() => agenticProcessPrefixSha256(corrupt, 0), /INSTANCE_INVALID/);
+    assert.equal(f.open().readCheckpoint(2).state.resources.length, 2);
+  });
+  await check("mixed explicit grant refusal leaves session effects and native calls at zero", async () => {
+    const f = mixedFixture("files", { authorize: async () => ({ authorized: false }) }), h = f.open(), initial = h.initialize({ write: false });
+    h.initialize({ write: true, expectedResultSha256: initial.record.instance_sha256 });
+    await f.open().step({ write: true }); await f.open().step({ write: true });
+    const before = f.open().inspect().record.instance_sha256;
+    await assert.rejects(f.open().step({ write: true, input: { session_id: "S001", session_branch: "S001-mixed", objective: "Refused mutation" } }), /AUTHORIZATION_REQUIRED/);
+    assert.equal(f.open().inspect().record.instance_sha256, before); assert.equal(f.t.sessions.length, 0); assert.equal(f.open().inspectAllocations(), null);
+    assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).sessions().length, 0);
+  });
+  await check("mixed interrupted native ownership blocks further business dispatch without PID takeover", async () => {
+    const f = mixedFixture("files", { controllerFailure: true }), auth = await bootstrapMixed(f), result = await f.open().step({ write: true, authorization: auth });
+    assert.equal(result.status, "WAITING_FOR_RECONCILIATION"); assert.equal(f.t.sessions.length, 0);
+    assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).ownerPending(), true);
+    await assert.rejects(f.open().step({ write: true }), /NATIVE_ALLOCATION_ACTIVE/);
+    const blocked = await createStandardWorkflowOperations({ targetRoot: f.configuration.target_root }).prepareSession({ session_id: "S002", session_branch: "S002-other", objective: "Uncertain predecessor" });
+    assert.equal(blocked.reason_code, "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+  });
+  await check("worker mixed private v2 authority stops at an operation boundary without native startup", async () => {
+    const f = mixedFixture("files"), processAuthority = createStandardProcessAuthority({ configuration: f.configuration, model: f.model, readSigningKey: () => f.key });
+    const actor = createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey: () => f.key, processAuthority },
+      { controllerFactory: journalController(f, f.t, { realWorker: true }) });
+    const result = await actor.run({ execute: true, authorization: f.authorize() });
+    assert.equal(f.worker.status, 0, f.worker.stderr); assert.equal(result.journal_phase, "closed", JSON.stringify(result));
+    assert.equal(f.t.sessions.length, 0); assert.equal(f.t.calls.length, 0);
+    const checkpoint = actor.readCheckpoint(1).state;
+    assert.equal(checkpoint.instance.events.length, 0); assert.equal(checkpoint.resources.length, 0);
+    const cursor = inspectAgenticProcess(checkpoint.instance);
+    assert.deepEqual(cursor.ready.map(id => cursor.occurrences.find(row => row.occurrence_id === id).node_id), ["reload"]);
+    assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).ownerPending(), false);
+    assert.equal(JSON.stringify({ result, journal: actor.inspect(), worker: f.worker }).includes(f.key.toString("base64")), false);
+  });
   await check("worker private allocation IPC executes the fixed entry without native startup or retained key bytes", async () => {
     for (const badOwner of [false, true]) {
       const f = journalFixture({ realWorker: true, waitAtEntry: true, mutateAdmission(value) { if (badOwner) value.owner_id = "not-the-reserved-owner"; } });
@@ -1043,4 +1172,11 @@ if (process.argv[2] === "--resume-allocation") {
     }
   });
   console.log(JSON.stringify({ ok: true, checks, proof_class: "offline-production-composition-with-fake-native-wire", model_calls: 0, native_client: "NOT_RUN", native_process_tree: "NOT_RUN" }));
-} finally { fs.rmSync(root, { recursive: true, force: true }); }
+} finally {
+  fs.rmSync(root, { recursive: true, force: true });
+  for (const businessRoot of businessRoots) {
+    const physical = fs.realpathSync(businessRoot);
+    if (path.dirname(physical) !== fs.realpathSync(os.tmpdir()) || !path.basename(physical).startsWith("aidn-standard-fresh-")) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID");
+    fs.rmSync(physical, { recursive: true, force: true });
+  }
+}

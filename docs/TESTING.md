@@ -2,6 +2,22 @@
 
 ## Structured agentic process
 
+`--mixed-only` selects the production mixed-host checks in
+`verify-agentic-process-execution-fixtures.mjs`; the required unfiltered suite
+retains them. A disposable source-installed project supplies actual activation,
+Git, session admission/initialization and canonical files/SQLite ports. One
+qualification IR interleaves these operations, native activities and a signed
+external event, then uses the same reducer for replay/simulation. Files, dual
+and db-only include fresh host reconstruction; the files continuation starts a
+new Node process. Refused grants, competing dispatch and interrupted allocation
+must leave explicit refusal/uncertainty and retain the existing effect owner.
+Controller/native/provider transports are doubles and make zero real model
+calls. This is an offline bootstrap fixture, not the complete standard workflow,
+live Windows/model qualification or an exact archive installation.
+`--nonmixed-only` selects the preceding native-composition regressions when the
+mixed partition is already running on the same immutable production sources;
+the required default command still includes both partitions.
+
 The production native-composition suite also tests the internal authenticated
 allocation composition: canonical reservation before owned launch, a competing
 launch refusal, signed closure/checkpoint reopening in a new Node process,
@@ -24,8 +40,8 @@ changed context, missing required projection and an altered reservation must
 stop before any new model turn. The complete required suite retains these cases.
 
 `--worker-only` executes the fixed worker entry in an actual new Node process,
-using its real private allocation input. An initially waiting graph requires no
-native client. A changed owner is refused; key bytes must be absent from output
+using its real private allocation input. V1 waiting and mixed v2 operation-boundary
+graphs require no native client. A changed owner is refused; key bytes must be absent from output
 and retained JSON. The outer controller remains a fixture capability, so this
 proves private worker wiring, not the Windows Job controller or model confinement.
 

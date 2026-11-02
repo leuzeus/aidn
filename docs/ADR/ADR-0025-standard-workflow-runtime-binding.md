@@ -433,3 +433,31 @@ unverified history, silently converted instances, mixed operation/native graphs
 or a new deadline after a long wait. Ordinary CLI/console integration, the mixed
 scope/dispatcher, real provider/human adapters and the full standard model remain
 required deliveries.
+
+### Internal common authority and mixed dispatch
+
+The opt-in `standard-workflow-mixed-composition.mjs` now selects operation or
+native ports from the common reducer's ready leaves. It introduces no business
+routing or second workflow state. A new `standard-mixed.v1` scope binds canonical
+project/persistence, model/source and signing identity. Historical operation and
+native scopes are never adopted or converted.
+
+`standard-process-authority.mjs` authenticates the entire retained instance:
+signed operation previews/intents/receipts and human captures, signed control
+checkpoints, and exact native history covered by the owned-allocation journal.
+The common core exposes a validated prefix content hash for control checkpoints;
+authentication does not replay every prefix through the reducer. Native worker
+protocol v2 reconstructs this fixed authority from pinned inputs and the private
+parent capability. Authored JSON cannot supply a scope, key or implementation.
+
+Native slices stop before ready operations and use fresh sessions on resume.
+The existing cooperative worktree effect owner covers their allocation as well
+as actual mutating business ports. An active/unknown allocation cannot race an
+operation or be retried by PID/elapsed time. Confirmed owned closure releases
+the owner; unknown termination retains it. This adds no coordination table,
+distributed ownership, deadline extension or implicit success.
+
+Qualification uses a bootstrap IR on real disposable project application ports
+with controller/native/provider doubles. It does not deliver the full standard
+IR, missing business adapters, ordinary CLI/console selection, live native/PR
+channels or exact installed-package A1–A10. Those remain explicit plan items.

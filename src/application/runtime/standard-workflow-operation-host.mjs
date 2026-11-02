@@ -35,7 +35,8 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now }) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority }) {
+  if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
   if (model.contract_version !== "agentic-process-model.v2" || typeof authorize !== "function") fail("STANDARD_HOST_CONFIGURATION_INVALID");
@@ -52,6 +53,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const controls = createStandardControlInbox({ store: createProcessControlInboxStore(options), signer, source: controlSource,
     projectionRequired });
   function readAuthority() {
+    if (processAuthority) return processAuthority.read();
     const project = readWorkflowProjectAuthority({ targetRoot }), persistence = agenticProcessPersistence({ targetRoot });
     if (project.stateMode !== initial.stateMode) fail("STANDARD_HOST_STATE_MODE_CHANGED");
     return { scope_id: shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
@@ -64,6 +66,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)) fail("STANDARD_HOST_AUTHORITY_CHANGED");
   }
   function snapshot() {
+    if (processAuthority) return processAuthority.snapshot();
     return { ...(source ? { model_source: source } : {}), context: operations.observeScope(), documents: ["CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md", "baseline/current.md", "snapshots/context-snapshot.md"]
       .map(path => { const row = artifacts.read(path, { required: true }); return { path, sha256: row.sha256 }; }) };
   }
@@ -140,6 +143,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, authorityTimeoutMs: 5000 });
   const current = id => {
     const value = service.inspect(id); scope(value.record);
+    if (processAuthority) { processAuthority.authenticate(value.record); return value; }
     if (Object.keys(value.record.initial_facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
     // Replay proves structure, not origin. Reopening a host must authenticate
     // every earlier operation result against its durable host journal as well.

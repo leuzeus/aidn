@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `c721f0c` et tranche courante de reprise native
-authentifiée. Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
+Dernier état relu : `4a4fa9e` et tranche courante d'hôte mixte interne.
+Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
 
@@ -29,11 +29,15 @@ encore ouverts.
 - L2/L4 : en cours. Ports de bootstrap/cycle, journal de dispatch signé, choix
   de mode/hook, inbox de contrôle durable et conservation de l'état natif décrits
   dans les addenda ci-dessous. Le journal d'allocation signé constitue une tranche
-  supplémentaire ; il ne lève pas la garde native d'historique.
+  supplémentaire. La reprise native et l'hôte mixte sont des compositions
+  internes explicites ; la garde du démarrage ordinaire reste inchangée.
 - L3 : en cours, composants IR de démarrage et de squelette de cycle distribués
   et consommés par les tests de ports réels ; le modèle standard complet reste à livrer.
-- L5 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
-  générale du lanceur et les preuves natives/package installé restent ouverts.
+- L4 : scope commun et dispatcher mixte interne implémentés, validation ciblée
+  en cours ; réconciliation des inconnus et continuation après expiration restent
+  ouvertes. Voir l'addendum du 2026-11-02.
+- L5 à L8 : à réaliser. Le modèle standard complet, son branchement ordinaire,
+  la reprise générale et les preuves natives/package installé restent ouverts.
 - Vérifications L1 : 27 cas dédiés, 38 régressions du réducteur/service, 51 de
   composition native sur transport simulé, 14 du compilateur, 10 du défaut moteur
   et 12 de console. Aucun appel modèle réel. Les contrôles de gouvernance et
@@ -1020,3 +1024,90 @@ analyse. La prochaine réalisation ne peut donc ni appeler seulement ce hook,
 ni ignorer warn, ni déduire DoR/scope_freeze d'une réussite de checkpoint. Elle
 doit relier diagnostic, preuve, décision éventuelle et postconditions aux ports
 réels avant de finaliser le cycle et d'autoriser le travail produit.
+
+## Addendum du 2026-11-02 — hôte mixte interne, livraison partielle L4
+
+`standard-workflow-mixed-composition.mjs` raccorde les ports existants à une
+seule instance IR v2 et au même réducteur. Le curseur choisit le type de port,
+sans branchement métier codé dans le dispatcher. Une opération déterministe et
+une attente humaine/externe ne demandent aucun appel modèle. Chaque écriture
+conserve son aperçu exact, son intention explicite, son autorisation et son reçu
+authentifié. La tranche native se ferme avant la prochaine opération.
+
+`standard-process-authority.mjs` fixe un nouveau scope `standard-mixed.v1`
+projet/persistance/modèle/source/clé. La réouverture vérifie tous les journaux
+opérations et contrôles, puis les événements natifs couverts par le checkpoint
+d'allocation signé. Le worker fixe reconstruit cette autorité avec le protocole
+privé v2. Aucun JSON rédigé ne fournit une clé, un scope ou un module exécutable.
+Les scopes historiques et les lecteurs existants ne sont pas convertis.
+
+La tranche native prend le même propriétaire local d'effets que les mutations
+métier. Une allocation active, interrompue ou incertaine bloque les opérations
+concurrentes ; aucune reprise par PID/temps ni nouvelle tentative implicite. Une
+fermeture confirmée libère ce propriétaire. La reprise conserve les plafonds et
+délais d'origine, crée de nouvelles sessions et transmet les exclusions de
+contributeurs à la revue. Aucun contrat d'extension de délai n'est ajouté.
+
+Les empreintes des composants distribués sont révisées explicitement : démarrage
+7, squelette de cycle 5. Aucun rafraîchissement silencieux à l'exécution. Le
+modèle de qualification mixte emploie les vrais ports de rechargement, admission
+et initialisation de session sur un projet jetable installé depuis les sources,
+puis une activité native, un événement signé et une revue. Il ne remplace pas
+`package/catalogs/process-models/aidn-standard.v1.json`, encore à livrer.
+
+Validation de cette tranche terminée : partitions mixte et native antérieure sur
+les mêmes sources de production immuables. Les résultats terminaux sont consignés
+ci-dessous. Les transports contrôleur/natif/fournisseur sont doublés ; aucune
+preuve de client modèle réel, de Job Windows réel ou de fournisseur PR réel ne
+s'en déduit. Le projet installé depuis les sources n'est pas une installation
+d'archive exacte.
+
+Restent L2 : diagnostic R05 réel, DoR/scope de travail, clôtures, promotion et
+ports de revue/synchronisation. Restent L3/L5 : modèle standard complet traçable
+à SPEC et sélection par les entrées ordinaires. Restent L4 : réconciliation
+explicite des effets inconnus, canaux humains/fournisseurs réels et continuation
+au-delà des délais initiaux. A1–A10/L6–L8 restent à qualifier séparément hors
+ligne, en natif et sur package installé exact. Le dispatcher mixte ne clôt aucun
+de ces critères à lui seul.
+
+Limite conservatrice de reprise : après le dernier checkpoint natif, le contexte
+d'un contrôle signé doit encore correspondre exactement au contexte courant pour
+admettre une tranche native. Un changement intermédiaire, même issu d'un port
+déterministe, peut donc imposer une nouvelle admission au lieu d'être adopté.
+Le traitement contrôlé de ces changements et de la fraîcheur métier d'une revue
+reste à qualifier avec le modèle standard complet ; aucune revue ancienne ne
+doit être rendue fraîche par une simple mise à jour de contexte.
+
+Point d'entrée métier suivant : le diagnostic R05 doit disposer d'un résultat
+structuré authentifié et lié aux entrées courantes avant son port de finalisation.
+La réponse native actuelle est fermée à `outcome`/`summary` ; un simple texte
+annonçant `completed` ne prouve donc ni le rapport de dérive ni sa qualification.
+Prévoir un contrat métier borné pour le rapport, un producteur agentique ou humain
+authentifié, puis un consommateur déterministe qui vérifie sa provenance, les
+preuves et les autorisations avant d'appeler le hook réel. Les suggestions de
+CR/parking-lot et les arbitrages doivent rester distincts des écritures autorisées.
+Ce raccordement dépend du présent hôte mixte ; il précède la finalisation de cycle
+et l'admission DoR/travail. Il ne doit pas se réduire à renommer un résultat natif.
+
+Preuves de la tranche : **PASS**, cinq cas mixtes (files/dual/db-only, refus
+d'autorisation, interruption avec propriétaire conservé), les 82 régressions
+natives antérieures et deux cas worker dont un nouveau contrôle v2. Le cas worker
+v1 recoupe les 82 régressions : il s'agit de 88 cas distincts, exécutés par
+partitions, pas d'une nouvelle exécution de la commande agrégée sans filtre.
+Le worker fixe v2 est réellement lancé dans un nouveau processus Node et s'arrête
+avant l'opération prête, avec zéro client modèle. La reprise mixte files se fait
+également dans un nouveau processus Node ; les trois modes vérifient le replay
+et la simulation exacts et les checkpoints. Les régressions de reprise native
+antérieures couvrent l'exclusion des anciens contributeurs.
+
+Autres contrôles **PASS** : réducteur/service (38), catalogue standard (20), hôte
+d'opérations antérieur (20), défaut moteur (10), console (12), source de vérité
+(35 politiques), métadonnées (37), complétude de gouvernance (38 concepts), CLI
+de gouvernance, catalogue des gates, contrat Markdown, références, sensibilité et
+topologie package. Le contrôle en lecture seule confirme les révisions startup 7
+et cycle 5 sans rafraîchissement nécessaire. Route du diff : ASSURED, sans issue.
+La commande agentique agrégée et les 60 gates de PR sélectionnés ne sont pas
+revendiqués comme tous exécutés localement. Aucun test de cette tranche ne reste
+actif. Client/arbre natifs réels, PostgreSQL réel, fournisseur PR réel et parcours
+standard complet depuis une archive installée exacte : **NOT_RUN**. Le livrable
+standard complet reste ouvert.

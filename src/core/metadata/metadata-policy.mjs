@@ -88,7 +88,7 @@ const METADATA_POLICIES = freezeDeep([
     sourceOfTruthConcept: "native_allocation_journal",
     evidenceTargets: ["src/core/contracts/workflow-definition/native-allocation-journal.v1.schema.json", "src/application/runtime/journaled-native-allocation.mjs", "src/application/runtime/native-allocation-worker-authority.mjs", "src/application/runtime/native-allocation-evidence.mjs", "src/application/runtime/native-allocation-controls.mjs", "tools/perf/verify-agentic-process-execution-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
     lifecycle: "reserved -> closed|failed|unresolved; closed is allocation termination, not workflow success",
-    notes: "Host MAC binds scope, generation, original ceilings, observed response identities/storage debit and exact protected checkpoint/closure hashes. The ephemeral capability enters only the fixed trusted worker's private bounded IPC, never authored configuration, model processes or retained output. Explicit native-only continuation authenticates closed history and later control captures, retains contributions and creates fresh sessions. Unknown accounting blocks. No mixed-host scope, anti-rollback, business approval, expired-deadline continuation or native OS qualification follows.",
+    notes: "Host MAC binds scope, generation, original ceilings, observed response identities/storage debit and exact protected checkpoint/closure hashes. The ephemeral capability enters only the fixed trusted worker's private bounded IPC, never authored configuration, model processes or retained output. Explicit continuation authenticates closed history and later controls; the opt-in standard-mixed.v1 authority also verifies operation receipts under one scope and existing local effect owner. It retains contributions and creates fresh sessions. Unknown accounting blocks. No anti-rollback, business approval, expired-deadline continuation, full standard model or native OS qualification follows.",
   }),
   policy({
     concept: "process_control_inbox", label: "Authenticated process control source",
@@ -120,7 +120,7 @@ const METADATA_POLICIES = freezeDeep([
     sourceOfTruthConcept: "process_local_effect_owner",
     evidenceTargets: ["src/core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json", "src/application/runtime/standard-workflow-artifacts.mjs", "tools/perf/verify-standard-workflow-ports-fixtures.mjs"],
     lifecycle: "absent -> acquired -> released|retained for explicit reconciliation",
-    notes: "Cooperative local collision guard. No admission, distributed fence or authenticated effect-completion evidence follows from a PID, token or timestamp. Retain on uncertainty without automatic takeover.",
+    notes: "Cooperative local collision guard shared by mutating business ports and opt-in mixed native allocations. No admission, distributed fence or authenticated effect-completion evidence follows from a PID, token or timestamp. Retain on unknown effects or native termination without automatic takeover.",
   }),
   policy({
     concept: "agent_working_memory", label: "Derived agent working memory",

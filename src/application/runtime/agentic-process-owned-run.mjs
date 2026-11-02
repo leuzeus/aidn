@@ -16,10 +16,10 @@ const validHash = value => /^[a-f0-9]{64}$/.test(value ?? "");
 
 // Only this entry owns the complete worker + native-client descendant tree.
 // A controller double is a test seam, never selectable through configuration.
-export async function runOwnedAgenticProcess({ configuration, authorization, execute = false, signal }, { controllerFactory = createWindowsProcessTreeController, environment = process.env, allocationObserver } = {}) {
+export async function runOwnedAgenticProcess({ configuration, authorization, execute = false, signal }, { controllerFactory = createWindowsProcessTreeController, environment = process.env, allocationObserver, processAuthority } = {}) {
   if (allocationObserver != null && (typeof allocationObserver.beforeLaunch !== "function" || typeof allocationObserver.afterClosure !== "function")) fail("PROCESS_EXECUTION_ALLOCATION_OBSERVER_INVALID");
   const allocatedAt = Date.now(), allocatedMono = performance.now();
-  const preview = createProjectAgenticProcessExecution(configuration, { environment }).preview();
+  const preview = createProjectAgenticProcessExecution(configuration, { environment, processAuthority }).preview();
   if (!execute) return preview;
   if (authorization?.approved !== true || authorization.model_allowed !== true || authorization.configuration_sha256 !== shadowHash(configuration)
     || !Number.isSafeInteger(authorization.authorized_at_ms) || authorization.authorized_at_ms > allocatedAt

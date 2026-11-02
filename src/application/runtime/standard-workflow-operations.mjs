@@ -38,6 +38,9 @@ function implementation() {
   return shadowHash(refs.map(url => ({ path: path.relative(packageRoot, fileURLToPath(url)).replaceAll("\\", "/"), sha256: createHash("sha256").update(fs.readFileSync(url)).digest("hex") })));
 }
 const loadedImplementation = implementation();
+export function assertStandardWorkflowImplementation() {
+  if (implementation() !== loadedImplementation) fail("STANDARD_IMPLEMENTATION_CHANGED");
+}
 const definitions = [
   ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
   ["session_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-empty-input.v1"],

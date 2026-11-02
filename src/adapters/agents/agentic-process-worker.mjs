@@ -17,13 +17,13 @@ try {
   const allocationAuthority = specification.allocation === undefined ? undefined : createNativeAllocationWorkerAuthority({ configuration, authorization, admission: specification.allocation });
   if (specification.allocation) delete specification.allocation;
   input.fill(0);
-  const execution = createProjectAgenticProcessExecution(configuration, { allocationAuthority });
+  const execution = createProjectAgenticProcessExecution(configuration, { allocationAuthority, processAuthority: allocationAuthority?.processAuthority });
   const result = await execution.run({ execute: true, authorization, persistenceBinding });
   process.stdout.write(JSON.stringify(result) + "\n");
 } catch (error) {
   // No raw error/body/configuration is written to stderr.
   const candidate = error?.code ?? error?.message;
-  const code = /^(PROCESS_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(candidate ?? "") ? candidate : "PROCESS_WORKER_FAILED";
+  const code = /^(PROCESS_|STANDARD_PROCESS_|NATIVE_ALLOCATION_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(candidate ?? "") ? candidate : "PROCESS_WORKER_FAILED";
   process.stderr.write(code + "\n");
   process.stdout.write(JSON.stringify({ contract_version: "agentic-process-execution-result.v1", status: "FAILED", first_failure: code,
     global_deadline_ms: Number.isSafeInteger(specification?.authorization?.global_deadline_ms) ? specification.authorization.global_deadline_ms : null,

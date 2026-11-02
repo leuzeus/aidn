@@ -224,6 +224,14 @@ export function createAgenticProcess({ instanceId, model, policyPins, scopeId, f
     initial_facts: structuredClone(facts), revision: 1, events: [] });
 }
 export function inspectAgenticProcess(instance) { assertAgenticProcessInstance(instance); return freezeShadow(replay(instance)); }
+// A fully validated journal proves all of its prefixes. Hashing an earlier
+// checkpoint does not require replaying every prefix again or inventing a
+// second reducer. Keep the instance fingerprint format owned by this module.
+export function agenticProcessPrefixSha256(instance, eventCount) {
+  assertAgenticProcessInstance(instance);
+  if (!Number.isSafeInteger(eventCount) || eventCount < 0 || eventCount > instance.events.length) fail("PROCESS_PREFIX_CHECKPOINT_INVALID");
+  return shadowHash({ ...content(instance), revision: eventCount + 1, events: instance.events.slice(0, eventCount) });
+}
 export function advanceAgenticProcess(instance, event) {
   assertAgenticProcessInstance(instance);
   if (checkShadowJson(event)) fail("PROCESS_EVENT_INVALID");
