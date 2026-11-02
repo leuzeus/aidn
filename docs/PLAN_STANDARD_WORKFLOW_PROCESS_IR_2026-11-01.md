@@ -609,3 +609,11 @@ Validation de cette tranche L3 :
   événements GitHub réels, reprise mixte générale, PostgreSQL réel et parcours
   métier depuis une archive installée exacte. Les preuves présentes n’en
   tiennent pas lieu.
+
+Le [contrôle des assets depuis une archive extraite](qualification/standard-workflow/startup-assets-2026-11-02.json)
+qualifie séparément la distribution du composant au commit `5e915e6` : archive
+générée localement, membres contrôlés, import dans un nouveau processus Node et
+47 lectures synchrones d’assets limitées au package extrait. Les hashes modèle
+et catalogue correspondent aux sources. Ce contrôle n’exécute aucun parcours
+métier ou natif et ne clôt pas L8 ; l’archive temporaire est supprimée après
+la vérification.
