@@ -8,7 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `28422eb` et tranche courante de contexte R05 après transition.
+Dernier état relu : `7e05b55` et tranche courante de raccords de données déclaratifs.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -1188,9 +1188,10 @@ modèle standard complet restent ensuite explicitement ouverts.
 Raccord de données L3/L5 à livrer explicitement : le modèle/catalogue standard
 doit déclarer comment les paramètres de démarrage, observations canoniques et
 résultats antérieurs alimentent chaque entrée d'opération. Le pilote de
-qualification fournit aujourd'hui explicitement `report_occurrence_id` et
-`evaluation_operation_id` ; cela
-ne prouve pas une résolution générale par le modèle. Prévoir un résolveur commun
+qualification initial fournissait explicitement `report_occurrence_id` et
+`evaluation_operation_id` ; cela ne prouvait pas une résolution générale par le
+modèle. L'addendum des raccords déclaratifs ci-dessous décrit l'infrastructure
+suivante ; ses mappings dans le modèle standard restent à livrer. Prévoir un résolveur commun
 borné, sans code/JSONPath arbitraire, avec corrélation d'instance et de portée de
 boucle/appel. Les entrées effectivement résolues restent liées aux intentions,
 aperçus et reçus authentifiés. L'acceptation du workflow standard doit montrer
@@ -1348,8 +1349,8 @@ Restent explicitement L2 : récupération humaine R05 et ses écritures autoris�
 réévaluation après récupération, réconciliation explicite des effets inconnus,
 DoR/travail/validation/transitions/clôtures/promotion/PR/synchronisation. L3/L5
 doivent encore livrer le modèle standard complet et ses raccords de données
-déclaratifs puis ses entrées ordinaires. Les pilotes fournissent encore les
-identités de résultats à la main ; cela ne constitue pas ce raccord. L6–L8
+déclaratifs puis ses entrées ordinaires. Les pilotes de cette tranche fournissaient
+les identités de résultats à la main ; l'addendum suivant traite cette limite. L6–L8
 conservent les parcours A1–A10, attentes/refus/reprises, preuves natives réelles,
 lecteurs historiques et qualification de l'archive installée exacte.
 
@@ -1361,3 +1362,88 @@ chaîne de reçus et leurs hashes avant/après doivent distinguer ces effets
 attendus d'un changement externe, sans désactiver la fraîcheur générale ni
 demander au modèle de recopier une preuve déjà conservée. Une couverture
 partielle ne devient pas complète par simple approbation humaine.
+
+## Addendum — raccords de données déclaratifs L3/L5
+
+Les pilotes précédents fournissaient eux-mêmes les identités de diagnostic et
+d'évaluation. Cette tranche ajoute l'infrastructure permettant au modèle de les
+déclarer : `data_bindings` optionnel en IR v2, contrat
+`process-data-bindings.v1`, paramètres immuables `initial_parameters` dans le hash
+d'instance, et `process-resolved-input.v1` dans l'aperçu signé. Sans cette option,
+les formats et hashes historiques restent inchangés ; aucun paramètre vide n'est
+ajouté silencieusement. Les paramètres n'initialisent aucun fait d'approbation.
+
+Chaque opération du modèle optant pour ce contrat déclare ses champs d'entrée.
+Le résolveur commun sélectionne des littéraux/paramètres, identités complétées,
+entrées/sorties de journaux acceptés et item courant de multi-instance. Chemins
+de clés bornés, ordre structurel garanti et portée d'activation sont validés.
+Une autre itération/item/appel ne peut fournir une valeur implicitement. Les
+exports composés, agrégations et dépendances non garanties sont explicitement
+refusés par cette première version ; les livrer par contrat si le graphe standard
+en a besoin, sans contourner les refus dans un pilote.
+
+L'hôte authentifie l'historique et fournit son lecteur fixe de journal MAC avant
+de sélectionner les valeurs. Il conserve leurs références/hashes, normalise par
+le contrat applicatif existant et résout de nouveau au stage. Un appel de step
+ne peut remplacer ces entrées. Admissions, grants explicites et authentification
+des résultats restent indépendants des données. Les reconstructions natives,
+préfixes de contrôle et simulateur conservent les paramètres.
+
+Fichiers : contrats de modèle/instance v2 et d'aperçu, nouveaux contrats de
+données/résolution, `process-data-contracts.mjs`, `process-input-resolution.mjs`,
+`standard-process-inputs.mjs`, réducteur/service/simulation, hôtes standard,
+reconstruction d'allocation/contrôle natifs, normalisation des contrats standard,
+pins/catalogues et corpus de qualification. Les paramètres/références restent
+subsumés sous l'instance et le journal existants, sans nouvelle table partagée.
+
+Acceptation ciblée : vrais ports bootstrap et R05, identités entièrement résolues
+par l'IR sans entrée manuelle du pilote, refus d'un remplacement, attente humaine
+issue de valeurs de journal, ressources natives fermées, résultat conservé et
+rejeu/simulation identiques sur trois modes. Les contrôles purs couvrent aussi
+les portées de boucle/collection/appel et données altérées. Un contrôle de
+livraison durable traverse un nouveau processus Node et une source devenue
+indisponible.
+
+Validation finale ciblée **PASS** : les trois sélections
+`--dataflow-mode=files|dual|db-only` emploient un pilote générique qui suit le
+curseur, sans ordre métier ni identités de résultats fournis par le pilote.
+Elles passent par les vrais ports bootstrap/R05, conservent l'attente humaine
+issue du journal authentifié, ferment les ressources natives substituées et
+retrouvent le même hash au rejeu et en simulation avec les paramètres initiaux.
+Les 48 contrôles du réducteur incluent dix nouveaux contrôles de données ; les
+27 contrôles des opérations préservent notamment les hashes v1 historiques,
+les 20 du catalogue passent. Les 12 contrôles de contrôle durable incluent la
+livraison dans un nouveau processus Node avec paramètres, puis l'acquittement
+conservé malgré une source indisponible. Les schémas affectés sont validés.
+
+Les essais ont aussi conduit à vérifier le hash de l'entrée de journal et sa
+forme avant sélection, à refuser les accesseurs sans les appeler, à comparer
+exactement les clés déclarées et à stabiliser l'ordre des champs résolus. Une
+collision de clés contenant une virgule et des ordres JSON équivalents sont
+couverts. Deux erreurs de préparation des contrôles ont été corrigées : lecture
+d'un champ inexistant du curseur et invocation du validateur dans le mauvais
+espace de contrats. Aucune règle d'admission ou d'autorisation n'a été abaissée.
+
+Les 20 contrôles de l'hôte et quatre du profil natif v2 ont passé sur le candidat
+avant les derniers durcissements du lecteur de données ; ils ne constituent pas
+une nouvelle exécution finale de ces suites. Leurs parcours historiques
+n'emploient pas les nouveaux raccords. Source de vérité (35), métadonnées (37),
+complétude (38), catalogue des gates, Markdown, références et sensibilité passent
+sur l'état final ; gouvernance CLI et topologie package ont passé sur le
+candidat avant ces derniers durcissements. Le routage final
+du diff est ASSURED sans anomalie ; les pins finaux startup 23/cycle 21 sont
+vérifiés sans écriture ni réparation. La suite agentique complète non filtrée
+et l'ensemble des gates de PR restent **NON_REJOUÉS** dans cette tranche.
+
+Ces preuves sont **hors ligne sur sources**, avec transport natif substitué et
+zéro appel au modèle. Modèle natif réel, confinement/Job Windows, fournisseurs
+réels, parcours standard complet et archive installée exacte : **NOT_RUN**.
+La topologie package ne qualifie pas l'exécution d'une archive installée.
+
+Cette infrastructure ne livre pas le graphe standard complet : restent le modèle
+`aidn-standard.v1.json`, ses mappings distribués vers tous les vrais ports,
+paramètres/attentes aux entrées CLI/console ordinaires, récupération humaine et
+ports L2 restants, puis A1–A10 et qualifications L6–L8. Les nouveaux modèles des
+tests sont des IR de qualification ; ils ne deviennent pas le modèle standard
+par leur seul succès. Preuves hors ligne sur sources, natives réelles et sur
+archive installée exacte restent distinctes.

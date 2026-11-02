@@ -556,3 +556,37 @@ bootstrap/mode/cycle-creation ports. They qualify subsequent context consumption
 native transport wiring, evaluation, hook and reducer replay only. They do not
 prove the still-missing validation/terminal-transition ports, human recovery,
 complete standard graph, real native isolation or exact archive execution.
+
+### Declarative operation inputs
+
+V2 models may explicitly opt into `process-data-bindings.v1` through
+`data_bindings`. Every operation then declares its input fields; no caller step
+may override them. Declared parameters live in `initial_parameters` inside the
+instance hash. They are durable input data, never initial routing facts, user
+approval or execution permission. Models without this opt-in retain their exact
+historical shape and explicit-input API. No default member or conversion is
+inserted into their records.
+
+The resolver selects bounded literal/parameter values, completed occurrence or
+operation identities, completed journal inputs/outputs and the current
+multi-instance item. Paths are fixed key arrays; authored JSON cannot select
+code, a file reader, an adapter or an executable transformation. Model validation
+requires structured precedence and the same or an ancestor activation scope.
+Iteration/item/call boundaries remain distinct. V1 refuses forward/cross-branch
+dependencies, optional branch producers and implicit exports from a completed
+call/collection/loop. Explicit exports and aggregation need a separate contract
+if the complete standard model requires them.
+
+The common host authenticates history before resolution and supplies its fixed
+MAC-verified journal reader for source values. A pure reducer/fixture reader is
+not an authentication authority. `process-resolved-input.v1` retains source
+identities and hashes in the signed operation preview. Normalization is fixed by
+the existing operation input contract; stage resolves again before accepting the
+intent. Binding/model/instance hashes, business admissions, live grants and
+result authentication still apply. Data selection makes no model call.
+
+Parameters are preserved by native-start reconstruction, control-prefix checks
+and simulation. Simulation still consumes an explicit offline event scenario;
+it does not authenticate or execute effects. This mechanism supplies L3/L5
+infrastructure. The complete standard model, published component mappings and
+ordinary CLI/console parameter entrypoints remain a separate integration task.

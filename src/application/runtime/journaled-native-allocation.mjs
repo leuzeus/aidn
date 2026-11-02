@@ -8,6 +8,7 @@ import { createAgenticProcessStore } from "../../adapters/runtime/agentic-proces
 import { createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
 import { nativeJournalId, assertNativeCheckpointEvidence } from "../../core/workflow/native-allocation-journal.mjs";
 import { createAgenticProcess, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
+import { processParameterOptions } from "../../core/workflow/process-data-contracts.mjs";
 import { agenticPolicyPins } from "../../core/workflow/agentic-process-model.mjs";
 import { assertAgenticProcessStart } from "../../core/workflow/agentic-process-start.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
@@ -119,8 +120,8 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
         beforeLaunch({ preview: actual }) {
           const now = read();
           if (now.content_sha256 !== before.content_sha256 || actual.scope_id !== preview.scope_id || actual.model_sha256 !== preview.model_sha256) fail("NATIVE_ALLOCATION_REVISION_CHANGED");
-          const creation = { instanceId: config.instance_id, model, scopeId: actual.scope_id, policyPins: agenticPolicyPins(model), facts: {} };
           const canonical = instances.read(config.instance_id).record;
+          const creation = { instanceId: config.instance_id, model, scopeId: actual.scope_id, policyPins: agenticPolicyPins(model), facts: {}, ...processParameterOptions(canonical ?? {}) };
           if (processAuthority) {
             if (canonical) authenticatedCurrent(true);
             assertNativeAllocationProjection(canonical, config, projectionRequired);

@@ -4,6 +4,7 @@ import { createProcessControlInboxStore } from "../../adapters/runtime/process-c
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
 import { assertControlRequest } from "../../core/workflow/process-control-inbox.mjs";
 import { createAgenticProcess, advanceAgenticProcess, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
+import { processParameterOptions } from "../../core/workflow/process-data-contracts.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -30,7 +31,7 @@ export function createNativeAllocationControls({ configuration, signer, options,
       },
     } });
   function checkpoint(record, eventId) {
-    let state = createAgenticProcess({ instanceId: record.instance_id, scopeId: record.scope_id, model: record.model, policyPins: record.policy_pins, facts: record.initial_facts });
+    let state = createAgenticProcess({ instanceId: record.instance_id, scopeId: record.scope_id, model: record.model, policyPins: record.policy_pins, facts: record.initial_facts, ...processParameterOptions(record) });
     for (const event of record.events) { state = advanceAgenticProcess(state, event); if (event.event_id === eventId) return state.instance_sha256; }
     fail("PROCESS_CONTROL_INSTANCE_CHANGED");
   }

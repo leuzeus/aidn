@@ -31,6 +31,12 @@ Its presence grants no completion: only the authenticated operation receipt
 retains verified execution of the fixed R05 hook. No shared table or historical
 conversion is introduced.
 
+Opt-in IR `data_bindings` is model configuration. Its immutable
+`initial_parameters` remain inside the existing process instance; source
+references and `input_resolution` remain inside its signed operation preview.
+They reuse existing artifact scope/CAS/projection and introduce no shared table,
+credential, automatic approval fact or historical conversion.
+
 Date: 2026-03-28  
 Status: current codebase inventory
 

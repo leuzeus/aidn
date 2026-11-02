@@ -21,12 +21,14 @@ import { assertProcessOperationBinding } from "../../core/workflow/process-opera
 import { assertStandardWorkflowModelSource } from "../../core/workflow/standard-workflow-model-catalog.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import previewSchema from "../../core/contracts/workflow-definition/standard-operation-preview.v1.schema.json" with { type: "json" };
+import { processParameterOptions } from "../../core/workflow/process-data-contracts.mjs";
+import { resolveStandardProcessInput, assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const receiptId = id => "receipt_" + id.slice(3);
 function controlCheckpoint(instance, eventId) {
   let replay = createAgenticProcess({ instanceId: instance.instance_id, model: instance.model, policyPins: instance.policy_pins,
-    scopeId: instance.scope_id, facts: instance.initial_facts });
+    scopeId: instance.scope_id, facts: instance.initial_facts, ...processParameterOptions(instance) });
   for (const event of instance.events) {
     replay = advanceAgenticProcess(replay, event);
     if (event.event_id === eventId) return replay.instance_sha256;
@@ -76,6 +78,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   function validatePreview(preview) {
     if (validateJsonSchema(preview, previewSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_HOST_PREVIEW_INVALID");
     signer.verify(preview); assertProcessOperationBinding(preview.binding); assertStandardOperationInput(preview.binding.id, preview.input);
+    assertStandardResolvedPreview(preview, model);
     if (shadowHash(bindings.get(preview.binding.id)) !== shadowHash(preview.binding)) fail("STANDARD_HOST_BINDING_CHANGED");
     return preview;
   }
@@ -260,6 +263,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const occurrence = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
       const node = occurrence && model.nodes.find(row => row.id === occurrence.node_id), binding = bindings.get(node?.binding_ref);
       if (!binding || !(occurrence.status === "READY" || occurrence.status === "WAITING" && ["blocked", "deferred"].includes(occurrence.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
+      const resolved = resolveStandardProcessInput({ instance: state.record, occurrenceId, input, readOperation: id => retained(id).record });
+      input = resolved.input;
       assertStandardOperationInput(binding.id, input);
       const prepared = binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_check_finalize" ? await driftFinalization?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
@@ -270,7 +275,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_initialize" ? await operations.prepareCycle(input) : null;
       return signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instanceId, instance_sha256: expectedSha256,
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
-        input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input, prepared, snapshot: snapshot(), prepared_at_ms: now() });
+        input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input,
+        ...(resolved.input_resolution ? { input_resolution: resolved.input_resolution } : {}), prepared, snapshot: snapshot(), prepared_at_ms: now() });
     },
     async stage(preview, { write = false, expectedPreviewSha256 } = {}) {
       preview = structuredClone(preview);
@@ -278,6 +284,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const state = current(preview.instance_id), age = now() - preview.prepared_at_ms;
       if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_HOST_PREVIEW_EXPIRED");
       if (state.record.instance_sha256 !== preview.instance_sha256 || shadowHash(snapshot()) !== shadowHash(preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      if (model.data_bindings && shadowHash(resolveStandardProcessInput({ instance: state.record, occurrenceId: preview.occurrence_id,
+        readOperation: id => retained(id).record }).input_resolution) !== shadowHash(preview.input_resolution)) fail("PROCESS_RESOLVED_INPUT_CHANGED");
       const grant = await grantFor(preview), id = operationJournalId(state.record, preview.occurrence_id);
       const intent = { contract_version: "process-operation-intent.v1", operation_id: id, binding_ref: preview.binding.id, binding_sha256: shadowHash(preview.binding),
         input_sha256: shadowHash(preview.input), preconditions_sha256: shadowHash({ snapshot: preview.snapshot, prepared: preview.prepared }),

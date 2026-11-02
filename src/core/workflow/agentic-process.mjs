@@ -6,6 +6,7 @@ import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import instanceSchema from "../contracts/workflow-definition/agentic-process-instance.v1.schema.json" with { type: "json" };
 import instanceSchemaV2 from "../contracts/workflow-definition/agentic-process-instance.v2.schema.json" with { type: "json" };
 import { assertProcessOperationIntent, assertProcessOperationReceipt, assertProcessControlEvent } from "./process-operation-contracts.mjs";
+import { assertProcessParameters } from "./process-data-contracts.mjs";
 
 const terminal = status => ["COMPLETED", "FAILED", "CANCELLED"].includes(status);
 const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
@@ -201,7 +202,7 @@ function replay(instance) {
 
 export function assertAgenticProcessInstance(instance) {
   const v2 = instance?.contract_version === "agentic-process-instance.v2";
-  if (checkShadowJson(instance) || validateJsonSchema(instance, v2 ? instanceSchemaV2 : instanceSchema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(instance, ["contract_version", "profile", "instance_id", "model", "model_sha256", "policy_pins", "scope_id", "initial_facts", "revision", "events", "instance_sha256"])
+  if (checkShadowJson(instance) || validateJsonSchema(instance, v2 ? instanceSchemaV2 : instanceSchema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(instance, ["contract_version", "profile", "instance_id", "model", "model_sha256", "policy_pins", "scope_id", "initial_facts", "revision", "events", "instance_sha256"], v2 ? ["initial_parameters"] : [])
     || !["agentic-process-instance.v1", "agentic-process-instance.v2"].includes(instance.contract_version)
     || instance.profile !== (v2 ? AGENTIC_PROCESS_OPERATION_PROFILE : AGENTIC_PROCESS_PROFILE)
     || instance.model?.contract_version !== (v2 ? "agentic-process-model.v2" : "agentic-process-model.v1")
@@ -209,19 +210,23 @@ export function assertAgenticProcessInstance(instance) {
     || !factsValid(instance.initial_facts) || !Array.isArray(instance.events) || instance.events.length > 512
     || instance.revision !== instance.events.length + 1 || instance.model_sha256 !== shadowHash(instance.model)
     || instance.instance_sha256 !== shadowHash(content(instance))) fail("PROCESS_INSTANCE_INVALID");
-  assertAgenticProcessModel(instance.model, { policyPins: instance.policy_pins }); replay(instance); return instance;
+  assertAgenticProcessModel(instance.model, { policyPins: instance.policy_pins });
+  if (Object.hasOwn(instance, "initial_parameters") !== Object.hasOwn(instance.model, "data_bindings")) fail("PROCESS_PARAMETERS_INVALID");
+  assertProcessParameters(instance.model, instance.initial_parameters); replay(instance); return instance;
 }
 function seal(value) {
   const instance = { ...value, instance_sha256: shadowHash(value) };
   assertAgenticProcessInstance(instance); return freezeShadow(instance);
 }
-export function createAgenticProcess({ instanceId, model, policyPins, scopeId, facts = {} }) {
+export function createAgenticProcess({ instanceId, model, policyPins, scopeId, facts = {}, parameters }) {
   if (checkShadowJson({ instanceId, model, policyPins, scopeId, facts }) || policyPins === null) fail("PROCESS_INPUT_INVALID");
   assertAgenticProcessModel(model, { policyPins });
   const v2 = model.contract_version === "agentic-process-model.v2";
+  const declared = Object.hasOwn(model, "data_bindings");
+  assertProcessParameters(model, declared ? parameters ?? {} : parameters);
   return seal({ contract_version: v2 ? "agentic-process-instance.v2" : "agentic-process-instance.v1", profile: v2 ? AGENTIC_PROCESS_OPERATION_PROFILE : AGENTIC_PROCESS_PROFILE, instance_id: instanceId,
     model: structuredClone(model), model_sha256: shadowHash(model), policy_pins: structuredClone(policyPins), scope_id: scopeId,
-    initial_facts: structuredClone(facts), revision: 1, events: [] });
+    initial_facts: structuredClone(facts), ...(declared ? { initial_parameters: structuredClone(parameters ?? {}) } : {}), revision: 1, events: [] });
 }
 export function inspectAgenticProcess(instance) { assertAgenticProcessInstance(instance); return freezeShadow(replay(instance)); }
 // A fully validated journal proves all of its prefixes. Hashing an earlier

@@ -565,3 +565,27 @@ component does not implement human recovery or select the full standard model.
 The producer configuration must still match when consuming its report; a changed
 instruction or criterion refuses new evaluation/finalization while leaving
 historical inspection available.
+
+### Declarative inputs in v2
+
+An explicitly authored `data_bindings` (`process-data-bindings.v1`) declares
+`parameter_keys` and one `inputs` entry (`node_id`, `fields`) for every operation.
+Each field uses one closed expression: `literal`, `parameter`, `occurrence_id`,
+`operation_id`, `operation_input`, `operation_output` or current collection
+`item`. Parameter and journal selections use a bounded `path` array of keys,
+not JSONPath or executable code. Operation contracts still validate the result.
+
+Initialize the internal common host with `parameters: { ... }`; those values
+remain immutable `initial_parameters` in the instance hash. Subsequent `step`
+calls supply no operation input. The host resolves completed predecessors,
+authenticates their journal values, retains `input_resolution` in its signed
+preview and rechecks it at stage. Normalization belongs to the fixed operation.
+Existing models without bindings retain their explicit-input behavior and hashes.
+
+Only structurally preceding sources in the current or an ancestor activation
+scope are accepted. Another iteration/item/call cannot silently supply a value.
+Implicit compound exports, aggregation and forward/optional-branch dependencies
+are refused in this first contract. Durable parameters are data, not permission
+or routing approval facts. Grants and business admissions remain required.
+This internal mechanism does not yet select a complete standard workflow or add
+ordinary CLI/console parameter controls.

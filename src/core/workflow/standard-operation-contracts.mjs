@@ -15,6 +15,12 @@ import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson } from "./shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
+export function normalizeStandardOperationInput(operation, value) {
+  assertStandardOperationInput(operation, value);
+  if (operation === "session_initialize") return { ...value, mode: value.mode ?? "UNKNOWN" };
+  if (operation === "cycle_initialize") return { ...value, objective: value.objective.replace(/\s+/gu, " ").trim() };
+  return structuredClone(value);
+}
 export function assertStandardOperationInput(operation, value) {
   const schema = operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit"].includes(operation) ? empty
     : ["mode_decision", "session_start_finalize", "cycle_context_refresh"].includes(operation) ? sessionRef : operation === "session_mode_apply" ? modeApply

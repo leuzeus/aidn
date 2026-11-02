@@ -46,6 +46,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     deliverControl: (id, input) => operations.deliverControl(id, input),
     async step({ write = false, input = {}, authorization, signal } = {}) {
       if (typeof write !== "boolean") fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
+      if (model.data_bindings && (checkShadowJson(input) || !input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).length)) fail("PROCESS_INPUT_OVERRIDE_FORBIDDEN");
       const state = inspect(), cursor = state.cursor;
       if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) return { kind: "terminal", ...state, written: false, status: cursor.status };
       const ready = cursor.ready.map(id => cursor.occurrences.find(row => row.occurrence_id === id));

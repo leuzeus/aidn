@@ -21,6 +21,7 @@ import { assertAgenticProcessModel, agenticPolicyPins } from "../../core/workflo
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import previewSchema from "../../core/contracts/workflow-definition/standard-operation-preview.v1.schema.json" with { type: "json" };
+import { assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // New mixed instances have one authority. Legacy operation/native scopes remain
@@ -86,6 +87,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
           if (validateJsonSchema(record.preview, previewSchema, "$", { contractKind: "workflow-definition" }).length
             || shadowHash(bindings.get(record.intent.binding_ref)) !== shadowHash(record.preview.binding)) fail("STANDARD_PROCESS_OPERATION_NOT_AUTHENTICATED");
           assertStandardOperationInput(record.intent.binding_ref, record.preview.input);
+          assertStandardResolvedPreview(record.preview, model);
           if (record.intent.binding_ref === "mode_decision" && record.results.length) human.captured(record);
           seen.set(id, record);
         }

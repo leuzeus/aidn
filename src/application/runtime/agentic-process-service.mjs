@@ -116,13 +116,13 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
       if (!previous.record) fail("PROCESS_INSTANCE_NOT_FOUND");
       return { ...previous, cursor: inspectAgenticProcess(previous.record) };
     },
-    initialize({ instanceId, model, facts = {}, write = false, expectedResultSha256 = null }) {
+    initialize({ instanceId, model, facts = {}, parameters, write = false, expectedResultSha256 = null }) {
       const previous = store.read(instanceId);
       if (previous.record) fail("PROCESS_INSTANCE_ALREADY_EXISTS");
       let observed;
       try { observed = readAuthority(); } catch { fail("PROCESS_AUTHORITY_UNAVAILABLE"); }
       if (!observed?.policy_pins || !observed.scope_id) fail("PROCESS_AUTHORITY_UNAVAILABLE");
-      const instance = createAgenticProcess({ instanceId, model, facts, scopeId: observed.scope_id, policyPins: observed.policy_pins });
+      const instance = createAgenticProcess({ instanceId, model, facts, parameters, scopeId: observed.scope_id, policyPins: observed.policy_pins });
       return commit(instance, previous, write, expectedResultSha256);
     },
     // A timer/message is delivered by the trusted host, not polled by an agent.

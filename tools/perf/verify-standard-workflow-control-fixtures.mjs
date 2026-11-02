@@ -26,7 +26,7 @@ const H = "a".repeat(64), grant = { authorized: true, authority_id: "fixture_ope
 const here = fileURLToPath(import.meta.url), temporary = fs.realpathSync(os.tmpdir()), owned = [];
 const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: "pipe", windowsHide: true }).trim();
 const op = (id, binding_ref) => ({ id, kind: "operation", participant_ref: "project", binding_ref });
-function model(eventOnly = false) {
+function model(eventOnly = false, parameters = false) {
   const nodes = [...(eventOnly ? [] : [{ id: "root", kind: "sequence", participant_ref: "project", children: ["reload", "admit", "initialize", "wait"] },
     op("reload", "context_reload"), op("admit", "session_admit"), op("initialize", "session_initialize")]),
     { id: "wait", kind: "event", participant_ref: "project", branches: [
@@ -36,7 +36,9 @@ function model(eventOnly = false) {
   const refs = new Set(nodes.filter(n => n.kind === "operation").map(n => n.binding_ref));
   return { contract_version: "agentic-process-model.v2", model_id: eventOnly ? "control-wait-fixture" : "control-resume-fixture", revision: 1,
     participants: [{ id: "project" }], roles: [], policies: [], entry: eventOnly ? "wait" : "root", nodes,
-    operation_pins: Object.fromEntries(standardWorkflowOperationBindings().filter(b => refs.has(b.id)).map(b => [b.id, shadowHash(b)])) };
+    operation_pins: Object.fromEntries(standardWorkflowOperationBindings().filter(b => refs.has(b.id)).map(b => [b.id, shadowHash(b)])),
+    ...(parameters ? { data_bindings: { contract_version: "process-data-bindings.v1", parameter_keys: ["trace"],
+      inputs: nodes.filter(node => node.kind === "operation").map(node => ({ node_id: node.id, fields: {} })) } } : {}) };
 }
 function source(privateRoot, verified = true) {
   const read = ref => {
@@ -47,7 +49,7 @@ function source(privateRoot, verified = true) {
     outcome: verified && claim.authority_id === "fixture_provider" && shadowHash(read(sourceRef)) === shadowHash(claim)
       && claim.request_sha256 === shadowHash(request) ? "verified" : "denied", authority_id: claim.authority_id, source_sha256: shadowHash(claim) }) };
 }
-const open = (root, privateRoot, eventOnly = false, verified = true) => createStandardWorkflowOperationHost({ targetRoot: root, model: model(eventOnly),
+const open = (root, privateRoot, eventOnly = false, verified = true, parameters = false) => createStandardWorkflowOperationHost({ targetRoot: root, model: model(eventOnly, parameters),
   readSigningKey: () => fs.readFileSync(path.join(privateRoot, "host.key")), authorize: async () => grant, controlSource: source(privateRoot, verified) });
 const publish = (privateRoot, ref, claim) => fs.writeFileSync(path.join(privateRoot, ref + ".json"), JSON.stringify(claim));
 function claimFor(request, id, kind = "external") { return { contract_version: "process-control-source.v1", source_kind: kind,
@@ -110,8 +112,8 @@ async function safety() {
   pass("self-hashed canonical event history cannot substitute the authenticated captured delivery");
 }
 if (process.argv[2] === "--deliver") {
-  const [, , , root, privateRoot, id, eventOnly] = process.argv;
-  const state = await open(root, privateRoot, eventOnly === "yes").deliverControl(id, { write: true });
+  const [, , , root, privateRoot, id, eventOnly, parameters] = process.argv;
+  const state = await open(root, privateRoot, eventOnly === "yes", true, parameters === "yes").deliverControl(id, { write: true });
   console.log(JSON.stringify({ instance_sha256: state.record.instance_sha256 }));
 } else try {
   for (const mode of process.argv[2] === "--safety-only" ? [] : process.argv[2] === "--files-only" ? ["files"] : ["files", "dual", "db-only"]) {
@@ -131,6 +133,22 @@ if (process.argv[2] === "--deliver") {
     for (const id of ["reload", "admit", "initialize"]) await operation(id);
     const requestInput = (h, id = "resume") => { const state = h.inspect(id), frame = state.cursor.occurrences.find(row => row.wait_reason === "event");
       assert.ok(frame); return { instanceId: id, expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id }; };
+    if (mode === "files") {
+      const data = () => open(root, privateRoot, true, true, true), parameters = { trace: "durable input across authenticated control" };
+      const planned = data().initialize({ instanceId: "parameters", parameters });
+      data().initialize({ instanceId: "parameters", parameters, write: true, expectedResultSha256: planned.record.instance_sha256 });
+      const input = requestInput(data(), "parameters"), request = data().prepareControl(input);
+      publish(privateRoot, "parameters", claimFor(request, "parameter-delivery"));
+      const capture = await data().captureControl({ ...input, sourceRef: "parameters", write: true });
+      const child = JSON.parse(execFileSync(process.execPath, [here, "--deliver", root, privateRoot, capture.inbox_id, "yes", "yes"],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true, timeout: 30000 }));
+      fs.unlinkSync(path.join(privateRoot, "parameters.json"));
+      const retained = await data().deliverControl(capture.inbox_id, { write: true }); assert.equal(retained.retained, true);
+      assert.equal(retained.record.instance_sha256, child.instance_sha256); assert.deepEqual(retained.record.initial_parameters, parameters);
+      const replay = simulateAgenticProcess({ instanceId: retained.record.instance_id, scopeId: retained.record.scope_id, model: retained.record.model,
+        policyPins: retained.record.policy_pins, parameters, events: retained.record.events }); assert.equal(replay.trace.at(-1).instance_sha256, child.instance_sha256);
+      pass("files: durable parameters survive authenticated control in a new Node process and retained acknowledgement without provider");
+    }
     const before = [business.read("CURRENT-STATE.md").sha256, business.read("sessions/S001.md").sha256, git(root, "branch", "--show-current")];
     const input = requestInput(host), request = host.prepareControl(input), initialHash = host.inspect("resume").record.instance_sha256;
     await assert.rejects(host.captureControl({ ...input, sourceRef: "absent" }), { code: "STANDARD_HOST_EXPLICIT_WRITE_REQUIRED" });

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
+import { processParameterOptions } from "../../core/workflow/process-data-contracts.mjs";
 import { createAgenticProcessExecutionHost } from "./agentic-process-execution-host.mjs";
 import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
 import { createAgenticCodexSessions } from "../../adapters/agents/agentic-codex-session.mjs";
@@ -171,9 +172,9 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const storeEnvironment = createAgenticProcessWorkerEnvironment({ targetRoot, expectedBinding: persistenceBinding, env: environment });
       const store = createAgenticProcessStore({ targetRoot, stateMode: authorityAtCreation.stateMode, env: storeEnvironment,
         deadlineMs: workDeadline, ...(artifactStoreFactory ? { artifactStoreFactory } : {}) });
-      const creation = { instanceId: config.instance_id, model, facts: controlScenario.initial_facts,
-        scopeId, policyPins: agenticPolicyPins(model) };
       const retainedAtStart = store.read(config.instance_id).record;
+      const creation = { instanceId: config.instance_id, model, facts: controlScenario.initial_facts,
+        scopeId, policyPins: agenticPolicyPins(model), ...processParameterOptions(retainedAtStart ?? {}) };
       let admitted = null;
       if (allocationAuthority) {
         admitted = await allocationAuthority.admit({ creation, retained: retainedAtStart, scopeId, modelSha256: shadowHash(model), productSha256: shadowHash(productSnapshot()) });

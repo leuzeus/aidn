@@ -11,7 +11,7 @@ import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
-import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardSessionPlan } from "../../core/workflow/standard-operation-contracts.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardSessionPlan, normalizeStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { createStandardSessionModeOperations } from "./standard-session-mode-operations.mjs";
@@ -19,7 +19,7 @@ import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
 
 const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
   "standard-cycle-operations.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "cycle-close-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
-  "standard-workflow-operation-host.mjs", "standard-process-authority.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
+  "standard-workflow-operation-host.mjs", "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "gating-evaluate-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
   "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
@@ -28,6 +28,8 @@ function implementation() {
     new URL("../../lib/workflow/markdown-render-lib.mjs", import.meta.url), new URL("../../core/skills/skill-policy.mjs", import.meta.url),
     new URL("../../lib/workflow/branch-kind-lib.mjs", import.meta.url),
     new URL("../../core/workflow/standard-operation-contracts.mjs", import.meta.url),
+    ...["process-data-contracts.mjs", "process-input-resolution.mjs", "agentic-process-model.mjs", "agentic-process.mjs"].map(name => new URL(`../../core/workflow/${name}`, import.meta.url)),
+    ...["process-data-bindings.v1", "process-resolved-input.v1", "agentic-process-model.v2", "agentic-process-instance.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../core/workflow/native-activity-output.mjs", import.meta.url),
     ...["standard-drift-report.v1", "standard-drift-evaluate-input.v1", "standard-drift-output.v1", "standard-drift-followup-input.v1", "standard-drift-finalize-plan.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../core/workflow/standard-workflow-model-catalog.mjs", import.meta.url),
@@ -71,7 +73,7 @@ function sessionInput(input) {
   if (checkShadowJson(input) || !input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some(key => !["session_id", "session_branch", "objective", "mode"].includes(key))
     || !/^S[0-9]{3,6}$/.test(input.session_id) || !scalar(input.session_branch) || !new RegExp(`^${input.session_id}-[a-z0-9][a-z0-9-]{0,47}$`).test(input.session_branch)
     || !scalar(input.objective) || !["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"].includes(input.mode ?? "UNKNOWN")) fail("STANDARD_SESSION_INPUT_INVALID");
-  return { ...input, mode: input.mode ?? "UNKNOWN" };
+  return normalizeStandardOperationInput("session_initialize", input);
 }
 function replaceField(text, key, value) {
   const pattern = new RegExp("^([ \t]*-?[ \t]*)" + key + ":[^\r\n]*(?:\r?\n[ \t]+-[^\r\n]*)*", "gm");

@@ -6,6 +6,8 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
+  "src/core/workflow/process-data-contracts.mjs", "src/core/workflow/process-input-resolution.mjs", "src/application/runtime/standard-process-inputs.mjs",
+  "src/core/contracts/workflow-definition/process-data-bindings.v1.schema.json", "src/core/contracts/workflow-definition/process-resolved-input.v1.schema.json",
   "src/application/runtime/agentic-process-implementation-pins.mjs",
   "src/application/runtime/agentic-process-persistence.mjs", "src/application/runtime/runtime-persistence-service.mjs",
   "src/application/runtime/project-artifact-store-service.mjs", "src/application/runtime/project-artifact-store-worker.mjs",

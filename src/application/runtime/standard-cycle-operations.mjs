@@ -11,7 +11,7 @@ import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifac
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
-import { assertStandardOperationInput, assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput, normalizeStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import planSchema from "../../core/contracts/workflow-definition/standard-cycle-initialize-plan.v1.schema.json" with { type: "json" };
 import contextSchema from "../../core/contracts/workflow-definition/standard-cycle-context-plan.v1.schema.json" with { type: "json" };
@@ -53,7 +53,7 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
   }
   async function prepare(input, preparedAt, acquired = false) {
     assertStandardOperationInput("cycle_initialize", input);
-    input = { ...input, objective: input.objective.replace(/\s+/gu, " ").trim() };
+    input = normalizeStandardOperationInput("cycle_initialize", input);
     const context = scope(), observed = session(input.session_id), admitted = await admission();
     if ((!acquired && artifacts.ownerPending()) || !admitted.allowed) return { can_apply: false, admission: admitted };
     if (input.base_branch !== context.branch || admitted.lifecycle.continuity_base_branch !== input.base_branch

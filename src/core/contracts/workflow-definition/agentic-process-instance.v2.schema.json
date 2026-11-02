@@ -19,6 +19,7 @@
     "instance_sha256"
   ],
   "properties": {
+    "initial_parameters": { "type": "object", "maxProperties": 32 },
     "contract_version": {
       "const": "agentic-process-instance.v2"
     },

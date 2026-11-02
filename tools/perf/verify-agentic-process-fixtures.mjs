@@ -15,6 +15,7 @@ import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { verifyProcessDataFixtures } from "./process-data-fixture-lib.mjs";
 
 const example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
 const extendedXml = fs.readFileSync(new URL("../../tests/fixtures/agentic-process/extended-delivery.bpmn", import.meta.url), "utf8");
@@ -305,6 +306,7 @@ function composition(m = model(), { stateMode = "files", resultTimeoutMs = 1000 
   return { service, store, state, targetRoot, initialize: (write = true) => service.initialize({ instanceId: "fixture", model: m, write }) };
 }
 try {
+  await verifyProcessDataFixtures(check);
   for (const stateMode of ["files", "dual", "db-only"]) await check("V2 XML event/loop/collection/calls use canonical authorities and deterministic simulation: " + stateMode, async () => {
     const m = extendedModel(), c = composition(m, { stateMode });
     assert.equal(c.initialize(false).written, false);

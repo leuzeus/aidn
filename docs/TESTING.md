@@ -2,6 +2,20 @@
 
 ## Structured agentic process
 
+The common reducer suite includes `process-data-fixture-lib.mjs`: durable
+parameters without approval facts, completed identities/journal values, tampering,
+missing data/readers, scoped loops, parallel collections nested in calls, exact
+simulation and early refusal of unsafe/ambiguous mappings. These are synthetic
+core records, not journal-authentication or effect qualification.
+`--dataflow-mode=<files|dual|db-only>` in the production execution suite uses
+actual bootstrap and R05 ports on a disposable source-installed project. The IR
+supplies parameter-derived inputs and prior result identities without a driver
+passing report/evaluation IDs. It also derives a human question from a MAC-checked
+journal input/output and remains waiting without another model call. Fresh hosts,
+retained dispatch, closed native resources and parameter-preserving simulation
+are checked. Native transport is substituted; these fixtures do not deliver the
+full standard graph, native isolation or exact installed archive qualification.
+
 `--drift-only` selects typed R05 output checks in the production native suite.
 Closed report/schema negatives cover missing output, wrong context, invented
 evidence, inconsistent diagnosis and failed/refused responses. Disposable

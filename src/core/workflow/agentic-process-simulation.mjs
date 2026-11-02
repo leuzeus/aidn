@@ -8,7 +8,7 @@ import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 // ports, clock, executor, persistence or authority. Synthetic assignment/result
 // records test bindings and flow; they cannot authenticate a real resource.
 export function simulateAgenticProcess(input) {
-  if (checkShadowJson(input) || !exactKeys(input, ["instanceId", "model", "policyPins", "scopeId", "events"], ["facts"])
+  if (checkShadowJson(input) || !exactKeys(input, ["instanceId", "model", "policyPins", "scopeId", "events"], ["facts", "parameters"])
     || !Array.isArray(input.events) || input.events.length > 512) fail("PROCESS_SIMULATION_INPUT_INVALID");
   const { events, ...initial } = input;
   let instance = createAgenticProcess(initial);

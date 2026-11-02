@@ -17,6 +17,7 @@
     "operation_pins"
   ],
   "properties": {
+    "data_bindings": { "type": "object" },
     "contract_version": {
       "const": "agentic-process-model.v2"
     },

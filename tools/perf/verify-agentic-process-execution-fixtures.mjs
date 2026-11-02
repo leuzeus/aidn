@@ -62,7 +62,9 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
-  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift )/.test(name)) return;
+  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow )/.test(name)) return;
+  const dataflowMode = process.argv.find(value => value.startsWith("--dataflow-mode="))?.slice("--dataflow-mode=".length);
+  if (dataflowMode && !name.startsWith(`dataflow ${dataflowMode}:`)) return;
   if (process.argv.includes("--drift-only") && !name.startsWith("drift ")) return;
   if (process.argv.includes("--drift-git-only") && !name.startsWith("drift controlled Git")) return;
   if (process.argv.includes("--drift-contract-only") && !name.startsWith("drift contract ")) return;
@@ -342,6 +344,19 @@ function mixedFixture(stateMode = "files", options = {}) {
       model.nodes = [{ id: "mixed", kind: "sequence", participant_ref: "delivery", children: ["reload", "admit", "initialize", "analyze", "evaluate", "finalize"] },
         ...model.nodes.filter(row => ["reload", "admit", "initialize", "analyze", "evaluate"].includes(row.id)), op("finalize", "drift_check_finalize")];
     }
+    if (options.dataBindings) {
+      model.operation_pins.mode_decision = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "mode_decision"));
+      model.nodes[0].children.push("choose_mode"); model.nodes.push(op("choose_mode", "mode_decision"));
+      model.data_bindings = { contract_version: "process-data-bindings.v1", parameter_keys: ["session"], inputs: [
+        { node_id: "reload", fields: {} }, { node_id: "admit", fields: {} },
+        { node_id: "initialize", fields: Object.fromEntries(["session_id", "session_branch", "objective"].map(name => [name, { source: "parameter", key: "session", path: [name] }])) },
+        { node_id: "evaluate", fields: { report_occurrence_id: { source: "occurrence_id", node_id: "analyze" } } },
+        { node_id: "finalize", fields: { evaluation_operation_id: { source: "operation_id", node_id: "evaluate" } } },
+        { node_id: "choose_mode", fields: { session_id: options.inputSource === "operation_input"
+          ? { source: "operation_input", node_id: "initialize", path: ["session_id"] }
+          : { source: "operation_output", node_id: "initialize", path: ["observations", "postconditions", "admission", "active_session"] } } },
+      ] };
+    }
     fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   }
   f.configuration.instructions = options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
@@ -358,11 +373,12 @@ function mixedFixture(stateMode = "files", options = {}) {
   Object.assign(f, { open, key, t, model }); return f;
 }
 async function bootstrapMixed(f) {
-  const h = f.open(), initial = h.initialize({ write: false });
-  h.initialize({ write: true, expectedResultSha256: initial.record.instance_sha256 });
   const input = { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" };
+  const parameters = f.model.data_bindings ? { parameters: { session: input } } : {};
+  const h = f.open(), initial = h.initialize({ write: false, ...parameters });
+  h.initialize({ write: true, expectedResultSha256: initial.record.instance_sha256, ...parameters });
   for (let count = 0; count < 3; count++) {
-    const result = await f.open().step({ write: true, input: count === 2 ? input : {} });
+    const result = await f.open().step({ write: true, input: count === 2 && !f.model.data_bindings ? input : {} });
     assert.equal(result.kind, "operation"); assert.notEqual(result.cursor.status, "FAILED");
   }
   const auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000;
@@ -443,6 +459,42 @@ if (process.argv[2] === "--mixed-continue") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  for (const mode of ["files", "dual", "db-only"]) await check(`dataflow ${mode}: the IR resolves durable parameters and accepted result identities through real ports`, async () => {
+    const f = finalizationFixture(mode, { dataBindings: true, inputSource: mode === "dual" ? "operation_input" : "operation_output" });
+    const parameters = { session: { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" } };
+    const initial = f.open().initialize({ parameters }); f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
+    const authorization = f.authorize(); authorization.global_deadline_ms += 1800000; authorization.workflow_deadline_ms += 1800000;
+    const before = f.open().inspect(), results = [];
+    await assert.rejects(f.open().step({ input: { forged: true } }), /PROCESS_INPUT_OVERRIDE_FORBIDDEN/);
+    assert.equal(f.open().inspect().record.instance_sha256, before.record.instance_sha256);
+    // No node order, input ID or routing choice in the driver: each fresh host
+    // advances its model cursor until an authenticated human wait is reached.
+    for (let step = 0; step < 32; step++) {
+      const prior = f.open().inspect(), result = await f.open().step({ write: true, authorization }); results.push(result);
+      if (result.kind === "native") assert.equal(result.journal_phase, "closed");
+      assert.notEqual(f.open().inspect().record.instance_sha256, prior.record.instance_sha256, "model driver made no progress");
+      if (result.status === "waiting_for_human") break;
+    }
+    const journals = results.filter(row => row.operation_id).map(row => f.open().readOperation(row.operation_id));
+    const evaluation = journals.find(row => row.intent.binding_ref === "drift_report_evaluate");
+    assert.equal(evaluation.preview.input_resolution.sources[0].source, "occurrence_id");
+    const waiting = f.open().inspect();
+    assert.equal(evaluation.preview.input.report_occurrence_id, waiting.record.events.find(row => row.kind === "result").occurrence_id);
+    const journal = journals.find(row => row.intent.binding_ref === "drift_check_finalize");
+    assert.equal(journal.preview.input.evaluation_operation_id, evaluation.operation_id);
+    assert.equal(journal.preview.input_resolution.sources[0].operation_id, evaluation.operation_id);
+    assert.equal(journal.results.at(-1).output.facts.drift_check_completed, true);
+    assert.equal((await f.open().dispatchOperation(journal.operation_id, { write: true })).status, "retained_result"); assert.equal(f.t.sessions.length, 1);
+    const human = results.at(-1); assert.equal(human.status, "waiting_for_human"); assert.equal(human.question.session_id, "S001");
+    const captured = journals.find(row => row.intent.binding_ref === "mode_decision"); assert.equal(captured.preview.input.session_id, "S001");
+    assert.equal(captured.preview.input_resolution.sources[0].source, mode === "dual" ? "operation_input" : "operation_output");
+    assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
+    assert.equal(waiting.cursor.status, "WAITING");
+    assert.equal((await f.open().step()).kind, "human_wait");
+    const simulation = simulateAgenticProcess({ instanceId: waiting.record.instance_id, scopeId: waiting.record.scope_id, model: waiting.record.model,
+      policyPins: waiting.record.policy_pins, parameters: waiting.record.initial_parameters, events: waiting.record.events });
+    assert.equal(simulation.trace.at(-1).instance_sha256, waiting.record.instance_sha256);
+  });
   for (const [mode, state] of [["files", "DONE"], ["dual", "NO_GO"], ["db-only", "DROPPED"]]) await check(`drift completion ${mode}: terminal owning context drives the authenticated report and real hook without reopening the cycle`, async () => {
     const f = finalizationFixture(mode), auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, state, mode === "db-only");
     const current = c.artifacts.read("CURRENT-STATE.md"), status = c.artifacts.read(c.statusPath), original = await c.context();

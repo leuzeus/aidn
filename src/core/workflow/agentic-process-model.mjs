@@ -5,6 +5,7 @@ import schema from "../contracts/workflow-definition/agentic-process-model.v1.sc
 import schemaV2 from "../contracts/workflow-definition/agentic-process-model.v2.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { DEFAULT_BPMN_EXECUTION_PROFILE, BPMN_EXECUTION_PROFILES } from "./bpmn-profile.mjs";
+import { assertProcessDataBindings } from "./process-data-contracts.mjs";
 
 export const AGENTIC_PROCESS_PROFILE = "structured-agentic-process.v1";
 export const AGENTIC_PROCESS_OPERATION_PROFILE = "structured-agentic-process.v2";
@@ -33,7 +34,7 @@ export const agenticProcessCapabilities = () => freezeShadow({ profile: AGENTIC_
 
 export function assertAgenticProcessModel(model, { executable = true, policyPins = null } = {}) {
   const v2 = model?.contract_version === "agentic-process-model.v2";
-  if (checkShadowJson(model) || validateJsonSchema(model, v2 ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(model, ["contract_version", "model_id", "revision", "participants", "roles", "policies", "nodes", "entry", ...(v2 ? ["operation_pins"] : [])])
+  if (checkShadowJson(model) || validateJsonSchema(model, v2 ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(model, ["contract_version", "model_id", "revision", "participants", "roles", "policies", "nodes", "entry", ...(v2 ? ["operation_pins"] : [])], v2 ? ["data_bindings"] : [])
     || !["agentic-process-model.v1", "agentic-process-model.v2"].includes(model.contract_version) || !processId(model.model_id)
     || !Number.isSafeInteger(model.revision) || model.revision < 1) fail("PROCESS_MODEL_INVALID");
   const table = (rows, max, allowEmpty = false) => {
@@ -122,6 +123,7 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
   }
   visit(model.entry, 0);
   if (visited.size !== nodes.size) fail("PROCESS_NOT_STRUCTURED");
+  if (model.data_bindings !== undefined) assertProcessDataBindings(model.data_bindings, model.nodes);
   return model;
 }
 
