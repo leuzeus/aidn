@@ -423,6 +423,13 @@ protocol; they do not qualify a particular installed binary or Windows backend.
 
 ## Verification
 
+The partial standard-workflow bootstrap ports now compose real reload/admission
+use cases and local session effects. They remain internal components outside the
+ordinary workflow entrypoints. The standard model, authenticated mixed-host
+composition, durable recovery and full workflow qualification remain outstanding
+under the [standard workflow plan](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
+Selecting the default engine does not establish this integration.
+
 Run `npm run perf:verify-agentic-process`. It exercises the real reducer,
 application service and durable artifact stores with portable fixtures. The
 execution suite calls the production composition with a fake native wire and

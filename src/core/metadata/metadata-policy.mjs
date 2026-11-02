@@ -75,6 +75,14 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "process_local_effect_owner", label: "Local process operation owner",
+    required: ["contract_version", "token", "pid", "scope_sha256", "plan_sha256", "created_at"],
+    sourceOfTruthConcept: "process_local_effect_owner",
+    evidenceTargets: ["src/core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json", "src/application/runtime/standard-workflow-artifacts.mjs", "tools/perf/verify-standard-workflow-ports-fixtures.mjs"],
+    lifecycle: "absent -> acquired -> released|retained for explicit reconciliation",
+    notes: "Cooperative local collision guard. No admission, distributed fence or authenticated effect-completion evidence follows from a PID, token or timestamp. Retain on uncertainty without automatic takeover.",
+  }),
+  policy({
     concept: "agent_working_memory", label: "Derived agent working memory",
     required: ["contract_version", "memory", "checkpoint", "observed_revision", "input_ref", "input_sha256", "source_of_truth", "source_mode", "lifecycle_status", "requires_fresh_admission"],
     sourceOfTruthConcept: "agent_working_memory",

@@ -244,14 +244,15 @@ silencieux des tables/ports de coordination partagée ; PostgreSQL reste optionn
 
 ## 6. Lots, dépendances et sorties vérifiables
 
-L1 est **VALIDÉ HORS LIGNE** ; les lots L2 à L8 restent **À FAIRE**. L0 est le diagnostic documenté
+L1 est **VALIDÉ HORS LIGNE** ; L2 est **EN COURS**, avec une tranche de ports locaux
+décrite ci-dessous. Les lots L3 à L8 restent **À FAIRE**. L0 est le diagnostic documenté
 ici, pas une qualification d’intégration. Les chemins existants sont à modifier
 seulement dans le lot concerné ; les nouveaux chemins de la section 4 sont proposés.
 
 | Lot | Dépendances | Livrables / fichiers concernés | Critère de sortie et validations |
 | --- | --- | --- | --- |
 | L0 — Ancrage | État `dd1dbab` | Ce plan, bornes dans AGENTIC_PROCESS/ADR-0024 ; inventaire des règles courantes et écarts de la définition historique. | E01–E08 confirmés ; règles R01–R11 identifiées ; aucun changement de marqueur shadow ni revendication d’intégration. Diagnostic présent : terminé pour ce plan. |
-| L1 — Contrats et décision | L0 | ADR-0025 proposé ; contrats binding/reçu/événement et versionnement modèle/instance si nécessaire ; `agentic-process-model.mjs`, réducteur/service, schémas, source-of-truth, métadonnées et diagnostics. | D/A/H distingués, résultats authentifiables par type, attentes et issues sans faux agent ; tests de schémas, refus d’extensions inconnues, anciens lecteurs et limites ; décision de version fixée avant L2–L4. |
+| L1 — Contrats et décision | L0 | ADR-0025 mis en œuvre ; contrats binding/reçu/événement et versionnement modèle/instance ; `agentic-process-model.mjs`, réducteur/service, schémas, source-of-truth, métadonnées et diagnostics. | D/A/H distingués, résultats authentifiables par type, attentes et issues sans faux agent ; tests de schémas, refus d’extensions inconnues, anciens lecteurs et limites ; décision de version fixée avant L2–L4. Validé hors ligne. |
 | L2 — Ports réels | L1 | Modules standard-workflow operations proposés ; `*-admit-use-case`, `skill-hook-use-case`, `checkpoint-use-case`, `db-first-artifact-use-case`, adaptateurs Git et GitHub. | Chaque ligne du catalogue a réalisation/postcondition ou blocage explicite ; tests sur vrai projet jetable ; aucun modèle pour D/H ; admission distincte de réalisation ; échecs imbriqués visibles et effets sans autorisation refusés. |
 | L3 — Modèle standard et traçabilité | L1 + catalogue L2 stabilisé | JSON standard, catalogue/bindings et matrice de traçabilité proposés ; politiques de contrôle existantes ; scénarios de simulation. | Couverture R01–R11, trois modes de travail, chemins de cycle et PR, reports/annulations ; références de ports résolues ; aucun XML obligatoire ; modèle livré consommé par tests, sans copier ses décisions dans un orchestrateur parallèle. |
 | L4 — Reprise et événements | L1 + L2 + modèle L3 | Service de reprise proposé ; store/service/host/composition agentiques, garde de démarrage remplacée par une admission de reprise explicite ; contrats de journal/inbox, preuves de propriété et événements GitHub. | Reprise après chaque frontière intention/effet/résultat/attente ; déduplication, réconciliation des inconnus, CAS/concurrence, fermeture de l’ancien hôte et contributions conservées. L’attente existante du réducteur seule ne ferme pas le lot. |
@@ -342,9 +343,65 @@ attentes/reprises satisfont A1–A10 et les niveaux de qualification revendiqué
 `reference_only` / `unsupported` ou exécuter un modèle générique ne satisfait pas
 cette condition.
 
-**Prochain lot : L2**, sur les contrats D/A/H fixés par ADR-0025 et la matrice
+**Lot courant : L2**, sur les contrats D/A/H fixés par ADR-0025 et la matrice
 initiale des activités ci-dessus. Réaliser une tranche
 verticale courte « rechargement → admission → session effective → attente de choix
 → arrêt/reprise » sur projet jetable avant d’étendre le modèle au parcours complet.
 Cette tranche fournit une première preuve de raccordement ; elle ne remplace pas
 les clôtures, la revue de PR et la synchronisation restant dans le périmètre.
+
+### Avancement de L2 : ports de démarrage locaux
+
+`src/application/runtime/standard-workflow-operations.mjs` fournit trois bindings
+déterministes : `context_reload`, `session_admit` et `session_initialize`.
+Les deux premiers appellent les use cases existants de rechargement et
+d’admission, sans écriture. Le troisième est un composant du skill
+`start-session` : il prépare un plan versionné, exige son hash et `write: true`,
+revérifie l’admission et les préimages, crée réellement la branche et les deux
+artefacts session/état courant, puis vérifie leur utilisation par l’admission.
+La session reste en mode `UNKNOWN` avec `session_mode_pending: true` ; ceci
+n’atteste pas l’exécution complète du skill, de son choix humain ou de son hook.
+
+`standard-workflow-artifacts.mjs` conserve l’autorité fichiers ou base canonique,
+utilise le CAS existant et matérialise les projections requises. Une projection
+visible périmée ne remplace jamais la base. Les cinq schémas
+`standard-{empty-input,session-initialize-input,session-initialize-plan,operation-output}.v1`
+et `process-local-effect-owner.v1` ferment les échanges correspondants. Les
+observations métier complètes restent des charges utiles privées du port ; les
+futurs reçus authentifiés du réducteur devront les lier par leur hash.
+
+Le concept `process_local_effect_owner` est couvert par les politiques et
+diagnostics de gouvernance. Son verrou local exclusif empêche les ports coopérants
+de doubler les effets. Un effet inconnu ou un arrêt laisse ce verrou en place,
+sans reprise par simple PID ou expiration. Ce mécanisme ne constitue ni un
+journal durable des effets, ni une propriété distribuée, ni un protocole de
+récupération général. Aucun effacement automatique du verrou n’est livré.
+
+`tools/perf/verify-standard-workflow-ports-fixtures.mjs`, ajouté à la gate requise,
+utilise Git, l’installateur des assets d’activation et les ports métier réels,
+avec état de fixture et modèle de session du scaffold courant. Les cas couvrent
+fichiers, SQLite `dual`/`db-only`, projections périmées, refus avant effets,
+concurrence locale et panne réelle injectée dans SQLite après un premier effet.
+Cette preuve est **hors ligne, dérivée du scaffold et de fixtures** ; elle ne
+qualifie pas une archive installée, PostgreSQL réel ou un hôte natif.
+
+**Reste requis pour fermer L2 puis continuer L3–L5 :** raccorder ces composants
+à l’autorité des intentions/reçus, livrer les autres activités du catalogue et
+leurs vrais ports, fournir le modèle standard JSON complet et l’attente humaine,
+puis l’inbox, le journal et la reprise durable avec authentification et propriété
+d’exécution. Les entrées ordinaires ne consomment pas encore ce modèle standard.
+La tranche n’est donc pas une preuve A1–A10 du workflow intégré. Les lots L7 et
+L8 restent NOT_RUN ; leurs preuves ne sont pas remplacées par ces fixtures.
+
+Validation de cette tranche, exécutée le 2026-11-02 UTC :
+
+- **PASS hors ligne** : gate `perf:verify-agentic-process` complète, dont les
+  14 scénarios des ports standard ; la composition native y utilise un transport
+  simulé et n’appelle aucun modèle.
+- **PASS** : définitions des cinq schémas sous le profil `workflow-definition`,
+  politiques de source de vérité et de métadonnées, complétude de gouvernance,
+  catalogues de gates/surfaces, références documentaires, sensibilité des fichiers
+  suivis et topologie du package sur clients de fixture.
+- **NOT_RUN** : workflow standard via hôte natif, concurrence PostgreSQL réelle,
+  installation et parcours standard depuis une archive exacte. La vérification
+  de topologie ne vaut pas qualification de cette archive.

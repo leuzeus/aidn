@@ -1,0 +1,197 @@
+import fs from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { createStandardWorkflowArtifacts, standardFail as fail } from "./standard-workflow-artifacts.mjs";
+import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
+import { runStartSessionAdmitUseCase } from "./start-session-admit-use-case.mjs";
+import { runReloadCheckUseCase } from "./reload-check-use-case.mjs";
+import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
+import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
+import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.mjs";
+import { assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardSessionPlan } from "../../core/workflow/standard-operation-contracts.mjs";
+import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
+import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
+
+const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
+  "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
+function implementation() {
+  const refs = [...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url),
+    new URL("../../lib/workflow/markdown-render-lib.mjs", import.meta.url), new URL("../../core/skills/skill-policy.mjs", import.meta.url),
+    new URL("../../core/workflow/standard-operation-contracts.mjs", import.meta.url),
+    ...["standard-empty-input.v1", "standard-session-initialize-input.v1", "standard-session-initialize-plan.v1", "standard-operation-output.v1", "process-local-effect-owner.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url))];
+  const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
+  return shadowHash(refs.map(url => ({ path: path.relative(packageRoot, fileURLToPath(url)).replaceAll("\\", "/"), sha256: createHash("sha256").update(fs.readFileSync(url)).digest("hex") })));
+}
+const loadedImplementation = implementation();
+const definitions = [
+  ["context_reload", "context-reload", "read-only", ["SPEC-R01", "SPEC-R11"], "standard-empty-input.v1"],
+  ["session_admit", "start-session", "read-only", ["SPEC-R01", "SPEC-R04"], "standard-empty-input.v1"],
+  ["session_initialize", "start-session", "mutating", ["SPEC-R01", "SPEC-R07"], "standard-session-initialize-input.v1"],
+];
+export function standardWorkflowOperationBindings() {
+  return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract]) => {
+    const binding = { contract_version: "process-operation-binding.v1", id, revision: 1, executor_kind: "deterministic", effect_class, skill_id,
+      input_contract, output_contract: "standard-operation-output.v1", rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
+    assertProcessOperationBinding(binding); return binding;
+  });
+}
+const scalar = value => typeof value === "string" && value.length > 0 && value.length <= 512 && !/[\r\n\0]/.test(value);
+function sessionInput(input) {
+  assertStandardOperationInput("session_initialize", input);
+  if (checkShadowJson(input) || !input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some(key => !["session_id", "session_branch", "objective", "mode"].includes(key))
+    || !/^S[0-9]{3,6}$/.test(input.session_id) || !scalar(input.session_branch) || !new RegExp(`^${input.session_id}-[a-z0-9][a-z0-9-]{0,47}$`).test(input.session_branch)
+    || !scalar(input.objective) || !["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"].includes(input.mode ?? "UNKNOWN")) fail("STANDARD_SESSION_INPUT_INVALID");
+  return { ...input, mode: input.mode ?? "UNKNOWN" };
+}
+function replaceField(text, key, value) {
+  const pattern = new RegExp("^([ \t]*-?[ \t]*)" + key + ":[^\r\n]*(?:\r?\n[ \t]+-[^\r\n]*)*", "gm");
+  const matches = [...text.matchAll(pattern)];
+  if (matches.length !== 1) throw Object.assign(new Error(matches.length ? "STANDARD_TEMPLATE_FIELD_AMBIGUOUS" : "STANDARD_TEMPLATE_FIELD_MISSING"),
+    { code: matches.length ? "STANDARD_TEMPLATE_FIELD_AMBIGUOUS" : "STANDARD_TEMPLATE_FIELD_MISSING", field: key });
+  return text.replace(pattern, (_match, prefix) => `${prefix}${key}: ${value}`);
+}
+function renderSession(template, input, at, base, predecessor) {
+  let text = template.replaceAll("SXXX", input.session_id).replace(/^# Session[^\r\n]*/, `# Session ${input.session_id} — ${at.slice(0, 10)}`);
+  text = text.replace(/\[ \] (THINKING|EXPLORING|COMMITTING)/g, (_match, mode) => `[${input.mode === mode ? "x" : " "}] ${mode}`);
+  const fields = { session_branch: input.session_branch, parent_session: predecessor?.session_id ?? "none", parent_branch: predecessor?.session_branch ?? base,
+    continuity_basis: `ff-from ${base}`, continuity_check: "pass", branch_kind: "session", cycle_branch: "none", intermediate_branch: "none",
+    integration_target_cycles: "\n  - none", integration_target_cycle: "none", primary_focus_cycle: "none", attached_cycles: "\n  - none", reported_from_previous_session: "none",
+    carry_over_pending: "no", pr_status: "none", pr_url: "none", pr_number: "none", pr_base_branch: base, pr_head_branch: input.session_branch,
+    pr_review_status: "unknown", post_merge_sync_status: "not_needed", post_merge_sync_basis: "none",
+    // The historical parser expands double whitespace before field-looking
+    // text into a new line. Preserve the objective as one data scalar.
+    session_objective: input.objective.replace(/\s+/gu, " ").trim() };
+  for (const [key, value] of Object.entries(fields)) text = replaceField(text, key, value);
+  const metadata = { contract_version: "critical-markdown-v1", session_id: input.session_id, state: "OPEN", mode: input.mode,
+    started_at: at, updated_at: at, owner: "aidn-start-session", source_of_truth: "session_state", lifecycle_status: "active" };
+  const absent = [];
+  for (const [key, value] of Object.entries(metadata)) {
+    const declared = new RegExp("^[ \t]*-?[ \t]*" + key + ":", "m").test(text);
+    if (declared) text = replaceField(text, key, value).replace(new RegExp("^[ \t]*-[ \t]*" + key + ":", "gm"), key + ":");
+    else absent.push(`${key}: ${value}`);
+  }
+  return text.replace(/^(# [^\n]+\r?\n)/, (_match, title) => `${title}\n${absent.join("\n")}\n`);
+}
+function output(operation, status, effect, observations, facts = {}, evidence = []) {
+  return assertStandardOperationOutput({ contract_version: "standard-operation-output.v1", operation_ref: operation, outcome: status, effect_status: effect, facts, observations, evidence_refs: evidence });
+}
+
+// Real local application ports. No model or dynamic shell/SQL/module is selected
+// by a request. Skill initialization is a component, not full skill completion.
+export function createStandardWorkflowOperations({ targetRoot, now = Date.now }) {
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
+  const git = args => execFileSync("git", ["-C", root, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`,
+    "-c", "core.fsmonitor=false", "-c", "submodule.recurse=false", ...args],
+  { encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 1048576, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } }).trim();
+  function scope() {
+    if (implementation() !== loadedImplementation) fail("STANDARD_IMPLEMENTATION_CHANGED");
+    if (Object.keys(process.env).some(key => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(key))) fail("STANDARD_GIT_ENV_SCOPE_CONFLICT");
+    const project = readWorkflowProjectAuthority({ targetRoot: root }), persistence = artifacts.describe();
+    // Do this before existing helpers: a missing canonical state must never
+    // trigger their historical visible-file compatibility fallback.
+    artifacts.read("CURRENT-STATE.md", { required: true });
+    return { project, persistence, branch: git(["branch", "--show-current"]), head: git(["rev-parse", "HEAD"]) };
+  }
+  async function admission() {
+    const prewrite = await preWriteAdmit({ targetRoot: root, skill: "start-session" });
+    const lifecycle = await runStartSessionAdmitUseCase({ targetRoot: root, mode: "UNKNOWN" });
+    return { prewrite, lifecycle, allowed: prewrite.ok === true && ["admitted", "admitted_with_warnings"].includes(prewrite.admission_status) && lifecycle.result === "ok" };
+  }
+  async function build(input, preparedAt, acquired = false) {
+    input = sessionInput(input); const context = scope();
+    if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
+    const admitted = await admission();
+    if (!admitted.allowed || admitted.lifecycle.action !== "create_session_allowed") return { can_apply: false, admission: admitted };
+    const before = artifacts.read("CURRENT-STATE.md", { required: true }), template = artifacts.read("sessions/TEMPLATE_SESSION_SXXX.md", { required: true });
+    const sessionPath = `sessions/${input.session_id}.md`;
+    if (artifacts.read(sessionPath).sha256 !== null) fail("STANDARD_SESSION_ALREADY_EXISTS");
+    const latest = artifacts.sessions().at(-1);
+    if (latest && BigInt(input.session_id.slice(1)) <= BigInt(latest.session_id.slice(1))) fail("STANDARD_SESSION_SEQUENCE_INVALID");
+    const predecessor = latest ? { path: latest.path, session_id: latest.session_id, sha256: latest.sha256, session_branch: parseSessionMetadata(latest.content).session_branch } : null;
+    try { git(["show-ref", "--verify", "--quiet", `refs/heads/${input.session_branch}`]); fail("STANDARD_SESSION_BRANCH_ALREADY_EXISTS"); }
+    catch (cause) { if (cause.code === "STANDARD_SESSION_BRANCH_ALREADY_EXISTS") throw cause; if (cause.status !== 1) throw cause; }
+    const at = new Date(preparedAt).toISOString();
+    const session = renderSession(template.content, input, at, context.branch, predecessor);
+    const canonical = buildCanonicalFromMarkdown(session, { relativePath: sessionPath, classification: { kind: "session", family: "normative", subtype: "session" } });
+    if (canonical.contract_status !== "conformant") fail("STANDARD_SESSION_TEMPLATE_NOT_CONFORMANT");
+    let current = before.content;
+    for (const [key, value] of Object.entries({ active_session: input.session_id, session_branch: input.session_branch, branch_kind: "session", mode: input.mode,
+      updated_at: at, session_pr_status: "none", session_pr_review_status: "unknown", post_merge_sync_status: "not_needed" })) current = replaceField(current, key, value);
+    const changes = [{ path: sessionPath, before_sha256: null, after: session }, { path: before.path, before_sha256: before.sha256, after: current }]
+      .map(row => ({ ...row, after_sha256: artifactContentHash(row.after) }));
+    const plan = { contract_version: "standard-session-initialize-plan.v1", operation_ref: "session_initialize", input, prepared_at_ms: preparedAt,
+      scope: context, template_sha256: template.sha256, predecessor, changes };
+    assertStandardSessionPlan(plan);
+    return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
+  }
+  async function postconditions(plan) {
+    const expected = plan.changes.every(change => artifacts.read(change.path).sha256 === change.after_sha256);
+    const branch = git(["branch", "--show-current"]), head = git(["rev-parse", "HEAD"]);
+    const active = expected ? await runStartSessionAdmitUseCase({ targetRoot: root, mode: plan.input.mode }) : null;
+    return { satisfied: expected && branch === plan.input.session_branch && head === plan.scope.head && active?.result === "ok"
+      && active.action === "resume_current_session" && active.active_session === plan.input.session_id,
+      branch, head, admission: active };
+  }
+  return Object.freeze({
+    bindings: standardWorkflowOperationBindings,
+    async reload(input = {}) {
+      assertStandardOperationInput("context_reload", input);
+      const current = scope(), documents = ["baseline/current.md", "snapshots/context-snapshot.md", "CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md"]
+        .map(name => artifacts.read(name, { required: true }));
+      const result = await runReloadCheckUseCase({ targetRoot: root, args: { cache: ".aidn/runtime/cache/reload-state.json", stateMode: current.persistence.state_mode,
+        stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto", writeCache: false } });
+      const loaded = result.decision !== "stop" && !result.missing_required_artifacts?.length;
+      return output("context_reload", loaded ? "completed" : "blocked", "no_effect", { reload: result, documents }, loaded ? { context_loaded: true } : {},
+        documents.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.sha256 })));
+    },
+    async admitSession(input = {}) {
+      assertStandardOperationInput("session_admit", input);
+      scope();
+      if (artifacts.ownerPending()) return output("session_admit", "blocked", "no_effect", { reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" });
+      const observed = await admission();
+      return output("session_admit", observed.allowed ? "completed" : "blocked", "no_effect", observed, observed.allowed ? {
+        session_creation_allowed: observed.lifecycle.action === "create_session_allowed", session_resume_allowed: ["resume_current_session", "resume_current_cycle"].includes(observed.lifecycle.action),
+      } : {});
+    },
+    prepareSession: input => build(input, now()),
+    async initializeSession(prepared, { write = false, expectPlan = null } = {}) {
+      if (write !== true || !prepared?.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(prepared.plan) !== expectPlan) fail("STANDARD_EXPLICIT_EFFECT_REQUIRED");
+      assertStandardSessionPlan(prepared.plan);
+      const age = now() - prepared.plan.prepared_at_ms;
+      if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_PLAN_EXPIRED");
+      return artifacts.withLocalEffectOwner(expectPlan, async () => {
+        try {
+          const observed = await build(prepared.plan.input, prepared.plan.prepared_at_ms, true);
+          if (!observed.can_apply || observed.plan_sha256 !== expectPlan || shadowHash(scope()) !== shadowHash(prepared.plan.scope)) fail("STANDARD_PREVIEW_CHANGED");
+        } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
+        const committed = []; let attempted = false;
+        try {
+          attempted = true; git(["switch", "-c", prepared.plan.input.session_branch]);
+          for (const change of prepared.plan.changes) { artifacts.compareAndSwap(change); committed.push(change.path); }
+          const after = await postconditions(prepared.plan);
+          if (!after.satisfied) fail("STANDARD_SESSION_POSTCONDITION_FAILED");
+          const projection = artifacts.project(committed);
+          return output("session_initialize", "completed", "confirmed", { postconditions: after, projection, committed },
+            { session_initialized: true, session_mode_pending: prepared.plan.input.mode === "UNKNOWN" }, prepared.plan.changes.map(change => ({ ref: "docs/audit/" + change.path, sha256: change.after_sha256 })));
+        } catch (cause) {
+          if (!attempted) throw cause;
+          return output("session_initialize", "reconciliation_required", "unknown", { committed, reason_code: /^[A-Z][A-Z0-9_]+$/.test(cause.code ?? "") ? cause.code : "STANDARD_SESSION_EFFECT_UNCONFIRMED" });
+        }
+      });
+    },
+    async reconcileSession(prepared) {
+      if (!prepared?.plan || prepared.plan_sha256 !== shadowHash(prepared.plan)) fail("STANDARD_PLAN_INVALID");
+      assertStandardSessionPlan(prepared.plan);
+      const context = scope();
+      if (shadowHash(context.project) !== shadowHash(prepared.plan.scope.project) || shadowHash(context.persistence) !== shadowHash(prepared.plan.scope.persistence)) fail("STANDARD_AUTHORITY_CHANGED");
+      if (artifacts.ownerPending()) return output("session_initialize", "reconciliation_required", "unknown", { reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" });
+      const after = await postconditions(prepared.plan);
+      return output("session_initialize", after.satisfied ? "completed" : "reconciliation_required", after.satisfied ? "confirmed" : "unknown", { postconditions: after },
+        after.satisfied ? { session_initialized: true, session_mode_pending: prepared.plan.input.mode === "UNKNOWN" } : {},
+        prepared.plan.changes.map(change => ({ ref: "docs/audit/" + change.path, sha256: change.after_sha256 })));
+    },
+  });
+}

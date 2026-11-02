@@ -2,6 +2,20 @@
 
 ## Structured agentic process
 
+The required gate also includes `tools/perf/verify-standard-workflow-ports-fixtures.mjs`
+for the partial L2 bootstrap ports. It uses real local business use cases,
+Git branches, canonical files/SQLite, CAS and projection, plus actual activation
+asset installation into disposable clients. Business state is fixture data and
+the session template comes from the current scaffold. It checks explicit effect
+plans, unchanged admissions, UNKNOWN-mode bootstrap, closed inputs, stale
+preimages, backend absence without fallback, local owner contention and a real
+SQLite trigger failure after session creation. Unknown effects retain their
+owner and block retries. Read-only reconciliation observes completed state;
+it does not recover an uncertain owner or replay effects. These fixtures do not
+run a standard IR model or the full start-session skill. Native, live PostgreSQL
+and installed archive qualification remain NOT_RUN; see the
+[remaining lots](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
+
 The required gate includes `tools/perf/verify-process-operation-fixtures.mjs`
 for the L1 v2 operation foundation: closed bindings/intents/receipts, explicit
 non-success outcomes, unknown-effect reconciliation, exact shared-reducer

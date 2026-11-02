@@ -5,7 +5,9 @@
 L1 contract foundation implemented under the
 [standard workflow plan](../PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
 Versioned operation contracts, reducer events and trusted service ports are
-implemented and verified offline. The standard model, actual business adapters,
+implemented and verified offline. L2 now has partial local business adapters for
+reload, admission and session initialization, described below. The standard model,
+the remaining business adapters,
 authenticated external inbox, general owned-host resume and installed/native
 qualification remain outstanding. This decision does not claim those deliveries.
 
@@ -96,3 +98,37 @@ non-success outcomes, unknown-effect reconciliation, parallel routing, exact
 replay/simulation, authority forgery/timeouts, current-authority changes,
 canonical receipt races and durable waits on real SQLite/files storage.
 Native and installed standard-workflow qualification remain NOT_RUN.
+
+## L2 bootstrap component
+
+`standard-workflow-operations.mjs` composes real application admissions/reload and
+Git/artifact effects. `session_initialize` is a component of start-session,
+not a claim that its mode choice, checkpoint and hook completed. It accepts only
+UNKNOWN bootstrap mode. A closed, versioned plan binds root/activation, backend,
+Git branch/HEAD, input, template, predecessor and artifact pre/postimages;
+explicit write and the exact plan hash are required. Admissions and authority
+are checked again before Git or artifact effects. Project checkout hooks are
+disabled for this host's Git calls; requests cannot select code or shell commands.
+The implementation digest pins the listed direct modules/schemas, not a complete
+transitive package or native-host qualification.
+
+Business artifact authority remains the configured files/runtime store. Canonical
+CAS and required projection are existing ports. Creation writes a new conformant
+session; it never converts historical sessions or changes their readers. Session
+initialization spans Git and two artifacts and is not an atomic transaction.
+The rendered objective collapses whitespace so the existing Markdown normalizer
+cannot reinterpret objective data as another metadata field. Its original input
+and exact rendered postimage remain in the reviewable plan.
+
+`process_local_effect_owner` therefore governs a private worktree-local collision
+guard with a closed schema, owner token, PID, physical scope hash, exact plan hash
+and acquisition time. Exclusive creation serializes cooperative ports. A confirmed
+result or proven before-effect refusal releases it; uncertainty/process death
+retains it. PID and elapsed time never authorize takeover. This is not distributed
+ownership, permission, authenticated result evidence or an effect journal. L4 must
+provide durable dispatch/reconciliation and ownership before ordinary entrypoints
+can execute the full mixed standard workflow. No automatic lock repair is supplied.
+
+L2 fixtures use real local ports and deliberately partial SQLite effects. They
+neither issue authenticated reducer receipts nor consume a shipped standard
+model. Native, shared concurrency and installed archive qualification remain open.

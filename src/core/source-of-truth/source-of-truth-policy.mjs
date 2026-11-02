@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  process_local_effect_owner: {
+    owner: "trusted local workflow operation host",
+    lifecycle: "absent -> exclusively acquired -> released|retained for explicit reconciliation",
+    scope: "one physical worktree; cooperative local serialization only, independent of business artifact backend",
+    retention: "release after confirmed completion or before-effect refusal; retain after unknown effects or process death",
+    migration: "new versioned local lock; never convert historical instances or transfer canonical business authority",
+    replacement: "exclusive filesystem create; no PID or time based takeover and no implicit retry",
+    evidence_targets: ["src/application/runtime/standard-workflow-artifacts.mjs", "tools/perf/verify-standard-workflow-ports-fixtures.mjs"],
+  },
   agent_working_memory: {
     owner: "checkpointing agent",
     lifecycle: "captured -> current|stale|invalid -> explicitly recaptured",
@@ -370,6 +379,14 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/process-instances/<id>.json only through the existing explicit artifact materialization",
     notes: "ADR-0022/ADR-0023/ADR-0024/ADR-0025. Default engine for every new workflow, including direct JSON. Existing project artifact CAS/fence and backend selection. Historical sequential and v1 process instances retain their readers. V2 operation intentions and authenticated receipts are events inside this same governed instance, not a new shared table or an independent registry. Versioned host bindings are configuration inputs, never self-issued permission. The instance pins canonical IR and policy hashes; authored BPMN and in-memory compilation/source maps are modeling inputs and derived values, never native authority. Synthetic simulation traces are reference evidence, not canonical process state. Trusted assignment/result and operation-authority ports remain mandatory. The standard model and actual business adapters remain a separate unfinished delivery; no implicit activation.",
+  }),
+  policy({
+    concept: "process_local_effect_owner", label: "Local process operation owner",
+    files: ".aidn/runtime/standard-workflow/effects.lock",
+    dual: ".aidn/runtime/standard-workflow/effects.lock",
+    dbOnly: ".aidn/runtime/standard-workflow/effects.lock",
+    projection: "none; machine-local collision guard only",
+    notes: "Versioned token, process id, physical-root hash, exact plan hash and acquisition time. The token grants no admission or permission. It neither fences external tools nor supplies a durable effect journal or distributed ownership. Unknown effects retain the record; the L4 recovery protocol remains required before ordinary workflow integration.",
   }),
   ...["execution_run", "delegated_task", "execution_attempt"].map((concept) => policy({
     concept,

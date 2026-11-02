@@ -17,6 +17,9 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "process_local_effect_owner", source_of_truth_concept: "process_local_effect_owner", metadata_concept: "process_local_effect_owner",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Internal worktree-local cooperative collision guard. Retained uncertainty blocks retry; a PID or timestamp never authorizes takeover. No distributed fence, durable effect journal or general recovery qualification is inferred." },
   { concept: "agent_working_memory", source_of_truth_concept: "agent_working_memory", metadata_concept: "agent_working_memory",
     cli_contract: "runtime-project-handoff-packet.v1.schema.json", required: ["source_of_truth", "metadata", "cli_contract"],
     coverage_note: "Explicit revision-bound checkpoint and read-only resume; advisory derived context and diagnostic metrics require independent fresh admission." },
