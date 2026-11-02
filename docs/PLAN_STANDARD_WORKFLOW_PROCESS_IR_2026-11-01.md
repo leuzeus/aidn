@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `843ec2f` et tranche courante de revue humaine R05 et
-conservation des constats.
+Dernier état relu : `0cfd54b` et tranche courante de création de CR depuis
+la revue humaine R05 et sa conservation canonique confirmée.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -30,7 +30,8 @@ encore ouverts.
 - L2/L4 : en cours. Ports de bootstrap/cycle, journal de dispatch signé, choix
   de mode/hook, inbox de contrôle durable et conservation de l'état natif décrits
   dans les addenda ci-dessous, ainsi que diagnostic typé et finalisation R05 sans
-  dérive avec vrai hook, revue humaine et conservation canonique des constats.
+  dérive avec vrai hook, revue humaine, conservation canonique des constats et
+  création admise d'une CR en attente de décision.
   L'exécution de la récupération choisie reste ouverte. Le journal d'allocation signé constitue une tranche
   supplémentaire. La reprise native et l'hôte mixte sont des compositions
   internes explicites ; la garde du démarrage ordinaire reste inchangée.
@@ -1625,3 +1626,87 @@ autres mutations L2 : le CAS historique général n'est pas corrigé globalement
 par ce port R05. Les attentes devenues périmées demandent aussi une voie explicite
 d'annulation/invalidation et de reprise, sans inventer une décision humaine ni
 réessayer un effet inconnu. Ces points accompagnent le raccordement L4/L5 complet.
+
+## Addendum — raccord déterministe de création d'une CR R05
+
+Tranche L2/L4, ASSURED, dépendante du diagnostic, de la décision et du reçu de
+conservation `0cfd54b`. Le port `drift_change_request_record` consomme l'identité
+du dernier reçu de conservation confirmé pour le choix `requirements_delta`.
+L'hôte vérifie sa chaîne journalisée évaluation/décision/conservation, son
+appartenance à l'instance et sa réception par le réducteur. Une source humaine
+disparue ne remplace pas les preuves conservées et ne bloque pas leur lecture.
+
+L'effet prévu est une véritable CR encore en attente de décision : append au
+`change-requests.md` du cycle propriétaire, conservation des entrées antérieures,
+prochain identifiant libre, diagnostic et empreintes de provenance, impact
+conservé du diagnostic. Le résumé de prochaine action dans CURRENT-STATE est
+actualisé avec la date. Les admissions existantes de pré-écriture et d'ownership
+restent requises ; le contexte doit être la post-image de la conservation R05.
+Un nouvel aperçu signé et son grant vivant autorisent ces écritures exactes.
+Les autres documents/index/diffs restent liés à leur frontière causale.
+
+Cette activité ne crée pas automatiquement de mapping REQ ni de nouvelle
+acceptation de scope. La CR reste `pending` ; medium/high conserve l'obligation
+du nouveau cycle admis. La création de la CR émet son seul fait de réalisation,
+avec récupération requise et R05 incomplet. La reprise conserve le résultat
+confirmé, tandis qu'une écriture/projection incertaine conserve le propriétaire
+et ne permet pas de retry automatique.
+
+Fichiers : `standard-drift-change-request.mjs`, trois contrats privés versionnés,
+registre/contrats d'opération, dispatcher, frontière causale privée, pins et
+catalogues des composants, politiques de preuve, ADR-0025 et guides. Les essais
+unitaires étendent le contrôle dédié déjà présent dans le gate ; les trois
+sélections `--drift-cr-mode=files|dual|db-only` étendent le corpus intégré avec
+une IR résolvant les identités sans pilote. Le cycle actif est une précondition
+établie par les véritables ports, pas une preuve du graphe standard complet.
+
+Les premiers contrôles ont exposé deux écarts corrigés sans relâcher les
+admissions. La fixture proposait un delta pour une dérive sévère, en contradiction
+avec le contrat imposant une arbitration humaine ; sa réponse recommande
+désormais cette arbitration, puis le choix humain authentifié sélectionne la CR.
+Le raccord CR exigeait à tort `mapped_session` sur une branche de cycle : il
+vérifie maintenant son `session_owner` et les ancres actives, conformément à
+l'autorité existante. Le contrôle des ports utilisait encore une liste de dix
+bindings ; la liste fermée des quinze opérations actuelles la remplace.
+
+Preuves ciblées **PASS** sur le code final : contrôle des ports (14), catalogue
+publié (22), réducteur (48), contrats d'opérations (27), provenance (35),
+métadonnées (37), complétude (38), trois schémas nouveaux, références, Markdown,
+sensibilité (1709 fichiers), catalogue des gates et topologie du package.
+Les 20 contrôles dédiés passent sans SKIP dans leur corpus non filtré. La seconde
+écriture refusée laisse la CR visible et CURRENT-STATE intact, retourne unknown
+sans fait de réussite, conserve le propriétaire et refuse un nouvel effet.
+Le contrôle DB-only ajoute des ancres visibles périmées et un impact CR canonique,
+puis rend le store indisponible : les ancres/impacts réels sont lus et l'absence
+canonique arrête l'admission. Les sélections de panne/admission passent aussi
+séparément, sans remplacer le passage du corpus dédié complet.
+
+Les trois parcours intégrés `--drift-cr-mode=files|dual|db-only` sont **PASS** sur
+le raccord final : véritable autorité mixte, journaux évaluation/décision/constats
+authentifiés, aperçu sans écriture, grant refusé sans effet, CR canonique créée,
+dispatch conservé et hash exact en simulation. Le cas files exécute la CR dans
+un nouveau processus Node après disparition de la source humaine, sans autre
+allocation native. Les trois instances restent en attente avec R05 incomplet.
+Les pins des composants startup 34/cycle 32 passent sans écriture ni réparation
+implicite. Routage des 28 fichiers du diff : ASSURED sans anomalie. La suite
+agentique complète et l'ensemble des gates PR ne sont pas rejoués dans cette
+tranche. Le résultat reste une preuve hors ligne sur sources, avec transports
+natif/humain/grant de fixture : native réelle et archive installée exacte
+**NOT_RUN**.
+
+La première comparaison intégrée a aussi trouvé une lacune de l'admission
+historique requirements-delta en DB-only : cycle et propriétaire retrouvés,
+mais ancres actives à none. Le cas isolé l'a reproduite. Cette admission utilise
+maintenant le même service de continuité canonique asynchrone que l'audit de
+branche ; l'impact CR provient du même snapshot, sans secours par projection.
+Le hook ordinaire attend cette admission. Les deux cas historiques hook/wrapper
+passent : medium/high ambigu reste refusé, ownership clair reste admis. Leur
+harnais installe les actifs courants et omet le contexte/coordination historiques
+du client temporaire ; le refus d'un contexte Codex appartenant à un autre
+répertoire n'est pas contourné. Les corpus historiques suivis restent intacts.
+
+Restent l'application du delta aux exigences avec mapping explicite, choix/
+création de cycle et rollback autorisé, la nouvelle analyse et le hook, le modèle
+standard complet et les entrées ordinaires. Les parcours complets A1–A10,
+preuves natives réelles et qualification sur archive installée exacte restent
+ouverts ; les capacités de fixture ne valent pas ces preuves.

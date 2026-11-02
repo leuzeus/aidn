@@ -716,6 +716,9 @@ These are currently implemented as package scripts, tools, or internal wrappers,
     observations from one selected nested gate, including checkpoint and workflow
     wrappers. Missing repair evidence remains unknown: a null diagnostic is not
     evidence that the repair layer is clean.
+  - the requirements-delta hook awaits canonical continuity for active anchors,
+    ownership and CR impact. Unavailable or ambiguous DB-backed continuity stops
+    admission; visible projections cannot supply a fallback approval.
 - `aidn runtime local-daemon` (public, experimental)
   - experimental opt-in local daemon prototype
   - `--start`, `--status`, and `--stop` use a worktree-local endpoint file under `.aidn/runtime/daemon/`

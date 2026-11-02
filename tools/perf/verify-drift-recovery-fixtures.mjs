@@ -7,6 +7,9 @@ import { execFileSync } from "node:child_process";
 import { createStandardHumanDecisions } from "../../src/application/runtime/standard-workflow-human-decisions.mjs";
 import { recoveryBoundary } from "../../src/application/runtime/standard-drift-recovery.mjs";
 import { createStandardDriftRecovery } from "../../src/application/runtime/standard-drift-recovery.mjs";
+import { createStandardDriftChangeRequest } from "../../src/application/runtime/standard-drift-change-request.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
+import { runRequirementsDeltaAdmitUseCase } from "../../src/application/runtime/requirements-delta-admit-use-case.mjs";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
@@ -96,7 +99,11 @@ try {
   fs.rmSync(resolved, { recursive: true, force: true });
 }
 const owned = [];
+const admissionMode = process.argv.find(arg => arg.startsWith("--cr-admission-mode="))?.slice("--cr-admission-mode=".length);
+if (admissionMode !== undefined && !["files", "dual", "db-only"].includes(admissionMode)) throw Error("CR_ADMISSION_FIXTURE_MODE_INVALID");
 try {
+  if (process.argv.includes("--cr-fault-only") || admissionMode) await verifyPartialChangeRequest(admissionMode ?? "files", Boolean(admissionMode));
+  else {
   const targetRoot = createFreshStandardWorkflowFixture("dual", owned), operations = createStandardWorkflowOperations({ targetRoot });
   const preparedSession = await operations.prepareSession({ session_id: "S001", session_branch: "S001-recovery", objective: "Verify authorized recovery documentation and exact effects" });
   assert.equal((await operations.initializeSession(preparedSession, { write: true, expectPlan: preparedSession.plan_sha256 })).outcome, "completed");
@@ -147,12 +154,62 @@ try {
   await assert.rejects(port.apply(instance, second, { write: true, expectPlan: second.plan_sha256, assertAuthorized() {} }), /STANDARD_RECOVERY_REVIEW_STALE/);
   assert.equal(artifacts.ownerPending(), false);
   pass("a changed canonical context after review refuses before effects and releases the local owner");
+  // An admitted real cycle is a fixture precondition. Only recovery provenance
+  // is doubled in these focused fault tests; the mixed suite authenticates it.
+  let modePlan = await operations.prepareMode({ session_id: "S001", mode: "COMMITTING" });
+  assert.equal((await operations.applyMode(modePlan, { write: true, expectPlan: modePlan.plan_sha256 })).outcome, "completed");
+  git(["add", "."]); git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture CR mode"]);
+  const contextPlan = await operations.prepareCycleContext({ session_id: "S001" });
+  assert.equal((await operations.refreshCycleContext(contextPlan, { write: true, expectPlan: contextPlan.plan_sha256 })).outcome, "completed");
+  git(["add", "."]); git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture CR context"]);
+  const cyclePlan = await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "recovery-delta",
+    objective: "Review an explicit scope delta", continuity_rule: "R2_SESSION_BASE_WITH_IMPORT", base_branch: "S001-recovery" });
+  assert.equal(cyclePlan.can_apply, true); assert.equal((await operations.initializeCycle(cyclePlan, { write: true, expectPlan: cyclePlan.plan_sha256 })).outcome, "completed");
+  const recoveredContext = await observeContext(), crPath = "cycles/C001-feature-recovery-delta/change-requests.md", crBefore = artifacts.read(crPath);
+  const crMetadata = createProjectArtifactStore({ targetRoot, existingOnly: true });
+  let expectedCrMetadata;
+  try { const row = crMetadata.getArtifact(crPath); crMetadata.upsertArtifact({ ...row, classification_reason: "fixture-CR-annotation" }); expectedCrMetadata = classification(crMetadata.getArtifact(crPath)); } finally { crMetadata.close(); }
+  let choice = "requirements_delta";
+  const crInput = { recovery_record_operation_id: id }, crPort = createStandardDriftChangeRequest({ targetRoot, observeContext, readCurrent: () => instance,
+    readRecovery: () => ({ record_operation_id: id, choice, review: { session_id: "S001", cycle_id: "C001", review_operation_id: id, evaluation_operation_id: id, evaluation_sha256: H },
+      transition: { after_context_sha256: recoveredContext.context_sha256 }, report: { split_recommendation: { impact: "high" }, rationale: "Fixture recovery authority only." } }) });
+  for (const bad of [{ ...crInput, path: "baseline/current.md" }, { ...crInput, module: "untrusted.mjs" }, { recovery_record_operation_id: "forged" }])
+    assert.throws(() => assertStandardOperationInput("drift_change_request_record", bad), /STANDARD_OPERATION_INPUT_INVALID/);
+  choice = "new_cycle"; await assert.rejects(crPort.prepare(instance, crInput), /STANDARD_CHANGE_REQUEST_RECOVERY_STALE/); choice = "requirements_delta";
+  pass("CR activity refuses authored paths/code/identities and a recovery choice for another action");
+  const crPrepared = await crPort.prepare(instance, crInput);
+  assert.equal(crPrepared.plan.change_request_id, "CR-002"); assert.equal(artifacts.read(crPath).sha256, crBefore.sha256);
+  await assert.rejects(crPort.apply(instance, crPrepared, { expectPlan: crPrepared.plan_sha256, assertAuthorized() {} }), cause => cause.code === "STANDARD_CHANGE_REQUEST_EXPLICIT_EFFECT_REQUIRED" && cause.effect_status === "no_effect");
+  const substituted = structuredClone(crPrepared); substituted.plan.changes[0].path = "baseline/current.md";
+  await assert.rejects(crPort.apply(instance, substituted, { write: true, expectPlan: substituted.plan_sha256, assertAuthorized() {} }), /STANDARD_CHANGE_REQUEST_EXPLICIT_EFFECT_REQUIRED/);
+  assert.equal(artifacts.ownerPending(), false);
+  await assert.rejects(crPort.apply(instance, crPrepared, { write: true, expectPlan: crPrepared.plan_sha256, assertAuthorized() { throw Error("CR_DENIED"); } }), /CR_DENIED/);
+  assert.equal(artifacts.ownerPending(), false); assert.equal(artifacts.read(crPath).sha256, crBefore.sha256);
+  const altered = createProjectArtifactStore({ targetRoot, existingOnly: true });
+  try { const row = altered.getArtifact(crPath); altered.upsertArtifact({ ...row, classification_reason: "intervening-CR-metadata" }); } finally { altered.close(); }
+  await assert.rejects(crPort.apply(instance, crPrepared, { write: true, expectPlan: crPrepared.plan_sha256, assertAuthorized() {} }), /STANDARD_CHANGE_REQUEST_PREVIEW_CHANGED/);
+  assert.equal(artifacts.ownerPending(), false); assert.equal(artifacts.read(crPath).sha256, crBefore.sha256);
+  pass("CR review is read-only; denied grants and metadata-only changes refuse before any effects");
+  const restored = createProjectArtifactStore({ targetRoot, existingOnly: true });
+  try { const row = restored.getArtifact(crPath); restored.upsertArtifact({ ...row, classification_reason: expectedCrMetadata.classification_reason }); } finally { restored.close(); }
+  const freshCr = await crPort.prepare(instance, crInput), writtenCr = await crPort.apply(instance, freshCr, { write: true, expectPlan: freshCr.plan_sha256, assertAuthorized() {} });
+  assertStandardOperationOutput(writtenCr); assert.equal(writtenCr.effect_status, "confirmed", JSON.stringify(writtenCr)); assert.equal(writtenCr.facts.drift_check_completed, false);
+  assert.equal(writtenCr.observations.decision, "pending"); assert.equal(writtenCr.observations.new_cycle_required, true);
+  assert.ok(artifacts.read(crPath).content.startsWith(crBefore.content));
+  const retainedMetadata = createProjectArtifactStore({ targetRoot, existingOnly: true, readOnly: true });
+  try { assert.deepEqual(classification(retainedMetadata.getArtifact(crPath)), expectedCrMetadata); } finally { retainedMetadata.close(); }
+  await assert.rejects(crPort.prepare(instance, crInput), /STANDARD_CHANGE_REQUEST_RECOVERY_STALE/);
+  assert.equal(artifacts.ownerPending(), false);
+  pass("real CR CAS preserves old entries and metadata, leaves scope acceptance pending, and refuses reusing its consumed context");
   const partial = await request(4), database = new (getDatabaseSync())(resolveRuntimeSqliteFile({ targetRoot }));
   try { database.exec("CREATE TRIGGER fixture_abort_recovery BEFORE INSERT ON artifacts WHEN NEW.path = 'CURRENT-STATE.md' BEGIN SELECT RAISE(ABORT, 'fixture recovery abort'); END"); } finally { database.close(); }
   const unknown = await port.apply(instance, partial, { write: true, expectPlan: partial.plan_sha256, assertAuthorized() {} });
   assert.equal(unknown.outcome, "reconciliation_required"); assert.deepEqual(unknown.facts, {}); assert.deepEqual(unknown.observations.committed, ["parking-lot.md"]);
   assert.equal(artifacts.ownerPending(), true);
   pass("real partial SQLite writes retain uncertainty and local ownership without a success fact");
+
+  await verifyPartialChangeRequest();
+  await verifyPartialChangeRequest("db-only", true);
 
   // Independent project: an unobserved required projection is not reconciled by
   // resetting the previous project's retained effect owner.
@@ -192,9 +249,72 @@ try {
     if (fs.lstatSync(audit, { throwIfNoEntry: false })?.isSymbolicLink()) fs.unlinkSync(audit);
     fs.renameSync(backup, audit);
   }
+  }
 } finally {
   for (const directory of owned) {
     const resolved = fs.realpathSync(directory); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-")); fs.rmSync(resolved, { recursive: true, force: true });
   }
 }
 console.log(JSON.stringify({ status: "PASS", checks, skips, proof: "offline-synthetic-human-capture-real-git-and-canonical-ports", real_human_channel: "NOT_RUN", native: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));
+
+async function verifyPartialChangeRequest(mode = "files", admissionOnly = false) {
+  const instance = { instance_id: "port_fixture", instance_sha256: H }, crInput = { recovery_record_operation_id: id };
+  const faultRoot = createFreshStandardWorkflowFixture(mode, owned), faultOps = createStandardWorkflowOperations({ targetRoot: faultRoot });
+  const faultArtifacts = createStandardWorkflowArtifacts({ targetRoot: faultRoot }), faultProduct = path.join(faultRoot, "product");
+  fs.mkdirSync(faultProduct); fs.writeFileSync(path.join(faultProduct, "app.mjs"), "// fault fixture\n");
+  const faultGit = args => execFileSync("git", ["-C", faultRoot, "-c", "core.hooksPath=NUL", ...args], { encoding: "utf8", windowsHide: true, stdio: "pipe" });
+  const faultCommit = label => { faultGit(["add", "."]); faultGit(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", label]); };
+  const faultSession = await faultOps.prepareSession({ session_id: "S001", session_branch: "S001-cr-fault", objective: "Check partial CR effects" });
+  assert.equal((await faultOps.initializeSession(faultSession, { write: true, expectPlan: faultSession.plan_sha256 })).outcome, "completed");
+  const faultMode = await faultOps.prepareMode({ session_id: "S001", mode: "COMMITTING" });
+  assert.equal((await faultOps.applyMode(faultMode, { write: true, expectPlan: faultMode.plan_sha256 })).outcome, "completed"); faultCommit("fixture fault mode");
+  const faultRefresh = await faultOps.prepareCycleContext({ session_id: "S001" });
+  assert.equal((await faultOps.refreshCycleContext(faultRefresh, { write: true, expectPlan: faultRefresh.plan_sha256 })).outcome, "completed"); faultCommit("fixture fault context");
+  const faultCycle = await faultOps.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "cr-fault", objective: "Check partial CR effects",
+    continuity_rule: "R2_SESSION_BASE_WITH_IMPORT", base_branch: "S001-cr-fault" });
+  assert.equal((await faultOps.initializeCycle(faultCycle, { write: true, expectPlan: faultCycle.plan_sha256 })).outcome, "completed");
+  if (admissionOnly) {
+    const row = faultArtifacts.read("cycles/C001-feature-cr-fault/change-requests.md");
+    await faultArtifacts.withLocalEffectOwner(H, async () => {
+      faultArtifacts.compareAndSwap({ path: row.path, before_sha256: row.sha256, after: row.content + "\n## CR-019\n- Impact: high\n" });
+      faultArtifacts.project([row.path]); return { effect_status: "confirmed" };
+    });
+    if (mode === "db-only") fs.writeFileSync(path.join(faultRoot, "docs/audit/CURRENT-STATE.md"), "# Stale projection\nactive_session: S999\nactive_cycle: C999\n");
+  }
+  const faultObserve = () => readStandardDriftContext({ targetRoot: faultRoot, productRoot: faultProduct, productFiles: ["app.mjs"], productSha256: artifactContentHash(fs.readFileSync(path.join(faultProduct, "app.mjs"))) });
+  const faultContext = await faultObserve(), faultPath = "cycles/C001-feature-cr-fault/change-requests.md";
+  if (admissionOnly) {
+    const admission = await runRequirementsDeltaAdmitUseCase({ targetRoot: faultRoot, mode: "COMMITTING" });
+    const observed = { action: admission.action, reason_code: admission.reason_code, active_session: admission.active_session,
+      active_cycle: admission.active_cycle, branch_kind: admission.branch_kind, mapped_cycle: admission.mapped_cycle };
+    assert.equal(admission.active_cycle, faultContext.context.cycle_id, JSON.stringify(observed));
+    assert.equal(admission.action, "proceed_requirements_delta", JSON.stringify(observed));
+    assert.equal(admission.mapped_cycle.session_owner, "S001");
+    assert.deepEqual(admission.detected_impacts, ["high"]);
+    if (mode === "db-only") {
+      const database = resolveRuntimeSqliteFile({ targetRoot: faultRoot }), retained = database + ".fixture-unavailable";
+      assert.ok(path.resolve(database).startsWith(path.resolve(faultRoot) + path.sep)); assert.equal(path.dirname(retained), path.dirname(database));
+      fs.renameSync(database, retained);
+      try { const unavailable = await runRequirementsDeltaAdmitUseCase({ targetRoot: faultRoot, mode: "COMMITTING" });
+        assert.equal(unavailable.action, "stop_canonical_runtime"); assert.equal(unavailable.ok, false); }
+      finally { fs.renameSync(retained, database); }
+    }
+    pass(`requirements admission uses the actual canonical ${mode} cycle without a visible projection`); return;
+  }
+  const faultPort = createStandardDriftChangeRequest({ targetRoot: faultRoot, observeContext: faultObserve, readCurrent: () => instance,
+    readRecovery: () => ({ choice: "requirements_delta", review: { session_id: "S001", cycle_id: "C001", review_operation_id: id, evaluation_operation_id: id, evaluation_sha256: H },
+      transition: { after_context_sha256: faultContext.context_sha256 }, report: { split_recommendation: { impact: "low" } } }) });
+  const faultPlan = await faultPort.prepare(instance, crInput), faultBefore = faultArtifacts.read(faultPath), faultCurrent = faultArtifacts.read("CURRENT-STATE.md");
+  const renameFile = fs.renameSync;
+  let partialCr;
+  try {
+    fs.renameSync = (from, to) => { if (path.resolve(to) === path.join(faultRoot, "docs/audit/CURRENT-STATE.md")) throw Error("fixture CR second write denied"); return renameFile(from, to); };
+    partialCr = await faultPort.apply(instance, faultPlan, { write: true, expectPlan: faultPlan.plan_sha256, assertAuthorized() {} });
+  } finally { fs.renameSync = renameFile; }
+  assert.equal(partialCr.effect_status, "unknown"); assert.equal(partialCr.outcome, "reconciliation_required"); assert.deepEqual(partialCr.facts, {});
+  assert.deepEqual(partialCr.observations.committed, [faultPath]); assert.notEqual(faultArtifacts.read(faultPath).sha256, faultBefore.sha256);
+  assert.equal(faultArtifacts.read("CURRENT-STATE.md").sha256, faultCurrent.sha256); assert.equal(faultArtifacts.ownerPending(), true);
+  await assert.rejects(faultPort.apply(instance, faultPlan, { write: true, expectPlan: faultPlan.plan_sha256, assertAuthorized() {} }), /STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED/);
+  pass("a real partial CR write retains an unknown receipt and owner, publishes no success and blocks another effect");
+
+}

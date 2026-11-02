@@ -1,5 +1,30 @@
 # Testing Guide
 
+The dedicated recovery fixture also uses a real admitted dual cycle to check
+the CR writer under a doubled recovery-provenance reader: no authored paths or
+code, wrong recovery choice, denied grant, metadata-only races, retained old
+entries/classification, pending scope acceptance and stale-context refusal.
+Its `--cr-fault-only` selection retains the pure capture/boundary checks and
+uses a separate admitted files project to deny the second CR write. The first
+write must remain visible, the result unknown with no facts, the local owner
+retained and another effect refused. The unfiltered fixture includes this case.
+`--cr-admission-mode=db-only` checks canonical active anchors and CR impact
+despite a stale visible current-state file, then hides the SQLite store and
+requires stopped admission. The unfiltered fixture includes this scenario too.
+The requirements-delta admission corpus installs current activation assets and
+uses fresh context/coordination in its temporary clients; relocated historical
+Codex context remains refused and the tracked corpus is not converted.
+`--drift-cr-mode=<files|dual|db-only>` in the production execution fixture uses
+the mixed authority and a qualification IR resolving the confirmed recovery
+record identity. Its actual evaluation/decision/record journals are authenticated;
+only the native wire, human and write-grant capabilities are fixtures. It must
+create a pending CR through real admitted canonical ports, retain its dispatch,
+and reproduce the same reducer hash in simulation. Its files variant executes
+the CR in a fresh Node process after human-source disappearance without another
+native allocation. Cycle setup is a real-port
+precondition, not proof of the missing complete cycle/standard graph. Native,
+provider and exact installed-archive qualification remain separate.
+
 ## Structured agentic process
 
 `verify-drift-recovery-fixtures.mjs` checks closed recovery questions/plans and

@@ -14,7 +14,15 @@ const controls = ["parking-lot.md", "CURRENT-STATE.md"];
 const chunks = text => text.match(/[\s\S]{1,8192}/g) ?? [""];
 // Only this fixed writer may discount its two consented documents. No authored
 // input chooses excluded paths. Their exact canonical post-images are checked.
-export function recoveryBoundary({ root, context, environment = process.env }) {
+export function recoveryBoundary(options) { return documentBoundary(options, controls); }
+export function changeRequestBoundary(options) {
+  const cycle = options.context.cycle_id;
+  if (!/^C[0-9]{3,6}$/.test(cycle ?? "")) fail("STANDARD_CHANGE_REQUEST_OWNER_REQUIRED");
+  const matches = options.context.documents.filter(row => new RegExp(`^audit:cycles/${cycle}-[A-Za-z0-9._-]+/change-requests\\.md$`).test(row.ref));
+  if (matches.length !== 1) fail("STANDARD_CHANGE_REQUEST_OWNER_REQUIRED");
+  return documentBoundary(options, [matches[0].ref.slice(6), "CURRENT-STATE.md"]);
+}
+function documentBoundary({ root, context, environment = process.env }, controls) {
   if (Object.keys(environment).some(key => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(key))) fail("STANDARD_GIT_ENV_SCOPE_CONFLICT");
   const git = args => {
     try { return execFileSync("git", ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),

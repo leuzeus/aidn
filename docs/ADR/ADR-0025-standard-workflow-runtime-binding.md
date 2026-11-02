@@ -657,3 +657,36 @@ The generic mixed step can prepare a fresh intent for a blocked/deferred
 operation when explicitly invoked with write intent; preview stays read-only.
 It never retries an unknown effect or turns the earlier non-success into a
 success. The same reducer still owns the occurrence and attempt identity.
+
+### Admitted change-request continuation
+
+The fixed `drift_change_request_record` port consumes the latest confirmed
+findings receipt for an authenticated `requirements_delta` recovery choice.
+The host verifies the retained evaluation/decision/record chain; it does not
+re-query a vanished human source or treat replay as result authentication.
+Current canonical context must equal that receipt's post-context. Real
+pre-write and requirements-delta ownership admissions must still permit the
+active COMMITTING session/cycle before preparing or executing effects.
+
+This operation creates the CR proposed by SPEC-R05 and the drift-check skill;
+it does not implement the whole requirements-delta skill. The fixed footprint
+is the owning cycle's `change-requests.md` append plus CURRENT-STATE next-action
+summary/date. No authored JSON selects a path, impact override, text edit,
+requirements mapping or scope-acceptance decision. The diagnostic supplies the
+impact and traceable findings; the CR decision remains pending. Medium/high
+impact retains the obligation to create an admitted cycle before scope acceptance.
+
+The common signed journal retains exact previews and live grants. The writer
+uses the canonical content/metadata CAS and checks required physical projections,
+post-images, process revision and outside-context/Git boundary. Unknown effects
+retain ownership and cannot be retried automatically. Creating a CR emits only
+its own completion fact; recovery remains required and R05 incomplete. No
+historical format or standard-model completeness claim changes.
+
+Requirements-delta admission now awaits the existing canonical continuity
+service, as branch audit already does. DB-backed active session/cycle anchors,
+ownership and CR impact come from that snapshot; unavailable or ambiguous
+canonical state stops admission. A stale visible current-state file cannot
+replace the canonical anchors. The existing hook awaits this admission before
+deciding whether to checkpoint. Public JSON/effect classes and medium/high
+impact ownership arbitration remain unchanged.

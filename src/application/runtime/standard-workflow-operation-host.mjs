@@ -3,6 +3,7 @@ import { createStandardWorkflowOperations, standardWorkflowOperationBindings } f
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { createStandardDriftFinalization } from "./standard-drift-finalization.mjs";
 import { createStandardDriftRecovery } from "./standard-drift-recovery.mjs";
+import { createStandardDriftChangeRequest } from "./standard-drift-change-request.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
@@ -46,6 +47,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input), readCurrent: id => current(id).record }) : null;
   const recovery = processAuthority ? createStandardDriftRecovery({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
+  const changeRequest = processAuthority ? createStandardDriftChangeRequest({ targetRoot, now,
+    readRecovery: (instance, input) => recordedRecovery(instance, input),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
   const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
   if (model.contract_version !== "agentic-process-model.v2" || typeof authorize !== "function") fail("STANDARD_HOST_CONFIGURATION_INVALID");
@@ -218,6 +222,26 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     await recovery.assertFresh(instance, review);
     return { review, choice, decision_operation_id: input.decision_operation_id };
   }
+  function recordedRecovery(instance, input) {
+    const latest = binding => instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding).at(-1)?.intent.operation_id;
+    const accepted = (id, binding) => {
+      const record = retained(id).record, receipt = record.results.at(-1)?.receipt;
+      if (record.phase !== "receipted" || record.intent.binding_ref !== binding || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id
+        || receipt?.outcome !== "completed" || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) fail("STANDARD_CHANGE_REQUEST_ACCEPTED_RECOVERY_REQUIRED");
+      return record;
+    };
+    if (latest("drift_recovery_record") !== input.recovery_record_operation_id) fail("STANDARD_CHANGE_REQUEST_ACCEPTED_RECOVERY_REQUIRED");
+    const record = accepted(input.recovery_record_operation_id, "drift_recovery_record"), output = record.results.at(-1).output;
+    const decision = accepted(record.preview.input.decision_operation_id, "drift_recovery_decision"), review = decision.preview.prepared.plan;
+    if (latest("drift_recovery_decision") !== decision.operation_id || latest("drift_report_evaluate") !== review.evaluation_operation_id
+      || output.effect_status !== "confirmed" || output.facts.drift_recovery_recorded !== true
+      || human.captured(decision).source.choice !== "requirements_delta" || output.observations.choice !== "requirements_delta"
+      || shadowHash(record.preview.prepared.review) !== shadowHash(review)) fail("STANDARD_CHANGE_REQUEST_ACCEPTED_RECOVERY_REQUIRED");
+    const evaluation = accepted(review.evaluation_operation_id, "drift_report_evaluate").results.at(-1).output;
+    if (shadowHash(evaluation) !== review.evaluation_sha256 || evaluation.facts.drift_context_complete !== true || evaluation.facts.drift_present !== true
+      || output.observations.causal_transition?.before_context_sha256 !== review.context_sha256) fail("STANDARD_CHANGE_REQUEST_ACCEPTED_RECOVERY_REQUIRED");
+    return { record_operation_id: record.operation_id, choice: "requirements_delta", review, report: evaluation.observations.report, transition: output.observations.causal_transition };
+  }
   async function commitIntent(id, { write = false } = {}) {
     if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
     const record = retained(id).record, state = current(record.intent.instance_id);
@@ -281,6 +305,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       input = resolved.input;
       assertStandardOperationInput(binding.id, input);
       const prepared = binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
           return { ...body, can_apply: true, plan_sha256: shadowHash(body) }; })()
@@ -343,6 +368,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_admit") output = await operations.admitCycle(record.preview.input);
         else if (record.intent.binding_ref === "branch_cycle_audit") output = await operations.auditCycle(record.preview.input);
         else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
+        else if (record.intent.binding_ref === "drift_change_request_record") output = await changeRequest.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
           outcome: "blocked", effect_status: "no_effect", facts: {}, observations: record.preview.prepared ?? {}, evidence_refs: [] };
         else if (record.intent.binding_ref === "drift_check_finalize") output = await driftFinalization.apply(state.record, record.preview.prepared,

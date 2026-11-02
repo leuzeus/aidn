@@ -3,12 +3,15 @@ import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveBranchMapping, toCycleSummary, toSessionSummary } from "../../lib/workflow/branch-mapping-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
+import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
+import { findUniqueAuditArtifact } from "./runtime-head-resolution-service.mjs";
 import {
   findCycleDirectory,
   listCycleStatuses,
   listSessionArtifacts,
   readCurrentState,
   readCycleChangeRequestImpacts,
+  extractCycleChangeRequestImpacts,
   readSourceBranch,
 } from "../../lib/workflow/session-context-lib.mjs";
 
@@ -52,20 +55,23 @@ function isOwnershipClear(branchKind, mapping, activeCycleId) {
   return false;
 }
 
-export function runRequirementsDeltaAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
+export async function runRequirementsDeltaAdmitUseCase({ targetRoot, mode = "COMMITTING" }) {
   const gitAdapter = createLocalGitAdapter();
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
-  const currentState = readCurrentState(absoluteTargetRoot);
-  const auditRoot = currentState.audit_root;
+  const visibleCurrentState = readCurrentState(absoluteTargetRoot);
+  const auditRoot = visibleCurrentState.audit_root;
+  const continuity = await resolveWorkflowContinuityContext({ targetRoot: absoluteTargetRoot, effectiveStateMode,
+    visibleCurrentState, visibleSessions: listSessionArtifacts(auditRoot), visibleCycles: listCycleStatuses(auditRoot) });
+  const currentState = continuity.current_state;
   const sourceBranch = readSourceBranch(absoluteTargetRoot);
   const branch = gitAdapter.getCurrentBranch(absoluteTargetRoot);
   const branchKind = classifyAidnBranch(branch, {
     sourceBranch,
     includeSource: true,
   });
-  const sessions = listSessionArtifacts(auditRoot);
-  const cycles = listCycleStatuses(auditRoot);
+  const sessions = continuity.sessions;
+  const cycles = continuity.cycles;
   const mapping = resolveBranchMapping({
     branch,
     branchKind,
@@ -75,7 +81,11 @@ export function runRequirementsDeltaAdmitUseCase({ targetRoot, mode = "COMMITTIN
   const activeCycleId = String(currentState.active_cycle ?? "none");
   const activeCycle = cycles.find((cycle) => cycle.cycle_id === String(activeCycleId).toUpperCase()) ?? mapping.mapped_cycle ?? null;
   const cycleDir = activeCycle ? findCycleDirectory(auditRoot, activeCycle.cycle_id) : null;
-  const impacts = readCycleChangeRequestImpacts(cycleDir);
+  const canonicalCr = continuity.canonical_available && activeCycle?.cycle_dir
+    ? findUniqueAuditArtifact(continuity.snapshot.payload, `cycles/${activeCycle.cycle_dir}/change-requests.md`) : null;
+  const impacts = continuity.canonical_available
+    ? extractCycleChangeRequestImpacts(canonicalCr?.content_format === "base64" ? Buffer.from(canonicalCr.content, "base64").toString("utf8") : canonicalCr?.content ?? "")
+    : readCycleChangeRequestImpacts(cycleDir);
   const mediumOrHighImpact = impacts.some((item) => item === "medium" || item === "high");
   const ownershipClear = isOwnershipClear(branchKind, mapping, activeCycleId);
 
@@ -92,6 +102,12 @@ export function runRequirementsDeltaAdmitUseCase({ targetRoot, mode = "COMMITTIN
     mapped_cycle: activeCycle ? toCycleSummary(activeCycle) : null,
     detected_impacts: impacts,
   };
+
+  if ((dbBackedMode || continuity.canonical_required) && !continuity.canonical_available || continuity.canonical_continuity_status === "ambiguous") {
+    return makeResult(base, { action: "stop_canonical_runtime", reason_code: "REQUIREMENTS_DELTA_CANONICAL_RUNTIME_INVALID",
+      blocking_reasons: [continuity.warning || "Canonical workflow continuity is unavailable or ambiguous.", ...continuity.canonical_continuity_ambiguities],
+      recommended_next_action: "Diagnose the canonical runtime before requirements delta work." });
+  }
 
   if (mediumOrHighImpact && !ownershipClear) {
     return makeResult(base, {

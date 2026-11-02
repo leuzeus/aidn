@@ -64,7 +64,11 @@ try {
     assert.equal((await ops.prepareSession({ ...input, session_id: "S002", session_branch: "S002-next" })).can_apply, false);
   });
   await check("closed typed operation bindings", () => {
-    const bindings = standardWorkflowOperationBindings(); assert.equal(bindings.length, 10);
+    const bindings = standardWorkflowOperationBindings();
+    assert.deepEqual(bindings.map(row => row.id), ["context_reload", "session_admit", "session_initialize", "mode_decision", "session_mode_apply", "session_start_finalize",
+      "cycle_admit", "cycle_context_refresh", "cycle_initialize", "branch_cycle_audit", "drift_report_evaluate", "drift_check_finalize", "drift_recovery_decision", "drift_recovery_record", "drift_change_request_record"]);
+    const cr = bindings.find(row => row.id === "drift_change_request_record");
+    assert.equal(cr.effect_class, "mutating"); assert.equal(cr.executor_kind, "deterministic"); assert.equal(cr.skill_id, "drift-check");
     assert.equal(bindings.find(binding => binding.id === "mode_decision").executor_kind, "human");
     assert.ok(bindings.every(binding => /^[a-f0-9]{64}$/.test(binding.implementation_sha256)));
   });

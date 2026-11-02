@@ -620,3 +620,24 @@ readable and unchanged. Subsequent diagnostics read canonical parking-lot too.
 These operations document the decision and findings. They leave the actual
 CR/cycle/rollback operation, fresh diagnosis and R05 checkpoint pending; no
 product-work permission follows from their completion.
+
+`drift_change_request_record` is a deterministic continuation of an accepted,
+confirmed recovery record selecting `requirements_delta`. The mixed authority
+authenticates its evaluation, human decision and causal findings receipt. The
+port requires their current canonical post-context and an admitted COMMITTING
+cycle/session owner. It derives exactly the owning cycle's change-request file
+and CURRENT-STATE next-action summary. Its signed preview exposes the exact
+append/replacement; a new live write grant authorizes those effects. It preserves
+old CR entries and canonical metadata, checks projections and records another
+causal transition. A changed context cannot reuse the old recovery record.
+
+The generated CR retains the authenticated diagnostic and stays `pending`, with
+requirements mapping explicitly pending. Medium/high impact requires a new
+admitted cycle. No requirement, baseline, cycle state or product scope is
+automatically accepted. CR creation leaves recovery/R05 incomplete until the
+subsequent action, fresh diagnosis and checkpoint prove their own completion.
+
+The requirements-delta admission used by this continuation and its ordinary
+hook reads canonical continuity asynchronously. In DB-backed modes it must
+recover the actual active anchors and existing CR impact without trusting a
+stale visible projection; unavailable/ambiguous canonical state stops it.

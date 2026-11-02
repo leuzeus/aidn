@@ -1,9 +1,14 @@
 # Runtime Surface Scope Matrix
 
+The deterministic R05 CR continuation reuses the canonical change-request and
+CURRENT-STATE artifacts plus the existing operation journal/effect owner. Its
+scope is an authenticated, confirmed recovery record and admitted active cycle;
+it adds no table, backend fallback, implicit scope approval or shared write.
+
 R05 recovery review and findings reuse the existing process instance, operation
 journal, decision inbox and canonical artifact ports. Recovery decisions use an
 explicit v2 inbox source; historical mode v1 records remain separate. Fixed
-authorized writes cover parking-lot and current-state summary only, with causal
+findings writes cover parking-lot and current-state summary only, with causal
 before/after hashes and local unknown-effect retention. This adds no table,
 backend fallback, shared synchronization, actual recovery-action permission or
 native/installed-workflow qualification.

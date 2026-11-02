@@ -52,12 +52,15 @@ import { createProjectWorkflowInstanceService } from "../../src/application/runt
 
 const selectedRecoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
 if (selectedRecoveryMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryMode)) throw Error("RECOVERY_FIXTURE_MODE_INVALID");
+const selectedChangeRequestMode = process.argv.find(value => value.startsWith("--drift-cr-mode="))?.slice("--drift-cr-mode=".length);
+if (selectedChangeRequestMode !== undefined && !["files", "dual", "db-only"].includes(selectedChangeRequestMode)) throw Error("CHANGE_REQUEST_FIXTURE_MODE_INVALID");
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
 const businessRoots = [];
 let serial = 0;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+  if (selectedChangeRequestMode && !name.startsWith(`drift CR ${selectedChangeRequestMode}:`)) return;
   if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
   if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
@@ -377,6 +380,11 @@ function mixedFixture(stateMode = "files", options = {}) {
         { node_id: "record", fields: { decision_operation_id: { source: "operation_id", node_id: "decide" } } },
         { node_id: "action_executed", fields: {} }, { node_id: "action_cancelled", fields: {} },
       ] };
+      if (options.changeRequest) {
+        model.operation_pins.drift_change_request_record = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "drift_change_request_record"));
+        model.nodes[0].children.splice(-1, 0, "change_request"); model.nodes.push(op("change_request", "drift_change_request_record"));
+        model.data_bindings.inputs.push({ node_id: "change_request", fields: { recovery_record_operation_id: { source: "operation_id", node_id: "record" } } });
+      }
     }
     fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   }
@@ -441,6 +449,10 @@ async function prepareCompletionCycle(f, state, intermediate = false) {
     productFiles: f.configuration.product_files, productSha256: f.open().previewNative().product_sha256 });
   const active = await context(); assert.equal(active.context.context_use, "active_cycle"); assert.equal(active.context.original_objective, objective);
   const statusPath = "cycles/C001-feature-completion-context/status.md", briefPath = statusPath.replace("status.md", "brief.md");
+  if (state === "OPEN") {
+    git("add", "."); git("commit", "--allow-empty", "-m", "fixture active cycle precondition");
+    return { artifacts, statusPath, briefPath, objective, git, context };
+  }
   async function change(changes) {
     return artifacts.withLocalEffectOwner(shadowHash({ fixture: "terminal-context-precondition", changes }), async () => {
       for (const [name, after] of changes) { const before = artifacts.read(name); artifacts.compareAndSwap({ path: name, before_sha256: before.sha256, after }); }
@@ -528,6 +540,63 @@ if (process.argv[2] === "--mixed-continue") {
     const simulation = simulateAgenticProcess({ instanceId: waiting.record.instance_id, scopeId: waiting.record.scope_id, model: waiting.record.model,
       policyPins: waiting.record.policy_pins, parameters: waiting.record.initial_parameters, events: waiting.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, waiting.record.instance_sha256);
+  });
+  for (const mode of ["files", "dual", "db-only"]) await check(`drift CR ${mode}: IR consumes confirmed recovery and creates a pending CR through admitted canonical ports`, async () => {
+    const claims = new Map(), humanSource = {
+      read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
+      verify: ({ source, sourceRef }) => claims.has(sourceRef) && shadowHash(claims.get(sourceRef)) === shadowHash(source)
+        ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" },
+    };
+    let permit = true;
+    const f = mixedFixture(mode, { drift: true, recovery: true, changeRequest: true, humanSource,
+      authorize: async ({ binding }) => ({ authorized: binding.id !== "drift_change_request_record" || permit, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }),
+      answer({ params }) {
+        const context = JSON.parse(params.input[0].text.split("\n").at(-1));
+        return { outcome: "completed", summary: "CR diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
+          original_objective: context.context.original_objective, current_objective: context.context.original_objective + " with changed scope", drift_level: "severe", objective_changed: true,
+          changes: ["Confirmed CR fixture scope expansion."], keep: ["Original scope"], discard: [],
+          split_recommendation: { new_cycle: true, new_branch: true, change_request_required: true, impact: "high" },
+          recommendation: "human_arbitration", rationale: "Fixture transport; real application writer.", evidence_refs: context.evidence_refs } };
+      } });
+    const auth = await bootstrapMixed(f), cycle = await prepareCompletionCycle(f, "OPEN");
+    console.log(`STEP drift CR ${mode}: admitted active cycle prepared`);
+    const native = await f.open().step({ write: true, authorization: auth }); assert.equal(native.journal_phase, "closed", JSON.stringify(native));
+    console.log(`STEP drift CR ${mode}: native producer closed`);
+    await f.open().step({ write: true }); const waiting = await f.open().step({ write: true }); assert.equal(waiting.status, "waiting_for_human");
+    assert.ok(waiting.question.choices.includes("requirements_delta"));
+    claims.set("accept", { contract_version: "human-drift-recovery-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+      source_event_id: `cr-${mode}`, subject_sha256: "a".repeat(64), question_sha256: shadowHash(waiting.question), choice: "requirements_delta",
+      evidence_refs: [{ ref: "fixture:operator/cr", sha256: "a".repeat(64) }] });
+    await f.open().receiveDecision(waiting.question.operation_id, { sourceRef: "accept", write: true });
+    await f.open().acceptOperation(waiting.question.operation_id, { write: true }); claims.clear();
+    const recorded = await f.open().step({ write: true }), findings = f.open().readOperation(recorded.operation_id).results.at(-1).output;
+    assert.equal(findings.effect_status, "confirmed");
+    const crPath = cycle.statusPath.replace("status.md", "change-requests.md"), before = cycle.artifacts.read(crPath);
+    const preview = await f.open().step({ write: false }); assert.equal(preview.kind, "operation_preview");
+    assert.equal(cycle.artifacts.read(crPath).sha256, before.sha256);
+    permit = false; await assert.rejects(f.open().step({ write: true }), /STANDARD_HOST_AUTHORIZATION_REQUIRED/);
+    assert.equal(cycle.artifacts.read(crPath).sha256, before.sha256); assert.equal(cycle.artifacts.ownerPending(), false); permit = true;
+    console.log(`STEP drift CR ${mode}: accepted findings retained; exact CR preview is ready`);
+    let completed;
+    if (mode === "files") {
+      const file = put(f.base, "cr-restart.json", JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex") }));
+      const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--recovery-record", file], { encoding: "utf8", shell: false, windowsHide: true, timeout: 300000 });
+      assert.equal(child.status, 0, child.stderr); const reopened = JSON.parse(child.stdout);
+      assert.equal(reopened.status, "WAITING"); assert.equal(reopened.launches, 0); assert.equal(reopened.sessions, 0);
+      assert.equal(f.open().inspect().record.instance_sha256, reopened.instance_sha256); completed = { operation_id: reopened.operation_id };
+    } else completed = await f.open().step({ write: true });
+    const output = f.open().readOperation(completed.operation_id).results.at(-1).output;
+    assert.equal(output.outcome, "completed", JSON.stringify(output)); assert.equal(output.effect_status, "confirmed");
+    assert.equal(output.facts.drift_change_request_recorded, true); assert.equal(output.facts.drift_check_completed, false);
+    assert.equal(output.observations.decision, "pending"); assert.equal(output.observations.new_cycle_required, true);
+    assert.equal(output.observations.causal_transition.before_context_sha256, findings.observations.causal_transition.after_context_sha256);
+    const after = cycle.artifacts.read(crPath); assert.ok(after.content.startsWith(before.content));
+    assert.match(after.content, /## CR-002/); assert.match(after.content, /- Decision: pending/); assert.match(after.content, /Confirmed CR fixture scope expansion/);
+    assert.equal(cycle.artifacts.ownerPending(), false); const reopened = f.open().inspect(); assert.equal(reopened.cursor.status, "WAITING");
+    assert.equal((await f.open().dispatchOperation(completed.operation_id, { write: true })).status, "retained_result"); assert.equal(cycle.artifacts.read(crPath).sha256, after.sha256);
+    const simulated = simulateAgenticProcess({ instanceId: reopened.record.instance_id, model: reopened.record.model, parameters: reopened.record.initial_parameters,
+      scopeId: reopened.record.scope_id, policyPins: reopened.record.policy_pins, events: reopened.record.events });
+    assert.equal(simulated.trace.at(-1).instance_sha256, reopened.record.instance_sha256); assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
   });
   for (const mode of ["files", "dual", "db-only"]) await check(`drift recovery ${mode}: authenticated human review records actual findings without completing recovery`, async () => {
     const claims = new Map(), humanSource = {

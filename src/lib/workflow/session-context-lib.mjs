@@ -526,6 +526,10 @@ export function readCycleChangeRequestImpacts(cycleDir) {
   }
   const filePath = path.join(cycleDir, "change-requests.md");
   const text = readTextIfExists(filePath);
+  return extractCycleChangeRequestImpacts(text);
+}
+
+export function extractCycleChangeRequestImpacts(text) {
   const impacts = [];
   for (const line of String(text).split(/\r?\n/)) {
     const match = line.match(/^\s*-\s*Impact:\s*(low|medium|high)\s*$/i);
