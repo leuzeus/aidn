@@ -71,9 +71,12 @@ waits; raw caller facts/messages cannot authorize v2 control through the service
 V1 models, instances, native assignments and hashes retain their existing format.
 See [ADR-0025](ADR/ADR-0025-standard-workflow-runtime-binding.md).
 
-These contracts and trusted service ports do not yet implement the standard
-model or its real adapters. The native-only owned composition refuses v2 before
-native allocation; mixed-host execution and general resume remain in the plan.
+Partial standard business adapters and startup/cycle components are now bound
+through the operation/control host; they do not deliver the complete standard
+model. The native-only owned composition accepts v1 and v2 graphs without
+operation nodes. V2 rejects raw control-scenario facts/events before allocation;
+its human/external control requires authenticated delivery. Mixed execution and
+general native-history resume remain in the plan.
 
 The closed `agentic-process-model.v1` contract declares participants, reusable
 roles/skills, versioned policies and a structured tree of nodes. Every node has
@@ -345,9 +348,9 @@ The configuration is closed at the root and includes:
 | `target_root`, `product_root` | Active project; dedicated product subdirectory |
 | `control_root`, `review_root` | Existing, physical, separate external directories |
 | `product_files` | Exhaustive bounded relative product-file allowlist; no links, credential files or undeclared output |
-| `model`, `criteria`, `authorities`, `skills` | Explicit `{path,sha256}` byte pins; authorities require `project` pinned to target AGENTS.md plus the task's authorities; role skill IDs map to supplied procedures |
+| `model`, `criteria`, `authorities`, `skills` | Native-only v1/v2 model, explicit `{path,sha256}` byte pins; authorities require `project` pinned to target AGENTS.md plus the task's authorities; role skill IDs map to supplied procedures |
 | `instructions` | Bounded task instruction per activity; cannot choose an executable or authority port |
-| `control_scenario` (optional) | Pinned `{path,sha256}` to an explicit bounded trusted-host scenario; initial Boolean facts and ordered message/facts/cancel events after exact accepted-result counts |
+| `control_scenario` (optional) | Pinned `{path,sha256}` to a v1-only bounded trusted-host scenario; v2 refuses nonempty raw facts/events before native startup |
 | `native` | Executable/SHA, existing home, model/effort, read-only tool roots, expected work/review hook hashes and the closed startup configuration |
 | `implementation_sha256` | `agenticProcessImplementationPins().sha256`; distributed direct engine sources plus VERSION/package manifest; retain the build lock and exact installed dependency versions separately |
 | `controller` | Existing helper path/SHA/source SHA, Node SHA and fixed worker SHA |

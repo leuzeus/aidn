@@ -332,6 +332,9 @@ finalization; `--verify` retains its read-only verification behavior.
     requires `--execute --authorization <file> --expect-plan <sha256>`; JSON and
     preview start no native client. `--engine legacy` explicitly selects the
     sequential compatibility lifecycle and retains its plan/shared-sync admission.
+    The owned native composition accepts native-only v1/v2 graphs. Operation
+    nodes and raw v2 control-scenario facts/events refuse before native startup;
+    mixed dispatch and general history resume remain separate work.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
 - `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`

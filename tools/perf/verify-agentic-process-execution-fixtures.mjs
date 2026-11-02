@@ -26,6 +26,7 @@ import { PassThrough } from "node:stream";
 import { spawnSync } from "node:child_process";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
 import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { assertAgenticControlScenario } from "../../src/core/workflow/agentic-process-control-scenario.mjs";
 import { republishBrokerProductFile } from "../../src/adapters/runtime/broker-product-file.mjs";
@@ -35,7 +36,8 @@ const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
 let serial = 0;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
-async function check(name, callback) { await callback(); checks.push(name); console.log("PASS " + name); }
+async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+  await callback(); checks.push(name); console.log("PASS " + name); }
 function fixture() {
   const base = path.join(root, "case-" + ++serial), targetRoot = path.join(base, "project"), packageRoot = path.join(base, "package");
   fs.mkdirSync(targetRoot, { recursive: true });
@@ -180,6 +182,60 @@ async function run(f, options = {}) {
 }
 
 try {
+  await check("v2 native-only JSON executes real role ports and preserves exact replay without operation fallback", async () => {
+    const f = fixture(), model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+    model.contract_version = "agentic-process-model.v2"; model.operation_pins = {};
+    const text = JSON.stringify(model); fs.writeFileSync(f.configuration.model.path, text); f.configuration.model.sha256 = sha(text);
+    const { result, sessions } = await run(f);
+    assert.equal(result.status, "COMPLETED", JSON.stringify(result)); assert.equal(result.responses_observed, 3);
+    assert.equal(sessions.length, 2); assert.equal(result.native_parent_closure.closed, true);
+    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    assert.equal(retained.contract_version, "agentic-process-instance.v2"); assert.equal(retained.profile, "structured-agentic-process.v2");
+    assert.equal(retained.events.filter(event => event.kind === "assign").length, 3);
+    assert.equal(retained.events.filter(event => event.kind === "result").length, 3);
+    const simulation = simulateAgenticProcess({ instanceId: retained.instance_id, model: retained.model, policyPins: retained.policy_pins,
+      scopeId: retained.scope_id, events: retained.events });
+    assert.equal(simulation.trace.at(-1).instance_sha256, retained.instance_sha256);
+  });
+  await check("v2 native-only event wait closes resources and cannot restart its history as a pristine instance", async () => {
+    const f = fixture(), model = JSON.parse(fs.readFileSync(f.configuration.model.path)), originalEntry = model.entry;
+    model.contract_version = "agentic-process-model.v2"; model.operation_pins = {}; model.entry = "with_wait";
+    const activity = model.nodes.find(node => node.kind === "activity"), participant_ref = activity.participant_ref;
+    model.nodes.push({ id: "with_wait", kind: "sequence", participant_ref, children: [originalEntry, "external_wait"] },
+      { id: "external_wait", kind: "event", participant_ref, branches: [
+        { flow_id: "review", node_id: "late_review", event_key: "review_snapshot" },
+        { flow_id: "checks", node_id: "late_checks", event_key: "checks_snapshot" }] },
+      { ...activity, id: "late_review" }, { ...activity, id: "late_checks" });
+    const text = JSON.stringify(model); fs.writeFileSync(f.configuration.model.path, text); f.configuration.model.sha256 = sha(text);
+    const { result, sessions } = await run(f); assert.equal(result.status, "WAITING", JSON.stringify(result));
+    assert.equal(result.responses_observed, 3); assert.equal(sessions.length, 2); assert.equal(result.native_parent_closure.closed, true);
+    const retained = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    assert.equal(inspectAgenticProcess(retained).status, "WAITING");
+    const t = transport(f);
+    const reopened = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory });
+    assert.equal(reopened.preview().written, false);
+    await assert.rejects(reopened.run({ execute: true, authorization: f.authorize() }), /PROCESS_EXECUTION_EXISTING_INSTANCE_REQUIRES_RECONCILIATION/);
+    assert.equal(t.sessions.length, 0);
+  });
+  await check("v2 native-only composition refuses raw control facts before startup", () => {
+    const f = fixture(), model = JSON.parse(fs.readFileSync(f.configuration.model.path)); model.contract_version = "agentic-process-model.v2"; model.operation_pins = {};
+    const text = JSON.stringify(model); fs.writeFileSync(f.configuration.model.path, text); f.configuration.model.sha256 = sha(text);
+    const control = JSON.stringify({ contract_version: "agentic-process-control-scenario.v1", initial_facts: { approved: true }, events: [] });
+    f.configuration.control_scenario = { path: put(f.base, "control.json", control), sha256: sha(control) };
+    const t = transport(f);
+    assert.throws(() => createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory }), /PROCESS_EXECUTION_CONTROL_PROFILE_UNSUPPORTED/);
+    assert.equal(t.sessions.length, 0); assert.deepEqual(fs.readdirSync(f.dirs.control), []);
+  });
+  await check("v2 native-only composition refuses raw control events before startup", () => {
+    const f = fixture(), model = JSON.parse(fs.readFileSync(f.configuration.model.path)); model.contract_version = "agentic-process-model.v2"; model.operation_pins = {};
+    const text = JSON.stringify(model); fs.writeFileSync(f.configuration.model.path, text); f.configuration.model.sha256 = sha(text);
+    const control = JSON.stringify({ contract_version: "agentic-process-control-scenario.v1", initial_facts: {},
+      events: [{ after_results: 0, event: { event_id: "raw-approval", kind: "facts", facts: { approved: true } } }] });
+    f.configuration.control_scenario = { path: put(f.base, "control.json", control), sha256: sha(control) };
+    const t = transport(f);
+    assert.throws(() => createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory }), /PROCESS_EXECUTION_CONTROL_PROFILE_UNSUPPORTED/);
+    assert.equal(t.sessions.length, 0); assert.deepEqual(fs.readdirSync(f.dirs.control), []);
+  });
   await check("native tool observations retain counts and hashes without commands, outputs, arguments or reasoning", () => {
     const observation = summarizeAgenticNativeToolItem({ type: "functionCallOutput", name: "exec", output: 'private-secret Process running with session ID 123' });
     assert.equal(observation.tool, "exec"); assert.equal(observation.poll_marker_observed, true);

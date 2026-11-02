@@ -77,10 +77,12 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     if ([targetRoot, reviewRoot, controlRoot, config.native.home].some(other => inside(root, other) || inside(other, root))) fail("PROCESS_EXECUTION_TOOL_ROOT_OVERLAP");
   }
   const model = JSON.parse(pinned(config.model, [productRoot, reviewRoot]).toString("utf8")); assertAgenticProcessModel(model);
-  if (model.contract_version !== "agentic-process-model.v1") fail("PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED");
+  if (model.nodes.some(node => node.kind === "operation")) fail("PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED");
   const controlScenario = Object.hasOwn(config, "control_scenario")
     ? assertAgenticControlScenario(JSON.parse(pinned(config.control_scenario, [productRoot, reviewRoot]).toString("utf8")))
     : { initial_facts: {}, events: [] };
+  if (model.contract_version === "agentic-process-model.v2"
+    && (Object.keys(controlScenario.initial_facts).length || controlScenario.events.length)) fail("PROCESS_EXECUTION_CONTROL_PROFILE_UNSUPPORTED");
   for (const policy of model.policies) if (!["compatible-work.v1", "independent-review.v1"].includes(policy.assurance_profile)) fail("PROCESS_EXECUTION_ASSURANCE_PROFILE_UNSUPPORTED");
   for (const [key, value] of Object.entries(config.instructions)) if (!model.nodes.some(node => node.id === key && node.kind === "activity")
     || typeof value !== "string" || Buffer.byteLength(value) > 16384) fail("PROCESS_EXECUTION_INSTRUCTION_INVALID");

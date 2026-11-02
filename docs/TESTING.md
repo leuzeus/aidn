@@ -2,6 +2,14 @@
 
 ## Structured agentic process
 
+The production native-composition fixtures include native-only v2 role execution,
+exact replay, resource closure on an event wait, refusal to restart that history
+as pristine, and pre-allocation refusal of raw v2 facts/events. They retain the
+v1 and mixed-operation refusal regressions. `--v2-only` is a focused selector;
+the required gate runs the complete suite. Native transport is simulated; these
+checks do not qualify live native execution, mixed dispatch or general resume.
+
+
 `verify-standard-workflow-control-fixtures.mjs` verifies authenticated durable
 human/external capture and delivery through the standard operation host with the
 common service/reducer. Real session effects precede an event wait; a new Node

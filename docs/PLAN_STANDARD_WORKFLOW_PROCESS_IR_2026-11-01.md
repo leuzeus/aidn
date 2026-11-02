@@ -747,3 +747,49 @@ Les enregistrements et historiques valides mais falsifiés par simple rehash ont
 été refusés. Ce sont des preuves hors ligne sur stores et ports réels avec
 capacité source doublée, pas des preuves natives, fournisseur réel ou archive
 installée. L4–L8 restent ouverts dans les limites indiquées ci-dessus.
+
+
+## Addendum — activité native sur le contrat commun v2
+
+Le contrôle du lanceur a confirmé un refus global des modèles v2, même sans
+opérations D/H. La composition native accepte maintenant les graphes d'activités
+v1/v2 sans nœud operation. Elle conserve le refus des graphes mixtes et refuse
+les faits/événements bruts de control_scenario pour v2 avant allocation. Les
+contrats/lecteurs v1 et la garde de démarrage restent inchangés.
+
+Quatre contrôles ciblés passent sur la composition de production avec transport
+natif doublé : activité v2 avec résultats canoniques et replay exact ; attente
+v2 après travail avec ressources fermées ; refus des faits bruts ; refus des
+événements bruts. Le test d'attente confirme aussi que la réouverture ne peut pas
+requalifier un historique en instance vierge. Cette compatibilité est une
+précondition du port natif mixte, pas sa livraison ni la reprise générale.
+
+Prochain raccordement L4 : conserver sous autorité durable les résultats natifs,
+identités/contributions/exclusions de revue, fermeture et budgets. Le code
+agentic-process-execution-host conserve actuellement resources/observations/
+results/prepared en Map et produit une autorité par hôte. Retirer seulement la
+garde d'historique ferait perdre ces preuves et ne constitue pas une reprise.
+Le dispatcher mixte devra composer cette autorité persistée avec celles des
+opérations/inbox, sur la même instance, le même modèle et le même réducteur.
+
+
+Régression exécutée de cette compatibilité : **PASS, 55 contrôles**, composition
+native de production avec transport natif simulé, dont les quatre cas v2.
+Les anciens refus d'opérations mixtes, verdicts terminaux, budgets, empreintes,
+admissions natives, stockage, revue indépendante et fermeture restent vérifiés.
+Le catalogue refuse désormais de substituer le filtre --v2-only à la suite requise.
+Références documentaires, catalogues et sensibilité : PASS. Aucun client modèle
+réel, aucun arbre natif Windows réel et aucune archive installée qualifiés ici.
+
+Deux raccordements sont nécessaires avant le lanceur mixte : le scope natif actuel
+est dérivé de projet/persistance, tandis que le scope de l'hôte d'opérations inclut
+clé, source du modèle et protocole d'inbox. Une composition commune doit choisir
+et vérifier une même autorité pour la nouvelle instance v2, en conservant les
+lecteurs et scopes historiques. Ensuite, résultats, identités/contributions
+(y compris après résultat partiel), exclusions de revue, consommations cumulées
+et preuves de fermeture doivent provenir d'un journal authentifié durable.
+Le superviseur owned fournit une preuve de terminaison de l'arbre ; le simple
+native_parent_closure du worker ne remplace pas cette preuve. Une nouvelle
+allocation doit avoir une autorisation et des plafonds compatibles avec le cumul,
+sans prolonger implicitement l'ancien délai ou effacer un refus. La levée de la
+garde d'historique dépend de ces preuves, pas du seul support du contrat v2.

@@ -83,10 +83,12 @@ trusted host port, including current mode, grants, source and postconditions.
 
 ## Compatibility and qualification boundary
 
-The existing native-only owned composition explicitly refuses the v2 profile
-before allocating native resources. It must not send an operation node to a model
-or assume all v2 activities can use its current native context. L2–L5 will compose
-the mixed execution host and ordinary standard entrypoints.
+The native-only owned composition accepts v1/v2 activity graphs and explicitly
+refuses operation nodes before allocating native resources. V2 also refuses raw
+control-scenario facts/events before allocation; human/external control requires
+its authenticated service ports. It must not send an operation node to a model
+or assume a previous native allocation can be resumed from ephemeral maps.
+L2–L5 still need the mixed execution host and ordinary standard entrypoints.
 
 Operation intents and receipts are events of the existing governed process
 instance, retained under its artifact CAS, scope, fence and projection rules.

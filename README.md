@@ -27,7 +27,10 @@ of routing, canonical persistence, budgets and cleanup. Its
 does not establish general native support or a performance gain. Ordinary
 historical instances retain their pinned engine and format. Use
 `aidn runtime workflow-run` for normal execution; select `--engine legacy`
-explicitly for a new sequential compatibility run.
+explicitly for a new sequential compatibility run. Native-only JSON graphs
+can use the v1 or v2 process contract; v2 does not accept raw control facts or
+messages through that launcher. Standard operations, authenticated external
+waits and native-history resume still need the complete mixed composition.
 
 AIDN's own standard session/cycle/PR lifecycle still needs its shipped IR model,
 actual operation bindings and durable resume. Engine selection alone does not

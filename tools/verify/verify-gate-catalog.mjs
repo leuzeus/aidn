@@ -838,6 +838,12 @@ for (const [name, candidate] of Object.entries({
 }
 
 const negativeProbes = {
+  filtered_native_v2_gate_rejected: (() => {
+    const candidate = clone(packageJson);
+    candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]
+      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs", "node tools/perf/verify-agentic-process-execution-fixtures.mjs --v2-only");
+    return candidateRejected({ candidatePackageJson: candidate });
+  })(),
   standard_workflow_control_invocation_omission_rejected: (() => {
     const candidate = clone(packageJson);
     candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]
