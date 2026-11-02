@@ -486,3 +486,14 @@ This evidence has no resume authority by itself. The parent-close flag is not
 the outer supervisor's process-tree proof. Historical authentication, allocation
 fencing, cumulative budget admission and an explicit new grant are still required;
 the default native launcher continues to refuse a non-pristine instance.
+
+The opt-in journaled allocation composition now supplies that consumer for
+native-only v2 graphs. Explicit `resume: true` verifies the signed owned closure,
+exact checkpoint, later signed control events, current context, projections and
+retained ceilings before reserving another worker. A fresh worker authenticates
+its private reservation capability; native model processes receive no key.
+Historical results/contributions remain evidence, old resources stay closed and
+new sessions carry the writer exclusions into review. Ordinary start, CLI/console
+and mixed-operation integration remain separate. See
+[ADR-0025](ADR/ADR-0025-standard-workflow-runtime-binding.md) for the trust boundary,
+deadline limits and qualification distinctions.

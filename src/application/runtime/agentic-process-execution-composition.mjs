@@ -15,6 +15,7 @@ import { agenticProcessPersistence, createAgenticProcessWorkerEnvironment } from
 import { assertAgenticControlScenario } from "../../core/workflow/agentic-process-control-scenario.mjs";
 import { republishBrokerProductFile } from "../../adapters/runtime/broker-product-file.mjs";
 import { assertAgenticProcessStart } from "../../core/workflow/agentic-process-start.mjs";
+import { nativeEvidenceFile } from "./native-allocation-evidence.mjs";
 
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
@@ -39,7 +40,8 @@ function pinned(reference, roots) {
 
 // This is the real project composition. Tests may replace native/SQL wires, but
 // not assignmentAuthority, resultAuthority, bindings, CAS or admission policy.
-export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env } = {}) {
+export function createProjectAgenticProcessExecution(configuration, { rpcFactory, artifactStoreFactory, environment = process.env, allocationAuthority } = {}) {
+  if (allocationAuthority != null && typeof allocationAuthority.admit !== "function") fail("PROCESS_EXECUTION_ALLOCATION_AUTHORITY_INVALID");
   if (checkShadowJson(configuration) || configuration.contract_version !== "agentic-process-execution.v1") fail("PROCESS_EXECUTION_CONFIGURATION_INVALID");
   const config = structuredClone(configuration);
   const fields = ["contract_version", "instance_id", "target_root", "product_root", "control_root", "review_root", "product_files", "model", "criteria", "authorities", "skills", "instructions", "native", "controller", "implementation_sha256", "control_scenario"];
@@ -152,8 +154,14 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const creation = { instanceId: config.instance_id, model, facts: controlScenario.initial_facts,
         scopeId, policyPins: agenticPolicyPins(model) };
       const retainedAtStart = store.read(config.instance_id).record;
-      assertAgenticProcessStart(retainedAtStart, creation);
-      const output = path.join(controlRoot, config.instance_id);
+      let admitted = null;
+      if (allocationAuthority) {
+        admitted = await allocationAuthority.admit({ creation, retained: retainedAtStart, scopeId, modelSha256: shadowHash(model), productSha256: shadowHash(productSnapshot()) });
+        if (checkShadowJson(admitted) || !Number.isSafeInteger(admitted.generation) || admitted.generation < 1 || admitted.generation > 32
+          || admitted.output_id !== (admitted.generation === 1 ? config.instance_id : `${config.instance_id}.g${admitted.generation}`)
+          || admitted.canonical_sha256 !== (retainedAtStart?.instance_sha256 ?? null)) fail("PROCESS_EXECUTION_ALLOCATION_AUTHORITY_INVALID");
+      } else assertAgenticProcessStart(retainedAtStart, creation);
+      const outputId = admitted?.output_id ?? config.instance_id, output = path.join(controlRoot, outputId);
       fs.mkdirSync(output); // wx-style allocation: existing control folder refuses
       const stop = new AbortController(), responseIds = new Set(); let firstFailure = null, retainedBytes = 0, sequence = 0, diagnostics = 0;
       let canonicalPayloadAttempted = 0, canonicalPayloadAcknowledged = 0;
@@ -206,11 +214,14 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         const data = Buffer.from(JSON.stringify(value) + "\n");
         if (data.length > 262144 || used() + data.length > authorization.max_bytes - 262144) { requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); fail("PROCESS_EXECUTION_STORAGE_LIMIT"); }
         const file = path.join(output, name); fs.writeFileSync(file, data, { flag: "wx" }); retainedBytes += data.length;
-        return { ref: `execution/${config.instance_id}/${name}`, sha256: hash(data) };
+        return { ref: `execution/${outputId}/${name}`, sha256: hash(data) };
       };
       const evidence = {
         async retain(kind, value) { return save(`${String(++sequence).padStart(5, "0")}-${kind}.json`, value); },
-        async verify(ref) { const name = ref.ref.split("/").at(-1); if (hash(bytes(path.join(output, name))) !== ref.sha256) fail("PROCESS_EXECUTION_EVIDENCE_CHANGED"); },
+        async verify(ref) {
+          const file = nativeEvidenceFile(config, ref, admitted?.generation ?? 1);
+          if (hash(bytes(file)) !== ref.sha256) fail("PROCESS_EXECUTION_EVIDENCE_CHANGED");
+        },
         diagnostic(value) {
           if (++diagnostics > 4096) { requestStop("PROCESS_EXECUTION_DIAGNOSTIC_LIMIT"); fail("PROCESS_EXECUTION_DIAGNOSTIC_LIMIT"); }
           save(`${String(++sequence).padStart(5, "0")}-transport.json`, value);
@@ -252,7 +263,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
               await evidence.retain("broker-product-republish", { files: republished, artifact_sha256: artifact,
                 scope: "Windows controlled product files only; byte-identical broker publication, not a content correction" });
             }
-            const directory = path.join(reviewRoot, `${config.instance_id}-${sequence + 1}`); fs.mkdirSync(directory); reviewDirectories.push(directory);
+            const directory = path.join(reviewRoot, `${outputId}-${sequence + 1}`); fs.mkdirSync(directory); reviewDirectories.push(directory);
             for (const row of snapshot.filter(row => row.present)) {
               const destination = path.join(directory, row.path); fs.mkdirSync(path.dirname(destination), { recursive: true });
               const data = bytes(path.join(productRoot, row.path), 1024 * 1024);
@@ -281,9 +292,10 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
             provenance: "workspace observed after the bound native turn; not per-file writer authentication" });
         },
       };
-      const sessions = createAgenticCodexSessions({ native: config.native, targetRoot, productRoot, controlRoot: output, evidence, budget,
+      const sessions = createAgenticCodexSessions({ native: { ...config.native,
+        protected_roots: [...new Set([...(config.native.protected_roots ?? []), controlRoot])] }, targetRoot, productRoot, controlRoot: output, evidence, budget,
         governanceEnvironment: storeEnvironment, ...(rpcFactory ? { rpcFactory } : {}) });
-      const host = createAgenticProcessExecutionHost({ sessionFactory: sessions, inputs, evidence, deadline: workDeadline });
+      const host = createAgenticProcessExecutionHost({ sessionFactory: sessions, inputs, evidence, deadline: workDeadline, retainedState: admitted?.history ?? null });
       const profile = buildAgentProfile({ id: "codex-agentic-session", label: "Owned Codex session", defaultRole: "coordinator", roles: AGENT_ROLES });
       const guardedStore = { ...store, compareAndSwap(instance, expected) {
         readAuthority();
@@ -301,7 +313,11 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       const requireProjection = () => { if (current?.projection === "reconciliation_required") fail("PROCESS_EXECUTION_PROJECTION_RECONCILIATION_REQUIRED"); };
       try {
         if (stop.signal.aborted) fail(firstFailure ?? "PROCESS_EXECUTION_CANCELLED");
-        if (retainedAtStart) { current = service.inspect(config.instance_id); assertAgenticProcessStart(current.record, creation); }
+        if (retainedAtStart) {
+          current = service.inspect(config.instance_id);
+          if (admitted) { if (current.record.instance_sha256 !== admitted.canonical_sha256) fail("PROCESS_REVISION_CONFLICT"); }
+          else assertAgenticProcessStart(current.record, creation);
+        }
         else {
           const initial = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: false });
           current = service.initialize({ instanceId: config.instance_id, model, facts: controlScenario.initial_facts, write: true, expectedResultSha256: initial.record.instance_sha256 });

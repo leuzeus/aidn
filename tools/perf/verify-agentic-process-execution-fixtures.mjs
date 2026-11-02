@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
 import { runOwnedAgenticProcess } from "../../src/application/runtime/agentic-process-owned-run.mjs";
 import { createJournaledNativeAllocation } from "../../src/application/runtime/journaled-native-allocation.mjs";
+import { createNativeAllocationWorkerAuthority } from "../../src/application/runtime/native-allocation-worker-authority.mjs";
 import { assertNativeAllocationJournal, nativeJournalPath } from "../../src/core/workflow/native-allocation-journal.mjs";
+import { controlDelivery } from "../../src/core/workflow/process-control-inbox.mjs";
 import { agenticProcessImplementationPins } from "../../src/application/runtime/agentic-process-implementation-pins.mjs";
 import { agenticProcessPersistence, createAgenticProcessWorkerEnvironment } from "../../src/application/runtime/agentic-process-persistence.mjs";
 import { createProjectArtifactStore } from "../../src/application/runtime/project-artifact-store-service.mjs";
@@ -28,7 +30,7 @@ import { PassThrough } from "node:stream";
 import { performance } from "node:perf_hooks";
 import { spawnSync } from "node:child_process";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
-import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { assertNativeHostState } from "../../src/core/workflow/native-host-state.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
@@ -44,10 +46,18 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
   if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
+  if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
+  if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   await callback(); checks.push(name); console.log("PASS " + name); }
-function fixture() {
+function fixture(options = {}) {
   const base = path.join(root, "case-" + ++serial), targetRoot = path.join(base, "project"), packageRoot = path.join(base, "package");
   fs.mkdirSync(targetRoot, { recursive: true });
+  if (options.git) {
+    const emptyHooks = path.join(base, "empty-hooks"); fs.mkdirSync(emptyHooks);
+    for (const args of [["init", "-b", "main"], ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture"]]) {
+      const result = spawnSync("git", ["-c", "core.hooksPath=" + emptyHooks, ...args], { cwd: targetRoot, encoding: "utf8", shell: false }); assert.equal(result.status, 0, result.stderr);
+    }
+  }
   const version = fs.readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim();
   put(packageRoot, "VERSION", version + "\n"); put(packageRoot, "bin/aidn.mjs", "// fixture, never executed\n");
   applyAuthorization(planAuthorization({ targetRoot, action: "authorize" }));
@@ -126,7 +136,8 @@ function transport(f, options = {}) {
     const cfg = { model: "fixture-model", model_provider: "openai", model_reasoning_effort: "medium", approval_policy: "never", memories: { use_memories: false, generate_memories: false },
       features: { memories: false, plugins: false, apps: false, hooks: true, multi_agent: false }, agents: { enabled: false }, history: { persistence: "none" },
       project_doc_max_bytes: 0, instructions: "", developer_instructions: "",
-      log_dir: path.join(f.dirs.control, `case/native-${index}-logs`), sqlite_home: path.join(f.dirs.control, `case/native-${index}-sqlite`),
+      log_dir: JSON.parse(configuration.args.find(arg => arg.startsWith("log_dir=")).slice("log_dir=".length)),
+      sqlite_home: JSON.parse(configuration.args.find(arg => arg.startsWith("sqlite_home=")).slice("sqlite_home=".length)),
       mcp_servers: {}, plugins: {}, apps: { _default: { enabled: false } },
       shell_environment_policy: { inherit: "all", ignore_default_excludes: true, filters: Object.fromEntries(CODEX_STARTUP_ENVIRONMENT_PROFILES.worker.map(name => [name, "include"])), set: {} },
       permissions: { [profile]: parsed } };
@@ -196,37 +207,178 @@ async function run(f, options = {}) {
 }
 
 function journalFixture(options = {}) {
-  const f = fixture(), model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+  const f = fixture({ git: options.git }), model = JSON.parse(fs.readFileSync(f.configuration.model.path));
   if (options.stateMode) persistenceFixture(f, "sqlite", options.stateMode);
   model.contract_version = "agentic-process-model.v2"; model.operation_pins = {};
-  if (options.wait) {
+  if (options.waitAtEntry) {
     const activity = model.nodes.find(node => node.kind === "activity");
+    model.nodes.push({ id: "external_wait", kind: "event", participant_ref: activity.participant_ref, branches: [
+      { flow_id: "continue", node_id: model.entry, event_key: "continue_snapshot" }, { flow_id: "check", node_id: "late_check", event_key: "check_snapshot" }] },
+      { ...activity, id: "late_check" }); model.entry = "external_wait";
+  } else if (options.wait) {
+    const activity = model.nodes.find(node => node.kind === "activity");
+    const review = model.nodes.find(node => node.kind === "activity" && model.policies.find(policy => policy.id === node.policy_ref)?.independent_review);
     model.nodes.push({ id: "journal_wait", kind: "sequence", participant_ref: activity.participant_ref, children: [model.entry, "external_wait"] },
       { id: "external_wait", kind: "event", participant_ref: activity.participant_ref, branches: [
         { flow_id: "review", node_id: "late_review", event_key: "review_snapshot" }, { flow_id: "cancel", node_id: "late_cancel", event_key: "cancel_snapshot" }] },
-      { ...activity, id: "late_review" }, { ...activity, id: "late_cancel" });
+      { ...(options.resumeReview ? review : activity), id: "late_review" }, { ...activity, id: "late_cancel" });
     model.entry = "journal_wait";
   }
   fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   const worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
   f.configuration.controller = { node_sha256: sha(fs.readFileSync(process.execPath)), worker_sha256: sha(fs.readFileSync(worker)),
     helper_path: "fixture", helper_sha256: "a".repeat(64), helper_source_sha256: "b".repeat(64) };
-  const key = Buffer.alloc(32, 73), t = transport(f, options), native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, ...(f.environment ? { environment: f.environment } : {}) });
-  const controllerFactory = () => ({ async checkAvailability() { return { available: true }; },
+  const key = Buffer.alloc(32, 73), t = transport(f, options), controllerFactory = journalController(f, t, options);
+  const open = (readSigningKey = () => key) => createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey,
+    ...(f.environment ? { environment: f.environment } : {}), ...(options.controlSource ? { controlSource: options.controlSource } : {}) }, { controllerFactory });
+  Object.assign(f, { key, t, open, actor: open() }); return f;
+}
+function journalController(f, t, options = {}) {
+  return () => ({ async checkAvailability() { return { available: true }; },
     async run(request, { onEvent }) {
       f.launches = (f.launches ?? 0) + 1; await options.beforeWorker?.(f);
       if (options.controllerFailure) throw Object.assign(new Error("FIXTURE_CONTROLLER_INTERRUPTED"), { code: "FIXTURE_CONTROLLER_INTERRUPTED" });
-      const sent = JSON.parse(request.stdin), result = await native.run({ execute: true, authorization: sent.authorization });
+      const sent = JSON.parse(request.stdin);
+      options.mutateAdmission?.(sent.allocation, f);
+      if (options.realWorker) {
+        const child = spawnSync(process.execPath, [fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url))], {
+          input: JSON.stringify(sent), env: request.env, cwd: request.cwd, encoding: "utf8", shell: false, timeout: 30000,
+        });
+        f.worker = { status: child.status, stderr: child.stderr, stdout: child.stdout };
+        await onEvent({ type: "stdout", bytes: Buffer.from(child.stdout) });
+        return { outcome: "completed", termination_state: "confirmed", termination_proof: { active_processes: 0 } };
+      }
+      const allocationAuthority = createNativeAllocationWorkerAuthority({ configuration: f.configuration, authorization: sent.authorization, admission: sent.allocation,
+        ...(f.environment ? { environment: f.environment } : {}) });
+      const native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, ...(f.environment ? { environment: f.environment } : {}) });
+      const result = await native.run({ execute: true, authorization: sent.authorization });
       await options.afterWorker?.(f, result);
       await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(result)) });
       return { outcome: "completed", termination_state: options.treeUnknown ? "unknown" : "confirmed", termination_proof: options.treeUnknown ? null : { active_processes: 0 } };
     } });
-  const open = (readSigningKey = () => key) => createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey,
-    ...(f.environment ? { environment: f.environment } : {}) }, { controllerFactory });
-  Object.assign(f, { key, t, open, actor: open() }); return f;
+}
+async function readyResumeFixture(options = {}) {
+  let claim = null;
+  const controlSource = { async read() { return claim; }, async verify({ source }) {
+    assert.deepEqual(source, claim); return { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) };
+  } };
+  const f = journalFixture({ ...options, wait: true, resumeReview: true, git: true, controlSource });
+  f.auth = f.authorize(); f.auth.global_deadline_ms += 180000; f.auth.workflow_deadline_ms += 180000;
+  assert.equal((await f.actor.run({ execute: true, authorization: f.auth })).status, "WAITING");
+  const state = f.actor.readCheckpoint(1).state.instance, frame = inspectAgenticProcess(state).occurrences.find(row => row.node_id === "external_wait");
+  f.request = f.actor.prepareControl(frame.occurrence_id);
+  claim = { contract_version: "process-control-source.v1", source_kind: "external", authority_id: "fixture_review", source_event_id: "review-1",
+    subject_sha256: "a".repeat(64), request_sha256: shadowHash(f.request), event_key: "review_snapshot", payload_sha256: "b".repeat(64), evidence_refs: [{ ref: "provider:review-1", sha256: "c".repeat(64) }] };
+  f.claim = claim;
+  if (options.uncaptured) return f;
+  f.capture = await f.actor.captureControl({ occurrenceId: frame.occurrence_id, sourceRef: "review", write: true });
+  if (!options.undelivered) await f.actor.deliverControl(f.capture.inbox_id, { write: true });
+  return f;
 }
 
-try {
+if (process.argv[2] === "--resume-allocation") {
+  try {
+    const data = JSON.parse(fs.readFileSync(process.argv[3])), f = { ...data.fixture, launches: 0 }, key = Buffer.from(data.key_hex, "hex"), t = transport(f);
+    const actor = createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey: () => key,
+      ...(f.environment ? { environment: f.environment } : {}) }, { controllerFactory: journalController(f, t) });
+    const result = await actor.run({ execute: true, resume: true, authorization: data.authorization });
+    process.stdout.write(JSON.stringify({ result, launches: f.launches, sessions: t.sessions.length,
+      closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+} else try {
+  await check("worker private allocation IPC executes the fixed entry without native startup or retained key bytes", async () => {
+    for (const badOwner of [false, true]) {
+      const f = journalFixture({ realWorker: true, waitAtEntry: true, mutateAdmission(value) { if (badOwner) value.owner_id = "not-the-reserved-owner"; } });
+      const result = await f.actor.run({ execute: true, authorization: f.authorize() });
+      assert.equal(f.worker.status, badOwner ? 1 : 0, f.worker.stderr);
+      assert.equal(result.status, badOwner ? "FAILED" : "WAITING", JSON.stringify(result));
+      assert.equal(f.t.sessions.length, 0); assert.equal(f.t.calls.length, 0);
+      if (badOwner) assert.equal(result.first_failure, "PROCESS_WORKER_ALLOCATION_CHANGED");
+      else { assert.equal(f.actor.readCheckpoint(1).state.resources.length, 0); assert.equal(f.actor.inspect().allocations[0].consumption.responses_observed, 0); }
+      const evidence = JSON.stringify({ result, journal: f.actor.inspect(), worker: f.worker });
+      assert.equal(evidence.includes(f.key.toString("base64")), false); assert.equal(evidence.includes("key_base64"), false);
+      for (const name of fs.readdirSync(f.dirs.control, { recursive: true }).filter(name => name.endsWith(".json")))
+        assert.equal(fs.readFileSync(path.join(f.dirs.control, name), "utf8").includes(f.key.toString("base64")), false);
+    }
+  });
+  await check("resume refuses a self-hashed control event without authenticated inbox provenance", async () => {
+    const f = await readyResumeFixture({ uncaptured: true }), store = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }), before = store.read("case");
+    const delivery = controlDelivery(f.request, f.claim), forged = advanceAgenticProcess(before.record, { event_id: "forged_control", kind: "control", occurrence_id: f.request.occurrence_id, delivery });
+    store.compareAndSwap(forged, before.content_sha256);
+    await assert.rejects(f.open().run({ execute: true, authorization: f.auth, resume: true }), /CONTROL_NOT_AUTHENTICATED/);
+    assert.equal(f.launches, 1); assert.equal(f.actor.inspect().allocations.length, 1); assert.equal(f.t.sessions.length, 2);
+  });
+  await check("resume refuses changed head before delivery and after an accepted event", async () => {
+    const f = await readyResumeFixture({ undelivered: true });
+    const commit = () => { const result = spawnSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "new head"], { cwd: f.configuration.target_root, encoding: "utf8", shell: false }); assert.equal(result.status, 0, result.stderr); };
+    commit(); await assert.rejects(f.actor.deliverControl(f.capture.inbox_id, { write: true }), /CONTROL_CONTEXT_CHANGED/);
+    assert.equal(f.launches, 1); assert.equal(f.actor.inspect().allocations.length, 1);
+    // Restore the original head explicitly, deliver, then advance it again.
+    const reset = spawnSync("git", ["reset", "--soft", f.request.head], { cwd: f.configuration.target_root, encoding: "utf8", shell: false }); assert.equal(reset.status, 0, reset.stderr);
+    await f.actor.deliverControl(f.capture.inbox_id, { write: true }); commit();
+    await assert.rejects(f.open().run({ execute: true, authorization: f.auth, resume: true }), /CONTROL_CONTEXT_CHANGED/); assert.equal(f.launches, 1);
+  });
+  await check("resume requires the current dual projection before reserving another worker", async () => {
+    const f = await readyResumeFixture({ stateMode: "dual" }), visible = path.join(f.configuration.target_root, "docs/audit/workflows/process-instances/case.json");
+    fs.unlinkSync(visible);
+    await assert.rejects(f.open().run({ execute: true, authorization: f.auth, resume: true }), /PROJECTION_RECONCILIATION_REQUIRED/);
+    assert.equal(f.launches, 1); assert.equal(f.actor.inspect().allocations.length, 1);
+    assert.equal((await f.open().deliverControl(f.capture.inbox_id, { write: true })).retained, true); assert.equal(fs.existsSync(visible), true);
+  });
+  await check("resume worker authenticates its exact reservation and does not accept a supplied owner", async () => {
+    const f = await readyResumeFixture({ mutateAdmission(admission, f) { if (f.launches === 2) admission.owner_id = "other-owner"; } });
+    const result = await f.open().run({ execute: true, authorization: f.auth, resume: true });
+    assert.equal(result.status, "WAITING_FOR_RECONCILIATION"); assert.equal(result.first_failure, "PROCESS_WORKER_ALLOCATION_CHANGED");
+    assert.equal(f.t.sessions.length, 2); assert.equal(f.actor.inspect().allocations.at(-1).phase, "reserved");
+  });
+  for (const stateMode of ["files", "dual", "db-only"]) await check(`resume ${stateMode}: authenticated event resumes owned native allocation with historical review exclusions and exact replay`, async () => {
+    let claim = null, reads = 0, verifies = 0;
+    const controlSource = {
+      async read() { reads++; return claim; },
+      async verify({ source }) { verifies++; assert.deepEqual(source, claim); return { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) }; },
+    };
+    const f = journalFixture({ stateMode, wait: true, resumeReview: true, git: true, controlSource }), auth = f.authorize();
+    auth.global_deadline_ms += 180000; auth.workflow_deadline_ms += 180000;
+    const first = await f.actor.run({ execute: true, authorization: auth }); assert.equal(first.status, "WAITING", JSON.stringify(first));
+    const snapshot = f.actor.readCheckpoint(1), oldWriter = snapshot.state.resources.find(row => row.executor.contributions.length).executor;
+    const frame = inspectAgenticProcess(snapshot.state.instance).occurrences.find(row => row.node_id === "external_wait");
+    const noEvent = await f.open().run({ execute: true, authorization: auth, resume: true }); assert.equal(noEvent.status, "WAITING"); assert.equal(noEvent.native_started, false); assert.equal(f.launches, 1);
+    const request = f.actor.prepareControl(frame.occurrence_id);
+    assert.equal((await f.actor.captureControl({ occurrenceId: frame.occurrence_id, sourceRef: "review", write: true })).status, "WAITING");
+    assert.equal(f.actor.inspect().allocations.length, 1); assert.equal(f.launches, 1);
+    claim = { contract_version: "process-control-source.v1", source_kind: "external", authority_id: "fixture_review", source_event_id: "review-1",
+      subject_sha256: "a".repeat(64), request_sha256: shadowHash(request), event_key: "review_snapshot", payload_sha256: "b".repeat(64),
+      evidence_refs: [{ ref: "provider:review-1", sha256: "c".repeat(64) }] };
+    const captured = await f.open().captureControl({ occurrenceId: frame.occurrence_id, sourceRef: "review", write: true });
+    const delivered = await f.open().deliverControl(captured.inbox_id, { write: true }); assert.ok(delivered.cursor.ready.length > 0);
+    const beforeResume = f.actor.inspect(), nextAuth = { ...auth, authorized_at_ms: Date.now() };
+    let second;
+    if (stateMode === "files") {
+      const input = put(f.base, "resume-input.json", JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex"), authorization: nextAuth }));
+      const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--resume-allocation", input], { encoding: "utf8", shell: false, timeout: 120000 });
+      assert.equal(child.status, 0, child.stderr); const evidence = JSON.parse(child.stdout); second = evidence.result;
+      assert.equal(evidence.launches, 1); assert.equal(evidence.sessions, 1); assert.equal(evidence.closed, true); assert.equal(evidence.leaked_key, false);
+    } else second = await f.open().run({ execute: true, authorization: nextAuth, resume: true });
+    assert.equal(second.status, "COMPLETED", JSON.stringify(second)); assert.equal(second.journal_phase, "closed"); assert.equal(f.launches, stateMode === "files" ? 1 : 2);
+    const journal = f.open().inspect(); assert.equal(journal.allocations.length, 2);
+    assert.equal(journal.allocations[1].limits.max_responses, auth.max_responses - journal.allocations[0].consumption.responses_observed);
+    assert.equal(journal.allocations[1].limits.max_bytes, auth.max_bytes - journal.allocations[0].consumption.storage_debit_bytes);
+    assert.deepEqual(journal.allocations[0], beforeResume.allocations[0]);
+    const final = f.open().readCheckpoint(2), state = final.state.instance, last = state.events.filter(row => row.kind === "assign").at(-1);
+    assert.equal(final.state.resources.length, 3); assert.equal(final.state.results.length, 4); assert.equal(f.t.sessions.length, stateMode === "files" ? 2 : 3);
+    assert.ok(last.request.reviewed_contributors.some(row => row.agent_id === oldWriter.agent_id && row.lineage_id === oldWriter.lineage_id));
+    assert.ok(!snapshot.state.resources.some(row => row.executor.execution_id === last.decision.execution_id));
+    assert.equal(final.state.resources.find(row => row.executor.execution_id === oldWriter.execution_id).executor.contributions.length, oldWriter.contributions.length);
+    assert.equal(state.events.filter(row => row.kind === "control").length, 1);
+    const simulated = simulateAgenticProcess({ instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins, scopeId: state.scope_id, events: state.events });
+    assert.equal(simulated.trace.at(-1).instance_sha256, state.instance_sha256);
+    const providerReads = reads, providerVerifies = verifies;
+    assert.equal((await f.open().deliverControl(captured.inbox_id, { write: true })).retained, true);
+    assert.deepEqual([reads, verifies], [providerReads, providerVerifies]); assert.equal(f.launches, stateMode === "files" ? 1 : 2);
+    const serialized = JSON.stringify({ journal, final, sessions: f.t.sessions.map(row => row.configuration) });
+    assert.equal(serialized.includes(f.key.toString("base64")), false); assert.equal(serialized.includes("key_base64"), false);
+    assert.ok(f.t.sessions.at(-1).cfg.permissions[Object.keys(f.t.sessions.at(-1).cfg.permissions)[0]].filesystem[f.dirs.control.replaceAll("\\", "/")] === "deny");
+  });
   await check("journal preview retains no files, reservation or native allocation", async () => {
     const f = journalFixture(), view = f.actor.preview(); assert.equal(view.phase, "absent"); assert.equal(view.written, false);
     assert.equal(f.actor.inspect(), null); assert.equal(f.launches, undefined); assert.equal(f.t.sessions.length, 0);

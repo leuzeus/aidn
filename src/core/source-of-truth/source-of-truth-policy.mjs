@@ -41,7 +41,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain signed generation reservations, closure observations and protected checkpoint references without automatic purge",
     migration: "new explicit artifact records only; no adoption of unsigned host snapshots or historical instance conversion",
     replacement: "canonical artifact CAS and host MAC; no PID, elapsed-time takeover, deadline reset or automatic retry",
-    evidence_targets: ["src/core/workflow/native-allocation-journal.mjs", "src/adapters/runtime/native-allocation-journal-store.mjs", "src/application/runtime/journaled-native-allocation.mjs", "tools/perf/verify-agentic-process-execution-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
+    evidence_targets: ["src/core/workflow/native-allocation-journal.mjs", "src/adapters/runtime/native-allocation-journal-store.mjs", "src/application/runtime/journaled-native-allocation.mjs", "src/application/runtime/native-allocation-worker-authority.mjs", "src/application/runtime/native-allocation-evidence.mjs", "src/application/runtime/native-allocation-controls.mjs", "tools/perf/verify-agentic-process-execution-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
   },
   process_control_inbox: {
     owner: "trusted process human/external delivery host",
@@ -447,7 +447,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/native-allocations/<id>.json only when the configured projection is required",
-    notes: "Canonical CAS reservation precedes owned worker launch. A trusted external key authenticates actual supervisor closure and bounded checkpoint references, not business results or human approval. Unknown or failed allocations cannot retry. Host snapshot resources remain closed and the native pristine-history guard stays enforced. General mixed resume, provider identity and live native/installed qualification remain separate. Existing artifact backend only, no shared coordination table or anti-rollback guarantee.",
+    notes: "Canonical CAS reservation precedes owned worker launch. A trusted key authenticates actual supervisor closure and bounded checkpoint references, not business approval. Unknown or failed allocations cannot retry. Ordinary start preserves its pristine guard; explicit native-only continuation verifies closed history and signed controls, current context and required projections, debits retained ceilings and uses fresh resources. The fixed trusted worker receives an ephemeral private verification capability, never a model-selected key. Mixed resume, long-wait budget authority, provider identity and live native/installed qualification remain separate. Existing artifact backend only, no shared coordination table or anti-rollback guarantee.",
   }),
   policy({
     concept: "process_control_inbox", label: "Authenticated process control inbox",

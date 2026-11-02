@@ -360,17 +360,17 @@ earlier failure and cannot authorize favorable retry.
 This evidence is subsumed under `agentic_process_instance`, not a new canonical
 workflow state or shared coordination table. The snapshot's parent_closed flag
 is not the supervisor's process-tree proof. The retained envelope explicitly says
-resume authority is not established. A future authenticated allocation journal
-must bind this evidence to actual owned closure, fences, cumulative budgets and
-an explicit next-allocation grant before restoring historical identities or
-lifting the pristine-start guard. Default execution still cannot resume history.
+resume authority is not established by the snapshot alone. An authenticated
+allocation journal must bind this evidence to actual owned closure, fences,
+cumulative budgets and an explicit next-allocation grant. The consumer below
+provides native-only continuation; default start still cannot resume history.
 
 ### Authenticated owned-allocation reservation
 
 `createJournaledNativeAllocation` is an internal opt-in composition of the actual
 owned supervisor and canonical artifact store. A trusted parent supplies the
-32-byte signing capability; neither model/configuration nor native worker receives
-it. The parent's observer reserves a generation with artifact CAS before worker
+32-byte signing capability; authored configuration and model processes never
+receive it. The parent's observer reserves a generation with artifact CAS before worker
 launch. Reservation, closure observations and bounded references are governed by
 `native_allocation_journal`, using the existing artifact backend and projection
 rules. There is no additional shared coordination table.
@@ -388,9 +388,9 @@ automatic retry. The journal is bounded to 32 generations, without truncation.
 Later admitted generations must preserve original deadlines/ceilings and debit
 known prior response/storage consumption. Unknown accounting blocks allocation.
 This is not a new authority to extend a deadline after a human/external wait.
-That contract, restoration of closed identities/contributions, native-history
-admission and a common mixed-host scope remain required L4 work. The current
-composition continues enforcing the existing pristine-start guard. Ordinary
+The deadline-extension contract and a common mixed-host scope remain required
+L4 work. An explicit authenticated native-only resume is now composed as below;
+ordinary start continues enforcing the existing pristine-start guard. Ordinary
 CLI/console paths have not been switched to this internal composition. Historical
 instance readers, unsigned snapshots and old scopes are not silently adopted.
 
@@ -398,3 +398,38 @@ The journal authenticates a trusted supervisor observation, not human identity,
 business approval, anti-rollback storage or OS confinement. Offline production
 composition with transport/controller doubles must remain separately labelled
 from live native execution and exact installed-package qualification.
+
+### Authenticated native allocation continuation
+
+The private owned-worker protocol now supplies an ephemeral key capability to
+the fixed, byte-pinned trusted Node worker over its existing bounded input pipe.
+That worker already owns canonical persistence credentials. It uses the key to
+verify the parent's exact reserved journal generation/owner, configuration,
+authorization and initial canonical instance. It cannot obtain resume authority
+from authored JSON. The key is absent from product state, prompts, native RPC,
+model environments, evidence and result/closure outputs. This deliberately
+extends the trusted application boundary to the fixed worker; OS key isolation
+and live native qualification remain independent L7 evidence.
+
+Explicit `resume: true` authenticates the previous closed owned allocation and
+its native checkpoint, plus every later control event through the existing
+signed inbox. Before allocation, current product/configuration/Git context must
+still match those control requests, and required projections must be current.
+Missing sources and waits allocate no worker or model. Fresh delivery verifies
+the source and context; duplicate delivery repairs acknowledgement/projection
+without asking the provider again or replaying business/native effects.
+
+The native host retains its durable logical issuer identity, old accepted results
+and contributions. Historical resources are evidence only: they are never observed
+as live, selected for reuse, closed twice or given new work. Each new allocation
+creates fresh sessions. Independent review receives historical writer identities
+and lineage exclusions. New checkpoint and review output directories use a
+generation namespace containing a dot, which cannot alias another process ID.
+The same instance/model/reducer records new results and supplies exact replay.
+
+This delivery supports native-only v2 graphs within retained original ceilings
+and deadlines. It does not admit unknown/failed allocations, raw control facts,
+unverified history, silently converted instances, mixed operation/native graphs
+or a new deadline after a long wait. Ordinary CLI/console integration, the mixed
+scope/dispatcher, real provider/human adapters and the full standard model remain
+required deliveries.

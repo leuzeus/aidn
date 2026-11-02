@@ -11,7 +11,23 @@ owned/native code are exercised with controller/RPC transport doubles. No native
 model or real process tree is allocated by these checks. `--journal-only` is a
 focused selector; the required gate retains the entire suite. A successful
 allocation journal does not qualify general native resume or mixed dispatch;
-the pristine-history guard remains enforced.
+ordinary start still enforces the pristine-history guard. Explicit authenticated
+native-only continuation is covered separately below.
+
+`--resume-only` selects production owned/native continuation checks. The fixtures
+use signed allocation/control stores, actual Git context, canonical files/SQLite,
+the fixed worker admission and the same reducer. They exercise prior accepted
+results, event waits, fresh sessions and retained writer exclusions, including a
+new Node process. Controller/native/provider transports are fixture capabilities;
+this does not qualify live native execution or a real PR provider. Forged history,
+changed context, missing required projection and an altered reservation must
+stop before any new model turn. The complete required suite retains these cases.
+
+`--worker-only` executes the fixed worker entry in an actual new Node process,
+using its real private allocation input. An initially waiting graph requires no
+native client. A changed owner is refused; key bytes must be absent from output
+and retained JSON. The outer controller remains a fixture capability, so this
+proves private worker wiring, not the Windows Job controller or model confinement.
 
 The production native-composition fixtures include native-only v2 role execution,
 exact replay, resource closure on an event wait, refusal to restart that history

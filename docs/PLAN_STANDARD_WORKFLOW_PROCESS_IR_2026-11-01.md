@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `45d538a` et tranche courante du journal d’allocation
-native. Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
+Dernier état relu : `c721f0c` et tranche courante de reprise native
+authentifiée. Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
 
@@ -922,3 +922,101 @@ réouverture et interdit le rejeu des effets. Cette preuve hors ligne ne qualifi
 ni le skill cycle-create complet ni le workflow standard, le natif ou l'archive
 installée. Les deux suites de régression complémentaires sont terminées
 (démarrage 44, cycle 38) ; aucun test de cette tranche ne reste en cours.
+
+
+## Addendum — reprise native authentifiée après résultats et événement
+
+La composition interne `createJournaledNativeAllocation` raccorde maintenant
+`resume: true` au lanceur owned réel. Avant une nouvelle réservation, elle vérifie
+la fermeture prouvée de la génération précédente, son checkpoint et ses preuves
+natives transitives. Les événements reçus depuis ce checkpoint doivent correspondre
+aux captures d'inbox signées, au préétat du réducteur et au contexte actuel
+(configuration, produit, branche et HEAD). Un simple historique bien hashé n'est
+pas admis. Une projection requise absente ou périmée bloque avant réservation ;
+la réparation explicite d'une livraison retenue peut la rétablir.
+
+Le worker Node fixe et épinglé vérifie séparément la réservation, sa génération,
+son owner, la configuration, l'autorisation, le préétat canonique et l'historique.
+Évolution explicite de la frontière de confiance : une capacité de vérification
+éphémère est transmise à ce worker applicatif privilégié par son canal d'entrée
+privé borné. Elle ne figure ni dans le modèle/configuration auteur, ni dans les
+processus modèle, prompts, RPC natifs, environnements modèle, artifacts, preuves
+ou résultats. Le helper de contrôle de processus transporte ce canal en mémoire ;
+aucune distribution publique de clé n'est ajoutée. L'isolation OS et le canal
+natif réel demandent toujours leur preuve L7.
+
+L'hôte restauré conserve son identité logique, les résultats acceptés et les
+identités/contributions historiques. Les anciennes ressources restent fermées,
+sans observation de disponibilité, réutilisation ou nouveau travail. La nouvelle
+allocation ouvre de nouvelles sessions ; une revue indépendante reçoit les
+exclusions des auteurs précédents. Les dossiers de preuves et snapshots de revue
+ont une identité de génération distincte, sans collision avec un autre ID de
+processus. Le modèle, l'instance, les événements et le réducteur restent communs
+à l'exécution, au replay et à la simulation.
+
+Les plafonds et délais existants restent contraignants. Une attente sans événement
+n'alloue aucun worker ni modèle. Un événement accepté ne ré-exécute pas le travail
+précédent ; un rejet, une réservation interrompue ou une fermeture incertaine ne
+reçoit pas de nouvelle tentative. Le démarrage ordinaire conserve sa garde
+vierge : la reprise est un chemin explicite et authentifié. Les lecteurs v1/v2
+historiques et les captures d'inbox existantes ne sont pas convertis.
+
+Fichiers principaux : `native-allocation-evidence.mjs`,
+`native-allocation-worker-authority.mjs`, `native-allocation-controls.mjs`,
+composition/hôte/worker/superviseur agentiques, `journaled-native-allocation.mjs`,
+politiques de source de vérité/métadonnées/diagnostics, pins directs, ADR-0025,
+matrice de scope runtime et suite native de production.
+
+Les sept premiers contrôles passent hors ligne : provenance refusée pour un
+événement auto-hashé sans inbox, HEAD changé avant livraison ou reprise, projection
+dual absente, owner de worker altéré et parcours files/dual/db-only avec résultats
+antérieurs, attente, événement authentifié, nouvelle revue et replay exact. Le
+parcours files reprend dans un nouveau processus Node ; les anciennes Maps ne
+participent pas à la preuve. Les transports contrôleur/natif/fournisseur sont
+doublés et explicitement déclarés. Ces contrôles n'établissent pas un client
+natif réel, un arbre Windows réel ou un fournisseur de PR réel.
+
+Restent L4 : scope commun et dispatcher mixte opérations/activités/inbox,
+réconciliation explicite des inconnus et contrat d'une nouvelle allocation après
+expiration du délai conservé. Restent également les ports L2 manquants, le modèle
+standard complet L3, son branchement ordinaire L5 et A1–A10/L6–L8. La reprise native
+sur un modèle de qualification ne ferme aucun de ces livrables. La suite complète
+du lanceur est exécutée séparément après cette tranche ciblée ; son résultat est
+consigné ci-après lorsqu'il est disponible.
+
+
+Contrôle supplémentaire du canal privé : **PASS**, entrée worker fixe réellement
+exécutée dans un nouveau processus Node, modèle initialement en attente, zéro
+client/modèle natif démarré. Le worker authentifie son owner ; une altération le
+fait échouer, et la clé ne figure ni dans stdout/stderr ni dans les JSON retenus.
+Le contrôleur externe reste doublé : cette preuve ne qualifie pas le Job Windows
+ou le confinement modèle. La sélection locale est --worker-only ; la commande
+requise complète inclut ce contrôle sans filtre.
+
+
+Régression de la tranche terminée : **PASS, 81 contrôles** de la suite complète
+de composition native (les sept reprises et les régressions antérieures), puis
+**PASS, un contrôle supplémentaire** de l'entrée worker réelle ajouté pendant
+cette exécution. Le code de production est identique pour ces deux validations ;
+la commande requise sans filtre inclut désormais les 82 contrôles. Le gate
+agentique agrégé et les 60 gates/familles de PR sélectionnés par le routeur ne
+sont pas revendiqués comme tous exécutés localement. Route du diff : ASSURED.
+Source de vérité, métadonnées, complétude (38 concepts), diagnostics/CLI de
+gouvernance, catalogue/guard, références documentaires, sensibilité et topologie
+package : PASS. Les pins des deux composants standard restent exacts sans
+rafraîchissement (startup 6, cycle 4). Aucun test de cette tranche ne reste actif.
+Client/arbre natifs réels, fournisseur réel et parcours standard complet sur
+archive installée : NOT_RUN.
+
+Priorité de raccordement suivante : terminer les ports métier L2 et le modèle
+standard L3, avec le dispatcher mixte comme dépendance d'exécution. Le signal
+`L2_SIGNAL_TRIGGERED` / `run_conditional_drift_check` du squelette de cycle doit
+rejoindre un véritable diagnostic R05. SPEC-R05 et le skill source imposent un
+rapport, une qualification de la dérive et une décision de récupération ; les
+écritures CR/parking-lot et arbitrages restent explicitement autorisés. La route
+actuelle du hook drift-check appelle gating-evaluate avec --complete-drift-check :
+elle acquitte une exécution annoncée du diagnostic, elle ne réalise pas son
+analyse. La prochaine réalisation ne peut donc ni appeler seulement ce hook,
+ni ignorer warn, ni déduire DoR/scope_freeze d'une réussite de checkpoint. Elle
+doit relier diagnostic, preuve, décision éventuelle et postconditions aux ports
+réels avant de finaliser le cycle et d'autoriser le travail produit.

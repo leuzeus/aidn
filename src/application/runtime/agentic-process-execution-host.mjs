@@ -9,8 +9,13 @@ import { evaluateAgentTransition } from "../../core/agents/agent-transition-poli
 // A composition-owned authority, not an attestation supplied by a worker. Only
 // sessionFactory creates native resources; result receipts originate here after
 // the session adapter has correlated and verified its actual terminal event.
-export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evidence, now = Date.now, deadline }) {
-  const authorityId = `host-${randomUUID()}`, resources = new Map(), observations = new Map(), results = new Map(), prepared = new Map(), issuedAssignments = new Map();
+export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evidence, now = Date.now, deadline, retainedState = null }) {
+  const history = retainedState === null ? null : structuredClone(assertNativeHostState(retainedState));
+  if (history && !history.parent_closed) fail("PROCESS_HOST_HISTORY_NOT_CLOSED");
+  const authorityId = history?.authority_id ?? `host-${randomUUID()}`, resources = new Map(), observations = new Map(), results = new Map(), prepared = new Map(), issuedAssignments = new Map();
+  const historicalEvents = new Map((history?.instance.events ?? []).map(event => [event.event_id, shadowHash(event)]));
+  for (const row of history?.results ?? []) results.set(row.result.result_id, { ...structuredClone(row), restored: true,
+    instanceId: history.instance.instance_id, scopeId: history.instance.scope_id, modelSha256: history.instance.model_sha256 });
   let parentClosed = false;
   let current = null, stopped = false;
   const remaining = () => { if (stopped || now() >= deadline) fail("PROCESS_HOST_DEADLINE"); return deadline - now(); };
@@ -63,8 +68,8 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     const allowed = policy.independent_review || policy.context_isolation_required
       ? [...resource.context, instructionHash] : [...new Set([...resource.context, instructionHash])];
     const binding = { ...input.binding, allowed_context_sha256: allowed,
-      reviewed_contributors: [...resources.values()].flatMap(item => item.contributions.some(c => c.scope_id === instance.scope_id)
-        ? [{ agent_id: item.agentId, lineage_id: item.lineageId }] : []) };
+      reviewed_contributors: [...(history?.resources ?? []).map(row => row.executor), ...[...resources.values()].map(describe)]
+        .flatMap(item => item.contributions.some(c => c.scope_id === instance.scope_id) ? [{ agent_id: item.agent_id, lineage_id: item.lineage_id }] : []) };
     prepared.set(frame.occurrence_id, { input, binding, resource, instructionHash, policy, role,
       instanceId: instance.instance_id, scopeId: instance.scope_id, modelSha256: instance.model_sha256 });
     // Candidate preference is not a verdict identity substitution. Each request
@@ -148,7 +153,9 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     async verify({ result, request }) {
       remaining(); const row = results.get(result.result_id);
       if (!row || shadowHash(row.result) !== shadowHash(result) || row.result.request_sha256 !== shadowHash(request)) fail("PROCESS_HOST_RESULT_NOT_ISSUED");
-      await evidence.verify(row.reference); await snapshot(resources.get(row.resource));
+      await evidence.verify(row.reference);
+      if (!row.restored) await snapshot(resources.get(row.resource));
+      else for (const ref of row.result.evidence_refs) await evidence.verify(ref);
       return { outcome: "verified", authority_id: authorityId, result_sha256: shadowHash(result),
         request_sha256: shadowHash(request), execution_id: row.resource };
     },
@@ -159,7 +166,10 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     // attach the supervisor's process-tree closure and cumulative accounting.
     async checkpoint(instance) {
       assertAgenticProcessInstance(instance);
+      if (history && (instance.instance_id !== history.instance.instance_id || instance.scope_id !== history.instance.scope_id
+        || instance.model_sha256 !== history.instance.model_sha256 || shadowHash(instance.events.slice(0, history.instance.events.length)) !== shadowHash(history.instance.events))) fail("PROCESS_HOST_HISTORY_NOT_ISSUED");
       for (const event of instance.events) {
+        if (historicalEvents.get(event.event_id) === shadowHash(event)) continue;
         if (event.kind === "assign") {
           const task = prepared.get(event.occurrence_id);
           if (!task || task.instanceId !== instance.instance_id || task.scopeId !== instance.scope_id || task.modelSha256 !== instance.model_sha256
@@ -176,7 +186,7 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
         for (const reference of row.result.evidence_refs) await evidence.verify(reference);
       }
       return assertNativeHostState(checked({ contract_version: "native-host-state.v1", authority_id: authorityId, instance: structuredClone(instance), parent_closed: parentClosed,
-        resources: [...resources.values()].map(resource => ({ executor: describe(resource), binding_sha256: resource.binding, skills: [...resource.skills] })),
+        resources: [...(history?.resources ?? []), ...[...resources.values()].map(resource => ({ executor: describe(resource), binding_sha256: resource.binding, skills: [...resource.skills] }))],
         results: [...results.values()].map(row => ({ result: structuredClone(row.result), resource: row.resource, reference: structuredClone(row.reference) })),
         native_usage: typeof sessionFactory.metrics === "function" ? checked(sessionFactory.metrics()) : null }));
     },

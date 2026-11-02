@@ -86,9 +86,9 @@ const METADATA_POLICIES = freezeDeep([
     concept: "native_allocation_journal", label: "Authenticated native allocation state",
     required: ["contract_version", "journal_id", "instance_id", "scope_id", "model_sha256", "revision", "allocations", "key_id", "authentication"],
     sourceOfTruthConcept: "native_allocation_journal",
-    evidenceTargets: ["src/core/contracts/workflow-definition/native-allocation-journal.v1.schema.json", "src/application/runtime/journaled-native-allocation.mjs", "tools/perf/verify-agentic-process-execution-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
+    evidenceTargets: ["src/core/contracts/workflow-definition/native-allocation-journal.v1.schema.json", "src/application/runtime/journaled-native-allocation.mjs", "src/application/runtime/native-allocation-worker-authority.mjs", "src/application/runtime/native-allocation-evidence.mjs", "src/application/runtime/native-allocation-controls.mjs", "tools/perf/verify-agentic-process-execution-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
     lifecycle: "reserved -> closed|failed|unresolved; closed is allocation termination, not workflow success",
-    notes: "Host MAC binds scope, generation, original ceilings, observed response identities/storage debit and exact protected checkpoint/closure hashes. The signing capability never enters authored JSON or the worker. Unknown accounting remains unresolved. This foundation supplies no native-history admission, anti-rollback, business approval or restart-after-expiration authority.",
+    notes: "Host MAC binds scope, generation, original ceilings, observed response identities/storage debit and exact protected checkpoint/closure hashes. The ephemeral capability enters only the fixed trusted worker's private bounded IPC, never authored configuration, model processes or retained output. Explicit native-only continuation authenticates closed history and later control captures, retains contributions and creates fresh sessions. Unknown accounting blocks. No mixed-host scope, anti-rollback, business approval, expired-deadline continuation or native OS qualification follows.",
   }),
   policy({
     concept: "process_control_inbox", label: "Authenticated process control source",

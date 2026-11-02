@@ -12,6 +12,9 @@ import { agenticPolicyPins } from "../../core/workflow/agentic-process-model.mjs
 import { assertAgenticProcessStart } from "../../core/workflow/agentic-process-start.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
+import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
+import { readNativeAllocationCheckpoint, readNativeAllocationHistory, verifyNativeResultEvidence, nativeAllocationOutputId, assertNativeAllocationProjection } from "./native-allocation-evidence.mjs";
+import { createNativeAllocationControls, readNativeControlContext } from "./native-allocation-controls.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const limitKeys = ["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms", "max_turn_ms", "max_responses", "max_bytes"];
@@ -20,7 +23,7 @@ const json = file => { const data = readAgentRunFile(file, { json: false, maxByt
 // The controller and RPC seams belong to the trusted embedding, never authored
 // configuration. The observer only denies launches or retains actual observations;
 // it cannot replace the worker's assignment/result or termination verdicts.
-export function createJournaledNativeAllocation({ configuration, readSigningKey, environment = process.env }, { controllerFactory } = {}) {
+export function createJournaledNativeAllocation({ configuration, readSigningKey, environment = process.env, controlSource }, { controllerFactory } = {}) {
   if (checkShadowJson(configuration)) fail("NATIVE_ALLOCATION_CONFIGURATION_INVALID");
   const config = structuredClone(configuration), configurationSha = shadowHash(config);
   const executor = createProjectAgenticProcessExecution(config, { environment }), preview = executor.preview();
@@ -29,6 +32,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
   const initial = readWorkflowProjectAuthority({ targetRoot: config.target_root }), signer = createOperationJournalSigner(readSigningKey);
   const options = { targetRoot: config.target_root, stateMode: initial.stateMode, env: environment };
   const store = createNativeAllocationJournalStore(options), instances = createAgenticProcessStore(options);
+  const controlRecords = createProcessControlInboxStore(options);
   const journalId = nativeJournalId({ instance_id: config.instance_id, scope_id: preview.scope_id });
   const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && preview.persistence.backend === "postgres";
   function read() {
@@ -47,22 +51,18 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     return record;
   }
   function checkpoint(entry) {
-    if (!entry.checkpoint || !entry.closure_ref) fail("NATIVE_ALLOCATION_CHECKPOINT_UNAVAILABLE");
-    const data = json(entry.checkpoint.path), closure = json(entry.closure_ref.path);
-    if (data.sha256 !== entry.checkpoint.sha256 || closure.sha256 !== entry.closure_ref.sha256
-      || shadowHash(closure.value) !== entry.owned_result_sha256 || shadowHash(closure.value.process_tree) !== entry.tree_proof_sha256) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
-    assertNativeCheckpointEvidence(data.value, { instanceId: config.instance_id, scopeId: preview.scope_id, modelSha256: preview.model_sha256,
-      authorizationSha256: entry.authorization_sha256, limits: entry.limits });
-    if (shadowHash(data.value.state) !== entry.checkpoint.state_sha256 || data.value.state.instance.instance_sha256 !== entry.checkpoint.instance_sha256) fail("NATIVE_ALLOCATION_CHECKPOINT_CHANGED");
-    verifyNativeEvidence(data.value.state);
-    return data.value;
+    return readNativeAllocationCheckpoint(entry, config, { scopeId: preview.scope_id, modelSha256: preview.model_sha256 });
   }
-  function verifyNativeEvidence(state) {
-    for (const row of state.results) for (const ref of [row.reference, ...row.result.evidence_refs]) {
-      const match = new RegExp("^execution/" + config.instance_id + "/([0-9]{5}-[a-z-]+\\.json)$").exec(ref.ref);
-      if (!match || json(path.join(config.control_root, config.instance_id, match[1])).sha256 !== ref.sha256) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
-    }
+  function authenticatedCurrent(checkContext = false) {
+    const journal = read().record, entry = journal?.allocations.at(-1), current = instances.read(config.instance_id).record;
+    if (!entry || !current) fail("NATIVE_ALLOCATION_CHECKPOINT_UNAVAILABLE");
+    readNativeAllocationHistory({ journal, entry, current, configuration: config, signer, controls: controlRecords,
+      ...(checkContext ? { controlContext: () => readNativeControlContext(config, executor.preview().product_sha256) } : {}) });
+    return current;
   }
+  const controls = createNativeAllocationControls({ configuration: config, signer, options, projectionRequired, source: controlSource, store: instances,
+    readCurrent: authenticatedCurrent, readAuthority: () => ({ scope_id: executor.preview().scope_id, model_sha256: preview.model_sha256, policy_pins: agenticPolicyPins(model) }),
+    preview: () => executor.preview() });
   function totals(record) {
     const entries = record?.allocations ?? [];
     if (entries.some(entry => entry.phase !== "closed" || !entry.consumption)) return { known: false, responses: null, bytes: null };
@@ -73,15 +73,24 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     preview() { const value = read(); return { ...executor.preview(), journal_id: journalId, journal_sha256: value.record ? shadowHash(value.record) : null,
       generation: value.record?.allocations.length ?? 0, phase: value.record?.allocations.at(-1)?.phase ?? "absent", consumption: totals(value.record), native_started: false, written: false }; },
     inspect() { const value = read(); return value.record ? structuredClone(value.record) : null; },
+    prepareControl: controls.prepare, captureControl: controls.capture, deliverControl: controls.deliver, readControl: controls.read,
     readCheckpoint(generation) {
       const record = read().record, entry = record?.allocations.find(row => row.generation === generation);
       if (!entry) fail("NATIVE_ALLOCATION_GENERATION_UNAVAILABLE");
       return structuredClone(checkpoint(entry));
     },
-    async run({ execute = false, authorization, signal } = {}) {
+    async run({ execute = false, authorization, signal, resume = false } = {}) {
+      if (typeof resume !== "boolean") fail("NATIVE_ALLOCATION_RESUME_INTENT_REQUIRED");
       if (!execute) return this.preview();
       const before = read(), previous = before.record?.allocations.at(-1), consumed = totals(before.record);
       if (previous && previous.phase !== "closed") fail(previous.phase === "failed" ? "NATIVE_ALLOCATION_TERMINAL_FAILURE" : "NATIVE_ALLOCATION_RECONCILIATION_REQUIRED");
+      let resumeSha = null;
+      if (resume) {
+        if (!previous) fail("NATIVE_ALLOCATION_RESUME_HISTORY_REQUIRED");
+        const current = authenticatedCurrent(true), cursor = inspectAgenticProcess(current); resumeSha = current.instance_sha256;
+        if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status) || !cursor.ready.length) return { contract_version: "journaled-native-allocation-result.v1",
+          status: cursor.status, journal_id: journalId, journal_phase: previous.phase, generation: previous.generation, written: false, native_started: false, retry: false };
+      }
       if (!consumed.known) fail("NATIVE_ALLOCATION_CONSUMPTION_UNKNOWN");
       if (before.record?.allocations.length >= 32) fail("NATIVE_ALLOCATION_GENERATION_LIMIT");
       const auth = structuredClone(authorization);
@@ -99,16 +108,24 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
           if (now.content_sha256 !== before.content_sha256 || actual.scope_id !== preview.scope_id || actual.model_sha256 !== preview.model_sha256) fail("NATIVE_ALLOCATION_REVISION_CHANGED");
           const creation = { instanceId: config.instance_id, model, scopeId: actual.scope_id, policyPins: agenticPolicyPins(model), facts: {} };
           const canonical = instances.read(config.instance_id).record;
-          // Until native history admission is composed, a signed closure alone
-          // cannot waive the existing pristine-start guard.
-          assertAgenticProcessStart(canonical, creation);
+          if (resume) {
+            if (authenticatedCurrent(true).instance_sha256 !== resumeSha || canonical?.instance_sha256 !== resumeSha) fail("NATIVE_ALLOCATION_HISTORY_CHANGED");
+            assertNativeAllocationProjection(canonical, config, projectionRequired);
+          } else assertAgenticProcessStart(canonical, creation);
           const entry = { generation: (now.record?.allocations.length ?? 0) + 1, owner_id: randomUUID(), configuration_sha256: configurationSha,
             authorization_sha256: shadowHash(auth), initial_instance_sha256: canonical?.instance_sha256 ?? createAgenticProcess(creation).instance_sha256,
             limits: limitsOf(auth), phase: "reserved", owned_result_sha256: null, tree_proof_sha256: null, tree_closed: false, owned_status: null,
             first_failure: null, checkpoint: null, closure_ref: null, consumption: null };
           const body = { contract_version: "native-allocation-journal.v1", journal_id: journalId, instance_id: config.instance_id, scope_id: actual.scope_id,
             model_sha256: actual.model_sha256, revision: (now.record?.revision ?? 0) + 1, allocations: [...(now.record?.allocations ?? []), entry] };
-          write(body, now.content_sha256); claim = entry; return { generation: entry.generation, owner_id: entry.owner_id };
+          write(body, now.content_sha256); claim = entry;
+          return { generation: entry.generation, owner_id: entry.owner_id, output_id: nativeAllocationOutputId(config.instance_id, entry.generation) };
+        },
+        workerInput(allocation) {
+          const current = read().record; signer.verify(current);
+          if (current.allocations.at(-1).owner_id !== allocation.owner_id) fail("NATIVE_ALLOCATION_OWNER_CHANGED");
+          return { contract_version: "native-allocation-worker.v1", journal_id: journalId, generation: allocation.generation,
+            owner_id: allocation.owner_id, key_base64: readSigningKey().toString("base64") };
         },
         afterClosure({ allocation, result }) {
           observed = structuredClone(result);
@@ -119,22 +136,23 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
             owned_status: result.status, first_failure: result.first_failure ?? null };
           entry.phase = !entry.tree_closed ? "unresolved" : result.status === "FAILED" || entry.first_failure ? "failed" : "closed";
           try {
-            const closurePath = path.join(config.control_root, `${config.instance_id}-CLOSURE.json`), closure = json(closurePath);
+            const outputId = nativeAllocationOutputId(config.instance_id, entry.generation);
+            const closurePath = path.join(config.control_root, `${outputId}-CLOSURE.json`), closure = json(closurePath);
             if (shadowHash(closure.value) !== shadowHash(result)) fail("NATIVE_ALLOCATION_CLOSURE_CHANGED");
             entry.closure_ref = { path: closurePath, sha256: closure.sha256 };
             const worker = result.worker_result, ref = worker?.native_checkpoint;
-            const match = ref && new RegExp("^execution/" + config.instance_id + "/([0-9]{5}-native-host-state\\.json)$").exec(ref.ref);
+            const match = ref && new RegExp("^execution/" + outputId + "/([0-9]{5}-native-host-state\\.json)$").exec(ref.ref);
             if (!match) fail("NATIVE_ALLOCATION_CHECKPOINT_UNAVAILABLE");
-            const file = path.join(config.control_root, config.instance_id, match[1]), data = json(file);
+            const file = path.join(config.control_root, outputId, match[1]), data = json(file);
             if (data.sha256 !== ref.sha256) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
             assertNativeCheckpointEvidence(data.value, { instanceId: config.instance_id, scopeId: preview.scope_id, modelSha256: preview.model_sha256,
               authorizationSha256: last.authorization_sha256, limits: last.limits });
-            verifyNativeEvidence(data.value.state);
+            verifyNativeResultEvidence(data.value.state, config, entry.generation);
             const current = instances.read(config.instance_id).record;
             if (!current || current.instance_sha256 !== data.value.state.instance.instance_sha256 || worker.instance_sha256 !== current.instance_sha256
               || worker.responses_observed !== data.value.responses_observed) fail("NATIVE_ALLOCATION_CANONICAL_CHANGED");
             entry.checkpoint = { path: file, sha256: data.sha256, state_sha256: shadowHash(data.value.state), instance_sha256: current.instance_sha256 };
-            const workerFooter = readAgentRunFile(path.join(config.control_root, config.instance_id, "RESULT.json"), { json: false, maxBytes: 131072 });
+            const workerFooter = readAgentRunFile(path.join(config.control_root, outputId, "RESULT.json"), { json: false, maxBytes: 131072 });
             if (!Number.isSafeInteger(worker.storage_budget_debit_bytes) || worker.storage_budget_debit_bytes < 0) fail("NATIVE_ALLOCATION_CONSUMPTION_UNKNOWN");
             entry.consumption = { responses_observed: data.value.responses_observed, response_sha256: data.value.response_sha256,
               storage_debit_bytes: worker.storage_budget_debit_bytes + workerFooter.value.length + readAgentRunFile(closurePath, { json: false, maxBytes: 131072 }).value.length,
