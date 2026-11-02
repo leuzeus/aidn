@@ -21,7 +21,7 @@ const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.
   "standard-cycle-operations.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
   "standard-workflow-operation-host.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
-  "standard-workflow-human-decisions.mjs",
+  "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url), new URL("../../../tools/runtime/project-runtime-state.mjs", import.meta.url),
@@ -31,7 +31,9 @@ function implementation() {
     new URL("../../core/workflow/process-operation-journal.mjs", import.meta.url), new URL("../../adapters/runtime/process-operation-journal-store.mjs", import.meta.url),
     new URL("../../core/workflow/process-decision-inbox.mjs", import.meta.url), new URL("../../adapters/runtime/process-decision-inbox-store.mjs", import.meta.url),
     new URL("../../../tools/perf/start-session-hook.mjs", import.meta.url),
-    ...["standard-empty-input.v1", "standard-session-initialize-input.v1", "standard-session-initialize-plan.v1", "standard-operation-output.v1", "process-local-effect-owner.v1", "standard-operation-preview.v1", "process-operation-journal.v1", "standard-operation-output.v2", "standard-session-reference-input.v1", "standard-mode-apply-input.v1", "standard-session-mode-plan.v1", "human-mode-decision.v1", "process-decision-inbox.v1", "standard-mode-question.v1", "standard-session-start-plan.v1", "standard-workflow-startup-catalog.v1", "standard-workflow-model-source.v1", "standard-cycle-initialize-input.v1", "standard-cycle-reference-input.v1", "standard-cycle-initialize-plan.v1", "standard-cycle-output.v1", "standard-cycle-context-plan.v1", "standard-cycle-create-catalog.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url))];
+    new URL("../../core/workflow/artifact-compare-swap.mjs", import.meta.url), new URL("../../adapters/runtime/workflow-record-store.mjs", import.meta.url),
+    new URL("../../core/workflow/process-control-inbox.mjs", import.meta.url), new URL("../../adapters/runtime/process-control-inbox-store.mjs", import.meta.url),
+    ...["standard-empty-input.v1", "standard-session-initialize-input.v1", "standard-session-initialize-plan.v1", "standard-operation-output.v1", "process-local-effect-owner.v1", "standard-operation-preview.v1", "process-operation-journal.v1", "standard-operation-output.v2", "standard-session-reference-input.v1", "standard-mode-apply-input.v1", "standard-session-mode-plan.v1", "human-mode-decision.v1", "process-decision-inbox.v1", "standard-mode-question.v1", "standard-session-start-plan.v1", "standard-workflow-startup-catalog.v1", "standard-workflow-model-source.v1", "standard-cycle-initialize-input.v1", "standard-cycle-reference-input.v1", "standard-cycle-initialize-plan.v1", "standard-cycle-output.v1", "standard-cycle-context-plan.v1", "standard-cycle-create-catalog.v1", "process-control-request.v1", "process-control-source.v1", "process-control-inbox.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url))];
   const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
   return shadowHash(refs.map(url => ({ path: path.relative(packageRoot, fileURLToPath(url)).replaceAll("\\", "/"), sha256: createHash("sha256").update(fs.readFileSync(url)).digest("hex") })));
 }

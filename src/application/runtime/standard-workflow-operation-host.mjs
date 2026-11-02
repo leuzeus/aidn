@@ -7,7 +7,11 @@ import { createAgenticProcessService } from "./agentic-process-service.mjs";
 import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
 import { createProcessOperationJournalStore } from "../../adapters/runtime/process-operation-journal-store.mjs";
 import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-decision-inbox-store.mjs";
+import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
 import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
+import { createStandardControlInbox } from "./standard-workflow-control-inbox.mjs";
+import { assertControlRequest } from "../../core/workflow/process-control-inbox.mjs";
+import { createAgenticProcess, advanceAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash, freezeShadow } from "../../core/workflow/shadow-json.mjs";
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from "../../core/workflow/process-operation-journal.mjs";
@@ -19,26 +23,40 @@ import previewSchema from "../../core/contracts/workflow-definition/standard-ope
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const receiptId = id => "receipt_" + id.slice(3);
+function controlCheckpoint(instance, eventId) {
+  let replay = createAgenticProcess({ instanceId: instance.instance_id, model: instance.model, policyPins: instance.policy_pins,
+    scopeId: instance.scope_id, facts: instance.initial_facts });
+  for (const event of instance.events) {
+    replay = advanceAgenticProcess(replay, event);
+    if (event.event_id === eventId) return replay.instance_sha256;
+  }
+  fail("PROCESS_CONTROL_EVENT_UNAVAILABLE");
+}
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, now = Date.now }) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now }) {
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
   if (model.contract_version !== "agentic-process-model.v2" || typeof authorize !== "function") fail("STANDARD_HOST_CONFIGURATION_INVALID");
+  if (controlSource != null && (typeof controlSource.read !== "function" || typeof controlSource.verify !== "function")) fail("STANDARD_HOST_CONTROL_CONFIGURATION_INVALID");
   const operations = createStandardWorkflowOperations({ targetRoot, now }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   for (const node of model.nodes.filter(node => node.kind === "operation"))
     if (!bindings.has(node.binding_ref) || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_HOST_BINDING_CHANGED");
   const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID(), initial = readWorkflowProjectAuthority({ targetRoot });
   const options = { targetRoot, stateMode: initial.stateMode }, store = createAgenticProcessStore(options), journal = createProcessOperationJournalStore(options);
+  const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && agenticProcessPersistence({ targetRoot }).backend === "postgres";
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource,
-    projectionRequired: initial.stateMode === "dual" || initial.stateMode === "files" && agenticProcessPersistence({ targetRoot }).backend === "postgres" });
+    projectionRequired });
+  const controls = createStandardControlInbox({ store: createProcessControlInboxStore(options), signer, source: controlSource,
+    projectionRequired });
   function readAuthority() {
     const project = readWorkflowProjectAuthority({ targetRoot }), persistence = agenticProcessPersistence({ targetRoot });
     if (project.stateMode !== initial.stateMode) fail("STANDARD_HOST_STATE_MODE_CHANGED");
     return { scope_id: shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
-      operation_host: { version: 1, state_mode: project.stateMode, key_id: signer.keyId, ...(source ? { model_source_sha256: shadowHash(source) } : {}) } }), model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
+      operation_host: { version: 1, state_mode: project.stateMode, key_id: signer.keyId, ...(source ? { model_source_sha256: shadowHash(source) } : {}),
+        ...(controlSource ? { control_inbox_version: 1 } : {}) } }), model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
   }
   function scope(instance) {
     const authority = readAuthority();
@@ -109,7 +127,17 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
   };
-  service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, authorityTimeoutMs: 5000 });
+  const controlAuthority = controlSource ? {
+    read({ delivery_id }) { return controls.read(delivery_id).delivery; },
+    async verify({ delivery, signal }) {
+      const capture = controls.read(delivery.delivery_id);
+      if (shadowHash(snapshot()) !== capture.request.context_sha256) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
+      const verified = await controls.verifyDelivery(delivery.delivery_id, signal);
+      if (shadowHash(snapshot()) !== capture.request.context_sha256 || shadowHash(verified) !== shadowHash(delivery)) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
+      return { outcome: "verified", authority_id: delivery.authority_id, delivery_sha256: shadowHash(delivery) };
+    },
+  } : undefined;
+  service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, authorityTimeoutMs: 5000 });
   const current = id => {
     const value = service.inspect(id); scope(value.record);
     if (Object.keys(value.record.initial_facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
@@ -117,7 +145,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     // every earlier operation result against its durable host journal as well.
     const seen = new Map();
     for (const event of value.record.events) {
-      if (["facts", "message", "control", "assign", "result"].includes(event.kind)) fail("STANDARD_HOST_HISTORY_AUTHORITY_REQUIRED");
+      if (["facts", "message", "assign", "result"].includes(event.kind)) fail("STANDARD_HOST_HISTORY_AUTHORITY_REQUIRED");
+      if (event.kind === "control") {
+        const capture = controls.read(event.delivery.delivery_id);
+        if (shadowHash(capture.delivery) !== shadowHash(event.delivery)
+          || capture.phase === "delivered" && capture.delivered_instance_sha256 !== controlCheckpoint(value.record, event.event_id)) fail("STANDARD_HOST_CONTROL_HISTORY_NOT_AUTHENTICATED");
+        continue;
+      }
       const id = event.kind === "operation_intent" ? event.intent.operation_id : event.kind === "operation_result" ? event.receipt.operation_id : null;
       if (!id) continue;
       if (!seen.has(id)) seen.set(id, retained(id).record);
@@ -128,6 +162,18 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return value;
   };
   function requireWrite(write, expected, actual) { if (write !== true || expected !== actual) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED"); }
+  function controlRequest({ instanceId, expectedSha256, occurrenceId }) {
+    if (!controlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
+    const state = current(instanceId);
+    if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
+    const frame = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = frame && model.nodes.find(row => row.id === frame.node_id);
+    if (node?.kind !== "event" || frame.status !== "WAITING") fail("PROCESS_CONTROL_ORDER_INVALID");
+    const context = snapshot();
+    return assertControlRequest({ contract_version: "process-control-request.v1", scope_id: state.record.scope_id,
+      instance_id: state.record.instance_id, instance_sha256: state.record.instance_sha256, model_sha256: state.record.model_sha256,
+      instance_revision: state.record.revision, occurrence_id: occurrenceId, correlation_id: frame.correlation_id,
+      event_keys: node.branches.map(row => row.event_key), context_sha256: shadowHash(context), branch: context.context.branch, head: context.context.head });
+  }
   function decisionInput(instance, input) {
     const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "mode_decision").at(-1);
     if (!latest || latest.intent.operation_id !== input.decision_operation_id) fail("STANDARD_MODE_DECISION_REQUIRED");
@@ -167,6 +213,40 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return service.initialize({ ...input, model, facts: {} });
     },
     inspect: id => current(id),
+    prepareControl: input => structuredClone(controlRequest(input)),
+    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, write = false }) {
+      if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
+      const request = controlRequest({ instanceId, expectedSha256, occurrenceId });
+      const capture = await controls.reserve(request, sourceRef);
+      if (!capture) return { status: "waiting_for_control", request };
+      // A retained capture survives races/crashes, but may not wake a changed
+      // instance or business context. Such a capture needs explicit reconciliation.
+      const currentRequest = controlRequest({ instanceId, expectedSha256, occurrenceId });
+      if (shadowHash(currentRequest) !== shadowHash(request)) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
+      return { status: "reserved", inbox_id: capture.inbox_id, delivery_sha256: shadowHash(capture.delivery) };
+    },
+    async deliverControl(id, { write = false } = {}) {
+      if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
+      if (!controlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
+      const capture = controls.read(id), state = current(capture.request.instance_id), eventId = "control_" + id.slice(8);
+      const retainedEvent = state.record.events.find(row => row.event_id === eventId);
+      if (retainedEvent) {
+        if (retainedEvent.kind !== "control" || shadowHash(retainedEvent.delivery) !== shadowHash(capture.delivery)) fail("STANDARD_HOST_CONTROL_HISTORY_NOT_AUTHENTICATED");
+        controls.acknowledge(id, controlCheckpoint(state.record, eventId));
+        let projection = "not_requested";
+        if (projectionRequired) {
+          try { store.materialize(state.record.instance_id, { write: true }); projection = "materialized"; }
+          catch { projection = "reconciliation_required"; }
+        }
+        return { ...state, retained: true, projection };
+      }
+      if (capture.phase !== "reserved" || state.record.instance_sha256 !== capture.request.instance_sha256) fail("PROCESS_CONTROL_INSTANCE_CHANGED");
+      const result = await service.deliverControl({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
+        occurrenceId: capture.request.occurrence_id, deliveryId: capture.delivery.delivery_id, eventId, write: true });
+      controls.acknowledge(id, result.record.instance_sha256);
+      return result;
+    },
+    readControl: id => structuredClone(controls.read(id)),
     async preview({ instanceId, expectedSha256, occurrenceId, input = {} }) {
       const state = current(instanceId);
       if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");

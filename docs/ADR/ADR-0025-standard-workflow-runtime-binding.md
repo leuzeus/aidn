@@ -9,7 +9,7 @@ implemented and verified offline. L2 now has partial local business adapters for
 reload, admission, session initialization, authenticated mode capture/application
 and start-session hook finalization, described below. The standard model,
 the remaining business adapters,
-authenticated external inbox, general owned-host resume and installed/native
+provider-specific inbox adapters, general owned-host resume and installed/native
 qualification remain outstanding. This decision does not claim those deliveries.
 
 ## Decision
@@ -298,3 +298,40 @@ ends before that skill completion. The full model must route conditional drift
 and durable waits before continuing; it must retain the checkpoint receipt and
 must not rerun already executed effects to make the warning disappear. This hook
 probe is diagnostic evidence, not full native or installed-workflow acceptance.
+
+
+### Durable control delivery through the operation host
+
+The existing common service/reducer control protocol is now composed with the
+standard operation host. It has an optional trusted `controlSource` read/verify
+capability; no JSON model can install a verifier. A versioned request binds the
+waiting instance/revision/model, occurrence, correlation, allowed event keys,
+branch/head and business-context hash. A typed source binds that request and
+provider/principal/event identity, payload hash and evidence. Source absence
+returns WAITING without polling, model allocation or a canonical write.
+
+The signed `process_control_inbox` uses existing project artifact CAS under
+`workflows/control-inbox/`. It reserves a globally deduplicated source identity
+before delivery to the reducer, then acknowledges the exact resulting instance
+hash. Both operations and control history authenticate after reopening. A crash
+after canonical event delivery but before acknowledgement can acknowledge the
+retained event without contacting the provider or replaying effects. The delivery
+checkpoint is derived with the common reducer and stays unchanged by later work.
+Required derived projections can be repaired by an explicit retained delivery;
+canonical acceptance never comes from a stale visible copy.
+
+This is local/canonical control storage, not a new shared-coordination table or
+business authority. Bulk SQLite/PostgreSQL producers protect it as they protect
+other process records. The install ignore asset excludes its generated private
+files without changing their retention or canonical authority. The v1 readers
+and closed mode-decision inbox remain separate.
+
+Fresh delivery rechecks source verification and the bound business/Git context.
+Past accepted history relies on its authenticated retained capture, not a new
+favorable answer from the provider. A source event cannot authorize a second
+request. Receipt authentication does not turn an event into business approval;
+the IR and actual downstream ports must still enforce refusal, deferral,
+cancellation, review/head and admission semantics. The provider-specific GitHub
+adapter, real human channel, full standard model and native mixed resume remain
+unqualified. Raw facts/messages/native result history remain rejected by this
+operation/control host until their own durable authority is composed.

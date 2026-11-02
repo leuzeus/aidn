@@ -541,7 +541,7 @@ export function createPostgresRuntimeArtifactStore({
         for (const candidateScopeKey of scopeCandidates.slice().sort()) {
           await guardCanonicalMutation(client, candidateScopeKey);
         }
-        const checkpoints = await client.query("SELECT path, content_format, content FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND (path LIKE 'workflows/instances/%' OR path LIKE 'workflows/definitions/%' OR path LIKE 'workflows/process-instances/%' OR path LIKE 'workflows/operation-records/%' OR path LIKE 'workflows/decision-inbox/%')", [scopeKey]);
+        const checkpoints = await client.query("SELECT path, content_format, content FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND (path LIKE 'workflows/instances/%' OR path LIKE 'workflows/definitions/%' OR path LIKE 'workflows/process-instances/%' OR path LIKE 'workflows/operation-records/%' OR path LIKE 'workflows/decision-inbox/%' OR path LIKE 'workflows/control-inbox/%')", [scopeKey]);
         assertWorkflowRecordProjection(checkpoints.rows, normalizedPayload.artifacts);
         await replaceRelationalProjectionRows(client, scopeKey, relationalRows);
         for (const candidateScopeKey of scopeCandidates) {

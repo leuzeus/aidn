@@ -14,7 +14,7 @@ import { artifactContentHash, assertWorkflowRecordProjection } from "../../src/c
 const temporary = fs.realpathSync(os.tmpdir()), owned = [];
 let checks = 0;
 try {
-  for (const directory of ["instances", "definitions", "process-instances", "operation-records", "decision-inbox"]) {
+  for (const directory of ["instances", "definitions", "process-instances", "operation-records", "decision-inbox", "control-inbox"]) {
     const root = createStandardWorkflowFixture("dual", owned), sqliteFile = resolveRuntimeSqliteFile({ targetRoot: root });
     const row = content => ({ path: `workflows/${directory}/checkpoint.json`, kind: "runtime", family: "runtime", content_format: "utf8",
       content, sha256: artifactContentHash(content), size_bytes: Buffer.byteLength(content) });
@@ -36,7 +36,7 @@ try {
     await assert.rejects(postgres.writeIndexProjection({ payload: payload("stale") }), /PROJECTION_CONFLICT/);
     // PostgreSQL bulk replacement removes omitted rows, so omission must refuse.
     await assert.rejects(postgres.writeIndexProjection({ payload: { ...payload("canonical"), artifacts: [] } }), /PROJECTION_CONFLICT/);
-    assert.ok(fake.state.queryLog.some(query => query.sql.includes("path LIKE 'workflows/operation-records/%'")));
+    assert.ok(fake.state.queryLog.some(query => query.sql.includes("path LIKE 'workflows/control-inbox/%'")));
     process.stdout.write(`PASS PostgreSQL producer with SQL transport double: ${directory}, stale and omission refusal\n`); checks++;
   }
   process.stdout.write(JSON.stringify({ status: "PASS", checks, proof: "real-index-producers-real-sqlite-and-offline-postgres-transport", live_postgres: "NOT_RUN", native: "NOT_RUN" }) + "\n");

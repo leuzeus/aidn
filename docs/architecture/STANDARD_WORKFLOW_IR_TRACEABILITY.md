@@ -132,3 +132,22 @@ reconciliation. The actual Git-clean admission is unchanged.
 The explicit source refresh tool accepts `--cycle-create` for the fixed second
 component; runtime loading still refuses stale sources. No component factory is
 yet wired as the ordinary complete standard workflow.
+
+
+## Durable control delivery
+
+`standard-workflow-operation-host.mjs` optionally composes a trusted control
+source with the common service/reducer. `standard-workflow-control-inbox.mjs`
+verifies typed request/source records and persists a signed canonical capture
+before delivery, acknowledgement afterwards. Scope includes instance/revision,
+model, occurrence/correlation, allowed event keys, branch/head and context hash.
+The operation/control histories authenticate after reopening; accepted events
+and prior business operations are not re-executed. A provider identity cannot be
+reused for a second request. Missing sources wait without model calls or polling.
+
+The six record namespaces include the new private `control-inbox` and retain
+canonical bulk-projection protection. Required derived projections may be
+repaired explicitly, never substituted for canonical authority. This is not yet
+the GitHub adapter, native human channel, R05 realization or mixed native resume.
+A source event only selects its declared IR branch; downstream business admission
+and explicit effect grants remain necessary.

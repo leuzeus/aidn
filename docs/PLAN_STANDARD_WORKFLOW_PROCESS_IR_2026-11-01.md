@@ -21,8 +21,8 @@ qualification de son parcours complet.
   replay, timeout et course CAS. Aucun adaptateur métier standard n’est qualifié
   par ces doubles. L’enveloppe de livraison est authentifiée par un port hôte
   borné ; ces doubles ne qualifient pas les adaptateurs métier L2/L4.
-- L2/L4 : en cours. Ports réels de bootstrap, journal de dispatch signé et
-  raccordement du choix de mode/hook décrits dans les addenda ci-dessous.
+- L2/L4 : en cours. Ports de bootstrap/cycle, journal de dispatch signé, choix
+  de mode/hook et inbox de contrôle durable décrits dans les addenda ci-dessous.
 - L3 : en cours, composants IR de démarrage et de squelette de cycle distribués
   et consommés par les tests de ports réels ; le modèle standard complet reste à livrer.
 - L5 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
@@ -689,3 +689,61 @@ reprise mixte générale. La sélection ordinaire du modèle standard, DoR/trava
 attente de dérive R05, validation, clôture, promotion, PR/revue et synchronisation
 après fusion restent au périmètre restant du plan. Aucun marqueur historique
 reference_only/unsupported n'a été promu pour produire ces PASS.
+
+
+## Addendum — reprise authentifiée des attentes externes et humaines
+
+L4 raccorde maintenant le protocole de contrôle existant au même hôte que les
+opérations réelles. Nouveaux fichiers : `process-control-{request,source,inbox}.v1`
+(schémas), `process-control-inbox.mjs`, son store et
+`standard-workflow-control-inbox.mjs`. L'hôte expose préparation en lecture seule,
+capture explicite, livraison explicite et lecture du reçu. L'IR conserve seul
+le routage ; aucun runner de séquence métier parallèle n'est introduit.
+
+La capture vérifie une capacité hôte read/verify, l'identité d'événement et le
+contexte exact (instance/révision/modèle/occurrence/corrélation/événements permis,
+branche/head et hash des documents gouvernés). L'inbox signée précède l'événement
+canonique ; son acquittement suit cet événement. Une absence de source attend,
+un contexte périmé refuse la livraison. Après livraison, une indisponibilité du
+fournisseur ne réécrit pas le résultat accepté et n'empêche pas la réparation de
+l'acquittement. Le même événement ne peut réveiller une autre attente.
+
+Le concept process_control_inbox déclare autorité, métadonnées, rétention et
+projections ; six réserves de records sont protégées des projections de masse.
+Aucune conversion d'instance historique et aucun transfert implicite vers le
+runtime partagé. L'accès aux résultats d'opérations antérieures reste authentifié.
+
+Preuves ciblées attendues : files/dual/db-only réels, démarrage de session réel
+avant attente, nouveau processus entre capture et livraison, reprise sans effets
+répétés, duplicata après opérations ultérieures, contexte Git périmé, source brute
+ou non vérifiée, tentative de falsification et panne SQLite de l'acquittement
+après livraison canonique. Replay/simulation utilisent le même réducteur. Seule
+la capacité de source est doublée ; ce n'est pas un test de fournisseur réel.
+
+Ce raccordement ne ferme pas L4 : l'historique d'allocations/résultats natifs,
+les fences et preuves de fermeture, contributions/exclusions de revue, budgets
+cumulés et la reprise du lanceur mixte restent à implémenter. Restent aussi les
+ports DoR/travail/validation/clôture/PR, le modèle standard complet, l'adaptateur
+GitHub, l'entrée ordinaire et A1–A10. Une livraison d'événement ne constitue ni
+la réalisation d'un contrôle R05 ni une approbation de PR ; leurs vrais ports et
+leurs branches de refus doivent encore être raccordés.
+
+
+Validation exécutée de l'inbox : **PASS, 22 cas d'intégration + 4 cas ciblés** de
+bornage/annulation/projection/historique. Régression de l'hôte des opérations :
+20 PASS ; catalogue/pins du modèle distribué : 20 PASS ; producteurs SQLite et
+PostgreSQL (transport SQL doublé) sur six namespaces : 12 PASS. Total ciblé :
+78 contrôles, plus trois définitions de schéma. Source de vérité, métadonnées,
+complétude (37 concepts), diagnostics/use case et CLI de gouvernance, catalogues,
+références documentaires, sensibilité et topologie package : PASS. Le required
+gate agrégé inclut les nouveaux cas et son guard refuse leur omission ; toute
+la commande agrégée n'a pas été relancée pour cette tranche ciblée.
+
+La panne d'acquittement a laissé l'événement canonique unique et une capture
+reserved. La réouverture l'a acquitté sans fournisseur et sans nouvelle livraison.
+La panne de projection dual a rendu reconciliation_required ; une livraison
+retenue explicite a réparé la projection sans modifier le checkpoint livré.
+Les enregistrements et historiques valides mais falsifiés par simple rehash ont
+été refusés. Ce sont des preuves hors ligne sur stores et ports réels avec
+capacité source doublée, pas des preuves natives, fournisseur réel ou archive
+installée. L4–L8 restent ouverts dans les limites indiquées ci-dessus.

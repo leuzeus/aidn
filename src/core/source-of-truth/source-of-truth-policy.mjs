@@ -34,6 +34,15 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     replacement: "reviewed model/catalog source update; implementation-only refresh increments revision and refuses changed authority or binding semantics",
     evidence_targets: ["package/catalogs/process-models/aidn-standard-startup.v1.json", "package/catalogs/standard-workflow-startup.v1.json", "src/application/runtime/standard-workflow-startup-composition.mjs", "tools/perf/verify-standard-workflow-model-fixtures.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs", "package/catalogs/process-models/aidn-standard-cycle-create.v1.json", "package/catalogs/standard-workflow-cycle-create.v1.json", "src/application/runtime/standard-workflow-cycle-composition.mjs", "tools/perf/verify-standard-workflow-cycle-fixtures.mjs"],
   },
+  process_control_inbox: {
+    owner: "trusted process human/external delivery host",
+    lifecycle: "reserved after source verification -> delivered; missing acknowledgement is reconciled from the canonical event",
+    scope: "physical project, source event identity and exact pinned occurrence/revision/context",
+    retention: "retain immutable source, request, delivery, deduplication identity and delivery checkpoint without automatic purge",
+    migration: "new explicit inbox records; no inference from historical messages or silent instance conversion",
+    replacement: "signed artifact CAS; a source event cannot authorize a different request and accepted effects are never replayed",
+    evidence_targets: ["src/core/workflow/process-control-inbox.mjs", "src/adapters/runtime/process-control-inbox-store.mjs", "src/application/runtime/standard-workflow-control-inbox.mjs", "tools/perf/verify-standard-workflow-control-fixtures.mjs"],
+  },
   process_decision_inbox: {
     owner: "trusted human decision capture host",
     lifecycle: "reserved -> receipted; absent or unverified source never completes an operation",
@@ -422,6 +431,14 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dbOnly: "same versioned package assets; no fallback from canonical project state to package fixtures",
     projection: "source descriptor retained in signed operation previews; component IR embedded in its process instance",
     notes: "Fresh-session startup and cycle scaffold components only, not the complete standard model, full cycle-create skill or ordinary default workflow selection. Catalog pins model, exact code bindings, SPEC and skill sources. Loading refuses changed bytes instead of repairing pins. Metadata never grants effects, human identity or native qualification. No new runtime table.",
+  }),
+  policy({
+    concept: "process_control_inbox", label: "Authenticated process control inbox",
+    files: "docs/audit/workflows/control-inbox/<id>.json; configured PostgreSQL remains canonical",
+    dual: "configured runtime artifact store; visible JSON is derived",
+    dbOnly: "configured runtime artifact store; no automatic visible projection",
+    projection: "workflows/control-inbox/<id>.json only when the configured derived projection is required",
+    notes: "Existing canonical artifact CAS, no shared coordination table. A trusted source verifies identity and an exact request including instance, correlation, available events, branch/head and context hash. Signed reservation precedes the reducer event, acknowledgement follows it. Reopening authenticates both operation and control histories. Missing sources wait without polling or model allocation. Generic delivery is not proof of a GitHub adapter, provider freshness, business approval or native mixed resume.",
   }),
   policy({
     concept: "process_decision_inbox", label: "Authenticated human decision inbox",

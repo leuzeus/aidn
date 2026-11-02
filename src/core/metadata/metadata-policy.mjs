@@ -83,6 +83,14 @@ const METADATA_POLICIES = freezeDeep([
     notes: "Exact model/catalog hashes and SPEC/skill/code identities are retained by the trusted host source descriptor. Its hash participates in host scope and its body enters signed operation snapshots. Existing instances retain their model; changed package bindings require a new explicit source revision, never silent conversion or runtime repair.",
   }),
   policy({
+    concept: "process_control_inbox", label: "Authenticated process control source",
+    required: ["contract_version", "inbox_id", "source_ref", "request", "source", "delivery", "phase", "delivered_instance_sha256", "key_id", "authentication"],
+    sourceOfTruthConcept: "process_control_inbox",
+    evidenceTargets: ["src/core/contracts/workflow-definition/process-control-inbox.v1.schema.json", "src/core/contracts/workflow-definition/process-control-source.v1.schema.json", "src/core/contracts/workflow-definition/process-control-request.v1.schema.json", "src/application/runtime/standard-workflow-control-inbox.mjs", "tools/perf/verify-standard-workflow-control-fixtures.mjs"],
+    lifecycle: "reserved -> delivered; accepted canonical events survive a missing inbox acknowledgement",
+    notes: "Source event identity is deduplicated, source and context are bound before delivery, and MAC authentication is distinct from content hashes. Later events do not change the retained delivery checkpoint. No source absence, refusal, cancellation, stale event or mere allocation closure grants workflow success.",
+  }),
+  policy({
     concept: "process_decision_inbox", label: "Authenticated human decision source",
     required: ["contract_version", "inbox_id", "operation_id", "source_ref", "source", "phase", "receipt_sha256", "key_id", "authentication"],
     sourceOfTruthConcept: "process_decision_inbox",

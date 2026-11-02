@@ -2,6 +2,17 @@
 
 ## Structured agentic process
 
+`verify-standard-workflow-control-fixtures.mjs` verifies authenticated durable
+human/external capture and delivery through the standard operation host with the
+common service/reducer. Real session effects precede an event wait; a new Node
+process delivers without repeating those effects. It covers missing/untrusted
+sources, context/head mismatch, event deduplication, signed history, later work,
+replay/simulation and failed acknowledgement after canonical SQLite delivery.
+Files/dual/db-only and actual canonical stores are used; source authentication
+is a fixture capability. It does not qualify a native/provider channel, review
+approval, R05 completion, mixed native resume or the full standard workflow.
+
+
 `verify-standard-workflow-cycle-fixtures.mjs` consumes the separately distributed
 cycle scaffold JSON through real canonical files/SQLite, admission, Git, CAS,
 audit and projector ports. It requires real dirty-work waiting, explicit external
@@ -19,8 +30,8 @@ drift from R05 remains an explicit remaining route.
 
 `verify-workflow-record-storage-fixtures.mjs` exercises the actual SQLite index
 writer and PostgreSQL bulk producer (SQL transport double). It protects both
-historical instance namespaces, definitions, operation journals and decision
-inboxes against stale
+historical instance namespaces, definitions, operation journals, decision and
+control inboxes against stale
 visible replacement. SQLite preserves omitted canonical artifacts; PostgreSQL
 full replacement refuses omission. This covers producer SQL selection as well
 as the common predicate and does not establish live PostgreSQL qualification.
