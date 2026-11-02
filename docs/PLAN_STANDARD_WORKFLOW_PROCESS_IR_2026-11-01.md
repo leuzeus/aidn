@@ -793,3 +793,48 @@ native_parent_closure du worker ne remplace pas cette preuve. Une nouvelle
 allocation doit avoir une autorisation et des plafonds compatibles avec le cumul,
 sans prolonger implicitement l'ancien délai ou effacer un refus. La levée de la
 garde d'historique dépend de ces preuves, pas du seul support du contrat v2.
+
+
+## Addendum — conservation de l'état natif auparavant volatile
+
+L'hôte natif expose maintenant un checkpoint borné native-host-state.v1. Il vérifie
+les affectations contre ses observations émises, les résultats contre ses propres
+reçus, leurs identités et les empreintes des fichiers de preuve. La composition
+réelle le persiste après la tentative de fermeture des clients via le writer
+existant, protégé et soumis au budget de stockage. Le résultat worker référence
+ces octets ; le snapshot contient instance exacte, ressources/identités,
+contributions, résultats, usages natifs observés et fermeture parent. Les hashes
+et le nombre des réponses observées ainsi que l'autorisation sont liés à l'enveloppe.
+Les prompts/developer instructions et le raisonnement n'y sont pas copiés.
+
+Cette conservation ne prétend pas résoudre l'authentification inter-hôtes :
+resume_authority reste explicitement non établie. Les données native_host_state
+sont subsumées par l'instance agentique dans le registre de gouvernance. Restent
+à composer le journal signé de génération/allocation, le fence, la preuve du
+superviseur owned, les plafonds cumulatifs et l'autorisation explicite suivante.
+Le lecteur historique et la garde native vierge restent actifs. Un hash de
+checkpoint ou parent_closed ne suffit pas pour reprendre.
+
+La qualification ciblée doit couvrir checkpoint nominal, rejet terminal conservé,
+contributeur potentiel après interruption sans résultat accepté, identités et
+compteurs retenus sans reconstruction depuis des Maps perdues. Les preuves
+natives réelles et le parcours standard mixte restent à terminer.
+
+
+La conservation reprend la limite existante de 262144 octets par preuve et le
+quota global de l'allocation. Un dépassement est explicite ; aucune troncature
+ou suppression de preuve ne produit un succès. Les limites du modèle standard
+complet et la compaction/continuation de son historique restent à mesurer en L6.
+
+
+Validation finale exécutée : **PASS, 59 contrôles** de la composition native,
+transport natif simulé, zéro appel modèle réel. Les quatre cas de checkpoint
+couvrent conservation nominale, refus terminal, interruption et corruption d'une
+preuve native après fermeture. Les plafonds autorisés sont conservés comme
+valeurs numériques en plus de leur empreinte ; leur contrôle cumulatif à la
+reprise reste à composer. Les références natives transitives sont revérifiées.
+Schéma, gouvernance (subsomption explicite), catalogue/garde des filtres de test,
+références documentaires, sensibilité et topologie package : PASS. Route du diff
+préparé : ASSURED. Client natif réel, arbre de processus réel et archive installée :
+NOT_RUN. Le modèle standard complet, le dispatcher mixte et la reprise native
+authentifiée restent incomplets ; aucun de ces PASS ne les clôt.

@@ -10,6 +10,16 @@ function freezeDeep(value) {
 
 const GOVERNANCE_COVERAGE_EXCEPTIONS = freezeDeep([
   {
+    concept: "native_host_state",
+    coverage_kind: "subsumed",
+    governed_by: "agentic_process_instance",
+    source_of_truth_relation: "protected native allocation evidence of the host-issued canonical instance prefix; never a replacement for that instance or a resume authority",
+    metadata_relation: "native-host-state.v1 resources, contributions, issued results, parent closure, observed usage and exact instance hash; budget/response hashes retained by the owning composition",
+    lifecycle_status: "observed -> retained after parent close attempt -> historical allocation evidence",
+    scope: "one owned native allocation and its protected external control root",
+    rationale: "Native host state retains identities/results previously held only in memory. Its content hash does not authenticate a supervisor closure, authorize another allocation, reset budget or make an unknown/rejected result successful.",
+  },
+  {
     concept: "context_metrics",
     coverage_kind: "subsumed",
     governed_by: "agent_working_memory",

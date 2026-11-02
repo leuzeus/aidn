@@ -28,6 +28,7 @@ const files = [
   "src/core/contracts/workflow-definition/process-operation-receipt.v1.schema.json",
   "src/core/contracts/workflow-definition/process-control-event.v1.schema.json",
   "src/core/workflow/agentic-process-start.mjs", "src/core/workflow/workflow-engine-policy.mjs",
+  "src/core/workflow/native-host-state.mjs", "src/core/contracts/workflow-definition/native-host-state.v1.schema.json",
   "src/core/contracts/workflow-definition/agentic-process-control-scenario.v1.schema.json",
   "src/adapters/runtime/broker-product-file.mjs",
   "src/core/contracts/workflow-definition/agentic-process-model.v1.schema.json",

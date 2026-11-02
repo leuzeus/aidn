@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { fingerprintAgentReuse, assertAgentReuseRequest } from "../../core/agents/agent-reuse-policy.mjs";
+import { fingerprintAgentReuse, assertAgentReuseRequest, evaluateAgentReuse } from "../../core/agents/agent-reuse-policy.mjs";
+import { assertAgenticProcessInstance } from "../../core/workflow/agentic-process.mjs";
+import { assertNativeHostState } from "../../core/workflow/native-host-state.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
 import { evaluateAgentTransition } from "../../core/agents/agent-transition-policy.mjs";
@@ -8,7 +10,8 @@ import { evaluateAgentTransition } from "../../core/agents/agent-transition-poli
 // sessionFactory creates native resources; result receipts originate here after
 // the session adapter has correlated and verified its actual terminal event.
 export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evidence, now = Date.now, deadline }) {
-  const authorityId = `host-${randomUUID()}`, resources = new Map(), observations = new Map(), results = new Map(), prepared = new Map();
+  const authorityId = `host-${randomUUID()}`, resources = new Map(), observations = new Map(), results = new Map(), prepared = new Map(), issuedAssignments = new Map();
+  let parentClosed = false;
   let current = null, stopped = false;
   const remaining = () => { if (stopped || now() >= deadline) fail("PROCESS_HOST_DEADLINE"); return deadline - now(); };
   const checked = value => { if (checkShadowJson(value)) fail("PROCESS_HOST_DATA_INVALID"); return structuredClone(value); };
@@ -62,7 +65,8 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     const binding = { ...input.binding, allowed_context_sha256: allowed,
       reviewed_contributors: [...resources.values()].flatMap(item => item.contributions.some(c => c.scope_id === instance.scope_id)
         ? [{ agent_id: item.agentId, lineage_id: item.lineageId }] : []) };
-    prepared.set(frame.occurrence_id, { input, binding, resource, instructionHash, policy, role });
+    prepared.set(frame.occurrence_id, { input, binding, resource, instructionHash, policy, role,
+      instanceId: instance.instance_id, scopeId: instance.scope_id, modelSha256: instance.model_sha256 });
     // Candidate preference is not a verdict identity substitution. Each request
     // observes the selected resource; historical identities stay in its record.
     current = resource.id;
@@ -94,13 +98,17 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
       observations.set(shadowHash(row), { request: row.request_sha256, resource: selected.id, state: shadowHash(describe(selected)) });
       return row;
     },
-    async verify({ request, observation, requirements, signal }) {
+    async verify({ request, observation, requirements, phase, signal }) {
       remaining();
       const retained = observations.get(shadowHash(observation)), resource = retained && resources.get(retained.resource);
       if (!resource || signal?.aborted || retained.request !== shadowHash(request)
         || retained.state !== shadowHash(describe(resource))) fail("PROCESS_HOST_OBSERVATION_NOT_ISSUED");
       await snapshot(resource);
       if (requirements?.skills.some(skill => !resource.skills.includes(skill))) fail("PROCESS_HOST_SKILL_UNAVAILABLE");
+      if (phase === "assignment") {
+        const decision = evaluateAgentReuse({ request, observation, eligibleAdapterIds: ["codex-agentic-session"], now: now() });
+        if (decision.decision !== "wait") issuedAssignments.set(shadowHash({ request, decision }), request.activity_id);
+      }
       return { outcome: "verified", authority_id: authorityId, request_sha256: retained.request,
         observation_sha256: shadowHash(observation), ...(requirements ? { requirements_sha256: shadowHash(requirements) } : {}) };
     },
@@ -127,7 +135,8 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
       outcome: completion.outcome, evidence_refs: completion.evidence_refs };
     const reference = await evidence.retain("protected-result", { result, session_id: resource.sessionId,
       native_receipt_sha256: shadowHash(completion) });
-    results.set(result.result_id, { result: structuredClone(result), resource: resource.id, reference });
+    results.set(result.result_id, { result: structuredClone(result), resource: resource.id, reference,
+      instanceId: instance.instance_id, scopeId: instance.scope_id, modelSha256: instance.model_sha256 });
     return { resultId: result.result_id, outcome: result.outcome };
   }
   const resultAuthority = Object.freeze({
@@ -145,11 +154,38 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
     },
   });
   return Object.freeze({ prepare, readBinding, assignmentAuthority, resultAuthority, execute,
+    // A read-only snapshot of host-issued identities and results. This is not a
+    // resume credential: the owning composition must authenticate/persist it and
+    // attach the supervisor's process-tree closure and cumulative accounting.
+    async checkpoint(instance) {
+      assertAgenticProcessInstance(instance);
+      for (const event of instance.events) {
+        if (event.kind === "assign") {
+          const task = prepared.get(event.occurrence_id);
+          if (!task || task.instanceId !== instance.instance_id || task.scopeId !== instance.scope_id || task.modelSha256 !== instance.model_sha256
+            || issuedAssignments.get(shadowHash({ request: event.request, decision: event.decision })) !== event.occurrence_id) fail("PROCESS_HOST_HISTORY_NOT_ISSUED");
+        }
+        if (event.kind === "result") {
+          const retained = results.get(event.result.result_id);
+          if (!retained || retained.instanceId !== instance.instance_id || retained.scopeId !== instance.scope_id || retained.modelSha256 !== instance.model_sha256
+            || shadowHash(retained.result) !== shadowHash(event.result)) fail("PROCESS_HOST_HISTORY_NOT_ISSUED");
+        }
+      }
+      for (const row of results.values()) {
+        await evidence.verify(row.reference);
+        for (const reference of row.result.evidence_refs) await evidence.verify(reference);
+      }
+      return assertNativeHostState(checked({ contract_version: "native-host-state.v1", authority_id: authorityId, instance: structuredClone(instance), parent_closed: parentClosed,
+        resources: [...resources.values()].map(resource => ({ executor: describe(resource), binding_sha256: resource.binding, skills: [...resource.skills] })),
+        results: [...results.values()].map(row => ({ result: structuredClone(row.result), resource: row.resource, reference: structuredClone(row.reference) })),
+        native_usage: typeof sessionFactory.metrics === "function" ? checked(sessionFactory.metrics()) : null }));
+    },
     async close() {
       stopped = true; let failure = false;
       for (const resource of resources.values()) try { if ((await resource.session.close())?.closed !== true) failure = true; } catch { failure = true; }
       if (typeof sessionFactory.close === "function") try { if ((await sessionFactory.close())?.closed !== true) failure = true; } catch { failure = true; }
       if (failure) fail("PROCESS_HOST_CLOSE_UNCONFIRMED");
+      parentClosed = true;
       return { closed: true, resources: resources.size };
     },
   });

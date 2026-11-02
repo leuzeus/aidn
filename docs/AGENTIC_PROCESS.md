@@ -470,3 +470,19 @@ cases. Each uses 12 native responses, one author verification command and one
 independent review command; unchanged-input verification evidence is reused
 within the author context. It records tool/exchange parity as well as functional
 results, and distinguishes protocol savings from compiler cost.
+
+
+### Native host-state evidence
+
+After closing its native clients, the production composition retains a bounded
+`native-host-state.v1` evidence object and returns its `native_checkpoint`
+reference/hash. It binds host-issued assignments/results, exact instance,
+executor identities, writer contributions, native usage and parent-close outcome.
+The envelope also retains hashed observed response identities/count and the
+authorization hash. It omits prompts and reasoning and uses the existing storage
+quota. Interrupted turns retain possible contributors and unknown usage.
+
+This evidence has no resume authority by itself. The parent-close flag is not
+the outer supervisor's process-tree proof. Historical authentication, allocation
+fencing, cumulative budget admission and an explicit new grant are still required;
+the default native launcher continues to refuse a non-pristine instance.

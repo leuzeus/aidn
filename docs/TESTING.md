@@ -1832,3 +1832,13 @@ The agent-view fixture independently compares actual full/agent strict admission
 activation, source binding, blockers, checks and unchanged target bytes; explicit
 compact APIs remain available. Source procedure verification does not qualify a
 new package, native lifecycle, or whole-task performance result.
+
+
+Native state capture fixtures also verify that the production composition retains
+its host-issued assignment/result identities, writer contributions, observed
+usage, response hashes and parent-close state through the existing bounded
+protected evidence writer. Rejection remains terminal; a possible contributor
+survives an interrupted turn without an accepted result. `--checkpoint-only`
+selects these cases locally and cannot replace the complete required suite.
+The native-host-state content hash is not inter-host authentication, a supervisor
+closure proof, a new allocation grant or a general resume qualification.

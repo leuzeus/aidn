@@ -27,6 +27,7 @@ import { spawnSync } from "node:child_process";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
 import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { assertNativeHostState } from "../../src/core/workflow/native-host-state.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { assertAgenticControlScenario } from "../../src/core/workflow/agentic-process-control-scenario.mjs";
 import { republishBrokerProductFile } from "../../src/adapters/runtime/broker-product-file.mjs";
@@ -37,6 +38,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), 
 let serial = 0;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+  if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
   await callback(); checks.push(name); console.log("PASS " + name); }
 function fixture() {
   const base = path.join(root, "case-" + ++serial), targetRoot = path.join(base, "project"), packageRoot = path.join(base, "package");
@@ -165,7 +167,14 @@ function transport(f, options = {}) {
         if (options.transientStorage) put(f.dirs.control, "case/transient.tmp", "transient");
         return { turn: { id: turn } };
       },
-      notify() {}, async flush() {}, async close() { session.closed = true; return { closed: !options.closeFailure }; },
+      notify() {}, async flush() {}, async close() {
+        session.closed = true;
+        if (options.corruptEvidenceOnClose) {
+          const directory = path.join(f.dirs.control, "case"), file = fs.readdirSync(directory).find(name => name.endsWith("-native-result.json"));
+          if (file) fs.appendFileSync(path.join(directory, file), "\n");
+        }
+        return { closed: !options.closeFailure };
+      },
     };
   };
   return { rpcFactory, sessions, calls };
@@ -182,6 +191,53 @@ async function run(f, options = {}) {
 }
 
 try {
+  function checkpoint(f, result) {
+    assert.ok(result.native_checkpoint);
+    const match = /^execution\/case\/([0-9]{5}-native-host-state\.json)$/.exec(result.native_checkpoint.ref); assert.ok(match);
+    const data = fs.readFileSync(path.join(f.dirs.control, "case", match[1])); assert.equal(sha(data), result.native_checkpoint.sha256);
+    const retained = JSON.parse(data); assertNativeHostState(retained.state);
+    assert.equal(retained.state.instance.instance_sha256, result.instance_sha256);
+    assert.equal(retained.responses_observed, result.responses_observed);
+    assert.equal(new Set(retained.response_sha256).size, retained.responses_observed);
+    assert.equal(retained.authorized_limits.configuration_sha256, shadowHash(f.configuration));
+    assert.equal(retained.authorized_limits.global_deadline_ms, result.global_deadline_ms);
+    assert.equal(retained.authorized_limits.workflow_deadline_ms, result.workflow_deadline_ms);
+    assert.equal(retained.authorized_limits.max_responses, 6);
+    assert.equal(retained.authorized_limits.max_bytes, 10 * 1024 * 1024);
+    assert.equal(retained.resume_authority, "NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED");
+    assert.equal(JSON.stringify(retained).includes("developer_instructions"), false);
+    return retained;
+  }
+  await check("checkpoint retains host-issued identities, contributions, results and observed accounting after closure", async () => {
+    const f = fixture(), { result } = await run(f); assert.equal(result.status, "COMPLETED", JSON.stringify(result));
+    const retained = checkpoint(f, result);
+    assert.equal(retained.state.parent_closed, true); assert.equal(retained.state.resources.length, 2); assert.equal(retained.state.results.length, 3);
+    assert.equal(retained.state.resources[0].executor.contributions.length, 2);
+    assert.equal(retained.state.resources[1].executor.contributions.length, 0);
+    assert.equal(retained.state.native_usage.thread_counters.length, 2);
+    const missing = structuredClone(retained.state); missing.resources[0].executor.contributions = [];
+    assert.throws(() => assertNativeHostState(missing), { code: "NATIVE_HOST_STATE_CONTRIBUTION_MISSING" });
+  });
+  await check("checkpoint preserves rejected results and writer lineage instead of manufacturing a successful resume", async () => {
+    const f = fixture(), { result } = await run(f, { reject: true }); assert.equal(result.status, "FAILED");
+    const retained = checkpoint(f, result);
+    assert.equal(retained.state.results.at(-1).result.outcome, "rejected");
+    assert.equal(retained.state.resources[0].executor.contributions.length, 2);
+    assert.equal(inspectAgenticProcess(retained.state.instance).status, "FAILED");
+  });
+  await check("checkpoint retains a possible contributor after an interrupted native turn with no accepted result", async () => {
+    const f = fixture(), { result } = await run(f, { foreignThread: true }); assert.equal(result.first_failure, "PROCESS_SESSION_FOREIGN_THREAD");
+    const retained = checkpoint(f, result);
+    assert.equal(retained.state.results.length, 0); assert.equal(retained.state.resources.length, 1);
+    assert.equal(retained.state.resources[0].executor.contributions.length, 1);
+    assert.equal(retained.state.instance.events.at(-1).kind, "assign");
+    assert.equal(retained.state.native_usage.incomplete_turns_may_be_unknown, true);
+  });
+  await check("checkpoint refuses changed native evidence after closure instead of sealing a successful result", async () => {
+    const f = fixture(), { result } = await run(f, { corruptEvidenceOnClose: true });
+    assert.equal(result.status, "FAILED"); assert.equal(result.first_failure, "PROCESS_EXECUTION_EVIDENCE_CHANGED");
+    assert.equal(result.native_checkpoint, null); assert.equal(result.responses_observed, 3);
+  });
   await check("v2 native-only JSON executes real role ports and preserves exact replay without operation fallback", async () => {
     const f = fixture(), model = JSON.parse(fs.readFileSync(f.configuration.model.path));
     model.contract_version = "agentic-process-model.v2"; model.operation_pins = {};

@@ -337,3 +337,30 @@ cancellation, review/head and admission semantics. The provider-specific GitHub
 adapter, real human channel, full standard model and native mixed resume remain
 unqualified. Raw facts/messages/native result history remain rejected by this
 operation/control host until their own durable authority is composed.
+
+
+### Retained native host state before resume admission
+
+The native activity host now exports `native-host-state.v1` only after checking
+its canonical assignment events against its own issued native observations and
+its result events against its own retained result receipts. Referenced protected
+result files are reverified. The bounded evidence snapshot retains the exact
+instance, executor/agent/lineage/session identities, contributions, binding/skill
+identities, observed result references, parent-close outcome and native usage.
+No developer instructions, worker command arguments or reasoning are copied.
+
+The production composition retains this evidence through its existing protected,
+quota-checked allocation writer after closing clients. `native_checkpoint` in
+the worker result identifies its immutable bytes. Observed response identities
+are hashed, counted and tied to the authorization hash. A failed/interrupted turn
+retains its possible contributor even without an accepted result; missing usage
+stays unknown. A rejection stays terminal. Capture/storage failure preserves an
+earlier failure and cannot authorize favorable retry.
+
+This evidence is subsumed under `agentic_process_instance`, not a new canonical
+workflow state or shared coordination table. The snapshot's parent_closed flag
+is not the supervisor's process-tree proof. The retained envelope explicitly says
+resume authority is not established. A future authenticated allocation journal
+must bind this evidence to actual owned closure, fences, cumulative budgets and
+an explicit next-allocation grant before restoring historical identities or
+lifting the pristine-start guard. Default execution still cannot resume history.

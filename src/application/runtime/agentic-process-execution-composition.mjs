@@ -347,11 +347,25 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         try { closure = await host.close(); } catch { firstFailure ??= "PROCESS_HOST_CLOSE_UNCONFIRMED"; }
         clearTimeout(timer); clearInterval(storageTimer); signal?.removeEventListener("abort", onAbort);
       }
+      let nativeCheckpoint = null;
+      if (current?.record) {
+        try { nativeCheckpoint = await evidence.retain("native-host-state", {
+          state: await host.checkpoint(current.record),
+          response_sha256: [...responseIds].map(id => hash(Buffer.from(id))),
+          responses_observed: responseIds.size,
+          authorized_budget_sha256: shadowHash(authorization),
+          authorized_limits: Object.fromEntries(["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms",
+            "max_turn_ms", "max_responses", "max_bytes"].map(key => [key, authorization[key]])),
+          resume_authority: "NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED",
+        }); }
+        catch (error) { firstFailure ??= /^(PROCESS_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(error.code ?? "") ? error.code : "PROCESS_EXECUTION_CHECKPOINT_UNCONFIRMED"; }
+      }
       let retained = null, debit = null;
       try { retained = localUsed(); debit = retained + (persistence.backend === "postgres" ? canonicalPayloadAttempted : 0); }
       catch { firstFailure ??= "PROCESS_EXECUTION_STORAGE_UNVERIFIABLE"; }
       const result = { contract_version: "agentic-process-execution-result.v1", status: firstFailure ? "FAILED" : current?.status ?? current?.cursor.status ?? "FAILED",
         implementation_sha256: config.implementation_sha256,
+        native_checkpoint: nativeCheckpoint,
         persistence: { ...persistence, state_mode: authorityAtCreation.stateMode,
           canonical_payload_bytes_attempted: canonicalPayloadAttempted, canonical_payload_bytes_acknowledged: canonicalPayloadAcknowledged,
           accounting: persistence.backend === "postgres" ? "local retained bytes plus cumulative attempted canonical payload; server physical storage/WAL not measured" : "local retained bytes and SQLite/WAL file growth",
