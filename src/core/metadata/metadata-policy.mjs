@@ -75,6 +75,14 @@ const GOVERNED_CONTENT_FIELDS = Object.freeze([
 
 const METADATA_POLICIES = freezeDeep([
   policy({
+    concept: "standard_workflow_model", label: "Packaged standard IR component catalog",
+    required: ["contract_version", "component_id", "revision", "scope", "model", "specification", "bindings"],
+    sourceOfTruthConcept: "standard_workflow_model",
+    evidenceTargets: ["src/core/contracts/workflow-definition/standard-workflow-startup-catalog.v1.schema.json", "src/core/contracts/workflow-definition/standard-workflow-model-source.v1.schema.json", "src/core/workflow/standard-workflow-model-catalog.mjs", "src/application/runtime/standard-workflow-startup-composition.mjs", "tools/perf/verify-standard-workflow-model-fixtures.mjs"],
+    lifecycle: "authored -> verified package component; full standard delivery is independent",
+    notes: "Exact model/catalog hashes and SPEC/skill/code identities are retained by the trusted host source descriptor. Its hash participates in host scope and its body enters signed operation snapshots. Existing instances retain their model; changed package bindings require a new explicit source revision, never silent conversion or runtime repair.",
+  }),
+  policy({
     concept: "process_decision_inbox", label: "Authenticated human decision source",
     required: ["contract_version", "inbox_id", "operation_id", "source_ref", "source", "phase", "receipt_sha256", "key_id", "authentication"],
     sourceOfTruthConcept: "process_decision_inbox",

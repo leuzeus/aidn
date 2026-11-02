@@ -429,10 +429,13 @@ ordinary workflow entrypoints. The standard model, authenticated mixed-host
 composition, durable recovery and full workflow qualification remain outstanding
 under the [standard workflow plan](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
 Selecting the default engine does not establish this integration.
-An internal deterministic-operation host now journals and authenticates those
-three ports through the same reducer, including result acceptance in a new Node
-process without business replay. Its fixture model and fixture grants do not
-establish the full standard model, human/external inbox or mixed/native resume.
+An internal operation host journals and authenticates bootstrap, human mode
+capture/application and hook finalization through the same reducer, including
+result acceptance in a new Node process without business replay. The published
+[startup JSON component and traceability](architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md)
+pin their model, code bindings, SPEC and skill sources. The real-port startup
+fixtures consume this package asset. Their fixture human/grant capabilities do
+not establish the full standard model, native identity or mixed/native resume.
 
 Run `npm run perf:verify-agentic-process`. It exercises the real reducer,
 application service and durable artifact stores with portable fixtures. The

@@ -1,0 +1,206 @@
+{
+  "contract_version": "standard-workflow-startup-catalog.v1",
+  "component_id": "aidn-standard-startup",
+  "revision": 1,
+  "scope": {
+    "kind": "fresh_session_startup_component",
+    "complete_standard_workflow": false,
+    "entry_conditions": [
+      "fresh_session_admission",
+      "unknown_bootstrap_mode"
+    ],
+    "remaining_activities": [
+      "existing_session_resume",
+      "cycle_choice_and_carryover",
+      "cycle_creation",
+      "branch_cycle_audit_and_dor",
+      "committing_work",
+      "drift_and_incidents",
+      "validation",
+      "cycle_close",
+      "promotion",
+      "session_close",
+      "pr_review_and_merge",
+      "post_merge_sync",
+      "full_mixed_resume"
+    ]
+  },
+  "model": {
+    "path": "package/catalogs/process-models/aidn-standard-startup.v1.json",
+    "sha256": "0f65e074a33bdf815fcb24f8cda6e3811f79ff9e2f8acdcd5c1a5f6f02cdfb16",
+    "model_id": "aidn-standard-startup",
+    "revision": 1
+  },
+  "specification": {
+    "path": "docs/SPEC.md",
+    "sha256": "a37ae4413215c3b8572eb66e6f27788f33e613d87f6a325a43e6ddc107faa3ad"
+  },
+  "bindings": [
+    {
+      "node_id": "context_reload",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "context_reload",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "context-reload",
+        "input_contract": "standard-empty-input.v1",
+        "output_contract": "standard-operation-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "8eea449f021b421d4665a2484b749089ba297b9f2925079c0e10b7ead707fe93"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+        "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+      }
+    },
+    {
+      "node_id": "session_admit",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_admit",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "start-session",
+        "input_contract": "standard-empty-input.v1",
+        "output_contract": "standard-operation-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "8eea449f021b421d4665a2484b749089ba297b9f2925079c0e10b7ead707fe93"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "session_initialize",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_initialize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "start-session",
+        "input_contract": "standard-session-initialize-input.v1",
+        "output_contract": "standard-operation-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "UNKNOWN"
+        ],
+        "implementation_sha256": "8eea449f021b421d4665a2484b749089ba297b9f2925079c0e10b7ead707fe93"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "mode_decision",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "mode_decision",
+        "revision": 1,
+        "executor_kind": "human",
+        "effect_class": "read-only",
+        "skill_id": "start-session",
+        "input_contract": "standard-session-reference-input.v1",
+        "output_contract": "standard-operation-output.v2",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R02"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "8eea449f021b421d4665a2484b749089ba297b9f2925079c0e10b7ead707fe93"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "session_mode_apply",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_mode_apply",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "start-session",
+        "input_contract": "standard-mode-apply-input.v1",
+        "output_contract": "standard-operation-output.v2",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R02"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "8eea449f021b421d4665a2484b749089ba297b9f2925079c0e10b7ead707fe93"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "session_start_finalize",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_start_finalize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "executor",
+        "skill_id": "start-session",
+        "input_contract": "standard-session-reference-input.v1",
+        "output_contract": "standard-operation-output.v2",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R04",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "8eea449f021b421d4665a2484b749089ba297b9f2925079c0e10b7ead707fe93"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    }
+  ]
+}

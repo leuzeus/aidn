@@ -42,3 +42,25 @@ export function createStandardWorkflowFixture(mode = "files", owned = []) {
   assert.ok(createStandardWorkflowArtifacts({ targetRoot: root }).read("sessions/TEMPLATE_SESSION_SXXX.md", { required: true }).content.includes("session_objective:"), "current template must be canonical in the fixture");
   return root;
 }
+
+// Coherent empty project, installed by the actual source installer. Only Codex
+// discovery/login is stubbed: no native executor or model is invoked here.
+// This is source-install qualification, not an exact-archive qualification.
+export function createFreshStandardWorkflowFixture(mode = "db-only", owned = []) {
+  if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_STATE_MODE_INVALID");
+  const root = fs.mkdtempSync(path.join(temporary, "aidn-standard-fresh-")); owned.push(root);
+  git(root, "init", "-b", "dev"); git(root, "config", "user.name", "Fixture"); git(root, "config", "user.email", "fixture@example.invalid");
+  git(root, "-c", "core.hooksPath=NUL", "commit", "--allow-empty", "-m", "fixture seed");
+  const bin = path.join(root, ".fixture-bin"); fs.mkdirSync(bin);
+  if (process.platform === "win32") fs.writeFileSync(path.join(bin, "codex.cmd"), '@echo off\r\nif "%1"=="login" if "%2"=="status" echo Logged in\r\nexit /b 0\r\n');
+  else { const file = path.join(bin, "codex"); fs.writeFileSync(file, '#!/usr/bin/env sh\nif [ "$1" = "login" ] && [ "$2" = "status" ]; then echo "Logged in"; fi\nexit 0\n'); fs.chmodSync(file, 0o755); }
+  const store = { files: "file", dual: "dual-sqlite", "db-only": "sqlite" }[mode];
+  execFileSync(process.execPath, [path.join(repo, "tools/install.mjs"), "--target", root, "--pack", "core", "--init-defaults", "--project-name", "component-fixture",
+    "--source-branch", "dev", "--artifact-import-store", store, "--runtime-persistence-backend", "sqlite", "--no-codex-migrate-custom"],
+    { cwd: repo, env: { ...process.env, PATH: bin + path.delimiter + (process.env.PATH ?? "") }, encoding: "utf8", stdio: "pipe", timeout: 180000, windowsHide: true, maxBuffer: 8388608 });
+  prepareActivationFixture(root, repo);
+  git(root, "add", "."); git(root, "-c", "core.hooksPath=NUL", "commit", "-m", "installed fixture");
+  assert.equal(createStandardWorkflowArtifacts({ targetRoot: root }).describe().state_mode, mode);
+  assert.equal(createStandardWorkflowArtifacts({ targetRoot: root }).describe().backend, "sqlite");
+  return root;
+}

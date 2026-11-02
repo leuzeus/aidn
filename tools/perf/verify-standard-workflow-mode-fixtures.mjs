@@ -6,8 +6,9 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { createStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
+import { createStandardWorkflowFixture, createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowOperationHost } from "../../src/application/runtime/standard-workflow-operation-host.mjs";
+import { createStandardWorkflowStartupHost, loadStandardWorkflowStartupAssets } from "../../src/application/runtime/standard-workflow-startup-composition.mjs";
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { parseSessionMetadata } from "../../src/lib/workflow/session-context-lib.mjs";
@@ -17,10 +18,10 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 const H = "a".repeat(64), temp = fs.realpathSync(os.tmpdir()), owned = [];
 const inputs = { session_initialize: { session_id: "S001", session_branch: "S001-start", objective: "Start a governed session through the common process IR" },
   mode_decision: { session_id: "S001" }, session_start_finalize: { session_id: "S001" } };
-function model(humanOnly = false) {
-  const ids = humanOnly ? ["mode_decision"] : ["context_reload", "session_admit", "session_initialize", "mode_decision", "session_mode_apply", "session_start_finalize"];
+function humanModel() {
+  const ids = ["mode_decision"];
   const bindings = standardWorkflowOperationBindings().filter(binding => ids.includes(binding.id));
-  return { contract_version: "agentic-process-model.v2", model_id: "session-mode-fixture", revision: 1, participants: [{ id: "project" }], roles: [], policies: [], entry: "start",
+  return { contract_version: "agentic-process-model.v2", model_id: "human-decision-port-fixture", revision: 1, participants: [{ id: "project" }], roles: [], policies: [], entry: "start",
     operation_pins: Object.fromEntries(bindings.map(binding => [binding.id, shadowHash(binding)])),
     nodes: [{ id: "start", kind: "sequence", participant_ref: "project", children: ids }, ...ids.map(id => ({ id, kind: "operation", participant_ref: "project", binding_ref: id }))] };
 }
@@ -33,9 +34,10 @@ function humanSource(sourcesFile, onRead = () => {}) {
     } };
 }
 function openHost(root, keyFile, humanOnly = false, onRead) {
-  return createStandardWorkflowOperationHost({ targetRoot: root, model: model(humanOnly), readSigningKey: () => fs.readFileSync(keyFile),
+  const options = { targetRoot: root, readSigningKey: () => fs.readFileSync(keyFile),
     humanSource: humanSource(path.join(path.dirname(keyFile), "sources.json"), onRead),
-    authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H }) });
+    authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H }) };
+  return humanOnly ? createStandardWorkflowOperationHost({ ...options, model: humanModel() }) : createStandardWorkflowStartupHost(options);
 }
 const here = fileURLToPath(import.meta.url);
 function acceptInChild(root, keyFile, id, humanOnly = false) {
@@ -49,8 +51,11 @@ if (process.argv[2] === "--accept") {
 } else {
 let passed = 0;
 try {
-  for (const mode of ["files", "dual", "db-only"]) {
-    const root = createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(temp, "aidn-standard-mode-")); owned.push(privateRoot);
+  const scenarios = process.argv.includes("--fresh-only") ? [{ mode: "db-only", fresh: true }]
+    : [...["files", "dual", "db-only"].map(mode => ({ mode, fresh: false })), { mode: "db-only", fresh: true }];
+  for (const { mode, fresh } of scenarios) {
+    const label = fresh ? `fresh ${mode}` : mode;
+    const root = fresh ? createFreshStandardWorkflowFixture(mode, owned) : createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(temp, "aidn-standard-mode-")); owned.push(privateRoot);
     const keyFile = path.join(privateRoot, "host.key"), sourcesFile = path.join(privateRoot, "sources.json"); fs.writeFileSync(keyFile, randomBytes(32)); fs.writeFileSync(sourcesFile, "{}");
     let reads = 0;
     const makeHost = () => openHost(root, keyFile, false, () => reads++);
@@ -58,12 +63,21 @@ try {
     let runtime = makeHost(); const initial = runtime.initialize({ instanceId: "start" });
     runtime.initialize({ instanceId: "start", write: true, expectedResultSha256: initial.record.instance_sha256 });
     let decisionId;
-    for (const id of ["context_reload", "session_admit", "session_initialize", "mode_decision", "session_mode_apply", "session_start_finalize"]) {
-      const before = runtime.inspect("start"), occurrence = before.cursor.occurrences.find(row => row.node_id === id && row.status === "READY"); assert.ok(occurrence, id);
+    const assets = loadStandardWorkflowStartupAssets();
+    assert.equal(runtime.inspect("start").record.model_sha256, assets.source.model_sha256);
+    assert.throws(() => createStandardWorkflowOperationHost({ targetRoot: root, model: assets.model, readSigningKey: () => fs.readFileSync(keyFile),
+      authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H }) }).inspect("start"), { code: "STANDARD_HOST_AUTHORITY_CHANGED" });
+    // Select ready occurrences from the shipped IR cursor. Only operation inputs
+    // are supplied by the fixture; there is no second startup sequence in code.
+    for (let step = 0; step < assets.catalog.bindings.length; step++) {
+      const before = runtime.inspect("start"), occurrence = before.cursor.occurrences.find(row => row.status === "READY"); assert.ok(occurrence);
+      const node = before.record.model.nodes.find(row => row.id === occurrence.node_id); assert.equal(node.kind, "operation");
+      const id = node.binding_ref;
       const input = id === "session_mode_apply" ? { decision_operation_id: decisionId } : inputs[id] ?? {};
       if (id === "session_mode_apply") await assert.rejects(runtime.preview({ instanceId: "start", expectedSha256: before.record.instance_sha256,
         occurrenceId: occurrence.occurrence_id, input: { session_id: "S001", mode: "THINKING" } }), { code: "STANDARD_OPERATION_INPUT_INVALID" });
       const preview = await runtime.preview({ instanceId: "start", expectedSha256: before.record.instance_sha256, occurrenceId: occurrence.occurrence_id, input });
+      assert.deepEqual(preview.snapshot.model_source, assets.source);
       assert.equal(preview.prepared?.can_apply ?? true, true, JSON.stringify(preview.prepared));
       const staged = await runtime.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
       let dispatched = await runtime.dispatch(staged.operation_id, { write: true });
@@ -80,7 +94,7 @@ try {
         assert.equal(parseSessionMetadata(unselected).mode, null);
       }
       const output = dispatched.receipt ? runtime.readOutput(dispatched.receipt.evidence_refs[0].ref) : null;
-      const expectedGateRefusal = mode === "db-only" && id === "session_start_finalize";
+      const expectedGateRefusal = !fresh && mode === "db-only" && id === "session_start_finalize";
       assert.equal(dispatched.receipt?.outcome, expectedGateRefusal ? "reconciliation_required" : "completed",
         JSON.stringify({ id, status: dispatched.status, outcome: dispatched.receipt?.outcome, reason: output?.observations?.reason_code }));
       if (expectedGateRefusal) {
@@ -102,14 +116,14 @@ try {
       if (id === "mode_decision") {
         const proof = output.evidence_refs[0]; assert.equal(shadowHash(runtime.readDecisionSource(proof.ref)), proof.sha256);
       }
-      process.stdout.write(`PASS ${mode}: ${id}${expectedGateRefusal ? ", nested gate refusal retained despite successful hook exit" : ""}\n`); passed++;
+      process.stdout.write(`PASS ${label}: ${id}${expectedGateRefusal ? ", nested gate refusal retained despite successful hook exit" : ""}\n`); passed++;
     }
-    const final = runtime.inspect("start"); assert.equal(final.cursor.status, mode === "db-only" ? "WAITING" : "COMPLETED");
-    if (mode === "db-only") assert.ok(final.cursor.occurrences.some(row => row.node_id === "session_start_finalize" && row.wait_reason === "reconciliation_required"));
+    const final = runtime.inspect("start"), unresolved = !fresh && mode === "db-only"; assert.equal(final.cursor.status, unresolved ? "WAITING" : "COMPLETED");
+    if (unresolved) assert.ok(final.cursor.occurrences.some(row => row.node_id === "session_start_finalize" && row.wait_reason === "reconciliation_required"));
     assert.equal(parseSessionMetadata(createStandardWorkflowArtifacts({ targetRoot: root }).read("sessions/S001.md").content).mode, "THINKING");
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256);
-    process.stdout.write(`PASS ${mode}: exact simulation of human choice and ${mode === "db-only" ? "unresolved startup" : "real completed startup"}\n`); passed++;
+    process.stdout.write(`PASS ${label}: exact simulation of human choice and ${unresolved ? "unresolved startup" : "real completed startup"}\n`); passed++;
     const business = createStandardWorkflowArtifacts({ targetRoot: root }), beforeBusiness = [business.read("CURRENT-STATE.md").sha256, business.read("sessions/S001.md").sha256];
     const capture = async (name, choice, reusedId = null) => {
       const host = openHost(root, keyFile, true), initial = host.initialize({ instanceId: name });
@@ -155,13 +169,13 @@ try {
       assert.equal(simulated.trace.at(-1).instance_sha256, state.record.instance_sha256);
     };
     for (const choice of ["refused", "deferred", "cancelled"]) {
-      await capture(choice, choice); process.stdout.write(`PASS ${mode}: ${choice}, authenticated waiting/resume and exact simulation\n`); passed++;
+      await capture(choice, choice); process.stdout.write(`PASS ${label}: ${choice}, authenticated waiting/resume and exact simulation\n`); passed++;
     }
     await capture("duplicate", "COMMITTING", `decision-${mode}`);
     assert.deepEqual([business.read("CURRENT-STATE.md").sha256, business.read("sessions/S001.md").sha256], beforeBusiness);
-    process.stdout.write(`PASS ${mode}: source identity cannot be reused; human protocol never reapplies business effects\n`); passed++;
+    process.stdout.write(`PASS ${label}: source identity cannot be reused; human protocol never reapplies business effects\n`); passed++;
   }
-  process.stdout.write(JSON.stringify({ status: "PASS", checks: passed, human_authority: "fixture-source-adapter", native: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }) + "\n");
+  process.stdout.write(JSON.stringify({ status: "PASS", checks: passed, startup_model: "shipped-json-component", human_authority: "fixture-source-adapter", native: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }) + "\n");
 } finally {
   for (const root of owned) { const real = fs.realpathSync(root); if (path.dirname(real) !== temp || !path.basename(real).startsWith("aidn-standard-")) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID"); fs.rmSync(real, { recursive: true, force: true }); }
 }

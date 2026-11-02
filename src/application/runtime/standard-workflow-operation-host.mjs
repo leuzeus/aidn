@@ -13,6 +13,7 @@ import { shadowHash, freezeShadow } from "../../core/workflow/shadow-json.mjs";
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from "../../core/workflow/process-operation-journal.mjs";
 import { assertStandardOperationInput, assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
+import { assertStandardWorkflowModelSource } from "../../core/workflow/standard-workflow-model-catalog.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import previewSchema from "../../core/contracts/workflow-definition/standard-operation-preview.v1.schema.json" with { type: "json" };
 
@@ -21,8 +22,9 @@ const receiptId = id => "receipt_" + id.slice(3);
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, readSigningKey, authorize, humanSource, now = Date.now }) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, now = Date.now }) {
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
+  const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
   if (model.contract_version !== "agentic-process-model.v2" || typeof authorize !== "function") fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const operations = createStandardWorkflowOperations({ targetRoot, now }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
@@ -36,7 +38,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const project = readWorkflowProjectAuthority({ targetRoot }), persistence = agenticProcessPersistence({ targetRoot });
     if (project.stateMode !== initial.stateMode) fail("STANDARD_HOST_STATE_MODE_CHANGED");
     return { scope_id: shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
-      operation_host: { version: 1, state_mode: project.stateMode, key_id: signer.keyId } }), model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
+      operation_host: { version: 1, state_mode: project.stateMode, key_id: signer.keyId, ...(source ? { model_source_sha256: shadowHash(source) } : {}) } }), model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
   }
   function scope(instance) {
     const authority = readAuthority();
@@ -44,7 +46,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)) fail("STANDARD_HOST_AUTHORITY_CHANGED");
   }
   function snapshot() {
-    return { context: operations.observeScope(), documents: ["CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md", "baseline/current.md", "snapshots/context-snapshot.md"]
+    return { ...(source ? { model_source: source } : {}), context: operations.observeScope(), documents: ["CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md", "baseline/current.md", "snapshots/context-snapshot.md"]
       .map(path => { const row = artifacts.read(path, { required: true }); return { path, sha256: row.sha256 }; }) };
   }
   function validatePreview(preview) {

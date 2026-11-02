@@ -17,6 +17,9 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const CONTRACT_DIR = path.join(REPO_ROOT, "src", "core", "contracts", "cli-output");
 
 export const GOVERNED_CONCEPTS = Object.freeze([
+  { concept: "standard_workflow_model", source_of_truth_concept: "standard_workflow_model", metadata_concept: "standard_workflow_model",
+    required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
+    coverage_note: "Versioned package JSON startup component, fixed code/skill bindings and pinned authorities. This component is not the full standard workflow or its ordinary default entrypoint. Signed source provenance and fixture consumers do not qualify native or installed-archive execution." },
   { concept: "process_decision_inbox", source_of_truth_concept: "process_decision_inbox", metadata_concept: "process_decision_inbox",
     required: ["source_of_truth", "metadata"], coverage_kind: "opt_in_candidate",
     coverage_note: "Explicit trusted human source capture and durable deduplication. Fixture source authentication does not qualify a native human channel or external provider. No implicit success or repeated business effects follows from waiting/reopening." },

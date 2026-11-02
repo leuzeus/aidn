@@ -25,6 +25,15 @@ function normalizeStateMode(value) {
 }
 
 const CONCEPT_GOVERNANCE = freezeDeep({
+  standard_workflow_model: {
+    owner: "package workflow model maintainer",
+    lifecycle: "authored package component -> verified component; complete standard integration remains separately qualified",
+    scope: "versioned package IR and catalog; never inferred from runtime default-engine selection",
+    retention: "retain source revisions and distributed archives; instances embed their exact model and journals retain the source descriptor",
+    migration: "explicit future selection only; no historical instance conversion or automatic pin refresh",
+    replacement: "reviewed model/catalog source update; implementation-only refresh increments revision and refuses changed authority or binding semantics",
+    evidence_targets: ["package/catalogs/process-models/aidn-standard-startup.v1.json", "package/catalogs/standard-workflow-startup.v1.json", "src/application/runtime/standard-workflow-startup-composition.mjs", "tools/perf/verify-standard-workflow-model-fixtures.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs"],
+  },
   process_decision_inbox: {
     owner: "trusted human decision capture host",
     lifecycle: "reserved -> receipted; absent or unverified source never completes an operation",
@@ -405,6 +414,14 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dbOnly: ".aidn/runtime/standard-workflow/effects.lock",
     projection: "none; machine-local collision guard only",
     notes: "Versioned token, process id, physical-root hash, exact plan hash and acquisition time. The token grants no admission or permission. It neither fences external tools nor supplies a durable effect journal or distributed ownership. Unknown effects retain the record; the L4 recovery protocol remains required before ordinary workflow integration.",
+  }),
+  policy({
+    concept: "standard_workflow_model", label: "Packaged standard process model components",
+    files: "package/catalogs/standard-workflow-startup.v1.json and its exact package/catalogs/process-models/aidn-standard-startup.v1.json",
+    dual: "same versioned package assets; project instances and operation journals use their configured canonical artifact store",
+    dbOnly: "same versioned package assets; no fallback from canonical project state to package fixtures",
+    projection: "source descriptor retained in signed operation previews; component IR embedded in its process instance",
+    notes: "Fresh-session startup component only, not the complete standard model or ordinary default workflow selection. Catalog pins model, exact code bindings, SPEC and skill sources. Loading refuses changed bytes instead of repairing pins. Metadata never grants effects, human identity or native qualification. No new runtime table.",
   }),
   policy({
     concept: "process_decision_inbox", label: "Authenticated human decision inbox",

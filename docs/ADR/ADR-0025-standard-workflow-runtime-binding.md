@@ -234,3 +234,39 @@ cessation/reconciliation, full skill planning, cycle/carryover orchestration or
 the shipped standard IR. No ordinary entrypoint selects this partial fixture as
 the full workflow. Native Codex, live PostgreSQL and exact archive qualification
 remain separate acceptance work.
+
+## First distributed standard-process component
+
+`package/catalogs/process-models/aidn-standard-startup.v1.json` is now the authored
+IR of the fresh-session startup component. Its catalog pins the canonical model
+hash, exact operation bindings, package SPEC and skill-source bytes. This is a
+new package asset, independent of the historical shadow definition. It does not
+claim complete standard-workflow coverage or replace the ordinary default entry.
+
+The fixed `standard-workflow-startup-composition.mjs` loader verifies those
+authorities and composes the existing operation host. It does not regenerate a
+graph, accept a caller module path or repair pins. A closed source descriptor
+enters host scope and signed operation snapshots, retaining catalog and authority
+provenance alongside the embedded instance model. Generic hosts without this
+descriptor cannot adopt the component instance. This provenance is metadata, not
+human authentication or effect permission; actual admissions and trusted grants
+remain required. Direct implementation pins include the catalog validator and
+its schemas, while full transitive/archive identity remains separate evidence.
+
+`standard_workflow_model` governs the package catalog, source revisions and
+retained descriptors. Source-authoring refresh is explicit: it may replace only
+changed implementation hashes, creates a new model/catalog revision, and preserves
+the authored graph. Changed SPEC, skill bytes, contracts or declared effect classes
+require a reviewed source update first. Historical instances/readers are not
+converted. A partial source write fails loading instead of triggering a fallback.
+
+Real-port startup fixtures now consume this published JSON and the common cursor.
+They supply inputs and authenticated fixture source/grant capabilities. They no
+longer construct another startup sequence. Isolated human protocol tests still
+use their own fixture model. The component's declared remaining paths include
+session/cycle resume, cycle/DoR, work, drift/incidents, validation, closure,
+promotion, PR, post-merge synchronization and general mixed resume.
+
+Source fixture execution, package inclusion and working-directory independence
+remain distinct from native identity, live PostgreSQL and execution from the
+exact installed archive. Full L2–L8 acceptance remains open.

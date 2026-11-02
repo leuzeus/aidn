@@ -1,0 +1,72 @@
+{
+  "contract_version": "agentic-process-model.v2",
+  "model_id": "aidn-standard-startup",
+  "revision": 1,
+  "participants": [
+    {
+      "id": "project"
+    }
+  ],
+  "roles": [],
+  "policies": [],
+  "entry": "startup",
+  "operation_pins": {
+    "context_reload": "6c1c5991c022e1ea197ebadd062b417ebd718b5a554a423e427d79e815125391",
+    "session_admit": "3adf1dd0b94b19be423d7b560986216b7a0c9a261d0406a5a152cd45022554a0",
+    "session_initialize": "e00566855a22da6727cce710e61252bea5140560a9e42b13e78bd281b3ec3ecc",
+    "mode_decision": "f0664fc17c7bdbe87175683a277d58fb9c8a32c226ab27801bdc51a3d67e665b",
+    "session_mode_apply": "f3f8197d43fd64b04737ced3c3a227a21490c397532990ef0773750a78838cf4",
+    "session_start_finalize": "9cc2b15b2230eb1b70b957808a6449f408d468ae3c3c46aaca4fc01af9a70dca"
+  },
+  "nodes": [
+    {
+      "id": "startup",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "context_reload",
+        "session_admit",
+        "session_initialize",
+        "mode_decision",
+        "session_mode_apply",
+        "session_start_finalize"
+      ]
+    },
+    {
+      "id": "context_reload",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "context_reload"
+    },
+    {
+      "id": "session_admit",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "session_admit"
+    },
+    {
+      "id": "session_initialize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "session_initialize"
+    },
+    {
+      "id": "mode_decision",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "mode_decision"
+    },
+    {
+      "id": "session_mode_apply",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "session_mode_apply"
+    },
+    {
+      "id": "session_start_finalize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "session_start_finalize"
+    }
+  ]
+}

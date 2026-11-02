@@ -31,13 +31,27 @@ db-only legacy corpus has an open canonical cycle without a defined goal; its
 real nested gate warns and the host retains an unknown effect and WAITING cursor,
 even though the outer hook reports success. This is a refusal proof, not a
 successful db-only standard startup or a reason to relax the gate.
+A separate fresh db-only project is created by the actual source installer,
+with explicit SQLite persistence and a Codex discovery/login stub. The same
+published component reaches completed startup on that coherent state; it does
+not inherit or remove the legacy corpus's open cycles.
 Acceptance runs in new Node processes; redispatch returns retained results.
 Absent/unverified/wrong-question/reused sources cannot complete an operation.
 Refusal and cancellation stop; deferral waits for a new explicit intent and
 authenticated answer. Every resulting history is simulated by the same reducer.
-These are component fixture models, not a shipped standard workflow or native
-human-channel qualification. Full A1–A10 and exact installed-package proofs remain
-required by the standard workflow plan.
+The startup path consumes the published JSON component through
+`createStandardWorkflowStartupHost`; its next operation comes from the reducer
+cursor. Source provenance enters signed previews and host scope. Isolated human
+protocol cases still use a dedicated fixture model. This is not the shipped full
+standard workflow or native human-channel qualification. Full A1–A10 and exact
+installed-package proofs remain required by the standard workflow plan.
+
+`verify-standard-workflow-model-fixtures.mjs` validates the published component,
+catalog, SPEC/skill/binding pins, source descriptor, changed-authority refusals
+and explicit implementation-only revision refresh. The default refresh command
+has no writes; runtime loading never repairs a stale catalog. Package-relative
+loading is checked from an unrelated working directory, while package topology
+checks the distributed assets. Neither proves execution from an installed archive.
 
 The required gate also includes `tools/perf/verify-standard-workflow-ports-fixtures.mjs`
 for the partial L2 bootstrap ports. It uses real local business use cases,

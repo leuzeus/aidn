@@ -23,7 +23,9 @@ qualification de son parcours complet.
   borné ; ces doubles ne qualifient pas les adaptateurs métier L2/L4.
 - L2/L4 : en cours. Ports réels de bootstrap, journal de dispatch signé et
   raccordement du choix de mode/hook décrits dans les addenda ci-dessous.
-- L3 et L5 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
+- L3 : en cours, premier composant IR de démarrage distribué et consommé par les
+  tests de ports réels ; le modèle standard complet reste à livrer.
+- L5 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
   générale du lanceur et les preuves natives/package installé restent ouverts.
 - Vérifications L1 : 27 cas dédiés, 38 régressions du réducteur/service, 51 de
   composition native sur transport simulé, 14 du compilateur, 10 du défaut moteur
@@ -541,3 +543,69 @@ Validation de cet addendum, 2026-11-02 UTC :
   db-only sur contexte cohérent, canal humain natif, Codex réel, PostgreSQL
   réel, reprise mixte générale et parcours depuis une archive installée exacte.
   La topologie sur clients jetables issus des sources ne remplace pas L8.
+
+### Addendum L3 — premier composant IR distribué
+
+Le démarrage d’une nouvelle session dispose maintenant d’un modèle JSON
+autonome distribué, sans passage par XML :
+
+```text
+package/catalogs/process-models/aidn-standard-startup.v1.json
+package/catalogs/standard-workflow-startup.v1.json
+docs/architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md
+src/application/runtime/standard-workflow-startup-composition.mjs
+```
+
+Le graphe exprime les six opérations de démarrage déjà raccordées. Le catalogue
+épingle le modèle, les bindings de code, SPEC et les sources des skills. Le
+chargeur fixe vérifie ces identités et crée l’hôte commun ; il ne construit pas
+un nouveau graphe ni ne répare les empreintes. Les scénarios de ports réels
+consomment ce fichier et choisissent la prochaine occurrence dans son curseur.
+Seuls les scénarios isolés du protocole humain gardent un modèle de fixture.
+
+Le descripteur `standard-workflow-model-source.v1` est lié au scope de l’hôte et
+conservé dans les aperçus d’opération signés. Le modèle reste embarqué dans
+l’instance. Le concept `standard_workflow_model` couvre le catalogue et cette
+provenance, sans nouvelle table de coordination. Un hôte générique privé de
+cette provenance ne peut adopter l’instance avec le seul graphe et la même clé.
+Ces métadonnées ne remplacent ni les admissions ni les autorisations réelles.
+
+`refresh-standard-startup-bindings.mjs` propose une actualisation en lecture
+seule. `--write` est nécessaire pour changer les seuls hashes d’implémentation,
+avec nouvelle révision explicite du modèle/catalogue. Le graphe reste inchangé.
+Un changement de SPEC, de source de skill, de contrat ou de classe d’effet
+déclarée exige une modification de source revue ; aucun rafraîchissement
+automatique au chargement n’est admis. Les instances historiques ne changent pas.
+
+Le test de modèle contrôle les assets publiés et les refus sur divergence. Le
+test de démarrage ajoute un projet db-only vierge installé via les procédures
+réelles, SQLite explicite et stub de découverte/login Codex. Le même JSON y
+termine le composant de démarrage ; le corpus db-only historique conserve son
+refus sur intention de cycle indéfinie. Les décisions humaines et grants
+restent des capacités de fixture, avec acceptation dans de nouveaux processus
+Node et comparaison exacte du rejeu/simulateur.
+
+**L3 reste incomplet.** `aidn-standard.v1.json` et le catalogue standard complet
+restent à livrer. Le composant actuel couvre seulement la création d’une nouvelle
+session, le choix/application du mode et le hook associé. Les reprises de session,
+cycles/carryover, audit branche/DoR COMMITTING, travail, dérive/incidents,
+validation, clôtures, promotion, PR/revue/fusion et sync restent obligatoires.
+L5 ne sélectionne pas cette tranche comme workflow standard complet. La preuve
+positive de démarrage db-only sur sources ne clôt ni A1–A10 ni L7/L8.
+
+Validation de cette tranche L3 :
+
+- **PASS hors ligne** : `npm run perf:verify-agentic-process`, dix suites,
+  248 contrôles. Les 20 contrôles de modèle/catalogue et les 44 scénarios de
+  démarrage/décision consomment le composant distribué ou testent explicitement
+  le protocole humain isolé. Le projet db-only cohérent est créé par
+  l’installateur source réel ; aucun ancien cycle n’est supprimé pour obtenir
+  ce cas positif.
+- **PASS** : gouvernance du nouveau concept, métadonnées, source de vérité,
+  catalogues de gates/surfaces et garde d’omission de la nouvelle suite,
+  documentation, sensibilité, topologie et inclusion des assets dans le package.
+  Le changement relève de la voie ASSURED.
+- **NOT_RUN** : workflow standard complet, canal humain/Codex natif réel,
+  événements GitHub réels, reprise mixte générale, PostgreSQL réel et parcours
+  métier depuis une archive installée exacte. Les preuves présentes n’en
+  tiennent pas lieu.
