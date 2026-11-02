@@ -1,5 +1,12 @@
 # Runtime Surface Scope Matrix
 
+Validation-result consumption reads existing signed operation/native evidence
+and immutable host-profile artifacts. Verification entry updates only the
+owning cycle status/traceability, context snapshot and current entry point through
+the existing local owner and canonical CAS/projection ports. It adds no table,
+shared synchronization or implicit db-only export. Fixture/native quality is
+preserved, and unknown writes/projections require reconciliation.
+
 Deterministic cycle validation consumes an accepted signed work evaluation.
 Its trusted host profile, immutable snapshot, bounded check logs and manifest
 remain local owned execution evidence. The existing operation journal signs

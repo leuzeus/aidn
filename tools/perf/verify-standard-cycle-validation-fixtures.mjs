@@ -11,6 +11,7 @@ import { createStandardWorkflowArtifacts } from "../../src/application/runtime/s
 import { assertStandardValidationProfile, selectStandardValidationChecks, standardValidationStatus } from "../../src/core/workflow/standard-cycle-validation.mjs";
 import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { readStandardCycleValidationResult } from "../../src/application/runtime/standard-cycle-validation-result.mjs";
 const owned = [], H = "a".repeat(64), hash = value => createHash("sha256").update(value).digest("hex");
 let count = 0;
 function pass(name) { console.log("PASS " + name); count++; }
@@ -57,6 +58,19 @@ try {
         assert.equal(result.facts.cycle_validation_passed, selected === "passed"); assert.equal(result.facts.cycle_validation_available, selected !== "unavailable"); assert.equal(f.calls(), 1);
         assert.equal(artifacts.ownerPending(), false); const manifest = result.evidence_refs[0], record = path.join(f.profile.evidence_root, ...manifest.ref.split("/").slice(1));
         assert.equal(hash(fs.readFileSync(record)), manifest.sha256); assert.equal(JSON.parse(fs.readFileSync(record)).checks.length, 1);
+        const source = { record: { intent: { binding_ref: "cycle_validation_execute" }, preview: { input, prepared: plan } }, output: result, work: await readWork() };
+        const evidence = await adapter.readResult(source); assert.equal(evidence.manifest.status, result.observations.status); assert.equal(f.calls(), 1);
+        assert.throws(() => readStandardCycleValidationResult({ ...source, materials: { profile: f.profile, descriptor_sha256: plan.plan.descriptor_sha256 } }));
+        if (selected === "passed") {
+          const saved = fs.readFileSync(record), details = JSON.parse(saved), log = path.join(f.profile.evidence_root, ...details.evidence_refs[1].ref.split("/").slice(1)), originalLog = fs.readFileSync(log);
+          fs.appendFileSync(log, "tampered"); await assert.rejects(adapter.readResult(source)); fs.writeFileSync(log, originalLog);
+          const snapshotProduct = path.join(result.observations.snapshot_path, "app.mjs"), originalProduct = fs.readFileSync(snapshotProduct);
+          fs.appendFileSync(snapshotProduct, "tampered"); await assert.rejects(adapter.readResult(source)); fs.writeFileSync(snapshotProduct, originalProduct);
+          fs.appendFileSync(record, " "); await assert.rejects(adapter.readResult(source)); fs.writeFileSync(record, saved);
+          const stale = structuredClone(source); stale.work.evaluation_sha256 = H; await assert.rejects(adapter.readResult(stale));
+          const relabelled = structuredClone(source); relabelled.output.observations.proof_class = "native"; await assert.rejects(adapter.readResult(relabelled));
+          assert.equal((await adapter.readResult(source)).manifest.status, "passed"); assert.equal(f.calls(), 1);
+        }
         const inconsistent = structuredClone(result); inconsistent.facts.cycle_validation_passed = !result.facts.cycle_validation_passed; assert.throws(() => assertStandardOperationOutput(inconsistent)); }
     }
     assert.deepEqual(fs.readFileSync(file), bytes); pass(selected + ": pinned Node fixture and bounded validation, no model call");

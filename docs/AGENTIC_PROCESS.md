@@ -1,5 +1,12 @@
 # Participants, roles and agentic control
 
+The internal standard ports also support `cycle_validation_evaluate` and
+`cycle_verification_enter`. The first reauthenticates code-check evidence; the
+second needs its accepted fresh result, all planned task work observed and a
+current explicit write grant. It records VERIFYING, evidence, snapshot and the
+next audit action through real canonical ports. Failed or missing checks stay
+pending; no requirement acceptance or lifecycle closure follows automatically.
+
 The internal mixed host can bind `cycle_validation_execute` after accepted
 `cycle_work_evaluate` through the same JSON IR. The host supplies a pinned,
 approved validation profile outside authored JSON. Deterministic checks use an

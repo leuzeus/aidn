@@ -1,3 +1,4 @@
+import { verifyCycleVerificationEntry } from "./cycle-verification-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -106,12 +107,12 @@ export async function verifyCycleReadinessContracts(check) {
   });
 }
 
-export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false }) {
-  for (const selected of (validation ? ["files", "dual", "db-only"] : work ? ["files", "dual", "db-only", "report", "source"] : readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${validation ? "cycle validation" : work ? "cycle work" : readiness ? "cycle readiness" : "cycle plan"} ${selected}: ${work ? "execute the frozen task and authenticate observed work" : "authenticated native proposal records canonical planning and retains readiness barriers"}`, async () => {
+export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false, verification = false }) {
+  for (const selected of (verification ? ["files", "dual", "db-only", "partial", "projection"] : validation ? ["files", "dual", "db-only"] : work ? ["files", "dual", "db-only", "report", "source"] : readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${verification ? "cycle verification" : validation ? "cycle validation" : work ? "cycle work" : readiness ? "cycle readiness" : "cycle plan"} ${selected}: ${work ? "execute the frozen task and authenticate observed work" : "authenticated native proposal records canonical planning and retains readiness barriers"}`, async () => {
     const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["report", "source"].includes(selected) ? "files" : selected;
     let allowed = true, tamper = false, root;
     const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
-    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, work, validation, authorize: async request => {
+    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, work, validation, verification, authorize: async request => {
       if (tamper && request.binding.id === "cycle_plan_record") {
         tamper = false; const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
         try { const row = store.getArtifact("CURRENT-STATE.md"); store.upsertArtifact({ ...row, classification_reason: "fixture-planning-race" }); }
@@ -230,9 +231,9 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
         finally { store.close(); }
       }
     }
-    if (readiness) await verifyReadinessTransition({ f, artifacts, operations, selected, root, cyclePath, recorded, script, work,
+    if (readiness) await verifyReadinessTransition({ f, artifacts, operations, selected: verification && ["partial", "projection"].includes(selected) ? mode : selected, root, cyclePath, recorded, script, work,
       setAllowed: value => { allowed = value; } });
-    if (work) await verifyWorkResult({ f, root, selected, script, auth });
+    if (work) await verifyWorkResult({ f, root, selected: verification && ["partial", "projection"].includes(selected) ? mode : selected, script, auth });
     if (validation) {
       console.log(`STEP cycle validation ${selected}: authenticated observed work accepted; deterministic validation next`);
       const beforeValidation = f.open().inspect(); assert.equal(beforeValidation.cursor.occurrences.find(row => row.node_id === "validate").status, "READY");
@@ -251,7 +252,8 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
       const retained = shadowHash(record); assert.equal((await f.open().dispatchOperation(validated.operation_id, { write: true })).status, "retained_result");
       assert.equal(shadowHash(f.open().readOperation(validated.operation_id)), retained); assert.equal(verifier.calls(), 1);
       assert.match(artifacts.read(`${cyclePath}/status.md`).content, /^state: IMPLEMENTING$/m);
-      assert.equal(f.open().inspect().cursor.status, "WAITING"); assert.equal(artifacts.ownerPending(), false);
+      assert.equal(f.open().inspect().cursor.status, verification ? "RUNNING" : "WAITING"); assert.equal(artifacts.ownerPending(), false);
+      if (verification) await verifyCycleVerificationEntry({ f, artifacts, cyclePath, validated, verifier, selected, script, setAllowed: value => { allowed = value; } });
     }
     state = f.open().inspect();
     const retained = shadowHash(journal), afterProduct = fs.readFileSync(path.join(f.dirs.product, "app.mjs"));

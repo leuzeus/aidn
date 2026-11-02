@@ -158,6 +158,12 @@ refusals; a valid shadow envelope grants no authority to execute.
 
 ## Internal Agent Execution Contracts
 
+The private workflow-definition namespace also contains validation-evaluation
+input and verification-entry input/plan/output v1 contracts. Accepted source
+identities, coverage facts and the four exact canonical changes are distinct
+from task acceptance, audit completion and cycle closure. These contracts add
+no public CLI command or historical instance conversion.
+
 `standard-cycle-validation-profile.v1`, its prepared plan, input and output
 use the private workflow-definition namespace. The host supplies a pinned check
 profile out of band; authored IR carries only the accepted observed-work

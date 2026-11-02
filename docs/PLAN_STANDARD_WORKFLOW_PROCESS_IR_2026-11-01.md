@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `7049c89` et tranche courante de validation déterministe
-du code observé, avec profil de checks approuvé par l’hôte.
+Dernier état relu : `906c935` et tranche courante de consommation des preuves
+et de passage explicite en vérification du cycle.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -2216,3 +2216,71 @@ refuser une preuve manquante, périmée, altérée ou d'un autre scope avant tou
 transition canonique. Les preuves natives et sur archive installée restent
 NOT_RUN ; la suite monolithique et l'admission complète d'une PR ne sont pas
 revendiquées par cette tranche.
+
+## Addendum — preuve de validation vers phase VERIFYING
+
+État : tranche L2/L4 validée hors ligne, à partir de `906c935`. Elle ne ferme pas
+le modèle standard complet L3, les entrées ordinaires L5 ni A1–A10/L6–L8.
+
+Le port `cycle_validation_evaluate` consomme l'identité IR d'une opération de
+validation acceptée. L'autorité standard vérifie le journal signé, le scope,
+la chaîne de travail/planification et le code courant. Le lecteur
+`standard-cycle-validation-result.mjs` relit le profil épinglé, le manifeste,
+les logs, les deux inventaires et le snapshot physique ; il recalcule les
+verdicts au lieu de se contenter du booléen du reçu. Aucun processus de contrôle
+ni modèle n'est lancé lors de cette consommation. La frontière de fixture reste
+explicitement une fixture, admise seulement par la capacité hôte de test.
+
+La couverture de travail vient des évaluations signées et acceptées correspondant
+aux tâches exactes du même plan gelé. Une seule tâche observée ne couvre pas un
+plan à plusieurs tâches. Les tests manquants, échoués ou indisponibles restent
+en attente ; exigences, convergence d'usages, GAP, CR et décisions ne sont pas
+déclarés audités par les résultats de code.
+
+Le port distinct `cycle_verification_enter` exige cette évaluation fraîche et
+le travail observé de toutes les tâches prévues. Après admission réelle
+cycle-close et autorisation explicite, il utilise les CAS conservant les
+métadonnées pour status, traceability, context-snapshot et CURRENT-STATE. Le
+cycle passe en VERIFYING, scope gelé ; la preuve et le prochain audit restent
+visibles. Des contrôles échoués ou indisponibles demeurent des validations à
+résoudre, jamais une acceptation implicite ou DONE. La transition ne clôt pas le
+skill cycle-close : son audit, sa décision finale et son checkpoint/hook restent
+des obligations séparées du parcours complet.
+
+Les onze cas ciblés, augmentés de relectures et refus d'altération/requalification
+de preuves, et le contrat de couverture passent. Les nouvelles définitions de
+schéma, les 27 contrôles réducteur/opérations et les 22 de modèles passent.
+Les cinq parcours files, dual, DB-only, écriture partielle et projection perdue
+passent sur les pins 52/50. Les trois parcours nominaux mettent réellement à jour
+les quatre artefacts canoniques, restent en attente d'audit, puis refusent une
+nouvelle écriture d'implémentation en VERIFYING. Files reprend l'entrée en
+nouveau processus Node. Le contrôle n'est lancé qu'une fois et les deux
+allocations simulées restent closes. Le cas partiel conserve son premier écrit
+canonique ; le cas projection conserve ses quatre écrits canoniques, avec refus
+de confirmation de la projection. Les deux gardent le propriétaire d'effet,
+les faits de succès vides et le reçu sans répétition d'effet. Les cinq
+simulations reproduisent exactement le hash final du même modèle/réducteur.
+
+Les politiques source/métadonnées/complétude, les 14 contrôles de ports, les
+références, Markdown, le catalogue des 63 gates et la route ASSURED passent.
+La sensibilité est PASS sur 1 759 fichiers suivis. La topologie passe sur cinq
+clients jetables issus du package courant ; elle ne remplace pas la qualification
+d'une archive installée exacte. Natif réel et archive installée exacte restent
+NOT_RUN. La suite monolithique et l'admission complète d'une PR ne sont pas
+revendiquées. La complétude des concepts n'est pas la complétude du workflow.
+
+Le reste inclut explicitement la sélection/progression de toutes les tâches
+dans le modèle, les validations finales de l'ensemble du produit, l'audit
+structuré des critères et de la matrice d'usages, les décisions humaines de
+clôture/report/non-conservation/annulation et le hook final. Le modèle complet
+doit les assembler avec incidents/dérives, promotion, PR et synchronisation.
+Cette transition de phase n'est pas un substitut à ce livrable.
+
+Une préparation isolée de la progression des tâches dispose de neuf contrôles
+purs : curseur ordonné lié au plan gelé, refus de chaîne étrangère/périmée,
+projection versionnée de la prochaine tâche sans changement du JSON de périmètre,
+préservation du lecteur historique, et rapport de travail lié à la tâche choisie.
+Un résultat explicite sans modification de code y reste soumis à validation.
+Ce socle n'est pas encore raccordé aux ports de sélection/avancement ni à la
+boucle IR ; il ne qualifie aucun parcours applicatif, natif ou installé. Il
+reste séparé du code 52/50 qualifié ci-dessus.

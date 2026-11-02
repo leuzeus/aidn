@@ -19,6 +19,9 @@ import workInput from "../contracts/workflow-definition/standard-cycle-work-eval
 import workOutput from "../contracts/workflow-definition/standard-cycle-work-output.v1.schema.json" with { type: "json" };
 import validationInput from "../contracts/workflow-definition/standard-cycle-validation-input.v1.schema.json" with { type: "json" };
 import validationOutput from "../contracts/workflow-definition/standard-cycle-validation-output.v1.schema.json" with { type: "json" };
+import validationEvaluationInput from "../contracts/workflow-definition/standard-cycle-validation-evaluate-input.v1.schema.json" with { type: "json" };
+import verificationInput from "../contracts/workflow-definition/standard-cycle-verification-enter-input.v1.schema.json" with { type: "json" };
+import verificationOutput from "../contracts/workflow-definition/standard-cycle-verification-output.v1.schema.json" with { type: "json" };
 import driftInput from "../contracts/workflow-definition/standard-drift-evaluate-input.v1.schema.json" with { type: "json" };
 import driftFollowup from "../contracts/workflow-definition/standard-drift-followup-input.v1.schema.json" with { type: "json" };
 import driftOutput from "../contracts/workflow-definition/standard-drift-output.v1.schema.json" with { type: "json" };
@@ -48,7 +51,8 @@ export function assertStandardOperationInput(operation, value) {
     : operation === "drift_change_request_record" ? changeRequestInput : operation === "drift_recovery_context_refresh" ? driftCycleContext
     : operation === "drift_recovery_cycle_initialize" ? driftCycleInput : operation === "drift_recovery_checkpoint_observe" ? driftCycleCheckpoint
     : operation === "cycle_plan_evaluate" ? cyclePlanInput : operation === "cycle_plan_record" ? cyclePlanRecordInput
-    : operation === "cycle_readiness_evaluate" ? readinessInput : operation === "cycle_implementation_enter" ? implementationInput : operation === "cycle_work_evaluate" ? workInput : operation === "cycle_validation_execute" ? validationInput : null;
+    : operation === "cycle_readiness_evaluate" ? readinessInput : operation === "cycle_implementation_enter" ? implementationInput : operation === "cycle_work_evaluate" ? workInput : operation === "cycle_validation_execute" ? validationInput
+    : operation === "cycle_validation_evaluate" ? validationEvaluationInput : operation === "cycle_verification_enter" ? verificationInput : null;
   if (!schema || checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length)
     fail(operation === "session_initialize" ? "STANDARD_SESSION_INPUT_INVALID" : "STANDARD_OPERATION_INPUT_INVALID");
   return value;
@@ -56,6 +60,14 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-verification-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, verificationOutput, "$", { contractKind: "workflow-definition" }).length
+      || value.outcome !== "completed" && Object.keys(value.facts).length || (value.outcome === "reconciliation_required") !== (value.effect_status === "unknown")
+      || value.operation_ref === "cycle_validation_evaluate" && value.effect_status !== "no_effect"
+      || value.outcome === "blocked" && value.effect_status !== "no_effect"
+      || value.outcome === "completed" && value.operation_ref === "cycle_verification_enter" && value.effect_status !== "confirmed") fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-cycle-validation-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, validationOutput, "$", { contractKind: "workflow-definition" }).length
       || value.outcome !== "completed" && Object.keys(value.facts).length || (value.outcome === "reconciliation_required") !== (value.effect_status === "unknown")

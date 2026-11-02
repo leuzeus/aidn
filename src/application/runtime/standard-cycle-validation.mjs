@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
+import { inventoryStandardValidationSnapshot as inventory, readStandardCycleValidationResult } from "./standard-cycle-validation-result.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createCodexSandboxValidationBoundary } from "../../adapters/runtime/codex-sandbox-validation-boundary.mjs";
@@ -27,6 +28,7 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
   const proofClass = boundaryFactory ? "fixture" : "native";
   async function material(productRoot) {
+    if (!profileRef) fail("STANDARD_VALIDATION_PROFILE_REQUIRED");
     const profileFile = readAgentRunFile(profileRef.path, { sha256: profileRef.sha256 }), profile = assertStandardValidationProfile(profileFile.value);
     for (const name of [profileRef.path, profile.snapshot_root, profile.evidence_root, profile.boundary_configuration.path, profile.qualification.path, profile.public_key.path, ...profile.checks.map(row => row.script.path)])
       if (inside(productRoot, name)) fail("STANDARD_VALIDATION_PRODUCT_CONTROL_OVERLAP");
@@ -67,25 +69,8 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
     const prepared = { can_apply: true, plan, plan_sha256: shadowHash(plan) };
     capture?.(work, materials); return prepared;
   }
-  function inventory(directory, limits) {
-    const rows = []; let bytes = 0, entries = 0;
-    function walk(at) {
-      agentRunPhysicalPath(at);
-      for (const name of fs.readdirSync(at).sort()) {
-        if (++entries > limits.max_files + 256) fail("STANDARD_VALIDATION_SNAPSHOT_LIMIT");
-        const file = path.join(at, name), stat = fs.lstatSync(file);
-        if (stat.isSymbolicLink()) fail("STANDARD_VALIDATION_SNAPSHOT_REDIRECTED");
-        if (stat.isDirectory()) walk(file); else {
-          if (!stat.isFile() || stat.size > limits.max_snapshot_bytes + 67108864 - bytes) fail("STANDARD_VALIDATION_SNAPSHOT_LIMIT");
-          const data = fs.readFileSync(file); bytes += data.length;
-          if (bytes > limits.max_snapshot_bytes + 67108864 || rows.length >= limits.max_files + 64) fail("STANDARD_VALIDATION_SNAPSHOT_LIMIT");
-          rows.push({ path: path.relative(directory, file).replaceAll("\\", "/"), bytes: data.length, sha256: hash(data) });
-        }
-      }
-    }
-    walk(directory); return rows;
-  }
   return Object.freeze({
+    async readResult(source) { return readStandardCycleValidationResult({ ...source, materials: await material(source.work.product_root), allowFixture: !!boundaryFactory }); },
     prepare: (instance, input) => prepare(instance, input, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       const plan = prepared?.plan;

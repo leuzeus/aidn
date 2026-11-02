@@ -286,10 +286,37 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const observed = readAgentRunFile(nativeEvidenceFile(configuration, ref, journal.allocations.length), { sha256: ref.sha256, maxBytes: 1048576 }).value;
     return { output, evaluation_sha256: shadowHash(output), files: observed.files, product_root: configuration.product_root };
   }
+  async function readCycleValidationExecution(instance, input) {
+    assertStandardOperationInput("cycle_validation_evaluate", input);
+    const validation = acceptedOperation(instance, input.validation_operation_id, "cycle_validation_execute");
+    const work = await readCycleWorkEvaluation(instance, validation.record.preview.input);
+    const phaseId = work.output.observations.implementation_operation_id, phase = acceptedOperation(instance, phaseId, "cycle_implementation_enter");
+    const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate");
+    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record");
+    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate");
+    const proposal = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT).report;
+    const observedTasks = new Set();
+    for (const event of instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_work_evaluate")) {
+      const accepted = instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed");
+      if (!accepted) continue;
+      const prior = acceptedOperation(instance, event.intent.operation_id, "cycle_work_evaluate"), facts = prior.output;
+      if (facts.facts.cycle_work_observed !== true || facts.observations.implementation_operation_id !== phaseId || facts.observations.scope_sha256 !== work.output.observations.scope_sha256) continue;
+      const task = proposal.tasks.find(row => row.id === facts.observations.task.id);
+      if (!task || shadowHash(task) !== shadowHash(facts.observations.task)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
+      const report = readActivityOutput(instance, prior.record.preview.input.report_occurrence_id, CYCLE_WORK_CONTRACT);
+      if (report.report.task !== task.task || shadowHash(report.producer) !== shadowHash(facts.observations.producer)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
+      observedTasks.add(task.id);
+    }
+    const context = await observeCycleReadinessContext();
+    return { ...validation, work, proposal, observed_task_ids: [...observedTasks], context: context.context, context_sha256: context.context_sha256 };
+  }
   const observeDriftContext = () => readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   const observeCyclePlanContext = () => readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
+  const observeCycleVerificationContext = async () => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+    productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment,
+    readinessTransition: true, verificationTransition: true }));
   return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
-    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, observeDriftContext, modelSource: source });
+    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

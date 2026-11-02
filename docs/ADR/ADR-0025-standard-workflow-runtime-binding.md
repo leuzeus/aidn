@@ -885,3 +885,31 @@ always records `proof_class: fixture`. It cannot establish native sandbox
 qualification or provider identity. The complete standard model still needs
 validation routing, task progression, validation-phase/lifecycle transitions,
 closure and the full native and installed-archive acceptance parcours.
+
+### Evidence consumption and verification entry
+
+`cycle_validation_evaluate` authenticates an accepted validation operation and
+its current work source. Its reader uses the pinned host profile, exact prepared
+plan, bounded evidence manifest, stdout/stderr digests and before/after snapshot
+inventories. It recomputes the check protocol and refuses changed, missing or
+foreign evidence. A fixture capability remains fixture evidence; ordinary host
+composition requires the native boundary. Reading evidence never launches a
+verifier or calls a model.
+
+Task coverage comes from accepted signed work evaluations for the same frozen
+implementation scope and exact recorded tasks. One observed task does not
+complete a plan containing another task. Current checks retain their exact
+product fingerprint; missing or unsuccessful planned tests remain pending.
+This records observations without declaring requirements, usage convergence,
+gaps, change requests or design decisions reviewed.
+
+The separately authorized `cycle_verification_enter` consumes the fresh accepted
+evaluation and requires all recorded task work to be observed. It invokes the
+actual cycle-close pre-write admission and uses metadata-preserving canonical
+CAS for cycle status, traceability, context snapshot and current entry point.
+The phase becomes VERIFYING; scope remains frozen and outstanding audit/checks
+and explicit closure remain visible. It neither marks DONE nor completes the
+cycle-close skill or its required checkpoint hook. Partial writes or unconfirmed
+projections retain the effect owner and signed reconciliation state, without
+rollback or repeat dispatch. These ports remain components of the full standard
+model and its remaining multi-task selection, audit and closure routes.

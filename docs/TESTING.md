@@ -1,5 +1,18 @@
 # Testing Guide
 
+`--cycle-verification-mode=contract|files|dual|db-only|partial|projection` in the
+agentic execution corpus selects evidence consumption and verification-entry
+checks. The contract case distinguishes incomplete task/test coverage from
+lifecycle completion. Integrated cases reuse actual admissions, canonical ports,
+signed source/journals and deterministic checks, with fixture native/grant and
+execution-boundary capabilities. Files resumes entry in a new Node process.
+Partial SQLite writes and lost dual projection must keep the owner, empty success
+facts and retained dispatch. The same model/reducer must reproduce the exact
+final hash, with no additional native allocation or verifier invocation.
+The standalone cycle-validation fixture additionally rereads manifests/logs and
+snapshots, refuses tampering/stale sources and prevents a fixture/native relabel.
+Full standard, native provider/boundary and installed archive proofs are separate.
+
 `node tools/perf/verify-standard-cycle-validation-fixtures.mjs` exercises eleven
 offline validation cases: passed/failed/unavailable, changed snapshot, unknown
 termination, a real Node timeout, wrong product behavior, refused authorization,

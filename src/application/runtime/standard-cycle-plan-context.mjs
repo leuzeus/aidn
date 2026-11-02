@@ -9,7 +9,7 @@ import path from "node:path";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 export async function readStandardCyclePlanContext(options) {
   const observed = await readStandardDriftContext(options), source = observed.context;
-  if (source.context_use !== "active_cycle" || !["OPEN", ...(options.readinessTransition === true ? ["IMPLEMENTING"] : [])].includes(source.cycle_state)
+  if (source.context_use !== "active_cycle" || !["OPEN", ...(options.readinessTransition === true ? ["IMPLEMENTING"] : []), ...(options.verificationTransition === true ? ["VERIFYING"] : [])].includes(source.cycle_state)
     || source.git.other_changes.count !== 0) fail("STANDARD_CYCLE_PLAN_CONTEXT_REQUIRED");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: options.targetRoot, env: options.environment });
   const current = artifacts.read("CURRENT-STATE.md", { required: true }), fields = analyzeStructuredArtifact(current.content).key_values;
