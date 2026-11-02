@@ -13,7 +13,7 @@ export { assertSupportedSkill, assertValidSkillMode };
 function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate, runId) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
   if (runId !== undefined) {
-    if (route.tool !== "gating-evaluate.mjs" || typeof runId !== "string" || !/^[a-z][a-z0-9_-]{0,95}$/.test(runId)) throw Error("SKILL_HOOK_RUN_ID_INVALID");
+    if (!["gating-evaluate.mjs", "cycle-create-hook.mjs"].includes(route.tool) || typeof runId !== "string" || !/^[a-z][a-z0-9_-]{0,95}$/.test(runId)) throw Error("SKILL_HOOK_RUN_ID_INVALID");
     args.push("--run-id", runId);
   }
   if (

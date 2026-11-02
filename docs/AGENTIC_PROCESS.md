@@ -658,3 +658,11 @@ objective and the real continuity gate supplies base/rule. Private cycle/context
 plan v2 binds metadata preimages and required projections are checked. A created
 cycle remains at DoR NOT_READY and R05 incomplete until the later required
 planning/diagnosis/checkpoint steps. Unknown effects retain ownership.
+
+The cycle component also declares `cycle_checkpoint_finalize`, routed to the
+real cycle-create skill hook. The deterministic preview waits for any required
+R05 check before effects. Confirmation checks the nested gate and its fresh
+run-correlated event, document/metadata stability and process authority under
+the local owner. An `ok` hook wrapper with a warning is insufficient. Missing
+post-effect confirmation retains unknown effects; cycle readying and the full
+standard graph remain separate obligations.

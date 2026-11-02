@@ -352,7 +352,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_mode_apply" ? await operations.prepareMode(decisionInput(state.record, input))
         : binding.id === "session_start_finalize" ? await operations.prepareStart(input)
         : binding.id === "cycle_context_refresh" ? await operations.prepareCycleContext(input)
-        : binding.id === "cycle_initialize" ? await operations.prepareCycle(input) : null;
+        : binding.id === "cycle_initialize" ? await operations.prepareCycle(input)
+        : binding.id === "cycle_checkpoint_finalize" ? await operations.prepareCycleCheckpoint(input) : null;
       return signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instanceId, instance_sha256: expectedSha256,
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
         input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input,
@@ -427,6 +428,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         } else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else if (record.intent.binding_ref === "cycle_checkpoint_finalize") output = await operations.finalizeCycleCheckpoint(record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record),
+            assertCurrent: () => { if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256) fail("STANDARD_CYCLE_CHECKPOINT_PROCESS_CHANGED"); } });
         else output = await operations.finalizeStart(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         if (record.preview.binding.effect_class === "read-only" && shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
           throw Object.assign(new Error("STANDARD_HOST_PRECONDITIONS_CHANGED"), { effect_status: "no_effect" });

@@ -283,7 +283,7 @@ host and reducer, not a second cycle orchestrator. Actual creation/admission,
 canonical CAS, branch ownership audit and runtime projection are bound to SPEC
 and fixed skill/code identities. Creation stays OPEN/NOT_READY with an empty
 native write scope. R3, human cycle choice, DoR and completion of the full
-cycle-create skill/hook remain open.
+cycle-create skill remain open; the checkpoint extension is specified below.
 
 The published cycle component also declares its input mappings. Initial cycle
 parameters carry session identity and requested cycle identity/type/title/goal.
@@ -731,3 +731,25 @@ post-effect observation retains uncertainty and ownership. Creation emits only
 its own fact with DoR false and R05 incomplete. Requirements mapping, other
 recovery actions, fresh native diagnosis and the R05 hook remain separately
 required; this component is not the complete standard workflow.
+
+### Cycle skill checkpoint and conditional R05 admission
+
+`cycle_checkpoint_finalize` is a fixed deterministic binding to the actual
+cycle-create hook/checkpoint. Its read-only preview checks canonical session and
+cycle ownership, branch audit, document/metadata preimages, required projections
+and the current gating service. A required R05 check, incident or stopped reload
+leaves an explicit blocked operation before hook effects. Retrying uses a fresh
+intent after external resolution; a blocked receipt is never reused as success.
+
+The session mode and originally admitted continuity rule remain unchanged. The
+performance hook uses COMMITTING as prescribed by skill step 9 and its route;
+the preview uses the same hook mode for both continuity and R05 admission. This
+does not admit creation of another cycle or permit R1 creation in EXPLORING.
+The effect runs under the local owner with a fresh grant/process check. The host
+supplies a dedicated run ID to the existing cycle hook; confirmation requires
+the nested checkpoint and gate, a fresh correlated appended checkpoint event,
+unchanged canonical business documents and current process authority. An `ok`
+wrapper with a conditional R05 warning does not satisfy this contract. Failure
+after invocation retains unknown effects and ownership without another dispatch.
+The catalog continues to distinguish this component from cycle readying and the
+complete standard graph, its native human/provider and installed-archive proofs.

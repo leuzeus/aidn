@@ -79,8 +79,8 @@ the eventual choice. Cycle creation consumes successful admission output for
 continuity and uses accepted initializer input for later leaves; files/dual/
 db-only include blocked admission, reopen/retained receipts and exact simulation.
 The partial-effect scenario must retain uncertainty and prohibit another effect.
-`--case=files|dual|db-only|exploring|partial` selects one cycle scenario; the
-unfiltered command retains all five. The cycle port must also refuse another
+`--case=files|dual|db-only|exploring|partial|checkpoint-partial` selects one cycle scenario; the
+unfiltered command retains all six. The cycle port must also refuse another
 session identity; successful admission data does not replace the selected session.
 These source-installed, real-port fixtures use human/grant fixture capabilities;
 they do not qualify a native human channel, complete skill, complete standard
@@ -208,17 +208,27 @@ approval, R05 completion, mixed native resume or the full standard workflow.
 
 `verify-standard-workflow-cycle-fixtures.mjs` consumes the separately distributed
 cycle scaffold JSON through real canonical files/SQLite, admission, Git, CAS,
-audit and projector ports. It requires real dirty-work waiting, explicit external
+audit, checkpoint hook and projector ports. It requires real dirty-work waiting, explicit external
 Git reconciliation, a refused grant, authenticated receipt acceptance in a new
 Node process, a native product-patch denial in OPEN/NOT_READY, and exact replay /
 simulation with the execution reducer. Files/dual/db-only plus db-only EXPLORING
 are offline checks. Installer Codex discovery and host identity/grants are fixture
-capabilities. Completing this scaffold does not complete DoR, the cycle-create
-skill/hook, the standard workflow, native identity or exact installed-archive
+capabilities. Completing this component does not complete DoR, cycle readying,
+the standard workflow, native identity or exact installed-archive
 qualification. A real SQLite trigger also refuses the last cycle CAS after ten
 committed artifacts: the authenticated unknown result must retain ownership and
 WAITING, survive reopening, refuse fresh dispatch and replay exactly. Conditional
-drift from R05 remains an explicit remaining route.
+drift from R05 remains an explicit route: COMMITTING first waits with no hook
+effects, then a real external legacy drift hook establishes a test precondition
+before retry. This external precondition is not the full modeled/native analysis
+graph. The actual cycle hook must prove a non-skipped clear gate and a fresh
+correlated checkpoint event. Denied authorization writes no checkpoint event.
+The checkpoint-partial selection loses event observation after the real hook;
+its effects remain unknown, ownership retained and another invocation refused.
+The files selection dispatches the ready checkpoint in a fresh Node process
+after the R05 wait, then accepts and retains its receipt without another hook.
+An old direct-port preview also cannot repeat the checkpoint after its event
+append. A branch change during authorization must refuse before hook effects.
 
 
 `verify-workflow-record-storage-fixtures.mjs` exercises the actual SQLite index

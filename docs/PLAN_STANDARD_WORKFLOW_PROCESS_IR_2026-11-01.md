@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `583c033` et tranche courante de création de cycle depuis
-la récupération R05, son contexte confirmé et un checkpoint Git observé.
+Dernier état relu : `d326bc6` et tranche courante de checkpoint réel du skill
+cycle-create, avec admission conditionnelle R05 et confirmation de l'effet.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -32,7 +32,10 @@ encore ouverts.
   dans les addenda ci-dessous, ainsi que diagnostic typé et finalisation R05 sans
   dérive avec vrai hook, revue humaine, conservation canonique des constats et
   création admise d'une CR en attente de décision.
-  L'exécution de la récupération choisie reste ouverte. Le journal d'allocation signé constitue une tranche
+  La continuation `new_cycle` dispose du contexte, du checkpoint Git observé
+  et de la création authentifiée ; son nouveau diagnostic R05 reste requis.
+  Le checkpoint réel du skill cycle-create est validé hors ligne sur son composant.
+  Les autres effets de récupération restent ouverts. Le journal d'allocation signé constitue une tranche
   supplémentaire. La reprise native et l'hôte mixte sont des compositions
   internes explicites ; la garde du démarrage ordinaire reste inchangée.
 - L3 : en cours, composants IR de démarrage et de squelette de cycle distribués,
@@ -1805,3 +1808,90 @@ skill cycle et ses hooks, contexte/diagnostic frais et hook R05. Le modèle
 standard complet, les entrées ordinaires, L4 inconnus/expirations, A1–A10 et les
 preuves natives/archives installées restent ouverts. Ces composants disponibles
 ne prouvent pas leur sélection dans le workflow standard complet.
+
+## Addendum — checkpoint réel de création de cycle
+
+Tranche L2/L3/L4 ASSURED validée hors ligne, dépendante de `d326bc6`. Le binding
+déterministe `cycle_checkpoint_finalize` prolonge le composant IR distribué, avant le
+dernier rafraîchissement. Les identités session/cycle viennent des entrées de
+l'initialiseur effectivement accepté, sans nouvelle copie manuelle.
+
+L'observation préalable du hook existant sur un projet jetable a montré
+`ok: true` avec un checkpoint dont le gate était `warn` et demandait R05.
+Le wrapper global ne peut donc prouver la réalisation du workflow. Le nouveau
+port vérifie l'admission et le gate avant effet : un contrôle de dérive ou un
+incident requis laisse WAITING/BLOCKED, sans invocation du hook. La résolution
+externe exige un nouvel intent explicite, sans rejouer le scaffold.
+
+La réalisation appelle le vrai hook cycle-create en mode de checkpoint COMMITTING,
+prescrit par l'étape 9 du skill et sa route, sans changer le mode de session ni
+la continuité R2 déjà enregistrée pour EXPLORING. Elle emploie un ID
+de run fixe lié au plan autorisé et sans skip automatique du gate. Elle vérifie
+checkpoint/gate imbriqués, événement appendu frais et corrélé, stabilité des
+documents et métadonnées canoniques, projections requises et instance courante
+sous le propriétaire d'effet. Un échec après invocation conserve un effet inconnu
+et le propriétaire, sans nouvelle invocation automatique. La préparation ne
+décharge jamais elle-même le contrôle R05.
+
+Fichiers : nouveau port `standard-cycle-checkpoint.mjs`, plan/sortie privés v1,
+registre/hôte/contrats/pins, hook use-case (ID de run borné pour la route existante),
+modèle/catalogue cycle, schéma catalogue additif acceptant les anciennes cinq et
+les nouvelles six activités, fixtures de ports/cycle, politiques de preuve et
+guides/ADR. Les lecteurs historiques sont conservés, sans conversion.
+
+Preuves **PASS** : 27 contrôles d'opérations/réducteur, 22 du catalogue, 14 des
+ports et deux nouveaux schémas. Le corpus cycle non filtré passe 65 contrôles
+sur ses six scénarios : files/dual/db-only COMMITTING, db-only EXPLORING,
+écriture partielle du cycle et perte de preuve post-checkpoint. La sélection
+files passe aussi 14 contrôles avec dispatch du checkpoint dans un nouveau
+processus Node après attente R05, puis acceptation/conservation du reçu sans
+réinvocation. Ces comptes ne sont pas additionnés. Le corpus emploie un hook
+drift-check réel comme précondition externe,
+sans fabriquer d'événement/admission. Ce n'est pas la preuve de son analyse
+native ni du graphe standard complet. Refus d'autorisation, résultat conservé,
+reprise, mode/continuité EXPLORING conservés et perte de confirmation post-hook
+sont vérifiés. Les inconnus restent en attente avec leur propriétaire, sans
+fait de succès ni second effet ; replay/simulation conservent le hash exact.
+Native réelle, archive exacte et parcours A1–A10 complet restent **NOT_RUN**.
+
+Diagnostic ciblé du transfert de mode : le premier parcours EXPLORING exécuté
+a échoué au nouveau checkpoint (reçu authentifié unknown, sans fait de succès),
+alors que files/dual COMMITTING passaient. L'audit `audit-session-progress`, puis
+`audit-project-governance` TARGETED, a comparé SPEC R02/R06, le skill cycle-create,
+sa route et l'admission existante. Le mode de création EXPLORING admet R2/R3,
+mais le checkpoint du skill est explicitement COMMITTING. Réutiliser le mode de
+session du raccord start-session ne transférait pas ce contrat. Aucune réforme
+des règles n'est nécessaire : corriger l'adaptateur, vérifier la même admission
+de checkpoint avant effet et prouver mode/continuité inchangés. La cause est
+étayée par ce contrôle de flux ; le premier message de fixture ne détaillait pas
+le résultat imbriqué, maintenant ajouté au diagnostic borné. Le test EXPLORING
+corrigé et le cas de perte de preuve après hook passent dans leurs sélections
+ciblées puis dans la régression non filtrée sur le code figé
+(pins startup 40/cycle 38). Le coût de
+l'audit n'est pas mesuré ; aucune économie ni qualification native n'en découle.
+
+Le plan lie aussi taille et empreinte du journal avant effet. Un ancien aperçu
+ne peut pas exécuter à nouveau le checkpoint après son append ; la fixture le
+vérifie même par appel direct au port. L'hôte continue de conserver le résultat
+authentifié de son dispatch. Le port ne publie que son propre fait de checkpoint,
+sans fait de réussite du DoR. Le garde de source/instance est revérifié après
+l'autorisation et juste avant invocation ; la course de branche est testée sur
+le dépôt jetable. Provenance (35), métadonnées (37) et catalogue (22) passent.
+La complétude (38 concepts), références, Markdown, sensibilité (1721 fichiers)
+et topologie du package passent. Le resolver governance-route.v1 classe les
+23 fichiers en ASSURED sans anomalie ; cela ne vaut pas passage de toutes les
+gates PR. Suite agentique entière et ensemble des gates PR **NOT_RUN** dans
+cette tranche. Les preuves restent sur sources/installation source jetable,
+avec grants/identités de fixture ; aucune identité humaine/provider native ni
+archive installée exacte n'est qualifiée par ces résultats.
+
+Après ce checkpoint, priorité au parcours nominal L2/L3 : proposition de
+planification native typée, application canonique sous grant, vérification DoR
+core/adaptative fondée sur SPEC R04 puis transition explicite OPEN → IMPLEMENTING
+avec scope gelé avant tout travail produit. La sélection actuelle des ports
+pré-write ne prouve pas la réalisation de ces transitions. Le modèle complet
+`aidn-standard.v1.json`, son entrée ordinaire, travail/validation/clôtures/PR/sync
+et A1–A10 restent des livrables obligatoires ; additionner les composants de
+démarrage et de cycle ne les remplace pas. Le retour R05 conditionnel doit aussi
+rejoindre le diagnostic authentifié du même modèle, plutôt que la précondition
+externe utilisée par cette fixture de composant.

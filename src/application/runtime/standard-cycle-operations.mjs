@@ -15,6 +15,7 @@ import { assertStandardOperationInput, assertStandardOperationOutput, normalizeS
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import planSchema from "../../core/contracts/workflow-definition/standard-cycle-initialize-plan.v2.schema.json" with { type: "json" };
 import contextSchema from "../../core/contracts/workflow-definition/standard-cycle-context-plan.v2.schema.json" with { type: "json" };
+import { createStandardCycleCheckpoint } from "./standard-cycle-checkpoint.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const files = ["brief", "plan", "hypotheses", "audit-spec", "traceability", "decisions", "change-requests", "STATUS"];
@@ -143,6 +144,7 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({
+    ...createStandardCycleCheckpoint({ artifacts, scope, session, audit, now }),
     prepareCycleContext: input => prepareContext(input, now()),
     async refreshCycleContext(prepared, { write = false, expectPlan, effectGuard = null } = {}) {
       explicit(prepared, write, expectPlan);

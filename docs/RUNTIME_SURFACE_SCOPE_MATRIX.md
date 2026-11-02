@@ -1,5 +1,12 @@
 # Runtime Surface Scope Matrix
 
+The deterministic cycle checkpoint uses the existing fixed skill/checkpoint
+ports and local operation owner. Its effects are runtime cache/index/telemetry,
+with a fresh correlated event retained by the authenticated operation journal.
+It waits for conditional drift admission before effects, preserves canonical
+business documents and never changes session mode, cycle continuity or DoR.
+No new shared coordination table, synchronization or backend fallback is added.
+
 Recovery cycle continuation reuses the operation journal, local effect owner,
 canonical runtime/cycle artifact ports and existing Git observation. The Git
 checkpoint binding is read-only and waits for external reconciliation; it does

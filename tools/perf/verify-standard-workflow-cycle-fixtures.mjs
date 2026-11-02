@@ -17,6 +17,8 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
+import { runSkillHookUseCase } from "../../src/application/runtime/skill-hook-use-case.mjs";
+import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
 
 const H = "a".repeat(64), grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
 const here = fileURLToPath(import.meta.url), owned = [], temporary = fs.realpathSync(os.tmpdir());
@@ -32,21 +34,26 @@ if (process.argv[2] === "--accept") {
   const [, , , root, keyFile, id] = process.argv;
   const result = await open(root, keyFile).accept(id, { write: true });
   console.log(JSON.stringify({ instance_sha256: result.record.instance_sha256 }));
+} else if (process.argv[2] === "--dispatch-checkpoint") {
+  const [, , , root, keyFile, id] = process.argv;
+  const host = open(root, keyFile);
+  assert.equal(host.readJournal(id).intent.binding_ref, "cycle_checkpoint_finalize");
+  console.log(JSON.stringify(await host.dispatch(id, { write: true })));
 } else try {
   const assets = loadStandardWorkflowCycleAssets();
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
   assert.equal(assets.catalog.scope.kind, "new_cycle_scaffold_component");
-  assert.equal(assets.model.nodes.filter(n => n.kind === "operation").length, 5);
+  assert.equal(assets.model.nodes.filter(n => n.kind === "operation").length, 6);
   assert.deepEqual(assets.model.roles, []);
   const changed = structuredClone(assets.catalog); changed.scope.complete_standard_workflow = true;
   assert.throws(() => assertStandardWorkflowComponentCatalog(changed, assets.model), { code: "STANDARD_STARTUP_CATALOG_INVALID" });
   pass("distributed cycle component is pinned, deterministic and explicitly incomplete as a standard workflow");
   const cases = { files: ["files", "COMMITTING"], dual: ["dual", "COMMITTING"], "db-only": ["db-only", "COMMITTING"],
-    exploring: ["db-only", "EXPLORING"], partial: ["db-only", "COMMITTING", true] };
+    exploring: ["db-only", "EXPLORING"], partial: ["db-only", "COMMITTING", true], "checkpoint-partial": ["files", "COMMITTING", false, true] };
   const selectedCase = process.argv[2] === "--db-only" ? "db-only" : process.argv[2]?.startsWith("--case=") ? process.argv[2].slice(7) : null;
   if (process.argv.length > 3 || process.argv[2] && selectedCase === null || selectedCase !== null && !Object.hasOwn(cases, selectedCase)) throw Error("STANDARD_CYCLE_FIXTURE_ARGUMENT_INVALID");
   const modes = selectedCase === null ? Object.values(cases) : [cases[selectedCase]];
-  for (const [mode, selectedMode, partial = false] of modes) {
+  for (const [mode, selectedMode, partial = false, checkpointPartial = false] of modes) {
     const root = createFreshStandardWorkflowFixture(mode, owned), operations = createStandardWorkflowOperations({ targetRoot: root });
     // Precondition setup uses actual deterministic domain ports. This is not a
     // native human-channel qualification; authenticated mode capture has its own gate.
@@ -61,7 +68,7 @@ if (process.argv[2] === "--accept") {
     const parameters = { cycle: requestedCycle };
     let host = open(root, keyFile), initial = host.initialize({ instanceId: "cycle", parameters });
     host.initialize({ instanceId: "cycle", parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
-    const label = `${mode}/${selectedMode}${partial ? "/partial" : ""}`;
+    const label = `${mode}/${selectedMode}${partial ? "/partial" : checkpointPartial ? "/checkpoint-partial" : ""}`;
     async function execute(nodeId, expectedOutcome = "completed") {
       const state = host.inspect("cycle"), frame = state.cursor.occurrences.find(row => state.cursor.ready.includes(row.occurrence_id))
         ?? state.cursor.occurrences.find(row => row.operation?.receipt?.outcome === "blocked");
@@ -79,8 +86,14 @@ if (process.argv[2] === "--accept") {
         assert.equal(git(root, "branch", "--show-current"), cycle.base_branch);
       }
       const staged = await host.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
-      const dispatched = await host.dispatch(staged.operation_id, { write: true });
-      assert.equal(dispatched.receipt.outcome, expectedOutcome, JSON.stringify(dispatched));
+      const coldCheckpoint = nodeId === "checkpoint" && expectedOutcome === "completed" && mode === "files" && !checkpointPartial;
+      const dispatched = coldCheckpoint ? JSON.parse(execFileSync(process.execPath, [here, "--dispatch-checkpoint", root, keyFile, staged.operation_id],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 90000, windowsHide: true })) : await host.dispatch(staged.operation_id, { write: true });
+      const diagnostic = dispatched.receipt.outcome === expectedOutcome ? null
+        : host.readOutput(host.readJournal(staged.operation_id).results.at(-1).receipt.evidence_refs[0].ref);
+      assert.equal(dispatched.receipt.outcome, expectedOutcome, JSON.stringify({ dispatched, reason_code: diagnostic?.observations?.reason_code,
+        hook_result: diagnostic?.observations?.hook?.payload?.result, hook_action: diagnostic?.observations?.hook?.payload?.action,
+        hook_reason: diagnostic?.observations?.hook?.payload?.reason_code }));
       if (nodeId === "initialize") {
         const business = createStandardWorkflowArtifacts({ targetRoot: root }), before = business.read("CURRENT-STATE.md").sha256;
         const child = JSON.parse(execFileSync(process.execPath, [here, "--accept", root, keyFile, staged.operation_id],
@@ -92,7 +105,7 @@ if (process.argv[2] === "--accept") {
       const journal = shadowHash(host.readJournal(staged.operation_id));
       assert.equal((await host.dispatch(staged.operation_id, { write: true })).status, "retained_result");
       assert.equal(shadowHash(host.readJournal(staged.operation_id)), journal);
-      pass(`${label}: ${nodeId}, authenticated receipt survives reopening without redispatch`);
+      pass(`${label}: ${nodeId}${coldCheckpoint ? " (cold Node dispatch)" : ""}, authenticated receipt survives reopening without redispatch`);
       return staged.operation_id;
     }
     await execute("refresh_before");
@@ -138,7 +151,86 @@ if (process.argv[2] === "--accept") {
     assert.ok(native.write_decision.reasons.some(row => row.code === "PHASE_EXCLUDES_IMPLEMENTATION"));
     assert.equal(fs.existsSync(path.join(root, "src/example.mjs")), false);
     pass(`${label}: real branch and canonical cycle stay OPEN/NOT_READY; native product patch denied`);
-    await execute("audit"); await execute("refresh_after");
+    await execute("audit");
+    const checkpointInput = { session_id: cycle.session_id, cycle_id: cycle.cycle_id };
+    const eventPath = path.join(root, ".aidn/runtime/perf/workflow-events.ndjson");
+    const eventBytes = () => fs.existsSync(eventPath) ? fs.readFileSync(eventPath) : Buffer.alloc(0);
+    const initialEvents = eventBytes();
+    let checkpointPlan = await operations.prepareCycleCheckpoint(checkpointInput);
+    {
+      assert.equal(checkpointPlan.can_apply, false); assert.equal(checkpointPlan.reason_code, "STANDARD_CYCLE_CHECKPOINT_GATE_REQUIRED");
+      const blocked = await execute("checkpoint", "blocked");
+      assert.equal(host.inspect("cycle").cursor.status, "WAITING");
+      assert.deepEqual(host.readJournal(blocked).results.at(-1).receipt.facts, {});
+      assert.deepEqual(eventBytes(), initialEvents); assert.equal(business.ownerPending(), false);
+      pass(`${label}: R05 preflight waits durably without running the hook or claiming checkpoint completion`);
+      // External precondition: invoke the actual legacy drift hook. No event,
+      // positive admission or successful checkpoint is fabricated here. This
+      // does not qualify the still-missing full standard/native analysis graph.
+      const drift = runSkillHookUseCase({ args: { skill: "drift-check", mode: "COMMITTING", strict: true, noAutoSkipGate: true },
+        perfDir: fileURLToPath(new URL("./", import.meta.url)), targetRoot: root, processAdapter: createLocalProcessAdapter() });
+      assert.equal(drift.ok, true, JSON.stringify(drift)); assert.equal(drift.payload.result, "ok");
+      checkpointPlan = await operations.prepareCycleCheckpoint(checkpointInput);
+    }
+    assert.equal(checkpointPlan.can_apply, true, JSON.stringify(checkpointPlan));
+    const beforeHook = eventBytes();
+    await assert.rejects(operations.finalizeCycleCheckpoint(checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256,
+      assertAuthorized() { throw Object.assign(new Error("fixture grant refused"), { code: "FIXTURE_GRANT_REFUSED" }); }, assertCurrent() {} }),
+      error => error.code === "FIXTURE_GRANT_REFUSED" && error.effect_status === "no_effect");
+    assert.deepEqual(eventBytes(), beforeHook); assert.equal(business.ownerPending(), false);
+    if (mode === "files" && !checkpointPartial) {
+      const branch = git(root, "branch", "--show-current");
+      try {
+        await assert.rejects(operations.finalizeCycleCheckpoint(checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256,
+          assertAuthorized() { git(root, "switch", "--detach", "HEAD"); }, assertCurrent() {} }),
+          error => ["STANDARD_CYCLE_CHECKPOINT_SOURCE_CHANGED", "STANDARD_CYCLE_CHECKPOINT_GATE_REQUIRED"].includes(error.code) && error.effect_status === "no_effect");
+      } finally { git(root, "switch", branch); }
+      assert.deepEqual(eventBytes(), beforeHook); assert.equal(business.ownerPending(), false);
+      pass(`${label}: an external branch change during authorization refuses before checkpoint effects`);
+    }
+    if (checkpointPartial) {
+      const openFile = fs.openSync; let checkpointId;
+      try {
+        fs.openSync = (file, ...args) => {
+          if (typeof file === "string" && path.resolve(file) === path.resolve(eventPath) && fs.statSync(eventPath).size > beforeHook.length)
+            throw Object.assign(new Error("fixture post-hook event read lost"), { code: "FIXTURE_EVENT_OBSERVATION_LOST" });
+          return openFile(file, ...args);
+        };
+        checkpointId = await execute("checkpoint", "reconciliation_required");
+      } finally { fs.openSync = openFile; }
+      const result = host.readOutput(host.readJournal(checkpointId).results.at(-1).receipt.evidence_refs[0].ref);
+      assert.equal(result.outcome, "reconciliation_required", JSON.stringify(result)); assert.equal(result.effect_status, "unknown");
+      assert.equal(result.observations.reason_code, "FIXTURE_EVENT_OBSERVATION_LOST", JSON.stringify(result));
+      assert.deepEqual(result.facts, {}); assert.equal(business.ownerPending(), true); assert.notDeepEqual(eventBytes(), beforeHook);
+      assert.ok(result.observations.hook?.payload?.checkpoint);
+      const pending = host.inspect("cycle"), frame = pending.cursor.occurrences.find(row => row.node_id === "checkpoint");
+      assert.equal(pending.cursor.status, "WAITING");
+      await assert.rejects(host.preview({ instanceId: "cycle", expectedSha256: pending.record.instance_sha256, occurrenceId: frame.occurrence_id }),
+        { code: "PROCESS_OPERATION_ORDER_INVALID" });
+      const simulation = simulateAgenticProcess({ instanceId: pending.record.instance_id, model: pending.record.model,
+        parameters: pending.record.initial_parameters, policyPins: pending.record.policy_pins, scopeId: pending.record.scope_id, events: pending.record.events });
+      assert.equal(simulation.trace.at(-1).instance_sha256, pending.record.instance_sha256);
+      await assert.rejects(operations.finalizeCycleCheckpoint(checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256, assertAuthorized() {}, assertCurrent() {} }),
+        { code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" });
+      pass(`${label}: lost post-hook confirmation retains unknown effects and ownership without a second checkpoint`);
+      continue;
+    }
+    const checkpointId = await execute("checkpoint");
+    const checkpointResult = host.readOutput(host.readJournal(checkpointId).results.at(-1).receipt.evidence_refs[0].ref);
+    assert.equal(checkpointResult.facts.cycle_checkpoint_completed, true); assert.equal(Object.hasOwn(checkpointResult.facts, "cycle_dor_ready"), false);
+    assert.equal(checkpointResult.observations.hook.payload.checkpoint.gate.result, "ok");
+    assert.equal(checkpointResult.observations.hook.payload.checkpoint.gate.skipped, false);
+    assert.equal(checkpointResult.observations.event.run_id, checkpointResult.observations.hook.payload.checkpoint.run_id);
+    assert.equal(checkpointResult.observations.hook.mode, "COMMITTING");
+    assert.match(business.read("sessions/S001.md").content, new RegExp("^mode: " + selectedMode + "$", "m"));
+    assert.match(business.read(row.path).content, /^continuity_rule: R2_SESSION_BASE_WITH_IMPORT$/m);
+    assert.notDeepEqual(eventBytes(), beforeHook);
+    const retainedEvents = eventBytes();
+    await assert.rejects(operations.finalizeCycleCheckpoint(checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256, assertAuthorized() {}, assertCurrent() {} }),
+      error => error.code === "STANDARD_PREVIEW_CHANGED" && error.effect_status === "no_effect");
+    assert.deepEqual(eventBytes(), retainedEvents); assert.equal(business.ownerPending(), false);
+    pass(`${label}: real cycle hook and fresh correlated checkpoint confirm without promoting DoR`);
+    await execute("refresh_after");
     assert.equal(business.ownerPending(), false);
     assert.equal(git(root, "ls-files", ".aidn/runtime/index", ".aidn/runtime/standard-workflow", "docs/audit/workflows/process-instances", "docs/audit/workflows/operation-records"), "");
     const final = host.inspect("cycle"); assert.equal(final.cursor.status, "COMPLETED");
