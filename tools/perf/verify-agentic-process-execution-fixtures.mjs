@@ -11,7 +11,8 @@ import { createJournaledNativeAllocation } from "../../src/application/runtime/j
 import { createStandardWorkflowMixedHost } from "../../src/application/runtime/standard-workflow-mixed-composition.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
 import { assertNativeActivityAnswer, nativeActivityAnswerSchema, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
-import { evaluateStandardDriftReport } from "../../src/application/runtime/standard-drift-report.mjs";
+import { evaluateStandardDriftReport, readStandardDriftContext } from "../../src/application/runtime/standard-drift-report.mjs";
+import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
 import { createStandardDriftFinalization } from "../../src/application/runtime/standard-drift-finalization.mjs";
 import { readControlledDriftGit, assertDiagnosticPathScope } from "../../src/application/runtime/standard-drift-git.mjs";
 import { runSkillHookUseCase } from "../../src/application/runtime/skill-hook-use-case.mjs";
@@ -70,6 +71,8 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (finalizeMode && !name.startsWith(`drift finalize ${finalizeMode}:`)) return;
   const finalizeCase = process.argv.find(value => value.startsWith("--drift-finalize-case="))?.slice(22);
   if (finalizeCase && !name.startsWith(`drift finalization ${finalizeCase}:`)) return;
+  const completionMode = process.argv.find(value => value.startsWith("--drift-completion-mode="))?.slice("--drift-completion-mode=".length);
+  if (completionMode && !name.startsWith(`drift completion ${completionMode}:`)) return;
   const driftMode = process.argv.find(value => value.startsWith("--drift-mode="))?.slice(13);
   if (driftMode && !name.startsWith(`drift ${driftMode}:`)) return;
   await callback(); checks.push(name); console.log("PASS " + name); }
@@ -381,6 +384,45 @@ async function readyFinalization(f) {
   const evaluated = await f.open().step({ write: true, input: { report_occurrence_id: occurrence } });
   return { evaluated, input: { evaluation_operation_id: evaluated.operation_id } };
 }
+async function prepareCompletionCycle(f, state, intermediate = false) {
+  const targetRoot = f.configuration.target_root, operations = createStandardWorkflowOperations({ targetRoot }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
+  const git = (...args) => { const result = spawnSync("git", ["-c", "core.hooksPath=NUL", ...args], { cwd: targetRoot, encoding: "utf8", shell: false });
+    assert.equal(result.status, 0, result.stderr.slice(-512) || result.stdout.slice(-512)); return result.stdout.trim(); };
+  let prepared = await operations.prepareMode({ session_id: "S001", mode: "COMMITTING" });
+  assert.equal((await operations.applyMode(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+  git("add", "."); git("commit", "--allow-empty", "-m", "fixture selected mode");
+  prepared = await operations.prepareCycleContext({ session_id: "S001" });
+  assert.equal((await operations.refreshCycleContext(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+  git("add", "."); git("commit", "--allow-empty", "-m", "fixture prepared cycle context");
+  const objective = "Execute real mixed bootstrap with an admitted terminal cycle";
+  prepared = await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "completion-context", objective,
+    continuity_rule: "R2_SESSION_BASE_WITH_IMPORT", base_branch: "S001-mixed" });
+  assert.equal(prepared.can_apply, true, JSON.stringify({ reason: prepared.reason_code,
+    blockers: prepared.admission?.prewrite?.blocking_reasons, action: prepared.admission?.lifecycle?.action }));
+  assert.equal((await operations.initializeCycle(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+  const context = () => readStandardDriftContext({ targetRoot, productRoot: f.configuration.product_root,
+    productFiles: f.configuration.product_files, productSha256: f.open().previewNative().product_sha256 });
+  const active = await context(); assert.equal(active.context.context_use, "active_cycle"); assert.equal(active.context.original_objective, objective);
+  const statusPath = "cycles/C001-feature-completion-context/status.md", briefPath = statusPath.replace("status.md", "brief.md");
+  async function change(changes) {
+    return artifacts.withLocalEffectOwner(shadowHash({ fixture: "terminal-context-precondition", changes }), async () => {
+      for (const [name, after] of changes) { const before = artifacts.read(name); artifacts.compareAndSwap({ path: name, before_sha256: before.sha256, after }); }
+      artifacts.project(changes.map(([name]) => name)); return { effect_status: "confirmed" };
+    });
+  }
+  // Terminal state is an explicit fixture precondition, not proof of the still
+  // missing cycle validation/closure IR ports. All later reads/hooks are real.
+  const status = artifacts.read(statusPath), current = artifacts.read("CURRENT-STATE.md"), snapshot = artifacts.read("snapshots/context-snapshot.md");
+  await change([[statusPath, status.content.replace(/^state:.*$/m, "state: " + state).replace(/^outcome:.*$/m, "outcome: " + state)],
+    [current.path, current.content.replace(/^active_cycle:.*$/m, "active_cycle: none")],
+    [snapshot.path, snapshot.content.replace(/(^## Active cycles[^\r\n]*\r?\n)[\s\S]*?(?=^## |$(?![\s\S]))/m, "$1\n- none\n\n")
+      .replace(/(^## Next entry point[^\r\n]*\r?\n)[\s\S]*?(?=^## |$(?![\s\S]))/m, "$1\n- Finish the admitted terminal cycle drift check.\n\n")]]);
+  if (intermediate) git("switch", "-c", "feature/C001-I1-completion-context");
+  prepared = await operations.prepareCycleContext({ session_id: "S001" });
+  assert.equal((await operations.refreshCycleContext(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
+  git("add", "."); git("commit", "--allow-empty", "-m", "fixture terminal context precondition");
+  return { artifacts, statusPath, briefPath, objective, git, change, context };
+}
 
 if (process.argv[2] === "--mixed-continue") {
   try {
@@ -401,6 +443,63 @@ if (process.argv[2] === "--mixed-continue") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  for (const [mode, state] of [["files", "DONE"], ["dual", "NO_GO"], ["db-only", "DROPPED"]]) await check(`drift completion ${mode}: terminal owning context drives the authenticated report and real hook without reopening the cycle`, async () => {
+    const f = finalizationFixture(mode), auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, state, mode === "db-only");
+    const current = c.artifacts.read("CURRENT-STATE.md"), status = c.artifacts.read(c.statusPath), original = await c.context();
+    assert.equal(original.context.context_use, "cycle_completion"); assert.equal(original.context.cycle_id, "C001");
+    assert.equal(original.context.cycle_state, state); assert.equal(original.context.original_objective, c.objective);
+    assert.notEqual(original.context.original_objective, "Execute real mixed bootstrap");
+    assert.ok(original.evidence_refs.some(row => row.ref === "audit:" + c.briefPath)); assert.match(current.content, /^active_cycle: none$/m);
+    const ordinary = await runReloadCheckUseCase({ targetRoot: f.configuration.target_root, args: { cache: ".aidn/runtime/cache/reload-state.json",
+      stateMode: mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto", writeCache: false } });
+    assert.equal(ordinary.decision, "stop", JSON.stringify(ordinary));
+    if (mode === "db-only") {
+      put(f.configuration.target_root, "docs/audit/" + c.briefPath, "POISONED_VISIBLE_COMPLETION\n");
+      assert.equal((await c.context()).context.original_objective, c.objective);
+    }
+    if (mode === "files") {
+      await c.change([[c.statusPath, status.content.replace(/^usage_matrix_scope:.*$/m, "usage_matrix_scope: shared").replace(/^usage_matrix_state:.*$/m, "usage_matrix_state: PARTIAL")]]);
+      await assert.rejects(c.context(), error => error.code === "STANDARD_DRIFT_COMPLETION_ADMISSION_BLOCKED" && error.admission_reason === "CYCLE_CLOSE_USAGE_MATRIX_INCOMPLETE");
+      await c.change([[c.statusPath, status.content]]);
+      const branch = c.git("branch", "--show-current"); c.git("switch", "-c", "feature/C999-unowned-completion");
+      await assert.rejects(c.context(), error => error.code === "STANDARD_DRIFT_COMPLETION_ADMISSION_BLOCKED" && error.admission_reason === "CYCLE_CLOSE_MAPPING_MISSING");
+      c.git("switch", branch);
+      await c.change([[c.statusPath, status.content.replace(/^state:.*$/m, "state: OPEN")]]);
+      await assert.rejects(c.context(), /STANDARD_DRIFT_COMPLETION_CONTEXT_REQUIRED/);
+      await c.change([[c.statusPath, status.content]]);
+    }
+    const native = await f.open().step({ write: true, authorization: auth });
+    assert.equal(native.journal_phase, "closed", JSON.stringify({ phase: native.journal_phase, status: native.status, failure: native.first_failure }));
+    const beforeEvaluation = f.open().inspect(), occurrence = beforeEvaluation.cursor.occurrences.find(row => row.node_id === "analyze").occurrence_id;
+    const evaluated = await f.open().step({ write: true, input: { report_occurrence_id: occurrence } }), input = { evaluation_operation_id: evaluated.operation_id };
+    const evaluation = f.open().readOperation(evaluated.operation_id).results.at(-1).output;
+    assert.equal(evaluation.facts.drift_recovery_required, false); assert.equal(evaluation.observations.scope.context_use, "cycle_completion");
+    if (mode === "files") {
+      const brief = c.artifacts.read(c.briefPath); await c.change([[c.briefPath, brief.content.replace(c.objective, "A changed terminal cycle goal that requires a fresh diagnostic")]]);
+      await assert.rejects(f.open().step({ input }), /STANDARD_DRIFT_REPORT_STALE/); await c.change([[c.briefPath, brief.content]]);
+      assert.equal(f.open().inspect().record.instance_sha256, evaluated.record.instance_sha256);
+    }
+    const completed = await f.open().step({ write: true, input }), output = f.open().readOperation(completed.operation_id).results.at(-1).output;
+    assert.equal(completed.cursor.status, "COMPLETED", JSON.stringify({ outcome: output.outcome, reason: output.observations.reason_code,
+      levels: output.observations.gate?.levels, status: completed.cursor.status }));
+    assert.equal(output.facts.drift_check_completed, true);
+    assert.equal(c.artifacts.read("CURRENT-STATE.md").sha256, current.sha256); assert.equal(c.artifacts.read(c.statusPath).sha256, status.sha256);
+    assert.equal((await f.open().dispatchOperation(completed.operation_id, { write: true })).status, "retained_result"); assert.equal(f.t.sessions.length, 1);
+    const replay = simulateAgenticProcess({ instanceId: completed.record.instance_id, scopeId: completed.record.scope_id, model: completed.record.model,
+      policyPins: completed.record.policy_pins, events: completed.record.events }); assert.equal(replay.trace.at(-1).instance_sha256, completed.record.instance_sha256);
+    if (mode === "files") {
+      const prefix = "cycles/C002-feature-unrelated/", otherStatus = status.content.replaceAll("C001", "C002")
+        .replace(/^branch_name:.*$/m, "branch_name: feature/C002-unrelated").replace(/^state:.*$/m, "state: OPEN").replace(/^outcome:.*$/m, "outcome: ACTIVE");
+      await c.change([[prefix + "status.md", otherStatus], [prefix + "brief.md", c.artifacts.read(c.briefPath).content
+        .replaceAll("C001", "C002").replace(c.objective, "An unrelated cycle must never replace the branch owner")],
+        ...["plan.md", "change-requests.md"].map(name => [prefix + name, c.artifacts.read(c.statusPath.replace("status.md", name)).content.replaceAll("C001", "C002")]),
+        [current.path, current.content.replace(/^active_cycle:.*$/m, "active_cycle: C002")]]);
+      await assert.rejects(c.context(), /STANDARD_DRIFT_COMPLETION_CONTEXT_REQUIRED/);
+      await c.change([[current.path, current.content], [prefix + "status.md", otherStatus.replace(/^branch_name:.*$/m, "branch_name: " + c.git("branch", "--show-current"))]]);
+      await assert.rejects(c.context(), error => error.code === "STANDARD_DRIFT_COMPLETION_ADMISSION_BLOCKED" && error.admission_reason === "CYCLE_CLOSE_MAPPING_AMBIGUOUS");
+      assert.equal(f.open().inspect().record.instance_sha256, completed.record.instance_sha256);
+    }
+  });
   await check("drift finalization contract accepts only an evaluation identity and binds a fixed hook run", async () => {
     const f = fixture(), id = "op_" + "a".repeat(40), calls = [];
     assertStandardOperationInput("drift_check_finalize", { evaluation_operation_id: id });

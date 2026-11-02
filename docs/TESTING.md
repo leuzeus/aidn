@@ -33,6 +33,19 @@ reconciliation and owner retention, no automatic rerun. These selectors do not
 remove cases from the default suite. They use a native transport double and
 do not qualify a real model, OS confinement, exact archive or complete workflow.
 
+`--drift-completion-mode=<files|dual|db-only>` selects terminal-context fixtures
+in the same suite. Actual bootstrap, mode and cycle-creation ports prepare the
+project; terminal state is then seeded as an explicit fixture precondition, not
+proof of validation or terminal transition. DONE/NO_GO/DROPPED owners include an
+intermediate branch. The canonical cycle objective supplies the authenticated
+report/evaluation and real R05 hook; the ordinary reload stays blocked and the
+terminal state/cleared active anchor remain unchanged. Replay/simulation reuse
+the same IR/reducer and confirmed dispatch cannot repeat the hook. Files covers
+incomplete usage evidence, missing/ambiguous owner, a missing open-cycle anchor,
+a conflicting active cycle and a stale brief. Db-only poisons a visible brief
+without replacing canonical context. Native transport is substituted; installed
+archive, real native/provider and full standard workflow claims remain separate.
+
 `--mixed-only` selects the production mixed-host checks in
 `verify-agentic-process-execution-fixtures.mjs`; the required unfiltered suite
 retains them. A disposable source-installed project supplies actual activation,

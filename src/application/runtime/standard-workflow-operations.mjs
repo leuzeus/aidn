@@ -18,14 +18,15 @@ import { createStandardSessionModeOperations } from "./standard-session-mode-ope
 import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
 
 const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
-  "standard-cycle-operations.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
+  "standard-cycle-operations.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "cycle-close-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
   "standard-workflow-operation-host.mjs", "standard-process-authority.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
-  "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
+  "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "gating-evaluate-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
   "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url), new URL("../../../tools/runtime/project-runtime-state.mjs", import.meta.url),
     new URL("../../lib/workflow/markdown-render-lib.mjs", import.meta.url), new URL("../../core/skills/skill-policy.mjs", import.meta.url),
+    new URL("../../lib/workflow/branch-kind-lib.mjs", import.meta.url),
     new URL("../../core/workflow/standard-operation-contracts.mjs", import.meta.url),
     new URL("../../core/workflow/native-activity-output.mjs", import.meta.url),
     ...["standard-drift-report.v1", "standard-drift-evaluate-input.v1", "standard-drift-output.v1", "standard-drift-followup-input.v1", "standard-drift-finalize-plan.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),

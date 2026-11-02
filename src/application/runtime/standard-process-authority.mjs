@@ -114,7 +114,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     read(); const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "drift-check" });
     if (admission.ok !== true || admission.activation?.active !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status))
       fail("STANDARD_DRIFT_ADMISSION_BLOCKED");
-    return { ...readStandardDriftContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
+    return { ...await readStandardDriftContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
       productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment }),
       admission: { status: admission.admission_status, observation_sha256: shadowHash(admission) } };
   }

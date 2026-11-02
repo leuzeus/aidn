@@ -547,8 +547,11 @@ The diagnostic receives raw diffs only for configured product files. Other
 changes retain hashes/counts, and private roots cannot be delivered as diagnostic
 documents. A partial observation emits `drift_context_complete: false` and
 `drift_recovery_required: true`; the standard IR must route it to review rather
-than finalization. Post-transition cycle context remains explicitly unsupported
-instead of silently using a session objective. Neither this component nor its
+than finalization. A terminal cycle's completion context requires its actual
+closure admission and unique branch ownership; missing/ambiguous or contradictory
+context refuses instead of silently using a session objective. The context and
+signed evaluation retain their purpose and canonical cycle state. This read does
+not reactivate the cycle or admit ordinary work. Neither this component nor its
 configuration mapping selects the complete standard workflow by default.
 
 `drift_check_finalize` consumes an accepted evaluation identity under an exact

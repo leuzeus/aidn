@@ -18,6 +18,7 @@ const files = [
   "src/application/runtime/standard-process-authority.mjs", "src/application/runtime/standard-workflow-mixed-composition.mjs",
   "src/application/runtime/standard-drift-report.mjs", "src/application/runtime/standard-drift-git.mjs", "src/core/workflow/native-activity-output.mjs",
   "src/application/runtime/standard-drift-finalization.mjs", "src/application/runtime/skill-hook-use-case.mjs", "src/application/runtime/gating-evaluate-use-case.mjs",
+  "src/application/runtime/cycle-close-admit-use-case.mjs", "src/lib/workflow/branch-kind-lib.mjs",
   "src/core/contracts/workflow-definition/standard-drift-followup-input.v1.schema.json", "src/core/contracts/workflow-definition/standard-drift-finalize-plan.v1.schema.json",
   "scaffold/root/.gitignore.append",
   "src/core/contracts/workflow-definition/standard-drift-report.v1.schema.json", "src/core/contracts/workflow-definition/standard-drift-evaluate-input.v1.schema.json",

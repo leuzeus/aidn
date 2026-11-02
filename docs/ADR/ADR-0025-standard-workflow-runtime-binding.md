@@ -483,9 +483,13 @@ are represented by hashes/counts, without their paths or contents; configured
 private roots also deny diagnostic document delivery. Changes outside observed
 product/governance scope set `drift_context_complete: false` and require recovery
 review even when the scoped report says none. The complete standard model must
-consume that flag. A terminal cycle still owning the branch is explicitly refused
-until the post-transition diagnostic context is implemented; it never falls back
-silently to an unrelated session goal. Fixed output schemas are validated before
+consume that flag. Post-transition diagnosis uses the actual cycle-closure
+admission to select the unique terminal owner of a cycle/intermediate branch.
+Missing/ambiguous ownership, incomplete usage evidence or contradictory active
+anchors refuse selection; an open cycle without its active anchor is not guessed.
+The retained context distinguishes session, active cycle and cycle completion,
+including the selected cycle's canonical state and original brief objective.
+It never falls back silently to an unrelated session goal. Fixed output schemas are validated before
 native allocation. The trusted developer instructions scope this allocation to
 diagnosis, leaving the skill's effectful/finalization steps to the application.
 
@@ -531,5 +535,24 @@ receipt rather than rerunning the hook. A partial effect, changed context or
 missing observation retains reconciliation and ownership without automatic retry.
 
 This completes the clean-report finalization component only. Human recovery,
-post-transition cycle context, the full standard model/input bindings, ordinary
+the full standard model/input bindings, ordinary
 entrypoints and offline/native/exact archive acceptance remain distinct work.
+
+### Completion context preserves terminal state
+
+`readStandardDriftContext` is an asynchronous application read. It calls the
+existing closure admission and compares the selected canonical status, active
+session/cycle anchors and observed Git branch. Completion requires a unique
+terminal owner admitted by that port. It does not make a terminal cycle active
+or change ordinary reload/implementation admission. The common authority awaits
+the result before constructing a native input; evaluation and finalization
+repeat the same selection rather than accepting caller-authored cycle context.
+The signed evaluation exposes its context purpose and cycle state. A changed
+brief or status invalidates an earlier diagnostic. No context is converted or
+rewritten in historical instances.
+
+Fixtures seed terminal status as an explicit starting precondition after real
+bootstrap/mode/cycle-creation ports. They qualify subsequent context consumption,
+native transport wiring, evaluation, hook and reducer replay only. They do not
+prove the still-missing validation/terminal-transition ports, human recovery,
+complete standard graph, real native isolation or exact archive execution.

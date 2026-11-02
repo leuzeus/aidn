@@ -8,7 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `65fec23` et tranche courante de finalisation R05 sans dérive.
+Dernier état relu : `28422eb` et tranche courante de contexte R05 après transition.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -1285,3 +1285,79 @@ les entrées ordinaires. L6 conserve A1–A10 par les vrais ports sur projet jet
 rejeu/simulation et lecture historique ; L7 les preuves natives et fournisseurs
 réels ; L8 la qualification de l'archive installée exacte. Aucun de ces lots
 n'est remplacé par le choix du moteur par défaut ou les composants catalogués.
+
+## Addendum — contexte R05 du propriétaire terminal
+
+La tranche précédente laissait explicitement ouvert le diagnostic après
+transition. Le lecteur de contexte consulte désormais le vrai port
+`runCycleCloseAdmitUseCase`. Sur branche de cycle/intermédiaire, ce port doit
+identifier un propriétaire canonique unique ; le lecteur recoupe son état et
+les ancres session/cycle. Un propriétaire terminal admis fournit son brief,
+statut, plan et change-requests, même lorsque `active_cycle` vaut none. Le corps
+et l'évaluation signée distinguent `session`, `active_cycle` et
+`cycle_completion`, avec l'état canonique du cycle. La sélection reste une
+lecture : ni réactivation, ni permission de travail, ni acquittement de R05.
+
+Un propriétaire absent/ambigu, une matrice d'usage bloquée, une ancre d'un autre
+cycle ou un cycle ouvert sans ancre ne peuvent fournir un objectif de repli.
+Le contexte relu lors de l'évaluation/finalisation doit rester identique ; un
+brief changé impose un nouveau diagnostic. L'autorité commune attend cette
+lecture asynchrone avant tout appel natif. Les implémentations des admissions
+et du gating font partie des pins explicites ; les catalogues sont rafraîchis
+par révision, sans réparation à l'exécution ni conversion d'instances anciennes.
+
+Fichiers : `standard-drift-report.mjs`, `standard-process-authority.mjs`, clôture
+des pins dans `standard-workflow-operations.mjs` et
+`agentic-process-implementation-pins.mjs`, catalogues des composants,
+`verify-agentic-process-execution-fixtures.mjs`, ADR-0025 et guides associés.
+Dépendance : diagnostic typé et finalisation propre livrés par `65fec23` et
+`28422eb`. Acceptation ciblée : vrai objectif du propriétaire, refus des contextes
+invalides, vrai hook, statut terminal/ancre inchangés, dispatch conservé et
+simulation/rejeu exacts avec le même modèle/réducteur dans les trois modes.
+
+La préparation des tests emploie les vrais ports de bootstrap, mode et création
+de cycle ; l'état terminal est ensuite posé comme **précondition de fixture**.
+Elle ne prouve pas les ports de validation et de transition terminale encore à
+livrer. Le transport natif reste substitué.
+
+Validation finale ciblée **PASS** : les trois sélections
+`--drift-completion-mode=files|dual|db-only`, avec DONE/NO_GO/DROPPED et branche
+intermédiaire. L'état actif est aussi lu avant la précondition terminale. Les
+objectifs cycle/session restent distincts ; le vrai hook aboutit, le reçu est
+conservé, le cycle n'est pas réactivé et le replay/simulateur retrouve le même
+hash. Files refuse matrice incomplète, propriétaire absent/ambigu, ancre ouverte
+manquante, autre cycle actif et brief changé. Db-only utilise son brief canonique
+malgré la projection visible erronée. Le parcours antérieur
+`--drift-finalize-mode=files` passe également, ainsi que les deux sélections de
+contrats de rapport/finalisation, 38 contrôles du réducteur et 20 du catalogue.
+
+Source de vérité (35), métadonnées (37), complétude (38 concepts gouvernés), CLI
+de gouvernance, catalogue des gates, Markdown, références, sensibilité et
+topologie package : **PASS**. Les pins startup 20/cycle 18 sont vérifiés sans
+écriture ni réparation. Les premiers essais ont corrigé deux préconditions de
+fixture : checkpoint explicite après projection du digest et checkpoint vide
+autorisé en db-only, où le choix de mode ne modifie aucun fichier projeté.
+Aucune règle d'admission produit n'a été abaissée pour ces essais.
+
+Suite agentique complète non filtrée et ensemble des gates de PR :
+**NON_REJOUÉS** dans cette tranche. Modèle/confinement/Job Windows/fournisseurs
+réels, parcours standard complet et archive installée exacte : **NOT_RUN**.
+La topologie package vérifiée ne qualifie pas son exécution du workflow standard.
+
+Restent explicitement L2 : récupération humaine R05 et ses écritures autorisées,
+réévaluation après récupération, réconciliation explicite des effets inconnus,
+DoR/travail/validation/transitions/clôtures/promotion/PR/synchronisation. L3/L5
+doivent encore livrer le modèle standard complet et ses raccords de données
+déclaratifs puis ses entrées ordinaires. Les pilotes fournissent encore les
+identités de résultats à la main ; cela ne constitue pas ce raccord. L6–L8
+conservent les parcours A1–A10, attentes/refus/reprises, preuves natives réelles,
+lecteurs historiques et qualification de l'archive installée exacte.
+
+La capture d'un choix humain seule ne terminera pas la récupération R05 :
+prévoir conservation des constats, choix authentifié, véritable port de
+récupération sous son autorisation, puis réévaluation et hook. Les écritures
+connues de conservation modifient elles-mêmes le contexte Git/canonique : leur
+chaîne de reçus et leurs hashes avant/après doivent distinguer ces effets
+attendus d'un changement externe, sans désactiver la fraîcheur générale ni
+demander au modèle de recopier une preuve déjà conservée. Une couverture
+partielle ne devient pas complète par simple approbation humaine.
