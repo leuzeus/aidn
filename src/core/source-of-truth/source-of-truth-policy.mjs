@@ -32,7 +32,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain source revisions and distributed archives; instances embed their exact model and journals retain the source descriptor",
     migration: "explicit future selection only; no historical instance conversion or automatic pin refresh",
     replacement: "reviewed model/catalog source update; implementation-only refresh increments revision and refuses changed authority or binding semantics",
-    evidence_targets: ["package/catalogs/process-models/aidn-standard-startup.v1.json", "package/catalogs/standard-workflow-startup.v1.json", "src/application/runtime/standard-workflow-startup-composition.mjs", "tools/perf/verify-standard-workflow-model-fixtures.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs"],
+    evidence_targets: ["package/catalogs/process-models/aidn-standard-startup.v1.json", "package/catalogs/standard-workflow-startup.v1.json", "src/application/runtime/standard-workflow-startup-composition.mjs", "tools/perf/verify-standard-workflow-model-fixtures.mjs", "tools/perf/verify-standard-workflow-mode-fixtures.mjs", "package/catalogs/process-models/aidn-standard-cycle-create.v1.json", "package/catalogs/standard-workflow-cycle-create.v1.json", "src/application/runtime/standard-workflow-cycle-composition.mjs", "tools/perf/verify-standard-workflow-cycle-fixtures.mjs"],
   },
   process_decision_inbox: {
     owner: "trusted human decision capture host",
@@ -417,11 +417,11 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
   }),
   policy({
     concept: "standard_workflow_model", label: "Packaged standard process model components",
-    files: "package/catalogs/standard-workflow-startup.v1.json and its exact package/catalogs/process-models/aidn-standard-startup.v1.json",
+    files: "versioned package/catalogs/standard-workflow-{startup,cycle-create}.v1.json and their exact package/catalogs/process-models/aidn-standard-{startup,cycle-create}.v1.json",
     dual: "same versioned package assets; project instances and operation journals use their configured canonical artifact store",
     dbOnly: "same versioned package assets; no fallback from canonical project state to package fixtures",
     projection: "source descriptor retained in signed operation previews; component IR embedded in its process instance",
-    notes: "Fresh-session startup component only, not the complete standard model or ordinary default workflow selection. Catalog pins model, exact code bindings, SPEC and skill sources. Loading refuses changed bytes instead of repairing pins. Metadata never grants effects, human identity or native qualification. No new runtime table.",
+    notes: "Fresh-session startup and cycle scaffold components only, not the complete standard model, full cycle-create skill or ordinary default workflow selection. Catalog pins model, exact code bindings, SPEC and skill sources. Loading refuses changed bytes instead of repairing pins. Metadata never grants effects, human identity or native qualification. No new runtime table.",
   }),
   policy({
     concept: "process_decision_inbox", label: "Authenticated human decision inbox",

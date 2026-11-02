@@ -60,10 +60,12 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
       try {
         if (typeof store.compareAndSwapArtifact !== "function") fail("STANDARD_CANONICAL_CAS_REQUIRED");
         const isSession = /^sessions\/S\d+\.md$/.test(change.path);
-        store.compareAndSwapArtifact({ expectedSha256: change.before_sha256, artifact: { path: change.path, kind: isSession ? "session" : "other", family: "normative",
+        const cycle = /^cycles\/(C\d+)[^/]*\/status\.md$/.exec(change.path), kind = isSession ? "session" : cycle ? "cycle_status" : change.path === "RUNTIME-STATE.md" ? "runtime_state" : "other";
+        const family = kind === "runtime_state" ? "derived" : "normative";
+        store.compareAndSwapArtifact({ expectedSha256: change.before_sha256, artifact: { path: change.path, kind, family,
           content_format: "utf8", content: change.after, canonical_format: "markdown-canonical-v1",
-          canonical: buildCanonicalFromMarkdown(change.after, { relativePath: change.path, classification: { kind: isSession ? "session" : "other", family: "normative" } }),
-          ...(isSession ? { session_id: path.basename(change.path, ".md") } : {}) } });
+          canonical: buildCanonicalFromMarkdown(change.after, { relativePath: change.path, classification: { kind, family, ...(cycle ? { subtype: "status" } : {}) } }),
+          ...(cycle ? { cycle_id: cycle[1], subtype: "status" } : {}), ...(isSession ? { session_id: path.basename(change.path, ".md") } : {}) } });
       } finally { store.close(); }
       return { committed: true, projection: selected.state_mode === "dual" || selected.state_mode === "files" ? "pending" : "not_requested" };
     }
@@ -117,5 +119,18 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (new Set(result.map(row => BigInt(row.session_id.slice(1)).toString())).size !== result.length) fail("STANDARD_SESSION_ID_AMBIGUOUS");
     return result;
   }
-  return Object.freeze({ root, describe, read, sessions, compareAndSwap, project, withLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
+  function cycles() {
+    let names;
+    if (describe().database) {
+      const store = open(true); try { const rows = store.listArtifacts(10000); if (rows.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED"); names = rows.map(row => row.path); } finally { store.close(); }
+    } else {
+      const directory = agentRunPhysicalPath(path.join(root, "docs/audit/cycles"), { missing: true });
+      names = fs.existsSync(directory) ? fs.readdirSync(directory).filter(name => /^C\d+[^/]*$/.test(name)).map(name => `cycles/${name}/status.md`) : [];
+    }
+    const result = names.map(name => [name, /^cycles\/(C\d+)[^/]*\/status\.md$/.exec(name)]).filter(([, match]) => match)
+      .map(([name, match]) => ({ ...read(name, { required: true }), cycle_id: match[1] })).sort((a, b) => a.cycle_id.localeCompare(b.cycle_id, "en", { numeric: true }));
+    if (new Set(result.map(row => BigInt(row.cycle_id.slice(1)).toString())).size !== result.length) fail("STANDARD_CYCLE_ID_AMBIGUOUS");
+    return result;
+  }
+  return Object.freeze({ root, describe, read, sessions, cycles, compareAndSwap, project, withLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
 }

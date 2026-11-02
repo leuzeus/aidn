@@ -5,7 +5,8 @@ authored in JSON IR and executed, resumed, replayed and simulated by the common
 engine. BPMN is an optional authoring/compiler path. The historical shadow
 definition supplies comparison evidence and does not become runtime authority.
 
-The currently distributed model is a **fresh-session startup component**:
+The first distributed model is a **fresh-session startup component**. A separate
+cycle scaffold component is described below:
 
 - [IR model](../../package/catalogs/process-models/aidn-standard-startup.v1.json)
 - [versioned catalog](../../package/catalogs/standard-workflow-startup.v1.json)
@@ -87,3 +88,47 @@ Package topology proves assets are included; working-directory independence
 proves package-relative resolution. Neither is execution from an exact installed
 archive. Full A1–A10, native human/Codex/provider
 execution, live PostgreSQL and exact archive qualification remain required.
+
+
+## Cycle scaffold component
+
+A second, separate package component is distributed in
+`package/catalogs/process-models/aidn-standard-cycle-create.v1.json`, with catalog
+`package/catalogs/standard-workflow-cycle-create.v1.json` and fixed loader
+`standard-workflow-cycle-composition.mjs`. Its five operation occurrences invoke
+four bindings through the same operation host, journal, service and reducer:
+
+| Occurrence | Actual port and effect | Result and limitation |
+| --- | --- | --- |
+| `refresh_before` | Existing runtime projector, canonical RUNTIME-STATE CAS and required projection; explicit grant | Observed canonical repair/freshness, not a fabricated admission |
+| `admit` | Real pre-write and continuity admissions; read-only | Dirty business work, uncertain continuity and unsupported modes remain blocked |
+| `initialize` | Eight pinned cycle templates, real Git branch, eleven artifact CAS writes | OPEN/NOT_READY status, session linkage, snapshot and CURRENT-STATE; no product permission |
+| `audit` | Real branch-cycle audit and canonical ownership checks; read-only | Unique session/cycle/branch mapping, separately observed DoR |
+| `refresh_after` | Same projector binding after cycle registration | Runtime digest now reflects the registered cycle |
+
+Session identity, selected mode and exact cycle parameters are preconditions.
+Only inferred, currently admitted R1/R2 continuity is implemented; R3 and human
+cycle selection remain explicit remaining activities. Grants authorize the exact
+signed preview. They do not replace admission, infer a human answer or set READY.
+The default empty native write scope is preserved. A completed scaffold component
+is not completion of the `cycle-create` skill, DoR, work or the standard workflow.
+
+The offline cycle suite loads this JSON, retains a real dirty-work admission
+wait, then resumes after an explicit external Git checkpoint. A new Node process
+accepts the creation receipt without repeating effects. Files, dual and db-only
+use their actual canonical stores; native patch admission must deny product work
+in OPEN/NOT_READY. The same event history is replayed/simulated with the common
+reducer. Human identity/effect grants and installer Codex discovery are fixture
+capabilities; native and exact installed-archive execution remain unqualified.
+
+The existing owned `.gitignore.append` install asset excludes the local runtime
+index/database, effect-owner directory, structured instances, operation journals
+and decision inbox. These remain durable canonical/control data in their chosen
+store, not disposable caches. Model definitions, session/cycle artifacts and
+product files remain subject to Git hygiene. No tracked file is automatically
+untracked or migrated. Existing tracked runtime records require explicit tracking
+reconciliation. The actual Git-clean admission is unchanged.
+
+The explicit source refresh tool accepts `--cycle-create` for the fixed second
+component; runtime loading still refuses stale sources. No component factory is
+yet wired as the ordinary complete standard workflow.

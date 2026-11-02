@@ -23,8 +23,8 @@ qualification de son parcours complet.
   borné ; ces doubles ne qualifient pas les adaptateurs métier L2/L4.
 - L2/L4 : en cours. Ports réels de bootstrap, journal de dispatch signé et
   raccordement du choix de mode/hook décrits dans les addenda ci-dessous.
-- L3 : en cours, premier composant IR de démarrage distribué et consommé par les
-  tests de ports réels ; le modèle standard complet reste à livrer.
+- L3 : en cours, composants IR de démarrage et de squelette de cycle distribués
+  et consommés par les tests de ports réels ; le modèle standard complet reste à livrer.
 - L5 à L8 : à réaliser. Le modèle standard, le dispatcher mixte, la reprise
   générale du lanceur et les preuves natives/package installé restent ouverts.
 - Vérifications L1 : 27 cas dédiés, 38 régressions du réducteur/service, 51 de
@@ -617,3 +617,75 @@ générée localement, membres contrôlés, import dans un nouveau processus Nod
 et catalogue correspondent aux sources. Ce contrôle n’exécute aucun parcours
 métier ou natif et ne clôt pas L8 ; l’archive temporaire est supprimée après
 la vérification.
+
+
+## Addendum — raccordement de la création du squelette de cycle
+
+L2/L3 progresse avec un second composant distribué, distinct du modèle standard
+complet : `aidn-standard-cycle-create.v1.json`, son catalogue versionné et
+`standard-workflow-cycle-composition.mjs`. L'ordre des cinq occurrences vient de
+l'IR : projection canonique avant admission, admissions réelles, création du
+squelette et de la branche, audit de rattachement, projection après création.
+Quatre bindings déterministes utilisent le journal signé, les grants explicites,
+les stores canoniques et le même réducteur. Aucune allocation de modèle.
+
+La création écrit les huit artefacts du cycle ainsi que session, snapshot et
+CURRENT-STATE sous CAS. L'état reste OPEN/NOT_READY, scope non gelé et Native write
+scope vide. Ce composant ne termine ni DoR ni le skill cycle-create. La sélection
+humaine du cycle, R3, planification, admissions d'implémentation et finalisation
+restent au périmètre restant L2/L3, avant travail, validation et clôture.
+
+Le diagnostic ciblé de gouvernance confirme une auto-obstruction : admission
+positive avant/après le verrou, négative pendant sa possession à cause du seul
+fichier effects.lock. La correction bornée étend l'asset d'installation existant
+.gitignore.append aux réserves runtime/contrôle. Elle conserve le gate réel de
+propreté Git et ne retire aucun fichier déjà suivi. Une fixture doit prouver que
+les changements métier restent bloquants et qu'un checkpoint Git externe permet
+une nouvelle intention d'admission, sans rejouer les effets précédents.
+
+**Dépendance explicite pour terminer le raccordement** : le hook réel cycle-create
+peut produire un checkpoint réussi et un gate warn R05 avec
+run_conditional_drift_check. Cette observation impose un parcours IR de dérive et
+une attente durable ; elle ne vaut pas réussite du skill. Conserver et authentifier
+le résultat du checkpoint, exécuter le contrôle applicable par ses vrais ports,
+puis reprendre sans répéter les effets. Ne pas simplement ignorer warn, modifier
+un marqueur ou rejouer le hook jusqu'à succès. Ce livrable reste ouvert dans le
+modèle standard complet et le dispatcher mixte L3/L4/L5.
+
+Validation attendue de cette tranche : suite cycle hors ligne sur files/dual/db-only,
+plus db-only EXPLORING, attente d'admission réelle, grant refusé, entrée hostile,
+création canonique, audit réel, refus d'écriture produit en NOT_READY, acceptation
+dans un nouveau processus et replay/simulation exacts. Une panne SQLite sur la
+dernière écriture doit aussi conserver un résultat incertain authentifié, le verrou
+et l'attente après dix artefacts persistés, sans nouvelle intention de dispatch. La suite utilise les vrais
+ports métier et des autorités hôtes doublées. Elle ne qualifie ni identité native,
+ni PostgreSQL réel, ni exécution depuis le package installé. Les résultats exécutés
+sont enregistrés séparément ; L2–L8 et A1–A10 restent ouverts.
+
+
+Preuve exécutée du composant cycle : **PASS, 38 contrôles hors ligne**, vrais ports
+sur projets jetables installés depuis les assets source. Quatre parcours nominaux
+(files/dual/db-only COMMITTING et db-only EXPLORING), plus panne partielle db-only.
+L'admission sale attend, une nouvelle intention reprend après checkpoint Git
+externe, le reçu de création est accepté dans un nouveau processus sans effets
+répétés, et replay/simulation reproduisent les hashes. La panne laisse dix
+artefacts persistés, un résultat unknown authentifié, le verrou et WAITING ;
+une nouvelle intention est refusée. Les six définitions de schéma cycle passent
+leur validation. Autorités hôtes doublées ; appels modèle réels : zéro.
+Ces PASS ne qualifient ni le skill cycle-create complet ni le workflow standard.
+
+Régression de la tranche : **PASS, `npm run perf:verify-agentic-process`,
+11 suites / 286 contrôles**. Les lectures historiques, le défaut moteur, le
+compilateur, les reçus, les attentes humaines, les ports réels et les producteurs
+de stockage restent vérifiés. Les 51 cas du lanceur utilisent le transport natif
+simulé ; PostgreSQL utilise un transport SQL doublé. Contrôles source de vérité,
+métadonnées, complétude de gouvernance, catalogues de gates/surfaces, références
+documentaires, sensibilité, topologie package, frontière partagée et absence de
+mutation CLI implicite : PASS. Route interne du diff préparé : ASSURED.
+
+**NOT_RUN** pour cette tranche : client/canal humain natif réel, PostgreSQL réel,
+parcours métier depuis une archive installée exacte, workflow standard complet et
+reprise mixte générale. La sélection ordinaire du modèle standard, DoR/travail,
+attente de dérive R05, validation, clôture, promotion, PR/revue et synchronisation
+après fusion restent au périmètre restant du plan. Aucun marqueur historique
+reference_only/unsupported n'a été promu pour produire ces PASS.

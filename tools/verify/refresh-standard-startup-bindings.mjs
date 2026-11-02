@@ -2,15 +2,17 @@
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
-import { refreshStandardWorkflowStartupBindings } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
+import { refreshStandardWorkflowComponentBindings } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
-if (process.argv.slice(2).some(arg => arg !== "--write") || process.argv.slice(2).length > 1) throw Error("STANDARD_STARTUP_REFRESH_ARGUMENT_INVALID");
+const args = process.argv.slice(2);
+if (args.some(arg => !["--write", "--cycle-create"].includes(arg)) || new Set(args).size !== args.length) throw Error("STANDARD_STARTUP_REFRESH_ARGUMENT_INVALID");
+const cycle = args.includes("--cycle-create"), component = cycle ? "cycle-create" : "startup";
 const root = new URL("../../", import.meta.url), read = path => fs.readFileSync(new URL(path, root));
-const modelPath = "package/catalogs/process-models/aidn-standard-startup.v1.json", catalogPath = "package/catalogs/standard-workflow-startup.v1.json";
+const modelPath = `package/catalogs/process-models/aidn-standard-${component}.v1.json`, catalogPath = `package/catalogs/standard-workflow-${component}.v1.json`;
 const before = { model: read(modelPath), catalog: read(catalogPath) }, model = JSON.parse(before.model), catalog = JSON.parse(before.catalog);
-const skills = Object.fromEntries(["context-reload", "start-session"].map(id => { const path = `scaffold/codex/aidn-${id}/SKILL.md`; return [path, read(path)]; }));
-const next = refreshStandardWorkflowStartupBindings({ model, catalog, specification: read("docs/SPEC.md"), skills, bindings: standardWorkflowOperationBindings() });
+const skills = Object.fromEntries((cycle ? ["context-reload", "cycle-create", "branch-cycle-audit"] : ["context-reload", "start-session"]).map(id => { const path = `scaffold/codex/aidn-${id}/SKILL.md`; return [path, read(path)]; }));
+const next = refreshStandardWorkflowComponentBindings({ model, catalog, specification: read("docs/SPEC.md"), skills, bindings: standardWorkflowOperationBindings() });
 const write = process.argv.includes("--write");
 if (write && next.changed.length) {
   if (!read(modelPath).equals(before.model) || !read(catalogPath).equals(before.catalog)) throw Error("STANDARD_STARTUP_SOURCE_CHANGED");

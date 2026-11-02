@@ -2,6 +2,21 @@
 
 ## Structured agentic process
 
+`verify-standard-workflow-cycle-fixtures.mjs` consumes the separately distributed
+cycle scaffold JSON through real canonical files/SQLite, admission, Git, CAS,
+audit and projector ports. It requires real dirty-work waiting, explicit external
+Git reconciliation, a refused grant, authenticated receipt acceptance in a new
+Node process, a native product-patch denial in OPEN/NOT_READY, and exact replay /
+simulation with the execution reducer. Files/dual/db-only plus db-only EXPLORING
+are offline checks. Installer Codex discovery and host identity/grants are fixture
+capabilities. Completing this scaffold does not complete DoR, the cycle-create
+skill/hook, the standard workflow, native identity or exact installed-archive
+qualification. A real SQLite trigger also refuses the last cycle CAS after ten
+committed artifacts: the authenticated unknown result must retain ownership and
+WAITING, survive reopening, refuse fresh dispatch and replay exactly. Conditional
+drift from R05 remains an explicit remaining route.
+
+
 `verify-workflow-record-storage-fixtures.mjs` exercises the actual SQLite index
 writer and PostgreSQL bulk producer (SQL transport double). It protects both
 historical instance namespaces, definitions, operation journals and decision

@@ -9,3 +9,11 @@
 .aidn/runtime/context/
 .aidn/runtime/perf/current-run-id.txt
 .aidn/runtime/perf/workflow-events.ndjson
+
+# Local canonical database and authenticated process control records.
+# These retain their on-disk authority; business artifacts remain reviewable.
+.aidn/runtime/index/
+.aidn/runtime/standard-workflow/
+docs/audit/workflows/process-instances/
+docs/audit/workflows/operation-records/
+docs/audit/workflows/decision-inbox/

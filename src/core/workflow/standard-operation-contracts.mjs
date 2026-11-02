@@ -5,13 +5,17 @@ import plan from "../contracts/workflow-definition/standard-session-initialize-p
 import outputV2 from "../contracts/workflow-definition/standard-operation-output.v2.schema.json" with { type: "json" };
 import sessionRef from "../contracts/workflow-definition/standard-session-reference-input.v1.schema.json" with { type: "json" };
 import modeApply from "../contracts/workflow-definition/standard-mode-apply-input.v1.schema.json" with { type: "json" };
+import cycleInput from "../contracts/workflow-definition/standard-cycle-initialize-input.v1.schema.json" with { type: "json" };
+import cycleRef from "../contracts/workflow-definition/standard-cycle-reference-input.v1.schema.json" with { type: "json" };
+import cycleOutput from "../contracts/workflow-definition/standard-cycle-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson } from "./shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 export function assertStandardOperationInput(operation, value) {
-  const schema = operation === "session_initialize" ? initialize : ["context_reload", "session_admit"].includes(operation) ? empty
-    : ["mode_decision", "session_start_finalize"].includes(operation) ? sessionRef : operation === "session_mode_apply" ? modeApply : null;
+  const schema = operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit"].includes(operation) ? empty
+    : ["mode_decision", "session_start_finalize", "cycle_context_refresh"].includes(operation) ? sessionRef : operation === "session_mode_apply" ? modeApply
+    : operation === "cycle_initialize" ? cycleInput : ["branch_cycle_audit"].includes(operation) ? cycleRef : null;
   if (!schema || checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length)
     fail(operation === "session_initialize" ? "STANDARD_SESSION_INPUT_INVALID" : "STANDARD_OPERATION_INPUT_INVALID");
   return value;
@@ -19,7 +23,8 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
-  if (validateJsonSchema(value, value?.contract_version === "standard-operation-output.v2" ? outputV2 : output, "$", { contractKind: "workflow-definition" }).length
+  const schema = value?.contract_version === "standard-cycle-output.v1" ? cycleOutput : value?.contract_version === "standard-operation-output.v2" ? outputV2 : output;
+  if (validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length
     || value.outcome !== "completed" && Object.keys(value.facts).length
     || (value.outcome === "reconciliation_required") !== (value.effect_status === "unknown")
     || ["blocked", "deferred"].includes(value.outcome) && value.effect_status !== "no_effect") fail("STANDARD_OPERATION_OUTPUT_INVALID");

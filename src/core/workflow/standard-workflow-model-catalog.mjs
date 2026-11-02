@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import catalogSchema from "../contracts/workflow-definition/standard-workflow-startup-catalog.v1.schema.json" with { type: "json" };
+import cycleCatalogSchema from "../contracts/workflow-definition/standard-cycle-create-catalog.v1.schema.json" with { type: "json" };
 import sourceSchema from "../contracts/workflow-definition/standard-workflow-model-source.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { assertAgenticProcessModel } from "./agentic-process-model.mjs";
@@ -9,7 +10,13 @@ import { checkShadowJson, freezeShadow, shadowHash } from "./shadow-json.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 export const standardAssetHash = bytes => createHash("sha256").update(bytes).digest("hex");
 export function assertStandardWorkflowStartupCatalog(catalog, model) {
-  if (checkShadowJson(catalog) || validateJsonSchema(catalog, catalogSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_STARTUP_CATALOG_INVALID");
+  if (catalog?.contract_version !== "standard-workflow-startup-catalog.v1") fail("STANDARD_STARTUP_CATALOG_INVALID");
+  return assertStandardWorkflowComponentCatalog(catalog, model);
+}
+export function assertStandardWorkflowComponentCatalog(catalog, model) {
+  const schema = catalog?.contract_version === "standard-workflow-startup-catalog.v1" ? catalogSchema
+    : catalog?.contract_version === "standard-cycle-create-catalog.v1" ? cycleCatalogSchema : null;
+  if (!schema || checkShadowJson(catalog) || validateJsonSchema(catalog, schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_STARTUP_CATALOG_INVALID");
   assertAgenticProcessModel(model);
   if (model.contract_version !== "agentic-process-model.v2" || catalog.model.sha256 !== shadowHash(model)
     || catalog.model.model_id !== model.model_id || catalog.model.revision !== model.revision || catalog.revision !== model.revision) fail("STANDARD_STARTUP_MODEL_CHANGED");
@@ -33,28 +40,36 @@ function authorities({ catalog, specification, skills }) {
   }
 }
 export function verifyStandardWorkflowStartupAssets(input) {
+  assertStandardWorkflowStartupCatalog(input.catalog, input.model);
+  return verifyStandardWorkflowComponentAssets(input);
+}
+export function verifyStandardWorkflowComponentAssets(input) {
   const { catalog, model, bindings } = input;
-  assertStandardWorkflowStartupCatalog(catalog, model); authorities(input);
+  assertStandardWorkflowComponentCatalog(catalog, model); authorities(input);
   const actual = new Map(bindings.map(binding => [binding.id, assertProcessOperationBinding(binding)]));
   for (const row of catalog.bindings) if (!actual.has(row.binding.id) || shadowHash(actual.get(row.binding.id)) !== shadowHash(row.binding)) fail("STANDARD_STARTUP_IMPLEMENTATION_CHANGED");
   return createStandardWorkflowModelSource(catalog, model);
 }
 export function createStandardWorkflowModelSource(catalog, model) {
-  assertStandardWorkflowStartupCatalog(catalog, model);
+  assertStandardWorkflowComponentCatalog(catalog, model);
   return freezeShadow({ contract_version: "standard-workflow-model-source.v1", catalog_sha256: shadowHash(catalog), model_sha256: shadowHash(model), catalog: structuredClone(catalog) });
 }
 export function assertStandardWorkflowModelSource(source, model) {
   if (checkShadowJson(source) || validateJsonSchema(source, sourceSchema, "$", { contractKind: "workflow-definition" }).length
     || source.catalog_sha256 !== shadowHash(source.catalog) || source.model_sha256 !== shadowHash(model)) fail("STANDARD_MODEL_SOURCE_INVALID");
-  assertStandardWorkflowStartupCatalog(source.catalog, model); return source;
+  assertStandardWorkflowComponentCatalog(source.catalog, model); return source;
 }
 
 // Source-authoring helper only. Runtime loading never repairs or refreshes pins.
 // Only implementation hashes may be refreshed; changed rules, skills, executor
 // kinds or contracts require an explicit reviewed source edit first.
 export function refreshStandardWorkflowStartupBindings(input) {
+  assertStandardWorkflowStartupCatalog(input.catalog, input.model);
+  return refreshStandardWorkflowComponentBindings(input);
+}
+export function refreshStandardWorkflowComponentBindings(input) {
   const { catalog, model, bindings } = input;
-  assertStandardWorkflowStartupCatalog(catalog, model); authorities(input);
+  assertStandardWorkflowComponentCatalog(catalog, model); authorities(input);
   const nextCatalog = structuredClone(catalog), nextModel = structuredClone(model), changed = [];
   for (const row of nextCatalog.bindings) {
     const actual = bindings.find(binding => binding.id === row.binding.id);
@@ -67,6 +82,6 @@ export function refreshStandardWorkflowStartupBindings(input) {
   if (changed.length) {
     nextModel.revision++; nextCatalog.revision = nextModel.revision; nextCatalog.model.revision = nextModel.revision; nextCatalog.model.sha256 = shadowHash(nextModel);
   }
-  verifyStandardWorkflowStartupAssets({ ...input, catalog: nextCatalog, model: nextModel });
+  verifyStandardWorkflowComponentAssets({ ...input, catalog: nextCatalog, model: nextModel });
   return { changed, catalog: nextCatalog, model: nextModel };
 }

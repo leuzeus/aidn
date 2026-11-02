@@ -270,3 +270,31 @@ promotion, PR, post-merge synchronization and general mixed resume.
 Source fixture execution, package inclusion and working-directory independence
 remain distinct from native identity, live PostgreSQL and execution from the
 exact installed archive. Full L2–L8 acceptance remains open.
+
+
+### Cycle scaffold and Git hygiene boundary
+
+The separate cycle scaffold component uses the common authenticated operation
+host and reducer, not a second cycle orchestrator. Actual creation/admission,
+canonical CAS, branch ownership audit and runtime projection are bound to SPEC
+and fixed skill/code identities. Creation stays OPEN/NOT_READY with an empty
+native write scope. R3, human cycle choice, DoR and completion of the full
+cycle-create skill/hook remain open.
+
+A controlled db-only experiment admitted cycle creation before the local owner
+was acquired, blocked on `?? .aidn/runtime/standard-workflow/effects.lock` while
+owned, then admitted it again after release. Keep the real Git-clean gate. Extend
+the existing owned installation ignore asset only for reserved local runtime and
+authenticated control storage. Do not ignore business artifacts, redefine their
+authority, remove tracked entries automatically or weaken admission. Canonical
+local DB/control records remain durable and require the existing retention and
+backup procedures despite their Git exclusion.
+
+A separate exploratory execution of the actual cycle-create hook completed its
+checkpoint but returned gate `warn`, `L2_SIGNAL_TRIGGERED`, action
+`run_conditional_drift_check` (R05/time since last drift check). Outer hook success
+is insufficient evidence of full skill completion. The scaffold graph deliberately
+ends before that skill completion. The full model must route conditional drift
+and durable waits before continuing; it must retain the checkpoint receipt and
+must not rerun already executed effects to make the warning disappear. This hook
+probe is diagnostic evidence, not full native or installed-workflow acceptance.

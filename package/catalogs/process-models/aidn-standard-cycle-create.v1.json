@@ -1,0 +1,63 @@
+{
+  "contract_version": "agentic-process-model.v2",
+  "model_id": "aidn-standard-cycle-create",
+  "revision": 2,
+  "participants": [
+    {
+      "id": "project"
+    }
+  ],
+  "roles": [],
+  "policies": [],
+  "entry": "cycle_create",
+  "operation_pins": {
+    "cycle_context_refresh": "870299973aedee687965b30dc4a3911f3915cb6020afccefabefa2481f2ed0e8",
+    "cycle_admit": "8dfbf945ea02883c0ca8c714c0ca546742166634fd2580017d68df3fd21f0eba",
+    "cycle_initialize": "6bc7b1def1d347d7e8b2ce6f8ef87e7360d0256ff46d46835f729b060687817e",
+    "branch_cycle_audit": "b3a85aa90c24ca907657b7b9fc78f5cd44a1204df2a21398faf647ccbd2bc1bf"
+  },
+  "nodes": [
+    {
+      "id": "cycle_create",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "refresh_before",
+        "admit",
+        "initialize",
+        "audit",
+        "refresh_after"
+      ]
+    },
+    {
+      "id": "refresh_before",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_context_refresh"
+    },
+    {
+      "id": "admit",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_admit"
+    },
+    {
+      "id": "initialize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_initialize"
+    },
+    {
+      "id": "audit",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "branch_cycle_audit"
+    },
+    {
+      "id": "refresh_after",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_context_refresh"
+    }
+  ]
+}

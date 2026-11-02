@@ -176,10 +176,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       assertStandardOperationInput(binding.id, input);
       const prepared = binding.id === "session_initialize" ? await operations.prepareSession(input)
         : binding.id === "session_mode_apply" ? await operations.prepareMode(decisionInput(state.record, input))
-        : binding.id === "session_start_finalize" ? await operations.prepareStart(input) : null;
+        : binding.id === "session_start_finalize" ? await operations.prepareStart(input)
+        : binding.id === "cycle_context_refresh" ? await operations.prepareCycleContext(input)
+        : binding.id === "cycle_initialize" ? await operations.prepareCycle(input) : null;
       return signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instanceId, instance_sha256: expectedSha256,
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
-        input: binding.id === "session_initialize" ? prepared?.plan?.input ?? input : input, prepared, snapshot: snapshot(), prepared_at_ms: now() });
+        input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input, prepared, snapshot: snapshot(), prepared_at_ms: now() });
     },
     async stage(preview, { write = false, expectedPreviewSha256 } = {}) {
       preview = structuredClone(preview);
@@ -221,13 +223,17 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           throw Object.assign(new Error("STANDARD_HOST_PROCESS_CHANGED"), { code: "STANDARD_HOST_PROCESS_CHANGED", effect_status: "no_effect" });
         if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
+        else if (record.intent.binding_ref === "cycle_admit") output = await operations.admitCycle(record.preview.input);
+        else if (record.intent.binding_ref === "branch_cycle_audit") output = await operations.auditCycle(record.preview.input);
         else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
           outcome: "blocked", effect_status: "no_effect", facts: {}, observations: record.preview.prepared ?? {}, evidence_refs: [] };
         else if (record.intent.binding_ref === "session_initialize") output = await operations.initializeSession(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "session_mode_apply") {
           if (shadowHash(decisionInput(state.record, record.preview.input)) !== shadowHash(record.preview.prepared.plan.input)) fail("STANDARD_MODE_DECISION_CHANGED");
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
-        } else output = await operations.finalizeStart(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        } else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else output = await operations.finalizeStart(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         if (record.preview.binding.effect_class === "read-only" && shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
           throw Object.assign(new Error("STANDARD_HOST_PRECONDITIONS_CHANGED"), { effect_status: "no_effect" });
       } catch (cause) {
