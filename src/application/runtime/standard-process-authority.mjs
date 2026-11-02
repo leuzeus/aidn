@@ -9,7 +9,7 @@ import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-
 import { createNativeAllocationJournalStore } from "../../adapters/runtime/native-allocation-journal-store.mjs";
 import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
 import { nativeJournalId } from "../../core/workflow/native-allocation-journal.mjs";
-import { readNativeAllocationCheckpoint, nativeEvidenceFile } from "./native-allocation-evidence.mjs";
+import { readNativeAllocationCheckpoint, nativeEvidenceFile, nativeAllocationOutputId } from "./native-allocation-evidence.mjs";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { readStandardDriftContext, evaluateStandardDriftReport } from "./standard-drift-report.mjs";
 import { DRIFT_REPORT_CONTRACT, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
@@ -128,6 +128,8 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const references = event.result.evidence_refs.filter(row => /-native-result\.json$/.test(row.ref));
     if (references.length !== 1) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     const journal = allocations.read(nativeJournalId(instance)).record;
+    const producer = journal.allocations.find(entry => references[0].ref.startsWith(`execution/${nativeAllocationOutputId(configuration.instance_id, entry.generation)}/`));
+    if (!producer || producer.configuration_sha256 !== shadowHash(configuration)) fail("STANDARD_DRIFT_PRODUCER_CONFIGURATION_CHANGED");
     const data = readAgentRunFile(nativeEvidenceFile(configuration, references[0], journal.allocations.length), { maxBytes: 262144 });
     const answer = data.value;
     if (data.sha256 !== references[0].sha256 || answer.request_sha256 !== event.result.request_sha256 || answer.output_contract !== DRIFT_REPORT_CONTRACT)
@@ -142,5 +144,17 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return evaluateStandardDriftReport(readActivityOutput(instance, input.report_occurrence_id),
       await prepareActivityOutput({ contractRef: DRIFT_REPORT_CONTRACT, productSha256: readProductSha256?.() }));
   }
-  return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, modelSource: source });
+  async function readDriftEvaluation(instance, input) {
+    assertStandardOperationInput("drift_check_finalize", input); authenticate(instance);
+    const retained = operationStore.read(input.evaluation_operation_id).record; signer.verify(retained);
+    const result = retained.results.at(-1);
+    if (retained.intent.binding_ref !== "drift_report_evaluate" || retained.intent.scope_id !== instance.scope_id || retained.intent.instance_id !== instance.instance_id
+      || retained.phase !== "receipted" || result?.receipt.outcome !== "completed"
+      || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail("STANDARD_DRIFT_EVALUATION_REQUIRED");
+    const context = await prepareActivityOutput({ contractRef: DRIFT_REPORT_CONTRACT, productSha256: readProductSha256?.() });
+    const output = evaluateStandardDriftReport(readActivityOutput(instance, retained.preview.input.report_occurrence_id), context);
+    if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_DRIFT_EVALUATION_STALE");
+    return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
+  }
+  return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation, modelSource: source });
 }

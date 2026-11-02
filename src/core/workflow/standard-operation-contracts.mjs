@@ -9,6 +9,7 @@ import cycleInput from "../contracts/workflow-definition/standard-cycle-initiali
 import cycleRef from "../contracts/workflow-definition/standard-cycle-reference-input.v1.schema.json" with { type: "json" };
 import cycleOutput from "../contracts/workflow-definition/standard-cycle-output.v1.schema.json" with { type: "json" };
 import driftInput from "../contracts/workflow-definition/standard-drift-evaluate-input.v1.schema.json" with { type: "json" };
+import driftFollowup from "../contracts/workflow-definition/standard-drift-followup-input.v1.schema.json" with { type: "json" };
 import driftOutput from "../contracts/workflow-definition/standard-drift-output.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson } from "./shadow-json.mjs";
@@ -17,7 +18,8 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 export function assertStandardOperationInput(operation, value) {
   const schema = operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit"].includes(operation) ? empty
     : ["mode_decision", "session_start_finalize", "cycle_context_refresh"].includes(operation) ? sessionRef : operation === "session_mode_apply" ? modeApply
-    : operation === "cycle_initialize" ? cycleInput : ["branch_cycle_audit"].includes(operation) ? cycleRef : operation === "drift_report_evaluate" ? driftInput : null;
+    : operation === "cycle_initialize" ? cycleInput : ["branch_cycle_audit"].includes(operation) ? cycleRef : operation === "drift_report_evaluate" ? driftInput
+    : operation === "drift_check_finalize" ? driftFollowup : null;
   if (!schema || checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length)
     fail(operation === "session_initialize" ? "STANDARD_SESSION_INPUT_INVALID" : "STANDARD_OPERATION_INPUT_INVALID");
   return value;

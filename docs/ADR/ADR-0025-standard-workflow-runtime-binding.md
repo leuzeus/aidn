@@ -503,3 +503,33 @@ admission remain separate ports. A clean report cannot acknowledge that hook,
 and confirmed drift cannot authorize its own recovery writes. Native/provider
 transport fixtures qualify this wiring only; live semantic/native and installed
 standard-workflow qualification remain required.
+
+### Canonical diagnostic retention and real R05 finalization
+
+`drift_check_finalize` is an internal deterministic executor binding. It accepts
+only an accepted evaluation's operation identity. The common authority verifies
+its MAC, occurrence receipt, native producer and current diagnostic context.
+Confirmed drift or partial coverage blocks before any business effect. A pure
+preparation calls the actual gating application with event emission disabled;
+scope, integrity, repair and unknown signals remain blockers. The age of the
+check itself is the only signal that its eventual explicit completion can clear.
+
+An exact signed preview and a live explicit grant precede effects. The existing
+local owner serializes canonical report CAS/projection and the fixed real skill
+hook. The report is immutable retained diagnostic evidence under
+`workflows/drift-reports/<operation>.md`, not a second workflow state. Files/dual
+require their applicable projection; db-only retains canonical data without a
+visible report. The effective ignore policy must already cover this generated
+evidence; the port never edits an installed client's ignore rules implicitly.
+
+The hook receives an application-generated run identity through a restricted
+internal argument. Completion requires its successful result and exactly one
+matching newly appended drift-check event, with branch, mode, timestamp and byte
+position retained in the signed receipt. Process revision, diagnostic context
+and authorization are rechecked at effect boundaries. A later read reuses the
+receipt rather than rerunning the hook. A partial effect, changed context or
+missing observation retains reconciliation and ownership without automatic retry.
+
+This completes the clean-report finalization component only. Human recovery,
+post-transition cycle context, the full standard model/input bindings, ordinary
+entrypoints and offline/native/exact archive acceptance remain distinct work.

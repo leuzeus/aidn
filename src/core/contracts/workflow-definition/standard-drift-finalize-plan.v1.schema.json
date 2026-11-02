@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#", "$id": "aidn://contracts/workflow-definition/standard-drift-finalize-plan.v1",
+  "x-aidn-contract-version": "standard-drift-finalize-plan.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "operation_id", "input", "prepared_at_ms", "context_sha256", "evaluation_sha256", "branch", "head", "report", "gate_constraints"],
+  "properties": {
+    "contract_version": { "const": "standard-drift-finalize-plan.v1" },
+    "operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" },
+    "input": { "type": "object", "additionalProperties": false, "required": ["evaluation_operation_id"], "properties": { "evaluation_operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" } } },
+    "prepared_at_ms": { "type": "integer", "minimum": 0 },
+    "context_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "evaluation_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "branch": { "type": "string", "minLength": 1, "maxLength": 256 }, "head": { "type": "string", "pattern": "^[a-f0-9]{40,64}$" },
+    "report": { "type": "object", "additionalProperties": false, "required": ["path", "before_sha256", "after", "after_sha256"], "properties": {
+      "path": { "type": "string", "pattern": "^workflows/drift-reports/op_[a-f0-9]{40}\\.md$" }, "before_sha256": { "type": "null" },
+      "after": { "type": "string", "minLength": 1, "maxLength": 98304 }, "after_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+    } },
+    "gate_constraints": { "type": "object", "additionalProperties": false, "required": ["level1", "level3", "other_signals"], "properties": {
+      "level1": { "type": "object" }, "level3": { "type": "object" }, "other_signals": { "type": "array", "items": { "type": "string" }, "maxItems": 32 }
+    } }
+  }
+}

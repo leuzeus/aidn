@@ -8,7 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `6c4cb31` et tranche courante de diagnostic R05 typé.
+Dernier état relu : `65fec23` et tranche courante de finalisation R05 sans dérive.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -28,13 +28,14 @@ encore ouverts.
   borné ; ces doubles ne qualifient pas les adaptateurs métier L2/L4.
 - L2/L4 : en cours. Ports de bootstrap/cycle, journal de dispatch signé, choix
   de mode/hook, inbox de contrôle durable et conservation de l'état natif décrits
-  dans les addenda ci-dessous. Le journal d'allocation signé constitue une tranche
+  dans les addenda ci-dessous, ainsi que diagnostic typé et finalisation R05 sans
+  dérive avec vrai hook. Le journal d'allocation signé constitue une tranche
   supplémentaire. La reprise native et l'hôte mixte sont des compositions
   internes explicites ; la garde du démarrage ordinaire reste inchangée.
 - L3 : en cours, composants IR de démarrage et de squelette de cycle distribués
   et consommés par les tests de ports réels ; le modèle standard complet reste à livrer.
-- L4 : scope commun et dispatcher mixte interne implémentés, validation ciblée
-  en cours ; réconciliation des inconnus et continuation après expiration restent
+- L4 : scope commun et dispatcher mixte interne implémentés et validés sur les
+  corpus ciblés ; réconciliation des inconnus et continuation après expiration restent
   ouvertes. Voir l'addendum du 2026-11-02.
 - L5 à L8 : à réaliser. Le modèle standard complet, son branchement ordinaire,
   la reprise générale et les preuves natives/package installé restent ouverts.
@@ -1187,9 +1188,100 @@ modèle standard complet restent ensuite explicitement ouverts.
 Raccord de données L3/L5 à livrer explicitement : le modèle/catalogue standard
 doit déclarer comment les paramètres de démarrage, observations canoniques et
 résultats antérieurs alimentent chaque entrée d'opération. Le pilote de
-qualification fournit aujourd'hui explicitement `report_occurrence_id` ; cela
+qualification fournit aujourd'hui explicitement `report_occurrence_id` et
+`evaluation_operation_id` ; cela
 ne prouve pas une résolution générale par le modèle. Prévoir un résolveur commun
 borné, sans code/JSONPath arbitraire, avec corrélation d'instance et de portée de
 boucle/appel. Les entrées effectivement résolues restent liées aux intentions,
 aperçus et reçus authentifiés. L'acceptation du workflow standard doit montrer
 ce raccord sans ordre de nœuds ni routage métier recodés dans un pilote ad hoc.
+
+## Addendum — conservation du diagnostic et vrai hook R05 sans dérive
+
+Cette tranche L2 ajoute `drift_check_finalize` au registre interne déterministe.
+Elle consomme seulement l'identité de l'évaluation déjà acceptée, authentifie
+son journal, son reçu et son producteur natif, puis réévalue son applicabilité
+au contexte courant. Un changement de configuration productrice refuse la
+nouvelle consommation sans empêcher la lecture de l'historique. Un rapport
+partiel, une dérive ou une récupération encore requise interdit la finalisation.
+L'authentification prouve la provenance du diagnostic, pas sa justesse sémantique.
+
+La préparation appelle le vrai port de gating sans émettre d'événement. Elle
+conserve les contrôles de périmètre, d'intégrité, de réparation et d'intention ;
+seul l'âge du contrôle que le hook réalise peut être acquitté par sa réalisation
+effective. Le port n'invente ni décision de reload, ni seuil moins strict, ni
+approbation de récupération. Le mode du hook reste COMMITTING comme dans le
+routage existant du skill. Aucun modèle n'est appelé par cette opération.
+
+Sous aperçu exact, autorisation explicite recontrôlée et propriétaire local
+d'effets, le port persiste une copie diagnostique canonique immuable par le CAS
+d'artefacts existant. La projection de `workflows/drift-reports/<op>.md` suit
+files/dual/db-only. La règle ignore doit être effectivement installée ; le port
+ne répare pas implicitement un ancien client. Cette copie reste une preuve
+rattachée à l'instance, sans nouvel état de workflow ni nouvelle permission.
+
+Le port invoque ensuite réellement le hook fixe `drift-check`. L'identité de run
+est générée par l'application et ne peut être injectée dans un autre routage.
+Un résultat favorable seul ne suffit pas : il faut son unique événement propre
+nouvellement ajouté, sa branche, son mode et son horodatage, avec position et
+hash conservés. Révision du processus, contexte et autorisation sont recontrôlés
+aux frontières d'effets. Le reçu confirmé publie `drift_check_completed: true`.
+Après effet possible sans observation suffisante, aucun fait de réussite n'est
+produit : réconciliation durable, propriétaire conservé et aucune réexécution
+automatique. Une reprise après reçu confirmé conserve le résultat du hook.
+
+Fichiers : `standard-drift-finalization.mjs`,
+`standard-process-authority.mjs`, `standard-workflow-operation-host.mjs`,
+`standard-workflow-operations.mjs`, `skill-hook-use-case.mjs`, contrats
+`standard-drift-followup-input.v1`, `standard-drift-finalize-plan.v1` et
+`standard-drift-output.v1`, pins d'implémentation et catalogues des composants,
+ignore du scaffold et corpus `verify-agentic-process-execution-fixtures.mjs`.
+ADR-0025, guide d'exécution, périmètre runtime et relation de subsomption de la
+preuve diagnostique décrivent cette frontière sans ajouter de table partagée.
+
+Validation finale ciblée **PASS** : six nouveaux cas sélectionnés par
+`--drift-finalize-contract-only`, les trois `--drift-finalize-mode` et les deux
+`--drift-finalize-case`. Le contrat fermé, le routage fixe et les refus des
+préconditions dérive/couverture/récupération sont hors ligne avec dépendances
+doublées. Les trois modes ont exécuté le vrai stockage et le vrai hook sur
+projet jetable installé depuis les sources ; deuxième dispatch sans répétition
+et simulation/rejeu exacts de la même IR/réducteur. Files refuse aussi une
+configuration productrice changée et un refus explicite d'effets. La révocation
+au verrou avant premier effet produit un reçu bloqué/no_effect ; la perte
+d'observation après hook produit unknown sans fait de succès et sans relance.
+Le diagnostic agentique utilise un transport natif substitué.
+
+Régressions ciblées **PASS** : contrats de rapport et Git contrôlé (deux cas),
+quatre contrôles v2 natifs sur transport substitué, 20 de l'hôte d'opérations,
+38 du réducteur/service, 20 du catalogue, hooks dual/db-only, 12 exemples de
+contexte de skills, namespace et couverture des skills. Source de vérité (35),
+métadonnées (37), complétude (38 concepts gouvernés), CLI de gouvernance,
+catalogue des gates, contrat Markdown, références documentaires, sensibilité et
+topologie package passent. Les révisions startup 17/cycle 15 sont exactes ; la
+vérification sans write ne répare rien. Suite agentique complète non filtrée :
+**NON_REJOUÉE** ; ces sélections ne la remplacent pas et les gates de PR de la
+route ASSURED ne sont pas toutes exécutées. Aucun test de la tranche ne reste actif.
+
+Deux erreurs de développement ont été corrigées : mauvais dossier du script
+reload lors de la première préparation et point de révocation trop tôt dans le
+test. Ce dernier cible désormais le verrou d'effets, sans dépendre d'un compteur
+d'appels. Le vérificateur historique des exemples a aussi été aligné sur les
+noms publics actuels et l'admission en lecture seule de context-reload, en
+conservant les onze autres exemples de hooks. Aucun changement des règles des
+skills n'a été nécessaire pour ces corrections.
+
+Preuves natives réelles (modèle, confinement/Job Windows, PostgreSQL et
+fournisseur PR), parcours standard complet et qualification sur archive
+installée exacte : **NOT_RUN**. La topologie package vérifiée ne constitue pas
+une qualification du workflow standard sur cette archive.
+
+Reste explicitement L2/R05 : décision humaine durable et ports de récupération,
+refus/report/annulation sans réussite implicite, réévaluation après récupération,
+contexte propriétaire après transition du cycle, et réconciliation explicite
+d'un effet inconnu. La finalisation sans dérive ne clôt pas ces travaux.
+Restent ensuite DoR/travail/clôtures/promotion/PR/synchronisation, modèle complet
+`aidn-standard.v1.json`, raccords de données déclaratifs L3/L5 et sélection par
+les entrées ordinaires. L6 conserve A1–A10 par les vrais ports sur projet jetable,
+rejeu/simulation et lecture historique ; L7 les preuves natives et fournisseurs
+réels ; L8 la qualification de l'archive installée exacte. Aucun de ces lots
+n'est remplacé par le choix du moteur par défaut ou les composants catalogués.

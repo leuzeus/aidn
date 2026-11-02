@@ -10,8 +10,12 @@ import {
 
 export { assertSupportedSkill, assertValidSkillMode };
 
-function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate) {
+function buildToolArgs(route, targetRoot, mode, effectiveStrict, noAutoSkipGate, runId) {
   const args = [...(route.fixedArgs ?? []), "--target", targetRoot, "--json"];
+  if (runId !== undefined) {
+    if (route.tool !== "gating-evaluate.mjs" || typeof runId !== "string" || !/^[a-z][a-z0-9_-]{0,95}$/.test(runId)) throw Error("SKILL_HOOK_RUN_ID_INVALID");
+    args.push("--run-id", runId);
+  }
   if (
     route.tool === "checkpoint.mjs"
     || route.tool === "gating-evaluate.mjs"
@@ -92,7 +96,7 @@ export function runSkillHookUseCase({ args, perfDir, targetRoot, processAdapter 
   });
   const strictRequiredByState = shouldForceStrictForSkillState(stateMode);
   const effectiveStrict = args.strict || strictRequiredByState;
-  const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict, args.noAutoSkipGate === true);
+  const toolArgs = buildToolArgs(route, targetRoot, mode, effectiveStrict, args.noAutoSkipGate === true, args.runId);
   const startedAt = new Date().toISOString();
 
   try {

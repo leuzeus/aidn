@@ -19,6 +19,20 @@ report enter recovery wait. Git observations retain hashes/counts outside the
 declared product scope. These are adapter data-boundary proofs, not native OS
 confinement or semantic diagnostic qualification.
 
+`--drift-finalize-contract-only` checks the closed followup contract, fixed
+internal hook/run wiring and refusal of drift/partial/recovery preconditions.
+Its hook adapter is a spy, not an execution claim.
+`--drift-finalize-mode=<files|dual|db-only>` selects disposable source-installed
+project checks: actual canonical report persistence and fixed R05 hook, own new
+completion event, retained result without a second hook, and identical reducer
+simulation. Files also refuses a changed producer configuration and an explicit
+effect denial without changing history. `--drift-finalize-case=revoked` revokes
+the grant at the last pre-effect boundary. `--drift-finalize-case=unknown`
+executes the actual hook then faults its observation: no success fact, durable
+reconciliation and owner retention, no automatic rerun. These selectors do not
+remove cases from the default suite. They use a native transport double and
+do not qualify a real model, OS confinement, exact archive or complete workflow.
+
 `--mixed-only` selects the production mixed-host checks in
 `verify-agentic-process-execution-fixtures.mjs`; the required unfiltered suite
 retains them. A disposable source-installed project supplies actual activation,
@@ -1888,6 +1902,9 @@ change. Its real database evidence remains outside PR admission.
 The installed skill namespace fixture checks the compatible startup admission
 and eleven ordinary hook examples after the combined nominal compact-selector
 experiment was withdrawn. Activation and fresh admission guards remain required.
+The hook context-example verifier resolves the same namespaced skill identity
+table; read-only context reload requires canonical admission without an ordinary
+mutating hook, while the other eleven skills retain their hook/context examples.
 The agent-view fixture independently compares actual full/agent strict admission,
 activation, source binding, blockers, checks and unchanged target bytes; explicit
 compact APIs remain available. Source procedure verification does not qualify a

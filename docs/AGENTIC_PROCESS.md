@@ -540,8 +540,8 @@ reported evidence, then emits typed routing facts without another model call.
 `changes` describes reported deviations from the objective/baseline; the observed
 Git diff remains separate input evidence. Authentication is provenance, not
 semantic proof. Evaluation leaves R05 completion pending and grants no recovery
-writes or DoR. Human arbitration, authorized artifact changes, report retention
-in business records and the actual finalization hook remain separate work.
+writes or DoR. Human arbitration and authorized recovery artifact changes remain
+separate work; clean-report retention and hook finalization use the port below.
 
 The diagnostic receives raw diffs only for configured product files. Other
 changes retain hashes/counts, and private roots cannot be delivered as diagnostic
@@ -550,3 +550,15 @@ documents. A partial observation emits `drift_context_complete: false` and
 than finalization. Post-transition cycle context remains explicitly unsupported
 instead of silently using a session objective. Neither this component nor its
 configuration mapping selects the complete standard workflow by default.
+
+`drift_check_finalize` consumes an accepted evaluation identity under an exact
+preview and explicit effect grant. It requires a fresh clean report with complete
+observed coverage and the existing gating checks. The application persists the
+canonical diagnostic record, invokes the real fixed drift-check hook and verifies
+its own newly appended completion event. It publishes `drift_check_completed`
+only after those observations; uncertainty retains reconciliation and the local
+effect owner. Reopening or replay never repeats a receipted hook. This internal
+component does not implement human recovery or select the full standard model.
+The producer configuration must still match when consuming its report; a changed
+instruction or criterion refuses new evaluation/finalization while leaving
+historical inspection available.

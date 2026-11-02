@@ -12,7 +12,10 @@ import { createStandardWorkflowMixedHost } from "../../src/application/runtime/s
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
 import { assertNativeActivityAnswer, nativeActivityAnswerSchema, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
 import { evaluateStandardDriftReport } from "../../src/application/runtime/standard-drift-report.mjs";
+import { createStandardDriftFinalization } from "../../src/application/runtime/standard-drift-finalization.mjs";
 import { readControlledDriftGit, assertDiagnosticPathScope } from "../../src/application/runtime/standard-drift-git.mjs";
+import { runSkillHookUseCase } from "../../src/application/runtime/skill-hook-use-case.mjs";
+import { assertStandardOperationInput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { standardWorkflowOperationBindings, createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
@@ -62,6 +65,11 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--drift-only") && !name.startsWith("drift ")) return;
   if (process.argv.includes("--drift-git-only") && !name.startsWith("drift controlled Git")) return;
   if (process.argv.includes("--drift-contract-only") && !name.startsWith("drift contract ")) return;
+  if (process.argv.includes("--drift-finalize-contract-only") && !name.startsWith("drift finalization contract ")) return;
+  const finalizeMode = process.argv.find(value => value.startsWith("--drift-finalize-mode="))?.slice(22);
+  if (finalizeMode && !name.startsWith(`drift finalize ${finalizeMode}:`)) return;
+  const finalizeCase = process.argv.find(value => value.startsWith("--drift-finalize-case="))?.slice(22);
+  if (finalizeCase && !name.startsWith(`drift finalization ${finalizeCase}:`)) return;
   const driftMode = process.argv.find(value => value.startsWith("--drift-mode="))?.slice(13);
   if (driftMode && !name.startsWith(`drift ${driftMode}:`)) return;
   await callback(); checks.push(name); console.log("PASS " + name); }
@@ -326,6 +334,11 @@ function mixedFixture(stateMode = "files", options = {}) {
     const content = fs.readFileSync(new URL("../../scaffold/codex/aidn-drift-check/SKILL.md", import.meta.url));
     f.configuration.skills["drift-check"] = { path: put(f.base, "package/drift-check.md", content), sha256: sha(content) };
     f.configuration.activity_outputs = { analyze: "standard-drift-report.v1" };
+    if (options.finalize) {
+      model.operation_pins.drift_check_finalize = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "drift_check_finalize"));
+      model.nodes = [{ id: "mixed", kind: "sequence", participant_ref: "delivery", children: ["reload", "admit", "initialize", "analyze", "evaluate", "finalize"] },
+        ...model.nodes.filter(row => ["reload", "admit", "initialize", "analyze", "evaluate"].includes(row.id)), op("finalize", "drift_check_finalize")];
+    }
     fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   }
   f.configuration.instructions = options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
@@ -352,6 +365,22 @@ async function bootstrapMixed(f) {
   const auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000;
   return auth;
 }
+function finalizationFixture(mode = "files", options = {}) {
+  return mixedFixture(mode, { drift: true, finalize: true, ...options, answer({ params }) {
+    const context = JSON.parse(params.input[0].text.split("\n").at(-1));
+    return { outcome: "completed", summary: "Scoped diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
+      original_objective: context.context.original_objective, current_objective: context.context.original_objective, drift_level: "none", objective_changed: false,
+      changes: [], keep: ["Current scope"], discard: [], split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+      recommendation: "continue", rationale: "Fixture native wire only; application finalization is real.", evidence_refs: context.evidence_refs } };
+  } });
+}
+async function readyFinalization(f) {
+  const auth = await bootstrapMixed(f), native = await f.open().step({ write: true, authorization: auth });
+  assert.equal(native.journal_phase, "closed", JSON.stringify(native));
+  const state = f.open().inspect(), occurrence = state.cursor.occurrences.find(row => row.node_id === "analyze").occurrence_id;
+  const evaluated = await f.open().step({ write: true, input: { report_occurrence_id: occurrence } });
+  return { evaluated, input: { evaluation_operation_id: evaluated.operation_id } };
+}
 
 if (process.argv[2] === "--mixed-continue") {
   try {
@@ -372,6 +401,93 @@ if (process.argv[2] === "--mixed-continue") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  await check("drift finalization contract accepts only an evaluation identity and binds a fixed hook run", async () => {
+    const f = fixture(), id = "op_" + "a".repeat(40), calls = [];
+    assertStandardOperationInput("drift_check_finalize", { evaluation_operation_id: id });
+    assert.throws(() => assertStandardOperationInput("drift_check_finalize", { evaluation_operation_id: id, override: true }), /INPUT_INVALID/);
+    assert.throws(() => assertStandardOperationInput("drift_check_finalize", { evaluation_operation_id: "../other" }), /INPUT_INVALID/);
+    const args = { skill: "drift-check", mode: "COMMITTING", runId: "process_drift_" + id, strict: true };
+    const options = { args, targetRoot: f.configuration.target_root, perfDir: fileURLToPath(new URL("./", import.meta.url)),
+      processAdapter: { runJsonNodeScript(file, argv) { calls.push({ file, argv }); return { ok: true, result: "ok" }; } } };
+    assert.equal(runSkillHookUseCase(options).ok, true);
+    assert.equal(path.basename(calls[0].file), "gating-evaluate.mjs"); assert.ok(calls[0].argv.includes("--complete-drift-check"));
+    assert.equal(calls[0].argv[calls[0].argv.indexOf("--run-id") + 1], args.runId);
+    assert.throws(() => runSkillHookUseCase({ ...options, args: { ...args, runId: "arbitrary; command" } }), /RUN_ID_INVALID/);
+    assert.throws(() => runSkillHookUseCase({ ...options, args: { ...args, skill: "start-session" } }), /RUN_ID_INVALID/);
+    assert.equal(calls.length, 1);
+    for (const facts of [
+      { drift_present: true, drift_context_complete: true, drift_recovery_required: true },
+      { drift_present: false, drift_context_complete: false, drift_recovery_required: true },
+      { drift_present: false, drift_context_complete: true, drift_recovery_required: true },
+    ]) {
+      const finalizer = createStandardDriftFinalization({ targetRoot: f.configuration.target_root,
+        readEvaluation: async () => ({ output: { facts } }), readCurrent: () => { throw Error("UNEXPECTED_EFFECT"); } });
+      const prepared = await finalizer.prepare({}, { evaluation_operation_id: id }, id);
+      assert.equal(prepared.can_apply, false); assert.equal(prepared.reason_code, "STANDARD_DRIFT_RECOVERY_REQUIRED");
+    }
+  });
+  for (const mode of ["files", "dual", "db-only"]) await check(`drift finalize ${mode}: real report persistence and own R05 hook close the model without another model call`, async () => {
+    let deny = false;
+    const f = finalizationFixture(mode, { authorize: async ({ binding }) => deny && binding.id === "drift_check_finalize" ? { authorized: false }
+      : { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) } });
+    const { evaluated, input } = await readyFinalization(f), preview = await f.open().step({ input });
+    assert.equal(preview.preview.prepared.can_apply, true, JSON.stringify(preview.preview.prepared));
+    const events = path.join(f.configuration.target_root, ".aidn/runtime/perf/workflow-events.ndjson"), before = fs.existsSync(events) ? fs.readFileSync(events) : null;
+    if (mode === "files") {
+      const instructions = f.configuration.instructions.analyze;
+      f.configuration.instructions.analyze += " Apply revised diagnostic criteria.";
+      assert.equal(f.open().inspect().record.instance_sha256, evaluated.record.instance_sha256);
+      await assert.rejects(f.open().step({ input }), /STANDARD_DRIFT_PRODUCER_CONFIGURATION_CHANGED/);
+      f.configuration.instructions.analyze = instructions;
+      deny = true; await assert.rejects(f.open().step({ write: true, input }), /AUTHORIZATION_REQUIRED/); deny = false;
+      assert.equal(f.open().inspect().record.instance_sha256, evaluated.record.instance_sha256);
+      assert.equal(fs.existsSync(events), before !== null);
+    }
+    const completed = await f.open().step({ write: true, input }); assert.equal(completed.cursor.status, "COMPLETED", JSON.stringify(completed));
+    const output = f.open().readOperation(completed.operation_id).results.at(-1).output;
+    assert.equal(output.facts.drift_check_completed, true); assert.equal(output.observations.hook.payload.result, "ok");
+    const artifact = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).read(output.observations.report_path, { required: true });
+    assert.equal(artifact.sha256, output.observations.report_sha256); assert.match(artifact.content, /"drift_level": "none"/);
+    assert.equal(fs.existsSync(path.join(f.configuration.target_root, "docs/audit", output.observations.report_path)), mode !== "db-only");
+    const retained = fs.readFileSync(events), own = retained.toString("utf8").trim().split(/\r?\n/).map(line => JSON.parse(line)).filter(row => row.run_id === "process_drift_" + completed.operation_id);
+    assert.equal(own.length, 1); assert.equal(own[0].event, "drift_check_completed");
+    assert.equal((await f.open().dispatchOperation(completed.operation_id, { write: true })).status, "retained_result");
+    assert.equal((await f.open().step({ write: true })).kind, "terminal"); assert.deepEqual(fs.readFileSync(events), retained); assert.equal(f.t.sessions.length, 1);
+    const replay = simulateAgenticProcess({ instanceId: completed.record.instance_id, scopeId: completed.record.scope_id, model: completed.record.model, policyPins: completed.record.policy_pins, events: completed.record.events });
+    assert.equal(replay.trace.at(-1).instance_sha256, completed.record.instance_sha256);
+  });
+  await check("drift finalization revoked: authority is rechecked before the first effect", async () => {
+    let f, revoked = false;
+    f = finalizationFixture("files", { authorize: async ({ binding }) => {
+      if (binding.id === "drift_check_finalize" && createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).ownerPending()) {
+        revoked = true; return { authorized: false };
+      }
+      return { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
+    } });
+    const { input } = await readyFinalization(f), result = await f.open().step({ write: true, input });
+    assert.equal(result.cursor.status, "WAITING"); const output = f.open().readOperation(result.operation_id).results.at(-1).output;
+    assert.equal(output.outcome, "blocked"); assert.equal(output.effect_status, "no_effect"); assert.deepEqual(output.facts, {});
+    assert.equal(output.observations.reason_code, "STANDARD_HOST_AUTHORIZATION_REQUIRED");
+    assert.equal(revoked, true);
+    assert.equal(createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root }).ownerPending(), false);
+    assert.equal(fs.existsSync(path.join(f.configuration.target_root, ".aidn/runtime/perf/workflow-events.ndjson")), false);
+    assert.equal(f.t.sessions.length, 1);
+  });
+  await check("drift finalization unknown: real hook effects remain unresolved when their observation fails", async () => {
+    const f = finalizationFixture(), { input } = await readyFinalization(f), file = path.join(f.configuration.target_root, ".aidn/runtime/perf/workflow-events.ndjson");
+    const stat = fs.statSync, before = fs.existsSync(file) ? stat(file).size : 0;
+    let result;
+    fs.statSync = function(candidate, ...args) { const value = stat.call(this, candidate, ...args);
+      if (String(candidate) === file && value.size > before) throw Object.assign(Error("FIXTURE_EVENT_OBSERVATION_FAILED"), { code: "EIO" }); return value; };
+    try { result = await f.open().step({ write: true, input }); } finally { fs.statSync = stat; }
+    const output = f.open().readOperation(result.operation_id).results.at(-1).output;
+    assert.equal(result.cursor.status, "WAITING"); assert.equal(output.outcome, "reconciliation_required"); assert.equal(output.effect_status, "unknown"); assert.deepEqual(output.facts, {});
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+    assert.equal(artifacts.ownerPending(), true); assert.notEqual(artifacts.read(output.observations.report_path).sha256, null);
+    assert.ok(fs.readFileSync(file, "utf8").includes("drift_check_completed"));
+    const retained = fs.readFileSync(file); assert.equal((await f.open().step({ write: true })).kind, "reconciliation"); assert.deepEqual(fs.readFileSync(file), retained);
+    assert.equal(f.t.sessions.length, 1);
+  });
   await check("drift controlled Git forwards admitted product diffs and hashes private changes without disclosure", async () => {
     const repo = path.join(root, "diagnostic-git"), productRoot = path.join(repo, "product"); fs.mkdirSync(productRoot, { recursive: true });
     const command = args => spawnSync("git", ["-c", "core.hooksPath=NUL", ...args], { cwd: repo, encoding: "utf8", shell: false });

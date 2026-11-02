@@ -24,6 +24,13 @@ documents, while other Git changes retain hashes/counts and configured private
 roots remain denied. Coverage and diagnostic availability grant no R05 completion
 or recovery effects.
 
+`workflows/drift-reports/<operation>.md` is a canonical retained diagnostic copy
+under the existing artifact backend and local effect owner. It is generated
+evidence associated with the process instance, with projection when required.
+Its presence grants no completion: only the authenticated operation receipt
+retains verified execution of the fixed R05 hook. No shared table or historical
+conversion is introduced.
+
 Date: 2026-03-28  
 Status: current codebase inventory
 
