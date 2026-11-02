@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard-cycle-create",
-  "revision": 32,
+  "revision": 33,
   "participants": [
     {
       "id": "project"
@@ -11,10 +11,10 @@
   "policies": [],
   "entry": "cycle_create",
   "operation_pins": {
-    "cycle_context_refresh": "ecec11bb8b037a139a1f40c1a59a16e58d020b700fb5834114e379bc4cd3e515",
-    "cycle_admit": "84ab0eaf65b53a8d559a20e2956520d9b93dd2b7aaaee2e52ea9b4b7eb0714d1",
-    "cycle_initialize": "fcfd02eecc3a3993d7b7f7531ba0e821792121964b838e9778e9d5dc494ec146",
-    "branch_cycle_audit": "d58451713756d15c2eae6628078d2014fdd809325726e042f3f6a67a1e9436d2"
+    "cycle_context_refresh": "6faa406b1ccb5bf7cd85bebb223abaf08fab82ebd6c6a80be3450528ebff1b49",
+    "cycle_admit": "398b09af561f9f40d74565c016c54a7257c2555d061ec33296638f89a54193de",
+    "cycle_initialize": "f0f6d55a5977354a135bb92dca04e69635a93698de856e9ec2e15e0439e69a20",
+    "branch_cycle_audit": "77485ab3ecd466d4fb701bb98a964bbf526e9c8d3a50b75b50a7d7f096e1f927"
   },
   "nodes": [
     {

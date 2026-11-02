@@ -641,3 +641,20 @@ The requirements-delta admission used by this continuation and its ordinary
 hook reads canonical continuity asynchronously. In DB-backed modes it must
 recover the actual active anchors and existing CR impact without trusting a
 stale visible projection; unavailable/ambiguous canonical state stops it.
+
+An accepted `new_cycle` recovery, or a confirmed CR requiring a new cycle, can
+continue through `drift_recovery_context_refresh`,
+`drift_recovery_checkpoint_observe` and `drift_recovery_cycle_initialize`.
+The common IR resolves the authenticated predecessor identities. The first
+operation refreshes canonical runtime context under an exact grant; the second
+waits while Git is dirty and verifies an external checkpoint through actual
+read-only Git observations. It neither commits the checkout nor approves scope.
+A fresh intent resumes a blocked observation after reconciliation.
+
+The last operation uses the ordinary cycle-create ports and their admissions,
+with source/grant checks and causal postconditions under the effect owner.
+Cycle ID/type/title are explicit input data; the source supplies session and
+objective and the real continuity gate supplies base/rule. Private cycle/context
+plan v2 binds metadata preimages and required projections are checked. A created
+cycle remains at DoR NOT_READY and R05 incomplete until the later required
+planning/diagnosis/checkpoint steps. Unknown effects retain ownership.

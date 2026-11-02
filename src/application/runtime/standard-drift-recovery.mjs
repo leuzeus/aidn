@@ -15,6 +15,15 @@ const chunks = text => text.match(/[\s\S]{1,8192}/g) ?? [""];
 // Only this fixed writer may discount its two consented documents. No authored
 // input chooses excluded paths. Their exact canonical post-images are checked.
 export function recoveryBoundary(options) { return documentBoundary(options, controls); }
+export function recoveryRuntimeBoundary(options) { return documentBoundary(options, ["RUNTIME-STATE.md"]); }
+export function recoveryCycleBoundary({ plan, originalReferences, artifacts, ...options }) {
+  const { cycle_id, cycle_state, original_objective, context_use, completion, branch, ...body } = options.context;
+  const context = { ...body, documents: originalReferences.map(row => {
+    const observed = artifacts.read(row.ref.slice(6), { required: true });
+    return { ref: row.ref, sha256: observed.sha256, content: observed.content };
+  }) };
+  return documentBoundary({ ...options, context }, plan.changes.map(row => row.path), true);
+}
 export function changeRequestBoundary(options) {
   const cycle = options.context.cycle_id;
   if (!/^C[0-9]{3,6}$/.test(cycle ?? "")) fail("STANDARD_CHANGE_REQUEST_OWNER_REQUIRED");
@@ -22,7 +31,7 @@ export function changeRequestBoundary(options) {
   if (matches.length !== 1) fail("STANDARD_CHANGE_REQUEST_OWNER_REQUIRED");
   return documentBoundary(options, [matches[0].ref.slice(6), "CURRENT-STATE.md"]);
 }
-function documentBoundary({ root, context, environment = process.env }, controls) {
+function documentBoundary({ root, context, environment = process.env }, controls, branchTransition = false) {
   if (Object.keys(environment).some(key => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(key))) fail("STANDARD_GIT_ENV_SCOPE_CONFLICT");
   const git = args => {
     try { return execFileSync("git", ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),
@@ -44,7 +53,7 @@ function documentBoundary({ root, context, environment = process.env }, controls
   const ownIndex = git(["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-renames", "HEAD", "--", ...controls.map(name => "docs/audit/" + name)]);
   const { git: ignoredGit, documents, ...body } = context;
   return shadowHash({ body, documents: documents.filter(row => !controls.includes(row.ref.slice(6))),
-    git: { branch: git(["branch", "--show-current"]).trim(), head: git(["rev-parse", "HEAD"]).trim(),
+    git: { branch: branchTransition ? null : git(["branch", "--show-current"]).trim(), head: git(["rev-parse", "HEAD"]).trim(),
       outside_status_sha256: shadowHash(outside), outside_diff_sha256: artifactContentHash(outsideDiff), own_index_sha256: artifactContentHash(ownIndex) } });
 }
 export function createStandardDriftRecovery({ targetRoot, readEvaluation, observeContext, readCurrent, now = Date.now, environment = process.env }) {

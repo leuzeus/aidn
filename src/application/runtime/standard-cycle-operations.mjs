@@ -5,7 +5,7 @@ import { runBranchCycleAuditAdmitUseCase } from "./branch-cycle-audit-admit-use-
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { projectRuntimeState } from "../../../tools/runtime/project-runtime-state.mjs";
 import { buildRuntimeStateMarkdown } from "./runtime-state-projector-use-case.mjs";
-import { agentRunPhysicalPath } from "./agent-run-configuration-service.mjs";
+import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
 import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
@@ -13,8 +13,8 @@ import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.m
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { assertStandardOperationInput, assertStandardOperationOutput, normalizeStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
-import planSchema from "../../core/contracts/workflow-definition/standard-cycle-initialize-plan.v1.schema.json" with { type: "json" };
-import contextSchema from "../../core/contracts/workflow-definition/standard-cycle-context-plan.v1.schema.json" with { type: "json" };
+import planSchema from "../../core/contracts/workflow-definition/standard-cycle-initialize-plan.v2.schema.json" with { type: "json" };
+import contextSchema from "../../core/contracts/workflow-definition/standard-cycle-context-plan.v2.schema.json" with { type: "json" };
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const files = ["brief", "plan", "hypotheses", "audit-spec", "traceability", "decisions", "change-requests", "STATUS"];
@@ -48,8 +48,18 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     assertStandardOperationInput("cycle_initialize", plan.input);
     if (plan.branch_name !== `${plan.input.cycle_type}/${plan.input.cycle_id}-${plan.input.title}`
       || plan.cycle_path !== `cycles/${plan.input.cycle_id}-${plan.input.cycle_type}-${plan.input.title}`
-      || new Set(plan.changes.map(row => row.path)).size !== 11
+      || !new RegExp(`^sessions/${plan.input.session_id}(?:[-_.][A-Za-z0-9._-]+)?\\.md$`).test(plan.session_path)
+      || shadowHash(plan.changes.map(row => row.path)) !== shadowHash([...files.map(name => `${plan.cycle_path}/${name === "STATUS" ? "status" : name}.md`), plan.session_path, "snapshots/context-snapshot.md", "CURRENT-STATE.md"])
       || plan.changes.some(row => artifactContentHash(row.after) !== row.after_sha256)) fail("STANDARD_CYCLE_PLAN_INVALID");
+  }
+  function projectionFiles(changes) {
+    const selected = artifacts.describe();
+    if (selected.database && selected.state_mode === "db-only") return [];
+    return changes.map(row => {
+      const file = agentRunPhysicalPath(path.join(root, "docs/audit", row.path), { missing: true });
+      if (fs.existsSync(file)) readAgentRunFile(file, { json: false, maxBytes: 1048576 });
+      return file;
+    });
   }
   async function prepare(input, preparedAt, acquired = false) {
     assertStandardOperationInput("cycle_initialize", input);
@@ -100,9 +110,10 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     let current = observed.current.content;
     for (const [key, value] of Object.entries({ updated_at: at, active_cycle: input.cycle_id, cycle_branch: branch, branch_kind: "cycle", dor_state: "NOT_READY", first_plan_step: "unknown" })) current = replaceField(current, key, value);
     changes.push({ path: observed.current.path, before_sha256: observed.current.sha256, after: current });
-    const plan = { contract_version: "standard-cycle-initialize-plan.v1", operation_ref: "cycle_initialize", input, prepared_at_ms: preparedAt, scope: context,
+    projectionFiles(changes);
+    const plan = { contract_version: "standard-cycle-initialize-plan.v2", operation_ref: "cycle_initialize", input, prepared_at_ms: preparedAt, scope: context,
       mode: observed.metadata.mode, branch_name: branch, cycle_path: cyclePath, session_path: observed.row.path, latest_cycle_branch: admitted.lifecycle.latest_active_cycle_branch,
-      templates: templates.map(row => ({ path: row.path, sha256: row.sha256 })), changes: changes.map(row => ({ ...row, after_sha256: artifactContentHash(row.after) })) };
+      templates: templates.map(row => ({ path: row.path, sha256: row.sha256 })), changes: changes.map(row => ({ ...row, before_metadata_sha256: artifacts.metadataHash(row.path), after_sha256: artifactContentHash(row.after) })) };
     assertPlan(plan); return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   async function audit(input) {
@@ -124,18 +135,24 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     const context = scope(), observed = session(input.session_id), runtime = artifacts.read("RUNTIME-STATE.md", { required: true });
     const prewrite = await preWriteAdmit({ targetRoot: root, skill: "context-reload" });
     if ((!acquired && artifacts.ownerPending()) || prewrite.ok !== true) return { can_apply: false, prewrite };
-    const plan = { contract_version: "standard-cycle-context-plan.v1", operation_ref: "cycle_context_refresh", input, prepared_at_ms: at, scope: context,
-      mode: observed.metadata.mode, session_path: observed.row.path, session_sha256: observed.row.sha256, current_sha256: observed.current.sha256, runtime_sha256: runtime.sha256 };
+    projectionFiles([{ path: runtime.path }]);
+    const plan = { contract_version: "standard-cycle-context-plan.v2", operation_ref: "cycle_context_refresh", input, prepared_at_ms: at, scope: context,
+      mode: observed.metadata.mode, session_path: observed.row.path, session_sha256: observed.row.sha256, current_sha256: observed.current.sha256, runtime_sha256: runtime.sha256,
+      runtime_metadata_sha256: artifacts.metadataHash(runtime.path) };
     if (validateJsonSchema(plan, contextSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_CYCLE_CONTEXT_PLAN_INVALID");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({
     prepareCycleContext: input => prepareContext(input, now()),
-    async refreshCycleContext(prepared, { write = false, expectPlan } = {}) {
+    async refreshCycleContext(prepared, { write = false, expectPlan, effectGuard = null } = {}) {
       explicit(prepared, write, expectPlan);
       if (validateJsonSchema(prepared.plan, contextSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_CYCLE_CONTEXT_PLAN_INVALID");
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
-        try { const fresh = await prepareContext(prepared.plan.input, prepared.plan.prepared_at_ms, true); if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED"); }
+        try {
+          const fresh = await prepareContext(prepared.plan.input, prepared.plan.prepared_at_ms, true); if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
+          if (effectGuard !== null && (typeof effectGuard.before !== "function" || typeof effectGuard.after !== "function")) fail("STANDARD_CYCLE_EFFECT_GUARD_INVALID");
+          await effectGuard?.before();
+        }
         catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         let attempted = false;
         try {
@@ -146,12 +163,18 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
           const observed = session(prepared.plan.input.session_id), context = scope();
           if (observed.row.sha256 !== prepared.plan.session_sha256 || observed.current.sha256 !== prepared.plan.current_sha256
             || context.branch !== prepared.plan.scope.branch || context.head !== prepared.plan.scope.head) fail("STANDARD_PREVIEW_CHANGED");
-          const after = buildRuntimeStateMarkdown(computed.digest), change = { path: "RUNTIME-STATE.md", before_sha256: prepared.plan.runtime_sha256, after, after_sha256: artifactContentHash(after) };
-          attempted = true; artifacts.compareAndSwap(change); const projection = artifacts.project([change.path]);
+          const after = buildRuntimeStateMarkdown(computed.digest), change = { path: "RUNTIME-STATE.md", before_sha256: prepared.plan.runtime_sha256,
+            before_metadata_sha256: prepared.plan.runtime_metadata_sha256, after, after_sha256: artifactContentHash(after) };
+          projectionFiles([change]);
+          attempted = true; const committed = artifacts.compareAndSwapPreservingMetadata(change); const projection = artifacts.project([change.path]);
           if (artifacts.read(change.path).sha256 !== change.after_sha256) fail("STANDARD_CYCLE_CONTEXT_POSTCONDITION_FAILED");
+          for (const file of projectionFiles([change])) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== change.after_sha256) fail("STANDARD_CYCLE_PROJECTION_UNCONFIRMED");
+          if (artifacts.metadataHash(change.path) !== committed.metadata_sha256) fail("STANDARD_CYCLE_METADATA_UNCONFIRMED");
+          const guarded = await effectGuard?.after();
           const fields = analyzeStructuredArtifact(after).key_values;
           return emit("cycle_context_refresh", "completed", "confirmed", { digest_sha256: shadowHash(computed.digest), consistency: computed.consistency,
-            projection, repair_layer_status: fields.repair_layer_status, current_state_freshness: fields.current_state_freshness }, { cycle_context_refreshed: true },
+            projection, repair_layer_status: fields.repair_layer_status, current_state_freshness: fields.current_state_freshness,
+            ...(guarded ? { guarded_transition: guarded } : {}) }, { cycle_context_refreshed: true },
             [{ ref: "docs/audit/RUNTIME-STATE.md", sha256: change.after_sha256 }]);
         } catch (cause) {
           if (!attempted) { cause.effect_status = "no_effect"; throw cause; }
@@ -162,19 +185,26 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     async admitCycle(input = {}) { assertStandardOperationInput("cycle_admit", input); const observed = await admission(), allowed = observed.allowed && !artifacts.ownerPending();
       return emit("cycle_admit", allowed ? "completed" : "blocked", "no_effect", observed, allowed ? { cycle_creation_allowed: true } : {}); },
     prepareCycle: input => prepare(input, now()),
-    async initializeCycle(prepared, { write = false, expectPlan } = {}) {
+    async initializeCycle(prepared, { write = false, expectPlan, effectGuard = null } = {}) {
       explicit(prepared, write, expectPlan); assertPlan(prepared.plan);
+      if (effectGuard !== null && (typeof effectGuard.before !== "function" || typeof effectGuard.after !== "function")) fail("STANDARD_CYCLE_EFFECT_GUARD_INVALID");
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
-        try { const fresh = await prepare(prepared.plan.input, prepared.plan.prepared_at_ms, true); if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED"); }
+        try {
+          const fresh = await prepare(prepared.plan.input, prepared.plan.prepared_at_ms, true); if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
+          await effectGuard?.before(); projectionFiles(prepared.plan.changes);
+        }
         catch (cause) { cause.effect_status = "no_effect"; throw cause; }
-        const committed = [];
+        const committed = [], afterMetadata = [];
         try {
           git(["switch", "-c", prepared.plan.branch_name]);
-          for (const change of prepared.plan.changes) { artifacts.compareAndSwap(change); committed.push(change.path); }
+          for (const change of prepared.plan.changes) { afterMetadata.push(artifacts.compareAndSwapPreservingMetadata(change).metadata_sha256); committed.push(change.path); }
           const checked = await audit({ session_id: prepared.plan.input.session_id, cycle_id: prepared.plan.input.cycle_id });
           if (!checked.allowed || checked.dor_ready || scope().head !== prepared.plan.scope.head || prepared.plan.changes.some(row => artifacts.read(row.path).sha256 !== row.after_sha256)) fail("STANDARD_CYCLE_POSTCONDITION_FAILED");
           const projection = artifacts.project(committed);
-          return emit("cycle_initialize", "completed", "confirmed", { committed, audit: checked, projection }, { cycle_initialized: true, cycle_dor_ready: false },
+          for (const [index, file] of projectionFiles(prepared.plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== prepared.plan.changes[index].after_sha256) fail("STANDARD_CYCLE_PROJECTION_UNCONFIRMED");
+          if (shadowHash(committed.map(name => artifacts.metadataHash(name))) !== shadowHash(afterMetadata)) fail("STANDARD_CYCLE_METADATA_UNCONFIRMED");
+          const guarded = await effectGuard?.after();
+          return emit("cycle_initialize", "completed", "confirmed", { committed, audit: checked, projection, ...(guarded ? { guarded_transition: guarded } : {}) }, { cycle_initialized: true, cycle_dor_ready: false },
             prepared.plan.changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 })));
         } catch (cause) { return emit("cycle_initialize", "reconciliation_required", "unknown", { committed, reason_code: cause.code ?? "STANDARD_CYCLE_EFFECT_UNCONFIRMED" }); }
       });

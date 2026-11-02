@@ -10,6 +10,7 @@ import { createStandardDriftRecovery } from "../../src/application/runtime/stand
 import { createStandardDriftChangeRequest } from "../../src/application/runtime/standard-drift-change-request.mjs";
 import { assertStandardOperationInput, assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { runRequirementsDeltaAdmitUseCase } from "../../src/application/runtime/requirements-delta-admit-use-case.mjs";
+import { verifyDriftCyclePort } from "./drift-cycle-fixture-lib.mjs";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
@@ -100,9 +101,12 @@ try {
 }
 const owned = [];
 const admissionMode = process.argv.find(arg => arg.startsWith("--cr-admission-mode="))?.slice("--cr-admission-mode=".length);
+const cycleMode = process.argv.find(arg => arg.startsWith("--cycle-port-mode="))?.slice("--cycle-port-mode=".length);
+if (cycleMode !== undefined && !["files", "dual", "db-only", "partial", "projection"].includes(cycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
 if (admissionMode !== undefined && !["files", "dual", "db-only"].includes(admissionMode)) throw Error("CR_ADMISSION_FIXTURE_MODE_INVALID");
 try {
-  if (process.argv.includes("--cr-fault-only") || admissionMode) await verifyPartialChangeRequest(admissionMode ?? "files", Boolean(admissionMode));
+  if (cycleMode) await verifyDriftCyclePort({ mode: cycleMode, owned, pass });
+  else if (process.argv.includes("--cr-fault-only") || admissionMode) await verifyPartialChangeRequest(admissionMode ?? "files", Boolean(admissionMode));
   else {
   const targetRoot = createFreshStandardWorkflowFixture("dual", owned), operations = createStandardWorkflowOperations({ targetRoot });
   const preparedSession = await operations.prepareSession({ session_id: "S001", session_branch: "S001-recovery", objective: "Verify authorized recovery documentation and exact effects" });
@@ -210,6 +214,7 @@ try {
 
   await verifyPartialChangeRequest();
   await verifyPartialChangeRequest("db-only", true);
+  for (const mode of ["files", "dual", "db-only", "partial", "projection"]) await verifyDriftCyclePort({ mode, owned, pass });
 
   // Independent project: an unobserved required projection is not reconciled by
   // resetting the previous project's retained effect owner.

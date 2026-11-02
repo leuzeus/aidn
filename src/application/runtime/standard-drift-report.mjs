@@ -45,11 +45,15 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
   const objective = brief ? objectiveSection?.replace(/^\s*-\s*/, "").replace(/\s+/gu, " ").trim() : analyzeStructuredArtifact(session.content).key_values.session_objective;
   if (!objective || objective.length > 4096) fail("STANDARD_DRIFT_OBJECTIVE_REQUIRED");
   const documents = ["SPEC.md", "WORKFLOW.md", "baseline/current.md", "snapshots/context-snapshot.md"].map(name => artifacts.read(name, { required: true }));
+  const runtime = artifacts.read("RUNTIME-STATE.md"); if (runtime.sha256 !== null) documents.push(runtime);
   const parking = artifacts.read("parking-lot.md");
   if (parking.sha256 !== null) documents.push(parking);
   documents.push(current, session); if (cycle) {
     documents.push(cycle, brief);
     for (const name of ["plan.md", "change-requests.md"]) documents.push(artifacts.read(cycle.path.replace(/status\.md$/, name), { required: true }));
+    for (const name of ["hypotheses.md", "audit-spec.md", "traceability.md", "decisions.md"]) {
+      const row = artifacts.read(cycle.path.replace(/status\.md$/, name)); if (row.sha256 !== null) documents.push(row);
+    }
   }
   for (const row of documents) assertDiagnosticPathScope(path.join(artifacts.root, "docs/audit", row.path), deniedRoots);
   const git = readControlledDriftGit({ root: artifacts.root, productRoot, productFiles, deniedRoots, environment,

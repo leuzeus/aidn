@@ -54,6 +54,8 @@ const selectedRecoveryMode = process.argv.find(value => value.startsWith("--drif
 if (selectedRecoveryMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryMode)) throw Error("RECOVERY_FIXTURE_MODE_INVALID");
 const selectedChangeRequestMode = process.argv.find(value => value.startsWith("--drift-cr-mode="))?.slice("--drift-cr-mode=".length);
 if (selectedChangeRequestMode !== undefined && !["files", "dual", "db-only"].includes(selectedChangeRequestMode)) throw Error("CHANGE_REQUEST_FIXTURE_MODE_INVALID");
+const selectedRecoveryCycleMode = process.argv.find(value => value.startsWith("--drift-cycle-mode="))?.slice("--drift-cycle-mode=".length);
+if (selectedRecoveryCycleMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryCycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
 const businessRoots = [];
@@ -61,6 +63,7 @@ let serial = 0;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (selectedChangeRequestMode && !name.startsWith(`drift CR ${selectedChangeRequestMode}:`)) return;
+  if (selectedRecoveryCycleMode && !name.startsWith(`drift cycle ${selectedRecoveryCycleMode}:`)) return;
   if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
   if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
@@ -385,6 +388,17 @@ function mixedFixture(stateMode = "files", options = {}) {
         model.nodes[0].children.splice(-1, 0, "change_request"); model.nodes.push(op("change_request", "drift_change_request_record"));
         model.data_bindings.inputs.push({ node_id: "change_request", fields: { recovery_record_operation_id: { source: "operation_id", node_id: "record" } } });
       }
+      if (options.recoveryCycle) {
+        for (const [node, binding] of [["recovery_context", "drift_recovery_context_refresh"], ["checkpoint", "drift_recovery_checkpoint_observe"], ["recovery_cycle", "drift_recovery_cycle_initialize"]]) {
+          model.operation_pins[binding] = shadowHash(standardWorkflowOperationBindings().find(row => row.id === binding)); model.nodes.push(op(node, binding));
+        }
+        model.nodes[0].children.splice(-1, 0, "recovery_context", "checkpoint", "recovery_cycle");
+        model.data_bindings.parameter_keys.push("cycle");
+        model.data_bindings.inputs.push(
+          { node_id: "recovery_context", fields: { recovery_operation_id: { source: "operation_id", node_id: options.changeRequest ? "change_request" : "record" } } },
+          { node_id: "checkpoint", fields: { context_operation_id: { source: "operation_id", node_id: "recovery_context" } } },
+          { node_id: "recovery_cycle", fields: { checkpoint_operation_id: { source: "operation_id", node_id: "checkpoint" }, ...Object.fromEntries(["cycle_id", "cycle_type", "title"].map(key => [key, { source: "parameter", key: "cycle", path: [key] }])) } });
+      }
     }
     fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   }
@@ -399,11 +413,11 @@ function mixedFixture(stateMode = "files", options = {}) {
   const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
   const open = () => createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key,
     authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource }, { controllerFactory });
-  Object.assign(f, { open, key, t, model }); return f;
+  Object.assign(f, { open, key, t, model, ...(options.recoveryCycle ? { cycleParameters: { cycle_id: options.changeRequest ? "C002" : "C001", cycle_type: "spike", title: "admitted-recovery" } } : {}) }); return f;
 }
 async function bootstrapMixed(f) {
   const input = { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" };
-  const parameters = f.model.data_bindings ? { parameters: { session: input } } : {};
+  const parameters = f.model.data_bindings ? { parameters: { session: input, ...(f.cycleParameters ? { cycle: f.cycleParameters } : {}) } } : {};
   const h = f.open(), initial = h.initialize({ write: false, ...parameters });
   h.initialize({ write: true, expectedResultSha256: initial.record.instance_sha256, ...parameters });
   for (let count = 0; count < 3; count++) {
@@ -540,6 +554,67 @@ if (process.argv[2] === "--mixed-continue") {
     const simulation = simulateAgenticProcess({ instanceId: waiting.record.instance_id, scopeId: waiting.record.scope_id, model: waiting.record.model,
       policyPins: waiting.record.policy_pins, parameters: waiting.record.initial_parameters, events: waiting.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, waiting.record.instance_sha256);
+  });
+  for (const mode of ["files", "dual", "db-only"]) await check(`drift cycle ${mode}: authenticated recovery waits for Git reconciliation then initializes a real cycle with exact simulation`, async () => {
+    const claims = new Map(), humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null,
+      verify: ({ source, sourceRef }) => claims.has(sourceRef) && shadowHash(claims.get(sourceRef)) === shadowHash(source)
+        ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" } };
+    const withCr = mode === "dual";
+    const f = mixedFixture(mode, { drift: true, recovery: true, recoveryCycle: true, changeRequest: withCr, humanSource, answer({ params }) {
+      const context = JSON.parse(params.input[0].text.split("\n").at(-1));
+      return { outcome: "completed", summary: "Cycle recovery diagnostic fixture.", report: { contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
+        original_objective: context.context.original_objective, current_objective: "Implement the revised goal in a separately admitted cycle", drift_level: "severe", objective_changed: true,
+        changes: ["Confirmed fixture goal change requiring a new cycle."], keep: ["Original traceability"], discard: [],
+        split_recommendation: { new_cycle: true, new_branch: true, change_request_required: true, impact: "high" },
+        recommendation: "human_arbitration", rationale: "Native wire fixture; actual admitted cycle and context ports.", evidence_refs: context.evidence_refs } };
+    } });
+    const auth = await bootstrapMixed(f), operations = createStandardWorkflowOperations({ targetRoot: f.configuration.target_root });
+    const git = (...args) => { const value = spawnSync("git", ["-c", "core.hooksPath=NUL", ...args], { cwd: f.configuration.target_root, encoding: "utf8", shell: false }); assert.equal(value.status, 0, value.stderr.slice(-1024) || value.stdout.slice(-1024)); return value.stdout.trim(); };
+    if (withCr) await prepareCompletionCycle(f, "OPEN");
+    else { const modePlan = await operations.prepareMode({ session_id: "S001", mode: "COMMITTING" });
+      assert.equal((await operations.applyMode(modePlan, { write: true, expectPlan: modePlan.plan_sha256 })).outcome, "completed");
+      git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture committing session precondition"); }
+    console.log(`STEP drift cycle ${mode}: real mode/cycle precondition prepared`);
+    const native = await f.open().step({ write: true, authorization: auth }); assert.equal(native.journal_phase, "closed", JSON.stringify(native));
+    await f.open().step({ write: true }); const waiting = await f.open().step({ write: true }); assert.equal(waiting.status, "waiting_for_human");
+    claims.set("accept", { contract_version: "human-drift-recovery-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+      source_event_id: `cycle-${mode}`, subject_sha256: "a".repeat(64), question_sha256: shadowHash(waiting.question), choice: withCr ? "requirements_delta" : "new_cycle",
+      evidence_refs: [{ ref: "fixture:operator/cycle", sha256: "a".repeat(64) }] });
+    await f.open().receiveDecision(waiting.question.operation_id, { sourceRef: "accept", write: true }); await f.open().acceptOperation(waiting.question.operation_id, { write: true }); claims.clear();
+    const recorded = await f.open().step({ write: true }); assert.equal(f.open().readOperation(recorded.operation_id).results.at(-1).output.effect_status, "confirmed");
+    if (withCr) { const cr = await f.open().step({ write: true }); assert.equal(f.open().readOperation(cr.operation_id).results.at(-1).output.effect_status, "confirmed"); }
+    const refreshed = await f.open().step({ write: true }), refreshOutput = f.open().readOperation(refreshed.operation_id).results.at(-1).output;
+    assert.equal(refreshOutput.facts.drift_recovery_context_refreshed, true, JSON.stringify(refreshOutput));
+    console.log(`STEP drift cycle ${mode}: authenticated recovery context refreshed`);
+    let checked = await f.open().step({ write: true });
+    if (mode !== "db-only") {
+      const blocked = f.open().readOperation(checked.operation_id).results.at(-1).output;
+      assert.equal(blocked.outcome, "blocked"); assert.equal(blocked.observations.reason_code, "STANDARD_RECOVERY_GIT_CHECKPOINT_REQUIRED"); assert.deepEqual(blocked.facts, {});
+      assert.equal(f.open().inspect().cursor.status, "WAITING");
+      // This is an external human Git action, not an application effect or a
+      // claim that AIDN automatically approves/commits product changes.
+      git("add", "."); git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture external workflow checkpoint");
+      const previous = checked.operation_id; checked = await f.open().step({ write: true }); assert.notEqual(checked.operation_id, previous);
+    }
+    const checkpointOutput = f.open().readOperation(checked.operation_id).results.at(-1).output;
+    assert.equal(checkpointOutput.facts.drift_recovery_checkpoint_verified, true, JSON.stringify(checkpointOutput)); assert.equal(checkpointOutput.effect_status, "no_effect");
+    assert.equal((await f.open().dispatchOperation(refreshed.operation_id, { write: true })).status, "retained_result");
+    console.log(`STEP drift cycle ${mode}: external checkpoint observed; creation is ready`);
+    let initialized;
+    if (mode === "files") {
+      const file = put(f.base, "cycle-restart.json", JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex") }));
+      const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--recovery-record", file], { encoding: "utf8", shell: false, windowsHide: true, timeout: 300000 });
+      assert.equal(child.status, 0, child.stderr); const value = JSON.parse(child.stdout); assert.equal(value.status, "WAITING"); assert.equal(value.launches, 0); assert.equal(value.sessions, 0); initialized = { operation_id: value.operation_id };
+    } else initialized = await f.open().step({ write: true });
+    const output = f.open().readOperation(initialized.operation_id).results.at(-1).output; assert.equal(output.effect_status, "confirmed", JSON.stringify(output));
+    assert.equal(output.facts.drift_recovery_cycle_initialized, true); assert.equal(output.facts.cycle_dor_ready, false); assert.equal(output.facts.drift_check_completed, false);
+    assert.equal(output.observations.causal_transition.before_context_sha256, checkpointOutput.observations.causal_transition.after_context_sha256);
+    assert.equal(git("branch", "--show-current"), `spike/${f.cycleParameters.cycle_id}-admitted-recovery`);
+    const after = f.open().inspect(); assert.equal(after.cursor.status, "WAITING");
+    assert.equal((await f.open().dispatchOperation(initialized.operation_id, { write: true })).status, "retained_result");
+    const simulated = simulateAgenticProcess({ instanceId: after.record.instance_id, model: after.record.model, parameters: after.record.initial_parameters,
+      scopeId: after.record.scope_id, policyPins: after.record.policy_pins, events: after.record.events });
+    assert.equal(simulated.trace.at(-1).instance_sha256, after.record.instance_sha256); assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
   });
   for (const mode of ["files", "dual", "db-only"]) await check(`drift CR ${mode}: IR consumes confirmed recovery and creates a pending CR through admitted canonical ports`, async () => {
     const claims = new Map(), humanSource = {

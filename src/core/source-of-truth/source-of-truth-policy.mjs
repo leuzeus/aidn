@@ -68,7 +68,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     retention: "retain signed previews, intent, dispatch owner and authenticated results without automatic purge",
     migration: "new versioned artifact records; no historical instance conversion or key rotation fallback",
     replacement: "canonical artifact CAS, trusted host authentication and explicit phase progression; no dispatch takeover by PID or time",
-    evidence_targets: ["src/application/runtime/standard-drift-change-request.mjs", "tools/perf/verify-drift-recovery-fixtures.mjs", "src/core/workflow/process-operation-journal.mjs", "src/adapters/runtime/process-operation-journal-store.mjs", "src/application/runtime/standard-workflow-operation-host.mjs", "tools/perf/verify-standard-workflow-host-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
+    evidence_targets: ["src/application/runtime/standard-drift-cycle.mjs", "tools/perf/drift-cycle-fixture-lib.mjs", "src/application/runtime/standard-drift-change-request.mjs", "tools/perf/verify-drift-recovery-fixtures.mjs", "src/core/workflow/process-operation-journal.mjs", "src/adapters/runtime/process-operation-journal-store.mjs", "src/application/runtime/standard-workflow-operation-host.mjs", "tools/perf/verify-standard-workflow-host-fixtures.mjs", "tools/perf/verify-workflow-record-storage-fixtures.mjs"],
   },
   process_local_effect_owner: {
     owner: "trusted local workflow operation or mixed native allocation host",

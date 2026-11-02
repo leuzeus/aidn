@@ -1,5 +1,12 @@
 # Runtime Surface Scope Matrix
 
+Recovery cycle continuation reuses the operation journal, local effect owner,
+canonical runtime/cycle artifact ports and existing Git observation. The Git
+checkpoint binding is read-only and waits for external reconciliation; it does
+not stage/commit or synchronize a remote. Cycle/context plan v2 binds metadata
+preimages and checks physical projections under the owner. No new table,
+backend fallback, distributed lease or shared write is introduced.
+
 The deterministic R05 CR continuation reuses the canonical change-request and
 CURRENT-STATE artifacts plus the existing operation journal/effect owner. Its
 scope is an authenticated, confirmed recovery record and admitted active cycle;

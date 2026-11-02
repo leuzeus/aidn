@@ -690,3 +690,44 @@ canonical state stops admission. A stale visible current-state file cannot
 replace the canonical anchors. The existing hook awaits this admission before
 deciding whether to checkpoint. Public JSON/effect classes and medium/high
 impact ownership arbitration remain unchanged.
+
+### Recovery cycle continuation and external Git checkpoint
+
+Three fixed deterministic bindings continue an accepted `new_cycle` finding,
+or an accepted CR whose impact requires a new cycle. The mixed host verifies the
+latest evaluation/decision/findings chain, then the CR when applicable, then
+each accepted continuation receipt. A caller cannot substitute another
+operation identity, session, objective, branch source or executable adapter.
+
+`drift_recovery_context_refresh` reuses the existing canonical runtime projector.
+It records the verified causal context transition and a bounded fingerprint of
+the current document/product state and changed physical files. Runtime evidence
+and available owned cycle documents enter subsequent drift context; absent
+optional documents are not silently materialized or made into a new admission.
+
+`drift_recovery_checkpoint_observe` is read-only. The existing cycle-create
+clean-worktree rule is preserved. A dirty tree produces a blocked receipt and
+durable wait. After an external actor reconciles Git, an explicit retry creates
+a new intent. The observer verifies unchanged approved document/product state,
+fast-forward ancestry, bounded history, changed-path scope and exact committed
+file bytes. It performs no add, commit, reset or scope-approval effect. A clean
+DB-only tree can pass without an extra commit. This Git observation is distinct
+from the later R05 skill checkpoint.
+
+`drift_recovery_cycle_initialize` consumes the accepted checkpoint receipt.
+Cycle identity/type/title are explicit model data reviewed in its grant; the
+session and revised objective come from the authenticated source, while actual
+continuity admissions choose the allowed base/rule. Existing cycle-create
+application ports execute the branch/scaffold and preserve older cycles. Fresh
+write authorization and source/process checks run under the local effect owner.
+The post-effect guard checks the exact cycle, goal, branch, HEAD, document
+post-images and outside-context/Git boundary before confirmation or owner release.
+
+New cycle/context previews use explicit private plan v2 schemas with metadata
+preimages; the old v1 schemas and historical records remain unchanged. The shared
+cycle ports now preserve canonical classification/linkage, use content/metadata
+CAS and verify required physical projections. A missing projection or failed
+post-effect observation retains uncertainty and ownership. Creation emits only
+its own fact with DoR false and R05 incomplete. Requirements mapping, other
+recovery actions, fresh native diagnosis and the R05 hook remain separately
+required; this component is not the complete standard workflow.

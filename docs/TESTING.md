@@ -1,5 +1,26 @@
 # Testing Guide
 
+`drift-cycle-fixture-lib.mjs`, called by the existing recovery fixture, exercises
+real runtime-refresh/cycle application ports under a doubled provenance reader.
+`--cycle-port-mode=files|dual|db-only|partial|projection` selects its five cases;
+the unfiltered recovery fixture includes all five. They verify explicit grants,
+canonical metadata retention, a blocked dirty-worktree checkpoint, observed
+external Git reconciliation, exact cycle effects and stale-source refusal.
+An unrelated external commit must refuse. Failed post-effect observation and
+lost required projection retain unknown effects and the owner, with no success
+facts or repeat effect. This does not authenticate a real human/native provider.
+
+`--drift-cycle-mode=files|dual|db-only` in the execution corpus uses a qualification
+IR with durable cycle parameters and journal-derived identities. The dual case
+follows the CR branch; the others follow the accepted new-cycle choice. Actual
+mode/initial-cycle ports establish fixture preconditions. Native/human/grant
+transports are doubled; subsequent source authentication, runtime refresh, Git
+observation and cycle creation use production composition. A files/dual Git
+commit is an explicit external fixture action, not an application effect. The
+files case resumes cycle creation in a fresh Node process with no human source
+and no new native allocation. The same model/reducer must preserve the exact
+simulation hash. Full standard, native and installed archive proofs are separate.
+
 The dedicated recovery fixture also uses a real admitted dual cycle to check
 the CR writer under a doubled recovery-provenance reader: no authored paths or
 code, wrong recovery choice, denied grant, metadata-only races, retained old

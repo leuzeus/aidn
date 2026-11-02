@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `0cfd54b` et tranche courante de création de CR depuis
-la revue humaine R05 et sa conservation canonique confirmée.
+Dernier état relu : `583c033` et tranche courante de création de cycle depuis
+la récupération R05, son contexte confirmé et un checkpoint Git observé.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -1710,3 +1710,98 @@ création de cycle et rollback autorisé, la nouvelle analyse et le hook, le mod
 standard complet et les entrées ordinaires. Les parcours complets A1–A10,
 preuves natives réelles et qualification sur archive installée exacte restent
 ouverts ; les capacités de fixture ne valent pas ces preuves.
+
+
+## Addendum — cycle de récupération, contexte et checkpoint Git
+
+Tranche L2/L4 ASSURED, dépendante de `0cfd54b` et `583c033`. Trois bindings
+fixes prolongent un choix `new_cycle` accepté ou une CR confirmée dont l'impact
+exige un nouveau cycle : `drift_recovery_context_refresh`,
+`drift_recovery_checkpoint_observe` et `drift_recovery_cycle_initialize`.
+L'hôte authentifie la chaîne évaluation/décision/constats, puis la CR éventuelle,
+le contexte, le checkpoint et les résultats effectivement acceptés par le
+réducteur. L'IR fournit les identités de prédécesseurs ; l'opérateur ne les
+recopie pas entre étapes.
+
+Le projecteur runtime existant rafraîchit le contexte canonique. La règle
+existante exigeant un arbre Git propre avant création reste appliquée. Le
+premier essai direct a démontré que le rafraîchissement rendait lui-même le
+répertoire sale : une observation déterministe séparée attend donc le checkpoint
+externe. Elle n'exécute aucun add/commit/reset. Après réconciliation externe,
+un nouvel intent explicite vérifie l'état documentaire/produit inchangé,
+l'ascendance Git bornée, le périmètre des chemins et les octets du commit. Un
+commit étranger ou une modification de contenu ne valide pas le checkpoint.
+Une attente conserve ses résultats précédents ; elle ne rejoue pas le projecteur.
+DB-only peut vérifier un arbre propre sans commit supplémentaire.
+
+La création utilise les vrais ports de cycle et leurs admissions. Identité,
+type et titre sont des données explicites soumises au grant ; session et objectif
+proviennent de la source authentifiée, base/règle de continuité de l'admission
+réelle. L'objectif doit respecter le contrat existant du port de cycle, sans
+troncature ou réécriture implicite. Les écritures restent celles du scaffold,
+du lien de session, du snapshot et de CURRENT-STATE. Le changement de branche,
+les post-images, la stabilité des autres documents/Git et le processus sont
+vérifiés sous le propriétaire d'effet. Les anciens cycles ne sont pas clos
+implicitement.
+
+Le CAS de cycle historique réinitialisait des métadonnées existantes et ne
+vérifiait pas les projections physiques. Les plans privés cycle/contexte v2
+lient maintenant les préimages de métadonnées. Le writer partagé conserve la
+classification et le linkage et utilise le CAS contenu/métadonnées ; les cibles
+physiques passent le garde de chemin avant effet et leurs octets sont vérifiés
+après projection. Les schémas v1 et lecteurs historiques sont conservés sans
+conversion. Les gardes de source/autorisation et de post-effet sont des capacités
+JavaScript fixes de l'hôte, jamais des sélecteurs exécutables dans l'IR.
+
+Les observations R05 incluent le runtime et les autres documents du cycle quand
+ils existent, depuis leur autorité canonique. Leur absence ne crée pas de
+nouvelle règle d'admission ou de projection implicite ; les préconditions propres
+au port runtime/cycle restent applicables. Le cycle créé reste DoR NOT_READY,
+la récupération reste requise et R05 incomplet. Les hooks de skill, contexte
+suivant, nouvelle analyse et checkpoint R05 doivent prouver leur propre réussite.
+Le checkpoint Git observé n'est pas ce checkpoint R05.
+
+Fichiers : `standard-drift-cycle.mjs`, trois entrées/sortie/plan privés,
+`standard-cycle-operations.mjs`, `standard-workflow-artifacts.mjs`, plans privés
+cycle/contexte v2, registre/hôte/source des opérations, contexte/bornes R05,
+pins/catalogues, règles de preuve, ADR-0025 et guides. Le contrôle dédié existant
+importe `drift-cycle-fixture-lib.mjs` ; les cinq sélections
+`--cycle-port-mode=files|dual|db-only|partial|projection` utilisent des ports
+canoniques réels et doublent seulement la provenance. Les sélections intégrées
+`--drift-cycle-mode=files|dual|db-only` utilisent l'autorité mixte authentifiée ;
+la variante dual suit la branche CR. Mode/cycle initial sont des préconditions
+réelles, pas la preuve du graphe standard complet. Le commit Git de fixture est
+une action externe explicite et n'est pas une mutation du port applicatif.
+
+Validation ciblée : les cinq contrôles directs passent, y compris observation
+indisponible après effet et projection perdue (unknown, propriétaire conservé,
+aucun fait de réussite ni second effet). Le corpus dédié complet passe 30
+contrôles sans SKIP ; une course de seules métadonnées du cycle est aussi testée
+par la sélection dual. Contrats/réducteur d'opérations (27) et catalogue publié
+(22) passent. Les trois parcours intégrés files/dual/db-only sont **PASS** :
+chaîne des journaux authentifiée, CR intermédiaire dans dual, attente Git puis
+nouvel intent explicite, conservation du projecteur sans redispatch, nouvelle
+branche/cycle et hash exact en simulation. Files crée le cycle dans un nouveau
+processus Node après disparition de la source humaine, sans autre allocation
+native. Les trois instances restent en attente avec DoR/R05 incomplets. La
+régression complète du composant cycle publié passe ses 38 contrôles : files,
+dual et DB-only COMMITTING, DB-only EXPLORING et écriture partielle réelle.
+Les pins startup 35/cycle 33 passent sans écriture. Le premier montage DB-only
+n'avait rien à commettre lors de sa précondition de mode : le harnais permet
+maintenant un commit vide de cette seule précondition, sans modifier l'admission.
+
+Les contrôles provenance (35), métadonnées (37) et complétude passent, ainsi que
+les références documentaires, le contrat Markdown, la sensibilité (1718 fichiers),
+le catalogue des gates et la topologie du package. Les sept nouveaux schémas
+privés sont valides. Ces preuves sont hors ligne sur sources et vrais ports
+applicatifs ; provenance directe, transports natif/humain et grants sont des
+capacités de fixture. Native réelle et archive installée exacte **NOT_RUN** ;
+suite agentique entière et ensemble des gates PR **NOT_RUN** dans cette tranche.
+Le resolver `governance-route.v1` classe les 31 fichiers du diff en ASSURED,
+sans anomalie ; cette classification ne vaut pas passage de toutes les gates PR.
+
+Restent l'application de delta avec mappings REQ, rollback autorisé, fin du
+skill cycle et ses hooks, contexte/diagnostic frais et hook R05. Le modèle
+standard complet, les entrées ordinaires, L4 inconnus/expirations, A1–A10 et les
+preuves natives/archives installées restent ouverts. Ces composants disponibles
+ne prouvent pas leur sélection dans le workflow standard complet.

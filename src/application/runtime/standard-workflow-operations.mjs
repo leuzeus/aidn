@@ -19,13 +19,14 @@ import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
 
 const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
   "standard-cycle-operations.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "cycle-close-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
-  "standard-drift-recovery.mjs", "standard-drift-change-request.mjs", "requirements-delta-admit-use-case.mjs", "runtime-head-resolution-service.mjs", "agent-run-configuration-service.mjs",
+  "standard-drift-recovery.mjs", "standard-drift-change-request.mjs", "standard-drift-cycle.mjs", "requirements-delta-admit-use-case.mjs", "runtime-head-resolution-service.mjs", "agent-run-configuration-service.mjs",
   "standard-workflow-operation-host.mjs", "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "gating-evaluate-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
   "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url), new URL("../../../tools/runtime/project-runtime-state.mjs", import.meta.url),
+    ...["standard-drift-cycle-context-input.v1", "standard-drift-cycle-checkpoint-input.v1", "standard-drift-cycle-initialize-input.v1", "standard-drift-cycle-output.v1", "standard-drift-cycle-plan.v1", "standard-cycle-initialize-plan.v2", "standard-cycle-context-plan.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     ...["standard-drift-change-request-input.v1", "standard-drift-change-request-plan.v1", "standard-drift-change-request-output.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../lib/workflow/markdown-render-lib.mjs", import.meta.url), new URL("../../core/skills/skill-policy.mjs", import.meta.url),
     new URL("../../lib/workflow/session-context-lib.mjs", import.meta.url), new URL("../../../tools/perf/requirements-delta-hook.mjs", import.meta.url),
@@ -66,11 +67,14 @@ const definitions = [
   ["drift_recovery_decision", "drift-check", "read-only", ["SPEC-R05"], "standard-drift-followup-input.v1", "human", "standard-drift-recovery-output.v1"],
   ["drift_recovery_record", "drift-check", "mutating", ["SPEC-R05"], "standard-drift-recovery-record-input.v1", "deterministic", "standard-drift-recovery-output.v1"],
   ["drift_change_request_record", "drift-check", "mutating", ["SPEC-R05"], "standard-drift-change-request-input.v1", "deterministic", "standard-drift-change-request-output.v1"],
+  ["drift_recovery_context_refresh", "context-reload", "projector", ["SPEC-R01", "SPEC-R05"], "standard-drift-cycle-context-input.v1", "deterministic", "standard-drift-cycle-output.v1"],
+  ["drift_recovery_checkpoint_observe", "cycle-create", "read-only", ["SPEC-R03", "SPEC-R05", "SPEC-R06"], "standard-drift-cycle-checkpoint-input.v1", "deterministic", "standard-drift-cycle-output.v1"],
+  ["drift_recovery_cycle_initialize", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R05", "SPEC-R06"], "standard-drift-cycle-initialize-input.v1", "deterministic", "standard-drift-cycle-output.v1"],
 ];
 export function standardWorkflowOperationBindings() {
   return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract, executor_kind = "deterministic", output_contract = "standard-operation-output.v1"]) => {
     const binding = { contract_version: "process-operation-binding.v1", id, revision: 1, executor_kind, effect_class, skill_id,
-      input_contract, output_contract, rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : id === "drift_change_request_record" ? ["COMMITTING"] : output_contract === "standard-cycle-output.v1" ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
+      input_contract, output_contract, rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : id === "drift_change_request_record" ? ["COMMITTING"] : ["standard-cycle-output.v1", "standard-drift-cycle-output.v1"].includes(output_contract) ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
     assertProcessOperationBinding(binding); return binding;
   });
 }

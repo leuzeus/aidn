@@ -6,6 +6,8 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
 const files = [
+  "src/application/runtime/standard-drift-cycle.mjs",
+  ...["standard-drift-cycle-context-input.v1", "standard-drift-cycle-checkpoint-input.v1", "standard-drift-cycle-initialize-input.v1", "standard-drift-cycle-output.v1", "standard-drift-cycle-plan.v1", "standard-cycle-initialize-plan.v2", "standard-cycle-context-plan.v2"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/standard-drift-change-request.mjs", "src/application/runtime/requirements-delta-admit-use-case.mjs",
   "src/application/runtime/workflow-continuity-context-service.mjs", "src/lib/workflow/session-context-lib.mjs", "tools/perf/requirements-delta-hook.mjs",
   "src/application/runtime/runtime-head-resolution-service.mjs",
