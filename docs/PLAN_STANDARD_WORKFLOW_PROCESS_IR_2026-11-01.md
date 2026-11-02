@@ -913,3 +913,12 @@ sans écriture (startup révision 6, cycle révision 4). Route du diff préparé
 ASSURED. Le gate agentique agrégé et l'ensemble des familles de PR ne sont pas
 revendiqués comme exécutés sur cette tranche ciblée. Client/arbre natifs réels,
 PostgreSQL réel et parcours standard complet sur archive installée : NOT_RUN.
+
+
+Régression complémentaire terminée après `dfda1af` : **PASS, 38 contrôles** du
+composant cycle distribué, ports réels et stores locaux, capacité d'autorisation
+doublée. La panne partielle de CAS conserve owner/unknown, survit à la
+réouverture et interdit le rejeu des effets. Cette preuve hors ligne ne qualifie
+ni le skill cycle-create complet ni le workflow standard, le natif ou l'archive
+installée. Les deux suites de régression complémentaires sont terminées
+(démarrage 44, cycle 38) ; aucun test de cette tranche ne reste en cours.
