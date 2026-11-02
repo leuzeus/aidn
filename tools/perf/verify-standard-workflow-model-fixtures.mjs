@@ -29,7 +29,13 @@ test("source descriptor pins the exact catalog and embedded model without granti
   assert.equal(assets.source.catalog_sha256, shadowHash(assets.catalog)); assert.equal(assets.source.model_sha256, shadowHash(assets.model));
   assertStandardWorkflowModelSource(assets.source, assets.model); assert.ok(Object.isFrozen(assets.model.nodes));
 });
-reject("a valid but changed startup order cannot retain the catalog hash", x => x.model.nodes[0].children.reverse(), "STANDARD_STARTUP_MODEL_CHANGED");
+reject("a valid but changed startup order cannot retain the catalog hash", x => {
+  const order = x.model.nodes[0].children; [order[0], order[1]] = [order[1], order[0]];
+}, "STANDARD_STARTUP_MODEL_CHANGED");
+reject("published data dependencies reject an order that consumes future results", x => x.model.nodes[0].children.reverse(), "PROCESS_INPUT_SOURCE_NOT_ORDERED");
+reject("valid changed parameter mappings cannot retain the catalog hash", x => {
+  x.model.data_bindings.inputs.find(row => row.node_id === "session_initialize").fields.session_branch.path = ["other_branch"];
+}, "STANDARD_STARTUP_MODEL_CHANGED");
 reject("catalog cannot turn a startup component into the complete standard workflow", x => { x.catalog.scope.complete_standard_workflow = true; }, "STANDARD_STARTUP_CATALOG_INVALID");
 reject("catalog does not select executable modules", x => { x.catalog.module = "untrusted.mjs"; }, "STANDARD_STARTUP_CATALOG_INVALID");
 reject("authority paths cannot escape the fixed package assets", x => { x.catalog.specification.path = "../SPEC.md"; }, "STANDARD_STARTUP_CATALOG_INVALID");

@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard-startup",
-  "revision": 23,
+  "revision": 24,
   "participants": [
     {
       "id": "project"
@@ -68,5 +68,80 @@
       "participant_ref": "project",
       "binding_ref": "session_start_finalize"
     }
-  ]
+  ],
+  "data_bindings": {
+    "contract_version": "process-data-bindings.v1",
+    "parameter_keys": [
+      "session"
+    ],
+    "inputs": [
+      {
+        "node_id": "context_reload",
+        "fields": {}
+      },
+      {
+        "node_id": "session_admit",
+        "fields": {}
+      },
+      {
+        "node_id": "session_initialize",
+        "fields": {
+          "session_id": {
+            "source": "parameter",
+            "key": "session",
+            "path": [
+              "session_id"
+            ]
+          },
+          "session_branch": {
+            "source": "parameter",
+            "key": "session",
+            "path": [
+              "session_branch"
+            ]
+          },
+          "objective": {
+            "source": "parameter",
+            "key": "session",
+            "path": [
+              "objective"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "mode_decision",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "session_initialize",
+            "path": [
+              "session_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "session_mode_apply",
+        "fields": {
+          "decision_operation_id": {
+            "source": "operation_id",
+            "node_id": "mode_decision"
+          }
+        }
+      },
+      {
+        "node_id": "session_start_finalize",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "session_initialize",
+            "path": [
+              "session_id"
+            ]
+          }
+        }
+      }
+    ]
+  }
 }

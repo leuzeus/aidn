@@ -263,8 +263,10 @@ require a reviewed source update first. Historical instances/readers are not
 converted. A partial source write fails loading instead of triggering a fallback.
 
 Real-port startup fixtures now consume this published JSON and the common cursor.
-They supply inputs and authenticated fixture source/grant capabilities. They no
-longer construct another startup sequence. Isolated human protocol tests still
+They supply initial parameters and authenticated fixture source/grant capabilities.
+The published IR declares each operation input, including the accepted mode
+decision identity; the driver supplies neither per-operation input nor a second
+startup sequence. Isolated human protocol tests still
 use their own fixture model. The component's declared remaining paths include
 session/cycle resume, cycle/DoR, work, drift/incidents, validation, closure,
 promotion, PR, post-merge synchronization and general mixed resume.
@@ -282,6 +284,24 @@ canonical CAS, branch ownership audit and runtime projection are bound to SPEC
 and fixed skill/code identities. Creation stays OPEN/NOT_READY with an empty
 native write scope. R3, human cycle choice, DoR and completion of the full
 cycle-create skill/hook remain open.
+
+The published cycle component also declares its input mappings. Initial cycle
+parameters carry session identity and requested cycle identity/type/title/goal.
+The completed first context-refresh input anchors the requested session. The
+successful admission journal supplies continuity rule and base branch to
+initialization. A changed active session must refuse instead of silently moving
+the request to another session. Audit and final context refresh consume
+the accepted initializer input. The initializer still reruns its business
+admissions and compares continuity immediately before effects; a previous
+admission receipt is data, not an effect grant or a freshness exemption.
+
+Startup revision 24 and cycle revision 22 explicitly opt into these mappings.
+Their fixed loaders keep using the common operation host and reducer. New
+instances require the declared parameters at initialization and reject explicit
+operation-input overrides. Earlier embedded models remain readable under their
+own retained version/source; loading a new package asset does not rewrite them.
+This does not provide full-cycle selection, R3, the complete standard model or
+ordinary CLI/console entry integration.
 
 A controlled db-only experiment admitted cycle creation before the local owner
 was acquired, blocked on `?? .aidn/runtime/standard-workflow/effects.lock` while

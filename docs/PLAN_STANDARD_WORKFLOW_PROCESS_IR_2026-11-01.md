@@ -8,7 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `7e05b55` et tranche courante de raccords de données déclaratifs.
+Dernier état relu : `28bb901` et tranche courante d'application des raccords de
+données aux composants publiés.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -32,8 +33,9 @@ encore ouverts.
   dérive avec vrai hook. Le journal d'allocation signé constitue une tranche
   supplémentaire. La reprise native et l'hôte mixte sont des compositions
   internes explicites ; la garde du démarrage ordinaire reste inchangée.
-- L3 : en cours, composants IR de démarrage et de squelette de cycle distribués
-  et consommés par les tests de ports réels ; le modèle standard complet reste à livrer.
+- L3 : en cours, composants IR de démarrage et de squelette de cycle distribués,
+  avec raccords de données déclarés dans leurs nouvelles révisions et consommés
+  par les tests de ports réels ; le modèle standard complet reste à livrer.
 - L4 : scope commun et dispatcher mixte interne implémentés et validés sur les
   corpus ciblés ; réconciliation des inconnus et continuation après expiration restent
   ouvertes. Voir l'addendum du 2026-11-02.
@@ -1447,3 +1449,85 @@ ports L2 restants, puis A1–A10 et qualifications L6–L8. Les nouveaux modèle
 tests sont des IR de qualification ; ils ne deviennent pas le modèle standard
 par leur seul succès. Preuves hors ligne sur sources, natives réelles et sur
 archive installée exacte restent distinctes.
+
+## Addendum — entrées des composants publiés dans l'IR
+
+Dépendance : infrastructure de données `28bb901`, ports L2 de démarrage/mode et
+de squelette de cycle. Les nouvelles révisions startup 24/cycle 22 déclarent leurs
+entrées dans l'IR distribuée. Le démarrage reçoit un paramètre `session`, puis
+résout l'identité du choix humain accepté et les références session depuis le
+journal de l'initialisation. Le squelette reçoit un paramètre `cycle` portant la
+session et la demande de cycle ; son initialisation conserve l'identité de
+session du premier rafraîchissement accepté et consomme la règle de continuité
+et la branche de base du résultat d'admission authentifié. Un autre contexte
+actif doit refuser au lieu de réaffecter silencieusement la demande de cycle.
+Audit et rafraîchissement final consomment l'entrée de l'initialisation acceptée.
+
+La continuité est de nouveau vérifiée par le véritable port juste avant l'effet.
+Un reçu d'admission antérieur ne devient ni autorisation ni exemption de fraîcheur.
+Le pilote ne transmet plus d'entrées aux opérations de ces composants. Les
+paramètres restent immuables ; les remplacements par le pilote sont refusés.
+Le chargeur fixe, les admissions, les grants, le journal signé et le réducteur
+restent les mêmes. Aucune entrée CLI/console ordinaire n'est ajoutée ici ; aucune
+instance antérieure n'est convertie ni son modèle incorporé remplacé.
+
+Fichiers : les deux IR sous `package/catalogs/process-models/`, leurs catalogues
+de provenance, `verify-standard-workflow-model-fixtures.mjs`, les suites de mode
+et de cycle, ADR-0025, guide de processus et guide de tests. Aucun nouveau concept,
+store, table ou contrat de sortie public. Le contrat de paramètres reste celui
+de l'instance v2 optionnelle, les valeurs résolues celui de l'aperçu signé.
+
+Acceptation : les suites doivent utiliser ces assets publiés, des paramètres
+initialisés une fois et le curseur commun, sans entrée métier fournie aux
+opérations. Démarrage : attente humaine, report/reprise avec nouveau choix,
+application de la bonne identité, hook réel et refus de sa postcondition conservé.
+Cycle : admission bloquée, résolution externe explicite, création/audit réels,
+état OPEN/NOT_READY et refus d'écriture produit, effet partiel non rejoué. Les
+réouvertures en nouveau processus, résultats conservés et simulations avec les
+paramètres initiaux doivent retrouver le même état.
+
+Validation ciblée finale **PASS** : 22 contrôles du catalogue, puis les 45
+contrôles de la suite de mode non filtrée. Elle utilise l'IR distribuée sur
+files/dual/db-only et un projet db-only neuf. Ce dernier reporte le choix dans
+le modèle publié, conserve l'attente sans activer l'application du mode, accepte
+un nouveau choix dans une autre intention puis utilise sa bonne identité.
+Les sources sont authentifiées par une capacité de fixture ; chaque acceptation
+est relue dans un nouveau processus Node. Le corpus db-only historique conserve
+la postcondition de hook refusée et l'incertitude malgré sa sortie zéro.
+
+Les cinq sélections finales `--case=files|dual|db-only|exploring|partial` de la
+suite de cycle passent : neuf contrôles pour chacun des quatre parcours normaux,
+six pour l'effet partiel, avec le contrôle du catalogue répété dans chaque
+sélection. Elles couvrent la matrice gardée par le script non filtré. Les ports
+réels vérifient les entrées résolues, le refus d'une autre identité de session,
+l'admission bloquée puis reprise après checkpoint externe explicite, la vraie
+branche, l'état OPEN/NOT_READY, le refus de patch produit, les reçus conservés
+et la simulation exacte avec paramètres. L'effet partiel garde son propriétaire,
+ne produit aucun fait de réussite et ne peut être redispatché.
+
+La première matrice de cycle passait déjà avant le dernier ajustement de
+l'ancrage de session ; les cinq sélections ci-dessus ont été rejouées après cet
+ajustement. La règle/base proviennent de l'admission fraîche, mais la demande
+ne change plus implicitement de session. Un ancien contrôle de catalogue qui
+inversait toute la séquence a été séparé : cette inversion viole désormais
+d'abord les dépendances de données ; une permutation structurellement valide
+prouve toujours le refus du hash de catalogue conservé. Aucune admission n'a
+été abaissée pour obtenir ces résultats.
+
+Source de vérité (35), métadonnées (37), complétude (38), Markdown, références,
+sensibilité et topologie package (cinq clients jetables) : **PASS**. Routage du
+diff : ASSURED sans anomalie. Les contrôles de pins sont **PASS** sans écriture
+ni réparation, startup 24/cycle 22. Les suites agentique complète et gates de PR
+non concernés restent **NON_REJOUÉS**.
+
+Ces preuves sont **hors ligne sur sources**, avec grants et canal humain de
+fixture, et sans modèle natif. Canal humain natif réel, fournisseur externe,
+confinement/Job Windows, parcours standard complet et workflow sur archive
+installée exacte : **NOT_RUN**. La topologie vérifiée ne prouve pas l'exécution
+du workflow depuis une archive installée.
+
+Les modèles restent des **composants**. L3/L5 conservent `aidn-standard.v1.json`,
+ses appels/raccords à tous les ports, le choix/reprise de session et de cycle, et
+les entrées ordinaires. L2 conserve récupération R05, DoR/travail/validation,
+transitions/clôtures/promotion/PR/synchronisation ; L4 les inconnus et expirations ;
+L6–L8 les parcours A1–A10, preuves natives réelles et archive installée exacte.

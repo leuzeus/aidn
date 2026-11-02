@@ -41,8 +41,11 @@ if (process.argv[2] === "--accept") {
   const changed = structuredClone(assets.catalog); changed.scope.complete_standard_workflow = true;
   assert.throws(() => assertStandardWorkflowComponentCatalog(changed, assets.model), { code: "STANDARD_STARTUP_CATALOG_INVALID" });
   pass("distributed cycle component is pinned, deterministic and explicitly incomplete as a standard workflow");
-  const modes = process.argv[2] === "--db-only" ? [["db-only", "COMMITTING"]]
-    : [["files", "COMMITTING"], ["dual", "COMMITTING"], ["db-only", "COMMITTING"], ["db-only", "EXPLORING"], ["db-only", "COMMITTING", true]];
+  const cases = { files: ["files", "COMMITTING"], dual: ["dual", "COMMITTING"], "db-only": ["db-only", "COMMITTING"],
+    exploring: ["db-only", "EXPLORING"], partial: ["db-only", "COMMITTING", true] };
+  const selectedCase = process.argv[2] === "--db-only" ? "db-only" : process.argv[2]?.startsWith("--case=") ? process.argv[2].slice(7) : null;
+  if (process.argv.length > 3 || process.argv[2] && selectedCase === null || selectedCase !== null && !Object.hasOwn(cases, selectedCase)) throw Error("STANDARD_CYCLE_FIXTURE_ARGUMENT_INVALID");
+  const modes = selectedCase === null ? Object.values(cases) : [cases[selectedCase]];
   for (const [mode, selectedMode, partial = false] of modes) {
     const root = createFreshStandardWorkflowFixture(mode, owned), operations = createStandardWorkflowOperations({ targetRoot: root });
     // Precondition setup uses actual deterministic domain ports. This is not a
@@ -54,17 +57,23 @@ if (process.argv[2] === "--accept") {
     checkpoint(root);
     const privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-key-")); owned.push(privateRoot);
     const keyFile = path.join(privateRoot, "host.key"); fs.writeFileSync(keyFile, randomBytes(32));
-    let host = open(root, keyFile), initial = host.initialize({ instanceId: "cycle" });
-    host.initialize({ instanceId: "cycle", write: true, expectedResultSha256: initial.record.instance_sha256 });
+    const { base_branch, continuity_rule, ...requestedCycle } = cycle;
+    const parameters = { cycle: requestedCycle };
+    let host = open(root, keyFile), initial = host.initialize({ instanceId: "cycle", parameters });
+    host.initialize({ instanceId: "cycle", parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
     const label = `${mode}/${selectedMode}${partial ? "/partial" : ""}`;
     async function execute(nodeId, expectedOutcome = "completed") {
-      const state = host.inspect("cycle"), frame = state.cursor.occurrences.find(row => row.node_id === nodeId && ["READY", "WAITING"].includes(row.status));
+      const state = host.inspect("cycle"), frame = state.cursor.occurrences.find(row => state.cursor.ready.includes(row.occurrence_id))
+        ?? state.cursor.occurrences.find(row => row.operation?.receipt?.outcome === "blocked");
       assert.ok(frame, JSON.stringify(state.cursor));
-      const binding = assets.catalog.bindings.find(row => row.node_id === nodeId).binding.id;
-      const input = binding === "cycle_admit" ? {} : binding === "cycle_initialize" ? cycle
-        : binding === "branch_cycle_audit" ? { session_id: "S001", cycle_id: "C001" } : { session_id: "S001" };
-      const preview = await host.preview({ instanceId: "cycle", expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id, input });
+      assert.equal(frame.node_id, nodeId);
+      const preview = await host.preview({ instanceId: "cycle", expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id });
+      assert.ok(preview.input_resolution);
       if (nodeId === "initialize") {
+        assert.deepEqual(preview.input, cycle);
+        await assert.rejects(operations.prepareCycle({ ...preview.input, session_id: "S999" }), { code: "STANDARD_CYCLE_SESSION_CHANGED" });
+        await assert.rejects(host.preview({ instanceId: "cycle", expectedSha256: state.record.instance_sha256,
+          occurrenceId: frame.occurrence_id, input: cycle }), { code: "PROCESS_INPUT_OVERRIDE_FORBIDDEN" });
         await assert.rejects(open(root, keyFile, async () => ({ ...grant, authorized: false })).stage(preview,
           { write: true, expectedPreviewSha256: shadowHash(preview) }), { code: "STANDARD_HOST_AUTHORIZATION_REQUIRED" });
         assert.equal(git(root, "branch", "--show-current"), cycle.base_branch);
@@ -111,9 +120,9 @@ if (process.argv[2] === "--accept") {
       assert.equal(git(root, "branch", "--show-current"), "feature/C001-local-change");
       const frame = state.cursor.occurrences.find(row => row.node_id === "initialize");
       await assert.rejects(host.preview({ instanceId: "cycle", expectedSha256: state.record.instance_sha256,
-        occurrenceId: frame.occurrence_id, input: cycle }), { code: "PROCESS_OPERATION_ORDER_INVALID" });
+        occurrenceId: frame.occurrence_id }), { code: "PROCESS_OPERATION_ORDER_INVALID" });
       const simulation = simulateAgenticProcess({ instanceId: state.record.instance_id, model: state.record.model,
-        policyPins: state.record.policy_pins, scopeId: state.record.scope_id, events: state.record.events });
+        parameters: state.record.initial_parameters, policyPins: state.record.policy_pins, scopeId: state.record.scope_id, events: state.record.events });
       assert.equal(simulation.trace.at(-1).instance_sha256, state.record.instance_sha256);
       pass(`${label}: real partial cycle CAS retains ownership/uncertainty and forbids effect replay after reopening`);
       continue;
@@ -135,7 +144,7 @@ if (process.argv[2] === "--accept") {
     const final = host.inspect("cycle"); assert.equal(final.cursor.status, "COMPLETED");
     assert.equal(Object.assign({}, ...final.record.events.filter(event => event.kind === "operation_result").map(event => event.receipt.facts)).cycle_dor_ready, false);
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model,
-      policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
+      parameters: final.record.initial_parameters, policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256);
     assert.deepEqual(simulation.trace.at(-1).cursor, inspectAgenticProcess(final.record));
     pass(`${label}: waiting admission and completed scaffold replay/simulate exactly with the execution reducer`);

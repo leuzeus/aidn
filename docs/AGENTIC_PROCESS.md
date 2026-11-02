@@ -589,3 +589,14 @@ are refused in this first contract. Durable parameters are data, not permission
 or routing approval facts. Grants and business admissions remain required.
 This internal mechanism does not yet select a complete standard workflow or add
 ordinary CLI/console parameter controls.
+
+The distributed startup and cycle-scaffold models now author these bindings.
+Initialize their fixed hosts with `parameters: { session: { session_id,
+session_branch, objective } }` and `parameters: { cycle: { session_id, cycle_id,
+cycle_type, title, objective } }` respectively. Their `preview` calls take no
+operation input. Startup resolves the accepted human decision operation; the
+cycle initializer resolves continuity/base from the successful admission journal
+and rechecks the actual admission before effects. Later cycle inputs come from
+the accepted initialization journal. The common reducer retains all waits and
+refusals. These are versioned components of the remaining full standard model,
+not an ordinary CLI/console selection of that complete model.

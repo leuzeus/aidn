@@ -60,33 +60,44 @@ try {
     let reads = 0;
     const makeHost = () => openHost(root, keyFile, false, () => reads++);
     const publish = (ref, claim) => fs.writeFileSync(sourcesFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(sourcesFile, "utf8")), [ref]: claim }));
-    let runtime = makeHost(); const initial = runtime.initialize({ instanceId: "start" });
-    runtime.initialize({ instanceId: "start", write: true, expectedResultSha256: initial.record.instance_sha256 });
-    let decisionId;
+    const parameters = { session: inputs.session_initialize };
+    let runtime = makeHost();
+    assert.throws(() => runtime.initialize({ instanceId: "start" }), { code: "PROCESS_PARAMETERS_INVALID" });
+    const initial = runtime.initialize({ instanceId: "start", parameters });
+    runtime.initialize({ instanceId: "start", parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
+    let decisionId, deferredId;
     const assets = loadStandardWorkflowStartupAssets();
     assert.equal(runtime.inspect("start").record.model_sha256, assets.source.model_sha256);
     assert.throws(() => createStandardWorkflowOperationHost({ targetRoot: root, model: assets.model, readSigningKey: () => fs.readFileSync(keyFile),
       authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H }) }).inspect("start"), { code: "STANDARD_HOST_AUTHORITY_CHANGED" });
-    // Select ready occurrences from the shipped IR cursor. Only operation inputs
-    // are supplied by the fixture; there is no second startup sequence in code.
-    for (let step = 0; step < assets.catalog.bindings.length; step++) {
-      const before = runtime.inspect("start"), occurrence = before.cursor.occurrences.find(row => row.status === "READY"); assert.ok(occurrence);
+    // Select ready occurrences from the shipped IR cursor. The shipped model
+    // resolves all inputs, including the accepted human decision identity.
+    for (let step = 0; step < assets.catalog.bindings.length + Number(fresh); step++) {
+      const before = runtime.inspect("start"), occurrence = before.cursor.occurrences.find(row => row.status === "READY")
+        ?? before.cursor.occurrences.find(row => row.operation?.receipt?.outcome === "deferred"); assert.ok(occurrence);
       const node = before.record.model.nodes.find(row => row.id === occurrence.node_id); assert.equal(node.kind, "operation");
       const id = node.binding_ref;
-      const input = id === "session_mode_apply" ? { decision_operation_id: decisionId } : inputs[id] ?? {};
       if (id === "session_mode_apply") await assert.rejects(runtime.preview({ instanceId: "start", expectedSha256: before.record.instance_sha256,
-        occurrenceId: occurrence.occurrence_id, input: { session_id: "S001", mode: "THINKING" } }), { code: "STANDARD_OPERATION_INPUT_INVALID" });
-      const preview = await runtime.preview({ instanceId: "start", expectedSha256: before.record.instance_sha256, occurrenceId: occurrence.occurrence_id, input });
+        occurrenceId: occurrence.occurrence_id, input: { decision_operation_id: "forged-decision" } }), { code: "PROCESS_INPUT_OVERRIDE_FORBIDDEN" });
+      const preview = await runtime.preview({ instanceId: "start", expectedSha256: before.record.instance_sha256, occurrenceId: occurrence.occurrence_id });
+      assert.ok(preview.input_resolution);
+      if (id === "session_mode_apply") assert.equal(preview.input.decision_operation_id, decisionId);
       assert.deepEqual(preview.snapshot.model_source, assets.source);
       assert.equal(preview.prepared?.can_apply ?? true, true, JSON.stringify(preview.prepared));
       const staged = await runtime.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
       let dispatched = await runtime.dispatch(staged.operation_id, { write: true });
+      const defer = fresh && id === "mode_decision" && deferredId === undefined;
       if (id === "mode_decision") {
         decisionId = staged.operation_id;
-        assert.equal(dispatched.status, "waiting_for_human"); assert.equal(reads, 0);
+        assert.equal(dispatched.status, "waiting_for_human");
+        if (!deferredId) assert.equal(reads, 0);
         assert.equal((await runtime.receiveDecision(decisionId, { sourceRef: "missing", write: true })).status, "waiting_for_human");
         const claim = { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id: "fixture_user_channel", source_event_id: `decision-${mode}`,
-          subject_sha256: H, question_sha256: shadowHash(dispatched.question), choice: "THINKING", evidence_refs: [{ ref: "fixture:operator/mode", sha256: H }] };
+          subject_sha256: H, question_sha256: shadowHash(dispatched.question), choice: defer ? "deferred" : "THINKING", evidence_refs: [{ ref: "fixture:operator/mode", sha256: H }] };
+        if (deferredId) {
+          assert.notEqual(decisionId, deferredId);
+          claim.source_event_id += "-resumed";
+        }
         publish("choice", claim);
         dispatched = await runtime.receiveDecision(decisionId, { sourceRef: "choice", write: true });
         const unselected = createStandardWorkflowArtifacts({ targetRoot: root }).read("sessions/S001.md").content;
@@ -95,7 +106,7 @@ try {
       }
       const output = dispatched.receipt ? runtime.readOutput(dispatched.receipt.evidence_refs[0].ref) : null;
       const expectedGateRefusal = !fresh && mode === "db-only" && id === "session_start_finalize";
-      assert.equal(dispatched.receipt?.outcome, expectedGateRefusal ? "reconciliation_required" : "completed",
+      assert.equal(dispatched.receipt?.outcome, defer ? "deferred" : expectedGateRefusal ? "reconciliation_required" : "completed",
         JSON.stringify({ id, status: dispatched.status, outcome: dispatched.receipt?.outcome, reason: output?.observations?.reason_code }));
       if (expectedGateRefusal) {
         // The legacy corpus has a canonical open cycle without a defined goal.
@@ -111,6 +122,14 @@ try {
       const journalHash = shadowHash(runtime.readJournal(staged.operation_id));
       const accepted = acceptInChild(root, keyFile, staged.operation_id);
       runtime = makeHost(); assert.equal(runtime.inspect("start").record.instance_sha256, accepted.instance_sha256);
+      if (defer) {
+        deferredId = decisionId;
+        const waiting = runtime.inspect("start");
+        assert.equal(waiting.cursor.status, "WAITING");
+        assert.deepEqual(dispatched.receipt.facts, {});
+        assert.equal(waiting.cursor.occurrences.some(row => row.node_id === "session_mode_apply"), false);
+        assert.deepEqual(waiting.record.initial_parameters, parameters);
+      }
       assert.equal(shadowHash(runtime.readJournal(staged.operation_id)), journalHash);
       assert.equal((await runtime.dispatch(staged.operation_id, { write: true })).status, "retained_result");
       if (id === "mode_decision") {
@@ -121,7 +140,9 @@ try {
     const final = runtime.inspect("start"), unresolved = !fresh && mode === "db-only"; assert.equal(final.cursor.status, unresolved ? "WAITING" : "COMPLETED");
     if (unresolved) assert.ok(final.cursor.occurrences.some(row => row.node_id === "session_start_finalize" && row.wait_reason === "reconciliation_required"));
     assert.equal(parseSessionMetadata(createStandardWorkflowArtifacts({ targetRoot: root }).read("sessions/S001.md").content).mode, "THINKING");
-    const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
+    assert.deepEqual(final.record.initial_parameters, parameters);
+    const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, parameters: final.record.initial_parameters,
+      policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256);
     process.stdout.write(`PASS ${label}: exact simulation of human choice and ${unresolved ? "unresolved startup" : "real completed startup"}\n`); passed++;
     const business = createStandardWorkflowArtifacts({ targetRoot: root }), beforeBusiness = [business.read("CURRENT-STATE.md").sha256, business.read("sessions/S001.md").sha256];

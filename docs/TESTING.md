@@ -2,6 +2,21 @@
 
 ## Structured agentic process
 
+The published startup/cycle component suites initialize immutable parameters
+once, then select leaves from the common cursor with no operation input. Startup
+resolves its accepted mode decision identity and its fresh db-only scenario
+defers that decision, reopens in a new Node process and resumes before applying
+the eventual choice. Cycle creation consumes successful admission output for
+continuity and uses accepted initializer input for later leaves; files/dual/
+db-only include blocked admission, reopen/retained receipts and exact simulation.
+The partial-effect scenario must retain uncertainty and prohibit another effect.
+`--case=files|dual|db-only|exploring|partial` selects one cycle scenario; the
+unfiltered command retains all five. The cycle port must also refuse another
+session identity; successful admission data does not replace the selected session.
+These source-installed, real-port fixtures use human/grant fixture capabilities;
+they do not qualify a native human channel, complete skill, complete standard
+workflow or exact installed archive.
+
 The common reducer suite includes `process-data-fixture-lib.mjs`: durable
 parameters without approval facts, completed identities/journal values, tampering,
 missing data/readers, scoped loops, parallel collections nested in calls, exact

@@ -1,7 +1,7 @@
 {
   "contract_version": "standard-cycle-create-catalog.v1",
   "component_id": "aidn-standard-cycle-create",
-  "revision": 21,
+  "revision": 22,
   "scope": {
     "kind": "new_cycle_scaffold_component",
     "complete_standard_workflow": false,
@@ -29,9 +29,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard-cycle-create.v1.json",
-    "sha256": "af440e15cb5e122bee80b5f6347fc25713d27a6fdd125730fc32a38e9003efda",
+    "sha256": "ffe5bc10e35c7484ef6faa8ebb23d42acea341f7f35b19e339974a4c53f45b48",
     "model_id": "aidn-standard-cycle-create",
-    "revision": 21
+    "revision": 22
   },
   "specification": {
     "path": "docs/SPEC.md",
