@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-plan-record-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-plan-record-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "prepared_at_ms",
+    "evaluation_sha256",
+    "context_sha256",
+    "boundary_sha256",
+    "cycle_path",
+    "changes"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-plan-record-plan.v1"
+    },
+    "operation_ref": {
+      "const": "cycle_plan_record"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluation_operation_id"
+      ],
+      "properties": {
+        "evaluation_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evaluation_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "boundary_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "cycle_path": {
+      "type": "string",
+      "pattern": "^cycles/C[0-9]{3,6}-[a-z]+-[A-Za-z0-9._-]+$"
+    },
+    "changes": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "before_sha256",
+          "after",
+          "after_sha256",
+          "before_metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 192
+          },
+          "before_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "after": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "after_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "before_metadata_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

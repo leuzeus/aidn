@@ -12,7 +12,9 @@ import { nativeJournalId } from "../../core/workflow/native-allocation-journal.m
 import { readNativeAllocationCheckpoint, nativeEvidenceFile, nativeAllocationOutputId } from "./native-allocation-evidence.mjs";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { readStandardDriftContext, evaluateStandardDriftReport } from "./standard-drift-report.mjs";
-import { DRIFT_REPORT_CONTRACT, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
+import { DRIFT_REPORT_CONTRACT, nativeActivityOutputSkill, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
+import { CYCLE_PLAN_CONTRACT } from "../../core/workflow/standard-cycle-planning.mjs";
+import { readStandardCyclePlanContext, evaluateStandardCyclePlan } from "./standard-cycle-plan-context.mjs";
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { assertStandardWorkflowModelSource } from "../../core/workflow/standard-workflow-model-catalog.mjs";
 import { assertStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
@@ -112,19 +114,24 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return result.value;
   }
   async function prepareActivityOutput({ contractRef, productSha256 }) {
-    if (contractRef !== DRIFT_REPORT_CONTRACT) fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
-    read(); const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "drift-check" });
+    const skill = nativeActivityOutputSkill(contractRef);
+    if (!skill) fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
+    // A proposal for an existing cycle is read-only. The whole cycle-create
+    // admission intentionally requires clean Git before creating a new cycle.
+    // Keep that rule; use the actual branch audit admission for this component.
+    const admissionSkill = contractRef === CYCLE_PLAN_CONTRACT ? "branch-cycle-audit" : skill;
+    read(); const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: admissionSkill });
     if (admission.ok !== true || admission.activation?.active !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status))
-      fail("STANDARD_DRIFT_ADMISSION_BLOCKED");
-    return { ...await readStandardDriftContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
+      fail(contractRef === CYCLE_PLAN_CONTRACT ? "STANDARD_CYCLE_PLAN_ADMISSION_BLOCKED" : "STANDARD_DRIFT_ADMISSION_BLOCKED");
+    return { ...await (contractRef === CYCLE_PLAN_CONTRACT ? readStandardCyclePlanContext : readStandardDriftContext)({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
       productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment }),
       admission: { status: admission.admission_status, observation_sha256: shadowHash(admission) } };
   }
-  function readActivityOutput(instance, occurrenceId) {
+  function readActivityOutput(instance, occurrenceId, contractRef = DRIFT_REPORT_CONTRACT) {
     const state = authenticate(instance), event = instance.events.find(row => row.kind === "result" && row.occurrence_id === occurrenceId);
     if (!state || !event || event.result.outcome !== "completed") fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId), node = model.nodes.find(row => row.id === frame?.node_id);
-    if (configuration.activity_outputs?.[node?.id] !== DRIFT_REPORT_CONTRACT) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
+    if (configuration.activity_outputs?.[node?.id] !== contractRef) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     const retained = state.results.find(row => row.result.result_id === event.result.result_id);
     if (!retained || shadowHash(retained.result) !== shadowHash(event.result)) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     const references = event.result.evidence_refs.filter(row => /-native-result\.json$/.test(row.ref));
@@ -134,9 +141,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (!producer || producer.configuration_sha256 !== shadowHash(configuration)) fail("STANDARD_DRIFT_PRODUCER_CONFIGURATION_CHANGED");
     const data = readAgentRunFile(nativeEvidenceFile(configuration, references[0], journal.allocations.length), { maxBytes: 262144 });
     const answer = data.value;
-    if (data.sha256 !== references[0].sha256 || answer.request_sha256 !== event.result.request_sha256 || answer.output_contract !== DRIFT_REPORT_CONTRACT)
+    if (data.sha256 !== references[0].sha256 || answer.request_sha256 !== event.result.request_sha256 || answer.output_contract !== contractRef)
       fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
-    assertNativeActivityAnswer(answer.answer, DRIFT_REPORT_CONTRACT, answer.output_context_sha256);
+    assertNativeActivityAnswer(answer.answer, contractRef, answer.output_context_sha256);
     if (answer.answer.outcome !== "completed") fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     return { report: answer.answer.report, reference: references[0], producer: { instance_id: instance.instance_id, model_sha256: instance.model_sha256,
       occurrence_id: occurrenceId, result_id: event.result.result_id } };
@@ -145,6 +152,23 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     assertStandardOperationInput("drift_report_evaluate", input);
     return evaluateStandardDriftReport(readActivityOutput(instance, input.report_occurrence_id),
       await prepareActivityOutput({ contractRef: DRIFT_REPORT_CONTRACT, productSha256: readProductSha256?.() }));
+  }
+  async function evaluateCyclePlan(instance, input) {
+    assertStandardOperationInput("cycle_plan_evaluate", input);
+    return evaluateStandardCyclePlan(readActivityOutput(instance, input.report_occurrence_id, CYCLE_PLAN_CONTRACT),
+      await prepareActivityOutput({ contractRef: CYCLE_PLAN_CONTRACT, productSha256: readProductSha256?.() }));
+  }
+  async function readCyclePlanEvaluation(instance, input) {
+    assertStandardOperationInput("cycle_plan_record", input); authenticate(instance);
+    const retained = operationStore.read(input.evaluation_operation_id).record; signer.verify(retained);
+    const result = retained.results.at(-1);
+    if (retained.intent.binding_ref !== "cycle_plan_evaluate" || retained.intent.scope_id !== instance.scope_id || retained.intent.instance_id !== instance.instance_id
+      || retained.phase !== "receipted" || result?.receipt.outcome !== "completed"
+      || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail("STANDARD_CYCLE_PLAN_EVALUATION_REQUIRED");
+    const context = await prepareActivityOutput({ contractRef: CYCLE_PLAN_CONTRACT, productSha256: readProductSha256?.() });
+    const output = evaluateStandardCyclePlan(readActivityOutput(instance, retained.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT), context);
+    if (shadowHash(output) !== shadowHash(result.output)) fail("STANDARD_CYCLE_PLAN_EVALUATION_STALE");
+    return { output, evaluation_sha256: shadowHash(result.output), context: context.context, context_sha256: context.context_sha256 };
   }
   async function readDriftEvaluation(instance, input) {
     assertStandardOperationInput("drift_check_finalize", input); authenticate(instance);
@@ -160,5 +184,8 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   }
   const observeDriftContext = () => readStandardDriftContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation, observeDriftContext, modelSource: source });
+  const observeCyclePlanContext = () => readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+    productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
+  return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
+    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, observeDriftContext, modelSource: source });
 }

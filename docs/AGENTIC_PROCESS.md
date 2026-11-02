@@ -666,3 +666,13 @@ run-correlated event, document/metadata stability and process authority under
 the local owner. An `ok` hook wrapper with a warning is insufficient. Missing
 post-effect confirmation retains unknown effects; cycle readying and the full
 standard graph remain separate obligations.
+
+The internal typed output registry also supports `standard-cycle-plan-proposal.v1`
+for read-only cycle planning. Canonical context and an authenticated native
+occurrence feed `cycle_plan_evaluate`; `cycle_plan_record` consumes the accepted
+evaluation through IR mappings and writes the fixed cycle planning documents
+under an explicit grant. Requirements, tests and usage coverage are declared,
+with adaptive R04 depth; they are not executed validation or DoR approval.
+The cycle remains OPEN/NOT_READY and unfrozen. The existing native configuration
+bounds product paths, and the complete standard graph and ordinary entries
+remain separately required.

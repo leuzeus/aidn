@@ -18,7 +18,7 @@ import { createStandardSessionModeOperations } from "./standard-session-mode-ope
 import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
 
 const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
-  "standard-cycle-operations.mjs", "standard-cycle-checkpoint.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "cycle-close-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
+  "standard-cycle-operations.mjs", "standard-cycle-checkpoint.mjs", "standard-cycle-plan-context.mjs", "standard-cycle-plan-record.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "cycle-close-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
   "standard-drift-recovery.mjs", "standard-drift-change-request.mjs", "standard-drift-cycle.mjs", "requirements-delta-admit-use-case.mjs", "runtime-head-resolution-service.mjs", "agent-run-configuration-service.mjs",
   "standard-workflow-operation-host.mjs", "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "gating-evaluate-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
@@ -26,6 +26,8 @@ const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [...files.map(name => new URL(name, import.meta.url)), new URL("../../../tools/runtime/pre-write-admit.mjs", import.meta.url), new URL("../../../tools/runtime/project-runtime-state.mjs", import.meta.url),
+    new URL("../../core/workflow/standard-cycle-planning.mjs", import.meta.url),
+    ...["standard-cycle-plan-proposal.v1", "standard-cycle-plan-evaluate-input.v1", "standard-cycle-plan-record-input.v1", "standard-cycle-plan-record-plan.v1", "standard-cycle-planning-output.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../../tools/perf/cycle-create-hook.mjs", import.meta.url),
     ...["standard-cycle-checkpoint-plan.v1", "standard-cycle-checkpoint-output.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     ...["standard-drift-cycle-context-input.v1", "standard-drift-cycle-checkpoint-input.v1", "standard-drift-cycle-initialize-input.v1", "standard-drift-cycle-output.v1", "standard-drift-cycle-plan.v1", "standard-cycle-initialize-plan.v2", "standard-cycle-context-plan.v2"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
@@ -65,6 +67,8 @@ const definitions = [
   ["cycle_initialize", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R06"], "standard-cycle-initialize-input.v1", "deterministic", "standard-cycle-output.v1"],
   ["branch_cycle_audit", "branch-cycle-audit", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-cycle-reference-input.v1", "deterministic", "standard-cycle-output.v1"],
   ["cycle_checkpoint_finalize", "cycle-create", "executor", ["SPEC-R03", "SPEC-R04", "SPEC-R05", "SPEC-R11"], "standard-cycle-reference-input.v1", "deterministic", "standard-cycle-checkpoint-output.v1"],
+  ["cycle_plan_evaluate", "cycle-create", "read-only", ["SPEC-R03", "SPEC-R04"], "standard-cycle-plan-evaluate-input.v1", "deterministic", "standard-cycle-planning-output.v1"],
+  ["cycle_plan_record", "cycle-create", "mutating", ["SPEC-R03", "SPEC-R04"], "standard-cycle-plan-record-input.v1", "deterministic", "standard-cycle-planning-output.v1"],
   ["drift_report_evaluate", "drift-check", "read-only", ["SPEC-R05"], "standard-drift-evaluate-input.v1", "deterministic", "standard-drift-output.v1"],
   ["drift_check_finalize", "drift-check", "executor", ["SPEC-R05"], "standard-drift-followup-input.v1", "deterministic", "standard-drift-output.v1"],
   ["drift_recovery_decision", "drift-check", "read-only", ["SPEC-R05"], "standard-drift-followup-input.v1", "human", "standard-drift-recovery-output.v1"],
@@ -77,7 +81,7 @@ const definitions = [
 export function standardWorkflowOperationBindings() {
   return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract, executor_kind = "deterministic", output_contract = "standard-operation-output.v1"]) => {
     const binding = { contract_version: "process-operation-binding.v1", id, revision: 1, executor_kind, effect_class, skill_id,
-      input_contract, output_contract, rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : id === "drift_change_request_record" ? ["COMMITTING"] : ["standard-cycle-output.v1", "standard-drift-cycle-output.v1", "standard-cycle-checkpoint-output.v1"].includes(output_contract) ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
+      input_contract, output_contract, rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : id === "drift_change_request_record" ? ["COMMITTING"] : ["standard-cycle-output.v1", "standard-drift-cycle-output.v1", "standard-cycle-checkpoint-output.v1", "standard-cycle-planning-output.v1"].includes(output_contract) ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
     assertProcessOperationBinding(binding); return binding;
   });
 }

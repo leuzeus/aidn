@@ -753,3 +753,32 @@ wrapper with a conditional R05 warning does not satisfy this contract. Failure
 after invocation retains unknown effects and ownership without another dispatch.
 The catalog continues to distinguish this component from cycle readying and the
 complete standard graph, its native human/provider and installed-archive proofs.
+
+### Typed cycle planning before readiness
+
+The explicit `standard-cycle-plan-proposal.v1` native output uses the existing
+closed answer envelope, owned allocation history and immutable native evidence.
+It binds canonical context, cycle/session/type/goal, scoped tasks and product
+paths, planned REQ/test traceability, risks, usage classes and adaptive R04
+planning. It cannot carry a permission, DoR success or executable adapter.
+The native activity must pin the cycle-create skill and a read-only product
+policy. The component uses branch-audit admission plus strict canonical open,
+unfrozen, NOT_READY ownership checks. Reapplying the full cycle-create clean-Git
+guard after scaffold creation is not an admission for this read-only proposal.
+The actual new-cycle rule is unchanged.
+
+`cycle_plan_evaluate` authenticates the accepted native occurrence and its exact
+current context/evidence. `cycle_plan_record` accepts only that evaluation's
+identity; IR data mappings resolve both identities. Its reviewed plan writes
+only brief, plan, audit specification, planned traceability, cycle status usage
+declarations and the current first task. The local owner binds document/metadata
+preimages, fresh authorization and process identity, unchanged outside context,
+exact post-images and required projections. Partial or unconfirmed effects
+remain unknown with ownership retained, never automatically replayed.
+
+Planned tests are not executed evidence. The only completion fact is planning
+recorded; DoR and OPEN-to-IMPLEMENTING with frozen scope require their own ports.
+The current native configuration bounds admitted product files; deriving a new
+dynamic work scope and ordinary standard entry points remains separate work.
+Qualification IRs using this component do not replace the complete standard
+model/catalog or native/provider and exact installed-archive qualification.

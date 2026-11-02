@@ -16,6 +16,10 @@ const chunks = text => text.match(/[\s\S]{1,8192}/g) ?? [""];
 // input chooses excluded paths. Their exact canonical post-images are checked.
 export function recoveryBoundary(options) { return documentBoundary(options, controls); }
 export function recoveryRuntimeBoundary(options) { return documentBoundary(options, ["RUNTIME-STATE.md"]); }
+export function cyclePlanningBoundary(options, cyclePath) {
+  if (!/^cycles\/C[0-9]{3,6}-[a-z]+-[A-Za-z0-9._-]+$/.test(cyclePath)) fail("STANDARD_CYCLE_PLAN_PATH_INVALID");
+  return documentBoundary(options, ["brief", "plan", "audit-spec", "traceability", "status"].map(name => `${cyclePath}/${name}.md`).concat("CURRENT-STATE.md"));
+}
 export function recoveryCycleBoundary({ plan, originalReferences, artifacts, ...options }) {
   const { cycle_id, cycle_state, original_objective, context_use, completion, branch, ...body } = options.context;
   const context = { ...body, documents: originalReferences.map(row => {

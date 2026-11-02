@@ -1,5 +1,20 @@
 # Testing Guide
 
+`--cycle-plan-mode=contract|files|dual|db-only|partial|projection` in the existing
+agentic execution corpus selects typed planning checks. Contract checks exercise
+adaptive depth, REQ/test mapping, usage classes, stale/foreign scope, a single
+safe permission block and refusal of a writable native profile before sessions.
+The qualification IR resolves the accepted native occurrence and evaluation ID;
+only native transport and grants are fixture capabilities. Actual mode/cycle
+ports establish explicit preconditions, not proof of the complete startup graph.
+The real planning writer must retain canonical metadata, refuse denied grants,
+handle a metadata-only race, preserve product bytes and remain NOT_READY/OPEN.
+Files records the plan in a fresh Node process after native closure, without
+another allocation. Partial SQLite writes and a lost dual projection must retain
+unknown effects, empty success facts and ownership, with no repeat dispatch.
+The same model/reducer must reproduce the exact final simulation hash. This
+does not qualify real native/human identity, DoR/implementation or an archive.
+
 `drift-cycle-fixture-lib.mjs`, called by the existing recovery fixture, exercises
 real runtime-refresh/cycle application ports under a doubled provenance reader.
 `--cycle-port-mode=files|dual|db-only|partial|projection` selects its five cases;

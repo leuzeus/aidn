@@ -8,8 +8,8 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `d326bc6` et tranche courante de checkpoint réel du skill
-cycle-create, avec admission conditionnelle R05 et confirmation de l'effet.
+Dernier état relu : `637aff2` et tranche courante de proposition native de
+planification et d'enregistrement canonique, avant admission DoR/implémentation.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -1895,3 +1895,90 @@ et A1–A10 restent des livrables obligatoires ; additionner les composants de
 démarrage et de cycle ne les remplace pas. Le retour R05 conditionnel doit aussi
 rejoindre le diagnostic authentifié du même modèle, plutôt que la précondition
 externe utilisée par cette fixture de composant.
+
+
+## Addendum — proposition de plan et enregistrement canonique
+
+Tranche L2/L3/L4 ASSURED en cours, dépendante de 637aff2. Le contrat privé
+standard-cycle-plan-proposal.v1 étend le même canal natif typé que le diagnostic
+R05 : capture native retenue, contexte canonique épinglé et producteur lié à
+l'instance et à l'occurrence. La configuration ne peut l'attacher qu'à une
+activité dotée du skill cycle-create épinglé, avec une politique produit en
+lecture seule. La proposition ne peut ni écrire, ni déclarer le DoR prêt, ni
+modifier le scope gelé ou la phase, ni exécuter les méthodes de test proposées.
+
+Le schéma et son validateur couvrent tâches/intentions/chemins/opérations,
+exigences et tests prévus, traçabilité, contraintes/risques, matrice d'usage et
+profondeur adaptative R04 (spike, types à impact/rollback/compatibilité). Les
+textes restent des données ; le renderer produit une seule déclaration de
+Native write scope. Les chemins doivent appartenir au produit explicitement
+déclaré par la configuration native et sont ramenés au projet, sans élargissement
+implicite. La sélection dynamique d'un produit hors de ce périmètre immuable
+reste à raccorder aux entrées ordinaires ; cette tranche ne la prétend pas livrée.
+
+Deux bindings fixes utilisent le même réducteur : cycle_plan_evaluate authentifie
+le résultat natif, ses preuves et son contexte ; cycle_plan_record consomme cette
+évaluation réellement acceptée, prépare les six post-images et écrit seulement
+brief/plan/audit-spec/traceability/status et CURRENT-STATE du cycle admis.
+Les identités viennent des mappings IR occurrence_id et operation_id, sans
+recopie par l'opérateur. L'aperçu est sans effet ; le grant est revérifié sous
+le propriétaire, avec préimages contenu/métadonnées, processus et frontière Git
+/documentaire. Classification/linkage sont conservés et projections requises
+vérifiées. Une écriture partielle ou projection non confirmée conserve unknown
+et le propriétaire ; aucune réussite ou réexécution automatique n'en découle.
+
+Le cycle doit rester OPEN, NOT_READY, sans override et scope_frozen=false ;
+l'enregistrement ne publie que cycle_plan_recorded, sans réussite DoR ni droit
+d'implémentation. La matrice est DECLARED, et les preuves de tests sont prévues,
+pas exécutées. La proposition n'autorise aucune modification de baseline/SPEC.
+La qualification utilise un IR dédié sur de vrais ports ; le composant publié
+de cycle n'est pas étendu en un faux workflow standard complet.
+
+Le premier essai files a échoué avant toute réponse native : utiliser l'admission
+du skill cycle-create complet réappliquait son garde Git propre alors que le
+scaffold avait déjà été créé. Le contrôle ciblé du transfert de référence a
+confirmé dans la politique que ce garde protège la création d'un nouveau cycle,
+pas la proposition en lecture seule d'un cycle existant. L'adaptateur de lecture
+utilise l'admission réelle branch-cycle-audit et le lecteur canonique exige
+cycle/session/branche/mode cohérents et phase non gelée ; le writer garde son
+grant et ses propres préconditions. Aucune règle de création, DoR ou autorité
+n'est assouplie. La correction est appliquée et sa validation intégrée est PASS.
+
+Fichiers : standard-cycle-planning.mjs (core), standard-cycle-plan-context.mjs,
+standard-cycle-plan-record.mjs, native-activity-output et compositions/autorité
+natives, hôte/registre/contrats/pins, cinq schémas privés, corpus cycle-planning
+et sélections cycle-plan-mode dans la fixture d'exécution existante. Les anciens
+contrats/lecteurs ne sont pas convertis. Les cinq contrôles de contrat (dont le
+refus du profil natif autorisant une écriture), les cinq schémas privés,
+27 contrôles réducteur/opérations, 22 contrôles des modèles, 14 contrôles des
+ports et le contrat R05 existant sont PASS. Le parcours R05 files reste PASS.
+
+Les cinq parcours intégrés files, dual, DB-only, écriture partielle et projection
+perdue sont PASS avec les pins startup 42 / cycle 40. Ils couvrent les refus de
+grant, la course de métadonnées, les barrières OPEN/NOT_READY, la simulation
+exacte et l'absence de nouvelle allocation lors d'une reprise. Le cas files
+enregistre le plan dans un nouveau processus Node. Le cas partiel prouve cinq
+écritures canoniques conservées et une sixième refusée ; le cas de projection
+perdue prouve six écritures canoniques et une projection visible non confirmée.
+Ces deux derniers résultats restent unknown, sans fait de réussite, avec owner
+retenu et attente de réconciliation ; aucun effet n'est rejoué implicitement.
+
+Deux défauts de préparation du corpus ont été corrigés avant ces verdicts :
+le cas dual devait rafraîchir le runtime avant l'admission de cycle, et le défaut
+de projection devait intercepter writeFileSync, utilisé par le vrai projecteur,
+au lieu de renameSync. Leurs premiers échecs ne prouvent pas un échec produit.
+Les contrôles de références, Markdown, sensibilité (1 730 fichiers suivis),
+topologie du package et fraîcheur des pins sont PASS. La topologie vérifie des
+clients frais du package courant ; elle ne qualifie pas une archive de livraison
+installée exacte ni une exécution native réelle.
+
+Le périmètre produit reste borné aux fichiers explicitement admis dans la
+configuration native. La découverte et l'évolution d'un périmètre dynamique,
+notamment l'ajout de fichiers, restent à raccorder pour le workflow ordinaire.
+
+Le DoR core/adaptatif exécutable, son résultat authentifié, OPEN vers IMPLEMENTING
+avec scope gelé, le travail et les validations réelles restent à réaliser.
+Le modèle standard complet, les entrées ordinaires et A1–A10 restent obligatoires.
+Native réelle, archive installée exacte et qualifications du parcours complet
+restent NOT_RUN ; le transport natif, l'identité et les grants du corpus sont
+des capacités de fixture, pas des preuves de provider/humain réels.

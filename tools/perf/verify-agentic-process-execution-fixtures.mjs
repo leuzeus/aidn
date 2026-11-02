@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { CYCLE_PLAN_CONTRACT } from "../../src/core/workflow/standard-cycle-planning.mjs";
+import { verifyCyclePlanningContracts, verifyCyclePlanExecution } from "./cycle-planning-fixture-lib.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -55,6 +57,8 @@ if (selectedRecoveryMode !== undefined && !["files", "dual", "db-only"].includes
 const selectedChangeRequestMode = process.argv.find(value => value.startsWith("--drift-cr-mode="))?.slice("--drift-cr-mode=".length);
 if (selectedChangeRequestMode !== undefined && !["files", "dual", "db-only"].includes(selectedChangeRequestMode)) throw Error("CHANGE_REQUEST_FIXTURE_MODE_INVALID");
 const selectedRecoveryCycleMode = process.argv.find(value => value.startsWith("--drift-cycle-mode="))?.slice("--drift-cycle-mode=".length);
+const selectedCyclePlanMode = process.argv.find(value => value.startsWith("--cycle-plan-mode="))?.slice("--cycle-plan-mode=".length);
+if (selectedCyclePlanMode !== undefined && !["contract", "files", "dual", "db-only", "partial", "projection"].includes(selectedCyclePlanMode)) throw Error("CYCLE_PLAN_FIXTURE_MODE_INVALID");
 if (selectedRecoveryCycleMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryCycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
@@ -62,6 +66,7 @@ const businessRoots = [];
 let serial = 0;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+  if (selectedCyclePlanMode && !name.startsWith(`cycle plan ${selectedCyclePlanMode}`)) return;
   if (selectedChangeRequestMode && !name.startsWith(`drift CR ${selectedChangeRequestMode}:`)) return;
   if (selectedRecoveryCycleMode && !name.startsWith(`drift cycle ${selectedRecoveryCycleMode}:`)) return;
   if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
@@ -70,7 +75,7 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
-  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow )/.test(name)) return;
+  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan )/.test(name)) return;
   const dataflowMode = process.argv.find(value => value.startsWith("--dataflow-mode="))?.slice("--dataflow-mode=".length);
   if (dataflowMode && !name.startsWith(`dataflow ${dataflowMode}:`)) return;
   const recoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
@@ -402,7 +407,26 @@ function mixedFixture(stateMode = "files", options = {}) {
     }
     fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   }
-  f.configuration.instructions = options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
+  if (options.planning) {
+    model.roles = model.roles.filter(row => row.id === "analysis"); model.roles[0].skills = ["cycle-create"];
+    model.nodes = [{ id: "mixed", kind: "sequence", participant_ref: "delivery", children: ["reload", "admit", "initialize", "analyze", "plan_evaluate", "plan_record", "plan_wait"] },
+      op("reload", "context_reload"), op("admit", "session_admit"), op("initialize", "session_initialize"), native("analyze"), op("plan_evaluate", "cycle_plan_evaluate"), op("plan_record", "cycle_plan_record"),
+      { id: "plan_wait", kind: "event", participant_ref: "delivery", branches: [{ flow_id: "continue", node_id: "end_continue", event_key: "continue_snapshot" }, { flow_id: "stop", node_id: "end_stop", event_key: "stop_snapshot" }] },
+      op("end_continue", "context_reload"), op("end_stop", "context_reload")];
+    model.operation_pins = Object.fromEntries(standardWorkflowOperationBindings().filter(row => model.nodes.some(node => node.binding_ref === row.id)).map(row => [row.id, shadowHash(row)]));
+    model.data_bindings = { contract_version: "process-data-bindings.v1", parameter_keys: ["session"], inputs: [
+      { node_id: "reload", fields: {} }, { node_id: "admit", fields: {} },
+      { node_id: "initialize", fields: Object.fromEntries(["session_id", "session_branch", "objective"].map(name => [name, { source: "parameter", key: "session", path: [name] }])) },
+      { node_id: "plan_evaluate", fields: { report_occurrence_id: { source: "occurrence_id", node_id: "analyze" } } },
+      { node_id: "plan_record", fields: { evaluation_operation_id: { source: "operation_id", node_id: "plan_evaluate" } } },
+      { node_id: "end_continue", fields: {} }, { node_id: "end_stop", fields: {} }] };
+    const content = fs.readFileSync(new URL("../../scaffold/codex/aidn-cycle-create/SKILL.md", import.meta.url));
+    f.configuration.skills["cycle-create"] = { path: put(f.base, "package/cycle-create.md", content), sha256: sha(content) };
+    f.configuration.activity_outputs = { analyze: CYCLE_PLAN_CONTRACT };
+    fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
+  }
+  f.configuration.instructions = options.planning ? { analyze: "Propose only the typed plan; never write files or declare DoR ready." }
+    : options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
     : { analyze: "Analyze without writing.", review: "Review without correcting." };
   fs.writeFileSync(f.configuration.criteria.path, "Read the product without changing any bytes."); f.configuration.criteria.sha256 = sha("Read the product without changing any bytes.");
   const worker = fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url));
@@ -519,6 +543,14 @@ if (process.argv[2] === "--mixed-continue") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  await verifyCyclePlanningContracts(check);
+  await check("cycle plan contract refuses a writable native planning profile before any session", async () => {
+    const f = mixedFixture("files", { planning: true }), model = structuredClone(f.model);
+    const node = model.nodes.find(row => row.id === "analyze"); model.policies.find(row => row.id === node.policy_ref).allowed_permissions.push("write:product");
+    const text = JSON.stringify(model); fs.writeFileSync(f.configuration.model.path, text); f.configuration.model.sha256 = sha(text);
+    assert.throws(() => f.open(), { code: "PROCESS_ACTIVITY_OUTPUT_BINDING_INVALID" }); assert.equal(f.t.sessions.length, 0);
+  });
+  await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url) });
   for (const mode of ["files", "dual", "db-only"]) await check(`dataflow ${mode}: the IR resolves durable parameters and accepted result identities through real ports`, async () => {
     const f = finalizationFixture(mode, { dataBindings: true, inputSource: mode === "dual" ? "operation_input" : "operation_output" });
     const parameters = { session: { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" } };

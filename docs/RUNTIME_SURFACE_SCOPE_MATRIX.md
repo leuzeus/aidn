@@ -1,5 +1,13 @@
 # Runtime Surface Scope Matrix
 
+Typed cycle planning reuses owned native evidence and the signed operation
+journal. Its read-only proposal is evaluated against canonical cycle context;
+the explicit record operation writes only the admitted cycle planning documents,
+usage declaration and current task through the existing canonical artifact CAS
+and projection ports. It preserves metadata and leaves DoR/phase authorization
+pending. No proposal table, implicit export in db-only, shared synchronization
+or backend fallback is introduced.
+
 The deterministic cycle checkpoint uses the existing fixed skill/checkpoint
 ports and local operation owner. Its effects are runtime cache/index/telemetry,
 with a fresh correlated event retained by the authenticated operation journal.
