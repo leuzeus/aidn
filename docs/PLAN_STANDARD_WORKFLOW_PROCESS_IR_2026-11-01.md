@@ -3183,3 +3183,40 @@ ont réussi. Parent/enfant terminés, fixture et contrôle nettoyés, source pro
 Ce modèle n’inclut pas le checkpoint final de livraison ni l’intégration/admission
 PR. Les preuves32 ne sont pas étendues aux modèles33/37/39, ni au natif réel ou
 à l’archive. Les composés33/37 restent actifs ; A1–A10 et le but restent ouverts.
+
+
+### Terminal evidence for composed revision 33
+
+The exact 5014f06/revision33 source completed PASS/code0 at 21:35:50Z.
+Its [separate record](qualification/agentic-process/composed-model33-delivery-2026-11-03.json)
+retains matching parent/cold summaries: 120 events, 52 accepted operations,
+eight fake-wire allocations and exact replay/simulation in 121 rows. R07 and
+the final delivery checkpoint completed. Parent/child exited and fixture/control
+cleanup completed; no independent post-cleanup replay is claimed. This source
+does not contain local integration, PR admission or the later hook isolation.
+It does not qualify revisions37/39/41, real native execution or an exact archive.
+
+### Session push after authenticated admission: local remote component
+
+Revision41 adds session_push after session_pr_admit, through the same operation
+journal and reducer. Its host-owned local bare transport pins destination,
+branch/head and the observed remote tip in the explicitly granted plan. It
+requires fast-forward ancestry and exact remote-tip CAS, then reads the actual
+remote ref. Equal head confirms the no-effect path. Checkout hooks and URL
+rewrites cannot supply an implicit executable or destination. No PR or merge
+marker is written as a substitute for a remote effect.
+
+The [component evidence](qualification/agentic-process/session-push-local-remote-2026-11-03.json)
+records 9 PASS/code0 checks for each of files/dual/db-only, including a real push,
+whole-project byte preservation, remote drift rejection, original preview expiry
+and loss of authority after the effect. Admission/closure/current-instance sources
+are injected in those focused components. Unknown retains the local owner and
+no completion fact. The initial old-corpus construction failed before push;
+its log remains distinct. The composed41 source is frozen and running, separate
+from39 and37. Those verdicts cannot be transferred across revisions.
+
+The production GitHub transport, PR creation/recovery, authenticated review/checks,
+merge decision and post-merge fetch/divergence/sync remain open, as do the other
+modes/topologies, long reauthorization, general unknown-effect reconciliation and
+A1-A10. Ordinary selection is unchanged; complete_standard_workflow=false.
+Real native and exact installed-archive qualifications remain NOT_RUN.
