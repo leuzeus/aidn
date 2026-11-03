@@ -8,7 +8,9 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée relue : `d813d25` ; audit read-only qualifié hors ligne dans cette tranche sur pins 56/54.
+Base intégrée relue : `01be38a` ; audit read-only qualifié hors ligne dans `fe3efab` sur pins 56/54.
+La préparation reproductible des fixtures est intégrée ; les prototypes de clôture
+ci-dessous restent séparés de cette base.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -44,10 +46,21 @@ encore ouverts.
   du corpus de tests, pas le workflow standard complet distribué.
 - L’audit structuré est qualifié hors ligne sur files et DB-only : source
   VERIFYING authentifiée, documents complets et rapport typé, sans clôture.
-- Préparation isolée, hors de la preuve d’audit 56/54 : décision humaine de clôture avec contrôles purs
-  et inbox réelle files/dual/db-only. Le vérificateur humain de ces contrôles
-  est un double explicite. Le nouveau raccordement de décision au graphe,
-  les écritures de clôture et le hook final restent à terminer.
+- Préparations isolées, hors de la preuve d’audit 56/54 : décision humaine de
+  clôture avec inbox réelle files/dual/db-only, puis port déterministe d’écriture
+  des six artefacts canoniques. Les contrôles du rendu, des contrats et des CAS
+  passent, dont DONE/files, NO_GO/DB-only, DROPPED/dual, effet SQLite partiel,
+  projection perdue et changement produit pendant l’autorisation. Les autorités
+  humaines/audit des composants sont des doubles explicites. Les parcours du
+  graphe commun sont en cours de qualification ; ils ne sont pas encore une preuve
+  acquise. Le hook final cycle-close, son refus/R05/retry, les sorties précoces et
+  le modèle standard complet restent à terminer. Un état terminal enregistré
+  conserve explicitement le hook et la complétion du skill en attente.
+- La [préparation reproductible des fixtures](qualification/agentic-process/fixture-construction-2026-11-03.json)
+  passe 14 contrôles des ports et 20 de l’hôte. Elle construit la base temporaire
+  depuis le corpus suivi via le projecteur réel ; aucune base SQLite ignorée n’est
+  copiée. Cette correction de test n’est ni un fallback runtime, ni une conversion
+  d’instance historique, ni une preuve native ou d’archive installée.
 - L3 : en cours, composants IR de démarrage et de squelette de cycle distribués,
   avec raccords de données déclarés dans leurs nouvelles révisions et consommés
   par les tests de ports réels ; le modèle standard complet reste à livrer.
