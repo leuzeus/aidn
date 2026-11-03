@@ -3288,3 +3288,23 @@ The aggregate agentic gate still runs on separate source93958bf/model41; full
 runtime/Governance Admission, model43 composition, A1-A10, native real and exact
 archive remain unqualified. Ordinary selection stays unchanged and
 complete_standard_workflow=false.
+
+### Terminal model37 evidence and explicit input versions
+
+The [retained model37 verdict](qualification/agentic-process/composed-model37-integration-input-2026-11-03.json)
+is FAIL/code1 on source6a24190. It reached 120 events and a confirmed session
+delivery checkpoint, then failed at input resolution before the integration
+decision: the authored input lacked its required contract_version literal.
+The native authorization deadline had expired when the parent exited, but the
+exception identifies invalid input, not timeout. No budget was renewed.
+All eight fake-wire native generations were closed; the fixture/control remain
+retained and cleanup is not claimed. Independent read-only replay/simulation of
+the retained terminal prefix is exact (121 rows); it preserves the failed
+execution verdict. Models39/41 remain separate observations.
+
+The source author now writes required versions explicitly into future model
+expressions from their registered contracts. A pure interpreter-boundary check
+covers published literal/operation-ID inputs and refuses the old missing or
+wrong version before dispatch. No historical model/instance is converted or
+silently repaired. These checks do not replace composed execution or qualify
+native/provider/archive behavior.

@@ -1,0 +1,62 @@
+{
+  "observed_at_utc": "2026-11-03T22:51:04.948Z",
+  "source": {
+    "commit": "6a24190fa2024b027890eb3126c88aac8ad2b364",
+    "model_revision": 37,
+    "model_sha256": "8833c65b3e3b32ce02b83b562538052c7dd9a130aba78684b09a4fa869996f3f",
+    "instance_sha256": "1079805728fbef63cf9357d7e00b1a314581e07c39a24c930e27277386668e77"
+  },
+  "verdict": {
+    "status": "FAIL",
+    "exit_code": 1,
+    "ended_at_utc": "2026-11-03T22:41:50.7706598Z",
+    "os_exit_code": 1,
+    "os_terminal_at_utc": "2026-11-03T22:41:50.3679900Z",
+    "reason": "STANDARD_OPERATION_INPUT_INVALID",
+    "boundary": "session_branch_integration_decision input resolution after completed session_delivery_checkpoint",
+    "cause": "The model expression omitted the required contract_version literal. The real input resolver refused before an integration decision or Git integration effect."
+  },
+  "original_authorization_deadline_utc": "2026-11-03T22:41:11.376Z",
+  "deadline_interpretation": "The original native deadline had expired when the parent exited. The recorded exception establishes invalid operation input; this is not a timeout verdict and no native authorization was renewed.",
+  "retained_prefix": {
+    "events": 120,
+    "accepted_operations": 51,
+    "last_binding": "session_delivery_checkpoint",
+    "last_outcome": "completed",
+    "last_effect_status": "confirmed",
+    "native_generations": 8,
+    "native_phases": [
+      "closed",
+      "closed",
+      "closed",
+      "closed",
+      "closed",
+      "closed",
+      "closed",
+      "closed"
+    ],
+    "effect_owner_present": false
+  },
+  "replay_and_simulation": {
+    "status": "PASS",
+    "independent_read_only_after_terminal": true,
+    "events": 120,
+    "simulation_steps": 121,
+    "exact_instance_sha256": "1079805728fbef63cf9357d7e00b1a314581e07c39a24c930e27277386668e77",
+    "replay_status": "RUNNING",
+    "effects_reexecuted": false,
+    "execution_verdict_remains": "FAIL"
+  },
+  "retention": {
+    "fixture_and_control": "retained by original failure policy",
+    "cleanup_completed": false,
+    "source_worktree": "clean at original commit"
+  },
+  "proof_class": "OFFLINE_FIXTURE",
+  "native_real": "NOT_RUN",
+  "real_provider": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "full_standard_workflow": false,
+  "later_models": "This verdict does not qualify models39/41/43 or new successors.",
+  "log_sha256": "ece623d5cdac0d50541c64838711ff3476d77a684a22516f5c544ba601baf21f"
+}
