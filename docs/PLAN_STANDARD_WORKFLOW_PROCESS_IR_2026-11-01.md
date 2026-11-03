@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 97/95 et le modèle composé candidat en 39
-(88 nœuds, 54 occurrences d’opération, 44 identifiants de liaison mobilisés parmi
-51 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 104/102 et le modèle composé candidat en 46
+(93 nœuds, 59 occurrences d’opération, 49 identifiants de liaison mobilisés parmi
+56 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3308,3 +3308,33 @@ covers published literal/operation-ID inputs and refuses the old missing or
 wrong version before dispatch. No historical model/instance is converted or
 silently repaired. These checks do not replace composed execution or qualify
 native/provider/archive behavior.
+
+### Canonical PR successor checkpoint and update delivery
+
+Source72fd5b8/model46 adds session_pr_checkpoint and session_pr_update_push.
+The successor authority authenticates the accepted canonical PR writer and its
+new content/metadata hashes, preserving the old closure/delivery chain. The
+checkpoint commits exactly those physical postimages. DB-only creates no export
+and keeps HEAD when no file changed. Update push rechecks the pinned remote and
+existing PR, performs the separately granted Git effect, then observes the same
+PR at its new HEAD. Review/checks remain pending for this exact SHA; no prior-head
+approval/check is inherited. The initial strict delivery/admission readers are
+unchanged. Unknown effects retain their owner and cannot authorize a second push.
+
+The [component record](qualification/agentic-process/session-pr-successor-delivery-components-2026-11-03.json)
+contains files7, dual6 and db-only6 PASS/code0 with cleanup, real canonical
+CAS/projections/Git/checkpoint and GitHub PR adapter. Accepted-operation lookup
+and historical closure sources are injected; REST alone is doubled over a real
+bare remote. The four historical-authority regressions pass. The pure input
+boundary passes three controls over 42 published inputs; composition24, startup22,
+contracts/reducer/service27, source-of-truth35, metadata37, governance-completeness,
+gate-catalog and documentation references pass. Earlier failed arrangements
+remain identified in the record. These components do not prove the signed
+standard chain, real GitHub/native identity or an exact installed archive.
+
+A clean worktree at72fd5b8/model46 has started a distinct composed qualification.
+Its result is pending; model41 results cannot qualify it. Production authenticated
+GitHub push, review/checks/triage, durable external events, explicit merge and
+fetch/divergence/sync remain open, along with A1-A10, full runtime/CI admission,
+native and exact archive qualification. Ordinary selection is unchanged and
+complete_standard_workflow=false.
