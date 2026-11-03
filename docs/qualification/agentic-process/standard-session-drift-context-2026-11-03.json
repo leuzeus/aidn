@@ -123,5 +123,23 @@
     "native_runtime_sha256_used_by_tests": "4e7cf480fa47e06fe63fc66afe4c71788ebfa3b66eecaeed4bc961022a9a22c0",
     "initial_integrated_checkout_sha256_before_manifest_correction": "be19bd03d9e0d34ad27e1fb527f09e872d64d571c19c6c31aa5d772670ef19a4",
     "native_qualification": "NOT_RUN"
+  },
+  "primary_integration": {
+    "code_commit": "5ab7c7b",
+    "context_fix_commit": "b034390",
+    "manifest_fix_commit": "5ab7c7b",
+    "whole_tree_matches_source_commit": "33a4dd9",
+    "native_pin_members": 230,
+    "native_pin_matches_qualified_runtime": true,
+    "gate_catalog": "PASS_63",
+    "docs": "PASS",
+    "fresh_integrated_files_case": {
+      "status": "PASS",
+      "checks": 4,
+      "cleanup": "TERMINAL_COMPLETE",
+      "actual_context_reader": true,
+      "model_calls": 0,
+      "session_closed": false
+    }
   }
 }
