@@ -2343,6 +2343,12 @@ read-only inspection, foreign/index/postimage/authorization refusals and
 post-ref uncertainty. `inspectCommit` distinguishes an observed commit from a
 fully reconciled index; replaying the effect is not recovery.
 
+The same fixture proves that a configured reference-transaction hook and clean
+filter actually execute under ordinary Git, then requires the adapter's inspect,
+commit and confirmation to execute neither. Live/cold filter changes and an old
+unpinned preview must refuse fresh effects; substituted filter context cannot
+supply cold confirmation. Private historical plan records remain readable.
+
 The distributed standard model places `session_git_checkpoint` after context
 refresh and before unchanged cycle admission. The longer composed selector
 `--standard-composed-mode=files --standard-composed-stop=plan` exercises that

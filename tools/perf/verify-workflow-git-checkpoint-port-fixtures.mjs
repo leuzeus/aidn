@@ -126,6 +126,50 @@ try {
     await assert.rejects(port.commit(f.plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_FILE_LIMIT", effect_status: "no_effect" });
     assert.equal(git(f.root, "rev-parse", "HEAD"), f.plan.observed.head);
   });
+  await test("a configured reference-transaction hook is executable by Git but never by the checkpoint", async () => {
+    const f = fixture(), marker = path.join(f.root, ".git/HOOK_EXECUTED");
+    write(f.root, ".git/checkpoint-hooks/reference-transaction", "#!/bin/sh\nprintf '%s\\n' \"$1\" >> .git/HOOK_EXECUTED\n");
+    fs.chmodSync(path.join(f.root, ".git/checkpoint-hooks/reference-transaction"), 0o755);
+    git(f.root, "config", "core.hooksPath", ".git/checkpoint-hooks");
+    git(f.root, "update-ref", "refs/aidn/hook-probe", f.plan.observed.head);
+    assert.equal(fs.existsSync(marker), true); fs.unlinkSync(marker);
+    const port = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }), plan = { ...f.plan, observed: port.inspect() };
+    assert.equal(fs.existsSync(marker), false);
+    assert.equal((await port.commit(plan, { assertAuthorized() {} })).effect_status, "confirmed");
+    assert.equal(port.inspectCommit(plan).status, "confirmed"); assert.equal(fs.existsSync(marker), false);
+  });
+  await test("a configured clean filter is executable by Git but never by checkpoint observation or commit", async () => {
+    const f = fixture(), marker = path.join(f.root, ".git/FILTER_EXECUTED");
+    write(f.root, ".git/info/attributes", "docs/audit/** filter=tripwire\n");
+    git(f.root, "config", "filter.tripwire.clean", "echo executed >> .git/FILTER_EXECUTED; cat");
+    git(f.root, "config", "filter.tripwire.required", "true");
+    execFileSync("git", ["-C", f.root, "hash-object", "--path=" + metadata[0], "--stdin"], { input: "probe\n", stdio: "pipe", windowsHide: true });
+    assert.equal(fs.existsSync(marker), true); fs.unlinkSync(marker);
+    const stamp = new Date(Date.now() + 2000); fs.utimesSync(path.join(f.root, metadata[0]), stamp, stamp);
+    const port = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }), plan = { ...f.plan, observed: port.inspect() };
+    assert.equal(fs.existsSync(marker), false);
+    assert.equal((await port.commit(plan, { assertAuthorized() {} })).effect_status, "confirmed");
+    assert.equal(port.inspectCommit(plan).status, "confirmed"); assert.equal(fs.existsSync(marker), false);
+  });
+  await test("changed filter context refuses both live and cold dispatch before Git effects", async () => {
+    const f = fixture(); git(f.root, "config", "filter.new.clean", "echo forbidden >> .git/FILTER_EXECUTED");
+    await assert.rejects(f.port.commit(f.plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_FILTER_CONTEXT_CHANGED", effect_status: "no_effect" });
+    const cold = createLocalWorkflowGitCheckpoint({ targetRoot: f.root });
+    await assert.rejects(cold.commit(f.plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_PRECONDITION_CHANGED", effect_status: "no_effect" });
+    assert.equal(git(f.root, "rev-parse", "HEAD"), f.plan.observed.head); assert.equal(fs.existsSync(path.join(f.root, ".git/FILTER_EXECUTED")), false);
+  });
+  await test("cold observation cannot confirm a checkpoint against a substituted filter context", async () => {
+    const f = fixture(); await f.port.commit(f.plan, { assertAuthorized() {} });
+    git(f.root, "config", "filter.new.clean", "echo forbidden >> .git/FILTER_EXECUTED");
+    const cold = createLocalWorkflowGitCheckpoint({ targetRoot: f.root });
+    assert.deepEqual(cold.inspectCommit(f.plan), { status: "not_confirmed", reason_code: "WORKFLOW_GIT_FILTER_CONTEXT_CHANGED" });
+    assert.equal(fs.existsSync(path.join(f.root, ".git/FILTER_EXECUTED")), false);
+  });
+  await test("historical unpinned preview is retained but cannot authorize a fresh checkpoint", async () => {
+    const f = fixture(), old = structuredClone(f.plan); delete old.observed.filter_context_sha256;
+    await assert.rejects(f.port.commit(old, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_PRECONDITION_CHANGED", effect_status: "no_effect" });
+    assert.equal(Object.hasOwn(old.observed, "filter_context_sha256"), false); assert.equal(git(f.root, "rev-parse", "HEAD"), old.observed.head);
+  });
   console.log(JSON.stringify({ status: "PASS", checks, proof: "offline-real-git-port", application_binding: "NOT_RUN", full_standard_workflow: "NOT_COMPLETE", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
 } finally {
   for (const root of owned) {

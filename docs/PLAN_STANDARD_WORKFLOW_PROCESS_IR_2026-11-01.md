@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 91/89 et le modèle composé candidat en 33
+les composants startup/cycle en 92/90 et le modèle composé candidat en 34
 (85 nœuds, 51 occurrences d’opération, 41 identifiants de liaison mobilisés parmi
 48 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -3107,3 +3107,15 @@ Elle ne qualifie pas automatiquement le graphe 33 ni cette nouvelle autorité h�
 Le composé courant, l'intégration humaine/locale, PR/revue/fusion/sync, les autres
 parcours, la réautorisation et la réconciliation générale restent requis avant
 fermeture A1–A10. Natif et archive exacte restent NOT_RUN.
+
+### Isolation du code de dépôt dans les checkpoints Git
+
+La qualification configurée a démontré un écart : le port exécutait le hook
+reference-transaction du dépôt. Le correctif désactive hooks et filtres avant
+observation/commit et lie la configuration effective des filtres au plan. Les
+18 contrôles hors ligne passent, y compris refus à froid et absence de conversion
+des anciens plans. Voir la [preuve dédiée](qualification/agentic-process/checkpoint-repository-code-isolation-2026-11-03.json).
+Les contrôles statiques startup (22) et composé (17) passent en révisions
+92/90/34. Les trois composés 29/32/33 restent attribués à leurs sources figées ;
+ils ne qualifient pas ce correctif. Le composé courant, les raccords d'intégration
+et PR, A1–A10, natif réel et archive exacte restent ouverts.

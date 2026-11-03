@@ -1612,6 +1612,24 @@ source-authority capability: 8 checks per mode and 7 for grant loss after a real
 commit. Authenticated host/model composition, native provider and exact archive
 are separate evidence; complete standard selection remains outstanding.
 
+### Checkpoint Git hook and filter isolation (2026-11-03)
+
+A configured, executable `reference-transaction` hook exposed a gap in the
+checkpoint adapter's no-repository-code guarantee. The regression first proves
+that ordinary Git executes the fixture hook and clean filter, then requires
+observation, checkpoint and cold confirmation to leave their markers absent.
+Every adapter Git call now disables repository hooks; configured clean, smudge
+and process filters are disabled before status or diff can execute them.
+Configured commit signing remains applicable as previously documented.
+
+The effective filter configuration is observed before execution overrides and
+pinned in newly prepared checkpoint plans. Live and cold changes refuse before
+dispatch; a cold observation cannot confirm against a different context. The
+six existing private v1 plan schemas retain their historical reader shape and
+accept the additional filter digest. An old plan without the digest is not
+converted or granted fresh execution. This change grants no integration, remote
+effect, process completion or installed-package qualification.
+
 ### Checkpoint of confirmed session completion for delivery (2026-11-03)
 
 `session_delivery_checkpoint` follows the actual final R07 hook and its three

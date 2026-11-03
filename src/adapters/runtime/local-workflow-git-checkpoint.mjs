@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { assertWorkflowGitCheckpointPort } from "../../core/ports/workflow-git-checkpoint-port.mjs";
 import { agentRunPhysicalPath } from "../../application/runtime/agent-run-configuration-service.mjs";
 
@@ -33,8 +33,25 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   if (Object.keys(environment).some(name => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(name)))
     fail("WORKFLOW_GIT_ENV_SCOPE_CONFLICT");
   const env = Object.fromEntries(Object.entries(environment).filter(([name]) => !/^GIT_/i.test(name)));
+  const fixed = ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "gc.auto=0", "-c", "maintenance.auto=false",
+    "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null")];
+  const configArguments = [...fixed];
+  function filters() {
+    const result = spawnSync("git", [...configArguments, "config", "--null", "--get-regexp", "^filter\\..*\\.(clean|smudge|process|required)$"],
+      { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 60000, maxBuffer: 1048576, stdio: "pipe" });
+    if (![0, 1].includes(result.status)) fail("WORKFLOW_GIT_FILTER_CONTEXT_UNAVAILABLE");
+    return result.stdout;
+  }
+  // Pin the effective context before adding overrides, including on a cold
+  // reopen. Status/diff may otherwise execute a configured clean/process filter.
+  const configuredFilters = filters(), filterContextSha256 = hash(configuredFilters);
+  for (const name of new Set(configuredFilters.split("\0").filter(Boolean).map(row => /^filter\.(.+)\.(?:clean|smudge|process|required)\n/.exec(row)?.[1]))) {
+    if (!name || /[\r\n\0]/.test(name)) fail("WORKFLOW_GIT_FILTER_CONTEXT_INVALID");
+    for (const member of ["clean", "smudge", "process"]) fixed.push("-c", `filter.${name}.${member}=`);
+    fixed.push("-c", `filter.${name}.required=false`);
+  }
   const run = (args, { input, binary = false, variables = {}, acceptable = [] } = {}) => {
-    try { return execFileSync("git", ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "gc.auto=0", "-c", "maintenance.auto=false", ...args], {
+    try { return execFileSync("git", [...fixed, ...args], {
       input, encoding: binary ? undefined : "utf8", env: { ...env, GIT_OPTIONAL_LOCKS: "0", ...variables },
       windowsHide: true, timeout: 60000, maxBuffer: 4 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"] }); }
     catch (cause) { if (acceptable.includes(cause.status)) return null; throw Object.assign(new Error("WORKFLOW_GIT_COMMAND_FAILED"), { code: "WORKFLOW_GIT_COMMAND_FAILED", command: args[0], exit_code: cause.status }); }
@@ -55,6 +72,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   }
   const indexHash = () => fs.existsSync(indexPath) ? hash(fs.readFileSync(agentRunPhysicalPath(indexPath))) : null;
   function inspect() {
+    if (hash(filters()) !== filterContextSha256) fail("WORKFLOW_GIT_FILTER_CONTEXT_CHANGED");
     const ref = run(["symbolic-ref", "--quiet", "HEAD"], { acceptable: [1] })?.trim() ?? null;
     const head = run(["rev-parse", "--verify", "HEAD"]).trim();
     if (!sha(head) || !ref?.startsWith("refs/heads/")) fail("WORKFLOW_GIT_NAMED_HEAD_REQUIRED");
@@ -68,7 +86,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     if (!identity) fail("WORKFLOW_GIT_IDENTITY_REQUIRED");
     const signing = run(["config", "--bool", "--get", "commit.gpgSign"], { acceptable: [1] })?.trim() === "true";
     return { branch: ref.slice(11), ref, head, index_sha256: indexHash(), index_clean: indexClean,
-      lock_present: fs.existsSync(lockPath), changes, identity: { name: identity[1], email: identity[2] }, signing };
+      lock_present: fs.existsSync(lockPath), changes, identity: { name: identity[1], email: identity[2] }, signing, filter_context_sha256: filterContextSha256 };
   }
   function assertMaterial(plan) {
     if (!/^op_[a-f0-9]{40}$/.test(plan?.operation_id ?? "") || !/^[a-f0-9]{64}$/.test(plan.plan_sha256 ?? "")
@@ -79,7 +97,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   function assertFresh(plan, { ownLock = false } = {}) {
     assertMaterial(plan);
     const current = inspect();
-    for (const key of ["ref", "head", "index_sha256", "identity", "signing"])
+    for (const key of ["ref", "head", "index_sha256", "identity", "signing", "filter_context_sha256"])
       if (exact(current[key]) !== exact(plan.observed[key])) fail("WORKFLOW_GIT_PRECONDITION_CHANGED");
     if (!current.index_clean || current.lock_present && !ownLock || current.changes.some(row => !plan.files.some(file => file.path === row.path))
       || current.changes.length !== plan.files.length) fail("WORKFLOW_GIT_FOREIGN_CHANGES");
@@ -96,6 +114,8 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   }
   function inspectCommit(plan) {
     assertMaterial(plan);
+    if (plan.observed.filter_context_sha256 !== filterContextSha256 || hash(filters()) !== filterContextSha256)
+      return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_FILTER_CONTEXT_CHANGED" };
     const head = run(["rev-parse", "--verify", plan.observed.ref]).trim();
     if (head === plan.observed.head) return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_NOT_OBSERVED" };
     const parent = run(["rev-list", "--parents", "-n", "1", head]).trim().split(" ");
