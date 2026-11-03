@@ -1,3 +1,4 @@
+import { assertSessionClosureQuestion, assertHumanSessionClosureDecision, observeHumanSessionClosureDecision, assertSessionClosureDecisionOutput } from "../../core/workflow/standard-session-closure-decision.mjs";
 import { assertBaselinePromotionQuestion, assertHumanBaselinePromotionDecision, observeHumanBaselinePromotionDecision } from "../../core/workflow/standard-baseline-promotion-decision.mjs";
 import { assertCycleClosureQuestion, assertHumanCycleClosureDecision, observeHumanCycleClosureDecision } from "../../core/workflow/standard-cycle-closure-decision.mjs";
 import { assertHumanModeDecision, assertModeQuestion, assertRecoveryQuestion, assertHumanRecoveryDecision, decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
@@ -5,11 +6,15 @@ import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
 export function createStandardHumanDecisions({ inbox, signer, source, projectionRequired }) {
+  const sessionClosure = record => record.intent.binding_ref === "session_closure_decision";
   const recovery = record => record.intent.binding_ref === "drift_recovery_decision";
   const promotion = record => record.intent.binding_ref === "baseline_promotion_decision";
   const closure = record => record.intent.binding_ref === "cycle_closure_decision";
   const question = record => {
-    if (!["mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+    if (!["session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+    if (sessionClosure(record)) return assertSessionClosureQuestion({ contract_version: "standard-session-closure-question.v1", operation_id: record.operation_id,
+      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+      session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
     if (promotion(record)) return assertBaselinePromotionQuestion({ contract_version: "standard-baseline-promotion-question.v1", operation_id: record.operation_id,
       instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
       session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
@@ -44,7 +49,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal) {
-    if (request.contract_version === "standard-baseline-promotion-question.v1") assertHumanBaselinePromotionDecision(claim, request);
+    if (request.contract_version === "standard-session-closure-question.v1") assertHumanSessionClosureDecision(claim, request);
+    else if (request.contract_version === "standard-baseline-promotion-question.v1") assertHumanBaselinePromotionDecision(claim, request);
     else if (request.contract_version === "standard-cycle-closure-question.v1") assertHumanCycleClosureDecision(claim, request);
     else if (request.contract_version === "standard-drift-recovery-question.v1") assertHumanRecoveryDecision(claim); else assertHumanModeDecision(claim);
     if (claim.question_sha256 !== shadowHash(request)) fail("PROCESS_HUMAN_QUESTION_CHANGED");
@@ -79,7 +85,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      return write({ contract_version: promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
+      return write({ contract_version: sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
         source: claim, phase: "reserved", receipt_sha256: null }, null);
     },
     acknowledge(id, receipt) {
@@ -97,6 +103,12 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     },
     output(record, capture) {
       const request = question(record);
+      if (sessionClosure(record)) {
+        const { choice, ...observed } = observeHumanSessionClosureDecision({ question: request, decision: capture.source });
+        return assertSessionClosureDecisionOutput({ contract_version: "standard-session-closure-decision-output.v1", operation_ref: "session_closure_decision", ...observed,
+          observations: { ...observed.observations, inbox_id: capture.inbox_id, source_ref: capture.source_ref },
+          evidence_refs: [{ ref: `aidn:decision-source/${capture.inbox_id}`, sha256: shadowHash(capture.source) }, ...capture.source.evidence_refs] });
+      }
       if (promotion(record)) {
         const { choice, ...observed } = observeHumanBaselinePromotionDecision({ question: request, decision: capture.source });
         return { contract_version: "standard-baseline-promotion-decision-output.v1", operation_ref: "baseline_promotion_decision", ...observed,

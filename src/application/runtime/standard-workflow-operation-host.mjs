@@ -1,3 +1,10 @@
+import { createStandardSessionClosureAuthority } from "./standard-session-closure-authority.mjs";
+import { createStandardSessionClosureReview } from "./standard-session-closure-review.mjs";
+import { createStandardSessionCloseRecord } from "./standard-session-close-record.mjs";
+import { createStandardSessionCloseCheckpoint } from "./standard-session-close-checkpoint.mjs";
+import { createStandardSessionCloseHook } from "./standard-session-close-hook.mjs";
+import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
+import { classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { createStandardBaselinePromotionCheckpoint } from "./standard-baseline-promotion-checkpoint.mjs";
 import { baselinePromotionPaths } from "../../core/workflow/standard-baseline-promotion.mjs";
 import { createStandardCycleTerminalCheckpoint } from "./standard-cycle-terminal-checkpoint.mjs";
@@ -182,6 +189,79 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail(reason);
     return { record, output: result.output };
   }
+  const sessionClosureAuthority = processAuthority ? createStandardSessionClosureAuthority({ targetRoot,
+    readAcceptedOperation: acceptedForPromotion, readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input) }) : null;
+  const sessionClosureReview = sessionClosureAuthority ? createStandardSessionClosureReview({ readSource: (instance, input) => sessionClosureAuthority.readSource(instance, input) }) : null;
+  async function readAcceptedSessionClosureDecision(instance, input) {
+    const selected = acceptedForPromotion(instance, input.decision_operation_id, "session_closure_decision", "STANDARD_SESSION_CLOSE_DECISION_REQUIRED");
+    await sessionClosureReview.assertFresh(instance, selected.record.preview.prepared.plan);
+    return { question: human.question(selected.record), decision: human.captured(selected.record).source };
+  }
+  const sessionCloseRecord = processAuthority ? createStandardSessionCloseRecord({ targetRoot, now,
+    readDecision: readAcceptedSessionClosureDecision, readCurrent: id => current(id).record }) : null;
+  function readAcceptedSessionCloseRecord(instance, input) {
+    const recorded = acceptedForPromotion(instance, input.record_operation_id, "session_close_record", "STANDARD_SESSION_CLOSE_RECORDED_SOURCE_REQUIRED");
+    const plan = recorded.record.preview.prepared.plan, selected = acceptedForPromotion(instance, plan.input.decision_operation_id, "session_closure_decision");
+    const question = human.question(selected.record), decision = human.captured(selected.record).source;
+    if (shadowHash({ question, decision }) !== plan.decision_material_sha256 || recorded.output.effect_status !== "confirmed"
+      || recorded.output.facts.session_close_report_recorded !== true || recorded.output.facts.session_close_completed !== false
+      || selected.output.facts.session_closure_requested !== true || decision.choice !== "close") fail("STANDARD_SESSION_CLOSE_RECORDED_SOURCE_REQUIRED");
+    const postimages = recorded.output.observations.postimages;
+    if (postimages?.length !== 3 || plan.changes.some(change => !postimages.some(row => row.path === change.path && row.sha256 === change.after_sha256)))
+      fail("STANDARD_SESSION_CLOSE_POSTIMAGE_CHANGED");
+    for (const row of postimages) if (artifacts.read(row.path, { required: true }).sha256 !== row.sha256 || artifacts.metadataHash(row.path) !== row.metadata_sha256)
+      fail("STANDARD_SESSION_CLOSE_POSTIMAGE_CHANGED");
+    return { recorded, plan, question, decision };
+  }
+  function readSessionCheckpointSource(instance, input) {
+    const source = readAcceptedSessionCloseRecord(instance, input), review = source.question.review;
+    const owner = analyzeStructuredArtifact(artifacts.read(review.session_path, { required: true }).content).key_values;
+    const currentState = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
+    if (owner.state !== "OPEN" || currentState.active_session !== review.session_id || currentState.active_cycle !== "none"
+      || owner.session_closure_status !== "checkpoint_pending") fail("STANDARD_SESSION_CHECKPOINT_OWNER_CHANGED");
+    const ownedPaths = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === review.session_id).map(row => row.path.slice(0, -10));
+    const fixed = [review.session_path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "INDEX.md"];
+    const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
+      "cycle_task_advance", "cycle_verification_enter", "cycle_close_record", "cycle_close_finalize", "baseline_promotion_record", "baseline_promotion_finalize", "session_close_record"]);
+    const approved = new Map(), journals = [];
+    for (const event of instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")) {
+      const record = retained(event.receipt.operation_id).record;
+      if (!writers.has(record.intent.binding_ref)) continue;
+      const result = record.results.find(row => shadowHash(row.receipt) === shadowHash(event.receipt));
+      if (record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id || result?.output.effect_status !== "confirmed"
+        || record.preview.binding.executor_kind !== "deterministic") fail("STANDARD_SESSION_CHECKPOINT_WRITER_REQUIRED");
+      journals.push({ operation_id: record.operation_id, output_sha256: shadowHash(result.output) });
+      for (const row of result.output.evidence_refs) if (row.ref.startsWith("docs/audit/")) {
+        const name = row.ref.slice(11);
+        if (!fixed.includes(name) && !ownedPaths.some(parent => name.startsWith(parent + "/"))) fail("STANDARD_SESSION_CHECKPOINT_WRITER_SCOPE_INVALID");
+        approved.set(name, row.sha256);
+      }
+    }
+    const admission = acceptedForPromotion(instance, review.admission_operation_id, "session_close_admit").output.observations.admission;
+    const completionCycle = ["cycle", "intermediate"].includes(classifyAidnBranch(review.branch)) ? admission.mapped_cycle : null;
+    if (completionCycle && (!["DONE", "NO_GO", "DROPPED"].includes(completionCycle.state) || completionCycle.session_owner !== review.session_id))
+      fail("STANDARD_SESSION_CHECKPOINT_TERMINAL_OWNER_REQUIRED");
+    return { record_operation_id: input.record_operation_id, session_id: review.session_id, branch: review.branch, parent_head: review.head,
+      completion_cycle_id: completionCycle?.cycle_id ?? null, material_sha256: shadowHash({ plan: source.plan, journals }),
+      postimages: [...approved.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([path, sha256]) => ({ path, sha256, metadata_sha256: artifacts.metadataHash(path) })) };
+  }
+  const sessionCloseCheckpoint = processAuthority ? createStandardSessionCloseCheckpoint({ targetRoot, now, readSource: readSessionCheckpointSource,
+    readCurrent: id => current(id).record }) : null;
+  function readSessionCloseHookSource(instance, input) {
+    const recorded = readAcceptedSessionCloseRecord(instance, input), review = recorded.question.review;
+    const checkpoint = acceptedForPromotion(instance, input.checkpoint_operation_id, "session_close_checkpoint", "STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
+    const cp = checkpoint.record.preview.prepared.plan, source = readSessionCheckpointSource(instance, input);
+    const startId = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_start_finalize").at(-1)?.intent.operation_id;
+    if (!startId || cp.input.record_operation_id !== input.record_operation_id || cp.source_sha256 !== shadowHash(source)) fail("STANDARD_SESSION_CLOSE_CHECKPOINT_REQUIRED");
+    const start = acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_SESSION_CLOSE_START_REQUIRED");
+    if (start.record.preview.input.session_id !== review.session_id) fail("STANDARD_SESSION_CLOSE_START_REQUIRED");
+    return { record_operation_id: input.record_operation_id, checkpoint_operation_id: input.checkpoint_operation_id,
+      session_id: review.session_id, session_path: review.session_path, mode: review.mode, branch: review.branch,
+      record_plan_sha256: shadowHash(recorded.plan), record_output_sha256: shadowHash(recorded.recorded.output),
+      start_output: start.output, checkpoint_output: checkpoint.output };
+  }
+  const sessionCloseHook = processAuthority ? createStandardSessionCloseHook({ targetRoot, now, readSource: readSessionCloseHookSource,
+    readCurrent: id => current(id).record }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -339,8 +419,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async verifyReceipt({ receipt, intent, instance, signal }) {
       scope(instance); const record = retained(intent.operation_id).record; await verifyGrant(record, signal);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.preview.binding.executor_kind === "human") await human.verifyCaptured(record, signal);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (shadowHash(record.results.at(-1)?.receipt) !== shadowHash(receipt) || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
@@ -544,6 +626,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
+        : binding.id === "session_close_checkpoint" ? await sessionCloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CHECKPOINT_AUTHORITY_REQUIRED")
+        : binding.id === "session_close_record" ? await sessionCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSE_AUTHORITY_REQUIRED")
+        : binding.id === "session_closure_decision" ? await sessionClosureReview?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSURE_AUTHORITY_REQUIRED")
         : binding.id === "baseline_promotion_decision" ? await promotionReview?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "baseline_promotion_finalize" ? await baselinePromotionHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "baseline_promotion_record" ? await baselinePromotion?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_AUTHORITY_REQUIRED")
@@ -604,6 +690,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.preview.binding.executor_kind === "human") {
         if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
         return { status: "waiting_for_human", question: human.question(record) };
       }
@@ -618,6 +705,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
+        else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_close_checkpoint") output = await sessionCloseCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_close_finalize") output = await sessionCloseHook.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_admit") output = await operations.admitCycle(record.preview.input);
         else if (record.intent.binding_ref === "branch_cycle_audit") output = await operations.auditCycle(record.preview.input);
         else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
@@ -696,7 +789,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async receiveDecision(id, { sourceRef, write = false } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.preview.binding.executor_kind !== "human" || !["mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.preview.binding.executor_kind !== "human" || !["session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
       if (record.phase === "receipted") {
         const capture = human.captured(record);
         if (capture.source_ref !== sourceRef) fail("PROCESS_HUMAN_DECISION_ALREADY_CAPTURED");
@@ -708,12 +801,14 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       const capture = await human.reserve(record, sourceRef);
       if (!capture) return { status: "waiting_for_human", question: human.question(record) };
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       const { authentication, key_id, ...body } = record;
       const claimed = record.phase === "staged" ? persist({ ...body, phase: "dispatching", revision: record.revision + 1, owner: { generation, pid: process.pid } }, before.content_sha256) : record;

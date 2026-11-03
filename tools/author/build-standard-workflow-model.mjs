@@ -39,8 +39,15 @@ seq("thinking_handoff", []); seq("exploring_handoff", []);
 xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
 seq("thinking_preflight", []); seq("exploring_preflight", []);
 seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",
-  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_close_admit"]);
+  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"]);
+op("session_close_finalize", "session_close_finalize", { ...operation("session_close_finalize", "record_operation_id", "session_close_record"), ...operation("session_close_finalize", "checkpoint_operation_id", "session_close_checkpoint") });
+op("session_close_checkpoint", "session_close_checkpoint", operation("session_close_checkpoint", "record_operation_id", "session_close_record"));
+op("session_close_record", "session_close_record", operation("session_close_record", "decision_operation_id", "session_closure_decide"));
 op("session_close_admit", "session_close_admit", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
+op("session_closure_decide", "session_closure_decision", { contract_version: { source: "literal", value: "standard-session-closure-review-input.v1" },
+  ...operation("session_closure_decide", "admission_operation_id", "session_close_admit"),
+  ...operation("session_closure_decide", "drift_evaluation_operation_id", "session_closure_drift_evaluate"),
+  ...operation("session_closure_decide", "drift_finalization_operation_id", "session_closure_drift_finalize") });
 const rename = id => `cycle_${id}`;
 for (const original of cycle.nodes) {
   const copy = structuredClone(original);
@@ -118,6 +125,7 @@ checkpointDrift("startup_drift", null, null);
 checkpointDrift("cycle_drift", "cycle_create", "cycle_checkpoint");
 checkpointDrift("closure_drift", "committing", "close_finalize");
 checkpointDrift("promotion_drift", "promotion", "promotion_finalize");
+checkpointDrift("session_closure_drift", null, null);
 
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });

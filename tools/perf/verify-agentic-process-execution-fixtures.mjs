@@ -761,6 +761,16 @@ if (process.argv[2] === "--mixed-continue") {
             ref = "standard-mode";
             claim = { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "standard-mode-committing",
               subject_sha256: "a".repeat(64), question_sha256: shadowHash(result.question), choice: "COMMITTING", evidence_refs: [{ ref: "fixture:operator-mode", sha256: "a".repeat(64) }] };
+          } else if (binding === "session_closure_decision") {
+            assert.ok(runsPromotion); assert.ok(result.question.choices.includes("close"));
+            const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
+            assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "missing-session-close", write: true })).status, "waiting_for_human");
+            assert.equal(f.open().inspect().record.instance_sha256, beforeWait); assert.equal(f.t.sessions.length, nativeCount);
+            ref = "session_closure_" + result.operation_id;
+            claim = { contract_version: "human-session-closure-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+              source_event_id: "standard:" + ref, subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice: "close",
+              rationale: "Explicit fixture request after authenticated R05 and canonical admission", session_report: { summary: "Verified cycle retained",
+                open_loops: [], blockers: [], next_entry_point: "Finish the governed session close chain" }, evidence_refs: [{ ref: "fixture:operator-session-close", sha256: "a".repeat(64) }] };
           } else if (binding === "baseline_promotion_decision") {
             assert.ok(runsPromotion); assert.ok(result.question.choices.includes("promote"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -806,7 +816,7 @@ if (process.argv[2] === "--mixed-continue") {
           const reports = child.stdout.split(/\r?\n/).filter(line => line.startsWith("{")).map(line => JSON.parse(line));
           const proof = reports.find(row => row.standard_composed_proof === true);
           assert.ok(proof); assert.equal(proof.native_prior_results, beforeNative); assert.equal(proof.cold_resume, true);
-          childNativeSessions = proof.native_sessions_started; assert.equal(childNativeSessions, runsPromotion ? 2 : 1); coldContinuation = true;
+          childNativeSessions = proof.native_sessions_started; assert.equal(childNativeSessions, runsPromotion ? 3 : 1); coldContinuation = true;
           f.reopen();
           for (const item of retained) assert.equal(shadowHash(f.open().readOperation(item.id)), item.sha256);
           const afterChild = f.open().inspect(); assert.deepEqual(afterChild.record.events.slice(0, waiting.record.events.length), waiting.record.events);
@@ -827,7 +837,7 @@ if (process.argv[2] === "--mixed-continue") {
     const last = binding => acceptedOperations.filter(row => row.intent.binding_ref === binding).at(-1)?.results.at(-1)?.output;
     assert.equal(last("drift_check_finalize").facts.drift_check_completed, true);
     if (standardComposedStop !== "cycle_admit") assert.equal(last("cycle_checkpoint_finalize").outcome, "completed");
-    const expectedNative = runsPromotion ? 7 : runsClosure ? 6 : runsCycle ? 5 : standardComposedStop === "plan" ? 2 : 1;
+    const expectedNative = runsPromotion ? 8 : runsClosure ? 6 : runsCycle ? 5 : standardComposedStop === "plan" ? 2 : 1;
     assert.equal(f.t.sessions.length + childNativeSessions, expectedNative - priorNativeResults); assert.ok(f.t.sessions.every(row => row.closed));
     if (runsCycle) {
       for (const binding of ["cycle_plan_record", "cycle_implementation_enter", "cycle_validation_execute", "cycle_task_advance", "cycle_verification_enter", "cycle_audit_evaluate"])
@@ -849,6 +859,12 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("baseline_promotion_checkpoint").facts.baseline_checkpoint_completed, true);
       assert.equal(last("baseline_promotion_checkpoint").facts.baseline_promotion_completed, false);
       assert.equal(last("baseline_promotion_finalize").facts.baseline_promotion_completed, true);
+      assert.equal(last("session_closure_decision").facts.session_closure_requested, true);
+      assert.equal(last("session_closure_decision").facts.session_close_completed, false);
+      assert.equal(last("session_close_record").facts.session_close_report_recorded, true);
+      assert.equal(last("session_close_record").facts.session_close_completed, false);
+      assert.equal(last("session_close_checkpoint").facts.session_close_checkpoint_completed, true);
+      assert.equal(last("session_close_finalize").facts.session_close_completed, true);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;

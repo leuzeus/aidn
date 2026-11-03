@@ -23,7 +23,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 43); assert.equal(assets.catalog.activities.length, 7);
+  assert.equal(assets.catalog.bindings.length, 49); assert.equal(assets.catalog.activities.length, 8);
 });
 test("session close admission is a deterministic read-only continuation, separate from closure", () => {
   const node = assets.model.nodes.find(row => row.id === "session_close_admit");

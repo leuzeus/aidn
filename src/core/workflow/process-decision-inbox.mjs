@@ -1,3 +1,5 @@
+import inboxV5 from "../contracts/workflow-definition/process-decision-inbox.v5.schema.json" with { type: "json" };
+import { assertHumanSessionClosureDecision } from "./standard-session-closure-decision.mjs";
 import schema from "../contracts/workflow-definition/process-decision-inbox.v1.schema.json" with { type: "json" };
 import sourceSchema from "../contracts/workflow-definition/human-mode-decision.v1.schema.json" with { type: "json" };
 import questionSchema from "../contracts/workflow-definition/standard-mode-question.v1.schema.json" with { type: "json" };
@@ -52,9 +54,10 @@ export function decisionInboxPath(id) {
   return `workflows/decision-inbox/${id}.json`;
 }
 export function assertDecisionInbox(value) {
-  const definition = value?.contract_version === "process-decision-inbox.v4" ? inboxV4 : value?.contract_version === "process-decision-inbox.v3" ? inboxV3 : value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
+  const definition = value?.contract_version === "process-decision-inbox.v5" ? inboxV5 : value?.contract_version === "process-decision-inbox.v4" ? inboxV4 : value?.contract_version === "process-decision-inbox.v3" ? inboxV3 : value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
   if (checkShadowJson(value) || validateJsonSchema(value, definition, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_DECISION_INBOX_INVALID");
-  if (value.contract_version === "process-decision-inbox.v4") assertHumanBaselinePromotionDecision(value.source);
+  if (value.contract_version === "process-decision-inbox.v5") assertHumanSessionClosureDecision(value.source);
+  else if (value.contract_version === "process-decision-inbox.v4") assertHumanBaselinePromotionDecision(value.source);
   else if (value.contract_version === "process-decision-inbox.v3") assertHumanCycleClosureDecision(value.source);
   else if (value.contract_version === "process-decision-inbox.v2") assertHumanRecoveryDecision(value.source); else assertHumanModeDecision(value.source);
   if (value.inbox_id !== decisionInboxId(value.source) || (value.phase === "receipted") !== (value.receipt_sha256 !== null)) fail("PROCESS_DECISION_INBOX_BINDING_CHANGED");

@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-closure-question.v1",
+  "x-aidn-contract-version": "standard-session-closure-question.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "instance_id",
+    "scope_id",
+    "occurrence_id",
+    "intent_sha256",
+    "session_id",
+    "review",
+    "choices"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-closure-question.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 43,
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "occurrence_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "intent_sha256": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 7,
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "session_path",
+        "mode",
+        "branch",
+        "session_branch",
+        "head",
+        "admission_operation_id",
+        "admission_output_sha256",
+        "drift_evaluation_operation_id",
+        "drift_evaluation_output_sha256",
+        "drift_finalization_operation_id",
+        "drift_finalization_output_sha256",
+        "context_sha256",
+        "scope_sha256",
+        "documents",
+        "open_cycles",
+        "session_close_gate_satisfied"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^S[0-9]+$"
+        },
+        "session_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 192,
+          "pattern": "^sessions/S[0-9]+(?:[-_.][^/]+)?\\.md$"
+        },
+        "mode": {
+          "enum": [
+            "THINKING",
+            "EXPLORING",
+            "COMMITTING"
+          ]
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 192
+        },
+        "session_branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 192
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "admission_operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 43,
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "admission_output_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "drift_evaluation_operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 43,
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "drift_evaluation_output_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "drift_finalization_operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 43,
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "drift_finalization_output_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "context_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "documents": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256",
+              "metadata_sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "sha256": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "metadata_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "open_cycles": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "pattern": "^C[0-9]+$"
+          }
+        },
+        "session_close_gate_satisfied": {
+          "type": "boolean"
+        }
+      }
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 4,
+      "items": {
+        "enum": [
+          "close",
+          "refused",
+          "deferred",
+          "cancelled"
+        ]
+      }
+    }
+  }
+}

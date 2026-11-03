@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 80/78 et le modèle composé en 22 (75 nœuds,
-43 occurrences d’opération, 35 identifiants de liaison mobilisés parmi 42 liaisons
-enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 87/85 et le modèle composé candidat en 29
+(83 nœuds, 49 occurrences d’opération, 39 identifiants de liaison mobilisés parmi
+46 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -2914,3 +2914,123 @@ incluse explicitement. Les arbres corrigés conservent les mêmes octets runtime
 le manifeste effectivement testés ; cette reconstruction après les tests, les
 anciens snapshots et les deux empreintes natives sont consignés dans le relevé.
 Elle ne constitue ni un nouveau test natif ni une qualification d’archive installée.
+
+### R07 — revue humaine et preuve physique R05 (en cours)
+
+Le modèle candidat ajoute un R05 commun après promotion éventuelle et admission
+de clôture, puis `session_closure_decision`, liée au vrai skill `close-session`.
+Le contexte est canonique en files/dual/db-only ; la capacité hôte vérifie les
+journaux acceptés de la même instance, réévalue le diagnostic natif authentifié,
+puis vérifie rapport canonique et ligne physique du hook R05 à son offset signé.
+L'inbox v5 conserve séparément close/refused/deferred/cancelled et les lecteurs
+historiques. Une demande close laisse `session_close_completed: false`.
+
+Le test du contexte hérité du relais avait une quatrième assertion insuffisante :
+sa mutation de fixture ne confirmait pas son effet, laissant le verrou conservé.
+Une lecture bloquée pouvait alors passer pour un sujet invalidé. Le test corrigé
+exige maintenant une admission réussie et un hash valide après la mutation ;
+les anciennes preuves de cette seule assertion sont remplacées, sans étendre
+la portée des trois autres contrôles ni modifier le verrou runtime.
+
+Les refus physiques du nouveau composant sont vérifiés avec autorités sources
+injectées. La chaîne authentifiée du modèle publié reste à qualifier séparément.
+Rapport/CAS, checkpoint fini, hook R07 lié au démarrage réel et clôture canonique
+finale restent à réaliser, ainsi que les autres parcours A1–A10. L'entrée ordinaire
+reste inchangée ; aucune livraison complète ou qualification native/archive
+n'est revendiquée par cette tranche.
+
+#### R07 report, finite checkpoint and actual final hook — candidate
+
+The candidate now also registers `session_close_record`,
+`session_close_checkpoint` and `session_close_finalize` in the same partial IR.
+The record writes exactly session/snapshot/current through canonical content and
+metadata CAS, keeping OPEN, the selected owner and unchecked completion fields.
+The checkpoint derives a finite latest postimage set from accepted deterministic
+business writers. It uses the existing trusted terminal allow-list Git port; the
+ordinary three-file session profile is unchanged. Foreign paths refuse. The
+actual commit and cache reload precede the final hook.
+
+The finalizer authenticates the original accepted start output and physical
+start event/run file. The actual close-session hook consumes that same run; no
+caller-selected run ID is supplied. Overall result, nested checkpoint/gate and
+required constraint artifacts must succeed. DB modes additionally execute the
+selective sync with full fallback disabled; no projection is imported as a
+canonical substitute. Only confirmed hook evidence permits the three final CAS
+writes of CLOSED, checked gate and snapshot. The closed owner remains selected
+for explicit PR orchestration. Unknown effects retain ownership and empty facts,
+with no blind hook retry after run consumption.
+
+The focused `verify-standard-session-close-record-fixtures.mjs` takes
+`--mode=files|dual|db-only`, `--checkpoint`, `--final-hook`, and the separate
+`--checkpoint-fault=grant_after_git` injection. Files components passed 15 checks
+through the actual start/close hooks and local Git; their decision/R05 source
+capabilities are fixture injections. This is separate from a composed-model
+proof with authenticated native R05. The schema metadata fingerprints now allow
+null in files and remain required strings when returned by a DB-backed subject.
+DB modes, failures, published-model execution/replay/simulation and broader gates
+are still pending for this candidate. Other R07 resolution/integration paths,
+PR/review/sync, general waits/reconciliation, A1–A10, real native and exact archive
+remain required. The standard catalog and ordinary selection remain incomplete.
+
+The first DB-mode component attempts retained unknown effects after the actual
+close event. The candidate had added `--constraint-loop-strict` beyond the
+existing skill route, promoting canonical warning targets to blockers. The
+TARGETED governance check distinguished runtime strictness from warning/error
+threshold policy; the adapter now preserves the existing threshold policy and
+explicitly rejects blocking, missing or invalid threshold checks. No normative
+rule or target is relaxed. Those failed attempts remain retained.
+
+The subsequent complete chain exposed eleven unignored runtime constraint
+outputs. The scope matrix already classifies `.aidn/runtime/perf/*` as ephemeral.
+The scaffold now ignores exactly those generated telemetry names, and finalizer
+preparation verifies that all are untracked and ignored before consuming the
+start run. This does not enlarge the Git business allow-list or modify an
+existing client's ignore rules implicitly. A db-only checkpoint with no physical
+changes correctly preserves HEAD; the component fixture no longer requires an
+invented commit or a visible canonical export. These corrections require fresh
+DB-mode component proof; they do not retroactively turn the failed runs into PASS.
+
+The DB attempts after telemetry-policy correction reached actual CLOSED CAS
+but failed the process-output guard when embedding the raw hook/sync telemetry.
+The process IR intentionally admits only safe integer numbers. The finalizer now
+retains verified hook/sync summaries and SHA-256 of their complete JSON payloads,
+plus the actual event/document/constraint evidence references, rather than
+embedding runtime measurements. This preserves the IR vocabulary. The failed
+output attempts remain failures, with their local owner retained.
+
+The focused fixture also has `--constraint-policy-fault` (DB mode),
+`--final-hook-fault=grant_after_hook`, `--final-hook-fault=suffix` (DB mode) and
+`--final-hook-fault=constraints` (DB mode). These inject policy absence, lost
+permission, actual SQLite suffix failure or a blocking project-local threshold.
+No failure may emit a completion fact, consume the run twice, or release an
+uncertain owner. A partial CLOSED artifact is not successful process completion.
+The positive path also rejects a changed physical start run before executing
+the final hook.
+
+### Qualification des composants R07 — 2026-11-03
+
+Le snapshot `d051374` a passé les nouveaux composants locaux : 16 contrôles dans
+chacun des trois modes, 15 pour chaque injection de perte de permission, suffixe
+SQLite et erreur de contrainte, et 13 pour la règle d’ignore manquante. Tous les
+processus et nettoyages sont terminés. Ces configurations se recouvrent : ne pas
+les additionner comme autant de critères A1–A10 indépendants. Les sources de
+décision/R05 restent injectées dans ce vérificateur ; le parcours authentifié du
+modèle publié n’est pas qualifié par ces résultats.
+
+Le [relevé des composants](qualification/agentic-process/standard-session-close-components-2026-11-03.json)
+conserve snapshot préalable, empreintes, hashes des logs, limites et tentatives
+échouées. Les précédents composants de contexte (4/4/4), inbox v5 (12) et preuve
+physique R05 (10) ont leurs portées distinctes. Le workflow standard complet,
+les entrées ordinaires, PR/revue/synchronisation et les autres parcours restent
+ouverts ; aucune qualification native ou d’archive exacte n’est déduite.
+
+La remise au format LF d’origine a changé les empreintes d’octets. Les mêmes
+sept configurations ont donc été relancées sur le snapshot préalable `64dc60f`
+et sont terminales PASS avec nettoyage ; la preuve antérieure `d051374` reste
+séparée. Le manifeste de gate a ensuite été aligné sur la commande immuable
+revue, avec gates catalogue/release/références PASS. Ce dernier changement du
+seul wrapper npm possède une empreinte native distincte, explicitement consignée ;
+il ne constitue pas une exécution native ou une preuve d’archive installée.
+Les sources runtime, assets de modèle et vérificateur de ports restent identiques
+au snapshot LF testé. Les lecteurs historiques de mode (45), récupération (30),
+inbox cycle (9 par mode) et promotion (11) passent sur leur snapshot conservé.

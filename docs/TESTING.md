@@ -2507,3 +2507,96 @@ The focused report contract selector is
 `--drift-completion-mode=files` exercises terminal owning context, authenticated
 report and actual hook without cycle reopening. These selectors use fake native
 transport and make no session-close, full-model or archive claim.
+
+### Session closure decision and R05 physical authority
+
+`verify-standard-session-closure-human-fixtures.mjs` checks the closed private
+contracts, provider verification, immutable v5 captures, refusal/deferral/cancellation
+and actual files/SQLite stores. `verify-standard-session-closure-context-fixtures.mjs`
+accepts `--mode=files|dual|db-only`: canonical reads must leave every project byte
+unchanged, and a changed document must yield a new admitted hash. The fixture
+writer explicitly confirms its effect so a retained lock cannot masquerade as
+subject invalidation. Earlier fourth-check results without that assertion are
+superseded; the first three independent observations retain their original scope.
+
+`verify-standard-session-closure-authority-fixtures.mjs` checks actual canonical
+report bytes and the exact physical R05 event offset, with injected accepted-source
+authorities. Unknown effects, changed evaluations, correlation, event path/offset,
+missing/forged events, branch changes and changed reports refuse. This does not
+authenticate an actual native R05 chain; the published-model composed selector
+provides that separate offline proof when it passes.
+
+The published partial model routes through a new session-close R05 and a human
+`session_closure_decision`. Its accepted fact requests closure and explicitly
+retains `session_close_completed: false`. Report writes, finite Git checkpoint,
+real session-close hook and final canonical completion remain separate effects.
+No source/static/component proof qualifies the full standard workflow, native
+provider or exact installed archive.
+
+#### R07 report, finite checkpoint and actual final hook — candidate
+
+The candidate now also registers `session_close_record`,
+`session_close_checkpoint` and `session_close_finalize` in the same partial IR.
+The record writes exactly session/snapshot/current through canonical content and
+metadata CAS, keeping OPEN, the selected owner and unchecked completion fields.
+The checkpoint derives a finite latest postimage set from accepted deterministic
+business writers. It uses the existing trusted terminal allow-list Git port; the
+ordinary three-file session profile is unchanged. Foreign paths refuse. The
+actual commit and cache reload precede the final hook.
+
+The finalizer authenticates the original accepted start output and physical
+start event/run file. The actual close-session hook consumes that same run; no
+caller-selected run ID is supplied. Overall result, nested checkpoint/gate and
+required constraint artifacts must succeed. DB modes additionally execute the
+selective sync with full fallback disabled; no projection is imported as a
+canonical substitute. Only confirmed hook evidence permits the three final CAS
+writes of CLOSED, checked gate and snapshot. The closed owner remains selected
+for explicit PR orchestration. Unknown effects retain ownership and empty facts,
+with no blind hook retry after run consumption.
+
+The focused `verify-standard-session-close-record-fixtures.mjs` takes
+`--mode=files|dual|db-only`, `--checkpoint`, `--final-hook`, and the separate
+`--checkpoint-fault=grant_after_git` injection. Files components passed 15 checks
+through the actual start/close hooks and local Git; their decision/R05 source
+capabilities are fixture injections. This is separate from a composed-model
+proof with authenticated native R05. The schema metadata fingerprints now allow
+null in files and remain required strings when returned by a DB-backed subject.
+DB modes, failures, published-model execution/replay/simulation and broader gates
+are still pending for this candidate. Other R07 resolution/integration paths,
+PR/review/sync, general waits/reconciliation, A1–A10, real native and exact archive
+remain required. The standard catalog and ordinary selection remain incomplete.
+
+The first DB-mode component attempts retained unknown effects after the actual
+close event. The candidate had added `--constraint-loop-strict` beyond the
+existing skill route, promoting canonical warning targets to blockers. The
+TARGETED governance check distinguished runtime strictness from warning/error
+threshold policy; the adapter now preserves the existing threshold policy and
+explicitly rejects blocking, missing or invalid threshold checks. No normative
+rule or target is relaxed. Those failed attempts remain retained.
+
+The subsequent complete chain exposed eleven unignored runtime constraint
+outputs. The scope matrix already classifies `.aidn/runtime/perf/*` as ephemeral.
+The scaffold now ignores exactly those generated telemetry names, and finalizer
+preparation verifies that all are untracked and ignored before consuming the
+start run. This does not enlarge the Git business allow-list or modify an
+existing client's ignore rules implicitly. A db-only checkpoint with no physical
+changes correctly preserves HEAD; the component fixture no longer requires an
+invented commit or a visible canonical export. These corrections require fresh
+DB-mode component proof; they do not retroactively turn the failed runs into PASS.
+
+The DB attempts after telemetry-policy correction reached actual CLOSED CAS
+but failed the process-output guard when embedding the raw hook/sync telemetry.
+The process IR intentionally admits only safe integer numbers. The finalizer now
+retains verified hook/sync summaries and SHA-256 of their complete JSON payloads,
+plus the actual event/document/constraint evidence references, rather than
+embedding runtime measurements. This preserves the IR vocabulary. The failed
+output attempts remain failures, with their local owner retained.
+
+The focused fixture also has `--constraint-policy-fault` (DB mode),
+`--final-hook-fault=grant_after_hook`, `--final-hook-fault=suffix` (DB mode) and
+`--final-hook-fault=constraints` (DB mode). These inject policy absence, lost
+permission, actual SQLite suffix failure or a blocking project-local threshold.
+No failure may emit a completion fact, consume the run twice, or release an
+uncertain owner. A partial CLOSED artifact is not successful process completion.
+The positive path also rejects a changed physical start run before executing
+the final hook.

@@ -1,0 +1,426 @@
+{
+  "contract_version": "qualification-evidence.v1",
+  "proof_class": "offline-real-local-ports-with-injected-decision-source",
+  "source_snapshot": "64dc60f9225ab96277de05203b6d2d426ead593b",
+  "source_snapshot_recorded_before_tests": true,
+  "model": {
+    "revision": 29,
+    "sha256": "5f6a5257e4e30c0efc547fafd5f3ef4c484ef25de70455053c4836318255fd1f",
+    "nodes": 83,
+    "operation_occurrences": 49,
+    "referenced_bindings": 39,
+    "registered_bindings": 46,
+    "native_declarations": 8
+  },
+  "native_implementation_pin": {
+    "sha256": "c93b8b9eed4154c20416c2bd409946d988955a2d1afcd142608a2c9b40f048c0",
+    "members": 257
+  },
+  "tests": [
+    {
+      "case": "files",
+      "status": "PASS",
+      "checks": 16,
+      "exit_code": 0,
+      "cleanup": "completed",
+      "summary": {
+        "status": "PASS",
+        "checks": 16,
+        "mode": "files",
+        "ports": "actual-artifact-CAS",
+        "decision_authority": "injected-fixture",
+        "R05_chain": "NOT_RUN_HERE",
+        "session_closed": true,
+        "final_fault": null,
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "264272332d3c805a0c1d85d1c9a2fdea98c475a1889c2ad74cc164516e15517e"
+    },
+    {
+      "case": "dual",
+      "status": "PASS",
+      "checks": 16,
+      "exit_code": 0,
+      "cleanup": "completed",
+      "summary": {
+        "status": "PASS",
+        "checks": 16,
+        "mode": "dual",
+        "ports": "actual-artifact-CAS",
+        "decision_authority": "injected-fixture",
+        "R05_chain": "NOT_RUN_HERE",
+        "session_closed": true,
+        "final_fault": null,
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "9ef964963b4114b0c2cf99b5fcfc05cdb7361a76c742c212016d293eeeb10fdb"
+    },
+    {
+      "case": "db-only",
+      "status": "PASS",
+      "checks": 16,
+      "exit_code": 0,
+      "cleanup": "completed",
+      "summary": {
+        "status": "PASS",
+        "checks": 16,
+        "mode": "db-only",
+        "ports": "actual-artifact-CAS",
+        "decision_authority": "injected-fixture",
+        "R05_chain": "NOT_RUN_HERE",
+        "session_closed": true,
+        "final_fault": null,
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "f81371215fd34ed5f3762bc1e428debccef173a1c18cf6d2d311b0c24e846edd"
+    },
+    {
+      "case": "lost-grant",
+      "status": "PASS",
+      "checks": 15,
+      "exit_code": 0,
+      "cleanup": "completed",
+      "summary": {
+        "status": "PASS",
+        "checks": 15,
+        "mode": "files",
+        "ports": "actual-artifact-CAS",
+        "decision_authority": "injected-fixture",
+        "R05_chain": "NOT_RUN_HERE",
+        "session_closed": false,
+        "final_fault": "grant_after_hook",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "95b7406710711f994a169347dd1ec1335c4997f0279c80423901bd3fa4b3392a"
+    },
+    {
+      "case": "suffix",
+      "status": "PASS",
+      "checks": 15,
+      "exit_code": 0,
+      "cleanup": "completed",
+      "summary": {
+        "status": "PASS",
+        "checks": 15,
+        "mode": "db-only",
+        "ports": "actual-artifact-CAS",
+        "decision_authority": "injected-fixture",
+        "R05_chain": "NOT_RUN_HERE",
+        "session_closed": false,
+        "final_fault": "suffix",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "caa2e200cd48321fcc2bb6ea939f676e0bfa373e220ab966ee032eb733a978c1"
+    },
+    {
+      "case": "constraint-error",
+      "status": "PASS",
+      "checks": 15,
+      "exit_code": 0,
+      "cleanup": "completed",
+      "summary": {
+        "status": "PASS",
+        "checks": 15,
+        "mode": "dual",
+        "ports": "actual-artifact-CAS",
+        "decision_authority": "injected-fixture",
+        "R05_chain": "NOT_RUN_HERE",
+        "session_closed": false,
+        "final_fault": "constraints",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "e95af81fc78eba61ba661229401de2dca8d1582a2bf3320d0109f28de640df13"
+    },
+    {
+      "case": "missing-policy",
+      "status": "PASS",
+      "checks": 13,
+      "exit_code": 0,
+      "cleanup": "completed",
+      "summary": {
+        "status": "PASS",
+        "checks": 13,
+        "mode": "dual",
+        "ports": "actual-artifact-CAS",
+        "decision_authority": "injected-fixture",
+        "R05_chain": "NOT_RUN_HERE",
+        "session_closed": false,
+        "final_fault": null,
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN"
+      },
+      "log_sha256": "cf6fea15ddbe473f35f12963d418a4c5eff56ed2e57568b8afb88ea4d18c37c5"
+    }
+  ],
+  "actual_ports": [
+    "canonical artifact content/metadata CAS",
+    "SQLite session projection",
+    "local finite Git checkpoint",
+    "cache reload",
+    "start-session hook",
+    "close-session hook",
+    "DB constraint orchestration",
+    "selective synchronization without full fallback"
+  ],
+  "injected_authorities": [
+    "accepted human/R05 decision-source capability",
+    "effect grants",
+    "process-current capability"
+  ],
+  "published_model_authenticated_chain": "NOT_RUN_ON_THIS_SNAPSHOT",
+  "replay_and_simulation_of_full_published_model": "NOT_RUN_ON_THIS_SNAPSHOT",
+  "native_provider": "NOT_RUN",
+  "exact_installed_archive": "NOT_RUN",
+  "ordinary_standard_selection": "UNCHANGED",
+  "complete_standard_workflow": false,
+  "superseded_claims": [
+    {
+      "claim": "old context fixture fourth assertion",
+      "reason": "retained unknown owner caused blocked read to appear as changed subject; corrected fixture confirms effect and requires admitted SHA"
+    },
+    {
+      "claim": "metadata review schema accepts actual files subject",
+      "reason": "old schemas rejected null DB metadata; closed schemas now match actual files source"
+    }
+  ],
+  "retained_failed_attempts": [
+    "forced strict performance warnings blocked the DB chain after run consumption",
+    "missing constraint telemetry ignores blocked Git freshness after actual hook",
+    "db-only fixture demanded an invented physical commit",
+    "raw runtime telemetry failed the process IR output guard after actual final CAS"
+  ],
+  "remaining": [
+    "published-model authenticated R05/decision/record/checkpoint/final-hook composition",
+    "general cycle/session resolution and branch integration",
+    "PR/review/merge/post-merge synchronization",
+    "long-wait native reauthorization",
+    "general unknown-effect reconciliation",
+    "all A1-A10 paths",
+    "native provider and exact installed archive"
+  ],
+  "previous_byte_qualification": {
+    "source_snapshot": "d05137446bbd9643861204b2dc7c9874d793245b",
+    "model": {
+      "revision": 29,
+      "sha256": "5f6a5257e4e30c0efc547fafd5f3ef4c484ef25de70455053c4836318255fd1f",
+      "nodes": 83,
+      "operation_occurrences": 49,
+      "referenced_bindings": 39,
+      "registered_bindings": 46,
+      "native_declarations": 8
+    },
+    "native_implementation_pin": {
+      "sha256": "e9c4fd4acc9889d857071345b34ad2a68e15b9c2fc0b2e559e20255249dd8957",
+      "members": 257
+    },
+    "tests": [
+      {
+        "case": "files",
+        "status": "PASS",
+        "checks": 16,
+        "exit_code": 0,
+        "cleanup": "completed",
+        "summary": {
+          "status": "PASS",
+          "checks": 16,
+          "mode": "files",
+          "ports": "actual-artifact-CAS",
+          "decision_authority": "injected-fixture",
+          "R05_chain": "NOT_RUN_HERE",
+          "session_closed": true,
+          "final_fault": null,
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        "log_sha256": "264272332d3c805a0c1d85d1c9a2fdea98c475a1889c2ad74cc164516e15517e"
+      },
+      {
+        "case": "dual",
+        "status": "PASS",
+        "checks": 16,
+        "exit_code": 0,
+        "cleanup": "completed",
+        "summary": {
+          "status": "PASS",
+          "checks": 16,
+          "mode": "dual",
+          "ports": "actual-artifact-CAS",
+          "decision_authority": "injected-fixture",
+          "R05_chain": "NOT_RUN_HERE",
+          "session_closed": true,
+          "final_fault": null,
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        "log_sha256": "b947e303ec6da46c6933082c2be72e61958599736156f8f700a81f6de12713e3"
+      },
+      {
+        "case": "db-only",
+        "status": "PASS",
+        "checks": 16,
+        "exit_code": 0,
+        "cleanup": "completed",
+        "summary": {
+          "status": "PASS",
+          "checks": 16,
+          "mode": "db-only",
+          "ports": "actual-artifact-CAS",
+          "decision_authority": "injected-fixture",
+          "R05_chain": "NOT_RUN_HERE",
+          "session_closed": true,
+          "final_fault": null,
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        "log_sha256": "a7eca93e4c3eb6b04530e61a9c847394b6ac94baf474ab1dfb09522e84f5573b"
+      },
+      {
+        "case": "lost-grant",
+        "status": "PASS",
+        "checks": 15,
+        "exit_code": 0,
+        "cleanup": "completed",
+        "summary": {
+          "status": "PASS",
+          "checks": 15,
+          "mode": "files",
+          "ports": "actual-artifact-CAS",
+          "decision_authority": "injected-fixture",
+          "R05_chain": "NOT_RUN_HERE",
+          "session_closed": false,
+          "final_fault": "grant_after_hook",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        "log_sha256": "95b7406710711f994a169347dd1ec1335c4997f0279c80423901bd3fa4b3392a"
+      },
+      {
+        "case": "suffix",
+        "status": "PASS",
+        "checks": 15,
+        "exit_code": 0,
+        "cleanup": "completed",
+        "summary": {
+          "status": "PASS",
+          "checks": 15,
+          "mode": "db-only",
+          "ports": "actual-artifact-CAS",
+          "decision_authority": "injected-fixture",
+          "R05_chain": "NOT_RUN_HERE",
+          "session_closed": false,
+          "final_fault": "suffix",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        "log_sha256": "01ece5a81201d7e0ef5a69861441a20bd780d0d47aa26ea49a2f773d363e7b13"
+      },
+      {
+        "case": "constraint-error",
+        "status": "PASS",
+        "checks": 15,
+        "exit_code": 0,
+        "cleanup": "completed",
+        "summary": {
+          "status": "PASS",
+          "checks": 15,
+          "mode": "dual",
+          "ports": "actual-artifact-CAS",
+          "decision_authority": "injected-fixture",
+          "R05_chain": "NOT_RUN_HERE",
+          "session_closed": false,
+          "final_fault": "constraints",
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        "log_sha256": "8a23b8b33901c52dffe63e487a8f074eaf3ee21d41074e0e3ae743f6de7c594e"
+      },
+      {
+        "case": "missing-policy",
+        "status": "PASS",
+        "checks": 13,
+        "exit_code": 0,
+        "cleanup": "completed",
+        "summary": {
+          "status": "PASS",
+          "checks": 13,
+          "mode": "dual",
+          "ports": "actual-artifact-CAS",
+          "decision_authority": "injected-fixture",
+          "R05_chain": "NOT_RUN_HERE",
+          "session_closed": false,
+          "final_fault": null,
+          "native": "NOT_RUN",
+          "installed_archive": "NOT_RUN"
+        },
+        "log_sha256": "e965765b2cb47783760ab2a42abd8c29c9618850a9b1fe3db615a4f761f8b0c7"
+      }
+    ]
+  },
+  "delivery_manifest_delta": {
+    "change": "root perf:verify-agentic-process script aligned to its reviewed immutable gate command; runtime source and model assets unchanged from tested LF snapshot",
+    "delivery_native_implementation_pin": "36651cabae9fbb67a8fdb954155132f6dd08da5e01434a705537de2d9cde8c8e",
+    "exact_native_byte_equality_to_tested_snapshot": false,
+    "gate_catalog": "PASS",
+    "release_workflow_policy": "PASS",
+    "doc_references": "PASS",
+    "native_execution_claim": "NONE"
+  },
+  "additional_checks": {
+    "published_model_static": {
+      "status": "PASS",
+      "checks": 15
+    },
+    "startup_assets": {
+      "status": "PASS",
+      "checks": 22
+    },
+    "private_schemas": {
+      "status": "PASS",
+      "schemas": 17,
+      "snapshot": "c99800acecff835fb9d6f0233ff310946ce39a4e"
+    },
+    "source_of_truth": {
+      "status": "PASS",
+      "policies": 35
+    },
+    "metadata": {
+      "status": "PASS",
+      "policies": 37
+    },
+    "governance_completeness": {
+      "status": "PASS",
+      "concepts": 38
+    },
+    "legacy_mode": {
+      "status": "PASS",
+      "checks": 45,
+      "snapshot": "c99800acecff835fb9d6f0233ff310946ce39a4e"
+    },
+    "legacy_recovery": {
+      "status": "PASS",
+      "checks": 30,
+      "snapshot": "c99800acecff835fb9d6f0233ff310946ce39a4e"
+    },
+    "legacy_cycle_inbox": {
+      "status": "PASS",
+      "checks_per_mode": 9,
+      "modes": [
+        "files",
+        "dual",
+        "db-only"
+      ],
+      "snapshot": "c99800acecff835fb9d6f0233ff310946ce39a4e"
+    },
+    "legacy_promotion": {
+      "status": "PASS",
+      "checks": 11,
+      "snapshot": "c99800acecff835fb9d6f0233ff310946ce39a4e"
+    }
+  }
+}

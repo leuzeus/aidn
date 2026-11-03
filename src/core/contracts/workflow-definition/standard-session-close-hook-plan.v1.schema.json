@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-close-hook-plan.v1",
+  "x-aidn-contract-version": "standard-session-close-hook-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "input",
+    "operation_id",
+    "prepared_at_ms",
+    "source_sha256",
+    "session_id",
+    "session_path",
+    "branch",
+    "head",
+    "mode",
+    "state_mode",
+    "run_id",
+    "run_file_sha256",
+    "event_log",
+    "documents"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-close-hook-plan.v1"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_operation_id",
+        "checkpoint_operation_id"
+      ],
+      "properties": {
+        "record_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "checkpoint_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]+$"
+    },
+    "session_path": {
+      "type": "string",
+      "pattern": "^sessions/S[0-9]+(?:[-_.][^/]*)?\\.md$"
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 192
+    },
+    "head": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "mode": {
+      "enum": [
+        "THINKING",
+        "EXPLORING",
+        "COMMITTING"
+      ]
+    },
+    "state_mode": {
+      "enum": [
+        "files",
+        "dual",
+        "db-only"
+      ]
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,128}$"
+    },
+    "run_file_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "event_log": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "metadata_sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 192
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "metadata_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
