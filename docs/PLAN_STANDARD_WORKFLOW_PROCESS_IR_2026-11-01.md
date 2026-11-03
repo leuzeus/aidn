@@ -3170,3 +3170,16 @@ Les vrais ports push/PR/revue/checks/événements/fusion et synchronisation rest
 à réaliser, avec les autres topologies, réautorisations et réconciliations.
 A1–A10 restent ouverts ; entrée ordinaire inchangée, complete_standard_workflow
 false, natif réel et archive exacte NOT_RUN.
+
+### Verdict terminal du composé 32 : chaîne locale jusqu’à R07
+
+Le composé exact 9c9f221/révision32 a terminé PASS/code0 à 21:08:41Z.
+Le [relevé séparé](qualification/agentic-process/composed-model32-session-close-2026-11-03.json)
+conserve les deux résumés parent/enfant froid : 118 événements, 51 opérations
+acceptées incluant le report/reprise, 8 allocations fake-wire, replay exact et
+simulation en 119 lignes. Le checkpoint pré-clôture puis le vrai finaliseur R07
+ont réussi. Parent/enfant terminés, fixture et contrôle nettoyés, source propre.
+
+Ce modèle n’inclut pas le checkpoint final de livraison ni l’intégration/admission
+PR. Les preuves32 ne sont pas étendues aux modèles33/37/39, ni au natif réel ou
+à l’archive. Les composés33/37 restent actifs ; A1–A10 et le but restent ouverts.
