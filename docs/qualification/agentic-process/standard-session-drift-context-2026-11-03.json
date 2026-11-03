@@ -3,8 +3,8 @@
   "date": "2026-11-03",
   "status": "FOCUSED_READERS_AND_TERMINAL_REGRESSION_PASS",
   "complete_standard_workflow": false,
-  "production_source_snapshot": "c544444dd6bb93bdc6262f8a790195955f860298",
-  "canonical_fixture_snapshot": "4ab273ddef03a8498df906fd1fb01a46ba3020fb",
+  "production_source_snapshot": "49909e9c82fc3103f438efce38a457e0dc16bf06",
+  "canonical_fixture_snapshot": "121fbf2fe06e96f2dff6b1db2026f5da2a7dab69",
   "model": {
     "revision": 22,
     "sha256": "9639f6b84ded79d6fed499a1d47104b10269b33090cba53906bca312f9b1bd3e",
@@ -37,21 +37,21 @@
   "components": [
     {
       "mode": "files",
-      "source_snapshot": "c544444dd6bb93bdc6262f8a790195955f860298",
+      "source_snapshot": "49909e9c82fc3103f438efce38a457e0dc16bf06",
       "checks": 4,
       "status": "PASS",
       "cleanup": "TERMINAL_COMPLETE"
     },
     {
       "mode": "dual",
-      "source_snapshot": "4ab273ddef03a8498df906fd1fb01a46ba3020fb",
+      "source_snapshot": "121fbf2fe06e96f2dff6b1db2026f5da2a7dab69",
       "checks": 5,
       "status": "PASS",
       "cleanup": "TERMINAL_COMPLETE"
     },
     {
       "mode": "db-only",
-      "source_snapshot": "4ab273ddef03a8498df906fd1fb01a46ba3020fb",
+      "source_snapshot": "121fbf2fe06e96f2dff6b1db2026f5da2a7dab69",
       "checks": 5,
       "status": "PASS",
       "cleanup": "TERMINAL_COMPLETE"
@@ -110,5 +110,18 @@
     "route": "ASSURED_PASS",
     "aggregate_assured": "NOT_RUN"
   },
-  "native_token_impact": "NOT_MEASURED"
+  "native_token_impact": "NOT_MEASURED",
+  "original_staged_production_snapshot": "c544444dd6bb93bdc6262f8a790195955f860298",
+  "original_staged_canonical_fixture_snapshot": "4ab273ddef03a8498df906fd1fb01a46ba3020fb",
+  "manifest_reconstruction": {
+    "reason": "root package.json gate entry remained unstaged while src/package-directory/tools were staged",
+    "timing": "corrected snapshot trees recorded after tests from unchanged pinned runtime and manifest bytes",
+    "only_tree_change": "package.json",
+    "original_snapshots_retained": true,
+    "manifest_git_blob": "76f99f99e4e1cffbba50ee2e4d33efad4965a0ac",
+    "manifest_raw_sha256": "83ed4d6d233f3a4f67a84eeb6c6d822af881d0b361f8578d416b4b0f37fca294",
+    "native_runtime_sha256_used_by_tests": "4e7cf480fa47e06fe63fc66afe4c71788ebfa3b66eecaeed4bc961022a9a22c0",
+    "initial_integrated_checkout_sha256_before_manifest_correction": "be19bd03d9e0d34ad27e1fb527f09e872d64d571c19c6c31aa5d772670ef19a4",
+    "native_qualification": "NOT_RUN"
+  }
 }

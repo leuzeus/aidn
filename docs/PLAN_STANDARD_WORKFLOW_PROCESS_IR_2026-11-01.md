@@ -2905,3 +2905,12 @@ et vrai hook sans rouvrir le cycle, avec transport natif simulé. Le
 sépare ces preuves des parcours composés complets, du natif et de l’archive exacte.
 Aucune activité de clôture supplémentaire ni sélection ordinaire n’est ajoutée.
 Le rapport R07, son checkpoint et son hook final restent à livrer.
+
+
+Le contrôle du checkout intégré a détecté une omission de staging du manifeste
+racine : l’entrée du nouveau vérificateur dans `package.json` était utilisée par
+les tests, mais absente des premiers arbres enregistrés. Elle est maintenant
+incluse explicitement. Les arbres corrigés conservent les mêmes octets runtime et
+le manifeste effectivement testés ; cette reconstruction après les tests, les
+anciens snapshots et les deux empreintes natives sont consignés dans le relevé.
+Elle ne constitue ni un nouveau test natif ni une qualification d’archive installée.
