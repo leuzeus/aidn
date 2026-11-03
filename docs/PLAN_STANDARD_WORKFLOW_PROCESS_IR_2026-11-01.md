@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 92/90 et le modèle composé candidat en 34
-(85 nœuds, 51 occurrences d’opération, 41 identifiants de liaison mobilisés parmi
-48 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 95/93 et le modèle composé candidat en 37
+(87 nœuds, 53 occurrences d’opération, 43 identifiants de liaison mobilisés parmi
+50 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3119,3 +3119,32 @@ Les contrôles statiques startup (22) et composé (17) passent en révisions
 92/90/34. Les trois composés 29/32/33 restent attribués à leurs sources figées ;
 ils ne qualifient pas ce correctif. Le composé courant, les raccords d'intégration
 et PR, A1–A10, natif réel et archive exacte restent ouverts.
+
+### Intégration locale explicitement décidée après livraison
+
+La révision 37 ajoute la décision humaine versionnée et son effet Git séparé
+après session_delivery_checkpoint. La cible vient du session_branch canonique,
+avec owner CLOSED, cycle DONE retenu, preuves physiques de clôture et checkpoint
+accepté. Le sujet lie documents/métadonnées, refs/tips, index, filtres et worktrees.
+Retain, promotion et CLOSED ne sont pas des permissions de fusion. Refus, report,
+annulation et inconnu restent distincts ; les lecteurs inbox v1-v5 sont préservés
+et v6 ne convertit aucun historique. Le raccord courant refuse plusieurs cycles
+attachés : cette topologie reste à implémenter.
+
+La [preuve des composants](qualification/agentic-process/session-branch-integration-components-2026-11-03.json)
+sépare 11 contrôles humains/stores, 7 d’autorité et 6 de service/Git, avec leurs
+autorités injectées et les tentatives de schéma échouées. Ces comptes ne prouvent
+pas le parcours authentifié du modèle. Le réancrage du contexte après intégration,
+les ports PR/push/revue/fusion/sync, les autres parcours et A1–A10 restent ouverts.
+L’entrée ordinaire est inchangée ; natif réel et archive exacte restent NOT_RUN.
+
+### Verdict composé conservé de la révision 29
+
+Le composé 29 a terminé FAIL/code 1 après promotion finalisée, au R05 de clôture
+de session : STANDARD_DRIFT_GATE_BLOCKED, scope_growth sur cinq fichiers, avant
+R07. Le [relevé source 29](qualification/agentic-process/composed-model29-session-r05-2026-11-03.json)
+conserve ses 46 reçus d’opération, quatre captures et huit allocations fake-wire
+fermées. Replay et simulation exacts passent en 109 lignes sur 108 événements,
+avec les 326 fichiers de la fixture inchangés ; aucun effet n’a été rejoué.
+Les fixtures sont intentionnellement conservées. Les composés 32/33 continuent
+sur leurs propres sources ; aucun de ces verdicts ne qualifie la révision 37.

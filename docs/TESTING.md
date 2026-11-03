@@ -2543,6 +2543,24 @@ and cleanup must both succeed. This is a port-only proof: no standard-model
 binding, canonical lifecycle decision, PR transport, native provider or installed
 archive is exercised. See ADR-0025 for its authority boundary.
 
+For the separate standard integration components, run:
+
+- `node tools/perf/verify-standard-session-branch-integration-human-fixtures.mjs`
+- `node tools/perf/verify-standard-session-branch-integration-authority-fixtures.mjs`
+- `node tools/perf/verify-standard-session-branch-integration-port-fixtures.mjs`
+
+The first uses actual canonical inbox stores in files/dual/DB-only with a fixture
+human verifier. `--contract-only` covers pure contracts without claiming those
+stores. The authority fixture reads actual canonical files and physical event
+bytes but injects accepted-journal and R07 capabilities. The application fixture
+performs the real Git transaction with injected accepted human/closure sources;
+it checks immutable product/documents/index, cold application, refusal and
+post-effect grant loss retaining an unknown owner. Output-contract positives and
+negatives run before Git so checkpoint-specific facts/evidence cannot silently
+transfer to integration success. All owned fixture roots must finish cleanup.
+The published-model composed selector supplies a separate proof of the complete
+authenticated local chain when it passes; these component counts do not do so.
+
 `verify-standard-session-closure-human-fixtures.mjs` checks the closed private
 contracts, provider verification, immutable v5 captures, refusal/deferral/cancellation
 and actual files/SQLite stores. `verify-standard-session-closure-context-fixtures.mjs`

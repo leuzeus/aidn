@@ -31,7 +31,18 @@ Drive the session branch through the explicit PR lifecycle without skipping push
 - `docs/audit/CURRENT-STATE.md`
 - `docs/audit/RUNTIME-STATE.md` when runtime freshness or repair signals matter
 
-2) Confirm session PR metadata:
+2) Prepare local delivery and confirm session PR metadata:
+
+If still on a retained cycle branch, prepare local delivery explicitly before PR
+admission. A confirmed session closure and delivery checkpoint are prerequisites,
+not permission to integrate. Require a separate human `integrate-to-session`
+decision bound to the canonical CLOSED owner, retained DONE cycle, exact source
+and session refs/tips, index, filters, worktree registrations and checkpoint.
+Execute only the reviewed local fast-forward plan with a fresh grant. Refusal,
+deferral, cancellation and uncertain effects remain distinct; do not repeat an
+uncertain transaction. Re-anchor the branch context before PR admission. This
+preparation does not authorize push, PR creation, merge or post-merge sync.
+
 - `pr_status`
 - `pr_url`
 - `pr_number`

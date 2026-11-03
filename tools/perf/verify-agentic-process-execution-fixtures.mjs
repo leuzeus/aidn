@@ -761,6 +761,16 @@ if (process.argv[2] === "--mixed-continue") {
             ref = "standard-mode";
             claim = { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "standard-mode-committing",
               subject_sha256: "a".repeat(64), question_sha256: shadowHash(result.question), choice: "COMMITTING", evidence_refs: [{ ref: "fixture:operator-mode", sha256: "a".repeat(64) }] };
+          } else if (binding === "session_branch_integration_decision") {
+            assert.ok(runsPromotion); assert.ok(result.question.choices.includes("integrate-to-session"));
+            const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
+            assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "missing-session-integration", write: true })).status, "waiting_for_human");
+            assert.equal(f.open().inspect().record.instance_sha256, beforeWait); assert.equal(f.t.sessions.length, nativeCount);
+            ref = "session_integration_" + result.operation_id;
+            claim = { contract_version: "human-session-branch-integration-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+              source_event_id: "standard:" + ref, subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice: "integrate-to-session",
+              rationale: "Explicit fixture consent for the exact retained-cycle to canonical-session Git transaction",
+              evidence_refs: [{ ref: "fixture:operator-session-integration", sha256: "a".repeat(64) }] };
           } else if (binding === "session_closure_decision") {
             assert.ok(runsPromotion); assert.ok(result.question.choices.includes("close"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -868,6 +878,10 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("session_close_checkpoint").facts.session_close_checkpoint_completed, true);
       assert.equal(last("session_close_finalize").facts.session_close_completed, true);
       assert.equal(last("session_delivery_checkpoint").facts.session_delivery_checkpoint_completed, true);
+      assert.equal(last("session_branch_integration_decision").effect_status, "no_effect");
+      assert.equal(last("session_branch_integration_decision").facts.session_branch_integration_requested, true);
+      assert.equal(last("session_branch_integrate").facts.session_branch_integrated, true);
+      assert.equal(last("session_branch_integrate").effect_status, "confirmed");
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;

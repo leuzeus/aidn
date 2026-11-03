@@ -1650,3 +1650,39 @@ this new checkpoint. Its decision/R05 capability remains injected. Twenty checks
 per selected configuration include the prior sixteen R07 assertions and four
 delivery assertions; they are overlapping coverage, not independent acceptance
 criteria. The authenticated model composition and integration/PR tail remain open.
+
+### Explicit local integration after confirmed delivery (2026-11-03)
+
+The partial standard IR now places a separate human
+`session_branch_integration_decision` and deterministic `session_branch_integrate`
+after confirmed session completion and its delivery checkpoint. Both bindings
+are COMMITTING-only and trace to the PR orchestration skill and R03/R07/R08.
+The close-session skill still never auto-merges. Retention, promotion and a
+CLOSED marker grant no integration authority.
+
+The host authenticates the accepted cycle closure, retained decision, physical
+checkpoint event and session delivery chain. It reads the canonical CLOSED
+session, its single attached retained DONE cycle, the latest accepted cycle
+postimage and metadata. The target is the session artifact's branch, never an
+IR-selected ref. The question pins these documents and the actual source/target
+refs/tips, delivery HEAD, index, filters, reflog prefixes and other worktrees.
+Changed state invalidates the answer. This bounded binding explicitly refuses
+additional attached cycles; their resolution remains a required follow-up.
+
+The new human source and v6 inbox preserve refusal, deferral and cancellation.
+Existing inbox readers v1-v5 remain unchanged and no historical record is
+converted. Consent emits only a request with no effect. Integration additionally
+requires an exact prepared plan, fresh grant, current instance and local effect
+owner, then invokes the previously separate actual Git port. Confirmation
+requires the operation/plan-bound transaction and unchanged canonical data,
+index and worktree bytes. Lost grant after Git remains unknown with empty facts
+and retained ownership; neither an observable ref nor cold reopening retries it.
+
+Component evidence separates eleven human/store checks across files/dual/DB-only,
+seven authority checks with injected accepted-journal/R07 capabilities, and six
+application/Git checks with injected accepted human/closure sources. It retains
+the failed output-schema attempts in the qualification record. These components
+do not establish the authenticated published-model path, PR admission, native
+human/provider identity or installed-archive qualification. Branch-context
+re-anchoring, PR/push/review/merge/sync and the remaining standard paths are still
+required. Ordinary standard selection and complete_standard_workflow stay off.

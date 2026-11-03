@@ -23,7 +23,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 51); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 53); assert.equal(assets.catalog.activities.length, 8);
 });
 test("session close admission is a deterministic read-only continuation, separate from closure", () => {
   const node = assets.model.nodes.find(row => row.id === "session_close_admit");
@@ -52,6 +52,19 @@ test("delivery checkpoint follows confirmed session finalization with no implied
   assert.equal(children.indexOf("session_delivery_checkpoint"), children.indexOf("session_close_finalize") + 1);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_delivery_checkpoint").fields.finalization_operation_id,
     { source: "operation_id", node_id: "session_close_finalize" });
+});
+test("local integration has a separate explicit human subject and deterministic Git effect after delivery", () => {
+  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  assert.equal(children.indexOf("session_branch_integration_decide"), children.indexOf("session_delivery_checkpoint") + 1);
+  assert.equal(children.indexOf("session_branch_integrate"), children.indexOf("session_branch_integration_decide") + 1);
+  const human = assets.catalog.bindings.find(row => row.node_id === "session_branch_integration_decide").binding;
+  const effect = assets.catalog.bindings.find(row => row.node_id === "session_branch_integrate").binding;
+  assert.equal(human.executor_kind, "human"); assert.equal(human.effect_class, "read-only");
+  assert.equal(effect.executor_kind, "deterministic"); assert.equal(effect.effect_class, "mutating");
+  assert.equal(human.skill_id, "pr-orchestrate"); assert.equal(effect.skill_id, "pr-orchestrate");
+  assert.deepEqual(human.allowed_modes, ["COMMITTING"]); assert.deepEqual(effect.allowed_modes, ["COMMITTING"]);
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_branch_integrate").fields.decision_operation_id,
+    { source: "operation_id", node_id: "session_branch_integration_decide" });
 });
 
 test("completion of this component cannot claim completion of the standard workflow", () => {
