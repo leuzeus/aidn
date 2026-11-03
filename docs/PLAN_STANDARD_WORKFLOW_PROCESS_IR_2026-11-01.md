@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 95/93 et le modèle composé candidat en 37
-(87 nœuds, 53 occurrences d’opération, 43 identifiants de liaison mobilisés parmi
-50 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 97/95 et le modèle composé candidat en 39
+(88 nœuds, 54 occurrences d’opération, 44 identifiants de liaison mobilisés parmi
+51 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3148,3 +3148,25 @@ fermées. Replay et simulation exacts passent en 109 lignes sur 108 événements
 avec les 326 fichiers de la fixture inchangés ; aucun effet n’a été rejoué.
 Les fixtures sont intentionnellement conservées. Les composés 32/33 continuent
 sur leurs propres sources ; aucun de ces verdicts ne qualifie la révision 37.
+
+### Réancrage en lecture seule et admission PR réelle
+
+La révision 39 ajoute session_pr_admit après l’intégration locale confirmée.
+Le host authentifie le reçu et le sujet canonique, exige la preuve Git originale
+et vérifie le rechargement sur le vrai session branch/HEAD sans écrire le cache.
+L’admission PR existante distingue ensuite push requis et ouverture PR requise ;
+un marqueur open/merged/synced ne constitue aucune preuve d’effet distant.
+Le port de statut isolé empêche les filtres Git de s’exécuter dans cette lecture.
+
+Les [preuves ciblées](qualification/agentic-process/session-pr-readonly-admission-2026-11-03.json)
+conservent 5 contrôles par mode files/dual/db-only, les autorités humain/clôture
+injectées et le premier échec de construction DB-only, avant admission. Le cas
+corrigé garde HEAD égal et n’exporte aucune donnée. L’arbre entier de chaque
+projet est inchangé par la lecture. Les 19 contrôles statiques du composé, 22 du
+startup et les politiques passent ; le composé 39 n’a pas été exécuté.
+
+Le composé 37 tourne sur son snapshot figé, distinct des 32/33 encore actifs.
+Les vrais ports push/PR/revue/checks/événements/fusion et synchronisation restent
+à réaliser, avec les autres topologies, réautorisations et réconciliations.
+A1–A10 restent ouverts ; entrée ordinaire inchangée, complete_standard_workflow
+false, natif réel et archive exacte NOT_RUN.

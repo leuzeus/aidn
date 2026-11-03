@@ -130,8 +130,7 @@ function makeResult(base, overrides = {}) {
   };
 }
 
-export async function runPrOrchestrateAdmitUseCase({ targetRoot, mode = "UNKNOWN" }) {
-  const gitAdapter = createLocalGitAdapter();
+export async function runPrOrchestrateAdmitUseCase({ targetRoot, mode = "UNKNOWN", gitAdapter = createLocalGitAdapter() }) {
   const absoluteTargetRoot = path.resolve(process.cwd(), targetRoot);
   const { effectiveStateMode, dbBackedMode } = resolveDbBackedMode(absoluteTargetRoot);
   let currentState = readCurrentState(absoluteTargetRoot);

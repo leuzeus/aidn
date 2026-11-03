@@ -2561,6 +2561,18 @@ transfer to integration success. All owned fixture roots must finish cleanup.
 The published-model composed selector supplies a separate proof of the complete
 authenticated local chain when it passes; these component counts do not do so.
 
+`verify-standard-session-pr-admission-fixtures.mjs --mode=files|dual|db-only`
+checks the next read-only re-anchor and actual PR admission. Each mode uses real
+Git integration, canonical files or SQLite, a source-installed disposable project
+and an executable clean-filter control. The complete project tree must remain
+byte-identical during preparation and observation, including the cache and Git
+index. Unknown integration, changed refs or filter context block admission.
+Human/closure acceptance is injected fixture authority, not an actual R07 chain.
+DB-only keeps its real no-physical-change/equal-HEAD case without exporting data
+or creating an unnecessary commit. `--contract-only` checks only the private
+input/output vocabulary and exact no-effect routing facts. No test here pushes
+or creates a PR, authenticates a real provider, or qualifies an installed archive.
+
 `verify-standard-session-closure-human-fixtures.mjs` checks the closed private
 contracts, provider verification, immutable v5 captures, refusal/deferral/cancellation
 and actual files/SQLite stores. `verify-standard-session-closure-context-fixtures.mjs`

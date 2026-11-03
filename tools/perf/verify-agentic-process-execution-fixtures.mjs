@@ -882,6 +882,9 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("session_branch_integration_decision").facts.session_branch_integration_requested, true);
       assert.equal(last("session_branch_integrate").facts.session_branch_integrated, true);
       assert.equal(last("session_branch_integrate").effect_status, "confirmed");
+      assert.equal(last("session_pr_admit").facts.session_pr_admitted, true);
+      assert.equal(last("session_pr_admit").effect_status, "no_effect");
+      assert.equal(last("session_pr_admit").observations.reload.cache_written, false);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;

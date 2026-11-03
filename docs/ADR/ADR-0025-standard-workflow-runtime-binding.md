@@ -1686,3 +1686,26 @@ do not establish the authenticated published-model path, PR admission, native
 human/provider identity or installed-archive qualification. Branch-context
 re-anchoring, PR/push/review/merge/sync and the remaining standard paths are still
 required. Ordinary standard selection and complete_standard_workflow stay off.
+
+### Read-only re-anchor and real PR admission (2026-11-03)
+
+`session_pr_admit` follows the separately confirmed local integration. Its fixed
+host reader authenticates that accepted operation and rechecks the canonical
+delivery/closure subject. The local Git port must still confirm the original
+operation/plan-bound ref transaction, index, filters and worktree registration.
+Unknown effects or matching refs without the retained proof cannot admit PR work.
+
+The operation runs the actual reload check without writing its cache, verifies
+the session branch and HEAD, then invokes the existing PR admission use case.
+Its optional Git dependency defaults to the existing adapter for current callers.
+This new host supplies isolated status observation while ordinary ref/upstream
+reads stay local; configured clean/process filters cannot execute through a
+legacy status call. The final observation rechecks Git and canonical source.
+
+The result only distinguishes an admitted push requirement from an admitted PR
+opening requirement. An open/merged/synced metadata marker supplies no external
+success proof. The private read-only result allocates no model, updates no
+canonical artifact, writes no cache and performs no remote operation. No public
+CLI flag, old default admission behavior or historical process reader changes.
+Actual push, PR creation, checks/review/events, explicit merge and post-merge
+reconciliation remain separate required ports and effects.

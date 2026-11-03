@@ -1,3 +1,6 @@
+import { createStandardSessionBranchIntegration } from "./standard-session-branch-integration.mjs";
+import { createStandardSessionBranchIntegrationAuthority } from "./standard-session-branch-integration-authority.mjs";
+import { createStandardSessionPrAdmission } from "./standard-session-pr-admission.mjs";
 import { createStandardSessionClosureAuthority } from "./standard-session-closure-authority.mjs";
 import { createStandardSessionClosureReview } from "./standard-session-closure-review.mjs";
 import { createStandardSessionCloseRecord } from "./standard-session-close-record.mjs";
@@ -372,6 +375,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { decision_operation_id: input.decision_operation_id, choice: capture.source.choice,
         source_sha256: shadowHash(capture.source), plan: selected.record.preview.prepared.plan };
     } }) : null;
+  const sessionPrAdmission = integrationAuthority ? createStandardSessionPrAdmission({ targetRoot,
+    async readIntegration(instance, input) {
+      const selected = acceptedForPromotion(instance, input.integration_operation_id, "session_branch_integrate", "STANDARD_SESSION_PR_INTEGRATION_REQUIRED");
+      const plan = selected.record.preview.prepared.plan;
+      const canonical = await integrationAuthority.readSource(instance, { contract_version: "standard-session-branch-integration-review-input.v1",
+        delivery_operation_id: plan.review.delivery_operation_id, closure_operation_id: plan.review.closure_operation_id });
+      const { git, ...prior } = plan.review;
+      if (shadowHash(canonical) !== shadowHash(prior)) fail("STANDARD_SESSION_PR_CONTEXT_CHANGED");
+      return { integration_operation_id: input.integration_operation_id, plan_sha256: shadowHash(plan), plan, output: selected.output, canonical };
+    } }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -739,6 +752,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_admit" ? await sessionPrAdmission?.prepare(state.record, input) ?? fail("STANDARD_SESSION_PR_AUTHORITY_REQUIRED")
         : binding.id === "session_branch_integration_decision" ? await sessionBranchIntegration?.prepareDecision(state.record, input) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED")
         : binding.id === "session_branch_integrate" ? await sessionBranchIntegration?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED")
         : binding.id === "session_delivery_checkpoint" ? await sessionDeliveryCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_DELIVERY_AUTHORITY_REQUIRED")
@@ -824,6 +838,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
         else if (record.intent.binding_ref === "session_branch_integrate") output = await sessionBranchIntegration.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_delivery_checkpoint") output = await sessionDeliveryCheckpoint.apply(state.record, record.preview.prepared,
@@ -963,5 +978,3 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
   });
 }
-import { createStandardSessionBranchIntegration } from "./standard-session-branch-integration.mjs";
-import { createStandardSessionBranchIntegrationAuthority } from "./standard-session-branch-integration-authority.mjs";
