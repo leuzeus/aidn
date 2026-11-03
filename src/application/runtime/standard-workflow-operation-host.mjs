@@ -1,3 +1,6 @@
+import { createStandardSessionPrSuccessorAuthority } from "./standard-session-pr-successor-authority.mjs";
+import { createStandardSessionPrCheckpoint } from "./standard-session-pr-checkpoint.mjs";
+import { createStandardSessionPrUpdatePush } from "./standard-session-pr-update-push.mjs";
 import { createStandardSessionBranchIntegration } from "./standard-session-branch-integration.mjs";
 import { createStandardSessionBranchIntegrationAuthority } from "./standard-session-branch-integration-authority.mjs";
 import { createStandardSessionPrRecord } from "./standard-session-pr-record.mjs";
@@ -416,6 +419,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readAcceptedOperation: acceptedForPromotion, pullRequestPort: sessionPullRequestPort }) : null;
   const sessionPrRecord = sessionPrRecordAuthority ? createStandardSessionPrRecord({ targetRoot, now,
     readSource: (instance, input) => sessionPrRecordAuthority.readSource(instance, input), readCurrent: id => current(id).record }) : null;
+  const sessionPrSuccessor = sessionPrRecordAuthority ? createStandardSessionPrSuccessorAuthority({ targetRoot,
+    readAcceptedOperation: acceptedForPromotion, historyAuthority: sessionPrRecordAuthority }) : null;
+  const sessionPrCheckpoint = sessionPrSuccessor ? createStandardSessionPrCheckpoint({ targetRoot, now,
+    readSource: (instance, input) => sessionPrSuccessor.readSource(instance, input), readCurrent: id => current(id).record }) : null;
+  const sessionPrUpdatePush = sessionPrSuccessor ? createStandardSessionPrUpdatePush({ targetRoot, now,
+    readCheckpoint: (instance, input) => sessionPrSuccessor.readCheckpoint(instance, input), readCurrent: id => current(id).record,
+    pushPort: sessionPushPort, pullRequestPort: sessionPullRequestPort }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -783,6 +793,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_checkpoint" ? await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_record" ? await sessionPrRecord?.prepare(state.record, input) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_open" ? await sessionPrOpen?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PR_OPEN_TRANSPORT_REQUIRED")
         : binding.id === "session_push" ? await sessionPush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PUSH_TRANSPORT_REQUIRED")
@@ -871,6 +883,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_pr_checkpoint") output = await sessionPrCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_pr_update_push") output = await sessionPrUpdatePush.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_pr_record") output = await sessionPrRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

@@ -903,12 +903,12 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("session_push").facts.session_remote_head_confirmed, true);
       const pushedHead = execFileSync("git", ["--git-dir=" + f.sessionPushRemoteRoot, "rev-parse", "refs/heads/S001-standard"],
         { encoding: "utf8", stdio: "pipe", windowsHide: true, timeout: 10000 }).trim();
-      assert.equal(pushedHead, last("session_pr_admit").observations.head);
-      assert.equal(last("session_push").observations.git.remote_head, pushedHead);
+      assert.equal(pushedHead, last("session_pr_update_push").observations.git.remote_head);
+      assert.equal(last("session_push").observations.git.remote_head, last("session_pr_admit").observations.head);
       assert.equal(last("session_pr_open").outcome, "completed"); assert.equal(last("session_pr_open").effect_status, "confirmed");
       assert.deepEqual(last("session_pr_open").facts, { session_pr_open_confirmed: true });
       const provider = createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root });
-      assert.equal(provider.read().posts, 1); assert.equal(provider.read().pulls[0].head.sha, pushedHead);
+      assert.equal(provider.read().posts, 1); assert.equal(provider.read().pulls[0].head.sha, last("session_push").observations.git.remote_head);
       assert.equal(last("session_pr_open").observations.pull_request.node_id, provider.read().pulls[0].node_id);
       assert.equal(last("session_pr_record").outcome, "completed"); assert.equal(last("session_pr_record").effect_status, "confirmed");
       assert.deepEqual(last("session_pr_record").facts, { session_pr_lifecycle_recorded: true, session_pr_checkpoint_required: true });
@@ -916,6 +916,12 @@ if (process.argv[2] === "--mixed-continue") {
       assert.match(lifecycle.read("sessions/S001.md", { required: true }).content, /pr_status: open/);
       assert.equal(last("session_pr_record").observations.checkpoint, "pending");
       assert.equal(last("session_pr_record").observations.push, "pending");
+      assert.equal(last("session_pr_checkpoint").outcome, "completed");
+      assert.equal(last("session_pr_checkpoint").facts.session_pr_checkpoint_completed, true);
+      assert.equal(last("session_pr_update_push").outcome, "completed");
+      assert.equal(last("session_pr_update_push").observations.pull_request.head_oid, pushedHead);
+      assert.equal(last("session_pr_update_push").observations.inherited_review_evidence, "none");
+      assert.equal(last("session_pr_update_push").observations.review, "pending");
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;

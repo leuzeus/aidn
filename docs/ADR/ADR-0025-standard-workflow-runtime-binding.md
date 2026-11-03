@@ -1763,3 +1763,28 @@ second write, failed projection or lost authority is unknown, with the owner
 retained and no lifecycle completion fact. DB-only changes no physical export.
 This is a transition within the existing session and operation-journal concepts,
 not a new independent authority, merge permission or completed PR skill.
+
+## Checkpoint and push of the canonical PR successor
+
+session_pr_checkpoint consumes the accepted session_pr_record receipt, its three
+new content/metadata hashes and the authenticated historical closure chain. It
+uses the bounded Git checkpoint port on the session branch. The original
+readSessionDeliverySource remains strict. The successor is a separate authority
+path; CLOSED/open markers and predecessor hashes cannot substitute for it.
+DB-only preserves physical files and HEAD when no physical postimage changed.
+
+session_pr_update_push consumes the accepted successor checkpoint and freshly
+observes the exact existing PR and remote tip. It uses the host-owned push port,
+then observes the same PR at the new HEAD. Repository, PR, head/base branch,
+base SHA, title/body and destination identity stay bound. Review and checks are
+pending for the confirmed delivery SHA; no approval or check on the prior SHA
+is inherited as acceptance. Loss of authority after an attempted effect remains
+unknown with the owner retained. Production GitHub push and review/merge/sync
+ports require their own later qualification.
+
+The source author now emits required contract_version literals from the registered
+input contracts into the authored IR. The interpreter still resolves exactly the
+stored expressions and rejects missing or wrong versions before dispatch. It does
+not repair historical models or insert a version while reading. The pure boundary
+fixture exercises the published expressions through the actual reducer and input
+resolver; its predecessor receipts are synthetic and prove no service effect.

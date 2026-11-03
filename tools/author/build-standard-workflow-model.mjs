@@ -16,6 +16,10 @@ const nodes = [], inputs = [], activities = [];
 const node = (id, kind, body = {}) => (nodes.push({ id, kind, participant_ref: "project", ...body }), id);
 const seq = (id, children) => node(id, "sequence", { children });
 const op = (id, binding_ref, fields = {}) => {
+  const binding = bindings.find(row => row.id === binding_ref);
+  const schema = json(`src/core/contracts/workflow-definition/${binding.input_contract}.schema.json`);
+  if (schema.required?.includes('contract_version')) fields = {
+    contract_version: { source: 'literal', value: schema.properties.contract_version.const }, ...fields };
   node(id, "operation", { binding_ref }); inputs.push({ node_id: id, fields }); return id;
 };
 const operation = (node_id, field, source) => ({ [field]: { source: "operation_id", node_id: source } });
@@ -39,7 +43,9 @@ seq("thinking_handoff", []); seq("exploring_handoff", []);
 xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
 seq("thinking_preflight", []); seq("exploring_preflight", []);
 seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",
-  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_admit", "session_push", "session_pr_open", "session_pr_record"]);
+  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push"]);
+op("session_pr_checkpoint", "session_pr_checkpoint", operation("session_pr_checkpoint", "record_operation_id", "session_pr_record"));
+op("session_pr_update_push", "session_pr_update_push", operation("session_pr_update_push", "checkpoint_operation_id", "session_pr_checkpoint"));
 op("session_pr_record", "session_pr_record", operation("session_pr_record", "open_operation_id", "session_pr_open"));
 op("session_pr_open", "session_pr_open", operation("session_pr_open", "push_operation_id", "session_push"));
 op("session_push", "session_push", operation("session_push", "admission_operation_id", "session_pr_admit"));

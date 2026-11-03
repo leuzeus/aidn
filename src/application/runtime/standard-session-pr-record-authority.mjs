@@ -20,7 +20,7 @@ export function createStandardSessionPrRecordAuthority({ targetRoot, readAccepte
       || event.branch !== branch || event.mode !== 'COMMITTING') fail('STANDARD_PR_RECORD_PHYSICAL_EVIDENCE_CHANGED');
     return { offset, sha256: shadowHash(event) };
   }
-  return Object.freeze({ async readSource(instance, input) {
+  function readHistory(instance, input) {
     const open = readAcceptedOperation(instance, input.open_operation_id, 'session_pr_open', 'STANDARD_PR_RECORD_OPEN_REQUIRED');
     const push = readAcceptedOperation(instance, open.record.preview.input.push_operation_id, 'session_push');
     const admit = readAcceptedOperation(instance, push.record.preview.input.admission_operation_id, 'session_pr_admit');
@@ -38,13 +38,17 @@ export function createStandardSessionPrRecordAuthority({ targetRoot, readAccepte
       || link.head_branch !== review.target_branch || link.head_oid !== push.output.observations.git.remote_head) fail('STANDARD_PR_RECORD_OWNER_CHANGED');
     const events = [physical(final.output.observations, 'hook_session_close', finalPlan.run_id, review.source_branch),
       physical(closed.output.observations, 'checkpoint_summary', 'process_close_' + closed.record.operation_id.slice(3), review.source_branch)];
-    const provider = await pullRequestPort.prepare(open.record.preview.prepared.plan.provider.plan.request, open.record.operation_id);
-    if (!provider.can_apply || shadowHash(provider.plan) !== provider.plan_sha256 || shadowHash(provider.plan.observed.existing) !== shadowHash(link)) fail('STANDARD_PR_RECORD_REMOTE_CHANGED');
     const names = sessionPrRecordPaths(review.session_path), documents = names.map(name => {
       const matches = review.documents.filter(row => row.ref === 'audit:' + name);
       if (matches.length !== 1) fail('STANDARD_PR_RECORD_DELIVERY_REQUIRED');
       return { path: name, sha256: matches[0].sha256, metadata_sha256: matches[0].metadata_sha256 };
     });
+    return { open, sources, events, review, link, documents };
+  }
+  return Object.freeze({ readHistory, async readSource(instance, input) {
+    const { open, sources, events, review, link, documents } = readHistory(instance, input);
+    const provider = await pullRequestPort.prepare(open.record.preview.prepared.plan.provider.plan.request, open.record.operation_id);
+    if (!provider.can_apply || shadowHash(provider.plan) !== provider.plan_sha256 || shadowHash(provider.plan.observed.existing) !== shadowHash(link)) fail('STANDARD_PR_RECORD_REMOTE_CHANGED');
     return { open_operation_id: input.open_operation_id, session_id: review.session_id, session_path: review.session_path, pull_request: link, documents,
       material_sha256: shadowHash({ sources: sources.map(row => ({ operation_id: row.record.operation_id, output_sha256: shadowHash(row.output) })), events, provider_sha256: provider.plan_sha256 }) };
   } });

@@ -8,6 +8,7 @@ import { verifyStandardWorkflowComponentAssets, assertStandardWorkflowActivityOu
 import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { assertStandardOperationInput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
 const root = new URL("../../", import.meta.url), read = name => fs.readFileSync(new URL(name, root));
@@ -23,7 +24,24 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 57); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 59); assert.equal(assets.catalog.activities.length, 8);
+});
+test("authored literal/operation-only inputs satisfy their actual closed operation contracts", () => {
+  for (const spec of assets.model.data_bindings.inputs) {
+    if (Object.values(spec.fields).some(row => !["literal", "operation_id"].includes(row.source))) continue;
+    const node = assets.model.nodes.find(row => row.id === spec.node_id);
+    if (node.kind !== "operation") continue;
+    const input = Object.fromEntries(Object.entries(spec.fields).map(([name, row]) => [name, row.source === "literal" ? row.value : "op_" + "a".repeat(40)]));
+    assertStandardOperationInput(node.binding_ref, input);
+  }
+});
+test("successor checkpoint and update follow the accepted canonical PR record with explicit inputs", () => {
+  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  assert.equal(children.indexOf("session_pr_checkpoint"), children.indexOf("session_pr_record") + 1);
+  assert.equal(children.indexOf("session_pr_update_push"), children.indexOf("session_pr_checkpoint") + 1);
+  for (const id of ["session_pr_checkpoint", "session_pr_update_push"]) assert.equal(assets.catalog.bindings.find(row => row.node_id === id).binding.executor_kind, "deterministic");
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_checkpoint").fields.record_operation_id, { source: "operation_id", node_id: "session_pr_record" });
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_update_push").fields.checkpoint_operation_id, { source: "operation_id", node_id: "session_pr_checkpoint" });
 });
 test("canonical PR lifecycle recording follows its authenticated open receipt and leaves checkpoint separate", () => {
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_record").binding;

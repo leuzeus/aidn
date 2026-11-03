@@ -2723,3 +2723,22 @@ injected. It tests exact preimages/grants, real postimages and the db-only path
 without export or invented commit; a files-mode fault loses authority after the
 first CAS and requires unknown-owner retention. These components do not prove
 real human/provider identities or the complete signed standard chain.
+
+The canonical PR continuation is checked by
+`verify-standard-session-pr-successor-fixtures.mjs --mode=<files|dual|db-only>`.
+It runs the actual canonical writer, successor authority, Git checkpoint, bare
+remote push and GitHub PR adapter. Only accepted-operation lookup/closure history
+and the REST transport are injected. It checks immutable historical hashes,
+exact successor content and metadata, wrong/stale grants, PR identity changes,
+HEAD re-observation and pending review/checks. DB-only requires the same HEAD
+without export or invented commit. Lost authority after an actual files-mode
+push must retain unknown ownership and block a second dispatch. These components
+do not qualify the complete signed standard chain or production GitHub.
+
+`verify-standard-process-binding-input-fixtures.mjs` resolves the published
+literal and operation-ID expressions through the actual reducer and
+resolveStandardProcessInput boundary, then validates against each registered
+closed input contract. Synthetic pure predecessor receipts replace all ports.
+A model37-shaped missing integration version and wrong authored versions must
+fail before dispatch without changing the model. Source authoring fixes future
+IR only; retained instances keep their original bytes and verdicts.
