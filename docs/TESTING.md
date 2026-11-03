@@ -2426,3 +2426,41 @@ Git root. It verifies read-only behavior, unsupported-list refusal and a spike
 with no fabricated production REQ. The fixture's DONE state is setup; this test
 proves format compatibility only. It does not prove test execution, retention,
 cycle-close completion, composed promotion or native/installed behavior.
+
+
+### Governed baseline Git checkpoint and composed promotion
+
+`node tools/perf/verify-standard-baseline-promotion-checkpoint-contract-fixtures.mjs`
+checks the three closed predecessor IDs, schema identifiers and checkpoint versus
+skill completion. For the actual component, use
+`node tools/perf/verify-standard-baseline-promotion-ports-fixtures.mjs --mode=files --final-hook --promotion-checkpoint --keep-cycle-branch --retain-on-failure`.
+Repeat with dual and DB-only for canonical/projection intent. These selectors use
+the real checkpoint application, Git, cache reload and final hook, while closure
+and decision authority remain fixture capabilities. The selected path cannot fall
+back to the helper's manual Git/reload precondition. No merge to session is needed
+merely to reproduce the older fixture setup.
+
+`--promotion-checkpoint-fault=grant_after_git` confirms unknown, empty facts,
+unchanged cache and retained owner after a real commit. `foreign_parent` and
+`foreign_path` refuse before the new effect. Those cases do not execute the final
+hook and must not claim promotion completion; the pending marker is
+`checkpoint_pending`. Keep the original mistaken marker assertion as an oracle
+failure, separately from the runtime outcome.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=component_complete --retain-on-failure`
+requests the longer published-model path through explicit promotion, governed
+checkpoint, R05 and final hook. It keeps the missing-human-source checks and
+closure deferral/cold restart with the original authorization. Seven fake-wire
+activities cover this bounded one-task case; deterministic operations and human
+waits allocate none. A COMPLETED component is still partial: the catalog is
+required to keep `complete_standard_workflow: false`. Native/boundary/human/grant
+fixtures, real native and exact installed archive remain different evidence.
+
+
+The revision-18 composed promotion selector passes on frozen source `c18320d`
+with 100 events and exact 101-row streamed simulation. Interpret its 43 operation
+records as 42 completed plus one deferred, and its seven native sessions as
+fake-wire allocations (five parent, two child). Cold continuation preserves the
+original authorization and prior journals/event prefix. Both process exits and
+cleanup must be terminal before editing that worktree. This bounded result does
+not qualify the session/PR tail, real native calls or an exact installed archive.

@@ -8,10 +8,11 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée avant le lot terminal : `9f86737`. Le lot en cours révise explicitement
-les composants startup/cycle en 75/73 et le modèle composé en 17 (73 nœuds,
-41 occurrences, 40 bindings). Les preuves conservent leurs snapshots exacts ;
-le modèle standard complet reste à livrer.
+Base intégrée avant le présent lot : `9fdc597`. Les composants startup/cycle sont
+en 76/74 et le modèle composé en 18 (74 nœuds, 42 occurrences d’opération,
+34 identifiants de liaison mobilisés parmi 41 liaisons enregistrées). Le parcours
+composé files jusqu’à la promotion est qualifié hors ligne sur le snapshot exact
+`c18320d`. Cette preuve partielle ne termine pas le workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -2785,3 +2786,57 @@ Le format non compris et le spike sans REQ restent refusés, les anciens fichier
 ne sont pas convertis. Aucun motif de fusion locale préalable n'est démontré par
 ce refus ; l'intégration n'est pas ajoutée par imitation des fixtures. Le
 checkpoint/rechargement après les écritures de promotion reste à raccorder.
+
+
+### L2/L3 — checkpoint de promotion : composants PASS, composition à qualifier
+
+Le nouveau binding `baseline_promotion_checkpoint` consomme trois références
+explicites : record de promotion, hook de clôture confirmé, précédent checkpoint
+terminal. L'hôte fixe authentifie leurs liens et superpose les cinq postimages
+de promotion aux trois de clôture : six chemins canoniques, aucun produit.
+L'application vérifie contexte/metadata/parent/index et grant, utilise le port Git
+borné puis le vrai rechargement terminal. Le hook final reste seul responsable
+de `baseline_promotion_completed`. Parent ou chemin étranger : refus ; grant
+perdu après Git confirmé : inconnu, faits vides, propriétaire conservé.
+
+Fichiers : `standard-baseline-promotion-checkpoint.mjs`, ses trois contrats,
+assertions d'opération, hôte/registre/pins, métadonnées/SOT du modèle, auteur et
+catalogues, fixtures et autorités documentaires. La qualification de composant
+passe en files/dual/DB-only avec autorité de clôture de fixture, sans merge local
+préalable dans ces nouveaux cas. Les refus et le défaut de confirmation sont
+séparés. L'oracle d'un test a été corrigé pour lire `checkpoint_pending`, la
+valeur réellement produite, sans modifier le runtime.
+
+Le [rapport](qualification/agentic-process/standard-promotion-checkpoint-2026-11-03.json)
+reste partiel. Le nouveau sélecteur `--standard-composed-stop=component_complete`
+prévoit la même IR jusqu'à la promotion et son hook, avec report/reprise froide,
+anciens journaux/préfixe inchangés et simulation en flux. Sa complétion signifie
+la fin du composant courant ; le catalogue impose toujours que le workflow
+standard complet n'est pas livré. Session, PR/revue/sync, reprises générales,
+autorisation native longue, hôte natif et archive restent nécessaires.
+
+
+### Qualification composée jusqu’au hook final de promotion
+
+Le sélecteur files `component_complete` passe sur le snapshot gelé `c18320d`,
+modèle révision 18, SHA `f477f03ac9b149e183083f9460831486f1b149dde00bc7a2eda8ddb2954f05a2`.
+Les ports réels exécutent démarrage, cycle, travail, validation, clôture terminale
+et promotion avec son checkpoint Git, le R05 et le véritable hook final. Le
+moteur commun enregistre 100 événements et 43 journaux d’opération : 42 résultats
+complétés et un report humain conservé. L’absence de source humaine attend sans
+mutation ni allocation ; le report n’est pas converti en succès.
+
+Après le report de clôture, un nouveau processus poursuit avec l’autorisation,
+le modèle, la clé et les budgets initiaux. Il lance seulement deux nouvelles
+activités sur transport natif simulé, après les cinq du parent. Le parent vérifie
+les journaux antérieurs et le préfixe d’événements inchangés. Les sept allocations
+simulées sont fermées. Le rejeu et les 101 snapshots de simulation en flux ont
+exactement le même état final. Les deux processus et leur nettoyage sont terminés.
+
+Le [relevé](qualification/agentic-process/standard-promotion-checkpoint-2026-11-03.json)
+conserve le SHA final et les sources exactes. La complétion concerne ce composant ;
+la clôture de session, les PR/revues/après-fusion, les autres parcours, la reprise
+générale, la réautorisation longue et la réconciliation d’effets inconnus restent
+à livrer. Humain/permissions/confinement/natif sont des fixtures ; le vérificateur
+Node et les ports applicatifs sont réels. Natif réel, archive exacte et agrégat
+ASSURED restent non qualifiés. Aucune sélection ordinaire du standard n’est activée.

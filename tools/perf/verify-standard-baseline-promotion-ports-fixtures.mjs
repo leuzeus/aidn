@@ -22,6 +22,10 @@ const mode = selected === "partial" ? "db-only" : selected === "projection" ? "d
 const finalFault = process.argv.find(value => value.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
 if (finalFault !== undefined && (!process.argv.includes("--final-hook") || !["event", "suffix", "projection", "grant_after"].includes(finalFault))) throw Error("PROMOTION_FINAL_FAULT_INVALID");
 if (process.argv.includes("--final-hook") && (!["files", "dual", "db-only"].includes(selected) || finalFault === "suffix" && mode === "files" || finalFault === "projection" && mode !== "dual")) throw Error("PROMOTION_FINAL_MODE_INVALID");
+const promotionCheckpoint = process.argv.includes("--promotion-checkpoint"), keepCycleBranch = process.argv.includes("--keep-cycle-branch");
+const checkpointFault = process.argv.find(value => value.startsWith("--promotion-checkpoint-fault="))?.slice("--promotion-checkpoint-fault=".length);
+if (checkpointFault !== undefined && (!promotionCheckpoint || mode !== "files" || !["grant_after_git", "foreign_parent", "foreign_path"].includes(checkpointFault))) throw Error("PROMOTION_CHECKPOINT_FAULT_INVALID");
+if (promotionCheckpoint && !process.argv.includes("--final-hook") || keepCycleBranch && !promotionCheckpoint) throw Error("PROMOTION_CHECKPOINT_FIXTURE_FLAGS_INVALID");
 const owned = [], temp = fs.realpathSync(os.tmpdir()), H = "a".repeat(64), op = c => "op_" + c.repeat(40);
 let completed = false;
 let checks = 0; const pass = name => { checks++; if (!process.argv.includes("--json")) console.log("PASS " + name); };
@@ -42,14 +46,14 @@ try {
   await artifacts.withLocalEffectOwner(H, async () => {
     const status = artifacts.read(cyclePath + "/status.md"), current = artifacts.read("CURRENT-STATE.md"), trace = artifacts.read(cyclePath + "/traceability.md"), runtime = artifacts.read("RUNTIME-STATE.md");
     const values = [[status, status.content.replace(/^state:.*$/m, "state: DONE").replace(/^usage_matrix_state:.*$/m, "usage_matrix_state: VERIFIED")],
-      [current, current.content.replace(/^active_cycle:.*$/m, "active_cycle: none").replace(/^cycle_branch:.*$/m, "cycle_branch: none").replace(/^branch_kind:.*$/m, "branch_kind: session")],
+      [current, current.content.replace(/^active_cycle:.*$/m, "active_cycle: none").replace(/^cycle_branch:.*$/m, "cycle_branch: none").replace(/^branch_kind:.*$/m, "branch_kind: " + (keepCycleBranch ? "cycle" : "session"))],
       [trace, "# Traceability\n\n| REQ | TEST | Evidence |\n| REQ-001 | TEST-001 | fixture completion precondition |\n"],
       [runtime, runtime.content.replace(/^repair_layer_status:.*$/m, "repair_layer_status: ok").replace(/^current_state_freshness:.*$/m, "current_state_freshness: ok")]];
     for (const [row, after] of values) artifacts.compareAndSwapPreservingMetadata({ path: row.path, before_sha256: row.sha256, before_metadata_sha256: artifacts.metadataHash(row.path), after });
     artifacts.project(values.map(([row]) => row.path)); return { effect_status: "confirmed" };
   });
   git("add", "."); git("commit", "--allow-empty", "-m", "fixture terminal and review preconditions");
-  const retainedBranch = git("branch", "--show-current"); git("switch", "S001-promotion"); git("merge", "--ff-only", retainedBranch);
+  const retainedBranch = git("branch", "--show-current"); if (!keepCycleBranch) { git("switch", "S001-promotion"); git("merge", "--ff-only", retainedBranch); }
   const productHash = () => artifactContentHash(fs.readFileSync(product));
   const request = { contract_version: "standard-baseline-promotion-request.v1", decision_operation_id: op("b"), closure_operation_id: op("a"), instance_id: "fixture", scope_id: "fixture", cycle_id: "C001", cycle_path: cyclePath,
     product_sha256: productHash(), baseline_sha256: artifacts.read("baseline/current.md").sha256, history_sha256: artifacts.read("baseline/history.md").sha256, version: "v0.3", summary: "Explicit fixture promotion request", evidence_refs: [{ ref: "fixture:operator", sha256: H }] };
@@ -115,9 +119,9 @@ try {
     }
   }
   if (process.argv.includes("--final-hook")) {
-    assert.equal(result?.outcome, "completed"); await verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault: finalFault });
-    pass(finalFault ? "actual checkpoint with lost confirmation retains unknown effects and prevents another checkpoint" : "actual selected promotion checkpoint and five completion writes preserve append-only history and cannot repeat");
+    assert.equal(result?.outcome, "completed"); await verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault: finalFault, promotionCheckpoint, checkpointFault });
+    pass(checkpointFault ? "promotion checkpoint refusal or unknown effect cannot complete the promotion skill" : finalFault ? "actual checkpoint with lost confirmation retains unknown effects and prevents another checkpoint" : "actual selected promotion checkpoint and five completion writes preserve append-only history and cannot repeat");
   }
   completed = true;
-  console.log(JSON.stringify({ status: "PASS", checks, mode: selected, proof: "canonical-baseline-promotion-component", human_and_closure_authority: "fixture", common_process_host: "NOT_RUN", final_hook_fault: finalFault ?? null, promotion_final_hook: process.argv.includes("--final-hook") ? "actual-application-component" : "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+  console.log(JSON.stringify({ status: "PASS", checks, mode: selected, proof: "canonical-baseline-promotion-component", human_and_closure_authority: "fixture", common_process_host: "NOT_RUN", promotion_checkpoint: promotionCheckpoint ? "actual-application-component" : "NOT_RUN", cycle_branch_retained: keepCycleBranch, promotion_checkpoint_fault: checkpointFault ?? null, final_hook_fault: finalFault ?? null, promotion_final_hook: process.argv.includes("--final-hook") && !checkpointFault ? "actual-application-component" : "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
 } finally { if (!completed && process.argv.includes("--retain-on-failure")) { console.error(JSON.stringify({ proof_class: "offline-diagnostic-only", retained_business_roots: owned })); } else for (const folder of owned) { const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); } }

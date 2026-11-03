@@ -1,3 +1,5 @@
+import { createStandardBaselinePromotionCheckpoint } from "../../src/application/runtime/standard-baseline-promotion-checkpoint.mjs";
+import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -8,7 +10,7 @@ import { baselinePromotionPaths } from "../../src/core/workflow/standard-baselin
 import { runPromoteBaselineCheckpointUseCase } from "../../src/application/runtime/promote-baseline-checkpoint-use-case.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
-export async function verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault }) {
+export async function verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault, promotionCheckpoint = false, checkpointFault }) {
   const recordId = "op_" + "c".repeat(40), hookId = "op_" + "d".repeat(40), input = { record_operation_id: recordId };
   const eventFile = path.join(root, ".aidn/runtime/perf/workflow-events.ndjson"), events = () => fs.existsSync(eventFile) ? fs.readFileSync(eventFile) : Buffer.alloc(0);
   let checkpointCalls = 0; const write = fs.writeFileSync;
@@ -27,8 +29,56 @@ export async function verifyBaselinePromotionHook({ root, mode, artifacts, promo
       }
       return observed;
     } });
+  if (promotionCheckpoint) {
+    const id = "op_" + "e".repeat(40), checkpointInput = { record_operation_id: recordId, closure_operation_id: preview.plan.request.closure_operation_id,
+      terminal_checkpoint_operation_id: "op_" + "f".repeat(40) };
+    // Fixture authority attests the prepared closure/parent. Actual full-host
+    // provenance is a separate composed-model qualification.
+    const approved = [...baselinePromotionPaths, preview.plan.request.cycle_path + "/status.md"].sort().map(path => ({ path, sha256: artifacts.read(path).sha256 }));
+    const material = { request: preview.plan.request, session_id: "S001", source_material_sha256: shadowHash({ plan: preview.plan, output: result }),
+      record_context_sha256: result.observations.causal_transition.after_context_sha256,
+      completion_boundary_sha256: result.observations.causal_transition.completion_boundary_sha256, parent_head: git("rev-parse", "HEAD"), approved_postimages: approved };
+    const checkpoint = createStandardBaselinePromotionCheckpoint({ targetRoot: root, promotion, readCurrent: () => instance, readSource: async () => structuredClone(material) });
+    const cachePath = path.join(root, ".aidn/runtime/cache/reload-state.json"), cacheBytes = () => fs.existsSync(cachePath) ? fs.readFileSync(cachePath) : null;
+    const beforeHead = git("rev-parse", "HEAD"), beforeCache = cacheBytes();
+    if (checkpointFault === "foreign_parent" || checkpointFault === "foreign_path") {
+      if (checkpointFault === "foreign_parent") git("commit", "--allow-empty", "-m", "fixture foreign checkpoint parent");
+      else fs.writeFileSync(path.join(root, "foreign.txt"), "Unapproved fixture postimage\n");
+      const foreignHead = git("rev-parse", "HEAD");
+      if (checkpointFault === "foreign_parent") {
+        const denied = await checkpoint.prepare(instance, checkpointInput, id);
+        assert.equal(denied.can_apply, false); assert.equal(denied.reason_code, "STANDARD_PROMOTION_CHECKPOINT_GIT_REQUIRED");
+      } else await assert.rejects(checkpoint.prepare(instance, checkpointInput, id), error => typeof error.code === "string" && /(?:SCOPE|PATH|FOREIGN|UNAPPROVED)/.test(error.code));
+      assert.equal(git("rev-parse", "HEAD"), foreignHead); assert.equal(artifacts.ownerPending(), false); assert.equal(checkpointCalls, 0);
+      assert.match(artifacts.read("CURRENT-STATE.md").content, /^baseline_promotion_status: checkpoint_pending$/m); return;
+    }
+    const preparedCheckpoint = await checkpoint.prepare(instance, checkpointInput, id);
+    assert.equal(preparedCheckpoint.can_apply, true, JSON.stringify(preparedCheckpoint));
+    assert.equal(git("rev-parse", "HEAD"), beforeHead); assert.deepEqual(cacheBytes(), beforeCache);
+    await assert.rejects(checkpoint.apply(instance, preparedCheckpoint, { write: true, expectPlan: preparedCheckpoint.plan_sha256,
+      assertAuthorized: () => { throw Object.assign(Error("fixture denied checkpoint"), { code: "FIXTURE_CHECKPOINT_DENIED" }); } }), { code: "FIXTURE_CHECKPOINT_DENIED" });
+    assert.equal(artifacts.ownerPending(), false); assert.equal(git("rev-parse", "HEAD"), beforeHead);
+    let checkpointGrants = 0;
+    const checked = await checkpoint.apply(instance, preparedCheckpoint, { write: true, expectPlan: preparedCheckpoint.plan_sha256, assertAuthorized() {
+      if (checkpointFault === "grant_after_git" && ++checkpointGrants === 5) throw Object.assign(Error("fixture denied after confirmed Git"), { code: "FIXTURE_CHECKPOINT_GRANT_AFTER_GIT", effect_status: "no_effect" });
+    } });
+    if (checkpointFault === "grant_after_git") {
+      assert.equal(checked.outcome, "reconciliation_required", JSON.stringify(checked)); assert.equal(checked.effect_status, "unknown"); assert.deepEqual(checked.facts, {});
+      assert.equal(artifacts.ownerPending(), true); assert.notEqual(git("rev-parse", "HEAD"), beforeHead); assert.equal(checkpointCalls, 0);
+      assert.deepEqual(cacheBytes(), beforeCache); assert.match(artifacts.read("CURRENT-STATE.md").content, /^baseline_promotion_status: checkpoint_pending$/m);
+      return;
+    }
+    assert.equal(checked.outcome, "completed", JSON.stringify(checked));
+    assert.equal(checked.facts.baseline_checkpoint_completed, true); assert.equal(checked.facts.baseline_promotion_completed, false);
+    assert.equal(artifacts.ownerPending(), false); assert.equal(git("status", "--porcelain"), "");
+    const confirmedHead = git("rev-parse", "HEAD");
+    await assert.rejects(checkpoint.apply(instance, preparedCheckpoint, { write: true, expectPlan: preparedCheckpoint.plan_sha256, assertAuthorized() {} }));
+    assert.equal(git("rev-parse", "HEAD"), confirmedHead);
+    completeDriftCheckFixture(root); // Component preparation, not a model-driven R05 diagnostic.
+  }
   let prepared = await hook.prepare(instance, input, hookId);
   if (!prepared.can_apply) {
+    assert.equal(promotionCheckpoint, false, "governed checkpoint must not fall back to manual fixture Git/reload");
     assert.equal(prepared.reason_code, "STANDARD_PROMOTION_HOOK_GATE_REQUIRED");
     // Explicit external fixture preconditions; the full standard IR must model
     // their wait/retry route instead of treating this helper as orchestration.

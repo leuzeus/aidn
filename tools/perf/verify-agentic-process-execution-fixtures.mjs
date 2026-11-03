@@ -78,7 +78,7 @@ if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-o
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const standardComposedStop = process.argv.find(value => value.startsWith("--standard-composed-stop="))?.slice("--standard-composed-stop=".length) ?? "plan";
-if (!["plan", "cycle_admit", "closure_decide", "promotion_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
+if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
@@ -683,7 +683,8 @@ if (process.argv[2] === "--mixed-continue") {
       verify: options => sourceFile ? closureHumanSource(sourceFile).verify(options) : { outcome: "unverified" } };
     const resumed = standardComposedResume ? JSON.parse(fs.readFileSync(standardComposedResume, "utf8")) : null;
     const factory = standardComposedResume ? (_mode, options) => restoreComposedFixture(resumed, options) : mixedFixture;
-    const runsClosure = standardComposedStop === "promotion_decide";
+    const runsPromotion = standardComposedStop === "component_complete";
+    const runsClosure = runsPromotion || standardComposedStop === "promotion_decide";
     const runsCycle = runsClosure || standardComposedStop === "closure_decide";
     const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
@@ -745,7 +746,9 @@ if (process.argv[2] === "--mixed-continue") {
     const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
     let childNativeSessions = 0, coldContinuation = false;
     for (let step = 0; step < 64; step++) {
-      const state = f.open().inspect(), frame = state.cursor.occurrences.find(row => row.status === "READY")
+      const state = f.open().inspect();
+      if (runsPromotion && state.cursor.status === "COMPLETED") break;
+      const frame = state.cursor.occurrences.find(row => row.status === "READY")
         ?? state.cursor.occurrences.find(row => row.status === "WAITING" && row.operation?.receipt?.outcome === "deferred");
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
@@ -758,6 +761,16 @@ if (process.argv[2] === "--mixed-continue") {
             ref = "standard-mode";
             claim = { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "standard-mode-committing",
               subject_sha256: "a".repeat(64), question_sha256: shadowHash(result.question), choice: "COMMITTING", evidence_refs: [{ ref: "fixture:operator-mode", sha256: "a".repeat(64) }] };
+          } else if (binding === "baseline_promotion_decision") {
+            assert.ok(runsPromotion); assert.ok(result.question.choices.includes("promote"));
+            const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
+            assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "missing", write: true })).status, "waiting_for_human");
+            assert.equal(f.open().inspect().record.instance_sha256, beforeWait); assert.equal(f.t.sessions.length, nativeCount);
+            ref = "promotion_" + result.operation_id;
+            claim = { contract_version: "human-baseline-promotion-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+              source_event_id: "standard:" + ref, subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice: "promote",
+              rationale: "Explicit fixture choice after confirmed retained closure", promotion: { version: "v0.3", summary: "Retain the verified fixture outcome" },
+              evidence_refs: [{ ref: "fixture:operator-promotion", sha256: "a".repeat(64) }] };
           } else {
             assert.equal(binding, "cycle_closure_decision"); assert.ok(runsClosure);
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -793,7 +806,7 @@ if (process.argv[2] === "--mixed-continue") {
           const reports = child.stdout.split(/\r?\n/).filter(line => line.startsWith("{")).map(line => JSON.parse(line));
           const proof = reports.find(row => row.standard_composed_proof === true);
           assert.ok(proof); assert.equal(proof.native_prior_results, beforeNative); assert.equal(proof.cold_resume, true);
-          childNativeSessions = proof.native_sessions_started; assert.equal(childNativeSessions, 1); coldContinuation = true;
+          childNativeSessions = proof.native_sessions_started; assert.equal(childNativeSessions, runsPromotion ? 2 : 1); coldContinuation = true;
           f.reopen();
           for (const item of retained) assert.equal(shadowHash(f.open().readOperation(item.id)), item.sha256);
           const afterChild = f.open().inspect(); assert.deepEqual(afterChild.record.events.slice(0, waiting.record.events.length), waiting.record.events);
@@ -807,18 +820,19 @@ if (process.argv[2] === "--mixed-continue") {
       }
     }
     const final = f.open().inspect();
-    assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
+    if (runsPromotion) assert.equal(final.cursor.status, "COMPLETED");
+    else assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
     const acceptedOperations = final.record.events.filter(event => event.kind === "operation_intent").map(event => f.open().readOperation(event.intent.operation_id));
     const last = binding => acceptedOperations.filter(row => row.intent.binding_ref === binding).at(-1)?.results.at(-1)?.output;
     assert.equal(last("drift_check_finalize").facts.drift_check_completed, true);
     if (standardComposedStop !== "cycle_admit") assert.equal(last("cycle_checkpoint_finalize").outcome, "completed");
-    const expectedNative = runsClosure ? 6 : runsCycle ? 5 : standardComposedStop === "plan" ? 2 : 1;
+    const expectedNative = runsPromotion ? 7 : runsClosure ? 6 : runsCycle ? 5 : standardComposedStop === "plan" ? 2 : 1;
     assert.equal(f.t.sessions.length + childNativeSessions, expectedNative - priorNativeResults); assert.ok(f.t.sessions.every(row => row.closed));
     if (runsCycle) {
       for (const binding of ["cycle_plan_record", "cycle_implementation_enter", "cycle_validation_execute", "cycle_task_advance", "cycle_verification_enter", "cycle_audit_evaluate"])
         assert.equal(last(binding)?.outcome, "completed");
-      assert.equal(final.cursor.status, "RUNNING");
+      assert.equal(final.cursor.status, runsPromotion ? "COMPLETED" : "RUNNING");
       if (!runsClosure) assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "cycle_closure_decision").length, 0);
     }
     if (runsClosure) {
@@ -826,9 +840,16 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("cycle_terminal_checkpoint").facts.cycle_terminal_checkpoint_completed, true);
       assert.equal(last("cycle_terminal_checkpoint").facts.cycle_close_completed, false);
       assert.equal(last("cycle_close_finalize").facts.cycle_close_completed, true); assert.equal(last("cycle_close_finalize").facts.cycle_retained, true);
-      assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "baseline_promotion_decision").length, 0);
+      if (!runsPromotion) assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "baseline_promotion_decision").length, 0);
       assert.ok(acceptedOperations.some(row => row.intent.binding_ref === "cycle_closure_decision" && row.results.at(-1).output.outcome === "deferred"));
       if (!resumed) assert.equal(coldContinuation, true);
+    }
+    if (runsPromotion) {
+      assert.equal(last("baseline_promotion_record").facts.baseline_recorded, true);
+      assert.equal(last("baseline_promotion_checkpoint").facts.baseline_checkpoint_completed, true);
+      assert.equal(last("baseline_promotion_checkpoint").facts.baseline_promotion_completed, false);
+      assert.equal(last("baseline_promotion_finalize").facts.baseline_promotion_completed, true);
+      assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;
     for (const row of iterateAgenticProcessSimulation({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins,
@@ -840,7 +861,7 @@ if (process.argv[2] === "--mixed-continue") {
     console.log(JSON.stringify({ standard_composed_proof: true, model_sha256: final.record.model_sha256, instance_sha256: final.record.instance_sha256,
       events: final.record.events.length, application_operations: acceptedOperations.length, native_sessions_started: f.t.sessions.length,
       native_sessions_started_in_child: childNativeSessions, native_prior_results: priorNativeResults, cold_resume: Boolean(resumed),
-      cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: standardComposedStop, workflow_status: final.cursor.status, model_calls: 0,
+      cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: runsPromotion ? null : standardComposedStop, component_completed: runsPromotion, full_standard_workflow: false, workflow_status: final.cursor.status, model_calls: 0,
       verification_boundary: runsCycle ? "fixture-with-actual-Node-check" : "not-used", human_and_effect_authority: "fixture", replay_exact: true }));
   });
   await check("cycle closure contract: typed review and authenticated inbox preserve pending lifecycle", () => {

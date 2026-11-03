@@ -1,3 +1,5 @@
+import { createStandardBaselinePromotionCheckpoint } from "./standard-baseline-promotion-checkpoint.mjs";
+import { baselinePromotionPaths } from "../../core/workflow/standard-baseline-promotion.mjs";
 import { createStandardCycleTerminalCheckpoint } from "./standard-cycle-terminal-checkpoint.mjs";
 import { createStandardWorkflowGitCheckpoint } from "./standard-workflow-git-checkpoint.mjs";
 import { createStandardBaselinePromotionHook } from "./standard-baseline-promotion-hook.mjs";
@@ -206,6 +208,31 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       fail("STANDARD_PROMOTION_HOOK_RECORD_REQUIRED");
     return { record_operation_id: selected.record.operation_id, plan, output: selected.output };
   }
+  async function readAcceptedPromotionCheckpointSource(instance, input) {
+    const promoted = await readAcceptedBaselineRecord(instance, { record_operation_id: input.record_operation_id });
+    const closure = acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize"), closedPlan = closure.record.preview.prepared.plan;
+    const checkpoint = acceptedForPromotion(instance, input.terminal_checkpoint_operation_id, "cycle_terminal_checkpoint"), checkpointPlan = checkpoint.record.preview.prepared.plan;
+    if (promoted.plan.request.closure_operation_id !== input.closure_operation_id
+      || closedPlan.input.closure_operation_id !== checkpointPlan.input.closure_operation_id
+      || checkpointPlan.cycle_id !== promoted.plan.request.cycle_id || checkpointPlan.cycle_path !== promoted.plan.request.cycle_path
+      || closure.output.effect_status !== "confirmed" || closure.output.facts.cycle_close_completed !== true || closure.output.facts.cycle_retained !== true
+      || checkpoint.output.effect_status !== "confirmed" || checkpoint.output.facts.cycle_terminal_checkpoint_completed !== true
+      || checkpointPlan.target_state !== "DONE") fail("STANDARD_PROMOTION_CHECKPOINT_PROVENANCE_REQUIRED");
+    const approved = new Map();
+    for (const ref of closure.output.evidence_refs) if (ref.ref.startsWith("docs/audit/")) approved.set(ref.ref.slice(11), ref.sha256);
+    for (const row of promoted.plan.changes) approved.set(row.path, row.after_sha256);
+    const expected = [...baselinePromotionPaths, promoted.plan.request.cycle_path + "/status.md"].sort();
+    if (shadowHash([...approved.keys()].sort()) !== shadowHash(expected)) fail("STANDARD_PROMOTION_CHECKPOINT_POSTIMAGES_REQUIRED");
+    const git = checkpoint.output.observations.git;
+    return { request: promoted.plan.request, session_id: checkpointPlan.session_id,
+      source_material_sha256: shadowHash({ promoted, closure: { plan: closedPlan, output: closure.output }, checkpoint: { plan: checkpointPlan, output: checkpoint.output } }),
+      record_context_sha256: promoted.output.observations.causal_transition.after_context_sha256,
+      completion_boundary_sha256: promoted.output.observations.causal_transition.completion_boundary_sha256,
+      parent_head: git.commit_sha ?? git.head, approved_postimages: [...approved.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([path, sha256]) => ({ path, sha256 })) };
+  }
+  const baselinePromotionCheckpoint = processAuthority && model.nodes.some(node => node.binding_ref === "baseline_promotion_checkpoint")
+    ? createStandardBaselinePromotionCheckpoint({ targetRoot, now, readSource: readAcceptedPromotionCheckpointSource,
+      promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
   const baselinePromotionHook = processAuthority ? createStandardBaselinePromotionHook({ targetRoot, now,
     readRecorded: readAcceptedBaselineRecord, promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
 
@@ -511,7 +538,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const resolved = resolveStandardProcessInput({ instance: state.record, occurrenceId, input, readOperation: id => retained(id).record });
       input = resolved.input;
       assertStandardOperationInput(binding.id, input);
-      const prepared = binding.id === "cycle_terminal_checkpoint" ? await terminalCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_TERMINAL_CHECKPOINT_AUTHORITY_REQUIRED")
+      const prepared = binding.id === "baseline_promotion_checkpoint" ? await baselinePromotionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_CHECKPOINT_AUTHORITY_REQUIRED")
+        : binding.id === "cycle_terminal_checkpoint" ? await terminalCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_TERMINAL_CHECKPOINT_AUTHORITY_REQUIRED")
         : binding.id === "session_git_checkpoint" ? await sessionGitCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
@@ -619,7 +647,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_mode_apply") {
           if (shadowHash(decisionInput(state.record, record.preview.input)) !== shadowHash(record.preview.prepared.plan.input)) fail("STANDARD_MODE_DECISION_CHANGED");
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
-        } else if (record.intent.binding_ref === "cycle_terminal_checkpoint") output = await terminalCheckpoint.apply(state.record, record.preview.prepared,
+        } else if (record.intent.binding_ref === "baseline_promotion_checkpoint") output = await baselinePromotionCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "cycle_terminal_checkpoint") output = await terminalCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_git_checkpoint") output = await sessionGitCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

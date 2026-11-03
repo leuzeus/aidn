@@ -1358,3 +1358,47 @@ remain readable. The contract fixtures now compare these identifiers explicitly.
 The reviewed binding refresh records new source revisions rather than silently
 repairing stored process instances. This metadata correction is separate from
 business-path, real-native and installed-archive qualification.
+
+
+## Addendum: promotion checkpoint from three authenticated predecessors
+
+The composed component now places deterministic `baseline_promotion_checkpoint`
+after the pending promotion record and before promotion R05/final hook. Its three
+input IDs identify the accepted promotion, completed cycle-close hook and prior
+terminal Git checkpoint. A fixed host reader authenticates their same-instance
+membership and source links. The latest five promotion postimages overlay the
+three cycle-close postimages, yielding exactly six canonical paths: baseline,
+history, index, snapshot, CURRENT-STATE and the terminal cycle status.
+
+The application binds the original recorded context, metadata, prior Git parent,
+index and projections in a closed leased plan with explicit write/hash/grant.
+It reuses the finite approved terminal profile; the default session profile is
+unchanged. Foreign paths/parents refuse. Confirmed Git and cache readback use
+the actual local port and reload, including bounded terminal-cycle completion
+when on its branch. DB-only does not export detailed canonical projections.
+The checkpoint leaves baseline promotion incomplete until the actual final hook.
+Confirmed Git dominates later no-effect permission errors: unknown keeps empty
+facts and the owner. General reconciliation remains a separate deliverable.
+
+Files, dual and DB-only components pass with fixture closure authority; denied
+writes, foreign parent/path and lost permission after Git are checked separately.
+The published-model qualification is still distinct. Its new targeted scenario
+continues the existing deferred/cold-resumed cycle through an explicit promotion
+choice and these actual ports. A completed component still has a closed catalog
+requiring `complete_standard_workflow: false`; session closure, PR/review/merge,
+synchronization, other paths, real native and installed archive remain required.
+
+### Frozen composed promotion proof (2026-11-03)
+
+The files selector now passes on snapshot `c18320d`: the same published partial
+revision-18 IR drives actual application ports through promotion's governed Git
+checkpoint, R05 and real final hook. There are 100 events, 43 operation records
+(42 completed, one deferred) and seven fake-wire activities, five before cold
+continuation and two after it. Prior journals/event prefix and the original
+authorization/budget remain unchanged. Execution, replay and 101 streamed
+simulation states agree exactly; both processes and cleanup are terminal.
+
+This qualifies the bounded component with fixture human/effect/native authority,
+not a full standard workflow or real native/installed-archive delivery. The
+catalog's incomplete scope and ordinary selection are unchanged. The exact
+source/model/final hashes and negative component cases remain in the evidence.

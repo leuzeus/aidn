@@ -264,7 +264,7 @@ not_requested is a recorded choice, never promotion completion or a rule waiver.
 
 The [standard model](../../package/catalogs/process-models/aidn-standard.v1.json)
 and its [catalog](../../package/catalogs/standard-workflow.v1.json) now compose
-73 nodes and 41 operation occurrences through the existing reducer and
+74 nodes and 42 operation occurrences through the existing reducer and
 [application loader](../../src/application/runtime/standard-workflow-composition.mjs).
 The catalog pins real bindings, SPEC and skills and declares typed native reports.
 Its closed contract still requires `complete_standard_workflow: false`.
@@ -277,7 +277,7 @@ It does not replace ordinary workflow selection.
 | `task_loop`, `task_iteration`, `final_verification` | Common loop reducer and real task/validation/progress ports | One-task files path PASS with fake wire and fixture verification boundary; multi-task, other stores, work drift and incidents remain |
 | `audit_select`, `audit_review`, `audit_evaluate` | Selected scoped audit and authenticated evaluation | Files composed prefix PASS; real native/other stores remain |
 | `closure_decide`, `close_record`, `cycle_terminal_checkpoint`, `close_finalize` | Authenticated decision, six terminal CAS, captured-postimage Git/reload and actual final hook | Files deferred/cold-resume path PASS on recorded revision 15; composed other stores, native and archive remain |
-| `promotion_eligibility`, `promotion_decide`, `promotion_route`, `promotion_record`, `promotion_finalize` | Only a retained cycle enters optional promotion; authenticated request, five CAS and checkpoint components | Local integration and promotion Git/reload remain fixture preparations, not composed business proof |
+| `promotion_eligibility`, `promotion_decide`, `promotion_route`, `promotion_record`, `promotion_checkpoint`, `promotion_finalize` | Only a retained cycle enters optional promotion; authenticated request, five CAS, governed Git/reload, R05 and actual final hook | Frozen revision-18 composed files path PASS after deferral/cold continuation; components PASS in three stores; native and exact archive remain |
 
 The empty `promotion_not_requested` branch carries no baseline completion fact.
 Empty v2 structural sequences require no dummy reload or model call. Unknown
@@ -382,3 +382,28 @@ the sixth native activity; the parent verifies unchanged prior operation journal
 and event prefix. Streamed replay has 87 exact snapshots. Cleanup and both process
 exits completed. This proves the bounded component, not promotion admission or
 the full standard workflow; native and archive qualification remain open.
+<<<<<<< HEAD
+=======
+
+
+`promotion_checkpoint` now binds three predecessor operation IDs explicitly.
+The host authenticates promotion, completed retention and the prior Git receipt;
+its approved set is six canonical postimages, with no product path supplied by
+process JSON. The same local port handles the exact commit and terminal reload.
+Foreign scope/parent and post-commit permission loss cannot produce promotion
+completion. The [component record](../qualification/agentic-process/standard-promotion-checkpoint-2026-11-03.json)
+separates fixture authority, actual Git/cache/final-hook effects and pending common
+host/native/archive evidence. The future session/PR tail remains outside this
+partial component even when its process status becomes COMPLETED.
+
+
+The frozen revision-18 composed files path now passes through promotion finalization:
+100 events, 43 operation journals (42 completed and one deferred), then exact
+replay and 101 streamed simulation snapshots with the common reducer. Cold
+continuation preserves prior journals, event prefix and original authorization;
+the parent starts five fake-wire activities and the child only two. All allocations
+close and both processes/cleanup finish. Human/grant/native containment remain
+fixtures; application ports and the Node verifier are actual. This is partial
+component completion; session/PR/post-merge, real native and exact archive remain open.
+See the promotion qualification record for the frozen model/source/final hashes.
+>>>>>>> 8d29f5d (feat: checkpoint baseline promotion from standard IR)

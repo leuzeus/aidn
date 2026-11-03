@@ -91,9 +91,11 @@ seq("promotion_choice", ["promotion_decide", "promotion_route"]);
 seq("promotion_inapplicable", []);
 op("promotion_decide", "baseline_promotion_decision", { contract_version: { source: "literal", value: "standard-baseline-promotion-review-input.v1" }, ...operation("promotion_decide", "closure_operation_id", "close_finalize") });
 xor("promotion_route", [["requested", "promotion", "baseline_promotion_requested"], ["not_requested", "promotion_not_requested", "baseline_promotion_not_requested"]]);
-seq("promotion", ["promotion_record", "promotion_finalize"]);
+seq("promotion", ["promotion_record", "promotion_checkpoint", "promotion_finalize"]);
 seq("promotion_not_requested", []);
 op("promotion_record", "baseline_promotion_record", operation("promotion_record", "decision_operation_id", "promotion_decide"));
+op("promotion_checkpoint", "baseline_promotion_checkpoint", { ...operation("promotion_checkpoint", "record_operation_id", "promotion_record"),
+  ...operation("promotion_checkpoint", "closure_operation_id", "close_finalize"), ...operation("promotion_checkpoint", "terminal_checkpoint_operation_id", "cycle_terminal_checkpoint") });
 op("promotion_finalize", "baseline_promotion_finalize", operation("promotion_finalize", "record_operation_id", "promotion_record"));
 
 // A diagnostic never acknowledges R05 by itself. The real finalizer checks the
