@@ -5,7 +5,9 @@ import { verifyCycleVerificationEntry } from "./cycle-verification-fixture-lib.m
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import os from "node:os";
+import { spawnSync, execFileSync } from "node:child_process";
+import { runPromoteBaselineAdmitUseCase } from "../../src/application/runtime/promote-baseline-admit-use-case.mjs";
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createProjectArtifactStore } from "../../src/application/runtime/project-artifact-store-service.mjs";
@@ -80,6 +82,34 @@ export async function verifyCyclePlanningContracts(check) {
     const markdown = rendered["cycles/C001-feature-plan/plan.md"], scopes = [...markdown.matchAll(/```json\n([^]*?)\n```/g)];
     assert.equal(scopes.length, 1); assert.deepEqual(JSON.parse(scopes[0][1]).tasks[0], { task: p.tasks[0].task, intent: "implementation", paths: p.tasks[0].paths });
     assert.match(rendered["cycles/C001-feature-plan/traceability.md"], /no test execution or acceptance is claimed/);
+  });
+  await check("cycle plan contract renderer remains consumable by actual promotion admission without claiming execution", async () => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-plan-trace-")), cyclePath = "cycles/C001-feature-plan";
+    const audit = path.join(target, "docs/audit"), cycle = path.join(audit, cyclePath);
+    try {
+      fs.mkdirSync(cycle, { recursive: true });
+      execFileSync("git", ["-c", "init.templateDir=", "init", "--quiet", "--initial-branch=S001-plan-trace", target], { windowsHide: true, stdio: "pipe" });
+      fs.writeFileSync(path.join(audit, "CURRENT-STATE.md"), "active_session: S001\nactive_cycle: none\nmode: COMMITTING\n");
+      fs.writeFileSync(path.join(cycle, "status.md"), "cycle_id: C001\nstate: DONE\nbranch_name: C001-feature-plan\nsession_owner: S001\nusage_matrix_scope: local\n");
+      fs.writeFileSync(path.join(cycle, "gap-report.md"), "# Gap report\n\nNo open gaps in this admission fixture.\n");
+      const brief = fs.readFileSync(new URL("../../scaffold/docs_audit/cycles/TEMPLATE_brief.md", import.meta.url), "utf8");
+      const file = path.join(cycle, "traceability.md"), trace = renderStandardCyclePlan(proposal, cyclePath, { "brief.md": brief })[cyclePath + "/traceability.md"];
+      fs.writeFileSync(file, trace); const before = fs.readFileSync(file);
+      const result = await runPromoteBaselineAdmitUseCase({ targetRoot: target, mode: "COMMITTING", cycleId: "C001" });
+      assert.equal(result.action, "promote_baseline_allowed", JSON.stringify(result)); assert.ok(fs.readFileSync(file).equals(before));
+      assert.match(trace, /planned/); assert.match(trace, /no test execution or acceptance is claimed/);
+      const listsOnly = trace.replace(/\| REQ \| TEST \| Status \|\n\|---\|---\|---\|\n[^]*?(?=\n\n)/, "");
+      fs.writeFileSync(file, listsOnly);
+      assert.equal((await runPromoteBaselineAdmitUseCase({ targetRoot: target, cycleId: "C001" })).reason_code, "PROMOTE_BASELINE_TRACEABILITY_INCOMPLETE");
+      const spike = structuredClone(proposal); spike.cycle_type = "spike"; spike.requirements = []; spike.tasks[0].requirement_refs = []; spike.tests[0].requirement_refs = [];
+      spike.spike = { learning_goal: "Observe behavior", timebox: "One hour", decision_target: "Retain or discard" };
+      fs.writeFileSync(file, renderStandardCyclePlan(spike, cyclePath, { "brief.md": brief })[cyclePath + "/traceability.md"]);
+      assert.equal((await runPromoteBaselineAdmitUseCase({ targetRoot: target, cycleId: "C001" })).reason_code, "PROMOTE_BASELINE_TRACEABILITY_INCOMPLETE");
+    } finally {
+      const physical = fs.realpathSync(target);
+      if (path.dirname(physical) !== fs.realpathSync(os.tmpdir()) || !path.basename(physical).startsWith("aidn-plan-trace-")) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID");
+      fs.rmSync(physical, { recursive: true, force: true });
+    }
   });
 }
 

@@ -2415,3 +2415,14 @@ claimed. The composed selector uses that iterator for exact replay/simulation.
 The [recorded qualification](qualification/agentic-process/standard-terminal-checkpoint-2026-11-03.json)
 keeps the earlier aggregate trace-limit failure and exact streamed recovery
 separate from the corrected full-harness result, real native and installed archive.
+
+
+### Planned traceability producer and promotion reader
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-plan-mode=contract`
+includes a producer/consumer regression: the real plan renderer writes canonical
+planned REQ/TEST links, and actual promotion admission reads them on a disposable
+Git root. It verifies read-only behavior, unsupported-list refusal and a spike
+with no fabricated production REQ. The fixture's DONE state is setup; this test
+proves format compatibility only. It does not prove test execution, retention,
+cycle-close completion, composed promotion or native/installed behavior.

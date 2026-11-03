@@ -1328,3 +1328,21 @@ bytes/event prefix and reproduces the final hash with 87 streamed snapshots.
 It stops before promotion admission, with a partial component and workflow RUNNING.
 Both process exits and owned cleanup completed. Native/grant/human/boundary
 capabilities remain fixtures; no real-native or installed-archive claim follows.
+
+
+## Addendum: canonical planned traceability matrix
+
+The standard plan renderer now emits planned REQ/TEST table links derived from
+its validated requirement and test references. Existing canonical promotion
+admission requires those matrix headers. The earlier lists and JSON verification
+sections preserved evidence but did not satisfy that reader. The admission is
+unchanged; the table keeps `planned` and the explicit absence of execution or
+acceptance at planning time. Verification, independent audit, human retention and
+confirmed final hooks remain distinct later evidence. No requirement is invented
+for a spike lacking production REQs. Historical records are not rewritten.
+
+A producer-to-admission fixture uses a real disposable Git root and the actual
+read-only promotion use case to test this representation boundary. It keeps the
+unsupported lists and requirement-free spike refusals. Its DONE state is fixture
+setup, not a cycle execution or composed promotion qualification. The native and
+installed-archive evidence and promotion Git/reload path remain open.

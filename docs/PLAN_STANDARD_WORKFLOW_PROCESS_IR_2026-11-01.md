@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant le lot terminal : `9f86737`. Le lot en cours révise explicitement
-les composants startup/cycle en 73/71 et le modèle composé en 15 (73 nœuds,
+les composants startup/cycle en 74/72 et le modèle composé en 16 (73 nœuds,
 41 occurrences, 40 bindings). Les preuves conservent leurs snapshots exacts ;
 le modèle standard complet reste à livrer.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -2770,3 +2770,18 @@ la session propriétaire sélectionnée jusqu'à confirmation, refuser les cycle
 sans décision et les reports périmés. Intégration, push, revue/fusion et sync
 restent des opérations distinctes. Les chemins session/cycle existants, autres
 modes, incidents et véritables ports natifs/package restent requis.
+
+
+### L3 — format de traçabilité planifiée : raccordement producteur/lecteur
+
+Le contrôle de promotion du cycle effectivement clôturé refuse le format à listes
+produit par le plan : les liens REQ/TEST et les preuves JSON sont présents, mais
+l'admission attend les en-têtes de matrice canoniques. La correction du producteur
+ajoute cette matrice à partir des seules références validées, avec état `planned`
+et absence explicite d'acceptation à la planification. L'admission reste intacte.
+Le test croisé renderer → véritable admission est hors ligne, sur racine Git
+jetable, avec état DONE de fixture ; il ne vaut pas parcours de promotion.
+Le format non compris et le spike sans REQ restent refusés, les anciens fichiers
+ne sont pas convertis. Aucun motif de fusion locale préalable n'est démontré par
+ce refus ; l'intégration n'est pas ajoutée par imitation des fixtures. Le
+checkpoint/rechargement après les écritures de promotion reste à raccorder.
