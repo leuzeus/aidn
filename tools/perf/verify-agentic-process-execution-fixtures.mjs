@@ -859,6 +859,8 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("baseline_promotion_checkpoint").facts.baseline_checkpoint_completed, true);
       assert.equal(last("baseline_promotion_checkpoint").facts.baseline_promotion_completed, false);
       assert.equal(last("baseline_promotion_finalize").facts.baseline_promotion_completed, true);
+      assert.equal(last("session_preclose_checkpoint").facts.session_preclose_checkpoint_completed, true);
+      assert.equal(last("session_preclose_checkpoint").facts.session_close_completed, false);
       assert.equal(last("session_closure_decision").facts.session_closure_requested, true);
       assert.equal(last("session_closure_decision").facts.session_close_completed, false);
       assert.equal(last("session_close_record").facts.session_close_report_recorded, true);

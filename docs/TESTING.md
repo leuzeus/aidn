@@ -2510,6 +2510,15 @@ transport and make no session-close, full-model or archive claim.
 
 ### Session closure decision and R05 physical authority
 
+`node tools/perf/verify-standard-session-preclose-checkpoint-fixtures.mjs --mode=files`
+checks the finite checkpoint before session admission/R05. Repeat with dual and
+db-only; use `--mode=files --grant-after-git` for unknown ownership after the real
+commit and before cache refresh. These component tests inject closure/writer
+authority. They use actual canonical content/metadata, Git, reload and unchanged
+R05 gating, and do not close the session. A DB-only no-op must keep HEAD. The
+published-model selector is the separate authenticated composition test. Keep
+failed setup, component, composed, native and exact-archive results distinct.
+
 For the separate local Git integration port, run
 `node tools/perf/verify-workflow-branch-integration-port-fixtures.mjs`.
 It exercises real disposable repositories and linked worktrees, exact FF/ref/HEAD

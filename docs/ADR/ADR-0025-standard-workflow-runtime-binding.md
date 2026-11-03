@@ -1580,3 +1580,34 @@ reflog mismatch. This adapter is not yet a standard-model operation. Its tests
 authenticate no human integration decision, canonical session resolution, PR,
 native provider or installed archive. A retained cycle and a closed session do
 not implicitly authorize its integration.
+
+### Finite checkpoint before the session R05 (2026-11-03)
+
+`session_preclose_checkpoint` is a separate deterministic mutating operation
+between optional promotion and session-close admission. Final cycle/promotion
+CAS writes occur after their preceding Git checkpoints. Their legitimate tracked
+postimages can still trigger the existing R05 scope-growth refusal. The signal
+policy remains unchanged.
+
+The host authenticates accepted terminal closure, its physical checkpoint event,
+the canonical OPEN owner and terminal attached cycles. It derives the latest
+postimages only from accepted deterministic business writers of this instance and
+scope. Parent HEAD comes from the accepted terminal/promotion Git checkpoint.
+A fresh grant and exact content/metadata are required; foreign, untracked, staged
+or changed postimages refuse. The finite terminal Git port commits and reloads;
+the ordinary three-file session profile is unchanged. DB-only with no physical
+postimages refreshes its cache without inventing a commit or exporting canonical
+state. Unknown outcomes retain ownership and empty facts. Success records
+`session_preclose_checkpoint_completed`, keeping `session_close_completed: false`.
+It authorizes neither branch integration nor PR and allocates no native activity.
+
+Index readers and writer scopes use the actual producer/installer path `index.md`.
+The earlier uppercase reference aliased it on Windows in files mode but missed
+the canonical DB row. Tests now preserve the existing canonical index instead of
+creating a second uppercase row. No historical-instance conversion or
+case-insensitive DB fallback is introduced.
+
+Component proof uses real stores, projections, Git and gating with an injected
+source-authority capability: 8 checks per mode and 7 for grant loss after a real
+commit. Authenticated host/model composition, native provider and exact archive
+are separate evidence; complete standard selection remains outstanding.

@@ -23,7 +23,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 49); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 50); assert.equal(assets.catalog.activities.length, 8);
 });
 test("session close admission is a deterministic read-only continuation, separate from closure", () => {
   const node = assets.model.nodes.find(row => row.id === "session_close_admit");
@@ -31,8 +31,18 @@ test("session close admission is a deterministic read-only continuation, separat
   assert.equal(node.kind, "operation"); assert.equal(binding.skill_id, "close-session"); assert.equal(binding.effect_class, "read-only");
   assert.equal(binding.input_contract, "standard-session-reference-input.v1"); assert.equal(binding.output_contract, "standard-session-close-admission-output.v1");
   const children = assets.model.nodes.find(row => row.id === "committing").children;
-  assert.equal(children.indexOf("session_close_admit"), children.indexOf("promotion_eligibility") + 1);
+  assert.equal(children.indexOf("session_preclose_checkpoint"), children.indexOf("promotion_eligibility") + 1);
+  assert.equal(children.indexOf("session_close_admit"), children.indexOf("session_preclose_checkpoint") + 1);
   assert.ok(assets.catalog.scope.remaining_activities.includes("session_close"));
+});
+test("preclose checkpoint is a granted deterministic Git effect before session admission and R05", () => {
+  const binding = assets.catalog.bindings.find(row => row.node_id === "session_preclose_checkpoint").binding;
+  assert.equal(binding.effect_class, "mutating"); assert.equal(binding.executor_kind, "deterministic");
+  assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
+  assert.equal(binding.input_contract, "standard-session-preclose-checkpoint-input.v1");
+  assert.equal(binding.output_contract, "standard-session-preclose-checkpoint-output.v1");
+  const fields = assets.model.data_bindings.inputs.find(row => row.node_id === "session_preclose_checkpoint").fields;
+  assert.deepEqual(fields.closure_operation_id, { source: "operation_id", node_id: "close_finalize" });
 });
 
 test("completion of this component cannot claim completion of the standard workflow", () => {

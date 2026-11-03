@@ -407,6 +407,14 @@ See the promotion qualification record for the frozen model/source/final hashes.
 
 ## Session-close admission boundary
 
+`session_preclose_checkpoint` precedes admission in the partial COMMITTING model
+(SPEC-R05/R07/R11). The host derives finite postimages from accepted writers,
+authenticates terminal closure and its physical event, then uses the real Git and
+reload ports with a fresh exact-plan grant. It preserves canonical data, OPEN
+ownership and R05 policy; foreign changes refuse and unknown effects retain the
+owner. Component tests inject source authority. This does not close a session or
+integrate a branch; composed, native and exact-archive proof remain distinct.
+
 `session_close_admit` binds SPEC-R07/R11 to the actual `close-session` admission:
 `preWriteAdmit` and `runCloseSessionAdmitUseCase`, through the fixed standard host.
 Its session input comes from `session_initialize`. It is deterministic/read-only;

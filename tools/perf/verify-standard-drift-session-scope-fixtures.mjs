@@ -24,7 +24,7 @@ try {
   git("add", "."); git("commit", "--allow-empty", "-m", "fixture baseline context");
   // Canonical postimages are fixture material. No promotion or session closure
   // is claimed by preparing these two legitimate baseline completion changes.
-  const names = ["baseline/history.md", "INDEX.md"];
+  const names = ["baseline/history.md", "index.md"];
   const args = { targetRoot: root, productRoot, productFiles: ["app.mjs"], productSha256: shadowHash({ product: fs.readFileSync(path.join(productRoot, "app.mjs"), "utf8") }) };
   const missing = names.filter(name => artifacts.read(name).sha256 === null);
   if (missing.length) {
@@ -38,10 +38,10 @@ try {
     for (const name of names) { const row = artifacts.read(name);
       // DB bootstrap may not import these optional canonical artifacts. Seed
       // fixture postimages explicitly; never read a visible Markdown fallback.
-      const after = (row.content ?? (name === "INDEX.md" ? "# Audit index\n" : "# Baseline history\n")) + "\n- fixture baseline completion observed\n";
+      const after = (row.content ?? (name === "index.md" ? "# Audit index\n" : "# Baseline history\n")) + "\n- fixture baseline completion observed\n";
       if (row.sha256 === null) artifacts.compareAndSwap({ path: name, before_sha256: null, after });
       else artifacts.compareAndSwapPreservingMetadata({ path: name, before_sha256: row.sha256, before_metadata_sha256: artifacts.metadataHash(name), after }); }
-    artifacts.project(names);
+    artifacts.project(names); return { effect_status: "confirmed" };
   });
   const before = names.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) }));
   const observed = await readStandardDriftContext(args);

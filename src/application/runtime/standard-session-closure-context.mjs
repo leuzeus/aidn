@@ -17,7 +17,7 @@ export async function readStandardSessionClosureContext({ targetRoot, sessionId 
   const admission = before.observations.admission;
   if (metadata.session_branch !== admission.mapped_session?.session_branch)
     fail("STANDARD_SESSION_CLOSURE_OWNER_CHANGED");
-  const names = [selected.path, "CURRENT-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "INDEX.md"];
+  const names = [selected.path, "CURRENT-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
   const owned = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === sessionId);
   if (owned.length > 48) fail("STANDARD_SESSION_CLOSURE_CONTEXT_LIMIT");
   for (const row of owned) names.push(row.path);

@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 87/85 et le modèle composé candidat en 29
-(83 nœuds, 49 occurrences d’opération, 39 identifiants de liaison mobilisés parmi
-46 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 90/88 et le modèle composé candidat en 32
+(84 nœuds, 50 occurrences d’opération, 40 identifiants de liaison mobilisés parmi
+47 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3061,3 +3061,29 @@ finaux de promotion et avant le R05 de session. Il ne doit inclure aucun fichier
 étranger, inventer un commit DB-only ou supprimer une preuve de dérive. La preuve
 composée modèle 29 tourne sur sa source figée distincte ; son résultat reste ouvert.
 Les ports humains/métier d'intégration, PR/revue/sync et A1–A10 restent requis.
+
+### Checkpoint pré-clôture — composants vérifiés, composé en cours
+
+Le candidat révision 32 ajoute `session_preclose_checkpoint` entre promotion
+éventuelle et admission de clôture, avant R05. Le host authentifie la clôture
+acceptée et son événement physique, l'owner OPEN et les cycles terminaux. Il dérive
+les dernières postimages des writers acceptés et le parent Git du dernier
+checkpoint terminal/promotion. Le port fait un commit fini et un reload avec grant
+frais ; aucune règle R05 n'est modifiée. Les fichiers étrangers refusent, les
+effets inconnus conservent l'owner et des faits vides. Un succès ne ferme pas la
+session et n'intègre pas de branche.
+
+Les composants passent 8 contrôles par mode, et 7 en files avec perte de grant
+après le vrai commit. Les quatre processus et nettoyages sont terminaux. Les
+sources de clôture/writers y sont injectées ; l'autorité composée n'est pas
+qualifiée par ces composants. Le snapshot exact est `9c9f221`, dont une exécution
+du modèle publié est en cours avec reprise froide et replay/simulation requis.
+
+Les essais `3c78465` restent FAIL sur des hypothèses de fixture : INDEX majuscule
+au lieu du vrai `index.md`, ligne DB ainsi absente, ou commit supposé malgré un
+db-only propre. Aucun hook n'est rejoué. La casse incorrecte est aussi corrigée
+dans les lecteurs R05/R07 et les scopes de writers. Les tests corrigés conservent
+la ligne canonique existante ; ils ne créent pas de ligne uppercase et ne
+convertissent pas d'ancienne instance. Les anciennes assertions propres à cette
+référence uppercase ne sont pas étendues aux nouveaux octets. Autres parcours,
+ports d'intégration/PR, A1–A10, natif et archive exacte restent ouverts.

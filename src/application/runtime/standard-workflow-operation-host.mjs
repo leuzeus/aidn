@@ -2,6 +2,7 @@ import { createStandardSessionClosureAuthority } from "./standard-session-closur
 import { createStandardSessionClosureReview } from "./standard-session-closure-review.mjs";
 import { createStandardSessionCloseRecord } from "./standard-session-close-record.mjs";
 import { createStandardSessionCloseCheckpoint } from "./standard-session-close-checkpoint.mjs";
+import { createStandardSessionPrecloseCheckpoint } from "./standard-session-preclose-checkpoint.mjs";
 import { createStandardSessionCloseHook } from "./standard-session-close-hook.mjs";
 import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import { classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
@@ -18,6 +19,8 @@ import { createStandardCycleCloseRecord } from "./standard-cycle-close-record.mj
 import { createStandardCycleClosureReview } from "./standard-cycle-closure-review.mjs";
 import { observeStandardCycleAudit } from "../../core/workflow/standard-cycle-audit.mjs";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { createStandardDriftFinalization } from "./standard-drift-finalization.mjs";
@@ -220,7 +223,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     if (owner.state !== "OPEN" || currentState.active_session !== review.session_id || currentState.active_cycle !== "none"
       || owner.session_closure_status !== "checkpoint_pending") fail("STANDARD_SESSION_CHECKPOINT_OWNER_CHANGED");
     const ownedPaths = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === review.session_id).map(row => row.path.slice(0, -10));
-    const fixed = [review.session_path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "INDEX.md"];
+    const fixed = [review.session_path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
     const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
       "cycle_task_advance", "cycle_verification_enter", "cycle_close_record", "cycle_close_finalize", "baseline_promotion_record", "baseline_promotion_finalize", "session_close_record"]);
     const approved = new Map(), journals = [];
@@ -246,6 +249,67 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       postimages: [...approved.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([path, sha256]) => ({ path, sha256, metadata_sha256: artifacts.metadataHash(path) })) };
   }
   const sessionCloseCheckpoint = processAuthority ? createStandardSessionCloseCheckpoint({ targetRoot, now, readSource: readSessionCheckpointSource,
+    readCurrent: id => current(id).record }) : null;
+  // The final closure/promotion CAS happens after its earlier Git checkpoint.
+  // Commit only their authenticated latest business postimages before asking
+  // R05 to assess the session. Do not suppress its scope/integrity signals.
+  async function readSessionPrecloseSource(instance, input) {
+    const closed = acceptedForPromotion(instance, input.closure_operation_id, "cycle_close_finalize", "STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED");
+    const closePlan = closed.record.preview.prepared.plan, terminal = await readAcceptedTerminalRecord(instance, closePlan.input);
+    const sessionId = closePlan.scope.session_id, cycleId = closePlan.scope.cycle_id;
+    const selected = artifacts.sessions().filter(row => row.session_id === sessionId);
+    if (selected.length !== 1 || closed.output.effect_status !== "confirmed" || closed.output.facts.cycle_close_completed !== true
+      || !["DONE", "NO_GO", "DROPPED"].includes(closed.output.observations.target_state)
+      || terminal.record_operation_id !== closePlan.input.closure_operation_id) fail("STANDARD_SESSION_PRECLOSE_CLOSURE_REQUIRED");
+    const observed = closed.output.observations, eventFile = ".aidn/runtime/perf/workflow-events.ndjson";
+    if (observed.event_file !== eventFile) fail("STANDARD_SESSION_PRECLOSE_CLOSURE_EVIDENCE_CHANGED");
+    const bytes = readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, eventFile)), { json: false, maxBytes: 4194304 }).value;
+    const offset = observed.event_offset, end = Number.isSafeInteger(offset) ? bytes.indexOf(10, offset) : -1;
+    if (!Number.isSafeInteger(offset) || offset < 0 || end < offset || offset && bytes[offset - 1] !== 10)
+      fail("STANDARD_SESSION_PRECLOSE_CLOSURE_EVIDENCE_CHANGED");
+    const event = JSON.parse(bytes.subarray(offset, end).toString("utf8"));
+    if (shadowHash(event) !== shadowHash(observed.event) || event.event !== "checkpoint_summary"
+      || event.run_id !== "process_close_" + closed.record.operation_id.slice(3)) fail("STANDARD_SESSION_PRECLOSE_CLOSURE_EVIDENCE_CHANGED");
+    const session = analyzeStructuredArtifact(selected[0].content).key_values;
+    const currentState = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
+    if (session.state !== "OPEN" || currentState.active_session !== sessionId || currentState.active_cycle !== "none")
+      fail("STANDARD_SESSION_PRECLOSE_OWNER_CHANGED");
+    const owned = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === sessionId);
+    if (owned.length > 48 || owned.some(row => !["DONE", "NO_GO", "DROPPED"].includes(analyzeStructuredArtifact(row.content).key_values.state)))
+      fail("STANDARD_SESSION_PRECLOSE_UNRESOLVED_CYCLES");
+    const terminalCycle = owned.filter(row => row.cycle_id === cycleId);
+    if (terminalCycle.length !== 1 || analyzeStructuredArtifact(terminalCycle[0].content).key_values.state !== observed.target_state)
+      fail("STANDARD_SESSION_PRECLOSE_CLOSURE_EVIDENCE_CHANGED");
+    const fixed = [selected[0].path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
+    const ownedPaths = owned.map(row => row.path.slice(0, -10));
+    const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
+      "cycle_task_advance", "cycle_verification_enter", "cycle_close_record", "cycle_close_finalize", "baseline_promotion_record", "baseline_promotion_finalize"]);
+    const approved = new Map(), journals = [];
+    for (const event of instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")) {
+      const record = retained(event.receipt.operation_id).record;
+      if (!writers.has(record.intent.binding_ref)) continue;
+      const result = record.results.find(row => shadowHash(row.receipt) === shadowHash(event.receipt));
+      if (record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id || result?.output.effect_status !== "confirmed"
+        || record.preview.binding.executor_kind !== "deterministic") fail("STANDARD_SESSION_PRECLOSE_WRITER_REQUIRED");
+      journals.push({ operation_id: record.operation_id, output_sha256: shadowHash(result.output) });
+      for (const row of result.output.evidence_refs) if (row.ref.startsWith("docs/audit/")) {
+        const name = row.ref.slice(11);
+        if (!fixed.includes(name) && !ownedPaths.some(parent => name.startsWith(parent + "/"))) fail("STANDARD_SESSION_PRECLOSE_WRITER_SCOPE_INVALID");
+        approved.set(name, row.sha256);
+      }
+    }
+    const prior = instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")
+      .map(row => retained(row.receipt.operation_id).record).filter(row => ["cycle_terminal_checkpoint", "baseline_promotion_checkpoint"].includes(row.intent.binding_ref)).at(-1);
+    if (!prior) fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
+    const checkpoint = acceptedForPromotion(instance, prior.operation_id, prior.intent.binding_ref);
+    const git = checkpoint.output.observations.git, head = git?.commit_sha ?? git?.head;
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(head ?? "") || checkpoint.output.effect_status !== "confirmed")
+      fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");
+    return { closure_operation_id: input.closure_operation_id, session_id: sessionId, branch: closePlan.scope.branch, parent_head: head,
+      completion_cycle_id: cycleId, material_sha256: shadowHash({ closure: closed.output, terminal, checkpoint: checkpoint.output, journals }),
+      postimages: [...approved.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([path, sha256]) => ({ path, sha256, metadata_sha256: artifacts.metadataHash(path) })) };
+  }
+  const sessionPrecloseCheckpoint = processAuthority ? createStandardSessionPrecloseCheckpoint({ targetRoot, now, readSource: readSessionPrecloseSource,
     readCurrent: id => current(id).record }) : null;
   function readSessionCloseHookSource(instance, input) {
     const recorded = readAcceptedSessionCloseRecord(instance, input), review = recorded.question.review;
@@ -627,6 +691,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
+        : binding.id === "session_preclose_checkpoint" ? await sessionPrecloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_AUTHORITY_REQUIRED")
         : binding.id === "session_close_checkpoint" ? await sessionCloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CHECKPOINT_AUTHORITY_REQUIRED")
         : binding.id === "session_close_record" ? await sessionCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSE_AUTHORITY_REQUIRED")
         : binding.id === "session_closure_decision" ? await sessionClosureReview?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSURE_AUTHORITY_REQUIRED")
@@ -706,6 +771,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_preclose_checkpoint") output = await sessionPrecloseCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_close_checkpoint") output = await sessionCloseCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

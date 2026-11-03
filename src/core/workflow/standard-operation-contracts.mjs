@@ -1,3 +1,5 @@
+import precloseInput from "../contracts/workflow-definition/standard-session-preclose-checkpoint-input.v1.schema.json" with { type: "json" };
+import precloseOutput from "../contracts/workflow-definition/standard-session-preclose-checkpoint-output.v1.schema.json" with { type: "json" };
 import sessionCloseHookInput from "../contracts/workflow-definition/standard-session-close-hook-input.v1.schema.json" with { type: "json" };
 import sessionCloseHookOutput from "../contracts/workflow-definition/standard-session-close-hook-output.v1.schema.json" with { type: "json" };
 import sessionCloseCheckpointInput from "../contracts/workflow-definition/standard-session-close-checkpoint-input.v1.schema.json" with { type: "json" };
@@ -79,7 +81,7 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
-  const schema = operation === "session_close_finalize" ? sessionCloseHookInput : operation === "session_close_checkpoint" ? sessionCloseCheckpointInput : operation === "session_close_record" ? sessionCloseInput : operation === "session_closure_decision" ? sessionClosureInput : operation === "baseline_promotion_checkpoint" ? promotionCheckpointInput : operation === "cycle_terminal_checkpoint" ? terminalCheckpointInput : operation === "session_git_checkpoint" ? gitCheckpointInput : operation === "baseline_promotion_finalize" ? promotionHookInput : operation === "baseline_promotion_decision" ? promotionReviewInput : operation === "baseline_promotion_record" ? promotionInput : operation === "cycle_close_finalize" ? closeHookInput : operation === "cycle_close_record" ? closeInput : operation === "cycle_closure_decision" ? closureInput : operation === "cycle_audit_select" ? auditSelectInput : operation === "cycle_audit_evaluate" ? auditEvaluateInput : operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit"].includes(operation) ? empty
+  const schema = operation === "session_preclose_checkpoint" ? precloseInput : operation === "session_close_finalize" ? sessionCloseHookInput : operation === "session_close_checkpoint" ? sessionCloseCheckpointInput : operation === "session_close_record" ? sessionCloseInput : operation === "session_closure_decision" ? sessionClosureInput : operation === "baseline_promotion_checkpoint" ? promotionCheckpointInput : operation === "cycle_terminal_checkpoint" ? terminalCheckpointInput : operation === "session_git_checkpoint" ? gitCheckpointInput : operation === "baseline_promotion_finalize" ? promotionHookInput : operation === "baseline_promotion_decision" ? promotionReviewInput : operation === "baseline_promotion_record" ? promotionInput : operation === "cycle_close_finalize" ? closeHookInput : operation === "cycle_close_record" ? closeInput : operation === "cycle_closure_decision" ? closureInput : operation === "cycle_audit_select" ? auditSelectInput : operation === "cycle_audit_evaluate" ? auditEvaluateInput : operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit"].includes(operation) ? empty
     : ["mode_decision", "session_start_finalize", "cycle_context_refresh", "session_close_admit"].includes(operation) ? sessionRef : operation === "session_mode_apply" ? modeApply
     : operation === "cycle_initialize" ? cycleInput : ["branch_cycle_audit", "cycle_checkpoint_finalize"].includes(operation) ? cycleRef : operation === "drift_report_evaluate" ? driftInput
     : ["drift_check_finalize", "drift_recovery_decision"].includes(operation) ? driftFollowup : operation === "drift_recovery_record" ? recoveryInput
@@ -96,6 +98,10 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-session-preclose-checkpoint-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, precloseOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-session-close-hook-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, sessionCloseHookOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;

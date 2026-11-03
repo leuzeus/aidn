@@ -1,0 +1,252 @@
+{
+  "contract_version": "qualification-record.v1",
+  "recorded_at": "2026-11-03T19:27:31.660Z",
+  "source_snapshot": "9c9f221e10053beeca38c43e1050a4afa62f6fac",
+  "source_ref": "refs/aidn/qualification/session-preclose-checkpoint-v2-20261103",
+  "model_revision": 32,
+  "model_sha256": "ed84e539890c548e7f418e19c486eddaa920f353c848e59a79dabadd7075de9a",
+  "catalog_sha256": "76446425b9a91e3db53ac7a0aa1c611557863287863a3242e17569cfa8fb9d1c",
+  "native_implementation_sha256": "4fba3247cb4bd0a25e57f44cc3904540695ab3df3d03ed4d3eb7bd8394dec047",
+  "native_members": 261,
+  "proof_class": "offline-real-local-ports-with-injected-source-authority",
+  "component_cases": [
+    {
+      "mode": "files",
+      "checks": 8,
+      "fault": null,
+      "name": "standard-preclose-v2-files-20261103.result.txt",
+      "result": "PASS",
+      "exit_code": 0,
+      "cleanup": "completed",
+      "log": {
+        "name": "standard-preclose-v2-files-20261103.result.txt",
+        "sha256": "3f237f62caf88bb057e92b899824c7d47ca4ea8bac2e184d34931a91e5ff845a"
+      }
+    },
+    {
+      "mode": "dual",
+      "checks": 8,
+      "fault": null,
+      "name": "standard-preclose-v2-dual-20261103.result.txt",
+      "result": "PASS",
+      "exit_code": 0,
+      "cleanup": "completed",
+      "log": {
+        "name": "standard-preclose-v2-dual-20261103.result.txt",
+        "sha256": "f0df3885ce4cdd48994ec58623a916aa3efd0042af956b3ed88a28b0b9662856"
+      }
+    },
+    {
+      "mode": "db-only",
+      "checks": 8,
+      "fault": null,
+      "name": "standard-preclose-v2-db-only-20261103.result.txt",
+      "result": "PASS",
+      "exit_code": 0,
+      "cleanup": "completed",
+      "log": {
+        "name": "standard-preclose-v2-db-only-20261103.result.txt",
+        "sha256": "597352253575d181e0829852cc778fc33592bd853382618727e4336320d01de7"
+      }
+    },
+    {
+      "mode": "files",
+      "checks": 7,
+      "fault": "grant-after-git",
+      "name": "standard-preclose-v2-lost-grant-20261103.result.txt",
+      "result": "PASS",
+      "exit_code": 0,
+      "cleanup": "completed",
+      "log": {
+        "name": "standard-preclose-v2-lost-grant-20261103.result.txt",
+        "sha256": "4210d9c23b2a6aaf5c7cc6e6dc69b4af05ae366d389730ccad79d5ccd3fd8204"
+      }
+    }
+  ],
+  "canonical_index_readers": [
+    {
+      "mode": "files",
+      "drift": {
+        "result": "PASS",
+        "checks": 4,
+        "log": {
+          "name": "standard-drift-canonical-index-files-20261103.result.txt",
+          "sha256": "3389d5e63158fb072d29563f51d3f968a48ef24332e62f4f12ab462f2321d742"
+        }
+      },
+      "closure_context": {
+        "result": "PASS",
+        "checks": 4,
+        "log": {
+          "name": "standard-closure-canonical-index-files-20261103.result.txt",
+          "sha256": "fc030040b845fab6d86109131f758d904d9b2850a370975414de37d9dedba59a"
+        }
+      }
+    },
+    {
+      "mode": "dual",
+      "drift": {
+        "result": "PASS",
+        "checks": 4,
+        "log": {
+          "name": "standard-drift-canonical-index-dual-20261103.result.txt",
+          "sha256": "8de31c9a1448040c8334516cd123c9c26dbffbb49f66e249d893e7e2a4b91e49"
+        }
+      },
+      "closure_context": {
+        "result": "PASS",
+        "checks": 4,
+        "log": {
+          "name": "standard-closure-canonical-index-dual-20261103.result.txt",
+          "sha256": "765cf5d464a6773fe266bd76d1692a15d44d7344107d435a4865a0692a08ec68"
+        }
+      }
+    },
+    {
+      "mode": "db-only",
+      "drift": {
+        "result": "PASS",
+        "checks": 4,
+        "log": {
+          "name": "standard-drift-canonical-index-db-only-20261103.result.txt",
+          "sha256": "c3485ec5ec2f4625a136d89e64db7ba04e54569607b5d35ad7e5a9636c3a018c"
+        }
+      },
+      "closure_context": {
+        "result": "PASS",
+        "checks": 4,
+        "log": {
+          "name": "standard-closure-canonical-index-db-only-20261103.result.txt",
+          "sha256": "354e1aced05633116eb97fd6334e82fd7a096ff0d03733149b184ba70db314cf"
+        }
+      }
+    }
+  ],
+  "gates": [
+    {
+      "name": "source-policy",
+      "result": "PASS",
+      "log": {
+        "name": "standard-preclose-source-policy-20261103.result.txt",
+        "sha256": "0bcb91534cb81a505febf0f3d28843e70cc54286e5c0a1e5491d103a7d86e921"
+      }
+    },
+    {
+      "name": "metadata-policy",
+      "result": "PASS",
+      "log": {
+        "name": "standard-preclose-metadata-policy-20261103.result.txt",
+        "sha256": "cd6df66f20411384d3217c93e87fe10b140f45d46179a093ce05ec0c80deaec8"
+      }
+    },
+    {
+      "name": "governance",
+      "result": "PASS",
+      "log": {
+        "name": "standard-preclose-governance-20261103.result.txt",
+        "sha256": "f7f2f55a238f0821085d81e9a25ec5d6c5ad4eae1f2f2783389b7f86c25be8ee"
+      }
+    },
+    {
+      "name": "model",
+      "result": "PASS",
+      "log": {
+        "name": "standard-preclose-model-20261103.result.txt",
+        "sha256": "eeedbb707dd4cd21e24d41a7643271141679238362d7a040adb55419cbcaa89c"
+      }
+    },
+    {
+      "name": "catalog",
+      "result": "PASS",
+      "log": {
+        "name": "standard-preclose-catalog-20261103.result.txt",
+        "sha256": "ac7853b13bffb9bff58c486d4cbb8b2d3f939248cefd43e6158e25d833bd4c3a"
+      }
+    },
+    {
+      "name": "startup",
+      "result": "PASS",
+      "log": {
+        "name": "standard-preclose-final-startup-20261103.result.txt",
+        "sha256": "9f52503dc7311d43ad318235db96e70969140e921b7f2353052a3e412ee8cb45"
+      }
+    },
+    {
+      "name": "docs",
+      "result": "PASS",
+      "log": {
+        "name": "standard-preclose-final-docs-20261103.result.txt",
+        "sha256": "71cc5e6dfa3e9e27d8493cb18dc6f35a20826134250d3f1f60352b6ea0f25b15"
+      }
+    }
+  ],
+  "retained_initial_cases": {
+    "source_snapshot": "3c7846548f1b4b0ea675cfe76a3c7405a2c6c7e5",
+    "result": "FAIL",
+    "cases": [
+      {
+        "case": "files",
+        "exit_code": 1,
+        "reason": "Fixture supplied INDEX.md; actual tracked postimage is index.md",
+        "product_port": "prepare refused foreign change",
+        "classification": "operator_error",
+        "log": {
+          "name": "standard-preclose-files-20261103.result.txt",
+          "sha256": "7a1224da7f093bca46cc36d54478e6e7df140fc7c28e5c7e2f478bebfa55c866"
+        }
+      },
+      {
+        "case": "dual",
+        "exit_code": 1,
+        "reason": "Fixture requested nonexistent uppercase canonical DB index",
+        "product_port": "NOT_EXECUTED",
+        "classification": "operator_error",
+        "log": {
+          "name": "standard-preclose-dual-20261103.result.txt",
+          "sha256": "f3a8fa6c6819d70ec4367ae304ad2e0574724f1f3dee8a07ea2aad73beb6380d"
+        }
+      },
+      {
+        "case": "db-only",
+        "exit_code": 1,
+        "reason": "Fixture required an ordinary commit with no physical changes",
+        "product_port": "NOT_EXECUTED",
+        "classification": "orchestration_error",
+        "log": {
+          "name": "standard-preclose-db-only-20261103.result.txt",
+          "sha256": "154230c9c75e9312c1185d9f880505f428555d5d7730831123409aa6ce4fa926"
+        }
+      },
+      {
+        "case": "lost-grant",
+        "exit_code": 1,
+        "reason": "Fixture supplied uppercase index before reaching the fault",
+        "product_port": "prepare refused foreign change",
+        "classification": "operator_error",
+        "log": {
+          "name": "standard-preclose-lost-grant-20261103.result.txt",
+          "sha256": "191657b3dd2052bb622e06e027afa47e3841939150de77a3e85c3080be56751a"
+        }
+      }
+    ],
+    "hooks_retried": false
+  },
+  "composed_model": {
+    "result": "IN_PROGRESS",
+    "snapshot": "9c9f221e10053beeca38c43e1050a4afa62f6fac",
+    "command": "node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=component_complete --retain-on-failure",
+    "log_name": "standard-preclose-composed-files-20261103.result.txt",
+    "claim": "No composed result, replay or simulation success is inferred from components."
+  },
+  "native": "NOT_RUN",
+  "exact_installed_archive": "NOT_RUN",
+  "complete_standard_workflow": false,
+  "ordinary_standard_selection": "UNCHANGED",
+  "authority_limits": [
+    "Closure/writer sources are injected by component tests; the actual composed host authority remains under qualification.",
+    "The source fixture installer is real; Codex discovery/login is stubbed. This is not exact-archive proof.",
+    "No threshold, gating signal or close-session success criterion was relaxed.",
+    "Canonical index.md is preserved; no uppercase DB alias, historical instance conversion or implicit projection import is introduced.",
+    "Integration, PR/review/sync, other modes and topologies, reauthorization and unknown-effect reconciliation remain open."
+  ]
+}
