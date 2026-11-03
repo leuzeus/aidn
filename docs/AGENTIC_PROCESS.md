@@ -734,3 +734,19 @@ retain their identities. An audit result remains an observation with human
 decision required, skill completion pending and no lifecycle transition. The
 human decision, approved canonical closure, final hook and full standard model
 remain separate deliverables. Qualification is recorded in the standard IR plan.
+
+
+The experimental `cycle_closure_decision` binding prepares a human review from
+the latest accepted audit after authenticating its native report, physical
+checks and current canonical material. Its review includes finding rationales
+and evidence. Retention is not offered with pending work, unmet coverage, failed
+checks, uncertain documents or blocking findings. Residual risk acceptance names
+each exact finding with a separate rationale; an audit model cannot supply it.
+
+The human adapter verifies the exact question/source through a bounded external
+authority and stores a versioned HMAC-protected inbox capture. Refusal, deferral
+and cancellation retain distinct outcomes with empty success facts. A completed
+decision records a requested disposition only: lifecycle transition remains none
+and cycle-close pending. Context is rechecked around source verification and
+receipt acceptance. Canonical closure writes and its final hook remain to be
+implemented; this binding grants neither writes nor promotion.

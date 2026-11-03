@@ -2145,3 +2145,18 @@ store and require refusal without recreation. Source-install, native transport
 and exact installed-archive qualification remain separate evidence classes.
 
 The [fixture construction record](qualification/agentic-process/fixture-construction-2026-11-03.json) records the offline port/host checks and their proof boundaries.
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-closure-mode=contract`
+runs closure decision and review semantics plus the actual file/SQLite inbox
+adapter in files/dual/db-only. It checks a cold Node restart, deduplication,
+MAC tampering, unavailable/unverified human sources, distinct declined outcomes
+and exact historical v1/v2 reads. The human verifier and accepted-audit bridge
+are fixture capabilities. These checks do not qualify the full operation-host
+path, canonical cycle closure, final hook, native provider or installed archive.
+
+
+The [human closure qualification record](qualification/agentic-process/cycle-human-closure-2026-11-03.json)
+records both actual mixed-host component cases on files and DB-only, including
+cold acceptance, changed product refusal, durable wait and exact replay. The
+human provider, native transport and validation boundary are fixture capabilities.
+The decision leaves VERIFYING and performs no canonical closure effects; neither
+full standard workflow nor native/installed-archive qualification is claimed.

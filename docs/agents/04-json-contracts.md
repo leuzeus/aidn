@@ -249,3 +249,11 @@ cannot grant effects, accept risk or choose a terminal cycle state. Authenticate
 source and complete canonical inventory are application responsibilities; schema
 validity alone does not establish them. Ordered document chunks preserve complete
 text without relaxing the shared JSON limits. No public CLI output is added.
+
+
+Cycle closure adds private review/input/plan/question/decision/output contracts
+and `process-decision-inbox.v3`. The review schema is also embedded in its parent
+envelopes; no executable module, effect or permission may be supplied by a human
+claim. Request facts identify a disposition, never a terminal lifecycle or hook
+success. Explicit historical v1/v2 dispatch remains unchanged. The new contracts
+and HMAC inbox alone do not authenticate a provider or qualify the full host.

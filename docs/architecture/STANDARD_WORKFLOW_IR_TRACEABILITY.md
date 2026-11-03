@@ -192,3 +192,17 @@ its hook remain unimplemented in this tranche; they are not supplied by favorabl
 report fields or by changing a reference definition's markers.
 
 The [audit qualification record](../qualification/agentic-process/cycle-audit-2026-11-02.json) records both offline application paths through the actual local ports and exact simulation. Native transport/grants/boundary remain fixtures; actual native and installed-archive evidence remain NOT_RUN. This is not full standard workflow qualification.
+
+| Closure component | Authority and binding | Status and proof boundary |
+| --- | --- | --- |
+| Human closure review | R04/R07, `cycle-close`, `cycle_closure_decision` | Fresh accepted audit through a fixed host reader; typed question and human-source verification; component checks use a fixture audit authority |
+| Durable human capture | Process decision inbox v3 | Actual files/SQLite adapter, HMAC, cold restart and preserved v1/v2 readers; human verifier remains a fixture |
+| Canonical cycle closure | R07, fresh effect authorization | Still required; a selected disposition does not implement its writes or postconditions |
+| Final closure hook | R07, real skill hook/checkpoint | Still required; warnings, refusal and drift-check retry must remain visible |
+
+
+The [human closure qualification](../qualification/agentic-process/cycle-human-closure-2026-11-03.json)
+adds both actual offline mixed-host component paths, with a cold acceptance and
+exact reducer replay. Its provider/grant/native boundaries remain fixtures.
+Canonical terminal writes and the final hook are separate pending integrations;
+authenticated human disposition alone never establishes their success.

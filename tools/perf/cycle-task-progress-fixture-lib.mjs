@@ -52,7 +52,7 @@ export function taskProgressValidationProfile(base, unchanged) {
   const bytes = JSON.stringify(fixture.profile); fs.writeFileSync(fixture.profileRef.path, bytes);
   fixture.profileRef.sha256 = createHash("sha256").update(bytes).digest("hex"); return fixture;
 }
-export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, audit = false, setAllowed }) {
+export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, audit = false, closure = false, setAllowed }) {
   const operations = [], advances = [], originalScope = artifacts.read(`${cyclePath}/plan.md`).content.split("## Native write scope")[1].split("```")[1];
   let restarted = false;
   for (let step = 0; step < 25; step++) {
@@ -91,6 +91,7 @@ export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, sel
       const record = f.open().readOperation(result.operation_id), output = record.results.at(-1)?.output;
       operations.push(record);
       console.log(`STEP cycle tasks ${selected}: ${record.intent.binding_ref} ${output?.outcome ?? result.status}`);
+      if (closure && record.intent.binding_ref === "cycle_closure_decision") { assert.equal(result.status, "waiting_for_human"); break; }
       if (record.intent.binding_ref === "cycle_task_advance") {
         const digest = shadowHash(record), calls = verifier.calls();
         assert.equal((await f.open().dispatchOperation(record.operation_id, { write: true })).status, "retained_result");
@@ -121,7 +122,7 @@ export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, sel
     assert.match(artifacts.read(`${cyclePath}/status.md`).content, /^state: VERIFYING$/m);
     assert.equal(operations.find(row => row.intent.binding_ref === "cycle_verification_enter").results.at(-1).output.facts.cycle_verification_started, true); assert.equal(artifacts.ownerPending(), false);
     if (audit) {
-      const selectedSource = operations.find(row => row.intent.binding_ref === "cycle_audit_select"), evaluated = operations.at(-1);
+      const selectedSource = operations.find(row => row.intent.binding_ref === "cycle_audit_select"), evaluated = operations.find(row => row.intent.binding_ref === "cycle_audit_evaluate");
       assert.equal(selectedSource.results.at(-1).output.facts.cycle_audit_source_selected, true);
       assert.equal(evaluated.intent.binding_ref, "cycle_audit_evaluate");
       assert.deepEqual(evaluated.results.at(-1).output.facts, { cycle_audit_observed: true, cycle_audit_blockers_present: false, cycle_closure_decision_required: true });

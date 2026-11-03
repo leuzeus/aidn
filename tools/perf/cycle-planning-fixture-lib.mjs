@@ -1,3 +1,4 @@
+import { verifyCycleClosureExecution } from "./cycle-closure-fixture-lib.mjs";
 import { cycleAuditProposal } from "./cycle-audit-fixture-lib.mjs";
 import { taskProgressProposal, taskProgressValidationProfile, verifyTaskProgressExecution } from "./cycle-task-progress-fixture-lib.mjs";
 import { verifyCycleVerificationEntry } from "./cycle-verification-fixture-lib.mjs";
@@ -109,12 +110,12 @@ export async function verifyCycleReadinessContracts(check) {
   });
 }
 
-export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false, verification = false, taskProgress = false, audit = false }) {
-  for (const selected of (audit ? ["files", "db-only"] : taskProgress ? ["files", "db-only", "unchanged", "partial", "projection"] : verification ? ["files", "dual", "db-only", "partial", "projection"] : validation ? ["files", "dual", "db-only"] : work ? ["files", "dual", "db-only", "report", "source"] : readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${audit ? "cycle audit" : taskProgress ? "cycle tasks" : verification ? "cycle verification" : validation ? "cycle validation" : work ? "cycle work" : readiness ? "cycle readiness" : "cycle plan"} ${selected}: ${work ? "execute the frozen task and authenticate observed work" : "authenticated native proposal records canonical planning and retains readiness barriers"}`, async () => {
+export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false, verification = false, taskProgress = false, audit = false, closure = false }) {
+  for (const selected of (audit ? ["files", "db-only"] : taskProgress ? ["files", "db-only", "unchanged", "partial", "projection"] : verification ? ["files", "dual", "db-only", "partial", "projection"] : validation ? ["files", "dual", "db-only"] : work ? ["files", "dual", "db-only", "report", "source"] : readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${closure ? "cycle closure" : audit ? "cycle audit" : taskProgress ? "cycle tasks" : verification ? "cycle verification" : validation ? "cycle validation" : work ? "cycle work" : readiness ? "cycle readiness" : "cycle plan"} ${selected}: ${work ? "execute the frozen task and authenticate observed work" : "authenticated native proposal records canonical planning and retains readiness barriers"}`, async () => {
     const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["report", "source", "unchanged"].includes(selected) ? "files" : selected;
     let allowed = true, tamper = false, root;
     const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
-    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, work, validation, verification, taskProgress, audit, taskFinalValue: selected === "unchanged" ? 2 : 3, authorize: async request => {
+    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, work, validation, verification, taskProgress, audit, closure, taskFinalValue: selected === "unchanged" ? 2 : 3, authorize: async request => {
       if (tamper && request.binding.id === "cycle_plan_record") {
         tamper = false; const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
         try { const row = store.getArtifact("CURRENT-STATE.md"); store.upsertArtifact({ ...row, classification_reason: "fixture-planning-race" }); }
@@ -250,7 +251,8 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     if (readiness) await verifyReadinessTransition({ f, artifacts, operations, selected: (verification || taskProgress) && ["partial", "projection", "unchanged"].includes(selected) ? mode : selected, root, cyclePath, recorded, script, work,
       setAllowed: value => { allowed = value; } });
     if (taskProgress) {
-      await verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, audit, setAllowed: value => { allowed = value; } });
+      await verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, audit, closure, setAllowed: value => { allowed = value; } });
+      if (closure) await verifyCycleClosureExecution({ f, artifacts, cyclePath, script, verifier });
       return;
     }
     if (work) await verifyWorkResult({ f, root, selected: verification && ["partial", "projection"].includes(selected) ? mode : selected, script, auth });

@@ -1,16 +1,24 @@
+import { assertCycleClosureQuestion, assertHumanCycleClosureDecision, observeHumanCycleClosureDecision } from "../../core/workflow/standard-cycle-closure-decision.mjs";
 import { assertHumanModeDecision, assertModeQuestion, assertRecoveryQuestion, assertHumanRecoveryDecision, decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
 export function createStandardHumanDecisions({ inbox, signer, source, projectionRequired }) {
   const recovery = record => record.intent.binding_ref === "drift_recovery_decision";
-  const question = record => recovery(record) ? assertRecoveryQuestion({ contract_version: "standard-drift-recovery-question.v1", operation_id: record.operation_id,
+  const closure = record => record.intent.binding_ref === "cycle_closure_decision";
+  const question = record => {
+    if (!["mode_decision", "drift_recovery_decision", "cycle_closure_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+    if (closure(record)) return assertCycleClosureQuestion({ contract_version: "standard-cycle-closure-question.v1", operation_id: record.operation_id,
+      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+      session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
+    return recovery(record) ? assertRecoveryQuestion({ contract_version: "standard-drift-recovery-question.v1", operation_id: record.operation_id,
     instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
     session_id: record.preview.prepared.plan.session_id, review: structuredClone(record.preview.prepared.plan),
     choices: [...record.preview.prepared.plan.options.map(row => row.choice), "refused", "deferred", "cancelled"] })
     : assertModeQuestion({ contract_version: "standard-mode-question.v1", operation_id: record.operation_id, instance_id: record.intent.instance_id,
     scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
     session_id: record.preview.input.session_id, choices: [...choices] });
+  };
   function read(id) {
     const value = inbox.read(id); if (!value.record) fail("PROCESS_DECISION_SOURCE_NOT_FOUND");
     signer.verify(value.record); return value;
@@ -31,7 +39,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal) {
-    if (request.contract_version === "standard-drift-recovery-question.v1") assertHumanRecoveryDecision(claim); else assertHumanModeDecision(claim);
+    if (request.contract_version === "standard-cycle-closure-question.v1") assertHumanCycleClosureDecision(claim, request);
+    else if (request.contract_version === "standard-drift-recovery-question.v1") assertHumanRecoveryDecision(claim); else assertHumanModeDecision(claim);
     if (claim.question_sha256 !== shadowHash(request)) fail("PROCESS_HUMAN_QUESTION_CHANGED");
     if (!request.choices.includes(claim.choice)) fail("PROCESS_HUMAN_CHOICE_NOT_OFFERED");
     const proof = await bounded("verify", { source: claim, sourceRef, question: request }, signal);
@@ -64,7 +73,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      return write({ contract_version: recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
+      return write({ contract_version: closure(record) ? "process-decision-inbox.v3" : recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
         source: claim, phase: "reserved", receipt_sha256: null }, null);
     },
     acknowledge(id, receipt) {
@@ -81,6 +90,13 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       const value = captured(record); await verify(value.source, value.source_ref, question(record), signal);
     },
     output(record, capture) {
+      const request = question(record);
+      if (closure(record)) {
+        const { choice, ...observed } = observeHumanCycleClosureDecision({ question: request, decision: capture.source });
+        return { contract_version: "standard-cycle-closure-decision-output.v1", operation_ref: "cycle_closure_decision", ...observed,
+          observations: { ...observed.observations, inbox_id: capture.inbox_id, source_ref: capture.source_ref, choice: capture.source.choice },
+          evidence_refs: [{ ref: `aidn:decision-source/${capture.inbox_id}`, sha256: shadowHash(capture.source) }, ...capture.source.evidence_refs] };
+      }
       const choice = capture.source.choice, isRecovery = recovery(record);
       const accepted = (isRecovery ? record.preview.prepared.plan.options.map(row => row.choice) : ["THINKING", "EXPLORING", "COMMITTING"]).includes(choice);
       const outcome = accepted ? "completed" : choice === "refused" ? "rejected" : choice;

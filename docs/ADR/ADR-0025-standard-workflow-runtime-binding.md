@@ -965,3 +965,21 @@ failed/unavailable checks and blocking/risk findings. Even a favorable audit
 leaves cycle-close pending. Human choice, risk acceptance, canonical closure and
 the final hook must be implemented and qualified separately. This component does
 not supply the complete distributed standard model or its ordinary entrypoints.
+
+
+## Human cycle closure review
+
+A dedicated human binding consumes an accepted audit identity. Fixed host ports
+reauthenticate the audit and reread its code, canonical material and machine
+evidence before preparing the exact question. The review carries actual finding
+rationales and evidence, immutable source hashes and offered dispositions.
+Question validation cannot authenticate a source; the host's external human
+authority must verify it. The v3 decision inbox retains the dedicated typed claim
+and preserves v1 mode/v2 recovery readers without conversion.
+
+A retained disposition requires complete observed coverage and an explicit,
+justified acceptance for every residual risk. Non-retained dispositions, refusal,
+deferral and cancellation remain distinct. A completed decision is not completed
+cycle-close: actual canonical writes, fresh effect authorization, final hook and
+its nested failures remain separate required work. Qualification of this human
+component must not be reported as full standard workflow integration.

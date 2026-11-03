@@ -4,6 +4,8 @@ import questionSchema from "../contracts/workflow-definition/standard-mode-quest
 import recoverySource from "../contracts/workflow-definition/human-drift-recovery-decision.v1.schema.json" with { type: "json" };
 import recoveryQuestion from "../contracts/workflow-definition/standard-drift-recovery-question.v1.schema.json" with { type: "json" };
 import recoveryPlan from "../contracts/workflow-definition/standard-drift-recovery-plan.v1.schema.json" with { type: "json" };
+import inboxV3 from "../contracts/workflow-definition/process-decision-inbox.v3.schema.json" with { type: "json" };
+import { assertHumanCycleClosureDecision } from "./standard-cycle-closure-decision.mjs";
 import inboxV2 from "../contracts/workflow-definition/process-decision-inbox.v2.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
@@ -48,9 +50,10 @@ export function decisionInboxPath(id) {
   return `workflows/decision-inbox/${id}.json`;
 }
 export function assertDecisionInbox(value) {
-  const definition = value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
+  const definition = value?.contract_version === "process-decision-inbox.v3" ? inboxV3 : value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
   if (checkShadowJson(value) || validateJsonSchema(value, definition, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_DECISION_INBOX_INVALID");
-  if (value.contract_version === "process-decision-inbox.v2") assertHumanRecoveryDecision(value.source); else assertHumanModeDecision(value.source);
+  if (value.contract_version === "process-decision-inbox.v3") assertHumanCycleClosureDecision(value.source);
+  else if (value.contract_version === "process-decision-inbox.v2") assertHumanRecoveryDecision(value.source); else assertHumanModeDecision(value.source);
   if (value.inbox_id !== decisionInboxId(value.source) || (value.phase === "receipted") !== (value.receipt_sha256 !== null)) fail("PROCESS_DECISION_INBOX_BINDING_CHANGED");
   return value;
 }

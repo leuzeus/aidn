@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "standard-cycle-human-closure",
+  "status": "PASS",
+  "qualification_scope": "human disposition component after authenticated read-only audit; no canonical closure or final hook",
+  "date": "2026-11-03",
+  "time_zone": "UTC",
+  "source_base_commit": "a5a2e85353813911eb46b957ed115504f056270e",
+  "implementation_pins": {
+    "standard_operations_sha256": "3f04519223436c065c93ece37002737250d5cc7e6d6c7e6262dabc6aceca9c65",
+    "native_composition_sha256": "09274fbba3a0f87cd4788811931ea6365185157d1bdd29be0e3117f8e7a2c7a3",
+    "fixed_bindings": 33
+  },
+  "published_components": {
+    "startup": {
+      "revision": 58,
+      "model_sha256": "9bd090b9c0ba2f137089df21024de828280e7ab912225fb85de26a044b96a15a",
+      "catalog_sha256": "fb51ae4ac00ff84241a82dae7c26ac96130fc57f55b2a2b0dfea9809f1eabcc7"
+    },
+    "cycle_create": {
+      "revision": 56,
+      "model_sha256": "0b944d2eb476c81ff35a2f6b543a7a5e765f43a84f5e2fd4873b290fa2042246",
+      "catalog_sha256": "e9e5dbc11c4cf5e07c7feea7692473d9602851ce0645f1737c7827b1ef624340"
+    }
+  },
+  "application_cases": [
+    {
+      "name": "files",
+      "status": "PASS",
+      "source_base_commit": "fe3efab4ecd421d28f5eb5e2e2c2c63408080a1a",
+      "retained_host_fresh_reads": true,
+      "cold_node_acceptance": true
+    },
+    {
+      "name": "db-only",
+      "status": "PASS",
+      "source_base_commit": "a5a2e85353813911eb46b957ed115504f056270e",
+      "canonical_sqlite": true,
+      "retained_host_fresh_reads": true,
+      "cold_node_acceptance": true
+    }
+  ],
+  "assertions": {
+    "two_ordered_tasks": true,
+    "physical_node_check_invocations": 3,
+    "native_transport_allocations": 4,
+    "all_transport_sessions_closed": true,
+    "missing_human_source_keeps_wait": true,
+    "wrong_question_refused": true,
+    "unverified_source_refused": true,
+    "changed_product_after_capture_refused": true,
+    "cold_acceptance_additional_allocations": 0,
+    "retained_delivery_deduplicated": true,
+    "same_model_reducer_replay_final_hash": "exact",
+    "cycle_after_decision": "VERIFYING",
+    "skill_completion": "pending",
+    "canonical_closure_effects": 0
+  },
+  "checks": {
+    "decision_semantics": 7,
+    "review_component": 7,
+    "inbox_files": 9,
+    "inbox_dual_sqlite": 9,
+    "inbox_db_only_sqlite": 9,
+    "private_schema_definitions": 7,
+    "published_models": 22,
+    "application_ports": 14,
+    "source_policies": 35,
+    "metadata_policies": 37,
+    "governed_concepts_complete": 38,
+    "operations_and_frozen_historical_readers": 27,
+    "documentation_links": 385,
+    "markdown_contract": "PASS"
+  },
+  "proof_boundaries": {
+    "actual": [
+      "local application admissions and canonical stores",
+      "two-task progress and physical check snapshots/manifests/logs",
+      "signed operation and decision inbox journals",
+      "cold Node acceptance and same-reducer replay"
+    ],
+    "fixtures": [
+      "native transport and executor identity",
+      "effect grants and human provider verification",
+      "validation execution boundary",
+      "session/mode/cycle bootstrap preconditions through real ports"
+    ],
+    "actual_native_provider": "NOT_RUN",
+    "exact_installed_archive": "NOT_RUN",
+    "monolithic_required_suite": "NOT_RUN",
+    "full_pr_admission": "NOT_RUN",
+    "complete_standard_workflow": "NOT_YET_DELIVERED"
+  },
+  "source_construction_note": "The files case preceded the tracked-corpus helper correction. The DB-only case and ports14 use the corrected tracked-source/projector helper; runtime decision code and pins remain unchanged. No ignored database is a retained prerequisite.",
+  "source_files": {
+    "package/catalogs/process-models/aidn-standard-cycle-create.v1.json": "0db2aa89aee526fcd227f9f641a472fa998bdc8dd7760ecc1ff38b6994e3ce99",
+    "package/catalogs/process-models/aidn-standard-startup.v1.json": "8c5895ce976be82e3aa2a941eaaa646c5a3cea4686a70ffed48e6a468e90f079",
+    "package/catalogs/standard-workflow-cycle-create.v1.json": "5aeb5da94f5628913d816fbf8f19ee8f904e897c2f9515082a35a2dbd85de8d5",
+    "package/catalogs/standard-workflow-startup.v1.json": "ecfc4c1f38abb9ad5de80e1ed38d9c695a809202b2b7e2f2f571771b17567fce",
+    "src/application/runtime/agentic-process-implementation-pins.mjs": "0f4ab5dbba08ed346e1cf8f30a15fbbb9f36dfc7010f86e66029b47fb8d91bcc",
+    "src/application/runtime/standard-cycle-closure-review.mjs": "22e1025997c3dea9f582bd974937f6df322a4dff259958f9ce7e91f1593e9a48",
+    "src/application/runtime/standard-workflow-human-decisions.mjs": "fb9c19bf3e46f968bb47cbcf4782252f672ecbf5725382887d57b1d5da54ef3c",
+    "src/application/runtime/standard-workflow-operation-host.mjs": "b1e0ed527da021ffbec634495cac2d510e4870f0f8ec6f906908e7f94b8ce3b8",
+    "src/application/runtime/standard-workflow-operations.mjs": "913473c48e4060ea9e8387675272496d616a65c93917737ab3b1d7d110e89169",
+    "src/core/contracts/workflow-definition/human-cycle-closure-decision.v1.schema.json": "e186dcec7ce62a071150c545b439144259dabae4b1fbeae6b7142a20a7b3c05b",
+    "src/core/contracts/workflow-definition/process-decision-inbox.v3.schema.json": "981a6d3ef263a43004c79b3efcc09160e9ab14d9e95496e1557b65ed00308ae2",
+    "src/core/contracts/workflow-definition/standard-cycle-closure-decision-output.v1.schema.json": "8d55233ee495e140e22f324b4eaab886021d527cb02570cca1e83d03d7c2b341",
+    "src/core/contracts/workflow-definition/standard-cycle-closure-question.v1.schema.json": "25a4552b4aa02906e48d04ed8966e7987abcaccebedccdd9acc48b17643bda7d",
+    "src/core/contracts/workflow-definition/standard-cycle-closure-review-input.v1.schema.json": "b98ef083bacedc7ff39ea9aefb31126bd00b3f00361cd7ff68c67f0bf60d9fcb",
+    "src/core/contracts/workflow-definition/standard-cycle-closure-review-plan.v1.schema.json": "2c2020dfaf70d4b6ee7d690435853bfe5609c3e15bdf2766a762d6ef72baf796",
+    "src/core/contracts/workflow-definition/standard-cycle-closure-review.v1.schema.json": "897ba1033e236370b16aea93be8c569f06c4ad8fced11a119af3c3772a63109c",
+    "src/core/workflow/process-decision-inbox.mjs": "6cddf68d1272d86de997424c8f7abe56ce91d1fd47224480ddd5a7287de1d00f",
+    "src/core/workflow/standard-cycle-closure-decision.mjs": "1e3494f334d011d0c316ee4952e9e355f2dfa52ce1cd3d4f9353b885495cc0e6",
+    "src/core/workflow/standard-operation-contracts.mjs": "a7e4ea5e73c724fbf83ec77836af41bc466d68f3c97aac0eb7d2e0a3ca78a3b5",
+    "tools/perf/cycle-closure-fixture-lib.mjs": "7330393250eb541f9be1f1a75411789395245e2c69d97d9e9da142544dcf1b94",
+    "tools/perf/cycle-planning-fixture-lib.mjs": "19f8c7ba01c2a6df2a0b625c1f43e61e8cf5cae7145e3f78fb7866ae667aed16",
+    "tools/perf/cycle-task-progress-fixture-lib.mjs": "517e6f5db62b8aeaa211961643dbecb506425fe51a1a8cbac5f4dc66d0ccdaa1",
+    "tools/perf/verify-agentic-process-execution-fixtures.mjs": "32c98b5a9625ca31bfdb500b0ed424b81de7d8113641e10756c1e9722561fe8c",
+    "tools/perf/verify-standard-cycle-closure-decision-fixtures.mjs": "1d400daa38b338a18432de25881e9d53f5491f2420f871562a5255a5f1bcc63c",
+    "tools/perf/verify-standard-cycle-closure-inbox-fixtures.mjs": "8451f759318efd32118cfa07e829d7b22a3bbc5dcf8b9a558d02eb6061b5b940",
+    "tools/perf/verify-standard-cycle-closure-review-fixtures.mjs": "35c0b9e37628916d7a129f7fa6d923713e0015d2352f07f398250c0e64f7358a",
+    "tools/perf/verify-standard-workflow-ports-fixtures.mjs": "37b877b9f669386bfe705762f007835f8cf454562fa7e9f4c428905c1d75530e"
+  },
+  "remaining": [
+    "canonical terminal metadata write and separate fresh effect grant",
+    "actual final cycle-close checkpoint and drift retry",
+    "earlier phase exits and other mode paths",
+    "complete distributed standard JSON graph and ordinary entrypoints",
+    "general uncertain-effect reconciliation",
+    "native provider and exact installed archive qualification"
+  ]
+}

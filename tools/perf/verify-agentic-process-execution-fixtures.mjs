@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { attachCycleClosureModel, closureHumanSource } from "./cycle-closure-fixture-lib.mjs";
 import { attachCycleAuditModel } from "./cycle-audit-fixture-lib.mjs";
 import { CYCLE_AUDIT_CONTRACT } from "../../src/core/workflow/standard-cycle-audit.mjs";
 import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-lib.mjs";
@@ -68,6 +69,8 @@ const selectedRecoveryCycleMode = process.argv.find(value => value.startsWith("-
 const selectedCyclePlanMode = process.argv.find(value => value.startsWith("--cycle-plan-mode="))?.slice("--cycle-plan-mode=".length);
 const selectedCycleReadinessMode = process.argv.find(value => value.startsWith("--cycle-readiness-mode="))?.slice("--cycle-readiness-mode=".length);
 const selectedCycleWorkMode = process.argv.find(value => value.startsWith("--cycle-work-mode="))?.slice("--cycle-work-mode=".length);
+const selectedCycleClosureMode = process.argv.find(value => value.startsWith("--cycle-closure-mode="))?.slice("--cycle-closure-mode=".length);
+if (selectedCycleClosureMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleClosureMode)) throw Error("CYCLE_CLOSURE_FIXTURE_MODE_INVALID");
 const selectedCycleAuditMode = process.argv.find(value => value.startsWith("--cycle-audit-mode="))?.slice("--cycle-audit-mode=".length);
 if (selectedCycleAuditMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleAuditMode)) throw Error("CYCLE_AUDIT_FIXTURE_MODE_INVALID");
 const selectedCycleTaskMode = process.argv.find(value => value.startsWith("--cycle-task-mode="))?.slice("--cycle-task-mode=".length);
@@ -89,6 +92,7 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (selectedCyclePlanMode && !name.startsWith(`cycle plan ${selectedCyclePlanMode}`)) return;
   if (selectedCycleReadinessMode && !name.startsWith(`cycle readiness ${selectedCycleReadinessMode}:`)) return;
   if (selectedCycleWorkMode && !name.startsWith(`cycle work ${selectedCycleWorkMode}:`)) return;
+  if (selectedCycleClosureMode && !name.startsWith(`cycle closure ${selectedCycleClosureMode}:`)) return;
   if (selectedCycleAuditMode && !name.startsWith(`cycle audit ${selectedCycleAuditMode}:`)) return;
   if (selectedCycleTaskMode && !name.startsWith(`cycle tasks ${selectedCycleTaskMode}:`)) return;
   if (selectedCycleVerificationMode && !name.startsWith(`cycle verification ${selectedCycleVerificationMode}:`)) return;
@@ -101,7 +105,7 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
-  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan |cycle readiness |cycle work |cycle validation |cycle verification |cycle tasks |cycle audit )/.test(name)) return;
+  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan |cycle readiness |cycle work |cycle validation |cycle verification |cycle tasks |cycle audit |cycle closure )/.test(name)) return;
   const dataflowMode = process.argv.find(value => value.startsWith("--dataflow-mode="))?.slice("--dataflow-mode=".length);
   if (dataflowMode && !name.startsWith(`dataflow ${dataflowMode}:`)) return;
   const recoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
@@ -475,6 +479,7 @@ function mixedFixture(stateMode = "files", options = {}) {
     }
     if (options.taskProgress) taskProgressModel(model);
     if (options.audit) attachCycleAuditModel(model, original);
+    if (options.closure) attachCycleClosureModel(model);
     const content = fs.readFileSync(new URL("../../scaffold/codex/aidn-cycle-create/SKILL.md", import.meta.url));
     f.configuration.skills["cycle-create"] = { path: put(f.base, "package/cycle-create.md", content), sha256: sha(content) };
     f.configuration.activity_outputs = { analyze: CYCLE_PLAN_CONTRACT };
@@ -499,8 +504,16 @@ function mixedFixture(stateMode = "files", options = {}) {
   const commit = spawnSync("git", ["-c", "core.hooksPath=NUL", "commit", "-m", "fixture product"], { cwd: projectRoot, encoding: "utf8", shell: false }); assert.equal(commit.status, 0, commit.stderr);
   const key = Buffer.alloc(32, 91), t = transport(f, options), controllerFactory = journalController(f, t, options);
   const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
-  const open = () => createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key,
+  if (options.closure) {
+    f.closureSourceFile = path.join(f.base, "human-closure-sources.json"); fs.writeFileSync(f.closureSourceFile, "{}");
+    options.humanSource = closureHumanSource(f.closureSourceFile);
+  }
+  const compose = () => createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key,
     authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
+  // The human path also qualifies a retained common host. Authority/evidence
+  // reads remain inside its methods; acceptance still restarts in a cold Node.
+  let sharedHost;
+  const open = () => options.closure ? sharedHost ??= compose() : compose();
   Object.assign(f, { open, key, t, model, ...(options.recoveryCycle ? { cycleParameters: { cycle_id: options.changeRequest ? "C002" : "C001", cycle_type: "spike", title: "admitted-recovery" } } : {}) }); return f;
 }
 async function bootstrapMixed(f) {
@@ -584,6 +597,18 @@ if (process.argv[2] === "--mixed-continue") {
     process.stdout.write(JSON.stringify({ native, status: last.cursor.status, instance_sha256: last.record.instance_sha256, launches: f.launches,
       sessions: t.sessions.length, closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+} else if (process.argv[2] === "--closure-accept") {
+  try {
+    const data = JSON.parse(fs.readFileSync(process.argv[3])), f = { ...data.fixture, launches: 0 }, key = Buffer.from(data.key_hex, "hex"), t = transport(f);
+    const host = createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key, validationProfile: data.validation_profile,
+      humanSource: closureHumanSource(data.human_source_file), authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }) },
+      { controllerFactory: journalController(f, t), validationBoundaryFactory: fixtureValidationBoundary });
+    const result = await host.acceptOperation(data.operation_id, { write: true });
+    process.stdout.write(JSON.stringify({ instance_sha256: result.record.instance_sha256, status: result.cursor.status, launches: f.launches, sessions: t.sessions.length }));
+  } finally {
+    const resolved = fs.realpathSync(root); assert.equal(path.dirname(resolved), fs.realpathSync(os.tmpdir())); assert.ok(path.basename(resolved).startsWith("aidn-agentic-execution-"));
+    fs.rmSync(resolved, { recursive: true, force: true });
+  }
 } else if (process.argv[2] === "--recovery-record") {
   try {
     const data = JSON.parse(fs.readFileSync(process.argv[3])), f = { ...data.fixture, launches: 0 }, key = Buffer.from(data.key_hex, "hex"), t = transport(f);
@@ -607,6 +632,22 @@ if (process.argv[2] === "--mixed-continue") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  await check("cycle closure contract: typed review and authenticated inbox preserve pending lifecycle", () => {
+    const cases = [["verify-standard-cycle-closure-decision-fixtures.mjs"], ["verify-standard-cycle-closure-review-fixtures.mjs"],
+      ...["files", "dual", "db-only"].map(mode => ["verify-standard-cycle-closure-inbox-fixtures.mjs", "--mode=" + mode])];
+    for (const [name, ...args] of cases) {
+      const child = spawnSync(process.execPath, [fileURLToPath(new URL("./" + name, import.meta.url)), ...args], { encoding: "utf8", windowsHide: true, shell: false, timeout: 60000 });
+      assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-8192)); process.stdout.write(child.stdout);
+    }
+  });
+  await check("cycle closure contract: authored IR binds the human port without a native resource", () => {
+    const f = mixedFixture("files", { planning: true, readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true, taskFinalValue: 3 });
+    const before = fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"));
+    const host = f.open(), preview = host.initialize({ parameters: { session: { session_id: "S001", session_branch: "S001-human", objective: "Model-bound human closure fixture" } } });
+    const node = preview.record.model.nodes.find(row => row.id === "closure_decide");
+    assert.equal(node.kind, "operation"); assert.equal(node.binding_ref, "cycle_closure_decision"); assert.equal(node.role_ref, undefined);
+    assert.equal(f.t.sessions.length, 0); assert.equal(f.launches ?? 0, 0); assert.deepEqual(fs.readFileSync(path.join(f.configuration.product_root, "app.mjs")), before);
+  });
   await check("cycle audit contract: typed checklist and canonical inventory remain read-only components", () => {
     for (const name of ["verify-standard-cycle-audit-fixtures.mjs", "verify-standard-workflow-inventory-fixtures.mjs", "verify-standard-cycle-audit-context-fixtures.mjs"]) {
       const child = spawnSync(process.execPath, [fileURLToPath(new URL("./" + name, import.meta.url))], { encoding: "utf8", windowsHide: true, shell: false, timeout: 60000 });
@@ -639,6 +680,7 @@ if (process.argv[2] === "--mixed-continue") {
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, verification: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true });
+  await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true });
   for (const mode of ["files", "dual", "db-only"]) await check(`dataflow ${mode}: the IR resolves durable parameters and accepted result identities through real ports`, async () => {
     const f = finalizationFixture(mode, { dataBindings: true, inputSource: mode === "dual" ? "operation_input" : "operation_output" });
     const parameters = { session: { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" } };
