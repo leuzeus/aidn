@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 104/102 et le modèle composé candidat en 46
+les composants startup/cycle en 105/103 et le modèle composé candidat en 47
 (93 nœuds, 59 occurrences d’opération, 49 identifiants de liaison mobilisés parmi
 56 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -3338,3 +3338,36 @@ GitHub push, review/checks/triage, durable external events, explicit merge and
 fetch/divergence/sync remain open, along with A1-A10, full runtime/CI admission,
 native and exact archive qualification. Ordinary selection is unchanged and
 complete_standard_workflow=false.
+
+### Authenticated GitHub push transport with isolated configuration
+
+Source5d72ebf/model47 adds the host-pinned github-https-git.v1 factory, separately
+from the local bare profile. The host fixes Git/gh binaries, repository and actor;
+the adapter checks authenticated identity, push permission, local ancestry and
+exact remote tip. HTTPS credentials are supplied through child environments only.
+Read-only observation runs outside any checkout. Granted push creates its own
+bare transport configuration with the local object store as an alternate, so
+checkout URL/HTTP/credential configuration cannot receive the credential or
+redirect the transport. The preparation's closed manifest is local execution
+evidence of the journaled push. Confirmed completion cleans only that exact
+resource; an unknown result retains it and blocks reuse for the same head.
+General reconciliation remains open. Neither a factory nor a valid profile grants
+a remote effect or enables an ordinary entry point.
+
+The [transport record](qualification/agentic-process/github-session-push-components-2026-11-03.json)
+reports 13 PASS/code0 controls with fixture cleanup. Local Git, object transfer,
+lease semantics, bare remote refs and the session push application are actual.
+HTTP/HTTPS transports, upstream admission and provider identities are doubled.
+The checks include a checkout rewrite introduced at dispatch, nonancestor remote
+history, unknown post-effect timeout/grant loss, retained preparation and refusal
+of a second same-head push. Earlier v1/v2 trials are kept distinct. Composition24,
+startup22, source-of-truth35, metadata37, governance-completeness, gate-catalog,
+doc references and the manifest definition/three negative cases pass.
+
+No actual GitHub network effect, provider/native identity, model47 composition
+or installed archive is qualified. The active model46 uses its own source/pin;
+its future verdict cannot qualify47. Review/checks/triage and durable provider
+events, explicit merge decisions, merge/fetch/divergence/sync, A1-A10, full runtime
+and CI admission, native and archive evidence remain required. No new review
+lot was started in this tranche. The full goal remains open, ordinary selection
+is unchanged and complete_standard_workflow=false.
