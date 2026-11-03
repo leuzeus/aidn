@@ -948,3 +948,20 @@ The final evaluator feeds the existing VERIFYING transition. Task progression
 is not audit acceptance, DONE, full skill completion or the complete standard
 workflow. The full distributed graph and A1–A10/native/installed acceptance
 obligations remain outstanding. Qualification status belongs in the plan.
+
+
+## Read-only final audit component
+
+An accepted VERIFYING transition supplies a causal bridge to its final physical
+checks and observed work. Fixed read-only selection/evaluation ports authenticate
+that chain and the native audit proposal; they do not rerun checks or infer human
+consent. Full canonical inventory is required to infer conditional document
+absence. Its audit fingerprint covers required documents and the owning cycle
+namespace, allowing unrelated journal receipts to be retained durably. Ordered
+lossless document chunks preserve the shared JSON scalar and total bounds.
+
+Audit observations preserve uncovered requirements/usages, uncertain documents,
+failed/unavailable checks and blocking/risk findings. Even a favorable audit
+leaves cycle-close pending. Human choice, risk acceptance, canonical closure and
+the final hook must be implemented and qualified separately. This component does
+not supply the complete distributed standard model or its ordinary entrypoints.

@@ -52,7 +52,7 @@ export function taskProgressValidationProfile(base, unchanged) {
   const bytes = JSON.stringify(fixture.profile); fs.writeFileSync(fixture.profileRef.path, bytes);
   fixture.profileRef.sha256 = createHash("sha256").update(bytes).digest("hex"); return fixture;
 }
-export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, setAllowed }) {
+export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, audit = false, setAllowed }) {
   const operations = [], advances = [], originalScope = artifacts.read(`${cyclePath}/plan.md`).content.split("## Native write scope")[1].split("```")[1];
   let restarted = false;
   for (let step = 0; step < 25; step++) {
@@ -116,10 +116,19 @@ export async function verifyTaskProgressExecution({ f, artifacts, cyclePath, sel
     const finalEvaluation = operations.filter(row => row.intent.binding_ref === "cycle_validation_evaluate").at(-1).results.at(-1).output;
     assert.equal(finalEvaluation.facts.cycle_work_complete, true); assert.equal(finalEvaluation.facts.cycle_checks_passed, true);
     assert.deepEqual(finalEvaluation.observations.pending_test_refs, []);
-    assert.equal(verifier.calls(), 3); assert.equal(f.t.sessions.length, 3); assert.ok(f.t.sessions.every(row => row.closed));
+    assert.equal(verifier.calls(), 3); assert.equal(f.t.sessions.length, audit ? 4 : 3); assert.ok(f.t.sessions.every(row => row.closed));
     assert.equal(fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"), "utf8"), `export const value = ${selected === "unchanged" ? 2 : 3};\n`);
     assert.match(artifacts.read(`${cyclePath}/status.md`).content, /^state: VERIFYING$/m);
-    assert.equal(operations.at(-1).results.at(-1).output.facts.cycle_verification_started, true); assert.equal(artifacts.ownerPending(), false);
+    assert.equal(operations.find(row => row.intent.binding_ref === "cycle_verification_enter").results.at(-1).output.facts.cycle_verification_started, true); assert.equal(artifacts.ownerPending(), false);
+    if (audit) {
+      const selectedSource = operations.find(row => row.intent.binding_ref === "cycle_audit_select"), evaluated = operations.at(-1);
+      assert.equal(selectedSource.results.at(-1).output.facts.cycle_audit_source_selected, true);
+      assert.equal(evaluated.intent.binding_ref, "cycle_audit_evaluate");
+      assert.deepEqual(evaluated.results.at(-1).output.facts, { cycle_audit_observed: true, cycle_audit_blockers_present: false, cycle_closure_decision_required: true });
+      assert.equal(evaluated.results.at(-1).output.observations.lifecycle_transition, "none");
+      assert.equal(evaluated.results.at(-1).output.observations.skill_completion, "pending");
+      assert.equal(evaluated.results.at(-1).output.effect_status, "no_effect");
+    }
     if (selected === "unchanged") assert.equal(operations.filter(row => row.intent.binding_ref === "cycle_task_work_evaluate")[1].results.at(-1).output.observations.work_outcome, "unchanged");
   }
   const simulation = simulateAgenticProcess({ instanceId: state.record.instance_id, model: state.record.model, parameters: state.record.initial_parameters,

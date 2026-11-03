@@ -717,3 +717,20 @@ status/current state to IMPLEMENTING/READY with frozen scope. Every native
 product write still needs specific admission for the exact task and operations;
 planned tests remain distinct from executed validation. Neither component
 completes the standard workflow graph or its installed qualification.
+
+
+The experimental read-only audit component uses `cycle_audit_select`, a distinct
+`standard-cycle-audit-report.v1` native proposal, and `cycle_audit_evaluate`. It
+revalidates accepted VERIFYING provenance, physical check evidence, exact code
+and complete canonical document presence. Document text is supplied as ordered,
+lossless `content_chunks` under the unchanged JSON scalar and total limits. The
+inventory scope pins required documents and the owning cycle namespace after
+a complete global inventory; unrelated dispatch receipts do not invalidate it.
+New conditional cycle documents still invalidate the audit context.
+
+Every frozen requirement, usage and supplied audit document must be assessed.
+Failed checks cannot become supported coverage; unresolved and risk findings
+retain their identities. An audit result remains an observation with human
+decision required, skill completion pending and no lifecycle transition. The
+human decision, approved canonical closure, final hook and full standard model
+remain separate deliverables. Qualification is recorded in the standard IR plan.

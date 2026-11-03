@@ -241,3 +241,11 @@ the same command rather than changing its logical effect class. Required
 `written: false` and `refused: true` report the observed refusal. Diagnostic and
 pre-write admission contracts include compact activation, while native trust,
 secret recovery pre-images and backend credentials are never part of that shape.
+
+
+Private `standard-cycle-audit` report, selection and evaluation input/output v1
+contracts describe read-only audit components. A favorable typed native proposal
+cannot grant effects, accept risk or choose a terminal cycle state. Authenticated
+source and complete canonical inventory are application responsibilities; schema
+validity alone does not establish them. Ordered document chunks preserve complete
+text without relaxing the shared JSON limits. No public CLI output is added.

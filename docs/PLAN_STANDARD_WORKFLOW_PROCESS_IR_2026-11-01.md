@@ -8,7 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état intégré relu : `7b3a01a`, progression de tâches qualifiée hors ligne sur pins 54/52.
+Base intégrée relue : `d813d25` ; audit read-only qualifié hors ligne dans cette tranche sur pins 56/54.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -42,8 +42,9 @@ encore ouverts.
   vérifications physiques et l’entrée en VERIFYING. Les cinq scénarios de
   progression passent hors ligne ; la boucle de tâches est encore un modèle
   du corpus de tests, pas le workflow standard complet distribué.
-- Préparations isolées, hors de la preuve intégrée 54/52 : audit structuré en
-  qualification applicative et décision humaine de clôture avec contrôles purs
+- L’audit structuré est qualifié hors ligne sur files et DB-only : source
+  VERIFYING authentifiée, documents complets et rapport typé, sans clôture.
+- Préparation isolée, hors de la preuve d’audit 56/54 : décision humaine de clôture avec contrôles purs
   et inbox réelle files/dual/db-only. Le vérificateur humain de ces contrôles
   est un double explicite. Le nouveau raccordement de décision au graphe,
   les écritures de clôture et le hook final restent à terminer.
@@ -148,11 +149,12 @@ complet et son raccordement ordinaire :
 ```text
 package/catalogs/process-models/aidn-standard.v1.json
 package/catalogs/standard-workflow.v1.json
-docs/architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md
 src/application/runtime/standard-workflow-composition.mjs
 src/application/runtime/agentic-process-resume-service.mjs
 src/adapters/runtime/standard-workflow-github-adapter.mjs
 ```
+
+La [matrice de traçabilité](architecture/STANDARD_WORKFLOW_IR_TRACEABILITY.md) existe pour les composants ; sa couverture du modèle standard complet reste à terminer.
 
 Les contrats `process-operation-binding.v1`, `process-operation-receipt.v1` et
 `process-control-event.v1`, ADR-0025, `standard-workflow-operations.mjs` et
@@ -2411,3 +2413,34 @@ privés et un raccordement read-only en qualification applicative séparée. Ses
 sources en préparation ne font pas partie de cette preuve 54/52. La décision
 humaine, la clôture effective et le hook, puis promotion/PR/synchronisation,
 restent explicitement à terminer.
+
+
+## Qualification de l’audit read-only après progression
+
+Les parcours files et DB-only passent sur les sources 56/54 : deux tâches
+réellement admises et observées, trois contrôles Node sur snapshots, entrée
+VERIFYING et audit structuré authentifié. L’audit n’exécute aucun contrôle
+supplémentaire ; les quatre allocations de transport simulé du parcours restent closes.
+Chaque parcours reproduit exactement le hash final avec le même modèle et le
+même réducteur. La reprise de l’avancement files passe dans un nouveau Node.
+Le cycle reste VERIFYING, la décision humaine est requise et cycle-close pending.
+
+L’inventaire complet est exigé avant toute conclusion d’absence conditionnelle.
+L’empreinte de fraîcheur porte ensuite sur les documents requis et le namespace
+du cycle : un reçu de dispatch sans rapport avec l’audit ne l’invalide pas, mais
+un nouveau document conditionnel ou un changement audité l’invalide. Les textes
+sont transmis par fragments ordonnés sans perte, sous les limites JSON et le
+plafond total existants. Les neuf contrôles purs, quatre d’inventaire et quinze
+de contexte passent, avec modèles/contrats et politiques ciblés.
+
+La [preuve d’audit](qualification/agentic-process/cycle-audit-2026-11-02.json)
+distingue code qualifié, ports réels, transport/grants/frontière de fixture,
+prérequis SQLite local des régressions historiques et preuves absentes. Le premier
+échec de limite et le défaut d’empreinte auto-invalidante sont conservés dans
+son historique ; ils ne sont pas comptés comme des PASS.
+
+L3/L5 restent ouverts : modèle standard complet distribué et entrées ordinaires.
+La préparation humaine suivante possède des contrôles purs, une inbox réelle
+files/SQLite, un modèle et un raccord hôte en qualification séparée. Les écritures
+de clôture, son hook, promotion/session/PR/synchronisation et A1–A10 restent
+requis. Natif réel et archive installée exacte restent NOT_RUN.

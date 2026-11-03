@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { attachCycleAuditModel } from "./cycle-audit-fixture-lib.mjs";
+import { CYCLE_AUDIT_CONTRACT } from "../../src/core/workflow/standard-cycle-audit.mjs";
 import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import assert from "node:assert/strict";
@@ -66,6 +68,8 @@ const selectedRecoveryCycleMode = process.argv.find(value => value.startsWith("-
 const selectedCyclePlanMode = process.argv.find(value => value.startsWith("--cycle-plan-mode="))?.slice("--cycle-plan-mode=".length);
 const selectedCycleReadinessMode = process.argv.find(value => value.startsWith("--cycle-readiness-mode="))?.slice("--cycle-readiness-mode=".length);
 const selectedCycleWorkMode = process.argv.find(value => value.startsWith("--cycle-work-mode="))?.slice("--cycle-work-mode=".length);
+const selectedCycleAuditMode = process.argv.find(value => value.startsWith("--cycle-audit-mode="))?.slice("--cycle-audit-mode=".length);
+if (selectedCycleAuditMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleAuditMode)) throw Error("CYCLE_AUDIT_FIXTURE_MODE_INVALID");
 const selectedCycleTaskMode = process.argv.find(value => value.startsWith("--cycle-task-mode="))?.slice("--cycle-task-mode=".length);
 if (selectedCycleTaskMode !== undefined && !["contract", "files", "db-only", "unchanged", "partial", "projection"].includes(selectedCycleTaskMode)) throw Error("CYCLE_TASK_FIXTURE_MODE_INVALID");
 const selectedCycleVerificationMode = process.argv.find(value => value.startsWith("--cycle-verification-mode="))?.slice("--cycle-verification-mode=".length);
@@ -85,6 +89,7 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (selectedCyclePlanMode && !name.startsWith(`cycle plan ${selectedCyclePlanMode}`)) return;
   if (selectedCycleReadinessMode && !name.startsWith(`cycle readiness ${selectedCycleReadinessMode}:`)) return;
   if (selectedCycleWorkMode && !name.startsWith(`cycle work ${selectedCycleWorkMode}:`)) return;
+  if (selectedCycleAuditMode && !name.startsWith(`cycle audit ${selectedCycleAuditMode}:`)) return;
   if (selectedCycleTaskMode && !name.startsWith(`cycle tasks ${selectedCycleTaskMode}:`)) return;
   if (selectedCycleVerificationMode && !name.startsWith(`cycle verification ${selectedCycleVerificationMode}:`)) return;
   if (selectedCycleValidationMode && !name.startsWith(`cycle validation ${selectedCycleValidationMode}:`)) return;
@@ -96,7 +101,7 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
-  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan |cycle readiness |cycle work |cycle validation |cycle verification |cycle tasks )/.test(name)) return;
+  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan |cycle readiness |cycle work |cycle validation |cycle verification |cycle tasks |cycle audit )/.test(name)) return;
   const dataflowMode = process.argv.find(value => value.startsWith("--dataflow-mode="))?.slice("--dataflow-mode=".length);
   if (dataflowMode && !name.startsWith(`dataflow ${dataflowMode}:`)) return;
   const recoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
@@ -469,15 +474,22 @@ function mixedFixture(stateMode = "files", options = {}) {
       model.operation_pins = Object.fromEntries(standardWorkflowOperationBindings().filter(row => model.nodes.some(node => node.binding_ref === row.id)).map(row => [row.id, shadowHash(row)]));
     }
     if (options.taskProgress) taskProgressModel(model);
+    if (options.audit) attachCycleAuditModel(model, original);
     const content = fs.readFileSync(new URL("../../scaffold/codex/aidn-cycle-create/SKILL.md", import.meta.url));
     f.configuration.skills["cycle-create"] = { path: put(f.base, "package/cycle-create.md", content), sha256: sha(content) };
     f.configuration.activity_outputs = { analyze: CYCLE_PLAN_CONTRACT };
     if (options.work) f.configuration.activity_outputs.implement = options.taskProgress ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT;
+    if (options.audit) {
+      f.configuration.activity_outputs.audit_review = CYCLE_AUDIT_CONTRACT;
+      const close = fs.readFileSync(new URL("../../scaffold/codex/aidn-cycle-close/SKILL.md", import.meta.url));
+      f.configuration.skills["cycle-close"] = { path: put(f.base, "package/cycle-close.md", close), sha256: sha(close) };
+    }
     fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
   }
   f.configuration.instructions = options.planning ? { analyze: "Propose only the typed plan; never write files or declare DoR ready." }
     : options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
     : { analyze: "Analyze without writing.", review: "Review without correcting." };
+  if (options.audit) f.configuration.instructions.audit_review = "Audit the final product and supplied checklist read-only; report uncertainty and leave all decisions and writes to the host.";
   if (options.work) f.configuration.instructions.implement = options.taskProgress ? "Implement only the host-selected task and its done criteria; host validation and progression remain separate." : "Implement the frozen first task only; leave deterministic validation to the host.";
   const criteriaText = options.taskProgress ? `Follow the selected task: intermediate value 2, final value ${options.taskFinalValue}, unchanged interface. Host checks remain separate.` : options.work ? "The admitted local value becomes 2; validation remains a separate host operation." : "Read the product without changing any bytes.";
   fs.writeFileSync(f.configuration.criteria.path, criteriaText); f.configuration.criteria.sha256 = sha(criteriaText);
@@ -595,6 +607,12 @@ if (process.argv[2] === "--mixed-continue") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  await check("cycle audit contract: typed checklist and canonical inventory remain read-only components", () => {
+    for (const name of ["verify-standard-cycle-audit-fixtures.mjs", "verify-standard-workflow-inventory-fixtures.mjs", "verify-standard-cycle-audit-context-fixtures.mjs"]) {
+      const child = spawnSync(process.execPath, [fileURLToPath(new URL("./" + name, import.meta.url))], { encoding: "utf8", windowsHide: true, shell: false, timeout: 60000 });
+      assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-8192)); process.stdout.write(child.stdout);
+    }
+  });
   await check("cycle tasks contract: ordered progress and typed work preserve historical parsing", () => {
     const child = spawnSync(process.execPath, [fileURLToPath(new URL("./verify-standard-cycle-task-progress-fixtures.mjs", import.meta.url))], { encoding: "utf8", windowsHide: true, shell: false, timeout: 30000 });
     assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-8192)); process.stdout.write(child.stdout);
@@ -620,6 +638,7 @@ if (process.argv[2] === "--mixed-continue") {
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, verification: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true });
+  await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true });
   for (const mode of ["files", "dual", "db-only"]) await check(`dataflow ${mode}: the IR resolves durable parameters and accepted result identities through real ports`, async () => {
     const f = finalizationFixture(mode, { dataBindings: true, inputSource: mode === "dual" ? "operation_input" : "operation_output" });
     const parameters = { session: { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" } };

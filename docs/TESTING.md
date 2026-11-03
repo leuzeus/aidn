@@ -2112,3 +2112,22 @@ survives an interrupted turn without an accepted result. `--checkpoint-only`
 selects these cases locally and cannot replace the complete required suite.
 The native-host-state content hash is not inter-host authentication, a supervisor
 closure proof, a new allocation grant or a general resume qualification.
+
+
+### Standard cycle audit components
+
+`node tools/perf/verify-standard-cycle-audit-fixtures.mjs` checks typed report
+coverage and semantic refusals. `node tools/perf/verify-standard-workflow-inventory-fixtures.mjs`
+checks complete canonical presence, redirection refusal and DB-only behavior.
+`node tools/perf/verify-standard-cycle-audit-context-fixtures.mjs` checks lossless
+long normative text and Unicode, scope-stable dispatch receipts, changed audit
+documents, new conditional documents and the unchanged total context ceiling in
+files/dual/db-only. These component checks use a fixture verification bridge.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --cycle-audit-mode=contract`
+includes all three. Its `files` and `db-only` selections exercise actual local
+application ports with fixture native transport, grants and execution boundary;
+they do not prove native provider or exact installed archive execution. The
+audit fixture fixes its longer original deadline before any native allocation;
+no live authority or production limit is extended during execution. A favorable
+report must retain VERIFYING, pending human closure and no-effect status.

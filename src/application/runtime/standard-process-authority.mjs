@@ -1,3 +1,5 @@
+import { CYCLE_AUDIT_CONTRACT } from "../../core/workflow/standard-cycle-audit.mjs";
+import { buildStandardCycleAuditContext } from "./standard-cycle-audit-context.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
 import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings, assertStandardWorkflowImplementation } from "./standard-workflow-operations.mjs";
@@ -122,6 +124,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return result.value;
   }
   async function prepareActivityOutput({ contractRef, productSha256, instance, occurrenceId, productSnapshot }) {
+    if (contractRef === CYCLE_AUDIT_CONTRACT) return prepareAuditActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_WORK_CONTRACT) return prepareWorkActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_TASK_WORK_CONTRACT) return prepareTaskWorkActivity({ instance, occurrenceId, productSha256, productSnapshot });
     const skill = nativeActivityOutputSkill(contractRef);
@@ -341,21 +344,21 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       boundarySha256: cycleWorkBoundary({ root: artifacts.root, context: observed.context, environment }, context.task.paths.map(row => row.path)),
       producer: authenticated.producer, evidenceRefs: [authenticated.reference, source.ref, output.ref] });
   }
-  function acceptedWorkSnapshot(instance, workId) {
+  function acceptedWorkSnapshot(instance, workId, { auth = {}, productSha256 } = {}) {
     const binding = operationStore.read(workId).record?.intent.binding_ref;
     if (!["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(binding)) fail("STANDARD_VALIDATION_WORK_REQUIRED");
-    const evaluated = acceptedOperation(instance, workId, binding), output = evaluated.output;
+    const evaluated = acceptedOperation(instance, workId, binding, auth), output = evaluated.output;
     if (output.facts.cycle_work_observed !== true) fail("STANDARD_VALIDATION_WORK_REQUIRED");
     const contractRef = binding === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT;
-    const native = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, contractRef);
+    const native = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, contractRef, auth);
     if (shadowHash(native.producer) !== shadowHash(output.observations.producer)) fail("STANDARD_VALIDATION_WORK_STALE");
     const ref = output.evidence_refs.find(row => row.ref.endsWith("-artifact-output.json")), journal = allocations.read(nativeJournalId(instance)).record;
     const observed = readAgentRunFile(nativeEvidenceFile(configuration, ref, journal.allocations.length), { sha256: ref.sha256, maxBytes: 1048576 }).value;
-    if (observed.occurrence_id !== evaluated.record.preview.input.report_occurrence_id || shadowHash(observed.files) !== observed.artifact_sha256 || observed.artifact_sha256 !== readProductSha256?.()) fail("STANDARD_VALIDATION_WORK_STALE");
+    if (observed.occurrence_id !== evaluated.record.preview.input.report_occurrence_id || shadowHash(observed.files) !== observed.artifact_sha256 || observed.artifact_sha256 !== (productSha256 ?? readProductSha256?.())) fail("STANDARD_VALIDATION_WORK_STALE");
     let validation_test_refs;
     if (binding === "cycle_task_work_evaluate") {
-      const selected = acceptedOperation(instance, output.observations.task_operation_id, "cycle_task_select");
-      const { proposal } = taskPhase(instance, output.observations.implementation_operation_id);
+      const selected = acceptedOperation(instance, output.observations.task_operation_id, "cycle_task_select", auth);
+      const { proposal } = taskPhase(instance, output.observations.implementation_operation_id, auth);
       validation_test_refs = selected.output.observations.ordinal === proposal.tasks.length ? proposal.tests.map(row => row.id) : output.observations.task.test_refs;
     }
     return { evaluated, binding, output, evaluation_sha256: shadowHash(output), files: observed.files, product_root: configuration.product_root, ...(validation_test_refs ? { validation_test_refs } : {}) };
@@ -367,28 +370,103 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (shadowHash(output) !== work.evaluation_sha256) fail("STANDARD_VALIDATION_WORK_STALE");
     return work;
   }
+  function cycleValidationSubject(instance, work, auth = {}) {
+    const phaseId = work.output.observations.implementation_operation_id, phase = acceptedOperation(instance, phaseId, "cycle_implementation_enter", auth);
+    const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate", auth);
+    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record", auth);
+    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate", auth);
+    const proposal = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT, auth).report;
+    const observedTasks = new Set();
+    for (const event of instance.events.filter(row => row.kind === "operation_intent" && ["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(row.intent.binding_ref))) {
+      const accepted = instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed");
+      if (!accepted) continue;
+      const prior = acceptedOperation(instance, event.intent.operation_id, event.intent.binding_ref, auth), facts = prior.output;
+      if (facts.facts.cycle_work_observed !== true || facts.observations.implementation_operation_id !== phaseId || facts.observations.scope_sha256 !== work.output.observations.scope_sha256) continue;
+      const task = proposal.tasks.find(row => row.id === facts.observations.task.id);
+      if (!task || shadowHash(task) !== shadowHash(facts.observations.task)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
+      const report = readActivityOutput(instance, prior.record.preview.input.report_occurrence_id, event.intent.binding_ref === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT, auth);
+      if (report.report.task !== task.task || shadowHash(report.producer) !== shadowHash(facts.observations.producer)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
+      observedTasks.add(task.id);
+    }
+    return { phaseId, phase, proposal, observedTasks };
+  }
+  async function readCycleVerificationExecution(instance, input, auth = {}, productSha256) {
+    if (!input || Object.keys(input).join(",") !== "implementation_operation_id" || !/^op_[a-f0-9]{40}$/.test(input.implementation_operation_id ?? "")) fail("STANDARD_AUDIT_INPUT_INVALID");
+    authenticate(instance, auth);
+    const admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "cycle-close" });
+    if (admission.ok !== true || !["admitted", "admitted_with_warnings"].includes(admission.admission_status)) fail("STANDARD_AUDIT_ADMISSION_BLOCKED");
+    const currentProduct = () => productSha256 ?? readProductSha256?.();
+    const context = await observeCycleVerificationContext(currentProduct());
+    if (context.context.cycle_state !== "VERIFYING") fail("STANDARD_AUDIT_VERIFICATION_REQUIRED");
+    const candidates = [];
+    for (const event of instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_verification_enter")) {
+      if (!instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed")) continue;
+      const verification = acceptedOperation(instance, event.intent.operation_id, "cycle_verification_enter", auth), details = verification.output.observations;
+      if (verification.output.facts.cycle_verification_started !== true || verification.output.effect_status !== "confirmed"
+        || details.causal_transition?.after_context_sha256 !== context.context_sha256) continue;
+      const evaluation = acceptedOperation(instance, verification.record.preview.input.evaluation_operation_id, "cycle_validation_evaluate", auth);
+      const validation = acceptedOperation(instance, evaluation.record.preview.input.validation_operation_id, "cycle_validation_execute", auth);
+      const work = acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id, { auth, productSha256: context.context.product_sha256 });
+      if (work.output.observations.implementation_operation_id !== input.implementation_operation_id) continue;
+      const subject = cycleValidationSubject(instance, work, auth);
+      if (details.evaluation_operation_id !== evaluation.record.operation_id || details.scope_sha256 !== work.output.observations.scope_sha256
+        || details.causal_transition.before_context_sha256 !== evaluation.output.observations.context_sha256
+        || details.causal_transition.evaluation_sha256 !== shadowHash(evaluation.output)
+        || verification.record.preview.prepared.plan.evaluation_sha256 !== shadowHash(evaluation.output)
+        || verification.record.preview.prepared.plan.context_sha256 !== details.causal_transition.before_context_sha256) fail("STANDARD_AUDIT_VERIFICATION_BRIDGE_CHANGED");
+      if (evaluation.record.preview.input.progress_operation_id) {
+        const progress = acceptedOperation(instance, evaluation.record.preview.input.progress_operation_id, "cycle_task_advance", auth);
+        if (progress.output.observations.validation_operation_id !== validation.record.operation_id
+          || progress.output.observations.work_operation_id !== work.evaluated.record.operation_id
+          || progress.output.observations.causal_transition.after_context_sha256 !== details.causal_transition.before_context_sha256) fail("STANDARD_AUDIT_VERIFICATION_BRIDGE_CHANGED");
+        const cursor = taskCursor(instance, subject.phaseId, subject.phase, subject.proposal, details.causal_transition.before_context_sha256, auth);
+        if (!cursor.complete || cursor.previous_progress_operation_id !== progress.record.operation_id) fail("STANDARD_AUDIT_TASKS_INCOMPLETE");
+      }
+      candidates.push({ verification, evaluation, source: { ...validation, work, proposal: subject.proposal, observed_task_ids: [...subject.observedTasks] },
+        context: context.context, context_sha256: context.context_sha256 });
+    }
+    if (candidates.length !== 1) fail("STANDARD_AUDIT_VERIFICATION_AMBIGUOUS");
+    if ((await observeCycleVerificationContext(currentProduct())).context_sha256 !== context.context_sha256) fail("STANDARD_AUDIT_SOURCE_CHANGED");
+    return candidates[0];
+  }
+  async function prepareAuditActivity({ instance, occurrenceId, productSha256, productSnapshot }) {
+    const auth = nativeReservation ? { reservation: nativeReservation } : {};
+    authenticate(instance, auth); assertWorkProductSnapshot(productSnapshot);
+    if (shadowHash(productSnapshot) !== productSha256) fail("STANDARD_AUDIT_PRODUCT_REQUIRED");
+    const resolution = resolveProcessOperationInput({ instance, occurrenceId, readOperation: id => { const record = operationStore.read(id).record; signer.verify(record); return record; } });
+    if (Object.keys(resolution.input).join(",") !== "audit_operation_id") fail("STANDARD_AUDIT_INPUT_INVALID");
+    const selection = acceptedOperation(instance, resolution.input.audit_operation_id, "cycle_audit_select", auth);
+    const bridge = await readCycleVerificationExecution(instance, selection.record.preview.input, auth, productSha256);
+    const material = observeCycleAuditContext(bridge, selection.output.observations.validation);
+    if (material.context_sha256 !== selection.output.observations.audit_context_sha256
+      || bridge.verification.record.operation_id !== selection.output.observations.verification_operation_id) fail("STANDARD_AUDIT_SELECTION_STALE");
+    const context = { ...material.context, audit_operation_id: selection.record.operation_id, input_resolution: resolution };
+    return { context, context_sha256: shadowHash(context) };
+  }
+  function readCycleAuditActivity(instance, input) {
+    assertStandardOperationInput("cycle_audit_evaluate", input);
+    const authenticated = readActivityOutput(instance, input.report_occurrence_id, CYCLE_AUDIT_CONTRACT);
+    const event = instance.events.find(row => row.kind === "result" && row.occurrence_id === input.report_occurrence_id), journal = allocations.read(nativeJournalId(instance)).record;
+    const get = suffix => {
+      const references = event.result.evidence_refs.filter(row => row.ref.endsWith(suffix));
+      if (references.length !== 1) fail("STANDARD_AUDIT_NATIVE_EVIDENCE_REQUIRED");
+      return { value: readAgentRunFile(nativeEvidenceFile(configuration, references[0], journal.allocations.length), { sha256: references[0].sha256, maxBytes: 1048576 }).value, ref: references[0] };
+    };
+    const retained = get("-activity-context.json"), observed = get("-artifact-output.json"), context = retained.value.context;
+    if (retained.value.occurrence_id !== input.report_occurrence_id || observed.value.occurrence_id !== input.report_occurrence_id
+      || context.input_resolution?.occurrence_id !== input.report_occurrence_id || context.input_resolution.input.audit_operation_id !== context.audit_operation_id
+      || retained.value.context_sha256 !== authenticated.report.context_sha256 || shadowHash(context) !== authenticated.report.context_sha256
+      || shadowHash(observed.value.files) !== observed.value.artifact_sha256 || observed.value.artifact_sha256 !== context.product_sha256
+      || observed.value.artifact_sha256 !== readProductSha256?.()) fail("STANDARD_AUDIT_NATIVE_SOURCE_CHANGED");
+    const selection = acceptedOperation(instance, context.audit_operation_id, "cycle_audit_select");
+    return { authenticated, context, selection, evidence_refs: [authenticated.reference, retained.ref, observed.ref] };
+  }
   async function readCycleValidationExecution(instance, input) {
     assertStandardOperationInput("cycle_validation_evaluate", input);
     const validation = acceptedOperation(instance, input.validation_operation_id, "cycle_validation_execute");
     const progress = input.progress_operation_id ? acceptedOperation(instance, input.progress_operation_id, "cycle_task_advance") : null;
     const work = progress ? acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id) : await readCycleWorkEvaluation(instance, validation.record.preview.input);
-    const phaseId = work.output.observations.implementation_operation_id, phase = acceptedOperation(instance, phaseId, "cycle_implementation_enter");
-    const ready = acceptedOperation(instance, phase.record.preview.input.evaluation_operation_id, "cycle_readiness_evaluate");
-    const recorded = acceptedOperation(instance, ready.record.preview.input.record_operation_id, "cycle_plan_record");
-    const evaluated = acceptedOperation(instance, recorded.record.preview.input.evaluation_operation_id, "cycle_plan_evaluate");
-    const proposal = readActivityOutput(instance, evaluated.record.preview.input.report_occurrence_id, CYCLE_PLAN_CONTRACT).report;
-    const observedTasks = new Set();
-    for (const event of instance.events.filter(row => row.kind === "operation_intent" && ["cycle_work_evaluate", "cycle_task_work_evaluate"].includes(row.intent.binding_ref))) {
-      const accepted = instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === event.intent.operation_id && row.receipt.outcome === "completed");
-      if (!accepted) continue;
-      const prior = acceptedOperation(instance, event.intent.operation_id, event.intent.binding_ref), facts = prior.output;
-      if (facts.facts.cycle_work_observed !== true || facts.observations.implementation_operation_id !== phaseId || facts.observations.scope_sha256 !== work.output.observations.scope_sha256) continue;
-      const task = proposal.tasks.find(row => row.id === facts.observations.task.id);
-      if (!task || shadowHash(task) !== shadowHash(facts.observations.task)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
-      const report = readActivityOutput(instance, prior.record.preview.input.report_occurrence_id, event.intent.binding_ref === "cycle_task_work_evaluate" ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT);
-      if (report.report.task !== task.task || shadowHash(report.producer) !== shadowHash(facts.observations.producer)) fail("STANDARD_VERIFICATION_TASK_SOURCE_CHANGED");
-      observedTasks.add(task.id);
-    }
+    const { phaseId, phase, proposal, observedTasks } = cycleValidationSubject(instance, work);
     const context = await observeCycleReadinessContext();
     if (progress) {
       const details = progress.output.observations;
@@ -405,9 +483,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   const observeCyclePlanContext = () => readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  const observeCycleVerificationContext = async () => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+  const observeCycleVerificationContext = async (productSha256 = readProductSha256?.()) => readinessContext(await readStandardCyclePlanContext({ targetRoot: configuration.target_root, productSha256, productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment,
     readinessTransition: true, verificationTransition: true }));
+  const observeCycleAuditContext = (bridge, validation) => buildStandardCycleAuditContext({ targetRoot: configuration.target_root, environment,
+    deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
-    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
+    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, readCycleAuditActivity, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

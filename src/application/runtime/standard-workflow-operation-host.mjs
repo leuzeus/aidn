@@ -1,3 +1,4 @@
+import { observeStandardCycleAudit } from "../../core/workflow/standard-cycle-audit.mjs";
 import { randomUUID } from "node:crypto";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
@@ -73,6 +74,40 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   async function evaluateValidation(instance, input) {
     const source = await processAuthority.readCycleValidationExecution(instance, input), evidence = await cycleValidation.readResult(source);
     return { output: evaluateStandardCycleValidation({ source, evidence, validationOperationId: input.validation_operation_id }), source, evidence };
+  }
+  async function auditSource(instance, input) {
+    const bridge = await processAuthority.readCycleVerificationExecution(instance, input), source = bridge.source;
+    const evidence = await cycleValidation.readResult(source);
+    // Recompute machine coverage against the same signed original subject hash.
+    // Its owned VERIFYING metadata transition is authenticated separately above;
+    // this historical hash is never presented as the current context authority.
+    const original = evaluateStandardCycleValidation({ source: { ...source,
+      progress_operation_id: bridge.evaluation.record.preview.input.progress_operation_id ?? null,
+      context: { cycle_path: bridge.context.cycle_path }, context_sha256: bridge.evaluation.output.observations.context_sha256 },
+      evidence, validationOperationId: source.record.operation_id });
+    if (shadowHash(original) !== shadowHash(bridge.evaluation.output) || original.facts.cycle_work_complete !== true) fail("STANDARD_AUDIT_MACHINE_EVIDENCE_STALE");
+    const validation = { contract_version: "standard-cycle-audit-machine-evidence.v1", validation_operation_id: source.record.operation_id,
+      evaluation_operation_id: bridge.evaluation.record.operation_id, work_complete: original.facts.cycle_work_complete,
+      checks_passed: original.facts.cycle_checks_passed, product_sha256: evidence.plan.product_sha256, profile_sha256: evidence.plan.profile_sha256,
+      proof_class: evidence.plan.proof_class, status: evidence.manifest.status, checks: evidence.checks, evidence_refs: evidence.evidence_refs };
+    const material = processAuthority.observeCycleAuditContext(bridge, validation);
+    return { bridge, validation, material };
+  }
+  async function evaluateAuditSelection(instance, input) {
+    assertStandardOperationInput("cycle_audit_select", input);
+    const verified = await auditSource(instance, input), { bridge, material, validation } = verified;
+    return { contract_version: "standard-cycle-audit-selection-output.v1", operation_ref: "cycle_audit_select", outcome: "completed", effect_status: "no_effect",
+      facts: { cycle_audit_source_selected: true }, observations: { implementation_operation_id: input.implementation_operation_id,
+        verification_operation_id: bridge.verification.record.operation_id, context_sha256: bridge.context_sha256,
+        audit_context_sha256: material.context_sha256, validation }, evidence_refs: material.context.evidence_refs };
+  }
+  async function evaluateAudit(instance, input) {
+    const native = processAuthority.readCycleAuditActivity(instance, input), current = await auditSource(instance, native.selection.record.preview.input);
+    const { audit_operation_id: selectionId, input_resolution: resolution, ...baseContext } = native.context;
+    if (shadowHash(baseContext) !== current.material.context_sha256 || current.material.context_sha256 !== native.selection.output.observations.audit_context_sha256
+      || current.bridge.verification.record.operation_id !== native.selection.output.observations.verification_operation_id) fail("STANDARD_AUDIT_CONTEXT_STALE");
+    return observeStandardCycleAudit({ report: native.authenticated.report, context: native.context, contextSha256: shadowHash(native.context),
+      producer: native.authenticated.producer, evidenceRefs: [...native.evidence_refs, ...current.validation.evidence_refs] });
   }
   async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter") {
       assertStandardOperationInput(operation, input);
@@ -449,6 +484,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_readiness_evaluate") output = await processAuthority?.evaluateCycleReadiness(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_work_evaluate") output = await processAuthority?.evaluateCycleWork(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_WORK_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_validation_evaluate") output = (await evaluateValidation(state.record, record.preview.input)).output;
+        else if (record.intent.binding_ref === "cycle_audit_evaluate") output = await evaluateAudit(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "cycle_audit_select") output = await evaluateAuditSelection(state.record, record.preview.input);
         else if (record.intent.binding_ref === "cycle_task_select") output = await processAuthority.evaluateCycleTaskSelection(state.record, record.preview.input);
         else if (record.intent.binding_ref === "cycle_task_work_evaluate") output = await processAuthority.evaluateCycleTaskWork(state.record, record.preview.input);
         else if (record.intent.binding_ref === "drift_change_request_record") output = await changeRequest.apply(state.record, record.preview.prepared,

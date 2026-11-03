@@ -181,3 +181,14 @@ The [task qualification record](../qualification/agentic-process/task-progressio
 separates actual offline ports, fixture transports, source-package inclusion and
 remaining native/installed-archive proof. The complete standard model and A1–A10
 acceptance remain required.
+
+
+The offline-qualified audit tranche adds read-only source selection and typed native
+audit evaluation after VERIFYING. Its bridge reauthenticates final machine checks
+and scoped canonical documents. A complete global inventory precedes the audit
+namespace fingerprint; ordered chunks preserve whole documents. Component checks
+do not prove the full application path. Human decisions, approved closure and
+its hook remain unimplemented in this tranche; they are not supplied by favorable
+report fields or by changing a reference definition's markers.
+
+The [audit qualification record](../qualification/agentic-process/cycle-audit-2026-11-02.json) records both offline application paths through the actual local ports and exact simulation. Native transport/grants/boundary remain fixtures; actual native and installed-archive evidence remain NOT_RUN. This is not full standard workflow qualification.

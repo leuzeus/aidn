@@ -136,6 +136,35 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
       if (!uncertain) fs.unlinkSync(file);
     });
   }
+  function inventory() {
+    const selected = describe(); let names = [];
+    const nameOf = name => {
+      if (typeof name !== "string" || !name || name.length > 2048 || /[\\\u0000-\u001f]/.test(name)
+        || path.posix.isAbsolute(name) || path.win32.isAbsolute(name) || name.split("/").some(part => !part || [".", ".."].includes(part))) fail("STANDARD_ARTIFACT_INVENTORY_INVALID");
+      return name;
+    };
+    if (selected.database) {
+      const store = open(true);
+      try { const rows = store.listArtifacts(10000); if (rows.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED"); names = rows.map(row => nameOf(row.path)); }
+      finally { store.close(); }
+    } else {
+      const folder = agentRunPhysicalPath(path.join(root, "docs/audit")); let entries = 0;
+      const walk = (at, depth = 0) => {
+        if (depth > 64) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
+        for (const name of fs.readdirSync(at).sort()) {
+          if (++entries >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
+          const file = agentRunPhysicalPath(path.join(at, name)), stat = fs.lstatSync(file);
+          if (stat.isDirectory()) walk(file, depth + 1);
+          else if (stat.isFile()) names.push(nameOf(path.relative(folder, file).replaceAll("\\", "/")));
+          else fail("STANDARD_ARTIFACT_INVENTORY_UNSUPPORTED");
+        }
+      };
+      walk(folder);
+    }
+    names.sort();
+    if (new Set(names.map(name => process.platform === "win32" ? name.toLowerCase() : name)).size !== names.length) fail("STANDARD_ARTIFACT_INVENTORY_AMBIGUOUS");
+    return { complete: true, source: selected.database ? selected.backend : "files", paths: names, sha256: shadowHash(names) };
+  }
   function sessions() {
     let names;
     if (describe().database) {
@@ -162,5 +191,5 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (new Set(result.map(row => BigInt(row.cycle_id.slice(1)).toString())).size !== result.length) fail("STANDARD_CYCLE_ID_AMBIGUOUS");
     return result;
   }
-  return Object.freeze({ root, describe, read, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
+  return Object.freeze({ root, describe, read, inventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
 }
