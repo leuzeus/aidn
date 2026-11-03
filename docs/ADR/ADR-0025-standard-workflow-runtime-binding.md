@@ -1046,3 +1046,30 @@ post-effect revocation retain ownership and no completion facts. Physical store
 fixtures use actual source installation and fixture human/close authorities.
 This library is not a registered IR binding, full workflow, native execution or
 exact installed-archive proof. These remain separate acceptance work.
+
+### Remote PR observation prerequisite
+
+SPEC-R08 triage needs remote facts, not only local session PR status. The private
+GitHub adapter observes one host-selected repository/PR at an expected head via
+fixed read-only GraphQL queries and a host-pinned GitHub CLI executable. IR data
+cannot supply queries, executable modules, credentials or result authentication.
+Thread and nested-comment pagination is complete within explicit size/request/
+time bounds; overflow, duplicates, partial API errors and identity/head drift
+refuse the observation. Outdated remains distinct from resolved.
+
+The digest covers normalized remote content and remains stable across polling
+time and provider page order. Observation timestamps and request counts remain
+separate. Rechecking PR metadata/head does not create an atomic API snapshot or
+merge permission. The future host must bind and authenticate delivery to its
+waiting occurrence, compare current head/content with accepted triage and require
+an explicit merge decision. None of that is supplied by successful typed flags.
+
+GitHub owns the remote facts; local session fields remain workflow metadata.
+The observation is ephemeral, with future retained deliveries covered by the
+existing process control inbox. Actual source/non-primary public API reads and
+fixture pagination/refusal checks qualify this adapter prerequisite. The durable
+PR wait, triage/binding and full standard IR remain to be connected. Native and
+exact installed-archive acceptance remain separate.
+
+API references: [GitHub CLI API](https://cli.github.com/manual/gh_api) and
+[GitHub pull-request GraphQL objects](https://docs.github.com/en/graphql/reference/pulls).

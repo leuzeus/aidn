@@ -2208,3 +2208,13 @@ DB-only compares an existing bootstrap projection to its initial bytes instead
 of assuming absence. These are record-component proofs, not the missing human
 inbox, mixed-host replay, final hook, complete standard IR, real native client
 or exact installed archive.
+
+`verify-github-pr-observation-fixtures.mjs` is included once in the existing
+required agentic-process gate. It verifies closed private schemas and the actual
+adapter with fixture transport: complete nested pages, stale/foreign identities,
+partial errors, global bounds/deadline, Unicode bodies, deleted authors, nullable
+anchors, stable content digests and explicit unresolved/outdated state. The
+immutable expected command includes this addition while preserving old checks.
+Read-only actual GitHub observations are recorded separately from fixture API
+coverage; they do not establish authenticated durable inbox delivery, IR routing,
+triage/merge authorization, native execution or exact installed-archive workflow.

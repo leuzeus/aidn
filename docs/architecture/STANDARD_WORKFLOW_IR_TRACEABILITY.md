@@ -230,3 +230,10 @@ source-installed physical-store tests. Human request/close authority is a fixtur
 capability. Its actual mixed-host binding, authenticated promotion inbox, final
 hook and common-model replay/simulation remain required. Confirmed baseline
 record keeps promotion completion false.
+
+The [GitHub observation prerequisite](../qualification/agentic-process/github-pr-observation-2026-11-03.json)
+adds actual remote review-state acquisition with bounded complete pagination and
+head/identity checks. Its successful response provides observations, not merge
+permission. Authenticated durable external delivery, triage decisions and the
+standard PR model route remain required. Actual network reads, fixture transport,
+native and installed-archive proof remain separately identified.

@@ -93,6 +93,12 @@ encore ouverts.
 - L4 : scope commun et dispatcher mixte interne implémentés et validés sur les
   corpus ciblés ; réconciliation des inconnus et continuation après expiration restent
   ouvertes. Voir l'addendum du 2026-11-02.
+- Le prérequis GitHub observe maintenant l’identité/le commit de PR et les
+  threads/commentaires réels, avec pagination bornée complète et contrôles de
+  fraîcheur. Les [preuves de l’adaptateur](qualification/agentic-process/github-pr-observation-2026-11-03.json)
+  séparent 18 fixtures et deux lectures API authentifiées. Le raccord à l’inbox
+  externe durable, le triage, l’autorisation de fusion et le modèle PR standard
+  restent à réaliser ; une observation ne clôture ni la revue ni le workflow.
 - L5 à L8 : à réaliser. Le modèle standard complet, son branchement ordinaire,
   la reprise générale et les preuves natives/package installé restent ouverts.
 - Vérifications L1 : 27 cas dédiés, 38 régressions du réducteur/service, 51 de
