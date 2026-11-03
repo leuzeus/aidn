@@ -258,3 +258,39 @@ not_requested is a recorded choice, never promotion completion or a rule waiver.
 | Confirmed baseline checkpoint | SPEC-R04/R05/R07/R11, deterministic baseline_promotion_finalize | Real selected-target shared checkpoint, physical event and five completion CAS on source clients; human/close authority fixture |
 | Append-only promotion history | Accepted pending record plus confirmed event | Prior bytes and pending entry retained, separate confirmation appended; uncertain effects cannot repeat the checkpoint |
 | Full standard route | Distributed IR, common cursor and ordinary entrypoints | Still required with replay/simulation, durable external waits and native/exact archive proof |
+
+
+## Composed standard IR: partial source, not full workflow qualification
+
+The [standard model](../../package/catalogs/process-models/aidn-standard.v1.json)
+and its [catalog](../../package/catalogs/standard-workflow.v1.json) now compose
+49 nodes and 31 operation occurrences through the existing reducer and
+[application loader](../../src/application/runtime/standard-workflow-composition.mjs).
+The catalog pins real bindings, SPEC and skills and declares typed native reports.
+Its closed contract still requires `complete_standard_workflow: false`.
+It does not replace ordinary workflow selection.
+
+| Composed IR nodes | Current realization | Remaining qualification |
+| --- | --- | --- |
+| `startup`, `mode_route` | Existing six startup bindings and authenticated mode facts | Startup prefix only; THINKING/EXPLORING work remains open |
+| `cycle_create`, `plan`, `plan_evaluate`, `plan_record`, `readiness`, `implementation_enter` | Real cycle ports, native plan proposal, canonical plan CAS and admission | Actual composed COMMITTING route and startup R05 |
+| `task_loop`, `task_iteration`, `final_verification` | Common loop reducer, real task/validation/progress ports, independent native implementation action | Same published model on a disposable project; work drift and incidents |
+| `audit_select`, `audit_review`, `audit_evaluate`, `closure_decide`, `close_record`, `close_finalize` | Authenticated audit and decision, six terminal CAS, actual checkpoint | Same composed cursor, not substitution of component proofs |
+| `promotion_decide`, `promotion_route`, `promotion_record`, `promotion_finalize` | Authenticated promotion request, real five CAS and checkpoint | Same composed cursor after actual closure |
+
+The empty `promotion_not_requested` branch carries no baseline completion fact.
+Empty v2 structural sequences require no dummy reload or model call. Unknown
+conditions, refusals, deferred/cancelled decisions and uncertain effects retain
+their existing reducer and authorization semantics; historical v1 remains intact.
+R05/R10 routing, existing-cycle/session resume, R07 session closure, R08 PR
+review/merge and R09 post-merge sync remain explicit missing activities. Native
+and exact installed-archive qualification remain separate requirements.
+
+
+The [recorded prefix proof](../qualification/agentic-process/standard-composition-prefix-2026-11-03.json)
+passes nine checks each for files, dual and DB-only on its exact frozen snapshot:
+six real business bindings, an authenticated fixture human defer/resume, signed
+result acceptance in a new process, retained redispatch, and exact replay/simulation.
+It uses the source installer with a Codex discovery stub. It does not execute
+the declared native activities or the composed COMMITTING cycle route, and does
+not qualify ordinary entrypoints, a native host or an exact installed archive.

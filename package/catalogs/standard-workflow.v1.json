@@ -1,0 +1,885 @@
+{
+  "contract_version": "standard-workflow-catalog.v1",
+  "component_id": "aidn-standard",
+  "revision": 3,
+  "scope": {
+    "kind": "composed_committing_cycle_component",
+    "complete_standard_workflow": false,
+    "entry_conditions": [
+      "fresh_session_admission",
+      "single_new_cycle"
+    ],
+    "remaining_activities": [
+      "existing_session_resume",
+      "thinking_work",
+      "exploring_work_and_spike_conversion",
+      "cycle_choice_and_carryover",
+      "startup_and_work_drift_routes",
+      "incidents_and_recovery",
+      "session_close",
+      "pr_review_and_merge",
+      "post_merge_sync",
+      "full_mixed_resume"
+    ]
+  },
+  "model": {
+    "path": "package/catalogs/process-models/aidn-standard.v1.json",
+    "sha256": "200edaacb710a9fdfc713eeef71ea41c5a94865459819b7b762986f5595a3fc5",
+    "model_id": "aidn-standard",
+    "revision": 3
+  },
+  "specification": {
+    "path": "docs/SPEC.md",
+    "sha256": "a37ae4413215c3b8572eb66e6f27788f33e613d87f6a325a43e6ddc107faa3ad"
+  },
+  "bindings": [
+    {
+      "node_id": "context_reload",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "context_reload",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "context-reload",
+        "input_contract": "standard-empty-input.v1",
+        "output_contract": "standard-operation-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+        "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+      }
+    },
+    {
+      "node_id": "session_admit",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_admit",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "start-session",
+        "input_contract": "standard-empty-input.v1",
+        "output_contract": "standard-operation-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "session_initialize",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_initialize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "start-session",
+        "input_contract": "standard-session-initialize-input.v1",
+        "output_contract": "standard-operation-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "UNKNOWN"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "mode_decision",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "mode_decision",
+        "revision": 1,
+        "executor_kind": "human",
+        "effect_class": "read-only",
+        "skill_id": "start-session",
+        "input_contract": "standard-session-reference-input.v1",
+        "output_contract": "standard-operation-output.v2",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R02"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "session_mode_apply",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_mode_apply",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "start-session",
+        "input_contract": "standard-mode-apply-input.v1",
+        "output_contract": "standard-operation-output.v2",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R02"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "session_start_finalize",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "session_start_finalize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "executor",
+        "skill_id": "start-session",
+        "input_contract": "standard-session-reference-input.v1",
+        "output_contract": "standard-operation-output.v2",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R04",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "UNKNOWN",
+          "THINKING",
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "cycle_refresh_before",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_context_refresh",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "projector",
+        "skill_id": "context-reload",
+        "input_contract": "standard-session-reference-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R04",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+        "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+      }
+    },
+    {
+      "node_id": "cycle_admit",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_admit",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-empty-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R06"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+      }
+    },
+    {
+      "node_id": "cycle_initialize",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_initialize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-cycle-initialize-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R06"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+      }
+    },
+    {
+      "node_id": "cycle_audit",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "branch_cycle_audit",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "branch-cycle-audit",
+        "input_contract": "standard-cycle-reference-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
+        "sha256": "a4e24737d7c4abd67c8c03be55f1577e42f733008c573668b5031c1c1ffa63b4"
+      }
+    },
+    {
+      "node_id": "cycle_refresh_after",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_context_refresh",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "projector",
+        "skill_id": "context-reload",
+        "input_contract": "standard-session-reference-input.v1",
+        "output_contract": "standard-cycle-output.v1",
+        "rule_refs": [
+          "SPEC-R01",
+          "SPEC-R04",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+        "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+      }
+    },
+    {
+      "node_id": "cycle_checkpoint",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_checkpoint_finalize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "executor",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-cycle-reference-input.v1",
+        "output_contract": "standard-cycle-checkpoint-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04",
+          "SPEC-R05",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+      }
+    },
+    {
+      "node_id": "plan_evaluate",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_plan_evaluate",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-cycle-plan-evaluate-input.v1",
+        "output_contract": "standard-cycle-planning-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+      }
+    },
+    {
+      "node_id": "plan_record",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_plan_record",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-cycle-plan-record-input.v1",
+        "output_contract": "standard-cycle-planning-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "EXPLORING",
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+      }
+    },
+    {
+      "node_id": "readiness",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_readiness_evaluate",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "start-session",
+        "input_contract": "standard-cycle-readiness-evaluate-input.v1",
+        "output_contract": "standard-cycle-readiness-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "implementation_enter",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_implementation_enter",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "cycle-create",
+        "input_contract": "standard-cycle-implementation-enter-input.v1",
+        "output_contract": "standard-cycle-readiness-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+      }
+    },
+    {
+      "node_id": "task_select",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_task_select",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "start-session",
+        "input_contract": "standard-cycle-task-select-input.v1",
+        "output_contract": "standard-cycle-task-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "work_evaluate",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_task_work_evaluate",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "start-session",
+        "input_contract": "standard-cycle-work-evaluate-input.v1",
+        "output_contract": "standard-cycle-task-work-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "validate",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_validation_execute",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "executor",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-validation-input.v1",
+        "output_contract": "standard-cycle-validation-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "task_validation",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_validation_evaluate",
+        "revision": 2,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-validation-evaluate-input.v2",
+        "output_contract": "standard-cycle-verification-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "task_advance",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_task_advance",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "start-session",
+        "input_contract": "standard-cycle-task-advance-input.v1",
+        "output_contract": "standard-cycle-task-output.v1",
+        "rule_refs": [
+          "SPEC-R03",
+          "SPEC-R04"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-start-session/SKILL.md",
+        "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+      }
+    },
+    {
+      "node_id": "final_validation",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_validation_evaluate",
+        "revision": 2,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-validation-evaluate-input.v2",
+        "output_contract": "standard-cycle-verification-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "verification_enter",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_verification_enter",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-verification-enter-input.v1",
+        "output_contract": "standard-cycle-verification-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "audit_select",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_audit_select",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-audit-select-input.v1",
+        "output_contract": "standard-cycle-audit-selection-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "audit_evaluate",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_audit_evaluate",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-audit-evaluate-input.v1",
+        "output_contract": "standard-cycle-audit-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "closure_decide",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_closure_decision",
+        "revision": 1,
+        "executor_kind": "human",
+        "effect_class": "read-only",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-closure-review-input.v1",
+        "output_contract": "standard-cycle-closure-decision-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "close_record",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_close_record",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-close-input.v1",
+        "output_contract": "standard-cycle-close-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "close_finalize",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_close_finalize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "executor",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-close-hook-input.v1",
+        "output_contract": "standard-cycle-close-hook-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R05",
+          "SPEC-R07",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+      }
+    },
+    {
+      "node_id": "promotion_decide",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "baseline_promotion_decision",
+        "revision": 1,
+        "executor_kind": "human",
+        "effect_class": "read-only",
+        "skill_id": "promote-baseline",
+        "input_contract": "standard-baseline-promotion-review-input.v1",
+        "output_contract": "standard-baseline-promotion-decision-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
+        "sha256": "a2c9b8135f880e4c68972ea8f31c11b5624942374eccd1b5156586fc9c7f833c"
+      }
+    },
+    {
+      "node_id": "promotion_record",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "baseline_promotion_record",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "promote-baseline",
+        "input_contract": "standard-baseline-promotion-input.v1",
+        "output_contract": "standard-baseline-promotion-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
+        "sha256": "a2c9b8135f880e4c68972ea8f31c11b5624942374eccd1b5156586fc9c7f833c"
+      }
+    },
+    {
+      "node_id": "promotion_finalize",
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "baseline_promotion_finalize",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "executor",
+        "skill_id": "promote-baseline",
+        "input_contract": "standard-baseline-promotion-hook-input.v1",
+        "output_contract": "standard-baseline-promotion-hook-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R05",
+          "SPEC-R07",
+          "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "e3b32645b5cf6a2d8222cda67f3bdec161ff1af668e1fb3d2d4956c612869c58"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
+        "sha256": "a2c9b8135f880e4c68972ea8f31c11b5624942374eccd1b5156586fc9c7f833c"
+      }
+    }
+  ],
+  "activities": [
+    {
+      "node_id": "plan",
+      "output_contract": "standard-cycle-plan-proposal.v1",
+      "rule_refs": [
+        "SPEC-R03",
+        "SPEC-R04"
+      ],
+      "skill_sources": [
+        {
+          "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+          "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+        }
+      ]
+    },
+    {
+      "node_id": "implement",
+      "output_contract": "standard-cycle-task-work-report.v1",
+      "rule_refs": [
+        "SPEC-R03",
+        "SPEC-R04",
+        "SPEC-R06"
+      ],
+      "skill_sources": []
+    },
+    {
+      "node_id": "audit_review",
+      "output_contract": "standard-cycle-audit-report.v1",
+      "rule_refs": [
+        "SPEC-R04",
+        "SPEC-R06"
+      ],
+      "skill_sources": [
+        {
+          "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+          "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+        }
+      ]
+    }
+  ]
+}

@@ -1200,3 +1200,29 @@ separate acceptance work. First actual files component passed on its exact
 prototype snapshot. All seven current source-installed mode/fault cases passed
 on their frozen65/63 snapshot. These component authorities do not qualify the
 full authenticated common-cursor chain or distributed standard model.
+
+
+## Addendum: explicitly partial common standard composition
+
+The versioned [standard IR](../../package/catalogs/process-models/aidn-standard.v1.json)
+is loaded through `standard-workflow-composition.mjs`, using the existing
+operation host and common reducer. Its `standard-workflow-catalog.v1` pins the
+actual operation identities and the SPEC/skill bytes. Native activity rows
+also declare their typed output contracts; the standard process authority
+rejects missing, changed or extra native output mappings. The catalog is a
+closed partial-component contract and cannot label this revision as the
+complete standard workflow. Ordinary entrypoints are not redirected to it.
+
+IR v2 permits an empty structural sequence for an explicitly selected optional
+branch. It produces no business receipt, fact, resource allocation or model
+call. Other structured nodes retain nonempty children, and v1 retains the
+previous restriction. Unknown routing facts still wait; explicit refusal,
+defer/cancel and unresolved-effect semantics are unchanged. No XML is required.
+
+The source graph currently composes startup and one new COMMITTING cycle through
+its task loop, validation, audit, closure and optional promotion. Structural
+loading and a startup-prefix exercise are different from qualifying this whole
+business path. R05 and incident routing, existing work/resume, THINKING/EXPLORING
+work, session closure, PR review/merge, post-merge synchronization and ordinary
+mixed resume remain open in the [plan](../PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
+Native and exact installed-archive proofs remain mandatory for final acceptance.

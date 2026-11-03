@@ -1,0 +1,894 @@
+{
+  "contract_version": "agentic-process-model.v2",
+  "model_id": "aidn-standard",
+  "revision": 3,
+  "participants": [
+    {
+      "id": "project"
+    }
+  ],
+  "roles": [
+    {
+      "id": "planner",
+      "role": "auditor",
+      "action": "analyze",
+      "skills": [
+        "cycle-create"
+      ]
+    },
+    {
+      "id": "implementer",
+      "role": "executor",
+      "action": "implement",
+      "skills": []
+    },
+    {
+      "id": "auditor",
+      "role": "auditor",
+      "action": "audit",
+      "skills": [
+        "cycle-close"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "id": "planning",
+      "version": 1,
+      "assurance_profile": "compatible-work.v1",
+      "mode": "COMMITTING",
+      "independent_review": false,
+      "context_isolation_required": false,
+      "required_permissions": [
+        "read:product"
+      ],
+      "allowed_permissions": [
+        "read:product"
+      ]
+    },
+    {
+      "id": "implementation",
+      "version": 1,
+      "assurance_profile": "compatible-work.v1",
+      "mode": "COMMITTING",
+      "independent_review": false,
+      "context_isolation_required": false,
+      "required_permissions": [
+        "read:product"
+      ],
+      "allowed_permissions": [
+        "read:product",
+        "write:product"
+      ]
+    },
+    {
+      "id": "audit",
+      "version": 1,
+      "assurance_profile": "independent-review.v1",
+      "mode": "COMMITTING",
+      "independent_review": true,
+      "context_isolation_required": true,
+      "required_permissions": [
+        "read:product"
+      ],
+      "allowed_permissions": [
+        "read:product"
+      ]
+    }
+  ],
+  "entry": "standard",
+  "nodes": [
+    {
+      "id": "standard",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "startup",
+        "mode_route"
+      ]
+    },
+    {
+      "id": "startup",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "context_reload",
+        "session_admit",
+        "session_initialize",
+        "mode_decision",
+        "session_mode_apply",
+        "session_start_finalize"
+      ]
+    },
+    {
+      "id": "context_reload",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "context_reload"
+    },
+    {
+      "id": "session_admit",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "session_admit"
+    },
+    {
+      "id": "session_initialize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "session_initialize"
+    },
+    {
+      "id": "mode_decision",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "mode_decision"
+    },
+    {
+      "id": "session_mode_apply",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "session_mode_apply"
+    },
+    {
+      "id": "session_start_finalize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "session_start_finalize"
+    },
+    {
+      "id": "mode_route",
+      "kind": "xor",
+      "participant_ref": "project",
+      "branches": [
+        {
+          "flow_id": "committing",
+          "node_id": "committing",
+          "condition": "mode_committing"
+        },
+        {
+          "flow_id": "thinking",
+          "node_id": "thinking_handoff",
+          "condition": "mode_thinking"
+        },
+        {
+          "flow_id": "exploring",
+          "node_id": "exploring_handoff",
+          "condition": "mode_exploring"
+        }
+      ]
+    },
+    {
+      "id": "thinking_handoff",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": []
+    },
+    {
+      "id": "exploring_handoff",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": []
+    },
+    {
+      "id": "committing",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "cycle_create",
+        "plan",
+        "plan_evaluate",
+        "plan_record",
+        "readiness",
+        "implementation_enter",
+        "task_loop",
+        "audit_select",
+        "audit_review",
+        "audit_evaluate",
+        "closure_decide",
+        "close_record",
+        "close_finalize",
+        "promotion_decide",
+        "promotion_route"
+      ]
+    },
+    {
+      "id": "cycle_create",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "cycle_refresh_before",
+        "cycle_admit",
+        "cycle_initialize",
+        "cycle_audit",
+        "cycle_checkpoint",
+        "cycle_refresh_after"
+      ]
+    },
+    {
+      "id": "cycle_refresh_before",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_context_refresh"
+    },
+    {
+      "id": "cycle_admit",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_admit"
+    },
+    {
+      "id": "cycle_initialize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_initialize"
+    },
+    {
+      "id": "cycle_audit",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "branch_cycle_audit"
+    },
+    {
+      "id": "cycle_refresh_after",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_context_refresh"
+    },
+    {
+      "id": "cycle_checkpoint",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_checkpoint_finalize"
+    },
+    {
+      "id": "plan",
+      "kind": "activity",
+      "participant_ref": "project",
+      "role_ref": "planner",
+      "policy_ref": "planning"
+    },
+    {
+      "id": "plan_evaluate",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_plan_evaluate"
+    },
+    {
+      "id": "plan_record",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_plan_record"
+    },
+    {
+      "id": "readiness",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_readiness_evaluate"
+    },
+    {
+      "id": "implementation_enter",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_implementation_enter"
+    },
+    {
+      "id": "task_loop",
+      "kind": "loop",
+      "participant_ref": "project",
+      "child": "task_iteration",
+      "until": "cycle_tasks_finished",
+      "max_iterations": 32
+    },
+    {
+      "id": "task_iteration",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "task_select",
+        "implement",
+        "work_evaluate",
+        "validate",
+        "task_validation",
+        "task_advance",
+        "task_route"
+      ]
+    },
+    {
+      "id": "task_select",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_task_select"
+    },
+    {
+      "id": "implement",
+      "kind": "activity",
+      "participant_ref": "project",
+      "role_ref": "implementer",
+      "policy_ref": "implementation"
+    },
+    {
+      "id": "work_evaluate",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_task_work_evaluate"
+    },
+    {
+      "id": "validate",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_validation_execute"
+    },
+    {
+      "id": "task_validation",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_validation_evaluate"
+    },
+    {
+      "id": "task_advance",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_task_advance"
+    },
+    {
+      "id": "task_route",
+      "kind": "xor",
+      "participant_ref": "project",
+      "branches": [
+        {
+          "flow_id": "finished",
+          "node_id": "final_verification",
+          "condition": "cycle_tasks_finished"
+        },
+        {
+          "flow_id": "continue",
+          "node_id": "task_continue",
+          "condition": null
+        }
+      ]
+    },
+    {
+      "id": "task_continue",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": []
+    },
+    {
+      "id": "final_verification",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "final_validation",
+        "verification_enter"
+      ]
+    },
+    {
+      "id": "final_validation",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_validation_evaluate"
+    },
+    {
+      "id": "verification_enter",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_verification_enter"
+    },
+    {
+      "id": "audit_select",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_audit_select"
+    },
+    {
+      "id": "audit_review",
+      "kind": "activity",
+      "participant_ref": "project",
+      "role_ref": "auditor",
+      "policy_ref": "audit"
+    },
+    {
+      "id": "audit_evaluate",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_audit_evaluate"
+    },
+    {
+      "id": "closure_decide",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_closure_decision"
+    },
+    {
+      "id": "close_record",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_close_record"
+    },
+    {
+      "id": "close_finalize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_close_finalize"
+    },
+    {
+      "id": "promotion_decide",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "baseline_promotion_decision"
+    },
+    {
+      "id": "promotion_route",
+      "kind": "xor",
+      "participant_ref": "project",
+      "branches": [
+        {
+          "flow_id": "requested",
+          "node_id": "promotion",
+          "condition": "baseline_promotion_requested"
+        },
+        {
+          "flow_id": "not_requested",
+          "node_id": "promotion_not_requested",
+          "condition": "baseline_promotion_not_requested"
+        }
+      ]
+    },
+    {
+      "id": "promotion",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "promotion_record",
+        "promotion_finalize"
+      ]
+    },
+    {
+      "id": "promotion_not_requested",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": []
+    },
+    {
+      "id": "promotion_record",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "baseline_promotion_record"
+    },
+    {
+      "id": "promotion_finalize",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "baseline_promotion_finalize"
+    }
+  ],
+  "operation_pins": {
+    "baseline_promotion_finalize": "d9c0da58db17a1a6baec1b6b97a5bbf356690c078f83936f4ee7bad1f28e2e91",
+    "baseline_promotion_decision": "fb514a76f994590a3c2180104b3b676445622dbf848e7661679be0a292edbd87",
+    "baseline_promotion_record": "317568d7448e9a43f5ad8e3b828d5a0c23ceb41c29a9ce0a91e5855e83e31a3f",
+    "cycle_close_finalize": "0e5df542a2623143c0e4c9f46a8fa10dad70db9539276516636051bace3980e4",
+    "cycle_close_record": "e97dbe6532ff489fe6def45918169015c1fc60406a844ce98e944392b3e7a7a5",
+    "cycle_closure_decision": "4c4b9d56744dac6900f7190743c543604e751e692c0d9d59c9f8306ea3d8ba24",
+    "cycle_audit_select": "eaa0a5d65c5bfb1f214c287dbe82739ecd0fd6ee345d0763a796935bb5ff649d",
+    "cycle_audit_evaluate": "902f888d6b63b8a9fbc57f21908031fa32294ea42d10aadd2f3ed538b17f38ed",
+    "cycle_task_select": "17983b6c4850d9a0bd6038beb638113a1f6b711aa440432d32e62053c77d9fa6",
+    "cycle_task_work_evaluate": "dc9b2f97f4cb6f67eb67b918546956a179c675d966bee0f6273d0e5cac0672af",
+    "cycle_task_advance": "991832c551b7fdf4662059b9cb07217ad5cb18d7fb194de5d5f4e78a1043cbee",
+    "cycle_validation_evaluate": "0dc97a3127e9b07ba6b63d694ef01ce363880ea3b14dd730bfae482401f6e179",
+    "cycle_verification_enter": "e1c792e38d5f9c263da698c409f64b8665cecc757bf7a0f7be2cf234bce2790e",
+    "cycle_validation_execute": "2995ecaa11f31a7c6ce920c6e7a5af75695e708707f5e19c215c4a5443e598f9",
+    "cycle_readiness_evaluate": "e9625980c0fc556a0df316692c132452b31e844063d959362d71807c11c2c0e4",
+    "cycle_implementation_enter": "4b889eb7d72cbf801cbc422a44ac0a947ce27af6855bbae180a09bfe8df0c84b",
+    "context_reload": "400e29bb1f2a810551c72b609e5c68beb287839cdc9166cdbfbd33411c5b0b07",
+    "session_admit": "d43fa8816f47d962c7481a7aebeb3f245db8311eb99af0728be5c51f4690969b",
+    "session_initialize": "f435c8260f08af2e5a91dfb88eb43e0b82fdaddaed4ff750e6a94aab9f1cc470",
+    "mode_decision": "b54f5346132e710fb31e3f1cbb93626147206c49c9e108981312f50111854498",
+    "session_mode_apply": "ca0eded653711717c4ee0cc9de242b419bf7c14eb9bc9477b62cdd790ea8feb9",
+    "session_start_finalize": "c3457af51ac00301ee45faf123dd01c523a772c46e0bce806090b5f0e31e254b",
+    "cycle_admit": "12a3179c68885fd4c8b4fe682734c4acafcf58bf2155920449d0093777241575",
+    "cycle_context_refresh": "083b32c42579f5c4f964f17544d399fb81a5a517b089e48993d17ba0301048fa",
+    "cycle_initialize": "05a248a033b794e9471c4763e4939c1d6ca1e18a9d25186e17e81c14f2035c8a",
+    "branch_cycle_audit": "37609256cd836f71202f6f01429629c5fa7f8aa9d8c0b420fe7de7ce0a442278",
+    "cycle_checkpoint_finalize": "9d1c4ecca4cba0887d59cf97cadecbc824e98562eaaca044ba842c70065980d3",
+    "cycle_plan_evaluate": "80f4bedad076a3eb00302fec6d7b1ee5fcf5dfc8c880948192b36404e0893e13",
+    "cycle_plan_record": "a60676dfe6699f49224cd00d2c21c0592c8d07055ebc11a5d51fcf38ff84db25"
+  },
+  "data_bindings": {
+    "contract_version": "process-data-bindings.v2",
+    "parameter_keys": [
+      "session",
+      "cycle"
+    ],
+    "inputs": [
+      {
+        "node_id": "context_reload",
+        "fields": {}
+      },
+      {
+        "node_id": "session_admit",
+        "fields": {}
+      },
+      {
+        "node_id": "session_initialize",
+        "fields": {
+          "session_id": {
+            "source": "parameter",
+            "key": "session",
+            "path": [
+              "session_id"
+            ]
+          },
+          "session_branch": {
+            "source": "parameter",
+            "key": "session",
+            "path": [
+              "session_branch"
+            ]
+          },
+          "objective": {
+            "source": "parameter",
+            "key": "session",
+            "path": [
+              "objective"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "mode_decision",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "session_initialize",
+            "path": [
+              "session_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "session_mode_apply",
+        "fields": {
+          "decision_operation_id": {
+            "source": "operation_id",
+            "node_id": "mode_decision"
+          }
+        }
+      },
+      {
+        "node_id": "session_start_finalize",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "session_initialize",
+            "path": [
+              "session_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "cycle_refresh_before",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "path": [
+              "session_id"
+            ],
+            "node_id": "session_initialize"
+          }
+        }
+      },
+      {
+        "node_id": "cycle_admit",
+        "fields": {}
+      },
+      {
+        "node_id": "cycle_initialize",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "cycle_refresh_before",
+            "path": [
+              "session_id"
+            ]
+          },
+          "cycle_id": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "cycle_id"
+            ]
+          },
+          "cycle_type": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "cycle_type"
+            ]
+          },
+          "title": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "title"
+            ]
+          },
+          "objective": {
+            "source": "parameter",
+            "key": "cycle",
+            "path": [
+              "objective"
+            ]
+          },
+          "continuity_rule": {
+            "source": "operation_output",
+            "node_id": "cycle_admit",
+            "path": [
+              "observations",
+              "lifecycle",
+              "continuity_rule"
+            ]
+          },
+          "base_branch": {
+            "source": "operation_output",
+            "node_id": "cycle_admit",
+            "path": [
+              "observations",
+              "lifecycle",
+              "continuity_base_branch"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "cycle_audit",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "cycle_initialize",
+            "path": [
+              "session_id"
+            ]
+          },
+          "cycle_id": {
+            "source": "operation_input",
+            "node_id": "cycle_initialize",
+            "path": [
+              "cycle_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "cycle_refresh_after",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "cycle_initialize",
+            "path": [
+              "session_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "cycle_checkpoint",
+        "fields": {
+          "session_id": {
+            "source": "operation_input",
+            "node_id": "cycle_initialize",
+            "path": [
+              "session_id"
+            ]
+          },
+          "cycle_id": {
+            "source": "operation_input",
+            "node_id": "cycle_initialize",
+            "path": [
+              "cycle_id"
+            ]
+          }
+        }
+      },
+      {
+        "node_id": "plan_evaluate",
+        "fields": {
+          "report_occurrence_id": {
+            "source": "occurrence_id",
+            "node_id": "plan"
+          }
+        }
+      },
+      {
+        "node_id": "plan_record",
+        "fields": {
+          "evaluation_operation_id": {
+            "source": "operation_id",
+            "node_id": "plan_evaluate"
+          }
+        }
+      },
+      {
+        "node_id": "readiness",
+        "fields": {
+          "record_operation_id": {
+            "source": "operation_id",
+            "node_id": "plan_record"
+          }
+        }
+      },
+      {
+        "node_id": "implementation_enter",
+        "fields": {
+          "evaluation_operation_id": {
+            "source": "operation_id",
+            "node_id": "readiness"
+          }
+        }
+      },
+      {
+        "node_id": "task_select",
+        "fields": {
+          "implementation_operation_id": {
+            "source": "operation_id",
+            "node_id": "implementation_enter"
+          }
+        }
+      },
+      {
+        "node_id": "implement",
+        "fields": {
+          "task_operation_id": {
+            "source": "operation_id",
+            "node_id": "task_select"
+          }
+        }
+      },
+      {
+        "node_id": "work_evaluate",
+        "fields": {
+          "report_occurrence_id": {
+            "source": "occurrence_id",
+            "node_id": "implement"
+          }
+        }
+      },
+      {
+        "node_id": "validate",
+        "fields": {
+          "work_operation_id": {
+            "source": "operation_id",
+            "node_id": "work_evaluate"
+          }
+        }
+      },
+      {
+        "node_id": "task_validation",
+        "fields": {
+          "validation_operation_id": {
+            "source": "operation_id",
+            "node_id": "validate"
+          }
+        }
+      },
+      {
+        "node_id": "task_advance",
+        "fields": {
+          "evaluation_operation_id": {
+            "source": "operation_id",
+            "node_id": "task_validation"
+          }
+        }
+      },
+      {
+        "node_id": "final_validation",
+        "fields": {
+          "validation_operation_id": {
+            "source": "operation_id",
+            "node_id": "validate"
+          },
+          "progress_operation_id": {
+            "source": "operation_id",
+            "node_id": "task_advance"
+          }
+        }
+      },
+      {
+        "node_id": "verification_enter",
+        "fields": {
+          "evaluation_operation_id": {
+            "source": "operation_id",
+            "node_id": "final_validation"
+          }
+        }
+      },
+      {
+        "node_id": "audit_select",
+        "fields": {
+          "implementation_operation_id": {
+            "source": "operation_id",
+            "node_id": "implementation_enter"
+          }
+        }
+      },
+      {
+        "node_id": "audit_review",
+        "fields": {
+          "audit_operation_id": {
+            "source": "operation_id",
+            "node_id": "audit_select"
+          }
+        }
+      },
+      {
+        "node_id": "audit_evaluate",
+        "fields": {
+          "report_occurrence_id": {
+            "source": "occurrence_id",
+            "node_id": "audit_review"
+          }
+        }
+      },
+      {
+        "node_id": "closure_decide",
+        "fields": {
+          "audit_operation_id": {
+            "source": "operation_id",
+            "node_id": "audit_evaluate"
+          }
+        }
+      },
+      {
+        "node_id": "close_record",
+        "fields": {
+          "decision_operation_id": {
+            "source": "operation_id",
+            "node_id": "closure_decide"
+          }
+        }
+      },
+      {
+        "node_id": "close_finalize",
+        "fields": {
+          "closure_operation_id": {
+            "source": "operation_id",
+            "node_id": "close_record"
+          }
+        }
+      },
+      {
+        "node_id": "promotion_decide",
+        "fields": {
+          "contract_version": {
+            "source": "literal",
+            "value": "standard-baseline-promotion-review-input.v1"
+          },
+          "closure_operation_id": {
+            "source": "operation_id",
+            "node_id": "close_finalize"
+          }
+        }
+      },
+      {
+        "node_id": "promotion_record",
+        "fields": {
+          "decision_operation_id": {
+            "source": "operation_id",
+            "node_id": "promotion_decide"
+          }
+        }
+      },
+      {
+        "node_id": "promotion_finalize",
+        "fields": {
+          "record_operation_id": {
+            "source": "operation_id",
+            "node_id": "promotion_record"
+          }
+        }
+      }
+    ]
+  }
+}

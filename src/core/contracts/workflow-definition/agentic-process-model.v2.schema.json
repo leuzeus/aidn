@@ -17,7 +17,9 @@
     "operation_pins"
   ],
   "properties": {
-    "data_bindings": { "type": "object" },
+    "data_bindings": {
+      "type": "object"
+    },
     "contract_version": {
       "const": "agentic-process-model.v2"
     },
@@ -216,7 +218,7 @@
               "pattern": "^[a-z][a-z0-9_-]{0,63}$",
               "maxLength": 64
             },
-            "minItems": 1,
+            "minItems": 0,
             "maxItems": 32
           },
           "child": {
@@ -299,7 +301,23 @@
             "type": "string",
             "pattern": "^[a-z][a-z0-9_-]{0,63}$"
           }
-        }
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "kind": {
+                "const": "sequence"
+              }
+            }
+          },
+          {
+            "properties": {
+              "children": {
+                "minItems": 1
+              }
+            }
+          }
+        ]
       },
       "minItems": 1,
       "maxItems": 128

@@ -1,0 +1,128 @@
+// Explicit source authoring, never a runtime pin repair or model generator.
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
+import { assertAgenticProcessModel } from "../../src/core/workflow/agentic-process-model.mjs";
+import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { standardAssetHash } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
+
+const root = new URL("../../", import.meta.url);
+const read = name => fs.readFileSync(new URL(name, root));
+const json = name => JSON.parse(read(name));
+const startup = json("package/catalogs/process-models/aidn-standard-startup.v1.json");
+const cycle = json("package/catalogs/process-models/aidn-standard-cycle-create.v1.json");
+const bindings = standardWorkflowOperationBindings();
+const nodes = [], inputs = [], activities = [];
+const node = (id, kind, body = {}) => (nodes.push({ id, kind, participant_ref: "project", ...body }), id);
+const seq = (id, children) => node(id, "sequence", { children });
+const op = (id, binding_ref, fields = {}) => {
+  node(id, "operation", { binding_ref }); inputs.push({ node_id: id, fields }); return id;
+};
+const operation = (node_id, field, source) => ({ [field]: { source: "operation_id", node_id: source } });
+const occurrence = source => ({ report_occurrence_id: { source: "occurrence_id", node_id: source } });
+const native = (id, role_ref, policy_ref, output_contract, skill_ids, rule_refs) => {
+  node(id, "activity", { role_ref, policy_ref });
+  activities.push({ node_id: id, output_contract, rule_refs, skill_sources: skill_ids.map(skill => {
+    const path = `scaffold/codex/aidn-${skill}/SKILL.md`; return { path, sha256: standardAssetHash(read(path)) };
+  }) });
+  return id;
+};
+const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, node_id, condition]) => ({ flow_id, node_id, condition })) });
+
+seq("standard", ["startup", "mode_route"]);
+nodes.push(...structuredClone(startup.nodes)); inputs.push(...structuredClone(startup.data_bindings.inputs));
+xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking", "thinking_handoff", "mode_thinking"], ["exploring", "exploring_handoff", "mode_exploring"]]);
+// These are component boundaries, not successful completion of either mode's
+// standard workflow. The catalog keeps both work routes explicitly outstanding.
+seq("thinking_handoff", []); seq("exploring_handoff", []);
+seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",
+  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "close_finalize", "promotion_decide", "promotion_route"]);
+const rename = id => `cycle_${id}`;
+for (const original of cycle.nodes) {
+  const copy = structuredClone(original);
+  copy.id = copy.id === cycle.entry ? "cycle_create" : rename(copy.id);
+  if (copy.children) copy.children = copy.children.map(rename);
+  nodes.push(copy);
+}
+for (const original of cycle.data_bindings.inputs) {
+  const copy = structuredClone(original); copy.node_id = rename(copy.node_id);
+  for (const field of Object.values(copy.fields)) {
+    if (field.node_id) field.node_id = rename(field.node_id);
+    if (field.source === "parameter" && field.key === "cycle" && field.path.join(".") === "session_id") {
+      Object.assign(field, { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }); delete field.key;
+    }
+  }
+  inputs.push(copy);
+}
+native("plan", "planner", "planning", "standard-cycle-plan-proposal.v1", ["cycle-create"], ["SPEC-R03", "SPEC-R04"]);
+op("plan_evaluate", "cycle_plan_evaluate", occurrence("plan"));
+op("plan_record", "cycle_plan_record", operation("plan_record", "evaluation_operation_id", "plan_evaluate"));
+op("readiness", "cycle_readiness_evaluate", operation("readiness", "record_operation_id", "plan_record"));
+op("implementation_enter", "cycle_implementation_enter", operation("implementation_enter", "evaluation_operation_id", "readiness"));
+node("task_loop", "loop", { child: "task_iteration", until: "cycle_tasks_finished", max_iterations: 32 });
+seq("task_iteration", ["task_select", "implement", "work_evaluate", "validate", "task_validation", "task_advance", "task_route"]);
+op("task_select", "cycle_task_select", operation("task_select", "implementation_operation_id", "implementation_enter"));
+native("implement", "implementer", "implementation", "standard-cycle-task-work-report.v1", [], ["SPEC-R03", "SPEC-R04", "SPEC-R06"]);
+inputs.push({ node_id: "implement", fields: operation("implement", "task_operation_id", "task_select") });
+op("work_evaluate", "cycle_task_work_evaluate", occurrence("implement"));
+op("validate", "cycle_validation_execute", operation("validate", "work_operation_id", "work_evaluate"));
+op("task_validation", "cycle_validation_evaluate", operation("task_validation", "validation_operation_id", "validate"));
+op("task_advance", "cycle_task_advance", operation("task_advance", "evaluation_operation_id", "task_validation"));
+xor("task_route", [["finished", "final_verification", "cycle_tasks_finished"], ["continue", "task_continue", null]]);
+seq("task_continue", []);
+seq("final_verification", ["final_validation", "verification_enter"]);
+op("final_validation", "cycle_validation_evaluate", { ...operation("final_validation", "validation_operation_id", "validate"), ...operation("final_validation", "progress_operation_id", "task_advance") });
+op("verification_enter", "cycle_verification_enter", operation("verification_enter", "evaluation_operation_id", "final_validation"));
+op("audit_select", "cycle_audit_select", operation("audit_select", "implementation_operation_id", "implementation_enter"));
+native("audit_review", "auditor", "audit", "standard-cycle-audit-report.v1", ["cycle-close"], ["SPEC-R04", "SPEC-R06"]);
+inputs.push({ node_id: "audit_review", fields: operation("audit_review", "audit_operation_id", "audit_select") });
+op("audit_evaluate", "cycle_audit_evaluate", occurrence("audit_review"));
+op("closure_decide", "cycle_closure_decision", operation("closure_decide", "audit_operation_id", "audit_evaluate"));
+op("close_record", "cycle_close_record", operation("close_record", "decision_operation_id", "closure_decide"));
+op("close_finalize", "cycle_close_finalize", operation("close_finalize", "closure_operation_id", "close_record"));
+op("promotion_decide", "baseline_promotion_decision", { contract_version: { source: "literal", value: "standard-baseline-promotion-review-input.v1" }, ...operation("promotion_decide", "closure_operation_id", "close_finalize") });
+xor("promotion_route", [["requested", "promotion", "baseline_promotion_requested"], ["not_requested", "promotion_not_requested", "baseline_promotion_not_requested"]]);
+seq("promotion", ["promotion_record", "promotion_finalize"]);
+seq("promotion_not_requested", []);
+op("promotion_record", "baseline_promotion_record", operation("promotion_record", "decision_operation_id", "promotion_decide"));
+op("promotion_finalize", "baseline_promotion_finalize", operation("promotion_finalize", "record_operation_id", "promotion_record"));
+
+const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
+  independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
+const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
+  participants: [{ id: "project" }], roles: [
+    { id: "planner", role: "auditor", action: "analyze", skills: ["cycle-create"] },
+    { id: "implementer", role: "executor", action: "implement", skills: [] },
+    { id: "auditor", role: "auditor", action: "audit", skills: ["cycle-close"] }],
+  policies: [policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
+    policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
+  operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
+  data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: ["session", "cycle"], inputs } };
+const modelPath = "package/catalogs/process-models/aidn-standard.v1.json";
+const existing = fs.existsSync(new URL(modelPath, root)) ? json(modelPath) : null;
+if (existing) {
+  model.revision = existing.revision;
+}
+assertAgenticProcessModel(model);
+const catalog = { contract_version: "standard-workflow-catalog.v1", component_id: "aidn-standard", revision: model.revision,
+  scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
+    entry_conditions: ["fresh_session_admission", "single_new_cycle"], remaining_activities: ["existing_session_resume", "thinking_work", "exploring_work_and_spike_conversion",
+      "cycle_choice_and_carryover", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },
+  model: { path: modelPath, sha256: shadowHash(model), model_id: model.model_id, revision: model.revision },
+  specification: { path: "docs/SPEC.md", sha256: standardAssetHash(read("docs/SPEC.md")) },
+  bindings: nodes.filter(row => row.kind === "operation").map(row => {
+    const binding = bindings.find(binding => binding.id === row.binding_ref), path = `scaffold/codex/aidn-${binding.skill_id}/SKILL.md`;
+    return { node_id: row.id, binding, skill_source: { path, sha256: standardAssetHash(read(path)) } };
+  }), activities };
+const catalogPath = "package/catalogs/standard-workflow.v1.json";
+const existingCatalog = fs.existsSync(new URL(catalogPath, root)) ? json(catalogPath) : null;
+if (existing && (shadowHash(model) !== shadowHash(existing) || shadowHash(catalog) !== shadowHash(existingCatalog))) {
+  model.revision++; catalog.revision = model.revision; catalog.model.revision = model.revision; catalog.model.sha256 = shadowHash(model);
+}
+if (process.argv.some(arg => arg.startsWith("--") && arg !== "--write")) throw Error("STANDARD_AUTHORING_ARGUMENT_INVALID");
+if (process.argv.includes("--write")) {
+  for (const [name, value] of [[modelPath, model], ["package/catalogs/standard-workflow.v1.json", catalog]])
+    fs.writeFileSync(new URL(name, root), JSON.stringify(value, null, 2) + "\n");
+}
+console.log(JSON.stringify({ source_authoring_only: true, write: process.argv.includes("--write"), model: modelPath, model_sha256: shadowHash(model), nodes: nodes.length, operations: catalog.bindings.length,
+  standard_workflow_complete: false, author: fileURLToPath(import.meta.url) }));

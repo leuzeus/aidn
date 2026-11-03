@@ -21,7 +21,7 @@ import { evaluateStandardCycleReadiness } from "../../core/workflow/standard-cyc
 import { runStartSessionAdmitUseCase } from "./start-session-admit-use-case.mjs";
 import { readStandardCyclePlanContext, evaluateStandardCyclePlan } from "./standard-cycle-plan-context.mjs";
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
-import { assertStandardWorkflowModelSource } from "../../core/workflow/standard-workflow-model-catalog.mjs";
+import { assertStandardWorkflowModelSource, assertStandardWorkflowActivityOutputs } from "../../core/workflow/standard-workflow-model-catalog.mjs";
 import { assertStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { assertAgenticProcessInstance, agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins } from "../../core/workflow/agentic-process-model.mjs";
@@ -45,6 +45,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const model = freezeShadow(structuredClone(supplied)); assertAgenticProcessModel(model);
   if (model.contract_version !== "agentic-process-model.v2") fail("STANDARD_PROCESS_PROFILE_UNSUPPORTED");
   const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
+  if (source) assertStandardWorkflowActivityOutputs(source, model, configuration.activity_outputs);
   const signer = createOperationJournalSigner(readSigningKey), initial = readWorkflowProjectAuthority({ targetRoot: configuration.target_root });
   const options = { targetRoot: configuration.target_root, stateMode: initial.stateMode, env: environment };
   const operations = createStandardWorkflowOperations({ targetRoot: configuration.target_root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: configuration.target_root });

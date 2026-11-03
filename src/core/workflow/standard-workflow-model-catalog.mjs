@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import catalogSchema from "../contracts/workflow-definition/standard-workflow-startup-catalog.v1.schema.json" with { type: "json" };
 import cycleCatalogSchema from "../contracts/workflow-definition/standard-cycle-create-catalog.v1.schema.json" with { type: "json" };
+import standardCatalogSchema from "../contracts/workflow-definition/standard-workflow-catalog.v1.schema.json" with { type: "json" };
 import sourceSchema from "../contracts/workflow-definition/standard-workflow-model-source.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { assertAgenticProcessModel } from "./agentic-process-model.mjs";
@@ -15,7 +16,8 @@ export function assertStandardWorkflowStartupCatalog(catalog, model) {
 }
 export function assertStandardWorkflowComponentCatalog(catalog, model) {
   const schema = catalog?.contract_version === "standard-workflow-startup-catalog.v1" ? catalogSchema
-    : catalog?.contract_version === "standard-cycle-create-catalog.v1" ? cycleCatalogSchema : null;
+    : catalog?.contract_version === "standard-cycle-create-catalog.v1" ? cycleCatalogSchema
+    : catalog?.contract_version === "standard-workflow-catalog.v1" ? standardCatalogSchema : null;
   if (!schema || checkShadowJson(catalog) || validateJsonSchema(catalog, schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_STARTUP_CATALOG_INVALID");
   assertAgenticProcessModel(model);
   if (model.contract_version !== "agentic-process-model.v2" || catalog.model.sha256 !== shadowHash(model)
@@ -29,6 +31,18 @@ export function assertStandardWorkflowComponentCatalog(catalog, model) {
     if (!node || node.binding_ref !== row.binding.id || model.operation_pins[node.binding_ref] !== shadowHash(row.binding)
       || row.skill_source.path !== `scaffold/codex/aidn-${row.binding.skill_id}/SKILL.md`) fail("STANDARD_STARTUP_BINDING_CHANGED");
   }
+  if (catalog.contract_version === "standard-workflow-catalog.v1") {
+    const activities = model.nodes.filter(node => node.kind === "activity");
+    if (activities.length !== catalog.activities.length || new Set(catalog.activities.map(row => row.node_id)).size !== activities.length)
+      fail("STANDARD_ACTIVITY_COVERAGE_INVALID");
+    for (const row of catalog.activities) {
+      const activity = activities.find(node => node.id === row.node_id), role = model.roles.find(role => role.id === activity?.role_ref);
+      const skills = row.skill_sources.map(source => source.path);
+      if (!role || new Set(row.rule_refs).size !== row.rule_refs.length || new Set(skills).size !== skills.length
+        || skills.length !== role.skills.length || role.skills.some(id => !skills.includes(`scaffold/codex/aidn-${id}/SKILL.md`)))
+        fail("STANDARD_ACTIVITY_BINDING_INVALID");
+    }
+  }
   return catalog;
 }
 function authorities({ catalog, specification, skills }) {
@@ -37,6 +51,11 @@ function authorities({ catalog, specification, skills }) {
     const skill = skills[row.skill_source.path];
     if (!skill || standardAssetHash(skill) !== row.skill_source.sha256) fail("STANDARD_STARTUP_SKILL_CHANGED");
     if (row.binding.rule_refs.some(rule => !String(specification).includes("`" + rule + "`"))) fail("STANDARD_STARTUP_RULE_MISSING");
+  }
+  for (const row of catalog.activities ?? []) {
+    if (row.rule_refs.some(rule => !String(specification).includes("`" + rule + "`"))) fail("STANDARD_ACTIVITY_RULE_MISSING");
+    for (const source of row.skill_sources) if (!skills[source.path] || standardAssetHash(skills[source.path]) !== source.sha256)
+      fail("STANDARD_ACTIVITY_SKILL_CHANGED");
   }
 }
 export function verifyStandardWorkflowStartupAssets(input) {
@@ -58,6 +77,13 @@ export function assertStandardWorkflowModelSource(source, model) {
   if (checkShadowJson(source) || validateJsonSchema(source, sourceSchema, "$", { contractKind: "workflow-definition" }).length
     || source.catalog_sha256 !== shadowHash(source.catalog) || source.model_sha256 !== shadowHash(model)) fail("STANDARD_MODEL_SOURCE_INVALID");
   assertStandardWorkflowComponentCatalog(source.catalog, model); return source;
+}
+
+export function assertStandardWorkflowActivityOutputs(source, model, outputs) {
+  assertStandardWorkflowModelSource(source, model);
+  if (source.catalog.contract_version !== "standard-workflow-catalog.v1") return;
+  const expected = Object.fromEntries(source.catalog.activities.map(row => [row.node_id, row.output_contract]));
+  if (checkShadowJson(outputs) || shadowHash(outputs) !== shadowHash(expected)) fail("STANDARD_ACTIVITY_OUTPUT_CONTRACT_CHANGED");
 }
 
 // Source-authoring helper only. Runtime loading never repairs or refreshes pins.

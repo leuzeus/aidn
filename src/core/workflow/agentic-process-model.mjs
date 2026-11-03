@@ -76,7 +76,7 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
         : node.kind === "multi_instance" ? ["child", "items", "ordering"] : ["child"];
       if (!exactKeys(node, [...base, ...extras])) fail("PROCESS_STRUCTURE_INVALID");
       children = node.kind === "sequence" ? node.children : [node.child];
-      if (!Array.isArray(children) || !children.length || children.length > 32 || !children.every(processId) || new Set(children).size !== children.length) fail("PROCESS_STRUCTURE_INVALID");
+      if (!Array.isArray(children) || !children.length && !(v2 && node.kind === "sequence") || children.length > 32 || !children.every(processId) || new Set(children).size !== children.length) fail("PROCESS_STRUCTURE_INVALID");
       if (node.kind === "loop" && (!processId(node.until) || !Number.isSafeInteger(node.max_iterations) || node.max_iterations < 1 || node.max_iterations > 32)) fail("PROCESS_LOOP_INVALID");
       if (node.kind === "multi_instance" && (!Array.isArray(node.items) || node.items.length > 32 || !node.items.every(processId)
         || new Set(node.items).size !== node.items.length || !["sequential", "parallel"].includes(node.ordering))) fail("PROCESS_COLLECTION_INVALID");

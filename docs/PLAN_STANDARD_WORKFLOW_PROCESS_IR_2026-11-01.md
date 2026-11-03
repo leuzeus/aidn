@@ -8,7 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée relue : `6f1a25d` ; composants publiés explicitement révisés en
+Base intégrée relue pour la composition : `fac271b` ; composants publiés explicitement révisés en
 65/63 pour le checkpoint final de promotion. Les preuves de l’écriture terminale et de la reprise
 conservent leurs snapshots exacts ; le modèle standard complet reste à livrer.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -97,9 +97,11 @@ encore ouverts.
   depuis le corpus suivi via le projecteur réel ; aucune base SQLite ignorée n’est
   copiée. Cette correction de test n’est ni un fallback runtime, ni une conversion
   d’instance historique, ni une preuve native ou d’archive installée.
-- L3 : en cours, composants IR de démarrage et de squelette de cycle distribués,
-  avec raccords de données déclarés dans leurs nouvelles révisions et consommés
-  par les tests de ports réels ; le modèle standard complet reste à livrer.
+- L3 : en cours. Une première IR commune de 49 nœuds compose les ports disponibles,
+  avec 31 occurrences d'opérations et trois activités natives déclarées. Son
+  préfixe de démarrage est exécuté/rejoué/simulé sur les trois modes de stockage ;
+  la [preuve bornée](qualification/agentic-process/standard-composition-prefix-2026-11-03.json)
+  distingue ce résultat du parcours COMMITTING et du workflow complet, encore ouverts.
 - L4 : scope commun et dispatcher mixte interne implémentés et validés sur les
   corpus ciblés ; réconciliation des inconnus et continuation après expiration restent
   ouvertes. Voir l'addendum du 2026-11-02.
@@ -353,7 +355,7 @@ seulement dans le lot concerné ; les nouveaux chemins de la section 4 sont prop
 | L0 — Ancrage | État `dd1dbab` | Ce plan, bornes dans AGENTIC_PROCESS/ADR-0024 ; inventaire des règles courantes et écarts de la définition historique. | E01–E08 confirmés ; règles R01–R11 identifiées ; aucun changement de marqueur shadow ni revendication d’intégration. Diagnostic présent : terminé pour ce plan. |
 | L1 — Contrats et décision | L0 | ADR-0025 mis en œuvre ; contrats binding/reçu/événement et versionnement modèle/instance ; `agentic-process-model.mjs`, réducteur/service, schémas, source-of-truth, métadonnées et diagnostics. | D/A/H distingués, résultats authentifiables par type, attentes et issues sans faux agent ; tests de schémas, refus d’extensions inconnues, anciens lecteurs et limites ; décision de version fixée avant L2–L4. Validé hors ligne. |
 | L2 — Ports réels | L1 | Modules standard-workflow operations proposés ; `*-admit-use-case`, `skill-hook-use-case`, `checkpoint-use-case`, `db-first-artifact-use-case`, adaptateurs Git et GitHub. | Chaque ligne du catalogue a réalisation/postcondition ou blocage explicite ; tests sur vrai projet jetable ; aucun modèle pour D/H ; admission distincte de réalisation ; échecs imbriqués visibles et effets sans autorisation refusés. |
-| L3 — Modèle standard et traçabilité | L1 + catalogue L2 stabilisé | JSON standard, catalogue/bindings et matrice de traçabilité proposés ; politiques de contrôle existantes ; scénarios de simulation. | Couverture R01–R11, trois modes de travail, chemins de cycle et PR, reports/annulations ; références de ports résolues ; aucun XML obligatoire ; modèle livré consommé par tests, sans copier ses décisions dans un orchestrateur parallèle. |
+| L3 — Modèle standard et traçabilité | L1 + ports L2 consommés explicitement versionnés ; composition progressive avec L2 | JSON standard, catalogue/bindings et matrice de traçabilité proposés ; politiques de contrôle existantes ; scénarios de simulation. | Couverture R01–R11, trois modes de travail, chemins de cycle et PR, reports/annulations ; références de ports résolues ; aucun XML obligatoire ; modèle livré consommé par tests, sans copier ses décisions dans un orchestrateur parallèle. |
 | L4 — Reprise et événements | L1 + L2 + modèle L3 | Service de reprise proposé ; store/service/host/composition agentiques, garde de démarrage remplacée par une admission de reprise explicite ; contrats de journal/inbox, preuves de propriété et événements GitHub. | Reprise après chaque frontière intention/effet/résultat/attente ; déduplication, réconciliation des inconnus, CAS/concurrence, fermeture de l’ancien hôte et contributions conservées. L’attente existante du réducteur seule ne ferme pas le lot. |
 | L5 — Entrées ordinaires | L2 + L3 + L4 | `workflow-run-service`, composition d’instances, CLI/registre/effets/contrats, console ; `workflow-step` comme observation du curseur ; skills et WORKFLOW-KERNEL source ; manifests/catalogues et résolution installée. | Un démarrage normal explicitement autorisé crée ou reprend l’instance du modèle standard livré, sans fournir à la main un modèle de démonstration. Les skills rejoignent cette même instance ; ils ne gardent pas une macro-orchestration concurrente. Lire contexte/JSON n’exécute rien implicitement. Modèles personnalisés et voie historique restent explicites. |
 | L6 — Qualification hors ligne | L1–L5 | Nouvelles fixtures standard, reprise et ports ; `package.json`, catalogue de gates et guards associés ; docs TESTING, CLI, SPEC/WORKFLOW et ADR alignés. | Parcours A1–A10 ci-dessous avec vrais ports métier, SQLite réel et Git local jetable ; transport distant simulé identifié. Replay exact et simulation ; mutations attendues vérifiées et absence d’effets du replay. Required gate dédiée, non simple inventaire de tests. |
@@ -2508,3 +2510,69 @@ La préparation humaine suivante possède des contrôles purs, une inbox réelle
 files/SQLite, un modèle et un raccord hôte en qualification séparée. Les écritures
 de clôture, son hook, promotion/session/PR/synchronisation et A1–A10 restent
 requis. Natif réel et archive installée exacte restent NOT_RUN.
+
+
+### Première composition commune du modèle standard — 2026-11-03
+
+Le [modèle distribué](../package/catalogs/process-models/aidn-standard.v1.json)
+est maintenant une IR `agentic-process-model.v2` chargée par la
+[composition applicative](../src/application/runtime/standard-workflow-composition.mjs).
+Le [catalogue versionné](../package/catalogs/standard-workflow.v1.json)
+conserve les pins des opérations réelles, les sources SPEC/skills, les contrats
+des rapports natifs et le périmètre restant. Son contrat impose encore
+`complete_standard_workflow: false` ; cette tranche ne devient pas la sélection
+ordinaire du workflow standard.
+
+Le graphe actuel contient 49 nœuds, 31 occurrences d'opérations et trois activités
+natives : proposition de plan, réalisation d'une tâche et audit indépendant.
+Il compose le démarrage, le choix humain de mode, la création d'un cycle, le
+plan/DoR, la boucle de tâches et leurs vérifications, l'audit, la décision de
+clôture, les écritures et checkpoints du cycle, puis la décision et les effets
+optionnels de promotion. Une réalisation produit utilise l'action native
+`implement` sans inventer un skill de gouvernance pour le travail métier.
+Les sorties typées des activités doivent correspondre exactement au catalogue.
+
+**Limites :** la composition et ses pins ne prouvent pas ce parcours métier.
+Les branches THINKING/EXPLORING ne livrent encore que le démarrage du composant.
+Le choix/reprise d'un cycle, les routes R05 de démarrage et de travail, les
+incidents R10, la clôture de session R07, les opérations/revues/attentes PR R08,
+la synchronisation R09 et la reprise mixte générale restent à intégrer au même
+modèle. Aucun de ces manques n'est remplacé par une opération factice ou par une
+attestation de réussite. La terminaison du composant n'atteste pas la clôture
+de la session ni la fin du workflow standard.
+
+Une séquence structurelle vide est admise en v2 pour une branche explicitement
+choisie, notamment `promotion_not_requested` et la continuation d'une boucle.
+Elle ne fabrique aucun résultat métier, effet, ressource ou appel au modèle.
+Les faits inconnus restent une attente ; un refus, un report, une annulation ou
+un effet incertain ne se transforme pas en branche de succès. Le lecteur v1
+conserve ses règles et ses formats.
+
+Le diagnostic ciblé de progression a confirmé l'absence initiale du modèle et
+de sa composition après les qualifications séparées des ports. L'audit ciblé
+de la dépendance L3 distingue une stabilité globale du catalogue, non nécessaire
+pour commencer, et les pins précis des ports réellement consommés, nécessaires
+pour charger chaque révision. La dépendance du lot est précisée dans ce sens.
+L'explication concurrente — qualifier les ports avant de les composer — reste
+valide pour ces frontières, sans justifier de reporter toute composition.
+Aucun gate ni critère d'acceptation A1–A10 n'est réduit. Le coût historique de
+cette dépendance et son poids causal ne sont pas mesurés.
+
+Les contrôles de source et la preuve du préfixe sur projet jetable sont séparés :
+[composition hors ligne](../tools/perf/verify-standard-workflow-composition-fixtures.mjs)
+et [ports du préfixe](../tools/perf/verify-standard-workflow-composition-prefix-fixtures.mjs).
+Le second consomme le modèle distribué, conserve une décision humaine différée,
+accepte ses résultats dans un nouveau processus et compare le replay/simulation
+au même réducteur. Il ne qualifie ni le trajet COMMITTING complet, ni le natif,
+ni l'archive installée exacte. Les trois préfixes passent avec neuf contrôles chacun sur le snapshot
+`3c7c8bd7c40bae64157ccb3804dfd3d9dd5130ba` ; la
+[preuve enregistrée](qualification/agentic-process/standard-composition-prefix-2026-11-03.json)
+conserve ce périmètre et les statuts non exécutés. Les composants antérieurs
+sont explicitement révisés en 66/64 pour leurs nouveaux pins ; leurs preuves
+antérieures conservent leurs snapshots. Aucun pin n'est réparé au chargement.
+
+Prochaine preuve métier : suivre le curseur de ce modèle sur un projet jetable
+COMMITTING, raccorder R05 avant les checkpoints qui l'exigent et parcourir
+travail, validations, clôture et promotion sans préconditions métier préparées
+hors IR. Compléter ensuite les parcours et décisions encore énumérés dans le
+catalogue, avant la sélection ordinaire et les qualifications natives/installées.

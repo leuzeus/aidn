@@ -96,7 +96,10 @@ function replay(instance) {
       selected_flows: [], skipped_flows: [], completed_children: [], expected_children: 1, iteration: 0, assignment: null, result: null, last_refusal: null };
     frames.set(occurrenceId, frame);
     if (["activity", "operation"].includes(node.kind)) frame.status = "READY";
-    else if (node.kind === "sequence") enter(node.children[0], `${occurrenceId}/0`, occurrenceId);
+    else if (node.kind === "sequence") {
+      if (!node.children.length) { frame.expected_children = 0; finish(frame); }
+      else enter(node.children[0], `${occurrenceId}/0`, occurrenceId);
+    }
     else if (node.kind === "call") enter(node.child, `${occurrenceId}/call`, occurrenceId);
     else if (node.kind === "loop") { frame.iteration = 1; enter(node.child, `${occurrenceId}/iteration-1`, occurrenceId); }
     else if (node.kind === "multi_instance") {
