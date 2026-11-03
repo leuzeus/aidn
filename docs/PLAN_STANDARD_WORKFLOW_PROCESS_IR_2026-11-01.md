@@ -73,9 +73,10 @@ encore ouverts.
   autorisation. Les fixtures couvrent les trois modes et les effets incertains ;
   l’autorité humaine/de clôture y reste doublée. La
   [preuve du composant baseline](qualification/agentic-process/baseline-record-component-2026-11-03.json)
-  distingue ces contrôles du raccord manquant : inbox de promotion, lecteur hôte
-  de la clôture acceptée, binding IR, hook final et exécution/replay/simulation
-  via le même modèle standard restent à réaliser.
+  ne qualifie pas les raccordements ultérieurs. L’inbox et les bindings de
+  décision/écriture sont maintenant câblés dans la tranche décrite plus bas ;
+  leur utilisation par le curseur après une vraie clôture, le hook final et
+  l’exécution/replay/simulation du modèle standard complet restent à prouver.
 - L’écriture des six artefacts terminaux passe le parcours mixte sur files et
   DB-only : travail et vérifications physiques, audit, décision humaine
   authentifiée, reprise dans un nouveau processus, CAS, déduplication et replay.

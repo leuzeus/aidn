@@ -227,8 +227,9 @@ final hook and complete standard IR route still require their own qualification.
 The [baseline-record component](../qualification/agentic-process/baseline-record-component-2026-11-03.json)
 provides a private five-document deterministic writer and closed schemas with
 source-installed physical-store tests. Human request/close authority is a fixture
-capability. Its actual mixed-host binding, authenticated promotion inbox, final
-hook and common-model replay/simulation remain required. Confirmed baseline
+capability. The later request tranche wires fixed host bindings and the signed
+inbox; their common-cursor use after actual closure, the final hook and full
+standard-model replay/simulation remain required. Confirmed baseline
 record keeps promotion completion false.
 
 The [GitHub observation prerequisite](../qualification/agentic-process/github-pr-observation-2026-11-03.json)

@@ -1022,13 +1022,13 @@ read-only files/dual/db-only cases and existing wrapper/canonical cases are
 run by the required promotion admission suite. No native or installed-package
 proof follows from these checks.
 
-### Baseline recording library, pending host binding
+### Baseline recording library and host-binding qualification
 
 The private standard-baseline-promotion factory prepares five canonical documents
 from a typed request and a completed retained cycle-close. Mandatory trusted host
 capabilities must authenticate the accepted request/close and read current product
-and process state; successful typed flags alone are not proof. Those real host
-readers and the authenticated human promotion inbox remain to be connected.
+and process state; successful typed flags alone are not proof. The request-binding tranche below wires those host readers and the authenticated
+human inbox. Their use from an actually executed common closure remains unqualified.
 
 One actual selected-target pre-write admission runs per context observation.
 Explicit intent, exact plan, fresh source/product and metadata CAS are required.
@@ -1044,8 +1044,9 @@ action. They emit baseline_recorded true and promotion completion false; the
 actual final hook is pending. Unknown/partial effects, lost projections or
 post-effect revocation retain ownership and no completion facts. Physical store
 fixtures use actual source installation and fixture human/close authorities.
-This library is not a registered IR binding, full workflow, native execution or
-exact installed-archive proof. These remain separate acceptance work.
+The initial library proof does not establish the later fixed IR bindings, full
+workflow, native execution or exact installed-archive behavior. The binding
+tranche and its remaining common-cursor acceptance are described below.
 
 ### Remote PR observation prerequisite
 
