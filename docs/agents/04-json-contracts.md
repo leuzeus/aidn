@@ -272,3 +272,10 @@ separate recorded terminal metadata from confirmed hook completion. Only an
 operation identity selects the accepted source. Unknown effects carry no success
 facts; confirmed completion includes the real checkpoint and three current
 postimages. These contracts add no public CLI JSON root or authored authority.
+
+Promotion review input/plan/question, human source and decision-output contracts
+are private fixed-operation boundaries. Inbox v4 carries the typed promotion
+source; v1-v3 retain their original readers and schemas. Successful decision
+facts never assert baseline writes or completed promotion. The baseline record
+input accepts an accepted decision identity only. These additions create no
+public CLI JSON root or process-authored result authority.

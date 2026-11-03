@@ -1,3 +1,6 @@
+import { createStandardBaselinePromotionAuthority } from "./standard-baseline-promotion-authority.mjs";
+import { createStandardBaselinePromotion } from "./standard-baseline-promotion.mjs";
+import { createStandardBaselinePromotionReview } from "./standard-baseline-promotion-review.mjs";
 import { createStandardCycleCloseHook } from "./standard-cycle-close-hook.mjs";
 import { createStandardCycleCloseRecord } from "./standard-cycle-close-record.mjs";
 import { createStandardCycleClosureReview } from "./standard-cycle-closure-review.mjs";
@@ -163,6 +166,23 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const cycleCloseHook = processAuthority ? createStandardCycleCloseHook({ targetRoot, now,
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
+  function acceptedForPromotion(instance, id, binding) {
+    const record = retained(id).record, result = record.results.at(-1);
+    const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding).at(-1);
+    if (latest?.intent.operation_id !== id || record.intent.binding_ref !== binding || record.intent.instance_id !== instance.instance_id
+      || record.intent.scope_id !== instance.scope_id || record.phase !== "receipted" || result?.receipt.outcome !== "completed"
+      || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail("STANDARD_PROMOTION_ACCEPTED_SOURCE_REQUIRED");
+    return { record, output: result.output };
+  }
+  const promotionAuthority = processAuthority ? createStandardBaselinePromotionAuthority({ targetRoot,
+    readAcceptedOperation: acceptedForPromotion, readTerminalRecord: readAcceptedTerminalRecord,
+    human: { question: record => human.question(record), captured: record => human.captured(record) } }) : null;
+  const baselinePromotion = processAuthority ? createStandardBaselinePromotion({ targetRoot, now,
+    readRequest: (instance, input) => promotionAuthority.readRequest(instance, input),
+    observeProduct: () => processAuthority.observeProduct(), readCurrent: id => current(id).record }) : null;
+  const promotionReview = processAuthority ? createStandardBaselinePromotionReview({
+    readClosure: (instance, input) => promotionAuthority.readClosure(instance, input), promotion: baselinePromotion, now }) : null;
+
   async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter") {
       assertStandardOperationInput(operation, input);
       const record = retained(input.evaluation_operation_id).record, result = record.results.at(-1);
@@ -468,6 +488,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const prepared = binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "baseline_promotion_decision" ? await promotionReview?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_REVIEW_AUTHORITY_REQUIRED")
+        : binding.id === "baseline_promotion_record" ? await baselinePromotion?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_AUTHORITY_REQUIRED")
         : binding.id === "cycle_close_finalize" ? await cycleCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "cycle_close_record" ? await cycleCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED")
         : binding.id === "cycle_closure_decision" ? await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED")
@@ -525,6 +547,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.preview.binding.executor_kind === "human") {
         if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
         return { status: "waiting_for_human", question: human.question(record) };
       }
       await verifyGrant(record);
@@ -569,6 +592,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         } else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else if (record.intent.binding_ref === "baseline_promotion_record") output = await baselinePromotion.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_close_finalize") output = await cycleCloseHook.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_close_record") output = await cycleCloseRecord.apply(state.record, record.preview.prepared,
@@ -605,7 +630,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async receiveDecision(id, { sourceRef, write = false } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.preview.binding.executor_kind !== "human" || !["mode_decision", "drift_recovery_decision", "cycle_closure_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.preview.binding.executor_kind !== "human" || !["mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
       if (record.phase === "receipted") {
         const capture = human.captured(record);
         if (capture.source_ref !== sourceRef) fail("PROCESS_HUMAN_DECISION_ALREADY_CAPTURED");
@@ -617,11 +642,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       const capture = await human.reserve(record, sourceRef);
       if (!capture) return { status: "waiting_for_human", question: human.question(record) };
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       const { authentication, key_id, ...body } = record;
       const claimed = record.phase === "staged" ? persist({ ...body, phase: "dispatching", revision: record.revision + 1, owner: { generation, pid: process.pid } }, before.content_sha256) : record;
       const output = human.output(claimed, capture), receipt = resultReceipt(claimed, output), latest = retained(id);

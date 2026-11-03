@@ -66,7 +66,7 @@ export function createStandardBaselinePromotion({ targetRoot, readRequest, obser
     const result = { contract_version: "standard-baseline-promotion-output.v1", operation_ref: "baseline_promotion_record", outcome, effect_status, observations, facts, evidence_refs };
     if (!valid(result, outputSchema)) fail("STANDARD_PROMOTION_OUTPUT_INVALID"); return result;
   }
-  return Object.freeze({ prepare: (instance, input) => prepare(instance, input, now()),
+  return Object.freeze({ observeContext: request => artifacts.ownerPending() ? Promise.resolve({ blocked: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" }) : observe(request), prepare: (instance, input) => prepare(instance, input, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       let plan;
       try { plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;

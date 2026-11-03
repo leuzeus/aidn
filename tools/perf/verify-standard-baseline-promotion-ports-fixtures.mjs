@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
+import { createStandardBaselinePromotionReview } from "../../src/application/runtime/standard-baseline-promotion-review.mjs";
 import { createStandardBaselinePromotion } from "../../src/application/runtime/standard-baseline-promotion.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { baselinePromotionPaths } from "../../src/core/workflow/standard-baseline-promotion.mjs";
@@ -53,6 +54,16 @@ try {
   let instanceChanged = false;
   const promotion = createStandardBaselinePromotion({ targetRoot: root, readRequest: async () => ({ request, closure }), observeProduct: productHash,
     readCurrent: () => instanceChanged ? { ...instance, instance_sha256: "b".repeat(64) } : instance });
+  const review = createStandardBaselinePromotionReview({ readClosure: async () => ({ ...closure, session_id: "S001" }), promotion });
+  const reviewInput = { contract_version: "standard-baseline-promotion-review-input.v1", closure_operation_id: closure.operation_id };
+  const beforeReview = baselinePromotionPaths.map(name => artifacts.read(name).sha256), reviewed = await review.prepare(instance, reviewInput);
+  assert.equal(reviewed.can_apply, true, JSON.stringify(reviewed)); await review.assertFresh(instance, reviewed.plan);
+  assert.equal(reviewed.plan.review.current_version, artifacts.read("baseline/current.md").content.match(/^baseline:[ \t]*([^\r\n]+)$/m)[1].trim());
+  assert.deepEqual(baselinePromotionPaths.map(name => artifacts.read(name).sha256), beforeReview);
+  await artifacts.withLocalEffectOwner("9".repeat(64), async () => {
+    assert.equal((await review.prepare(instance, reviewInput)).reason_code, "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED"); return { effect_status: "no_effect" };
+  });
+  pass("actual canonical promotion review reads the baseline version without effects and respects an outstanding owner");
   const prewrite = await preWriteAdmit({ targetRoot: root, skill: "promote-baseline", promotionCycleId: request.cycle_id });
   assert.equal(prewrite.ok, true, JSON.stringify({ admission: prewrite.admission_status, blocking_reasons: prewrite.blocking_reasons, blocking_findings: prewrite.blocking_findings, checks: prewrite.checks }));
   const historyProjectionPath = path.join(root, "docs/audit/baseline/history.md");

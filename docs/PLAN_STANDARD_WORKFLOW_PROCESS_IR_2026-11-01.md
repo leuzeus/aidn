@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée relue : `6f1a25d` ; composants publiés explicitement révisés en
-63/61 pour le hook final. Les preuves de l’écriture terminale et de la reprise
+64/62 pour les nouveaux bindings de promotion. Les preuves de l’écriture terminale et de la reprise
 conservent leurs snapshots exacts ; le modèle standard complet reste à livrer.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
@@ -102,6 +102,12 @@ encore ouverts.
 - L4 : scope commun et dispatcher mixte interne implémentés et validés sur les
   corpus ciblés ; réconciliation des inconnus et continuation après expiration restent
   ouvertes. Voir l'addendum du 2026-11-02.
+- Le raccord de promotion dispose d’une [preuve de composants](qualification/agentic-process/baseline-request-bindings-2026-11-03.json) :
+  revue canonique partagée, inbox v4 signée et bindings fixes de décision/écriture.
+  Les trois modes de stockage et les contrôles ciblés passent hors ligne.
+  Les tests de composants ne prouvent pas encore le parcours du curseur depuis
+  une clôture effectivement exécutée. Le hook final de promotion, les décisions
+  de non-demande dans le modèle complet et les preuves communes restent requis.
 - Le prérequis GitHub observe maintenant l’identité/le commit de PR et les
   threads/commentaires réels, avec pagination bornée complète et contrôles de
   fraîcheur. Les [preuves de l’adaptateur](qualification/agentic-process/github-pr-observation-2026-11-03.json)

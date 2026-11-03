@@ -1,0 +1,308 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-baseline-promotion-decision-output.v1",
+  "x-aidn-contract-version": "standard-baseline-promotion-decision-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-baseline-promotion-decision-output.v1"
+    },
+    "operation_ref": {
+      "const": "baseline_promotion_decision"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "rejected",
+        "deferred",
+        "cancelled"
+      ]
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object"
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question_sha256",
+        "choice",
+        "promotion",
+        "review_sha256",
+        "source_sha256",
+        "inbox_id",
+        "source_ref"
+      ],
+      "properties": {
+        "question_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "choice": {
+          "enum": [
+            "promote",
+            "not_requested",
+            "refused",
+            "deferred",
+            "cancelled"
+          ]
+        },
+        "promotion": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "version",
+                "summary"
+              ],
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^v[0-9]+(?:\\.[0-9]+){1,2}(?:-[A-Za-z0-9][A-Za-z0-9.-]{0,31})?$"
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 400,
+                  "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_sha256": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "inbox_id": {
+          "type": "string",
+          "pattern": "^decision_[a-f0-9]{40}$"
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 17,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "outcome": {
+          "const": "completed"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseline_promotion_decision_recorded",
+            "baseline_promotion_requested",
+            "baseline_promotion_not_requested"
+          ],
+          "properties": {
+            "baseline_promotion_decision_recorded": {
+              "const": true
+            },
+            "baseline_promotion_requested": {
+              "const": true
+            },
+            "baseline_promotion_not_requested": {
+              "const": false
+            }
+          }
+        },
+        "observations": {
+          "properties": {
+            "choice": {
+              "const": "promote"
+            },
+            "promotion": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "version",
+                "summary"
+              ],
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^v[0-9]+(?:\\.[0-9]+){1,2}(?:-[A-Za-z0-9][A-Za-z0-9.-]{0,31})?$"
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 400,
+                  "pattern": "^[^\\r\\n\\u0000-\\u001f]+$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "completed"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseline_promotion_decision_recorded",
+            "baseline_promotion_requested",
+            "baseline_promotion_not_requested"
+          ],
+          "properties": {
+            "baseline_promotion_decision_recorded": {
+              "const": true
+            },
+            "baseline_promotion_requested": {
+              "const": false
+            },
+            "baseline_promotion_not_requested": {
+              "const": true
+            }
+          }
+        },
+        "observations": {
+          "properties": {
+            "choice": {
+              "const": "not_requested"
+            },
+            "promotion": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "rejected"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        },
+        "observations": {
+          "properties": {
+            "choice": {
+              "const": "refused"
+            },
+            "promotion": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "deferred"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        },
+        "observations": {
+          "properties": {
+            "choice": {
+              "const": "deferred"
+            },
+            "promotion": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "cancelled"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        },
+        "observations": {
+          "properties": {
+            "choice": {
+              "const": "cancelled"
+            },
+            "promotion": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

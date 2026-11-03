@@ -1150,3 +1150,26 @@ to their exact earlier snapshot; current component/source checks are separate.
 The full standard graph must model Git checkpoint, reload and R05 explicitly.
 Interrupted suffix reconciliation, ordinary entrypoints, native and exact
 installed-archive acceptance remain required.
+
+### Promotion request bindings under qualification
+
+The fixed human baseline_promotion_decision binding reviews an accepted DONE
+cycle-close, current product, canonical baseline/history and actual selected-target
+admission. An approved version/summary belongs to the authenticated human source,
+not process JSON. not_requested records only a decision and never a baseline
+completion, policy waiver or session-close permission. Refusal, deferral and
+cancellation retain their distinct outcomes and no success facts.
+
+New decisions use inbox v4. Readers retain v1-v3 without conversion. The signed
+capture survives provider disappearance after acceptance; the effect still needs
+fresh independent permission and preconditions. A durable wait has no artificial
+five-minute decision expiry when its reviewed context remains unchanged.
+
+The private source reader consumes the fixed host's accepted signed journals,
+then rechecks original physical validation and the correlated checkpoint event.
+The baseline writer now has a fixed binding and shares its canonical observation
+with the review. Unknown owners block new review; no second admission algorithm
+or model call supplies deterministic/human behavior. Current component tests do
+not prove the full common-host closure-to-promotion path. Its execution, replay,
+simulation, final promotion hook, full standard graph and native/archive proofs
+remain required. No integration completion follows from the new registry entries.

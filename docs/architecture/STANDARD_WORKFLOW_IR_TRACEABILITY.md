@@ -243,3 +243,11 @@ native and installed-archive proof remain separately identified.
 | Six canonical closure artifacts | R04/R07, `cycle-close`, deterministic `cycle_close_record` | Actual source-install/CAS/projection component; common files/DB-only path with authenticated human fixture transport passed on exact snapshots |
 | Completed cycle-close skill | Deterministic cycle_close_finalize, actual correlated hook and three completion CAS | Source component and retained common-host continuation qualified on distinct exact snapshots; full IR Git/reload/R05 route and interrupted suffix reconciliation still required |
 | Earlier-phase and other-mode exits | Current SPEC plus explicit decisions | Still required in the complete standard IR; the COMMITTING/VERIFYING component is not a general abort path |
+
+The promotion request tranche adds fixed human baseline_promotion_decision and
+deterministic baseline_promotion_record bindings (SPEC-R04/R07). Inbox v4,
+actual signer/canonical stores and read-only baseline review have component
+proofs. The accepted-journal/closure capability remains a fixture in reader
+checks; full common-cursor use after actual closure and the final promotion hook
+remain unqualified. See [bounded promotion proof](../qualification/agentic-process/baseline-request-bindings-2026-11-03.json).
+not_requested is a recorded choice, never promotion completion or a rule waiver.

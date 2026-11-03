@@ -2282,3 +2282,17 @@ continuation and its original prefix failure are recorded separately in
 [the bounded proof](qualification/agentic-process/cycle-close-hook-continuation-2026-11-03.json).
 The private retained-fixture verifier only accepts owned disposable roots and
 uses the existing instance; it must never rerun its six writes or allocations.
+
+Promotion request qualification uses three required agentic fixtures:
+`verify-standard-baseline-promotion-decision-fixtures.mjs` checks closed data,
+fixed bindings and outcome separation; `verify-standard-baseline-human-fixtures.mjs`
+checks the actual signer/capture logic on memory plus files/dual/DB-only stores;
+`verify-standard-baseline-authority-fixtures.mjs` checks the real bounded event
+reader with a fixture accepted-journal capability. Human provider and completed
+closure remain fixture authorities in these component cases. They do not prove
+that the common cursor reached the bindings from a real preceding closure.
+The existing source-installed baseline port producers also exercise read-only
+canonical review and blocking by an outstanding effect owner before writes.
+Required context-completion coverage retains every historical admission check.
+A complete frozen standard model and common-host/native/archive qualification
+remain separate requirements.
