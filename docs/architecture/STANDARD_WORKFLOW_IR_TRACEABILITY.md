@@ -264,7 +264,7 @@ not_requested is a recorded choice, never promotion completion or a rule waiver.
 
 The [standard model](../../package/catalogs/process-models/aidn-standard.v1.json)
 and its [catalog](../../package/catalogs/standard-workflow.v1.json) now compose
-69 nodes and 40 operation occurrences through the existing reducer and
+73 nodes and 41 operation occurrences through the existing reducer and
 [application loader](../../src/application/runtime/standard-workflow-composition.mjs).
 The catalog pins real bindings, SPEC and skills and declares typed native reports.
 Its closed contract still requires `complete_standard_workflow: false`.
@@ -276,8 +276,8 @@ It does not replace ordinary workflow selection.
 | `cycle_create`, `plan`, `plan_evaluate`, `plan_record`, `readiness`, `implementation_enter` | Real cycle ports, native plan proposal, canonical plan CAS and admission | Files composed prefix PASS with fake wire; other stores/native remain |
 | `task_loop`, `task_iteration`, `final_verification` | Common loop reducer and real task/validation/progress ports | One-task files path PASS with fake wire and fixture verification boundary; multi-task, other stores, work drift and incidents remain |
 | `audit_select`, `audit_review`, `audit_evaluate` | Selected scoped audit and authenticated evaluation | Files composed prefix PASS; real native/other stores remain |
-| `closure_decide`, `close_record`, `close_finalize` | Authenticated decision, six terminal CAS, actual checkpoint ports | Human wait, refusal/resume and closure through the same composed cursor remain |
-| `promotion_decide`, `promotion_route`, `promotion_record`, `promotion_finalize` | Authenticated promotion request, real five CAS and checkpoint | Same composed cursor after actual closure |
+| `closure_decide`, `close_record`, `cycle_terminal_checkpoint`, `close_finalize` | Authenticated decision, six terminal CAS, captured-postimage Git/reload and actual final hook | Files deferred/cold-resume path PASS on recorded revision 15; composed other stores, native and archive remain |
+| `promotion_eligibility`, `promotion_decide`, `promotion_route`, `promotion_record`, `promotion_finalize` | Only a retained cycle enters optional promotion; authenticated request, five CAS and checkpoint components | Local integration and promotion Git/reload remain fixture preparations, not composed business proof |
 
 The empty `promotion_not_requested` branch carries no baseline completion fact.
 Empty v2 structural sequences require no dummy reload or model call. Unknown
@@ -299,7 +299,7 @@ not qualify ordinary entrypoints, a native host or an exact installed archive.
 
 ## R05 preflight and observed Git gap
 
-The current model revision 7 declares 68 nodes, 39 operation occurrences and
+At revision 7 the model declared 68 nodes, 39 operation occurrences and
 seven native activities. A COMMITTING-only preflight runs the diagnostic,
 authenticated evaluation and real R05 finalizer before `session_start_finalize`.
 The same pattern is declared before cycle, closure and promotion checkpoints.
@@ -348,3 +348,37 @@ closure rather than claiming a finished cycle. Its remaining acceptance includes
 human refusal/wait/cold resume, closure/promotion/session/PR effects, the other
 modes/stores, native reauthorization after long waits, a real native host and
 boundary, and the exact installed archive. The standard catalog remains partial.
+
+## Terminal checkpoint and bounded simulation continuation
+
+`cycle_terminal_checkpoint` consumes the accepted terminal record and its captured
+postimages. The host derives the finite Git scope, rechecks terminal admission,
+parent/index/files, then performs the local commit and completion reload. The
+ordinary three-file session profile stays fixed. The terminal profile preserves
+tracked executable modes and literal path names; no model-controlled Git command
+or path permission is introduced. DB-only remains canonical without implicit
+projection export. Only the final cycle-close hook supplies skill completion.
+
+A confirmed Git effect followed by lost permission remains unknown and retains
+the owner; a later no-effect permission error cannot erase the earlier commit.
+The operation does not yet reconcile that uncertainty. The graph routes
+non-retained terminal states around the promotion question, without a promotion
+receipt or completion fact.
+
+The [qualification record](../qualification/agentic-process/standard-terminal-checkpoint-2026-11-03.json)
+separates source component checks, actual files execution after a deferred human
+choice and cold process restart, the aggregate trace-limit failure, and read-only
+stream replay. `iterateAgenticProcessSimulation` yields immutable synthetic rows
+using the same reducer, with at most 512 events and a 4 MiB snapshot bound. A
+consumer discarding rows avoids aggregate trace accumulation. The old aggregate
+API keeps its 4 MiB limit and JSON contract. Neither mode supplies write authority.
+The stream snapshots the caller input before yielding. Ordinary CLI streaming,
+other standard paths, real native and exact archive evidence remain separate.
+
+The corrected files selector now passes through the final cycle-close hook:
+37 operation records (36 completed and one deferred), six fake-wire activities,
+then READY `promotion_decide` with workflow RUNNING. A new process starts only
+the sixth native activity; the parent verifies unchanged prior operation journals
+and event prefix. Streamed replay has 87 exact snapshots. Cleanup and both process
+exits completed. This proves the bounded component, not promotion admission or
+the full standard workflow; native and archive qualification remain open.

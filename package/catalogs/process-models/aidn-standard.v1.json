@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard",
-  "revision": 11,
+  "revision": 15,
   "participants": [
     {
       "id": "project"
@@ -244,10 +244,10 @@
         "audit_evaluate",
         "closure_decide",
         "close_record",
+        "cycle_terminal_checkpoint",
         "closure_drift",
         "close_finalize",
-        "promotion_decide",
-        "promotion_route"
+        "promotion_eligibility"
       ]
     },
     {
@@ -473,10 +473,48 @@
       "binding_ref": "cycle_close_record"
     },
     {
+      "id": "cycle_terminal_checkpoint",
+      "kind": "operation",
+      "participant_ref": "project",
+      "binding_ref": "cycle_terminal_checkpoint"
+    },
+    {
       "id": "close_finalize",
       "kind": "operation",
       "participant_ref": "project",
       "binding_ref": "cycle_close_finalize"
+    },
+    {
+      "id": "promotion_eligibility",
+      "kind": "xor",
+      "participant_ref": "project",
+      "branches": [
+        {
+          "flow_id": "retained",
+          "node_id": "promotion_choice",
+          "condition": "cycle_retained"
+        },
+        {
+          "flow_id": "not_retained",
+          "node_id": "promotion_inapplicable",
+          "condition": null
+        }
+      ]
+    },
+    {
+      "id": "promotion_choice",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": [
+        "promotion_decide",
+        "promotion_route"
+      ]
+    },
+    {
+      "id": "promotion_inapplicable",
+      "kind": "sequence",
+      "participant_ref": "project",
+      "children": []
     },
     {
       "id": "promotion_decide",
@@ -647,38 +685,39 @@
     }
   ],
   "operation_pins": {
-    "baseline_promotion_finalize": "3fdbd7ec541c2ff8339470c2a093ffe4cdd77e903036560e50f0dd318147cf77",
-    "baseline_promotion_decision": "0fc3603fb6d499e7aa76d895707ff6609bb3a85116719cad7f58491a2c8540d2",
-    "baseline_promotion_record": "d4ab1f6b22b1f342d2205871ec6da9854ee57c8719ca6ed85e9036d5ee99c60f",
-    "cycle_close_finalize": "4771c6bf392b319093870c7cb204335e1a1ee668c338ba2591354b02c5efc865",
-    "cycle_close_record": "1d3f1348a442273b56804388878fae8cc74fd8114a53363d911e38556e74241f",
-    "cycle_closure_decision": "63ce1f2e647be4a8688f44c114ff75d1d7da48139523f49fb05ab30a84e7e6fa",
-    "cycle_audit_select": "c04a0df6c8c253fb32e98b533cf1ba129caf09473966a86b9cffd657d1025ef8",
-    "cycle_audit_evaluate": "086cc522cba40ee4fc9982bc8f55aa9a4dd3c296edb6c4e017729abb3c6ce6b4",
-    "cycle_task_select": "75f43bbef33298e8e9eefcb27664e764e5a91dd221377f2d46497462816ae574",
-    "cycle_task_work_evaluate": "d2e91f7c03318a46938828781e87b16e13d7709b63aa5a3d78878d99e8368644",
-    "cycle_task_advance": "3003bb983d8e6d149cde773c2f98e72d4deedb781400bee7f66f2709a185b53d",
-    "cycle_validation_evaluate": "76fb2f2fb6e107f1805f925ef07cdf7e2821b7ce77228139e4f1235fae53cdc9",
-    "cycle_verification_enter": "88a0afa20539958bca7b3dcd92a83b34a676d5560f720b5b63fbea1fe322a321",
-    "cycle_validation_execute": "87346691ac817d763108cb0cfb253f357266e67d4454921711a071e3831e38b1",
-    "cycle_readiness_evaluate": "3569311c0ae69ccd403ab72dd8e0eac3f4a7e43f2a4801e5fd916fce02bdbb21",
-    "cycle_implementation_enter": "b2cf57678290c0f06055fb44d75fc6cf650a64cab22f37ffe4de758ed2f1ba0e",
-    "context_reload": "304add529f587405c6b134130fee29b0bc1a6dc819324e4c91c5ce5f2ea6d0f0",
-    "session_admit": "d7c833428269a933dfb45f60dbc61dbe2d0465438f127beb4e414d82eeebc54c",
-    "session_initialize": "fd73f421f1927b09946c09303a82715c19f25207cbf7d35bbeb3303f614867b3",
-    "mode_decision": "b0b91bb4f3c0c345ef242cf6a53df6e5877b8158589bdc1aca0eed6f2fb2f3f6",
-    "session_mode_apply": "bd64d13713d181f5acc2017fd5cec3c886e17c5f70470891550f909c05595c99",
-    "session_git_checkpoint": "80f399a2cbdb8d5a6706d56403d5e762b2313fb557c3d39322431577818e2002",
-    "session_start_finalize": "1cab45f6bc7e68b859fd1670bf4c022500baff0e29cf80dbc73ebf159e2f0f0a",
-    "cycle_admit": "89ac0a06a62088142b7448688844e04d7b5cab436bc005763756d62605b63c4a",
-    "cycle_context_refresh": "e79f87da7bdc9b7016ba34ff3a99aeee424bed5080df670197eb7b3e793e4309",
-    "cycle_initialize": "1196493d2982205bca4eb3e6f3eac0f7ea7fe60a1507e38b9ac6c5c4679fd8c8",
-    "branch_cycle_audit": "8458baea880939c6fc7bfd2bf647308109f0511ad49218ea9dc1428a90a16050",
-    "cycle_checkpoint_finalize": "ed3c3593b608c93db42a51684074b5c2bcce9c8b061df6fb37cf66214f6609e9",
-    "cycle_plan_evaluate": "1b4a339361995f15728635ae94985c2dda3c50b9f25d9717401a07144c065061",
-    "cycle_plan_record": "212f2b75e91a34ccaa0303d99510471a330ca62b98c41160cd77223c21ffc254",
-    "drift_report_evaluate": "1d879624ea5409b1bb94d77a136b5d04ce3610956872dd1dd65a8bc8d6bccc86",
-    "drift_check_finalize": "1694f3f96dec009082a891ebda11da232653f267269ad96356222a34556def1e"
+    "baseline_promotion_finalize": "26a437270465f6154ff96f3c43f8ebab03bd66bf302e47a0e1ff455c44f3c3a5",
+    "baseline_promotion_decision": "7cbe078bd4eea015a65cffc5832248d2b2d3fcccc12917af481f01901cd94e66",
+    "baseline_promotion_record": "798a4b5f6ffb73bc2411bf04635d0e83d15fb5997208cc50450cfe62766fcc0b",
+    "cycle_close_finalize": "da46c16b92033b8f75a799cec26e18db4ca548a4f69d4d40256b58e52f130d16",
+    "cycle_close_record": "08abe3b395037e4aa3964cd4015082beb2b97ae3e09bb4af67946c1cc2c1ab6a",
+    "cycle_closure_decision": "ef831040ca1a6b0129cb991da2156df3a5182935d1299e741e0e17c4a6ee1453",
+    "cycle_audit_select": "5f16e262f4f4be55a79687c9164520db6f4ca6cdc7cd13cdcc1e4c98719f2731",
+    "cycle_audit_evaluate": "0ac1e22f4c064deb37a51478c5d88047979d55ab7ac8622eb20410284ff04b40",
+    "cycle_task_select": "f4dd284b03d6e9ce7215e3e2ea28e3c3ea5b8a2de1b46ee6ec764e158a4ae1a8",
+    "cycle_task_work_evaluate": "5ee49b62be29ef1d77a8bf5d1e9f62f16007e2cc511d1de1d99f23b8bd92263b",
+    "cycle_task_advance": "f67adf2e58fd44938879d6b0913e61ec3731d60ab0d5460ff5828571d0e7373e",
+    "cycle_validation_evaluate": "aac00d77c8eaed09fd4a80543c483f270a2b97cab5441168876e8afddd44477b",
+    "cycle_verification_enter": "eba2455397f353226e18cc268a48acf150b2133c878c286d4660de553930b4f9",
+    "cycle_validation_execute": "f847f1e43d58b847baf0e2b05be1f388fc6c74af95cf620e0f5b16b043efa79e",
+    "cycle_readiness_evaluate": "84ef34d2740dacedc043410d8a60332da9ba2cb77646431b239f6333dba88e65",
+    "cycle_implementation_enter": "46dda02429e53159f0dcd1d95c6345898d89e90ad990786457dc9d48d4909608",
+    "context_reload": "25a029de170fa09f682b94a62c25fd72471b26e95e2077c3fd184b5d4583fb68",
+    "session_admit": "d0dc96ae81dd1871473be1d0d49e331ef90a59aee288459ec44ec3ae44969f69",
+    "session_initialize": "b1f3d92a97a23e48f19d4c6c24e7a814f0fd07f4d2338e92e9f722fa12183f2e",
+    "mode_decision": "f82640e5a41428d6ee85aaca9821776fe53e8512b47e1bed79df85be23a233df",
+    "session_mode_apply": "3da513f1b6c276d77dbc5d5831d87b85737fae893625cbd606cd552e83e82d4b",
+    "cycle_terminal_checkpoint": "158155edc56cc9267a437a5cc1e166b642e96c1756a37600fe594496a6158bfb",
+    "session_git_checkpoint": "2fdbd205e99a59cfa67ca945c09e56e8f1a97f08b7c9aa5534354c8804eb427f",
+    "session_start_finalize": "672f9d32e996e8740b9afea28816a2f297baeeb0548cca6b2b6cda72c530380c",
+    "cycle_admit": "6a48a1257aad4882a3341254e697a217cb632efb67485beaab55bbb2a7ead178",
+    "cycle_context_refresh": "9c40a34fa0b1847b586811628d5d43e3759b673249454813df517f06b75b8f82",
+    "cycle_initialize": "146928826d6507991caff8cae5554f57a939d32e8c2e748a47385e9beb9a3d36",
+    "branch_cycle_audit": "2d01fdbc21e08a4d2167c84e5a75d45f2effc19b4f67b331cda54f201c897fa3",
+    "cycle_checkpoint_finalize": "112673be347b2aa3d1e0ad92c147c7cca121c6f331be1e36809fbb1702d5c865",
+    "cycle_plan_evaluate": "3e0174c95f694a8494bd0d68115d8edcd0d2b21888c831814ffda52dfcf0fbe2",
+    "cycle_plan_record": "ac876fb601efe32d4d5066ed689d9ea170c716c6c2d5d2e2b422d22d87f2d412",
+    "drift_report_evaluate": "6e3d287b61f103e7b2b84a9426243718278bc2346e5a0e58554fca622e59a9f6",
+    "drift_check_finalize": "3fff2d8cd1fd0cb8259c7b6272d0aed3f3fc166f7a362c30c9d325c6ec09d8fd"
   },
   "data_bindings": {
     "contract_version": "process-data-bindings.v2",
@@ -1041,6 +1080,15 @@
           "decision_operation_id": {
             "source": "operation_id",
             "node_id": "closure_decide"
+          }
+        }
+      },
+      {
+        "node_id": "cycle_terminal_checkpoint",
+        "fields": {
+          "closure_operation_id": {
+            "source": "operation_id",
+            "node_id": "close_record"
           }
         }
       },

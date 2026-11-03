@@ -25,7 +25,8 @@ const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.
   "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
-  const refs = [new URL("standard-workflow-git-checkpoint.mjs", import.meta.url), new URL("../../adapters/runtime/local-workflow-git-checkpoint.mjs", import.meta.url), new URL("../../core/ports/workflow-git-checkpoint-port.mjs", import.meta.url),
+  const refs = [new URL("standard-cycle-terminal-checkpoint.mjs", import.meta.url),
+    ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-cycle-terminal-checkpoint-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-workflow-git-checkpoint.mjs", import.meta.url), new URL("../../adapters/runtime/local-workflow-git-checkpoint.mjs", import.meta.url), new URL("../../core/ports/workflow-git-checkpoint-port.mjs", import.meta.url),
 new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-plan.v1.schema.json", import.meta.url),
 new URL("standard-workflow-composition.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-workflow-catalog.v1.schema.json", import.meta.url),
 new URL("standard-baseline-promotion-hook.mjs", import.meta.url), new URL("promote-baseline-checkpoint-use-case.mjs", import.meta.url), new URL("../../../tools/perf/promote-baseline-hook.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-hook-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-hook-plan.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-baseline-promotion-hook-output.v1.schema.json", import.meta.url),
@@ -93,6 +94,7 @@ const definitions = [
   ["session_initialize", "start-session", "mutating", ["SPEC-R01", "SPEC-R07"], "standard-session-initialize-input.v1"],
   ["mode_decision", "start-session", "read-only", ["SPEC-R01", "SPEC-R02"], "standard-session-reference-input.v1", "human", "standard-operation-output.v2"],
   ["session_mode_apply", "start-session", "mutating", ["SPEC-R01", "SPEC-R02"], "standard-mode-apply-input.v1", "deterministic", "standard-operation-output.v2"],
+  ["cycle_terminal_checkpoint", "cycle-close", "mutating", ["SPEC-R04", "SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-cycle-terminal-checkpoint-input.v1", "deterministic", "standard-cycle-terminal-checkpoint-output.v1"],
   ["session_git_checkpoint", "start-session", "mutating", ["SPEC-R01", "SPEC-R03", "SPEC-R07", "SPEC-R11"], "standard-session-git-checkpoint-input.v1", "deterministic", "standard-session-git-checkpoint-output.v1"],
   ["session_start_finalize", "start-session", "executor", ["SPEC-R01", "SPEC-R04", "SPEC-R11"], "standard-session-reference-input.v1", "deterministic", "standard-operation-output.v2"],
   ["cycle_admit", "cycle-create", "read-only", ["SPEC-R03", "SPEC-R06"], "standard-empty-input.v1", "deterministic", "standard-cycle-output.v1"],

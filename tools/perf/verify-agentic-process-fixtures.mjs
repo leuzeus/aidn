@@ -14,7 +14,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
-import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { simulateAgenticProcess, iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { verifyProcessDataFixtures } from "./process-data-fixture-lib.mjs";
 
 const example = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
@@ -197,6 +197,46 @@ await check("BPMN to IR to execution and simulation: parallel readiness, author 
   assert.equal(Object.isFrozen(simulation.trace), true);
   const assignments = simulation.trace.at(-1).cursor.occurrences.filter(row => row.assignment).map(row => row.assignment.decision.execution_id);
   assert.equal(new Set(assignments).size, 2);
+});
+await check("streaming simulation preserves aggregate rows and immutable synthetic snapshots", () => {
+  const state = completed(initial()), input = { instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins,
+    scopeId: state.scope_id, facts: state.initial_facts, events: state.events };
+  const aggregate = simulateAgenticProcess(input), rows = [...iterateAgenticProcessSimulation(input)];
+  assert.deepEqual(rows, aggregate.trace); assert.equal(rows.at(-1).instance_sha256, state.instance_sha256);
+  assert.ok(rows.every(row => Object.isFrozen(row) && Object.isFrozen(row.cursor)));
+  assert.equal(aggregate.evidence_kind, "synthetic"); assert.equal(aggregate.write_authorization, false);
+});
+await check("streaming simulation handles bounded long traces without lifting the aggregate limit", () => {
+  const groups = Array.from({ length: 16 }, (_, group) => ({ id: "group-" + group, kind: "and", participant_ref: "delivery",
+    branches: Array.from({ length: 6 }, (_, child) => ({ flow_id: "child-" + child, node_id: `work-${group}-${child}` })) }));
+  const m = model({ id: "all", kind: "and", participant_ref: "delivery", branches: groups.map(row => ({ flow_id: row.id, node_id: row.id })) },
+    groups.flatMap((row, group) => [row, ...Array.from({ length: 6 }, (_, child) => leaf(`work-${group}-${child}`))]));
+  const state = assigned(initial(m)), input = { instanceId: state.instance_id, model: m, policyPins: state.policy_pins, scopeId: state.scope_id,
+    facts: state.initial_facts, events: Array.from({ length: 512 }, () => structuredClone(state.events[0])) };
+  assert.throws(() => simulateAgenticProcess(input), /PROCESS_SIMULATION_TRACE_LIMIT/);
+  let count = 0, bytes = 0, last;
+  for (const row of iterateAgenticProcessSimulation(input)) {
+    assert.equal(row.step, count++); bytes += Buffer.byteLength(JSON.stringify(row)); last = row;
+  }
+  assert.equal(count, 513); assert.ok(bytes > 4 * 1024 * 1024); assert.equal(last.instance_sha256, state.instance_sha256);
+  assert.equal(last.cursor.status, "RUNNING");
+});
+await check("streaming simulation snapshots caller input before yielding", () => {
+  const state = completed(initial()), input = { instanceId: state.instance_id, model: structuredClone(state.model), policyPins: structuredClone(state.policy_pins),
+    scopeId: state.scope_id, facts: {}, events: structuredClone(state.events) };
+  const iterator = iterateAgenticProcessSimulation(input); assert.equal(iterator.next().value.step, 0);
+  input.events.length = 0; input.model.model_id = "changed-after-start"; input.facts.favorable = true;
+  const remaining = [...iterator]; assert.equal(remaining.length, state.events.length);
+  assert.equal(remaining.at(-1).instance_sha256, state.instance_sha256); assert.equal(Object.isFrozen(input), false);
+});
+await check("streaming simulation keeps input and event guards and permits early disposal", () => {
+  const state = initial(), input = { instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins, scopeId: state.scope_id, events: [] };
+  assert.throws(() => iterateAgenticProcessSimulation({ ...input, execute: true }).next(), /PROCESS_SIMULATION_INPUT_INVALID/);
+  assert.throws(() => iterateAgenticProcessSimulation({ ...input, events: Array.from({ length: 513 }, () => ({})) }).next(), /PROCESS_SIMULATION_INPUT_INVALID/);
+  const bad = iterateAgenticProcessSimulation({ ...input, events: [{ kind: "unknown", event_id: "bad" }] });
+  assert.equal(bad.next().value.step, 0); assert.throws(() => bad.next());
+  const stopped = iterateAgenticProcessSimulation(input); assert.equal(stopped.next().value.instance_sha256, state.instance_sha256);
+  assert.equal(stopped.return().done, true); assert.equal(stopped.next().done, true);
 });
 await check("simulation preserves waits, races, failures, duplicate idempotence and malformed-event refusals", () => {
   const simulate = state => simulateAgenticProcess({ instanceId: state.instance_id, model: state.model, policyPins: state.policy_pins,

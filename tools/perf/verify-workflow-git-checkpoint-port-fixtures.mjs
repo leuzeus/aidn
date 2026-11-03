@@ -95,6 +95,37 @@ try {
     await assert.rejects(port.commit(f.plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_COMMAND_FAILED", effect_status: "unknown" });
     assert.equal(git(f.root, "rev-parse", "HEAD"), foreign); assert.equal(f.port.inspectCommit(f.plan).status, "not_confirmed");
   });
+  await test("terminal scope requires a trusted explicit finite relative-path profile", () => {
+    const f = fixture();
+    for (const options of [{ profile: "unknown" }, { approvedPaths: ["app.mjs"] },
+      ...[["../outside"], [".aidn/key"], [".git/index"], ["C:/outside"], ["/outside"], ["app.mjs", "app.mjs"]].map(approvedPaths => ({ profile: "cycle-terminal", approvedPaths }))])
+      assert.throws(() => createLocalWorkflowGitCheckpoint({ targetRoot: f.root }, options), { code: "WORKFLOW_GIT_SCOPE_PROFILE_INVALID" });
+    assert.equal(git(f.root, "rev-parse", "HEAD"), f.plan.observed.head);
+  });
+  await test("terminal profile commits exactly captured product/metadata paths and preserves an executable Git mode", async () => {
+    const f = fixture(), goal = "docs/audit/cycles/C001-feature-example/goal.md", literal = "product/item[1].mjs";
+    write(f.root, "product/item1.mjs", "unchanged neighbour\n"); git(f.root, "add", "product/item1.mjs");
+    git(f.root, "update-index", "--chmod=+x", "app.mjs"); fs.chmodSync(path.join(f.root, "app.mjs"), 0o755);
+    git(f.root, "commit", "-m", "fixture executable and neighbour");
+    write(f.root, "app.mjs", "export const value = 2;\n"); write(f.root, goal, "approved cycle\n"); write(f.root, literal, "approved literal file\n");
+    const approvedPaths = [...metadata, "app.mjs", goal, literal], port = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }, { profile: "cycle-terminal", approvedPaths });
+    const plan = { ...f.plan, observed: port.inspect(), files: approvedPaths.map(name => ({ path: name, sha256: hash(fs.readFileSync(path.join(f.root, name))) })) };
+    await assert.rejects(f.port.commit(plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_PLAN_INVALID", effect_status: "no_effect" });
+    const proof = await port.commit(plan, { assertAuthorized() {} }); assert.equal(proof.status, "confirmed");
+    assert.equal(git(f.root, "ls-tree", "--format=%(objectmode)", "HEAD", "--", "app.mjs"), "100755");
+    assert.deepEqual(git(f.root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD").split("\n").sort(), approvedPaths.sort());
+    assert.equal(fs.readFileSync(path.join(f.root, "product/item1.mjs"), "utf8"), "unchanged neighbour\n");
+    const reopened = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }, { profile: "cycle-terminal", approvedPaths });
+    assert.equal(reopened.inspectCommit(plan).status, "confirmed"); assert.equal(git(f.root, "status", "--porcelain"), "");
+  });
+  await test("terminal scope refuses an uncaptured path and oversized postimage before Git effects", async () => {
+    const f = fixture(), port = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }, { profile: "cycle-terminal", approvedPaths: metadata });
+    const foreign = { ...f.plan, files: [...f.plan.files.slice(0, 2), { path: "app.mjs", sha256: "c".repeat(64) }] };
+    await assert.rejects(port.commit(foreign, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_PLAN_INVALID", effect_status: "no_effect" });
+    write(f.root, metadata[0], Buffer.alloc(1048577));
+    await assert.rejects(port.commit(f.plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_FILE_LIMIT", effect_status: "no_effect" });
+    assert.equal(git(f.root, "rev-parse", "HEAD"), f.plan.observed.head);
+  });
   console.log(JSON.stringify({ status: "PASS", checks, proof: "offline-real-git-port", application_binding: "NOT_RUN", full_standard_workflow: "NOT_COMPLETE", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
 } finally {
   for (const root of owned) {

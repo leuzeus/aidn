@@ -1,3 +1,4 @@
+import { createStandardCycleTerminalCheckpoint } from "./standard-cycle-terminal-checkpoint.mjs";
 import { createStandardWorkflowGitCheckpoint } from "./standard-workflow-git-checkpoint.mjs";
 import { createStandardBaselinePromotionHook } from "./standard-baseline-promotion-hook.mjs";
 import { createStandardBaselinePromotionAuthority } from "./standard-baseline-promotion-authority.mjs";
@@ -166,6 +167,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || shadowHash(evidence.evidence_refs) !== shadowHash(machine.evidence_refs)) fail("STANDARD_CYCLE_CLOSE_RECORDED_PROVENANCE_CHANGED");
     return { record_operation_id: closed.record.operation_id, plan, output: closed.output };
   }
+  const terminalCheckpoint = processAuthority && model.nodes.some(node => node.binding_ref === "cycle_terminal_checkpoint")
+    ? createStandardCycleTerminalCheckpoint({ targetRoot, now, readRecorded: readAcceptedTerminalRecord,
+      observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   const cycleCloseHook = processAuthority ? createStandardCycleCloseHook({ targetRoot, now,
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   function acceptedForPromotion(instance, id, binding, reason = "STANDARD_PROMOTION_ACCEPTED_SOURCE_REQUIRED") {
@@ -507,7 +511,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const resolved = resolveStandardProcessInput({ instance: state.record, occurrenceId, input, readOperation: id => retained(id).record });
       input = resolved.input;
       assertStandardOperationInput(binding.id, input);
-      const prepared = binding.id === "session_git_checkpoint" ? await sessionGitCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
+      const prepared = binding.id === "cycle_terminal_checkpoint" ? await terminalCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_TERMINAL_CHECKPOINT_AUTHORITY_REQUIRED")
+        : binding.id === "session_git_checkpoint" ? await sessionGitCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
@@ -614,7 +619,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_mode_apply") {
           if (shadowHash(decisionInput(state.record, record.preview.input)) !== shadowHash(record.preview.prepared.plan.input)) fail("STANDARD_MODE_DECISION_CHANGED");
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
-        } else if (record.intent.binding_ref === "session_git_checkpoint") output = await sessionGitCheckpoint.apply(state.record, record.preview.prepared,
+        } else if (record.intent.binding_ref === "cycle_terminal_checkpoint") output = await terminalCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_git_checkpoint") output = await sessionGitCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });

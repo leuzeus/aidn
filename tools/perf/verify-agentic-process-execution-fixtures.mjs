@@ -58,7 +58,7 @@ import { performance } from "node:perf_hooks";
 import { spawnSync } from "node:child_process";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, agenticProcessPrefixSha256 } from "../../src/core/workflow/agentic-process.mjs";
-import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { simulateAgenticProcess, iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { assertNativeHostState } from "../../src/core/workflow/native-host-state.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { assertAgenticControlScenario } from "../../src/core/workflow/agentic-process-control-scenario.mjs";
@@ -78,7 +78,7 @@ if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-o
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const standardComposedStop = process.argv.find(value => value.startsWith("--standard-composed-stop="))?.slice("--standard-composed-stop=".length) ?? "plan";
-if (!["plan", "cycle_admit", "closure_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
+if (!["plan", "cycle_admit", "closure_decide", "promotion_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
@@ -678,14 +678,13 @@ if (process.argv[2] === "--mixed-continue") {
 } else try {
   if (selectedStandardComposedMode) await check(`standard composed ${selectedStandardComposedMode}: shipped model owns actual startup/cycle/R05 prefix to ${standardComposedStop}`, async () => {
     const mode = selectedStandardComposedMode;
-    let claim = null;
-    const humanSource = { read: () => claim, verify({ source, question }) {
-      return claim && shadowHash(claim) === shadowHash(source) && source.question_sha256 === shadowHash(question)
-        ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" };
-    } };
+    let sourceFile;
+    const humanSource = { read: options => sourceFile ? closureHumanSource(sourceFile).read(options) : null,
+      verify: options => sourceFile ? closureHumanSource(sourceFile).verify(options) : { outcome: "unverified" } };
     const resumed = standardComposedResume ? JSON.parse(fs.readFileSync(standardComposedResume, "utf8")) : null;
     const factory = standardComposedResume ? (_mode, options) => restoreComposedFixture(resumed, options) : mixedFixture;
-    const runsCycle = standardComposedStop === "closure_decide";
+    const runsClosure = standardComposedStop === "promotion_decide";
+    const runsCycle = runsClosure || standardComposedStop === "closure_decide";
     const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       if (observed.context.contract_version === "standard-cycle-plan-context.v1")
@@ -711,8 +710,15 @@ if (process.argv[2] === "--mixed-continue") {
         split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
         recommendation: "continue", rationale: "Fake native wire diagnostic; no recovery or completion claim", evidence_refs: observed.evidence_refs } };
     } });
-    // The nominal prefix keeps one admitted objective. A distinct cycle goal
-    // raises the real objective_delta signal and requires the recovery route.
+    sourceFile = resumed?.fixture.human_source_file ?? path.join(f.configuration.control_root, "standard-human-sources.json");
+    if (!resumed) fs.writeFileSync(sourceFile, "{}");
+    if (!fs.existsSync(sourceFile)) throw Error("STANDARD_FIXTURE_HUMAN_SOURCE_HISTORY_REQUIRED");
+    const publish = (ref, claim) => {
+      const entries = JSON.parse(fs.readFileSync(sourceFile, "utf8"));
+      if (entries[ref] && shadowHash(entries[ref]) !== shadowHash(claim)) throw Error("STANDARD_FIXTURE_HUMAN_SOURCE_CHANGED");
+      fs.writeFileSync(sourceFile, JSON.stringify({ ...entries, [ref]: claim }));
+    };
+    // One admitted objective; a distinct cycle goal needs its recovery route.
     const objective = "Exercise the published standard workflow on a disposable project";
     const parameters = { session: { session_id: "S001", session_branch: "S001-standard", objective },
       cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective } };
@@ -722,54 +728,120 @@ if (process.argv[2] === "--mixed-continue") {
       fs.writeFileSync(f.configuration.criteria.path, criteria); f.configuration.criteria.sha256 = sha(criteria);
       f.configuration.instructions.implement = "Implement only the host-selected task. Host validation, progression and governance writes remain separate.";
     }
+    const resumeFile = path.join(f.configuration.control_root, "standard-resume.json");
     let auth;
-    if (standardComposedResume) auth = resumed.authorization;
+    if (resumed) auth = resumed.authorization;
     else {
       const initial = f.open().initialize({ parameters });
       f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
       auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 300000;
-      fs.writeFileSync(path.join(f.configuration.control_root, "standard-resume.json"), JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) }, authorization: auth }));
+      if (runsClosure) {
+        auth.global_deadline_ms = auth.workflow_deadline_ms = auth.authorized_at_ms + 7200000;
+        auth.max_responses = 8; auth.max_bytes = 32 * 1024 * 1024;
+      }
+      fs.writeFileSync(resumeFile, JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs,
+        human_source_file: sourceFile, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) }, authorization: auth }));
     }
-    const operations = [];
+    const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
+    let childNativeSessions = 0, coldContinuation = false;
     for (let step = 0; step < 64; step++) {
-      const state = f.open().inspect(), frame = state.cursor.occurrences.find(row => row.status === "READY");
+      const state = f.open().inspect(), frame = state.cursor.occurrences.find(row => row.status === "READY")
+        ?? state.cursor.occurrences.find(row => row.status === "WAITING" && row.operation?.receipt?.outcome === "deferred");
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
-      let result = await f.open().step({ write: true, authorization: auth });
+      const result = await f.open().step({ write: true, authorization: auth });
       if (result.operation_id) {
         if (result.status === "waiting_for_human") {
-          assert.equal(f.open().readOperation(result.operation_id).intent.binding_ref, "mode_decision");
-          claim = { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "standard-mode-committing",
-            subject_sha256: "a".repeat(64), question_sha256: shadowHash(result.question), choice: "COMMITTING", evidence_refs: [{ ref: "fixture:operator-mode", sha256: "a".repeat(64) }] };
-          await f.open().receiveDecision(result.operation_id, { sourceRef: "choice", write: true });
+          const binding = f.open().readOperation(result.operation_id).intent.binding_ref;
+          let claim, ref;
+          if (binding === "mode_decision") {
+            ref = "standard-mode";
+            claim = { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "standard-mode-committing",
+              subject_sha256: "a".repeat(64), question_sha256: shadowHash(result.question), choice: "COMMITTING", evidence_refs: [{ ref: "fixture:operator-mode", sha256: "a".repeat(64) }] };
+          } else {
+            assert.equal(binding, "cycle_closure_decision"); assert.ok(runsClosure);
+            const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
+            assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "missing", write: true })).status, "waiting_for_human");
+            assert.equal(f.open().inspect().record.instance_sha256, beforeWait); assert.equal(f.t.sessions.length, nativeCount);
+            const choice = resumed ? "retain" : "deferred";
+            assert.ok(result.question.choices.includes(choice)); ref = "closure_" + result.operation_id;
+            claim = { contract_version: "human-cycle-closure-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+              source_event_id: "standard:" + ref, subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice,
+              rationale: choice === "deferred" ? "Explicit fixture deferral before a cold process resumes" : "Explicit fixture choice after reviewing the current audit",
+              risk_acceptances: [], evidence_refs: [{ ref: "fixture:operator-closure", sha256: "a".repeat(64) }] };
+          }
+          publish(ref, claim);
+          await f.open().receiveDecision(result.operation_id, { sourceRef: ref, write: true });
           await f.open().acceptOperation(result.operation_id, { write: true });
         }
         const record = f.open().readOperation(result.operation_id), output = record.results.at(-1)?.output;
         console.log(JSON.stringify({ composed_step: record.intent.binding_ref, outcome: output?.outcome, reason: output?.observations?.reason_code,
           facts: output?.facts, coverage: output?.observations?.coverage }));
-        assert.equal(output?.outcome, "completed"); operations.push(record);
+        if (output?.outcome === "deferred" && runsClosure && !resumed) {
+          assert.equal(record.intent.binding_ref, "cycle_closure_decision"); assert.equal(output.effect_status, "no_effect"); assert.deepEqual(output.facts, {});
+          const waiting = f.open().inspect(); assert.equal(waiting.cursor.status, "WAITING");
+          const retained = waiting.record.events.filter(event => event.kind === "operation_intent").map(event => ({ id: event.intent.operation_id, sha256: shadowHash(f.open().readOperation(event.intent.operation_id)) }));
+          const beforeNative = f.t.sessions.length;
+          fs.writeFileSync(path.join(f.configuration.control_root, "standard-prefix-preservation.json"), JSON.stringify({
+            contract_version: "fixture-standard-prefix-preservation.v1", model_sha256: waiting.record.model_sha256,
+            event_prefix_count: waiting.record.events.length, event_prefix_sha256: shadowHash(waiting.record.events),
+            operation_journals: retained, native_results_prior: beforeNative }));
+          console.log(JSON.stringify({ composed_human_deferred: true, cursor: waiting.cursor.status, native_sessions: beforeNative, cold_resume_starting: true }));
+          const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--standard-composed-mode=" + mode, "--standard-composed-stop=" + standardComposedStop,
+            "--standard-composed-resume=" + resumeFile, "--retain-on-failure"], { encoding: "utf8", shell: false, windowsHide: true, timeout: 5400000, maxBuffer: 262144 });
+          assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-16384)); process.stdout.write(child.stdout);
+          const reports = child.stdout.split(/\r?\n/).filter(line => line.startsWith("{")).map(line => JSON.parse(line));
+          const proof = reports.find(row => row.standard_composed_proof === true);
+          assert.ok(proof); assert.equal(proof.native_prior_results, beforeNative); assert.equal(proof.cold_resume, true);
+          childNativeSessions = proof.native_sessions_started; assert.equal(childNativeSessions, 1); coldContinuation = true;
+          f.reopen();
+          for (const item of retained) assert.equal(shadowHash(f.open().readOperation(item.id)), item.sha256);
+          const afterChild = f.open().inspect(); assert.deepEqual(afterChild.record.events.slice(0, waiting.record.events.length), waiting.record.events);
+          assert.equal(f.t.sessions.length, beforeNative); break;
+        }
+        assert.equal(output?.outcome, "completed");
       } else {
         console.log(JSON.stringify({ composed_native: frame.node_id, status: result.status, journal_phase: result.journal_phase }));
         assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed");
-        f.reopen(); // Reopen after the persisted native result; no activity rerun.
+        f.reopen(); // Persisted native results determine the next occurrence.
       }
     }
     const final = f.open().inspect();
     assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
     const acceptedOperations = final.record.events.filter(event => event.kind === "operation_intent").map(event => f.open().readOperation(event.intent.operation_id));
-    assert.equal(acceptedOperations.find(row => row.intent.binding_ref === "drift_check_finalize").results.at(-1).output.facts.drift_check_completed, true);
-    if (standardComposedStop !== "cycle_admit") assert.equal(acceptedOperations.find(row => row.intent.binding_ref === "cycle_checkpoint_finalize").results.at(-1).output.outcome, "completed");
-    assert.equal(f.t.sessions.length, (runsCycle ? 5 : standardComposedStop === "plan" ? 2 : 1) - (resumed?.prior_native_activities ?? 0)); assert.ok(f.t.sessions.every(row => row.closed));
+    const last = binding => acceptedOperations.filter(row => row.intent.binding_ref === binding).at(-1)?.results.at(-1)?.output;
+    assert.equal(last("drift_check_finalize").facts.drift_check_completed, true);
+    if (standardComposedStop !== "cycle_admit") assert.equal(last("cycle_checkpoint_finalize").outcome, "completed");
+    const expectedNative = runsClosure ? 6 : runsCycle ? 5 : standardComposedStop === "plan" ? 2 : 1;
+    assert.equal(f.t.sessions.length + childNativeSessions, expectedNative - priorNativeResults); assert.ok(f.t.sessions.every(row => row.closed));
     if (runsCycle) {
       for (const binding of ["cycle_plan_record", "cycle_implementation_enter", "cycle_validation_execute", "cycle_task_advance", "cycle_verification_enter", "cycle_audit_evaluate"])
-        assert.equal(acceptedOperations.find(row => row.intent.binding_ref === binding)?.results.at(-1).output.outcome, "completed");
-      assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "cycle_closure_decision").length, 0);
+        assert.equal(last(binding)?.outcome, "completed");
       assert.equal(final.cursor.status, "RUNNING");
+      if (!runsClosure) assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "cycle_closure_decision").length, 0);
     }
-    const replay = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins,
-      scopeId: final.record.scope_id, parameters: final.record.initial_parameters, facts: final.record.initial_facts, events: final.record.events });
-    assert.equal(replay.trace.at(-1).instance_sha256, final.record.instance_sha256);
+    if (runsClosure) {
+      assert.equal(last("cycle_closure_decision").facts.cycle_retention_requested, true);
+      assert.equal(last("cycle_terminal_checkpoint").facts.cycle_terminal_checkpoint_completed, true);
+      assert.equal(last("cycle_terminal_checkpoint").facts.cycle_close_completed, false);
+      assert.equal(last("cycle_close_finalize").facts.cycle_close_completed, true); assert.equal(last("cycle_close_finalize").facts.cycle_retained, true);
+      assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "baseline_promotion_decision").length, 0);
+      assert.ok(acceptedOperations.some(row => row.intent.binding_ref === "cycle_closure_decision" && row.results.at(-1).output.outcome === "deferred"));
+      if (!resumed) assert.equal(coldContinuation, true);
+    }
+    let replayLast, replaySteps = 0;
+    for (const row of iterateAgenticProcessSimulation({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins,
+      scopeId: final.record.scope_id, parameters: final.record.initial_parameters, facts: final.record.initial_facts, events: final.record.events })) {
+      replayLast = row; replaySteps++;
+    }
+    assert.equal(replaySteps, final.record.events.length + 1);
+    assert.equal(replayLast.instance_sha256, final.record.instance_sha256);
+    console.log(JSON.stringify({ standard_composed_proof: true, model_sha256: final.record.model_sha256, instance_sha256: final.record.instance_sha256,
+      events: final.record.events.length, application_operations: acceptedOperations.length, native_sessions_started: f.t.sessions.length,
+      native_sessions_started_in_child: childNativeSessions, native_prior_results: priorNativeResults, cold_resume: Boolean(resumed),
+      cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: standardComposedStop, workflow_status: final.cursor.status, model_calls: 0,
+      verification_boundary: runsCycle ? "fixture-with-actual-Node-check" : "not-used", human_and_effect_authority: "fixture", replay_exact: true }));
   });
   await check("cycle closure contract: typed review and authenticated inbox preserve pending lifecycle", () => {
     const cases = [["verify-standard-cycle-closure-decision-fixtures.mjs"], ["verify-standard-cycle-closure-review-fixtures.mjs"],

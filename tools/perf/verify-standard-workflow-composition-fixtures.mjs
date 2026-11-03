@@ -23,7 +23,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 40); assert.equal(assets.catalog.activities.length, 7);
+  assert.equal(assets.catalog.bindings.length, 41); assert.equal(assets.catalog.activities.length, 7);
 });
 test("completion of this component cannot claim completion of the standard workflow", () => {
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);

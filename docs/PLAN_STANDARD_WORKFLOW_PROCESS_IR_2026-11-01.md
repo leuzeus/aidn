@@ -8,9 +8,10 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée relue pour la tranche R05 : `61f0a6e` ; composants publiés explicitement révisés en
-65/63 pour le checkpoint final de promotion. Les preuves de l’écriture terminale et de la reprise
-conservent leurs snapshots exacts ; le modèle standard complet reste à livrer.
+Base intégrée avant le lot terminal : `9f86737`. Le lot en cours révise explicitement
+les composants startup/cycle en 73/71 et le modèle composé en 15 (73 nœuds,
+41 occurrences, 40 bindings). Les preuves conservent leurs snapshots exacts ;
+le modèle standard complet reste à livrer.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -2719,3 +2720,53 @@ ni la clôture/promotion, ni la fin de session/PR/synchronisation. Les autres
 modes, les refus/reprises de ce parcours, le vrai hôte natif, l'archive installée
 exacte et A1–A10 restent requis. Le sélecteur ciblé est documenté ; la suite
 agrégée et l'admission complète d'une PR ne sont pas déclarées exécutées.
+
+
+### L2/L3/L4 — checkpoint terminal, report humain et reprise froide
+
+Le lot ajoute `standard-cycle-terminal-checkpoint.mjs`, ses trois contrats, le
+profil Git terminal borné, son binding et son placement IR avant R05 et le hook
+final. Les chemins autorisés proviennent de l'état capturé par le writer terminal
+authentifié ; le modèle ne fournit pas de commande ni de périmètre Git. Conserver
+l'admission terminale réelle, le parent CAS, les métadonnées canoniques, les modes
+Git et les noms littéraux ; aucun export DB-only ni élargissement du profil de
+session. La clôture du skill reste fausse jusqu'au vrai hook final. Une perte de
+grant après commit confirmé reste inconnue et retient le propriétaire.
+
+Le parcours files antérieur a réellement atteint la clôture après report puis
+reprise dans un nouveau processus et un seul budget initial. Son test a ensuite
+échoué sur la trace intégrale de simulation : 4 Mio dépassés. Les événements et
+preuves ont été conservés. La lecture en flux via le même réducteur reproduit
+les 86 événements/87 instantanés et le hash exact, sans nouvel appel natif ni
+répétition d'effet. Le mode intégral garde sa limite. Le nouveau sélecteur composé
+utilise ce flux et conserve avant le sous-processus une référence des journaux/préfixe.
+Le sélecteur corrigé est PASS en files dans le
+[rapport distinct](qualification/agentic-process/standard-terminal-checkpoint-2026-11-03.json) :
+37 reçus (36 complétés et un report), six transports simulés, reprise froide,
+anciens journaux/préfixe inchangés et 87 instantanés exacts. La clôture est
+confirmée ; le workflow reste RUNNING avant `promotion_decide`. Ce résultat
+précède l'admission de promotion et ne termine pas le workflow standard.
+La limite de deux heures de cette fixture ne fournit pas la réautorisation après
+attente longue du sous-lot L4 ci-dessus. CLI de simulation en flux, réconciliation
+et autres topologies restent à réaliser ; A1–A10 ne sont pas clôturés.
+
+### L3 — promotion et clôture de session : raccordements restant explicites
+
+La promotion est désormais réservée au résultat retenu confirmé. Sa composition
+complète n'est toujours pas qualifiée : les fixtures actuelles changent de branche
+et intègrent le cycle avant la décision, puis préparent un commit/rechargement/R05
+après le record. Ces préparations doivent être remplacées par les opérations IR
+nécessaires selon SPEC/admissions présentes, avec décisions et grants explicites.
+Prévoir `standard-baseline-promotion*.mjs`, les contrats et le checkpoint, un port
+local borné d'intégration si requis, l'hôte, le registre, l'auteur/catalogue et
+le parcours composé. Exiger refus sans effet, état inconnu sans duplication,
+final hook réel et replay/simulation avant les preuves native/archive.
+
+La clôture de session nécessite encore son admission/question, rapport et
+snapshot CAS, R05 et hook réel (chaîne DB obligatoire), puis résultat review-ready
+ou attente explicite avant PR. Le hook existant ne rédige pas ces artefacts.
+Réutiliser `runCloseSessionAdmitUseCase` et son snapshot canonique ; conserver
+la session propriétaire sélectionnée jusqu'à confirmation, refuser les cycles
+sans décision et les reports périmés. Intégration, push, revue/fusion et sync
+restent des opérations distinctes. Les chemins session/cycle existants, autres
+modes, incidents et véritables ports natifs/package restent requis.

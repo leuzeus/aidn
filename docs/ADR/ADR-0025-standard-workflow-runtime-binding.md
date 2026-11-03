@@ -1282,3 +1282,49 @@ including exact replay/simulation. A cold resumed divergent-objective case
 retains WAITING without repeating prior effects. Full crash/index reconciliation,
 the rest of the standard route, the native host and installed archive remain
 open; the prefix does not qualify them.
+
+
+## Addendum: captured terminal Git scope and streamed simulation
+
+The standard component inserts deterministic `cycle_terminal_checkpoint` after
+the authenticated terminal writer and before closure R05/final hook. Its input
+identifies the accepted record. The host derives a closed finite set of physical
+postimages from that record, reobserves terminal ownership/admission, Git parent,
+index and files after the explicit grant, and invokes the bounded local port.
+The terminal profile requires trusted approved paths, honors literal path names
+and existing tracked modes, and does not widen the default session metadata
+profile. Completion reload uses the real terminal-cycle path. Canonical DB state
+is not replaced with visible Markdown and no DB-only export is introduced.
+
+The original terminal writer already performs pre-write admission before its
+first write. This continuation uses the existing specialized terminal admission,
+as the final hook does; it does not reactivate a cycle to satisfy an unrelated
+active-cycle gate. The generic admission policy remains unchanged. The checkpoint
+leaves `cycle_close_completed` false until the actual final hook confirms.
+Promotion eligibility derives from the authenticated retained outcome; non-retained
+states do not require a promotion question or invent baseline success.
+
+Known effects dominate later no-effect errors: if Git confirmed before a grant
+or cache failure, the combined operation retains unknown, no success facts and
+its owner. Recovery of that uncertainty remains a separate explicit deliverable.
+Real port and component checks cover the bounded scope and this error boundary.
+Full model, native and installed-archive proofs are distinct from those checks.
+
+A composed execution reached the final cycle-close hook after deferred human
+choice and a new process, then its aggregate synthetic trace exceeded 4 MiB.
+The internal `iterateAgenticProcessSimulation` API now provides immutable trace
+rows through the same reducer with the same 512-event limit and a 4 MiB bound per
+snapshot; discarding rows bounds trace retention. It snapshots validated caller
+input before yielding. The aggregate v1 API and JSON shape keep their existing
+4 MiB total refusal. This introduces no model executor, time source, persistence
+or write authority. Streamed replay of the retained 86-event case reproduced its
+exact instance hash without business dispatch. Public CLI streaming, all standard
+paths, uncertainty reconciliation and long-wait reauthorization remain open.
+
+
+The corrected revision-15 files run passes through actual cycle-close completion
+after explicit human deferral and cold process restart. It preserves prior journal
+bytes/event prefix and reproduces the final hash with 87 streamed snapshots.
+It stops before promotion admission, with a partial component and workflow RUNNING.
+Both process exits and owned cleanup completed. Native/grant/human/boundary
+capabilities remain fixtures; no real-native or installed-archive claim follows.

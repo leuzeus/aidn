@@ -2378,3 +2378,40 @@ neither the human wait nor closure/promotion/session/PR completion. Dual/DB-only
 multiple tasks, refused/resumed closure, real native/boundary and exact archive
 remain separate acceptance work. This targeted result does not claim execution
 of the aggregate suite or merge readiness.
+
+
+### Standard terminal checkpoint, restart and streamed replay
+
+`node tools/perf/verify-standard-cycle-terminal-checkpoint-contract-fixtures.mjs`
+checks closed supported schemas, model-supplied path/command refusal, and the
+separation between checkpoint and completed cycle-close skill. The real Git port
+suite also covers trusted terminal scope, literal paths, tracked executable mode,
+oversized or foreign files. The default session scope remains three files.
+
+`node tools/perf/verify-standard-cycle-close-record-fixtures.mjs --mode=files --outcome=retain --final-hook --terminal-checkpoint`
+executes the actual application checkpoint/reload between the canonical writer
+and final hook. Also run `--mode=dual --outcome=drop` and
+`--mode=db-only --outcome=no_go` with the same two finalization flags for storage
+intent. These are component proofs with fixture human/audit/R05 preparation.
+`--terminal-checkpoint-fault=grant_after_git` exercises a real confirmed commit
+followed by denied authorization: expect unknown, empty facts and owner retained.
+A no-effect permission error must never erase the prior Git effect.
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=promotion_decide --retain-on-failure`
+requests the longer published-model path: human missing-source wait, explicit
+deferral, a new Node process using the original authorization and durable inbox,
+retention, terminal Git/reload, R05 and real final hook. It stops before promotion,
+with workflow RUNNING. The parent compares prior journal hashes and event prefix;
+its private preservation baseline is retained before the child starts. Transport,
+human/grants and containment qualification remain fixtures. Do not replay effects
+to repair a failed proof; inspect the retained record and exact source first.
+
+`verify-agentic-process-fixtures.mjs` covers aggregate/stream row equality, the
+unchanged aggregate 4 MiB refusal, a 512-event streamed case, early disposal,
+malformed inputs/events and caller mutation between pulls. The internal pull
+iterator retains one bounded immutable snapshot; the caller must discard rows.
+Its rows are synthetic and do not authorize writes. Public CLI streaming is not
+claimed. The composed selector uses that iterator for exact replay/simulation.
+The [recorded qualification](qualification/agentic-process/standard-terminal-checkpoint-2026-11-03.json)
+keeps the earlier aggregate trace-limit failure and exact streamed recovery
+separate from the corrected full-harness result, real native and installed archive.

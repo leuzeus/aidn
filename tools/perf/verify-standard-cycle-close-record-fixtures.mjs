@@ -1,3 +1,4 @@
+import { createStandardCycleTerminalCheckpoint } from "../../src/application/runtime/standard-cycle-terminal-checkpoint.mjs";
 import { createStandardCycleCloseHook } from "../../src/application/runtime/standard-cycle-close-hook.mjs";
 import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
 import { completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
@@ -27,6 +28,12 @@ const choice = process.argv.find(value => value.startsWith("--choice="))?.slice(
 if (!["retain", "no_go", "drop"].includes(choice)) throw Error("CLOSE_RECORD_FIXTURE_CHOICE_INVALID");
 const finalFault = process.argv.find(value => value.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
 if (finalFault && !["event", "suffix", "projection", "grant_after"].includes(finalFault)) throw Error("CLOSE_HOOK_FIXTURE_FAULT_INVALID");
+const terminalCheckpoint = process.argv.includes("--terminal-checkpoint");
+if (terminalCheckpoint && (!process.argv.includes("--final-hook") || !["files", "dual", "db-only"].includes(selected)))
+  throw Error("TERMINAL_CHECKPOINT_FIXTURE_REQUIRES_PHYSICAL_FINAL_HOOK_CASE");
+const terminalGrantFault = process.argv.includes("--terminal-checkpoint-fault=grant_after_git");
+if (terminalGrantFault && !terminalCheckpoint) throw Error("TERMINAL_FAULT_REQUIRES_CHECKPOINT");
+const expectedTerminalGrantFault = Symbol("expected terminal grant fault");
 const targetState = { retain: "DONE", no_go: "NO_GO", drop: "DROPPED" }[choice];
 const owned = [], temp = fs.realpathSync(os.tmpdir()), H = "a".repeat(64), op = "op_" + "a".repeat(40);
 let checks = 0; const pass = name => { checks++; console.log("PASS " + name); };
@@ -141,17 +148,61 @@ try {
         const hook = createStandardCycleCloseHook({ targetRoot: root, readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext, readCurrent: () => instance });
         const hookInput = { closure_operation_id: op }, hookId = 'op_' + 'b'.repeat(40);
         let hookPlan = await hook.prepare(instance, hookInput, hookId);
-        if (!hookPlan.can_apply) {
-          assert.equal(hookPlan.reason_code, 'STANDARD_CYCLE_CLOSE_HOOK_GATE_REQUIRED');
+        if (!hookPlan.can_apply || terminalCheckpoint) {
+          if (!hookPlan.can_apply) assert.equal(hookPlan.reason_code, 'STANDARD_CYCLE_CLOSE_HOOK_GATE_REQUIRED');
           // Explicit fixture precondition via the actual R05 hook. This is not
           // automatic acknowledgment or the full process model's diagnostic.
           // Explicit real Git checkpoint, verified against the immutable recorded postimages.
-          git('add', '.'); git('commit', '--allow-empty', '-m', 'fixture approved terminal metadata checkpoint');
-          const reload = await runReloadCheckUseCase({ targetRoot: root, completionCycleId: 'C001', args: {
-            cache: '.aidn/runtime/cache/reload-state.json', stateMode: mode, stateModeExplicit: true,
-            indexFile: '.aidn/runtime/index/workflow-index.sqlite', indexBackend: 'auto', writeCache: true,
-          } });
-          assert.notEqual(reload.decision, 'stop');
+          if (terminalCheckpoint) {
+            const checkpoint = createStandardCycleTerminalCheckpoint({ targetRoot: root,
+              readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext, readCurrent: () => instance });
+            const checkpointPlan = await checkpoint.prepare(instance, hookInput, "op_" + "c".repeat(40));
+            if (!checkpointPlan.can_apply) {
+              const admission = await preWriteAdmit({ targetRoot: root, skill: "cycle-close" });
+              assert.fail(JSON.stringify({ checkpoint: checkpointPlan, prewrite: { ok: admission.ok, admission_status: admission.admission_status,
+                blocking_reasons: admission.blocking_reasons, warnings: admission.warnings } }));
+            }
+            const beforeHead = git("rev-parse", "HEAD"), beforeCheckpointContext = (await observeContext()).context_sha256;
+            await assert.rejects(checkpoint.apply(instance, checkpointPlan, { expectPlan: checkpointPlan.plan_sha256 }), { code: "STANDARD_TERMINAL_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED", effect_status: "no_effect" });
+            await assert.rejects(checkpoint.apply(instance, checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256,
+              assertAuthorized: () => { throw Object.assign(Error("denied"), { code: "FIXTURE_GRANT_DENIED" }); } }), { code: "FIXTURE_GRANT_DENIED", effect_status: "no_effect" });
+            assert.equal(git("rev-parse", "HEAD"), beforeHead); assert.equal((await observeContext()).context_sha256, beforeCheckpointContext);
+            assert.equal(artifacts.ownerPending(), false); pass("terminal checkpoint preview and denied intent preserve the reviewed state and Git");
+            let terminalGrantCalls = 0;
+            const checkpointResult = await checkpoint.apply(instance, checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256, assertAuthorized() {
+              if (terminalGrantFault && ++terminalGrantCalls === 5)
+                throw Object.assign(Error("permission gate returned without an effect of its own"), { code: "FIXTURE_POST_GIT_GRANT_LOST", effect_status: "no_effect" });
+            } });
+            if (terminalGrantFault) {
+              assert.equal(checkpointResult.outcome, "reconciliation_required"); assert.equal(checkpointResult.effect_status, "unknown"); assert.deepEqual(checkpointResult.facts, {});
+              assert.equal(checkpointResult.observations.reason_code, "FIXTURE_POST_GIT_GRANT_LOST");
+              assert.notEqual(git("rev-parse", "HEAD"), beforeHead); assert.equal(git("status", "--porcelain"), "");
+              assert.equal(artifacts.ownerPending(), true);
+              pass("lost grant after a confirmed Git commit preserves unknown and ownership despite a no-effect permission error");
+              throw expectedTerminalGrantFault;
+            }
+            assert.equal(checkpointResult.outcome, "completed", JSON.stringify(checkpointResult));
+            assert.equal(checkpointResult.facts.cycle_terminal_checkpoint_completed, true); assert.equal(checkpointResult.facts.cycle_close_completed, false);
+            assert.equal(checkpointResult.observations.reload.cache_written, true); assert.equal(git("status", "--porcelain"), "");
+            const count = git("rev-list", "--count", "HEAD");
+            if (checkpointResult.facts.cycle_terminal_commit_created)
+              await assert.rejects(checkpoint.apply(instance, checkpointPlan, { write: true, expectPlan: checkpointPlan.plan_sha256, assertAuthorized() {} }), { code: "STANDARD_TERMINAL_CHECKPOINT_PREVIEW_CHANGED", effect_status: "no_effect" });
+            const reopened = createStandardCycleTerminalCheckpoint({ targetRoot: root,
+              readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext, readCurrent: () => instance });
+            const observedPlan = await reopened.prepare(instance, hookInput, "op_" + "d".repeat(40));
+            assert.equal(observedPlan.can_apply, true);
+            const observedResult = await reopened.apply(instance, observedPlan, { write: true, expectPlan: observedPlan.plan_sha256, assertAuthorized() {} });
+            assert.equal(observedResult.outcome, "completed"); assert.equal(observedResult.facts.cycle_terminal_commit_created, false);
+            assert.equal(git("rev-list", "--count", "HEAD"), count); assert.equal(artifacts.ownerPending(), false);
+            pass("real terminal Git checkpoint and completion reload preserve canonical postimages and cannot repeat a confirmed commit");
+          } else {
+            git('add', '.'); git('commit', '--allow-empty', '-m', 'fixture approved terminal metadata checkpoint');
+            const reload = await runReloadCheckUseCase({ targetRoot: root, completionCycleId: 'C001', args: {
+              cache: '.aidn/runtime/cache/reload-state.json', stateMode: mode, stateModeExplicit: true,
+              indexFile: '.aidn/runtime/index/workflow-index.sqlite', indexBackend: 'auto', writeCache: true,
+            } });
+            assert.notEqual(reload.decision, 'stop');
+          }
           completeDriftCheckFixture(root);
           hookPlan = await hook.prepare(instance, hookInput, hookId);
         }
@@ -202,6 +253,10 @@ try {
     }
   }
   console.log(JSON.stringify({ status: "PASS", checks, mode: selected, choice, final_hook_fault: finalFault ?? null, proof: "canonical-close-record-component", decision_and_audit_authority: "fixture", full_process_host: "NOT_RUN", final_hook: process.argv.includes("--final-hook") ? "actual-fixed-hook-component" : "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+ } catch (cause) {
+  if (cause !== expectedTerminalGrantFault) throw cause;
+  console.log(JSON.stringify({ status: "PASS", checks, mode, choice, proof: "terminal-post-git-authorization-fault", effect_status: "unknown", owner_retained: true,
+    final_hook: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN", full_process_host: "NOT_RUN" }));
 } finally {
   for (const folder of owned) { const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); }
 }

@@ -39,7 +39,7 @@ seq("thinking_handoff", []); seq("exploring_handoff", []);
 xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
 seq("thinking_preflight", []); seq("exploring_preflight", []);
 seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",
-  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "close_finalize", "promotion_decide", "promotion_route"]);
+  "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility"]);
 const rename = id => `cycle_${id}`;
 for (const original of cycle.nodes) {
   const copy = structuredClone(original);
@@ -84,7 +84,11 @@ inputs.push({ node_id: "audit_review", fields: operation("audit_review", "audit_
 op("audit_evaluate", "cycle_audit_evaluate", occurrence("audit_review"));
 op("closure_decide", "cycle_closure_decision", operation("closure_decide", "audit_operation_id", "audit_evaluate"));
 op("close_record", "cycle_close_record", operation("close_record", "decision_operation_id", "closure_decide"));
+op("cycle_terminal_checkpoint", "cycle_terminal_checkpoint", operation("cycle_terminal_checkpoint", "closure_operation_id", "close_record"));
 op("close_finalize", "cycle_close_finalize", operation("close_finalize", "closure_operation_id", "close_record"));
+xor("promotion_eligibility", [["retained", "promotion_choice", "cycle_retained"], ["not_retained", "promotion_inapplicable", null]]);
+seq("promotion_choice", ["promotion_decide", "promotion_route"]);
+seq("promotion_inapplicable", []);
 op("promotion_decide", "baseline_promotion_decision", { contract_version: { source: "literal", value: "standard-baseline-promotion-review-input.v1" }, ...operation("promotion_decide", "closure_operation_id", "close_finalize") });
 xor("promotion_route", [["requested", "promotion", "baseline_promotion_requested"], ["not_requested", "promotion_not_requested", "baseline_promotion_not_requested"]]);
 seq("promotion", ["promotion_record", "promotion_finalize"]);

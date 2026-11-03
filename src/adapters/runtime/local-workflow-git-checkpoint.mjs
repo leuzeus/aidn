@@ -9,18 +9,32 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const sha = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value ?? "");
 const exact = value => JSON.stringify(value);
-const scopePath = name => /^(?:docs\/audit\/(?:CURRENT-STATE|RUNTIME-STATE)\.md|docs\/audit\/sessions\/S[0-9]{3,6}\.md)$/.test(name);
+const sessionPath = name => /^(?:docs\/audit\/(?:CURRENT-STATE|RUNTIME-STATE)\.md|docs\/audit\/sessions\/S[0-9]{3,6}\.md)$/.test(name);
 
 // This port writes Git objects, one approved ref and its worktree index. It
 // does not execute repository hooks, filters, a shell or a remote operation.
 // Configured commit signing remains applicable to commit-tree.
-export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = process.env }, { beforeRef = null, afterRef = null } = {}) {
+export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = process.env }, {
+  beforeRef = null, afterRef = null, profile = "session-metadata", approvedPaths = null,
+} = {}) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
+  // Only trusted application composition supplies the terminal postimage set.
+  // Process JSON never selects this profile or its paths.
+  const relative = name => typeof name === "string" && name.length > 0 && name.length <= 2048
+    && !/[\\\u0000-\u001f]/.test(name) && !path.posix.isAbsolute(name) && !path.win32.isAbsolute(name)
+    && !name.split("/").some(part => !part || part === "." || part === "..")
+    && !/^(?:[.]git|[.]aidn)(?:\/|$)/i.test(name);
+  if (!["session-metadata", "cycle-terminal"].includes(profile)
+    || profile === "session-metadata" && approvedPaths !== null
+    || profile === "cycle-terminal" && (!Array.isArray(approvedPaths) || approvedPaths.length > 128
+      || new Set(approvedPaths).size !== approvedPaths.length || !approvedPaths.every(relative))) fail("WORKFLOW_GIT_SCOPE_PROFILE_INVALID");
+  const approved = new Set(approvedPaths ?? []), scopePath = profile === "session-metadata" ? sessionPath : name => approved.has(name);
+  const maxFiles = profile === "session-metadata" ? 3 : approved.size;
   if (Object.keys(environment).some(name => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(name)))
     fail("WORKFLOW_GIT_ENV_SCOPE_CONFLICT");
   const env = Object.fromEntries(Object.entries(environment).filter(([name]) => !/^GIT_/i.test(name)));
   const run = (args, { input, binary = false, variables = {}, acceptable = [] } = {}) => {
-    try { return execFileSync("git", ["-C", root, "-c", "core.fsmonitor=false", "-c", "gc.auto=0", "-c", "maintenance.auto=false", ...args], {
+    try { return execFileSync("git", ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "gc.auto=0", "-c", "maintenance.auto=false", ...args], {
       input, encoding: binary ? undefined : "utf8", env: { ...env, GIT_OPTIONAL_LOCKS: "0", ...variables },
       windowsHide: true, timeout: 60000, maxBuffer: 4 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"] }); }
     catch (cause) { if (acceptable.includes(cause.status)) return null; throw Object.assign(new Error("WORKFLOW_GIT_COMMAND_FAILED"), { code: "WORKFLOW_GIT_COMMAND_FAILED", command: args[0], exit_code: cause.status }); }
@@ -34,6 +48,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     const absolute = agentRunPhysicalPath(path.join(root, name));
     const before = fs.lstatSync(absolute);
     if (!before.isFile() || before.nlink !== 1) fail("WORKFLOW_GIT_UNSAFE_FILE");
+    if (before.size > 1048576) fail("WORKFLOW_GIT_FILE_LIMIT");
     const bytes = fs.readFileSync(absolute), after = fs.lstatSync(absolute);
     if (before.ino !== after.ino || before.dev !== after.dev || before.size !== after.size || before.mtimeMs !== after.mtimeMs) fail("WORKFLOW_GIT_FILE_RACE");
     return { bytes, sha256: hash(bytes) };
@@ -57,7 +72,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   }
   function assertMaterial(plan) {
     if (!/^op_[a-f0-9]{40}$/.test(plan?.operation_id ?? "") || !/^[a-f0-9]{64}$/.test(plan.plan_sha256 ?? "")
-      || !Number.isSafeInteger(plan.prepared_at_ms) || !Array.isArray(plan.files) || plan.files.length > 3
+      || !Number.isSafeInteger(plan.prepared_at_ms) || !Array.isArray(plan.files) || plan.files.length > maxFiles
       || new Set(plan.files.map(row => row.path)).size !== plan.files.length) fail("WORKFLOW_GIT_PLAN_INVALID");
     for (const row of plan.files) if (!scopePath(row.path) || !/^[a-f0-9]{64}$/.test(row.sha256)) fail("WORKFLOW_GIT_PLAN_INVALID");
   }
@@ -71,7 +86,14 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     for (const row of plan.files) if (file(row.path).sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");
     return current;
   }
-  const message = plan => `chore: checkpoint governed session metadata\n\nAIDN-Operation: ${plan.operation_id}\nAIDN-Plan: ${plan.plan_sha256}\n`;
+  const title = profile === "session-metadata" ? "chore: checkpoint governed session metadata" : "chore: checkpoint approved terminal cycle";
+  const message = plan => `${title}\n\nAIDN-Operation: ${plan.operation_id}\nAIDN-Plan: ${plan.plan_sha256}\n`;
+  function gitMode(plan, name) {
+    const mode = run(["ls-tree", "--format=%(objectmode)", plan.observed.head, "--", name]).trim();
+    if (mode) { if (!["100644", "100755"].includes(mode)) fail("WORKFLOW_GIT_FILE_MODE_UNSUPPORTED"); return mode; }
+    const physical = agentRunPhysicalPath(path.join(root, name));
+    return process.platform !== "win32" && fs.statSync(physical).mode & 0o111 ? "100755" : "100644";
+  }
   function inspectCommit(plan) {
     assertMaterial(plan);
     const head = run(["rev-parse", "--verify", plan.observed.ref]).trim();
@@ -100,6 +122,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
       if (typeof assertAuthorized !== "function") fail("WORKFLOW_GIT_AUTHORIZATION_REQUIRED");
       assertFresh(plan); await assertAuthorized(); assertFresh(plan);
       if (!plan.files.length) return { status: "no_change", head: plan.observed.head, effect_status: "no_effect" };
+      const modes = new Map(plan.files.map(row => [row.path, gitMode(plan, row.path)]));
       lockToken = JSON.stringify({ operation_id: plan.operation_id, plan_sha256: plan.plan_sha256, token: randomUUID() });
       try { lockFd = fs.openSync(lockPath, "wx"); } catch { fail("WORKFLOW_GIT_INDEX_LOCKED"); }
       attempted = true; fs.writeFileSync(lockFd, lockToken); fs.fsyncSync(lockFd);
@@ -110,7 +133,7 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
       for (const row of plan.files) {
         const captured = file(row.path); if (captured.sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");
         const blob = run(["hash-object", "-w", "--stdin"], { input: captured.bytes, variables }).trim();
-        run(["update-index", "--add", "--cacheinfo", `100644,${blob},${row.path}`], { variables });
+        run(["update-index", "--add", "--cacheinfo", `${modes.get(row.path)},${blob},${row.path}`], { variables });
       }
       const tree = run(["write-tree"], { variables }).trim(), date = `${Math.floor(plan.prepared_at_ms / 1000)} +0000`;
       const identity = { GIT_AUTHOR_NAME: plan.observed.identity.name, GIT_AUTHOR_EMAIL: plan.observed.identity.email,
