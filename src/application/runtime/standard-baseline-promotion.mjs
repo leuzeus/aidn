@@ -13,7 +13,7 @@ import planSchema from "../../core/contracts/workflow-definition/standard-baseli
 import outputSchema from "../../core/contracts/workflow-definition/standard-baseline-promotion-output.v1.schema.json" with { type: "json" };
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length;
-const material = source => shadowHash({ request: source.request, closure: { ...source.closure, output: shadowHash(source.closure.output) } });
+export const baselinePromotionSourceMaterialSha256 = source => shadowHash({ request: source.request, closure: { ...source.closure, output: shadowHash(source.closure.output) } });
 // readRequest must authenticate the accepted human request and exact completed
 // closure; observeProduct must read the current admitted product. They are
 // trusted host capabilities, never selectors or permissions in process JSON.
@@ -42,7 +42,8 @@ export function createStandardBaselinePromotion({ targetRoot, readRequest, obser
     const outside = scopeNames.map(name => ({ path: name, sha256: artifacts.read(name, { required: true }).sha256, metadata_sha256: artifacts.metadataHash(name) }));
     const boundary = shadowHash({ root, context, scopeNames, outside });
     const contextSha = shadowHash({ boundary, documents: documents.map(row => ({ path: row.path, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(row.path) })) });
-    return { documents, context, boundary, context_sha256: contextSha };
+    const completionBoundary = shadowHash({ root, context, outside: outside.filter(row => row.path !== "RUNTIME-STATE.md") });
+    return { documents, context, boundary, completion_boundary_sha256: completionBoundary, outside, context_sha256: contextSha };
   }
   function assertPlan(plan) {
     if (!valid(plan, planSchema) || shadowHash(plan.changes.map(row => row.path)) !== shadowHash(baselinePromotionPaths)
@@ -53,11 +54,11 @@ export function createStandardBaselinePromotion({ targetRoot, readRequest, obser
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
     const source = assertBaselinePromotionSource(await readRequest(instance, input), instance, input), observed = await observe(source.request);
     if (observed.blocked) return { can_apply: false, reason_code: observed.blocked };
-    if (expected && (expected.source_material_sha256 !== material(source) || expected.context_sha256 !== observed.context_sha256)) fail("STANDARD_PROMOTION_SOURCE_STALE");
+    if (expected && (expected.source_material_sha256 !== baselinePromotionSourceMaterialSha256(source) || expected.context_sha256 !== observed.context_sha256)) fail("STANDARD_PROMOTION_SOURCE_STALE");
     const rendered = renderStandardBaselinePromotion({ request: source.request, context: observed.context, documents: observed.documents, preparedAt: at });
     const changes = rendered.changes.map(row => ({ ...row, before_metadata_sha256: artifacts.metadataHash(row.path) })); projections(changes);
     const plan = assertPlan({ contract_version: "standard-baseline-promotion-plan.v1", operation_ref: "baseline_promotion_record", input, prepared_at_ms: at,
-      request: source.request, source_material_sha256: material(source), context_sha256: observed.context_sha256, boundary_sha256: observed.boundary, changes });
+      request: source.request, source_material_sha256: baselinePromotionSourceMaterialSha256(source), context_sha256: observed.context_sha256, boundary_sha256: observed.boundary, changes });
     const confirmed = await observe(source.request);
     if (confirmed.blocked || confirmed.context_sha256 !== observed.context_sha256) fail("STANDARD_PROMOTION_SOURCE_STALE");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
@@ -66,7 +67,7 @@ export function createStandardBaselinePromotion({ targetRoot, readRequest, obser
     const result = { contract_version: "standard-baseline-promotion-output.v1", operation_ref: "baseline_promotion_record", outcome, effect_status, observations, facts, evidence_refs };
     if (!valid(result, outputSchema)) fail("STANDARD_PROMOTION_OUTPUT_INVALID"); return result;
   }
-  return Object.freeze({ observeContext: request => artifacts.ownerPending() ? Promise.resolve({ blocked: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" }) : observe(request), prepare: (instance, input) => prepare(instance, input, now()),
+  return Object.freeze({ inspectContext: observe, observeContext: request => artifacts.ownerPending() ? Promise.resolve({ blocked: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" }) : observe(request), prepare: (instance, input) => prepare(instance, input, now()),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       let plan;
       try { plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
@@ -93,7 +94,7 @@ export function createStandardBaselinePromotion({ targetRoot, readRequest, obser
           if (after.blocked || after.boundary !== plan.boundary_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_PROMOTION_POSTCONDITION_FAILED");
           await assertAuthorized();
           return emit("completed", "confirmed", { decision_operation_id: plan.input.decision_operation_id, cycle_id: plan.request.cycle_id, version: plan.request.version,
-            promotion_hook: "pending", committed, causal_transition: { before_context_sha256: plan.context_sha256, after_context_sha256: after.context_sha256 } },
+            promotion_hook: "pending", committed, causal_transition: { before_context_sha256: plan.context_sha256, after_context_sha256: after.context_sha256, completion_boundary_sha256: after.completion_boundary_sha256 } },
             { baseline_recorded: true, baseline_promotion_completed: false }, plan.changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 })));
         } catch (cause) { return emit("reconciliation_required", "unknown", { reason_code: cause.code ?? "STANDARD_PROMOTION_UNCONFIRMED", committed }); }
       });

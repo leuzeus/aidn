@@ -89,3 +89,49 @@ export function renderStandardBaselinePromotion({ request, context, documents, p
   if (checkShadowJson(changes) || Buffer.byteLength(JSON.stringify(changes)) > 196608 || changes.some(row => row.before_sha256 === row.after_sha256)) fail("STANDARD_PROMOTION_RENDER_LIMIT");
   return { changes, request_sha256: shadowHash(request) };
 }
+
+// Only the application, after confirming the real correlated checkpoint, may
+// use this renderer. It constructs postimages; it authenticates no result and
+// grants no effect. History remains append-only, including the pending entry.
+export function renderStandardBaselinePromotionCompletion({ request, context, documents, runId, eventSha256, completedAt }) {
+  assertBaselinePromotionRequest(request);
+  if (context.mode !== "COMMITTING" || context.cycle_state !== "DONE" || context.cycle_id !== request.cycle_id || context.cycle_path !== request.cycle_path
+    || context.product_sha256 !== request.product_sha256 || context.active_cycle === request.cycle_id
+    || !/^[a-z][a-z0-9_-]{0,95}$/.test(runId ?? "") || !/^[a-f0-9]{64}$/.test(eventSha256 ?? "")
+    || !Number.isSafeInteger(completedAt) || completedAt < 0 || !Number.isFinite(new Date(completedAt).getTime())
+    || documents.length !== baselinePromotionPaths.length || documents.some((row, i) => row.path !== baselinePromotionPaths[i]
+      || typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256)) fail("STANDARD_PROMOTION_COMPLETION_INPUT_INVALID");
+  const [baseline, history, snapshot, index, current] = documents, at = new Date(completedAt).toISOString();
+  const expected = { decision_operation_id: request.decision_operation_id, closure_operation_id: request.closure_operation_id,
+    cycle_id: request.cycle_id, version: request.version, baseline_promotion_completed: false };
+  if (baseline.content.match(/^baseline:[ \t]*([^\r\n]+)$/m)?.[1].trim() !== request.version
+    || current.content.match(/^baseline_version:[ \t]*([^\r\n]+)$/m)?.[1].trim() !== request.version
+    || current.content.match(/^baseline_promotion_status:[ \t]*([^\r\n]+)$/m)?.[1].trim() !== "checkpoint_pending") fail("STANDARD_PROMOTION_COMPLETION_SOURCE_CHANGED");
+  const nextBaseline = section(baseline.content, "Process baseline promotion", body => {
+    const blocks = [...body.matchAll(/```json\r?\n([\s\S]*?)\r?\n```/g)];
+    let recorded; try { if (blocks.length === 1) recorded = JSON.parse(blocks[0][1]); } catch { /* rejected below */ }
+    if (!recorded || shadowHash(recorded) !== shadowHash(expected)) fail("STANDARD_PROMOTION_COMPLETION_SOURCE_CHANGED");
+    return "Checkpoint confirmed.\n\n```json\n" + JSON.stringify({ ...expected, baseline_promotion_completed: true,
+      checkpoint_run_id: runId, checkpoint_event_sha256: eventSha256, completed_at: at }, null, 2) + "\n```";
+  });
+  const confirmation = `Promotion checkpoint — ${request.version}`;
+  if ([...history.content.matchAll(new RegExp("^## " + escape(request.version) + "[ \\t]", "gm"))].length !== 1
+    || new RegExp("^## " + escape(confirmation) + "\\r?$", "m").test(history.content)) fail("STANDARD_PROMOTION_COMPLETION_HISTORY_CHANGED");
+  const nextHistory = history.content + `\n\n## ${confirmation}\n- cycle_id: ${request.cycle_id}\n- checkpoint_run_id: ${runId}\n- checkpoint_event_sha256: ${eventSha256}\n- completed_at: ${at}\n`;
+  const replaceOne = (text, pattern, replacement) => {
+    if ([...text.matchAll(pattern)].length !== 1) fail("STANDARD_PROMOTION_COMPLETION_SOURCE_CHANGED"); return text.replace(pattern, replacement);
+  };
+  let nextSnapshot = replaceOne(snapshot.content, new RegExp("^(- Baseline: " + escape(request.version) + " \\([0-9-]+\\)); promotion checkpoint pending\\r?$", "gm"),
+    "$1; promotion checkpoint confirmed");
+  const nextIndex = replaceOne(index.content, new RegExp("^(- Baseline: \\[" + escape(request.version) + "\\]\\(baseline/current\\.md\\)); promotion checkpoint pending\\r?$", "gm"),
+    "$1; promotion checkpoint confirmed");
+  let nextCurrent = field(field(current.content, "updated_at", at), "baseline_promotion_status", "completed");
+  if (context.active_cycle === "none") {
+    nextSnapshot = section(nextSnapshot, "Next entry point", () => "- Resolve attached cycles and prepare session closure when requested.");
+    nextCurrent = field(nextCurrent, "first_plan_step", "Resolve attached cycles and prepare session closure when requested.");
+  }
+  const after = [nextBaseline, nextHistory, nextSnapshot, nextIndex, nextCurrent];
+  const changes = documents.map((row, i) => ({ path: row.path, before_sha256: row.sha256, after_sha256: artifactContentHash(after[i]), text_chunks: chunks(after[i]) }));
+  if (checkShadowJson(changes) || Buffer.byteLength(JSON.stringify(changes)) > 196608 || changes.some(row => row.before_sha256 === row.after_sha256)) fail("STANDARD_PROMOTION_RENDER_LIMIT");
+  return { changes, request_sha256: shadowHash(request) };
+}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import fs from "node:fs";
-import { assertBaselinePromotionRequest, assertBaselinePromotionSource, baselinePromotionPaths, renderStandardBaselinePromotion } from "../../src/core/workflow/standard-baseline-promotion.mjs";
+import { assertBaselinePromotionRequest, assertBaselinePromotionSource, baselinePromotionPaths, renderStandardBaselinePromotion, renderStandardBaselinePromotionCompletion } from "../../src/core/workflow/standard-baseline-promotion.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 const H = "a".repeat(64), op = char => "op_" + char.repeat(40);
@@ -66,4 +66,28 @@ const unicode = fixture(); unicode.documents[1].content += "\n" + "é🧵".repea
 const full = renderStandardBaselinePromotion(unicode); assert.ok(text(full, "baseline/history.md").startsWith(unicode.documents[1].content)); assert.ok(full.changes[1].text_chunks.length > 1);
 for (const row of full.changes) assert.equal(artifactContentHash(row.text_chunks.join("")), row.after_sha256);
 pass("bounded Unicode chunks retain every historical byte without scalar truncation");
+const completion = f => {
+  const pending = renderStandardBaselinePromotion(f);
+  return { request: f.request, context: f.context, documents: pending.changes.map(row => ({ path: row.path, content: row.text_chunks.join(""), sha256: row.after_sha256 })),
+    runId: "process_promote_fixture", eventSha256: H, completedAt: f.preparedAt + 1000 };
+};
+const ready = completion(fixture()), finished = renderStandardBaselinePromotionCompletion(ready);
+assert.equal(finished.changes.length, 5); assert.ok(text(finished, "baseline/history.md").startsWith(ready.documents[1].content));
+assert.match(text(finished, "baseline/history.md"), /^- checkpoint: pending$/m); assert.match(text(finished, "baseline/history.md"), /^## Promotion checkpoint \u2014 v0.3$/m);
+assert.match(text(finished, "baseline/current.md"), /"baseline_promotion_completed": true/); assert.match(text(finished, "CURRENT-STATE.md"), /^baseline_promotion_status: completed$/m);
+for (const row of finished.changes) assert.equal(artifactContentHash(row.text_chunks.join("")), row.after_sha256);
+pass("confirmed checkpoint rendering updates five postimages and appends confirmation without rewriting pending history");
+for (const mutate of [f => f.eventSha256 = "invalid", f => f.context.product_sha256 = "f".repeat(64), f => f.context.cycle_id = "C002",
+  f => f.documents[0].content += "changed", f => { f.documents[4].content = f.documents[4].content.replace("checkpoint_pending", "completed"); f.documents[4].sha256 = artifactContentHash(f.documents[4].content); }]) {
+  const f = completion(fixture()); mutate(f); assert.throws(() => renderStandardBaselinePromotionCompletion(f));
+}
+assert.throws(() => renderStandardBaselinePromotionCompletion({ ...ready, documents: finished.changes.map(row => ({ path: row.path, content: row.text_chunks.join(""), sha256: row.after_sha256 })) }));
+pass("foreign changed or already-completed source cannot render a second completion");
+const concurrent = fixture(); concurrent.context.active_cycle = "C002"; const preserved = completion(concurrent), preservedResult = renderStandardBaselinePromotionCompletion(preserved);
+assert.match(text(preservedResult, "CURRENT-STATE.md"), /^first_plan_step: unknown$/m);
+assert.equal(text(preservedResult, "snapshots/context-snapshot.md").split("## Next entry point")[1], preserved.documents[2].content.split("## Next entry point")[1]);
+pass("completion preserves the next action belonging to another active cycle");
+const longCompletion = completion(unicode), longFinished = renderStandardBaselinePromotionCompletion(longCompletion);
+assert.ok(text(longFinished, "baseline/history.md").startsWith(longCompletion.documents[1].content)); assert.ok(longFinished.changes[1].text_chunks.length > 1);
+pass("Unicode completion retains the entire historical prefix without truncation");
 console.log(JSON.stringify({ status: "PASS", checks, proof: "pure-baseline-promotion", actual_writes: "NOT_RUN", source_authentication: "NOT_RUN", full_workflow: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));

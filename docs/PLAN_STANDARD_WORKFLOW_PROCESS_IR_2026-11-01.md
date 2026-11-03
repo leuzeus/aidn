@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée relue : `6f1a25d` ; composants publiés explicitement révisés en
-64/62 pour les nouveaux bindings de promotion. Les preuves de l’écriture terminale et de la reprise
+65/63 pour le checkpoint final de promotion. Les preuves de l’écriture terminale et de la reprise
 conservent leurs snapshots exacts ; le modèle standard complet reste à livrer.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
@@ -75,7 +75,7 @@ encore ouverts.
   [preuve du composant baseline](qualification/agentic-process/baseline-record-component-2026-11-03.json)
   ne qualifie pas les raccordements ultérieurs. L’inbox et les bindings de
   décision/écriture sont maintenant câblés dans la tranche décrite plus bas ;
-  leur utilisation par le curseur après une vraie clôture, le hook final et
+  leur utilisation par le curseur après une vraie clôture et
   l’exécution/replay/simulation du modèle standard complet restent à prouver.
 - L’écriture des six artefacts terminaux passe le parcours mixte sur files et
   DB-only : travail et vérifications physiques, audit, décision humaine
@@ -107,8 +107,11 @@ encore ouverts.
   revue canonique partagée, inbox v4 signée et bindings fixes de décision/écriture.
   Les trois modes de stockage et les contrôles ciblés passent hors ligne.
   Les tests de composants ne prouvent pas encore le parcours du curseur depuis
-  une clôture effectivement exécutée. Le hook final de promotion, les décisions
-  de non-demande dans le modèle complet et les preuves communes restent requis.
+  une clôture effectivement exécutée. Le binding du hook final de promotion est câblé et
+  ses sept cas courants de composants passent ; leurs limites sont décrites dans la
+  [preuve de finalisation](qualification/agentic-process/baseline-finalize-component-2026-11-03.json).
+  Les décisions de non-demande, les attentes Git/reload/R05 dans le modèle complet
+  et les preuves communes restent requises.
 - Le prérequis GitHub observe maintenant l’identité/le commit de PR et les
   threads/commentaires réels, avec pagination bornée complète et contrôles de
   fraîcheur. Les [preuves de l’adaptateur](qualification/agentic-process/github-pr-observation-2026-11-03.json)

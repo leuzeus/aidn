@@ -1,3 +1,4 @@
+import { verifyBaselinePromotionHook } from "./baseline-promotion-hook-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import fs from "node:fs";
@@ -18,7 +19,11 @@ import outputSchema from "../../src/core/contracts/workflow-definition/standard-
 const selected = process.argv.find(v => v.startsWith("--mode="))?.slice(7) ?? "files";
 if (!["files", "dual", "db-only", "partial", "projection", "source", "instance", "revoked", "revoked-post"].includes(selected)) throw Error("PROMOTION_FIXTURE_MODE_INVALID");
 const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["source", "instance", "revoked", "revoked-post"].includes(selected) ? "files" : selected;
+const finalFault = process.argv.find(value => value.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
+if (finalFault !== undefined && (!process.argv.includes("--final-hook") || !["event", "suffix", "projection", "grant_after"].includes(finalFault))) throw Error("PROMOTION_FINAL_FAULT_INVALID");
+if (process.argv.includes("--final-hook") && (!["files", "dual", "db-only"].includes(selected) || finalFault === "suffix" && mode === "files" || finalFault === "projection" && mode !== "dual")) throw Error("PROMOTION_FINAL_MODE_INVALID");
 const owned = [], temp = fs.realpathSync(os.tmpdir()), H = "a".repeat(64), op = c => "op_" + c.repeat(40);
+let completed = false;
 let checks = 0; const pass = name => { checks++; if (!process.argv.includes("--json")) console.log("PASS " + name); };
 try {
   const root = createFreshStandardWorkflowFixture(mode, owned), artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), operations = createStandardWorkflowOperations({ targetRoot: root });
@@ -109,5 +114,10 @@ try {
       pass("a repeated raw apply cannot append history or repeat confirmed effects");
     }
   }
-  console.log(JSON.stringify({ status: "PASS", checks, mode: selected, proof: "canonical-baseline-promotion-component", human_and_closure_authority: "fixture", common_process_host: "NOT_RUN", promotion_final_hook: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
-} finally { for (const folder of owned) { const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); } }
+  if (process.argv.includes("--final-hook")) {
+    assert.equal(result?.outcome, "completed"); await verifyBaselinePromotionHook({ root, mode, artifacts, promotion, instance, preview, result, git, fault: finalFault });
+    pass(finalFault ? "actual checkpoint with lost confirmation retains unknown effects and prevents another checkpoint" : "actual selected promotion checkpoint and five completion writes preserve append-only history and cannot repeat");
+  }
+  completed = true;
+  console.log(JSON.stringify({ status: "PASS", checks, mode: selected, proof: "canonical-baseline-promotion-component", human_and_closure_authority: "fixture", common_process_host: "NOT_RUN", final_hook_fault: finalFault ?? null, promotion_final_hook: process.argv.includes("--final-hook") ? "actual-application-component" : "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+} finally { if (!completed && process.argv.includes("--retain-on-failure")) { console.error(JSON.stringify({ proof_class: "offline-diagnostic-only", retained_business_roots: owned })); } else for (const folder of owned) { const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); } }

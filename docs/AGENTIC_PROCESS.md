@@ -770,3 +770,12 @@ retain ownership and cannot trigger another checkpoint. The component tests and
 have distinct source snapshots. Git checkpoint, reload and R05 remain explicit
 fixture preconditions; their complete standard IR route and suffix reconciliation
 remain to implement, alongside ordinary entrypoints and native/archive proofs.
+
+The fixed baseline_promotion_finalize operation shares the real promotion
+admission/checkpoint application port with the ordinary wrapper. Its accepted
+record witness preserves target/spec/product/classification; only the checkpoint's
+derived RUNTIME-STATE refresh is excluded from the completion boundary. A unique
+physical event and five confirmed canonical postimages establish completion.
+History confirmation is appended. Unknown effects retain ownership and cannot
+rerun the checkpoint. Source-client mode/fault component tests are separate from
+the still required full standard IR/common-cursor, native and archive proofs.

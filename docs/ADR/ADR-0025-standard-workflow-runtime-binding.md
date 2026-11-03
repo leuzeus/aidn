@@ -1172,5 +1172,31 @@ The baseline writer now has a fixed binding and shares its canonical observation
 with the review. Unknown owners block new review; no second admission algorithm
 or model call supplies deterministic/human behavior. Current component tests do
 not prove the full common-host closure-to-promotion path. Its execution, replay,
-simulation, final promotion hook, full standard graph and native/archive proofs
+simulation, common routing of the final promotion hook, full standard graph and native/archive proofs
 remain required. No integration completion follows from the new registry entries.
+
+### Final promotion checkpoint component
+
+The deterministic baseline_promotion_finalize binding consumes the accepted signed
+baseline record and its authenticated human/close material. It shares the real
+selected-target admission/checkpoint application port with the ordinary wrapper;
+process data supplies only a record identity. Target and completion-cycle scope
+must agree. A fresh effect grant, unchanged product/target/spec/classification,
+exact recorded postimages and open R05 gates precede the actual checkpoint.
+
+The record retains a completion boundary witness. The final checkpoint may
+refresh derived RUNTIME-STATE; it does not gain permission to change the owning
+cycle, normative authorities, product, active focus or baseline postimages.
+Current artifact reads and required projections stay canonical. Completed output
+requires a unique correlated physical checkpoint event and five metadata-preserving
+completion CAS. The completion renderer preflights its bounds before effects.
+
+History is append-only, including its pending entry; confirmation is a separate
+append. Only confirmed actual checkpoint and postimages emit completed promotion.
+Partial metadata, lost event/projection or post-effect grant loss retain ownership
+and empty success facts. They cannot trigger another checkpoint. Reconciliation,
+full standard IR wait/retry routes and common/native/archive qualification remain
+separate acceptance work. First actual files component passed on its exact
+prototype snapshot. All seven current source-installed mode/fault cases passed
+on their frozen65/63 snapshot. These component authorities do not qualify the
+full authenticated common-cursor chain or distributed standard model.

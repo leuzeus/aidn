@@ -2296,3 +2296,15 @@ canonical review and blocking by an outstanding effect owner before writes.
 Required context-completion coverage retains every historical admission check.
 A complete frozen standard model and common-host/native/archive qualification
 remain separate requirements.
+
+Final promotion uses private hook input/plan/output fixtures and the shared
+application dispatcher fixture. Required agentic coverage adds the actual
+source-installed baseline producer --final-hook on files/dual/DB-only and
+--final-hook-fault=event|suffix|projection|grant_after. Each fault delegates the
+real application checkpoint before losing confirmation; owner/facts/no-repeat
+are asserted. Human and completed-close authorities remain fixtures. Git commit,
+reload and R05 are explicit fixture preconditions, not a delivered standard IR
+route. --retain-on-failure preserves an owned diagnostic root for inspection.
+The renderer appends history confirmation without rewriting the pending entry.
+These component checks do not establish a common-cursor path or native/archive
+execution, even when the fixed binding is registered.

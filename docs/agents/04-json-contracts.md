@@ -279,3 +279,9 @@ source; v1-v3 retain their original readers and schemas. Successful decision
 facts never assert baseline writes or completed promotion. The baseline record
 input accepts an accepted decision identity only. These additions create no
 public CLI JSON root or process-authored result authority.
+
+The private standard-baseline-promotion-hook input/plan/output separate pending
+baseline metadata from actual checkpoint confirmation. Input is an accepted
+record identity; plan paths are fixed to five canonical artifacts. Blocked and
+uncertain outcomes have no completion facts. Only confirmed checkpoint plus
+five postimages may emit completed promotion. No public CLI root is added.

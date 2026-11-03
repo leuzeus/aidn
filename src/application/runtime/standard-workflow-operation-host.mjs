@@ -1,5 +1,6 @@
+import { createStandardBaselinePromotionHook } from "./standard-baseline-promotion-hook.mjs";
 import { createStandardBaselinePromotionAuthority } from "./standard-baseline-promotion-authority.mjs";
-import { createStandardBaselinePromotion } from "./standard-baseline-promotion.mjs";
+import { createStandardBaselinePromotion, baselinePromotionSourceMaterialSha256 } from "./standard-baseline-promotion.mjs";
 import { createStandardBaselinePromotionReview } from "./standard-baseline-promotion-review.mjs";
 import { createStandardCycleCloseHook } from "./standard-cycle-close-hook.mjs";
 import { createStandardCycleCloseRecord } from "./standard-cycle-close-record.mjs";
@@ -182,6 +183,17 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     observeProduct: () => processAuthority.observeProduct(), readCurrent: id => current(id).record }) : null;
   const promotionReview = processAuthority ? createStandardBaselinePromotionReview({
     readClosure: (instance, input) => promotionAuthority.readClosure(instance, input), promotion: baselinePromotion, now }) : null;
+
+  async function readAcceptedBaselineRecord(instance, input) {
+    const selected = acceptedForPromotion(instance, input.record_operation_id, "baseline_promotion_record"), plan = selected.record.preview.prepared.plan;
+    const source = await promotionAuthority.readRequest(instance, plan.input);
+    if (baselinePromotionSourceMaterialSha256(source) !== plan.source_material_sha256
+      || selected.output.effect_status !== "confirmed" || selected.output.facts.baseline_recorded !== true || selected.output.facts.baseline_promotion_completed !== false)
+      fail("STANDARD_PROMOTION_HOOK_RECORD_REQUIRED");
+    return { record_operation_id: selected.record.operation_id, plan, output: selected.output };
+  }
+  const baselinePromotionHook = processAuthority ? createStandardBaselinePromotionHook({ targetRoot, now,
+    readRecorded: readAcceptedBaselineRecord, promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
 
   async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter") {
       assertStandardOperationInput(operation, input);
@@ -489,6 +501,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "baseline_promotion_decision" ? await promotionReview?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_REVIEW_AUTHORITY_REQUIRED")
+        : binding.id === "baseline_promotion_finalize" ? await baselinePromotionHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "baseline_promotion_record" ? await baselinePromotion?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_AUTHORITY_REQUIRED")
         : binding.id === "cycle_close_finalize" ? await cycleCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "cycle_close_record" ? await cycleCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED")
@@ -592,6 +605,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         } else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else if (record.intent.binding_ref === "baseline_promotion_finalize") output = await baselinePromotionHook.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "baseline_promotion_record") output = await baselinePromotion.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_close_finalize") output = await cycleCloseHook.apply(state.record, record.preview.prepared,

@@ -252,3 +252,9 @@ proofs. The accepted-journal/closure capability remains a fixture in reader
 checks; full common-cursor use after actual closure and the final promotion hook
 remain unqualified. See [bounded promotion proof](../qualification/agentic-process/baseline-request-bindings-2026-11-03.json).
 not_requested is a recorded choice, never promotion completion or a rule waiver.
+
+| Final promotion component | Authority/operation | Proof boundary |
+| --- | --- | --- |
+| Confirmed baseline checkpoint | SPEC-R04/R05/R07/R11, deterministic baseline_promotion_finalize | Real selected-target shared checkpoint, physical event and five completion CAS on source clients; human/close authority fixture |
+| Append-only promotion history | Accepted pending record plus confirmed event | Prior bytes and pending entry retained, separate confirmation appended; uncertain effects cannot repeat the checkpoint |
+| Full standard route | Distributed IR, common cursor and ordinary entrypoints | Still required with replay/simulation, durable external waits and native/exact archive proof |
