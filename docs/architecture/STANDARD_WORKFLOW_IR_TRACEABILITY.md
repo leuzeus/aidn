@@ -425,3 +425,12 @@ separates actual application ports and signed common-host/reducer fixtures from
 the full published-model path, native execution and installed-archive evidence.
 The remaining R07 decision, report, checkpoint and real final-hook chain, then
 explicit branch integration, PR review and post-merge sync, stay open in the plan.
+
+
+R05 scope also observes canonical `baseline/history.md` and `INDEX.md` when present,
+covering actual promotion-completion postimages before a later session-close check.
+The existing scope/size limits stay enforced. Missing canonical optional artifacts
+are not repaired from Markdown and foreign paths remain incomplete. The
+[context evidence](../qualification/agentic-process/standard-session-drift-context-2026-11-03.json)
+records actual-reader checks and terminal-cycle report/hook regression, separately
+from the full standard path, native and archive. The model graph itself is unchanged.

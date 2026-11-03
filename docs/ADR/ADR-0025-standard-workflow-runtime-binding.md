@@ -1440,3 +1440,19 @@ state modes; they are not a full execution of this published model. No model or
 business-effect grant is needed for the admission. The complete R07 decision,
 report/CAS/checkpoint/final-hook chain, branch integration, PR review and post-merge
 sync remain explicit work. Ordinary standard-workflow selection stays unchanged.
+
+### Canonical baseline completion in later R05 scope (2026-11-03)
+
+A later session-close drift check must observe baseline completion's canonical
+history and audit index as well as current baseline/snapshot/current-state.
+`readStandardDriftContext` now includes those two optional canonical artifacts
+under the existing path checks and 196608-byte bound. It does not create a missing
+canonical document or import visible Markdown; unrelated changes remain outside
+coverage. This corrects a reproducible two-path context gap, not drift policy.
+
+The versioned model graph, policies and data bindings remain unchanged; current
+implementation pins are refreshed explicitly. Actual-reader fixtures cover all
+local modes, including missing canonical INDEX, while the terminal-cycle selector
+covers an authenticated report and real drift hook without reopening the cycle.
+Native transport is a fixture and session closure is not executed by these tests.
+Full published-model, real native and exact archive qualification remain separate.

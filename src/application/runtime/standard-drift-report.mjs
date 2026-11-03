@@ -45,6 +45,11 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
   const objective = brief ? objectiveSection?.replace(/^\s*-\s*/, "").replace(/\s+/gu, " ").trim() : analyzeStructuredArtifact(session.content).key_values.session_objective;
   if (!objective || objective.length > 4096) fail("STANDARD_DRIFT_OBJECTIVE_REQUIRED");
   const documents = ["SPEC.md", "WORKFLOW.md", "baseline/current.md", "snapshots/context-snapshot.md"].map(name => artifacts.read(name, { required: true }));
+  // Baseline finalization writes these canonical artifacts too. They must be
+  // observed before a later session-close R05, never hidden as foreign paths.
+  for (const name of ["baseline/history.md", "INDEX.md"]) {
+    const row = artifacts.read(name); if (row.sha256 !== null) documents.push(row);
+  }
   const runtime = artifacts.read("RUNTIME-STATE.md"); if (runtime.sha256 !== null) documents.push(runtime);
   const parking = artifacts.read("parking-lot.md");
   if (parking.sha256 !== null) documents.push(parking);

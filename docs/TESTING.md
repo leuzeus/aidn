@@ -2489,3 +2489,21 @@ Record offline/source-install, real native, live PostgreSQL and exact installed
 archive outcomes separately. Governance completeness does not establish complete
 standard-workflow execution. Session report/write/checkpoint/final hook and the
 later PR/post-merge path still require their own full acceptance evidence.
+
+
+### R05 scope after canonical baseline completion
+
+`node tools/perf/verify-standard-drift-session-scope-fixtures.mjs` checks files;
+use `--mode=dual` and `--mode=db-only` for canonical DB behavior. The fixture seeds
+baseline completion postimages explicitly, including a missing canonical INDEX,
+and checks actual audit references/content hashes, complete known scope, unchanged
+canonical metadata and detection of an unrelated path. Inspection must not create
+or import an absent canonical document. Keep a wrong `.path` assertion distinct
+from the corrected `audit:` reference reproduction; a required-but-absent fixture
+INDEX is a precondition error before the context reader, not a runtime regression.
+
+The focused report contract selector is
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-contract-only`;
+`--drift-completion-mode=files` exercises terminal owning context, authenticated
+report and actual hook without cycle reopening. These selectors use fake native
+transport and make no session-close, full-model or archive claim.

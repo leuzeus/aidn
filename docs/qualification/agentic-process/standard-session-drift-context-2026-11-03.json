@@ -1,0 +1,114 @@
+{
+  "contract_version": "qualification-standard-session-drift-context.v1",
+  "date": "2026-11-03",
+  "status": "FOCUSED_READERS_AND_TERMINAL_REGRESSION_PASS",
+  "complete_standard_workflow": false,
+  "production_source_snapshot": "c544444dd6bb93bdc6262f8a790195955f860298",
+  "canonical_fixture_snapshot": "4ab273ddef03a8498df906fd1fb01a46ba3020fb",
+  "model": {
+    "revision": 22,
+    "sha256": "9639f6b84ded79d6fed499a1d47104b10269b33090cba53906bca312f9b1bd3e",
+    "catalog_sha256": "e81abaa7c61f2edbd9e7f061536870fc9334706f5448f2e95bfc4f57718501fe",
+    "native_implementation_sha256": "4e7cf480fa47e06fe63fc66afe4c71788ebfa3b66eecaeed4bc961022a9a22c0",
+    "graph_policies_data_bindings_unchanged": true,
+    "new_activity": false,
+    "full_published_model_execution": "NOT_RUN_FOR_THIS_REVISION"
+  },
+  "reproduction": {
+    "snapshot": "b968f01cdad8b55694c9417d3e571ecc745f30d1",
+    "corrected_refs": [
+      "audit:baseline/history.md",
+      "audit:INDEX.md"
+    ],
+    "other_changes_before": 2,
+    "actual_reader": true,
+    "production_changed": false
+  },
+  "fix": {
+    "canonical_documents": [
+      "baseline/history.md",
+      "INDEX.md"
+    ],
+    "optional_absence": "PRESERVED_NO_REPAIR_OR_VISIBLE_FALLBACK",
+    "size_limit_bytes": 196608,
+    "path_scope": "UNCHANGED",
+    "unknown_paths": "STILL_OUTSIDE_COMPLETE_SCOPE"
+  },
+  "components": [
+    {
+      "mode": "files",
+      "source_snapshot": "c544444dd6bb93bdc6262f8a790195955f860298",
+      "checks": 4,
+      "status": "PASS",
+      "cleanup": "TERMINAL_COMPLETE"
+    },
+    {
+      "mode": "dual",
+      "source_snapshot": "4ab273ddef03a8498df906fd1fb01a46ba3020fb",
+      "checks": 5,
+      "status": "PASS",
+      "cleanup": "TERMINAL_COMPLETE"
+    },
+    {
+      "mode": "db-only",
+      "source_snapshot": "4ab273ddef03a8498df906fd1fb01a46ba3020fb",
+      "checks": 5,
+      "status": "PASS",
+      "cleanup": "TERMINAL_COMPLETE"
+    }
+  ],
+  "report_contract": {
+    "status": "PASS",
+    "checks": 1
+  },
+  "terminal_owning_context": {
+    "status": "PASS",
+    "checks": 1,
+    "authenticated_report": true,
+    "real_drift_hook": true,
+    "cycle_reopened": false,
+    "native_wire": "FIXTURE",
+    "cleanup": "TERMINAL_COMPLETE"
+  },
+  "source_composition_checks": 15,
+  "startup_model_checks": 22,
+  "failed_attempts": [
+    {
+      "snapshot": "41503a0702fb8cd02099c881448d4c8c649b5758",
+      "classification": "FIXTURE_REFERENCE_FIELD_ERROR",
+      "correction": "use actual document ref audit:\u2026; gap then confirmed on unchanged production source",
+      "valid_reproduction_alone": false
+    },
+    {
+      "snapshot": "c544444dd6bb93bdc6262f8a790195955f860298",
+      "mode": [
+        "dual",
+        "db-only"
+      ],
+      "classification": "FIXTURE_CANONICAL_PRECONDITION_MISSING",
+      "missing_canonical_document": "INDEX.md",
+      "baseline_history_present": true,
+      "reader_called": false,
+      "correction": "create explicit canonical fixture postimage without reading visible Markdown; no production change"
+    }
+  ],
+  "model_calls": 0,
+  "promotion_executed_by_scope_fixture": false,
+  "session_closed": false,
+  "native": "NOT_RUN",
+  "live_postgresql": "NOT_RUN",
+  "exact_installed_archive": "NOT_RUN",
+  "full_standard_workflow": "NOT_COMPLETE",
+  "ordinary_standard_selector": "NOT_CHANGED",
+  "aggregate_assured_suite": "NOT_RUN",
+  "source_checks": {
+    "source_of_truth": 35,
+    "metadata": 37,
+    "governance_concepts": 38,
+    "gate_catalog": 63,
+    "docs": "PASS",
+    "route": "ASSURED_PASS",
+    "aggregate_assured": "NOT_RUN"
+  },
+  "native_token_impact": "NOT_MEASURED"
+}

@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 79/77 et le modèle composé en 21 (75 nœuds,
+les composants startup/cycle en 80/78 et le modèle composé en 22 (75 nœuds,
 43 occurrences d’opération, 35 identifiants de liaison mobilisés parmi 42 liaisons
 enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -2884,3 +2884,24 @@ L’admission ajoutée ne satisfait donc pas à elle seule A1–A10. La clôture
 les autres modes/parcours, la revue PR et l’après-fusion restent dans le périmètre
 restant ; le catalogue garde `complete_standard_workflow: false` et la sélection
 ordinaire du workflow standard n’est pas basculée.
+
+
+### Précondition R05 après finalisation de baseline
+
+La finalisation réelle de promotion écrit aussi `baseline/history.md` et `INDEX.md`.
+Le contexte R05 les lit désormais lorsqu’ils existent dans l’autorité canonique,
+avec le même contrôle de chemins et la même limite de 196 608 octets. La
+reproduction corrigée comptait auparavant deux changements hors contexte ;
+la couverture nouvelle les prend en compte sans masquer un fichier étranger.
+L’absence d’un document canonique optionnel reste une absence : ni import de la
+projection visible, ni création à la lecture. Le graphe de la révision 22 est
+identique à celui de la révision 21 ; ses empreintes sont révisées explicitement.
+
+Les fixtures du lecteur réel passent en files/dual/db-only. Les postimages de
+baseline y sont préparés explicitement ; elles ne prétendent pas exécuter une
+promotion. Le sélecteur R05 de cycle terminal passe aussi via rapport authentifié
+et vrai hook sans rouvrir le cycle, avec transport natif simulé. Le
+[relevé](qualification/agentic-process/standard-session-drift-context-2026-11-03.json)
+sépare ces preuves des parcours composés complets, du natif et de l’archive exacte.
+Aucune activité de clôture supplémentaire ni sélection ordinaire n’est ajoutée.
+Le rapport R07, son checkpoint et son hook final restent à livrer.
