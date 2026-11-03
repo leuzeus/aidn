@@ -415,6 +415,14 @@ ownership and R05 policy; foreign changes refuse and unknown effects retain the
 owner. Component tests inject source authority. This does not close a session or
 integrate a branch; composed, native and exact-archive proof remain distinct.
 
+`session_delivery_checkpoint` follows the confirmed R07 finalization
+(SPEC-R07/R08/R11). It authenticates that accepted result, its physical close
+event and exact three final CAS postimages, then commits only those paths with
+a fresh grant. It preserves CLOSED data, history and cache; DB-only may complete
+with no effect and unchanged HEAD. It neither integrates a branch nor grants PR
+effects. The actual-hook component proof retains injected human/R05 authority;
+the authenticated model and remote delivery remain separate qualifications.
+
 `session_close_admit` binds SPEC-R07/R11 to the actual `close-session` admission:
 `preWriteAdmit` and `runCloseSessionAdmitUseCase`, through the fixed standard host.
 Its session input comes from `session_initialize`. It is deterministic/read-only;

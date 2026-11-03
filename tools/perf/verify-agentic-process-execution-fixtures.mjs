@@ -867,6 +867,7 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("session_close_record").facts.session_close_completed, false);
       assert.equal(last("session_close_checkpoint").facts.session_close_checkpoint_completed, true);
       assert.equal(last("session_close_finalize").facts.session_close_completed, true);
+      assert.equal(last("session_delivery_checkpoint").facts.session_delivery_checkpoint_completed, true);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;

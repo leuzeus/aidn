@@ -3,6 +3,8 @@ import { createStandardSessionClosureReview } from "./standard-session-closure-r
 import { createStandardSessionCloseRecord } from "./standard-session-close-record.mjs";
 import { createStandardSessionCloseCheckpoint } from "./standard-session-close-checkpoint.mjs";
 import { createStandardSessionPrecloseCheckpoint } from "./standard-session-preclose-checkpoint.mjs";
+import { createStandardSessionDeliveryCheckpoint } from "./standard-session-delivery-checkpoint.mjs";
+import { sessionClosePaths } from "../../core/workflow/standard-session-close-render.mjs";
 import { createStandardSessionCloseHook } from "./standard-session-close-hook.mjs";
 import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import { classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
@@ -325,6 +327,36 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       start_output: start.output, checkpoint_output: checkpoint.output };
   }
   const sessionCloseHook = processAuthority ? createStandardSessionCloseHook({ targetRoot, now, readSource: readSessionCloseHookSource,
+    readCurrent: id => current(id).record }) : null;
+  async function readSessionDeliverySource(instance, input) {
+    const closed = acceptedForPromotion(instance, input.finalization_operation_id, "session_close_finalize", "STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED");
+    const plan = closed.record.preview.prepared.plan, output = closed.output, observed = output.observations;
+    if (output.effect_status !== "confirmed" || output.facts.session_close_completed !== true || plan.operation_id !== input.finalization_operation_id
+      || observed.run_id !== plan.run_id || observed.event_file !== ".aidn/runtime/perf/workflow-events.ndjson") fail("STANDARD_SESSION_DELIVERY_FINALIZATION_REQUIRED");
+    const checkpoint = acceptedForPromotion(instance, plan.input.checkpoint_operation_id, "session_close_checkpoint");
+    if (checkpoint.output.facts.session_close_checkpoint_completed !== true || checkpoint.output.observations.record_operation_id !== plan.input.record_operation_id
+      || (checkpoint.output.observations.git?.commit_sha ?? checkpoint.output.observations.git?.head) !== plan.head) fail("STANDARD_SESSION_DELIVERY_CHECKPOINT_REQUIRED");
+    const bytes = readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, observed.event_file)), { json: false, maxBytes: 4194304 }).value;
+    const offset = observed.event_offset, end = Number.isSafeInteger(offset) ? bytes.indexOf(10, offset) : -1;
+    if (!Number.isSafeInteger(offset) || offset < 0 || end < offset || offset && bytes[offset - 1] !== 10) fail("STANDARD_SESSION_DELIVERY_EVENT_CHANGED");
+    const event = JSON.parse(bytes.subarray(offset, end).toString("utf8"));
+    if (shadowHash(event) !== shadowHash(observed.event) || event.event !== "hook_session_close" || event.run_id !== plan.run_id || event.result !== "ok"
+      || event.mode !== plan.mode || event.branch !== plan.branch) fail("STANDARD_SESSION_DELIVERY_EVENT_CHANGED");
+    const session = analyzeStructuredArtifact(artifacts.read(plan.session_path, { required: true }).content).key_values;
+    const currentState = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
+    if (session.state !== "CLOSED" || session.session_closure_status !== "completed" || currentState.active_session !== plan.session_id
+      || currentState.active_cycle !== "none" || currentState.session_closure_status !== "completed") fail("STANDARD_SESSION_DELIVERY_OWNER_CHANGED");
+    const names = sessionClosePaths(plan.session_path), postimages = names.map(name => {
+      const refs = output.evidence_refs.filter(row => row.ref === "docs/audit/" + name), prior = plan.documents.find(row => row.path === name);
+      if (refs.length !== 1 || !prior || artifacts.read(name, { required: true }).sha256 !== refs[0].sha256
+        || artifacts.metadataHash(name) !== prior.metadata_sha256) fail("STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED");
+      return { path: name, sha256: refs[0].sha256, metadata_sha256: prior.metadata_sha256 };
+    });
+    if (shadowHash(observed.committed) !== shadowHash(names)) fail("STANDARD_SESSION_DELIVERY_POSTIMAGE_CHANGED");
+    return { finalization_operation_id: input.finalization_operation_id, session_id: plan.session_id, session_path: plan.session_path,
+      branch: plan.branch, parent_head: plan.head, material_sha256: shadowHash({ finalization: output, checkpoint: checkpoint.output }), postimages };
+  }
+  const sessionDeliveryCheckpoint = processAuthority ? createStandardSessionDeliveryCheckpoint({ targetRoot, now, readSource: readSessionDeliverySource,
     readCurrent: id => current(id).record }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
@@ -691,6 +723,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
+        : binding.id === "session_delivery_checkpoint" ? await sessionDeliveryCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_DELIVERY_AUTHORITY_REQUIRED")
         : binding.id === "session_preclose_checkpoint" ? await sessionPrecloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_AUTHORITY_REQUIRED")
         : binding.id === "session_close_checkpoint" ? await sessionCloseCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CHECKPOINT_AUTHORITY_REQUIRED")
         : binding.id === "session_close_record" ? await sessionCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_SESSION_CLOSE_AUTHORITY_REQUIRED")
@@ -771,6 +804,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_delivery_checkpoint") output = await sessionDeliveryCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_preclose_checkpoint") output = await sessionPrecloseCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

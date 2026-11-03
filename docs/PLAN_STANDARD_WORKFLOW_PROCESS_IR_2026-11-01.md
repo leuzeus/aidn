@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 90/88 et le modèle composé candidat en 32
-(84 nœuds, 50 occurrences d’opération, 40 identifiants de liaison mobilisés parmi
-47 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 91/89 et le modèle composé candidat en 33
+(85 nœuds, 51 occurrences d’opération, 41 identifiants de liaison mobilisés parmi
+48 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3087,3 +3087,23 @@ la ligne canonique existante ; ils ne créent pas de ligne uppercase et ne
 convertissent pas d'ancienne instance. Les anciennes assertions propres à cette
 référence uppercase ne sont pas étendues aux nouveaux octets. Autres parcours,
 ports d'intégration/PR, A1–A10, natif et archive exacte restent ouverts.
+
+### Checkpoint des postimages finales de livraison
+
+La révision 33 ajoute `session_delivery_checkpoint` après le vrai finaliseur R07.
+Le host authentifie résultat accepté, événement physique, HEAD du checkpoint
+précédent, owner CLOSED sélectionné et trois postimages finales avec métadonnées
+préservées. Le port Git ne peut committer que session/snapshot/current. Il exige
+un grant frais, garde refus et inconnus distincts, ne relance pas le hook et ne
+modifie ni données canoniques ni cache. DB-only sans changements physiques garde
+HEAD et produit completed/no_effect. Ce n'est pas une intégration de branche.
+
+Le snapshot `484f65b` passe 20 assertions par configuration en files/dual/db-only
+et perte de grant après commit (files). Elles comprennent les 16 assertions R07
+existantes ; ne pas les additionner comme critères indépendants. Les vrais hooks,
+CAS, Git et SQLite sont exécutés ; les sources humaines/R05 restent injectées.
+La qualification composée de la révision 32 continue séparément sur `9c9f221`.
+Elle ne qualifie pas automatiquement le graphe 33 ni cette nouvelle autorité hôte.
+Le composé courant, l'intégration humaine/locale, PR/revue/fusion/sync, les autres
+parcours, la réautorisation et la réconciliation générale restent requis avant
+fermeture A1–A10. Natif et archive exacte restent NOT_RUN.

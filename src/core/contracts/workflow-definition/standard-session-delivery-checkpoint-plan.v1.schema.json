@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-session-delivery-checkpoint-plan.v1",
+  "x-aidn-contract-version": "standard-session-delivery-checkpoint-plan.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "input",
+    "operation_id",
+    "prepared_at_ms",
+    "session_id",
+    "state_mode",
+    "source_sha256",
+    "git"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-session-delivery-checkpoint-plan.v1"
+    },
+    "operation_ref": {
+      "const": "session_delivery_checkpoint"
+    },
+    "input": {
+      "x-aidn-contract-version": "standard-session-delivery-checkpoint-input.v1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finalization_operation_id"
+      ],
+      "properties": {
+        "finalization_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3,6}$"
+    },
+    "state_mode": {
+      "enum": [
+        "files",
+        "dual",
+        "db-only"
+      ]
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed",
+        "files",
+        "operation_kind"
+      ],
+      "properties": {
+        "observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "branch",
+            "ref",
+            "head",
+            "index_sha256",
+            "index_clean",
+            "lock_present",
+            "changes",
+            "identity",
+            "signing"
+          ],
+          "properties": {
+            "branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "ref": {
+              "type": "string",
+              "pattern": "^refs/heads/[^\\r\\n]+$"
+            },
+            "head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "index_sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "index_clean": {
+              "type": "boolean"
+            },
+            "lock_present": {
+              "type": "boolean"
+            },
+            "changes": {
+              "type": "array",
+              "maxItems": 128,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "status",
+                  "path"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                }
+              }
+            },
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "email"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "email": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              }
+            },
+            "signing": {
+              "type": "boolean"
+            }
+          }
+        },
+        "files": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "operation_kind": {
+          "const": "terminal-objects-ref-index.v1"
+        }
+      }
+    }
+  }
+}

@@ -1611,3 +1611,24 @@ Component proof uses real stores, projections, Git and gating with an injected
 source-authority capability: 8 checks per mode and 7 for grant loss after a real
 commit. Authenticated host/model composition, native provider and exact archive
 are separate evidence; complete standard selection remains outstanding.
+
+### Checkpoint of confirmed session completion for delivery (2026-11-03)
+
+`session_delivery_checkpoint` follows the actual final R07 hook and its three
+confirmed completion CAS writes. The host authenticates that accepted result,
+the original close event at its retained offset, its preceding checkpoint HEAD,
+the selected CLOSED owner and the exact final session/snapshot/current postimages
+and preserved metadata. A CLOSED marker alone is insufficient.
+
+The deterministic operation accepts exactly those three paths and an explicit
+fresh grant, then uses the finite Git port without replaying a hook, changing
+canonical data, integrating a branch or invoking a provider. It makes no cache
+freshness claim. DB-only with no physical changes returns completed/no_effect,
+keeps HEAD and does not export. Refusals and unknown effects remain distinct;
+lost grant after a real commit retains unknown ownership and empty facts.
+
+The component fixture performs the actual start and final close hooks before
+this new checkpoint. Its decision/R05 capability remains injected. Twenty checks
+per selected configuration include the prior sixteen R07 assertions and four
+delivery assertions; they are overlapping coverage, not independent acceptance
+criteria. The authenticated model composition and integration/PR tail remain open.

@@ -2510,6 +2510,15 @@ transport and make no session-close, full-model or archive claim.
 
 ### Session closure decision and R05 physical authority
 
+For final delivery postimages, append `--delivery-checkpoint` to
+`verify-standard-session-close-record-fixtures.mjs --mode=files --checkpoint --final-hook`.
+Repeat with dual/db-only. `--delivery-grant-after-git` (files/dual) checks unknown
+ownership after the real commit. The fixture still uses injected decision/R05
+source authority, while start/close hooks, CAS, Git and stores are real. Delivery
+must preserve CLOSED content/metadata, event bytes and cache, leave Git clean and
+keep HEAD for DB-only with no physical changes. It neither replays the final hook
+nor refreshes the cache, integrates a branch or proves the full composed model.
+
 `node tools/perf/verify-standard-session-preclose-checkpoint-fixtures.mjs --mode=files`
 checks the finite checkpoint before session admission/R05. Repeat with dual and
 db-only; use `--mode=files --grant-after-git` for unknown ownership after the real

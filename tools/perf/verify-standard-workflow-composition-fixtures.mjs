@@ -23,7 +23,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 50); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 51); assert.equal(assets.catalog.activities.length, 8);
 });
 test("session close admission is a deterministic read-only continuation, separate from closure", () => {
   const node = assets.model.nodes.find(row => row.id === "session_close_admit");
@@ -43,6 +43,15 @@ test("preclose checkpoint is a granted deterministic Git effect before session a
   assert.equal(binding.output_contract, "standard-session-preclose-checkpoint-output.v1");
   const fields = assets.model.data_bindings.inputs.find(row => row.node_id === "session_preclose_checkpoint").fields;
   assert.deepEqual(fields.closure_operation_id, { source: "operation_id", node_id: "close_finalize" });
+});
+test("delivery checkpoint follows confirmed session finalization with no implied integration or PR", () => {
+  const binding = assets.catalog.bindings.find(row => row.node_id === "session_delivery_checkpoint").binding;
+  assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "mutating");
+  assert.equal(binding.input_contract, "standard-session-delivery-checkpoint-input.v1");
+  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  assert.equal(children.indexOf("session_delivery_checkpoint"), children.indexOf("session_close_finalize") + 1);
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_delivery_checkpoint").fields.finalization_operation_id,
+    { source: "operation_id", node_id: "session_close_finalize" });
 });
 
 test("completion of this component cannot claim completion of the standard workflow", () => {

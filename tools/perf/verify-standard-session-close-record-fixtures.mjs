@@ -18,12 +18,15 @@ import { execFileSync } from "node:child_process";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { sessionClosureChoices } from "../../src/core/workflow/standard-session-closure-decision.mjs";
+import { createStandardSessionDeliveryCheckpoint } from "../../src/application/runtime/standard-session-delivery-checkpoint.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 const mode = process.argv.find(arg => arg.startsWith("--mode="))?.slice(7) ?? "files";
 if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const finalFault = process.argv.find(arg => arg.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
 const policyFault = process.argv.includes("--constraint-policy-fault");
+const delivery = process.argv.includes("--delivery-checkpoint"), deliveryFault = process.argv.includes("--delivery-grant-after-git");
+if (delivery && (!process.argv.includes("--final-hook") || finalFault || policyFault) || deliveryFault && (!delivery || mode === "db-only")) throw Error("FIXTURE_DELIVERY_ARGUMENT_INVALID");
 if (finalFault && (!process.argv.includes("--final-hook") || !["grant_after_hook", "suffix", "constraints"].includes(finalFault)
   || ["suffix", "constraints"].includes(finalFault) && mode === "files") || policyFault && (!process.argv.includes("--final-hook") || mode === "files")) throw Error("FIXTURE_FINAL_FAULT_INVALID");
 const owned = [], temporary = fs.realpathSync(os.tmpdir()), H = "a".repeat(64), id = n => "op_" + String(n).repeat(40);
@@ -161,11 +164,49 @@ try {
         pass("actual final hook consumes authenticated-start run before canonical CLOSED and checked gate are recorded");
         await assert.rejects(() => finalizer.apply(instance, finalPlan, { write: true, expectPlan: finalPlan.plan_sha256, assertAuthorized: async () => {} }));
         assert.equal(artifacts.ownerPending(), false); pass("consumed start run prevents repeating the final hook");
+        if (delivery) {
+          for (const kind of ["input", "plan", "output"]) {
+            const schema = JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-session-delivery-checkpoint-${kind}.v1.schema.json`, import.meta.url)));
+            assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
+          }
+          const names = finalPlan.plan.documents.map(row => row.path), parent = execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+          const eventFile = path.join(root, ".aidn/runtime/perf/workflow-events.ndjson"), eventBytes = fs.readFileSync(eventFile);
+          const cacheFile = path.join(root, ".aidn/runtime/cache/reload-state.json"), cacheBytes = fs.readFileSync(cacheFile);
+          const source = { finalization_operation_id: id(9), session_id: "S001", session_path: "sessions/S001.md", branch: finalPlan.plan.branch, parent_head: parent,
+            material_sha256: shadowHash(final), postimages: names.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) })) };
+          const port = createStandardSessionDeliveryCheckpoint({ targetRoot: root, readSource: async () => structuredClone(source), readCurrent: () => instance });
+          const deliveryId = "op_" + "d".repeat(40), input = { finalization_operation_id: id(9) }, preview = await port.prepare(instance, input, deliveryId);
+          assert.equal(preview.can_apply, true); assert.equal(preview.plan.git.files.length, mode === "db-only" ? 0 : 3);
+          await assert.rejects(port.apply(instance, preview, { expectPlan: preview.plan_sha256, assertAuthorized() {} }), { effect_status: "no_effect" });
+          pass("delivery schemas and preview require the three final canonical postimages and explicit intent");
+          const foreign = path.join(root, "delivery-foreign.txt"); fs.writeFileSync(foreign, "foreign\n");
+          await assert.rejects(port.prepare(instance, input, deliveryId), { code: "STANDARD_SESSION_DELIVERY_FOREIGN_CHANGE" }); fs.unlinkSync(foreign);
+          pass("delivery scope rejects foreign work without including or resetting it");
+          const result = await port.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256, assertAuthorized() {
+            const head = execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
+            if (deliveryFault && head !== parent) throw Object.assign(Error("FIXTURE_DELIVERY_GRANT_LOST"), { code: "FIXTURE_DELIVERY_GRANT_LOST" });
+          } });
+          if (deliveryFault) {
+            assert.equal(result.outcome, "reconciliation_required"); assert.equal(result.effect_status, "unknown"); assert.deepEqual(result.facts, {});
+            assert.equal(artifacts.ownerPending(), true); pass("delivery grant loss after real Git retains unknown owner and empty facts");
+          } else {
+            assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.deepEqual(result.facts, { session_delivery_checkpoint_completed: true });
+            assert.equal(result.effect_status, mode === "db-only" ? "no_effect" : "confirmed"); assert.equal(artifacts.ownerPending(), false);
+            assert.equal(execFileSync("git", ["-C", root, "status", "--porcelain"], { encoding: "utf8", windowsHide: true }).trim(), "");
+            if (mode === "db-only") assert.equal(result.observations.git.head, parent);
+            else assert.equal(result.observations.git.parent_sha, parent);
+            pass("delivery checkpoints actual final closure writes while DB-only preserves HEAD");
+          }
+          assert.deepEqual(fs.readFileSync(eventFile), eventBytes); assert.deepEqual(fs.readFileSync(cacheFile), cacheBytes);
+          for (const row of source.postimages) { assert.equal(artifacts.read(row.path).sha256, row.sha256); assert.equal(artifacts.metadataHash(row.path), row.metadata_sha256); }
+          assert.match(artifacts.read("sessions/S001.md").content, /^state: CLOSED$/m);
+          pass("delivery preserves CLOSED data, event history and cache without repeating hook or claiming refresh");
+        }
         }
         }
       }
     }
   }
-  completed = true; console.log(JSON.stringify({ status: "PASS", checks, mode, ports: "actual-artifact-CAS", decision_authority: "injected-fixture", R05_chain: "NOT_RUN_HERE", session_closed: process.argv.includes("--final-hook") && !finalFault && !policyFault, final_fault: finalFault ?? null, native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+  completed = true; console.log(JSON.stringify({ status: "PASS", checks, mode, ports: "actual-artifact-CAS", decision_authority: "injected-fixture", R05_chain: "NOT_RUN_HERE", session_closed: process.argv.includes("--final-hook") && !finalFault && !policyFault, final_fault: finalFault ?? null, delivery_checkpoint: delivery, delivery_fault: deliveryFault, native: "NOT_RUN", installed_archive: "NOT_RUN" }));
 } finally { for (const root of owned.reverse()) { const resolved = fs.realpathSync(root); assert.equal(path.dirname(resolved), temporary);
   if (!completed && process.argv.includes("--retain-on-failure")) console.error(JSON.stringify({ retained_fixture: resolved })); else fs.rmSync(resolved, { recursive: true, force: true }); } }
