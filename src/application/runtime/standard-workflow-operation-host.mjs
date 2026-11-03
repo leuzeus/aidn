@@ -1,3 +1,4 @@
+import { createStandardCycleCloseRecord } from "./standard-cycle-close-record.mjs";
 import { createStandardCycleClosureReview } from "./standard-cycle-closure-review.mjs";
 import { observeStandardCycleAudit } from "../../core/workflow/standard-cycle-audit.mjs";
 import { randomUUID } from "node:crypto";
@@ -123,6 +124,20 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return { ...verified, record };
   }
   const closureReview = processAuthority ? createStandardCycleClosureReview({ readAudit: readAcceptedAudit }) : null;
+  async function readAcceptedClosureDecision(instance, input) {
+    const record = retained(input.decision_operation_id).record, result = record.results.at(-1);
+    const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "cycle_closure_decision").at(-1);
+    if (latest?.intent.operation_id !== record.operation_id || record.intent.binding_ref !== "cycle_closure_decision"
+      || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id || record.phase !== "receipted"
+      || result?.receipt.outcome !== "completed" || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail("STANDARD_CYCLE_CLOSE_ACCEPTED_DECISION_REQUIRED");
+    // The accepted, signed inbox proof survives provider disappearance. It is
+    // neither a fresh effect grant nor a substitute for current audit evidence.
+    const decision = human.captured(record).source, question = human.question(record);
+    const verified = await closureReview.readFresh(instance, record.preview.prepared.plan);
+    return { question, decision, report: verified.native.authenticated.report };
+  }
+  const cycleCloseRecord = processAuthority ? createStandardCycleCloseRecord({ targetRoot, now,
+    readDecision: readAcceptedClosureDecision, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter") {
       assertStandardOperationInput(operation, input);
       const record = retained(input.evaluation_operation_id).record, result = record.results.at(-1);
@@ -428,6 +443,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const prepared = binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "cycle_close_record" ? await cycleCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED")
         : binding.id === "cycle_closure_decision" ? await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED")
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_recovery_record" ? await (async () => { const body = { ...await recoveryDecision(state.record, input), prepared_at_ms: now() };
@@ -527,6 +543,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         } else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else if (record.intent.binding_ref === "cycle_close_record") output = await cycleCloseRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_plan_record") output = await cyclePlanRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_implementation_enter") output = await cycleImplementation.apply(state.record, record.preview.prepared,

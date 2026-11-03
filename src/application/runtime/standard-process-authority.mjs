@@ -1,3 +1,4 @@
+import { readStandardCycleCloseContext } from "./standard-cycle-close-context.mjs";
 import { CYCLE_AUDIT_CONTRACT } from "../../core/workflow/standard-cycle-audit.mjs";
 import { buildStandardCycleAuditContext } from "./standard-cycle-audit-context.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
@@ -488,6 +489,8 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     readinessTransition: true, verificationTransition: true }));
   const observeCycleAuditContext = (bridge, validation) => buildStandardCycleAuditContext({ targetRoot: configuration.target_root, environment,
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
+  const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+    productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
-    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, readCycleAuditActivity, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
+    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

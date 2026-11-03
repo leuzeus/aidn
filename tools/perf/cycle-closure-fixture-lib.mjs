@@ -1,3 +1,4 @@
+import { verifyCycleCloseRecordExecution } from "./cycle-close-record-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -20,7 +21,7 @@ export function closureHumanSource(file) {
         ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" };
     } };
 }
-export async function verifyCycleClosureExecution({ f, artifacts, cyclePath, script, verifier }) {
+export async function verifyCycleClosureExecution({ f, artifacts, cyclePath, script, verifier, closeRecord = false, setAllowed }) {
   const before = f.open().inspect(), waiting = before.cursor.occurrences.find(row => row.node_id === "closure_decide"), id = waiting.operation.intent.operation_id;
   process.stderr.write("cycle-closure: durable human question preparation\n");
   const request = await f.open().dispatchOperation(id, { write: true }), question = request.question;
@@ -55,7 +56,7 @@ export async function verifyCycleClosureExecution({ f, artifacts, cyclePath, scr
   const child = spawnSync(process.execPath, [script, "--closure-accept", input], { encoding: "utf8", shell: false, windowsHide: true, timeout: 900000 });
   assert.equal(child.status, 0, child.stderr); const accepted = JSON.parse(child.stdout);
   assert.equal(accepted.launches, 0); assert.equal(accepted.sessions, 0);
-  const after = f.open().inspect(); assert.notEqual(after.record.instance_sha256, stateSha); assert.equal(after.cursor.status, "WAITING");
+  const after = f.open().inspect(); assert.notEqual(after.record.instance_sha256, stateSha); if (!closeRecord) assert.equal(after.cursor.status, "WAITING");
   assert.match(artifacts.read(`${cyclePath}/status.md`).content, /^state: VERIFYING$/m);
   assert.equal(artifacts.ownerPending(), false); assert.equal(f.t.sessions.length, sessionCount); assert.equal(verifier.calls(), checks);
   const digest = shadowHash(f.open().readOperation(id));
@@ -64,4 +65,5 @@ export async function verifyCycleClosureExecution({ f, artifacts, cyclePath, scr
   const replay = simulateAgenticProcess({ instanceId: after.record.instance_id, model: after.record.model, parameters: after.record.initial_parameters,
     policyPins: after.record.policy_pins, scopeId: after.record.scope_id, events: after.record.events });
   assert.equal(replay.trace.at(-1).instance_sha256, after.record.instance_sha256);
+  if (closeRecord) await verifyCycleCloseRecordExecution({ f, artifacts, cyclePath, verifier, setAllowed });
 }

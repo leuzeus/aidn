@@ -2218,3 +2218,28 @@ immutable expected command includes this addition while preserving old checks.
 Read-only actual GitHub observations are recorded separately from fixture API
 coverage; they do not establish authenticated durable inbox delivery, IR routing,
 triage/merge authorization, native execution or exact installed-archive workflow.
+
+`verify-standard-cycle-close-render-fixtures.mjs` tests the pure six-document
+terminal renderer, exact risk acceptance, non-retained evidence, Unicode chunks
+and refusal without effects. `verify-standard-cycle-close-contract-fixtures.mjs`
+checks the private input/plan/output boundaries and prevents uncertain or blocked
+results from carrying completion facts.
+
+`verify-standard-cycle-close-record-fixtures.mjs` uses a fresh source install and
+actual session, mode, cycle and runtime-refresh ports before its explicitly
+seeded VERIFYING precondition. The human/audit source remains a fixture authority.
+Selectors cover files, dual/DROPPED, db-only/NO_GO, actual partial SQLite writes,
+lost required dual projection and a product change during authorization. They
+prove canonical metadata recording, not the full native/human chain or final
+hook. The pending hook, frozen plan and retained reconciliation owner are
+asserted. These focused components are included in the existing agentic gate.
+
+
+The terminal-record component selectors `--mode=slow-authority` and
+`--mode=expired` use a private injected clock with the same 300000ms deadline.
+The first advances 100000ms per trusted decision read and requires a fresh
+post-grant validation and confirmed canonical effects without redundant
+pre-grant authentication. The second advances beyond the deadline inside the
+grant callback and requires refusal before any canonical write. Other component
+selectors retain the actual clock. These synthetic clock cases neither measure
+wall-time/native performance nor qualify the full process host.

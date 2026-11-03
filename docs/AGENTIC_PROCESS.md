@@ -750,3 +750,13 @@ decision records a requested disposition only: lifecycle transition remains none
 and cycle-close pending. Context is rechecked around source verification and
 receipt acceptance. Canonical closure writes and its final hook remain to be
 implemented; this binding grants neither writes nor promotion.
+
+
+The deterministic `cycle_close_record` binding records explicitly selected
+terminal metadata through fixed canonical CAS ports. It takes only an accepted
+decision operation identity; JSON cannot select a writer, supply permission or
+assert a successful closure. The component currently covers COMMITTING/VERIFYING.
+Its mixed-host component passed offline on files and DB-only. A confirmed terminal record
+leaves the real cycle-close hook pending and never sets `cycle_close_completed`
+to true. Earlier-phase exits, the final hook/drift retry, the complete standard
+model, ordinary entrypoints and installed/native qualification remain required.

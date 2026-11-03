@@ -1,3 +1,4 @@
+import { cycleClosePaths } from "../../core/workflow/standard-cycle-close-render.mjs";
 import path from "node:path";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -36,6 +37,12 @@ export function cycleVerificationBoundary(options, cyclePath) {
   const own = [`${cyclePath}/status.md`, `${cyclePath}/traceability.md`, "snapshots/context-snapshot.md", "CURRENT-STATE.md"];
   return documentBoundary({ ...options, context: { ...options.context, cycle_state: null,
     metadata_pins: options.context.metadata_pins.filter(row => !own.includes(row.ref.slice(6))) } }, own);
+}
+export function cycleCloseBoundary(options, cyclePath) {
+  const own = cycleClosePaths(cyclePath);
+  const { cycle_state, context_use, completion, metadata_pins, ...stable } = options.context;
+  return documentBoundary({ ...options, context: { ...stable, cycle_state: null, context_use: "cycle_close",
+    metadata_pins: metadata_pins.filter(row => !own.includes(row.ref.slice(6))) } }, own);
 }
 export function cycleTaskProgressBoundary(options, cyclePath) {
   if (!/^cycles\/C[0-9]{3,6}-[a-z]+-[A-Za-z0-9._-]+$/.test(cyclePath)) fail("STANDARD_CYCLE_PLAN_PATH_INVALID");

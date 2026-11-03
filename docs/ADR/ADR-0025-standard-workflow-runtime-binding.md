@@ -1073,3 +1073,34 @@ exact installed-archive acceptance remain separate.
 
 API references: [GitHub CLI API](https://cli.github.com/manual/gh_api) and
 [GitHub pull-request GraphQL objects](https://docs.github.com/en/graphql/reference/pulls).
+
+### Terminal metadata recording component
+
+`cycle_close_record` is a separate deterministic, explicitly authorized mutation
+for the COMMITTING/VERIFYING component. Its fixed host reader authenticates the
+latest accepted human disposition and rereads current audit/check evidence. The
+accepted signed inbox proof remains the human provenance; provider disappearance
+after acceptance is not a new decision. Fresh write permission is separate.
+
+The writer prepares exactly six canonical preimages: owning cycle status,
+traceability, audit-spec and decisions, plus context-snapshot and CURRENT-STATE.
+CAS preserves artifact classification metadata and the frozen plan. Partial
+writes, lost required projections and uncertain postconditions retain the effect
+owner and emit reconciliation with no success facts. Only confirmed postimages
+record terminal metadata; `cycle_close_completed` remains false and both hook
+and skill completion remain pending.
+
+Component fixtures use real source installation, admissions, Git, canonical
+CAS and projections, with an explicit fixture audit/decision authority. The files mixed-host case passed on its exact61/59 snapshot; current-source
+DB-only qualification on explicit62/60 pins passed on its frozen snapshot. The final actual cycle-close hook,
+its conditional drift retry, earlier-phase exits and other mode paths remain
+required. This component does not deliver the full standard workflow graph.
+
+
+The terminal metadata effect checks its grant before rebuilding one fresh
+closure plan. That post-grant observation authenticates the decision and audit,
+checks admission, canonical context, metadata and projections, and must match
+the signed original plan. Repeating a complete audit before the same grant is
+not an additional authority. No verdict is cached across calls. The original
+300000ms preview deadline is rechecked after all preconditions immediately
+before the first canonical write; expiry refuses without business effects.

@@ -257,3 +257,11 @@ envelopes; no executable module, effect or permission may be supplied by a human
 claim. Request facts identify a disposition, never a terminal lifecycle or hook
 success. Explicit historical v1/v2 dispatch remains unchanged. The new contracts
 and HMAC inbox alone do not authenticate a provider or qualify the full host.
+
+
+The private `standard-cycle-close-input.v1`, `standard-cycle-close-plan.v1` and
+`standard-cycle-close-output.v1` describe the bounded terminal metadata writer.
+Output correlation rejects completion facts on blocked or uncertain effects and
+keeps final hook completion false. They add no public CLI JSON root and confer
+neither human authority nor write authorization. Full host execution evidence
+is separate from schema/renderer/component checks.

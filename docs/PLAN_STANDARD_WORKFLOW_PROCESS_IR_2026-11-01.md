@@ -8,9 +8,9 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée relue : `a5a2e85` ; audit read-only qualifié hors ligne dans `fe3efab` sur pins 56/54.
-La préparation reproductible des fixtures est intégrée ; les prototypes de clôture
-ci-dessous restent séparés de cette base.
+Base intégrée relue : `3905217` ; composants publiés explicitement révisés en
+62/60 pour l’écriture terminale. Les preuves files et DB-only conservent leurs
+snapshots exacts ; le hook final reste séparé de cette tranche.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -76,12 +76,17 @@ encore ouverts.
   distingue ces contrôles du raccord manquant : inbox de promotion, lecteur hôte
   de la clôture acceptée, binding IR, hook final et exécution/replay/simulation
   via le même modèle standard restent à réaliser.
-- L’écriture des six artefacts terminaux et le hook final restent des prototypes
-  séparés. Les composants CAS et les contrôles du véritable hook passent, mais
-  leur chaîne commune n’est pas qualifiée. Un essai d’écriture a refusé avant
-  effet pour source périmée ; son correctif de préparation après autorisation
-  est en cours de qualification. Le modèle standard complet, ses sorties précoces
-  et les parcours des autres modes restent à terminer.
+- L’écriture des six artefacts terminaux passe le parcours mixte sur files et
+  DB-only : travail et vérifications physiques, audit, décision humaine
+  authentifiée, reprise dans un nouveau processus, CAS, déduplication et replay.
+  Les preuves conservent leurs snapshots exacts et révisions 61/59 puis 62/60 ;
+  voir la [preuve d’écriture terminale](qualification/agentic-process/cycle-terminal-record-2026-11-03.json).
+  L’écriture conserve le hook et la clôture du skill en attente. Le composant du
+  véritable hook est encore séparé ; sa continuation sur une instance conservée
+  passe sans rejouer les six écritures, les validations ni les allocations.
+  Son raccord à cette base reste à intégrer. Le modèle standard complet, ses
+  sorties précoces et les autres modes restent à terminer ; aucune preuve native
+  ou d’archive installée n’est acquise.
 - La [préparation reproductible des fixtures](qualification/agentic-process/fixture-construction-2026-11-03.json)
   passe 14 contrôles des ports et 20 de l’hôte. Elle construit la base temporaire
   depuis le corpus suivi via le projecteur réel ; aucune base SQLite ignorée n’est

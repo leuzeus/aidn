@@ -1,3 +1,5 @@
+import closeInput from "../contracts/workflow-definition/standard-cycle-close-input.v1.schema.json" with { type: "json" };
+import closeOutput from "../contracts/workflow-definition/standard-cycle-close-output.v1.schema.json" with { type: "json" };
 import closureInput from "../contracts/workflow-definition/standard-cycle-closure-review-input.v1.schema.json" with { type: "json" };
 import closureOutput from "../contracts/workflow-definition/standard-cycle-closure-decision-output.v1.schema.json" with { type: "json" };
 import auditSelectInput from "../contracts/workflow-definition/standard-cycle-audit-select-input.v1.schema.json" with { type: "json" };
@@ -54,7 +56,7 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
-  const schema = operation === "cycle_closure_decision" ? closureInput : operation === "cycle_audit_select" ? auditSelectInput : operation === "cycle_audit_evaluate" ? auditEvaluateInput : operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit"].includes(operation) ? empty
+  const schema = operation === "cycle_close_record" ? closeInput : operation === "cycle_closure_decision" ? closureInput : operation === "cycle_audit_select" ? auditSelectInput : operation === "cycle_audit_evaluate" ? auditEvaluateInput : operation === "session_initialize" ? initialize : ["context_reload", "session_admit", "cycle_admit"].includes(operation) ? empty
     : ["mode_decision", "session_start_finalize", "cycle_context_refresh"].includes(operation) ? sessionRef : operation === "session_mode_apply" ? modeApply
     : operation === "cycle_initialize" ? cycleInput : ["branch_cycle_audit", "cycle_checkpoint_finalize"].includes(operation) ? cycleRef : operation === "drift_report_evaluate" ? driftInput
     : ["drift_check_finalize", "drift_recovery_decision"].includes(operation) ? driftFollowup : operation === "drift_recovery_record" ? recoveryInput
@@ -71,6 +73,13 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-close-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, closeOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    if (value.outcome === "completed" && (!["DONE", "NO_GO", "DROPPED"].includes(value.observations.target_state)
+      || value.facts.cycle_retained !== (value.observations.target_state === "DONE") || value.observations.closure_hook !== "pending" || value.observations.skill_completion !== "pending")) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
+
   if (value?.contract_version === "standard-cycle-closure-decision-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, closureOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     const choice = value.observations.choice, accepted = ["retain", "no_go", "drop"].includes(choice);

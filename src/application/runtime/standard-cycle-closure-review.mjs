@@ -10,7 +10,7 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 // No caller-authored JSON can substitute for that capability.
 export function createStandardCycleClosureReview({ readAudit }) {
   if (typeof readAudit !== "function") fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED");
-  async function prepare(instance, input, operationId) {
+  async function inspect(instance, input, operationId) {
     if (!input || checkShadowJson(input) || Object.keys(input).join(",") !== "audit_operation_id" || !/^op_[a-f0-9]{40}$/.test(input.audit_operation_id ?? "")
       || !/^op_[a-f0-9]{40}$/.test(operationId ?? "")) fail("STANDARD_CLOSURE_INPUT_INVALID");
     const verified = await readAudit(instance, input), { native, current, record, output } = verified;
@@ -29,13 +29,15 @@ export function createStandardCycleClosureReview({ readAudit }) {
       source_context_sha256: current.material.context_sha256, review, choices: cycleClosureChoices(review), evidence_refs: structuredClone(output.evidence_refs) };
     if (checkShadowJson(plan) || validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length
       || Buffer.byteLength(JSON.stringify(plan)) > 65536) fail("STANDARD_CLOSURE_REVIEW_LIMIT");
-    return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
+    return { prepared: { can_apply: true, plan, plan_sha256: shadowHash(plan) }, verified };
   }
-  return Object.freeze({ prepare,
-    async assertFresh(instance, plan) {
-      if (checkShadowJson(plan) || validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_CLOSURE_REVIEW_INVALID");
-      const fresh = await prepare(instance, { audit_operation_id: plan.audit_operation_id }, plan.review_operation_id);
-      if (fresh.plan_sha256 !== shadowHash(plan)) fail("STANDARD_CLOSURE_REVIEW_STALE");
-    },
+  async function readFresh(instance, plan) {
+    if (checkShadowJson(plan) || validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_CLOSURE_REVIEW_INVALID");
+    const fresh = await inspect(instance, { audit_operation_id: plan.audit_operation_id }, plan.review_operation_id);
+    if (fresh.prepared.plan_sha256 !== shadowHash(plan)) fail("STANDARD_CLOSURE_REVIEW_STALE");
+    return fresh.verified;
+  }
+  return Object.freeze({ prepare: async (...args) => (await inspect(...args)).prepared, readFresh,
+    async assertFresh(instance, plan) { await readFresh(instance, plan); },
   });
 }
