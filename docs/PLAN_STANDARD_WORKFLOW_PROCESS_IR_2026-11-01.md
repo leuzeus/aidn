@@ -8,7 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée relue pour la composition : `fac271b` ; composants publiés explicitement révisés en
+Base intégrée relue pour la tranche R05 : `61f0a6e` ; composants publiés explicitement révisés en
 65/63 pour le checkpoint final de promotion. Les preuves de l’écriture terminale et de la reprise
 conservent leurs snapshots exacts ; le modèle standard complet reste à livrer.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -97,11 +97,12 @@ encore ouverts.
   depuis le corpus suivi via le projecteur réel ; aucune base SQLite ignorée n’est
   copiée. Cette correction de test n’est ni un fallback runtime, ni une conversion
   d’instance historique, ni une preuve native ou d’archive installée.
-- L3 : en cours. Une première IR commune de 49 nœuds compose les ports disponibles,
-  avec 31 occurrences d'opérations et trois activités natives déclarées. Son
-  préfixe de démarrage est exécuté/rejoué/simulé sur les trois modes de stockage ;
-  la [preuve bornée](qualification/agentic-process/standard-composition-prefix-2026-11-03.json)
-  distingue ce résultat du parcours COMMITTING et du workflow complet, encore ouverts.
+- L3 : en cours. L'IR commune est distribuée. La première composition de 49
+  nœuds et 31 opérations conserve sa [preuve du préfixe sur trois modes](qualification/agentic-process/standard-composition-prefix-2026-11-03.json).
+  La révision suivante déclare 68 nœuds, 39 opérations et sept activités natives,
+  dont R05. Sa [preuve bornée de démarrage COMMITTING](qualification/agentic-process/standard-startup-r05-prefix-2026-11-03.json)
+  distingue les tentatives, le transport natif simulé et le raccord Git encore
+  absent. Le cycle complet et le workflow standard ne sont pas qualifiés.
 - L4 : scope commun et dispatcher mixte interne implémentés et validés sur les
   corpus ciblés ; réconciliation des inconnus et continuation après expiration restent
   ouvertes. Voir l'addendum du 2026-11-02.
@@ -2576,3 +2577,65 @@ COMMITTING, raccorder R05 avant les checkpoints qui l'exigent et parcourir
 travail, validations, clôture et promotion sans préconditions métier préparées
 hors IR. Compléter ensuite les parcours et décisions encore énumérés dans le
 catalogue, avant la sélection ordinaire et les qualifications natives/installées.
+
+
+### R05 dans le modèle et checkpoint Git encore manquant — 2026-11-03
+
+La révision 7 du modèle ajoute un préflight de mode : COMMITTING traverse le
+rapport natif R05, son évaluation authentifiée et sa finalisation réelle avant
+le checkpoint de démarrage. THINKING/EXPLORING traversent une branche vide et
+conservent leur démarrage déterministe. Les prérequis R05 de checkpoint du cycle,
+de clôture et de promotion sont aussi représentés ; leur déclaration ne prouve
+pas encore leur exécution après un vrai travail. Le chargeur expose un raccord
+mixte interne au modèle distribué, avec identité/source et sorties typées
+vérifiées. Ce raccord ne sélectionne pas le workflow standard par défaut.
+
+Les deux premières sondes de composition ont échoué de façon informative : le
+checkpoint initial exige réellement R05 ; déplacer ce checkpoint après la
+création du cycle révèle que l'admission du cycle exige aussi un Git propre.
+Le démarrage a lui-même modifié CURRENT-STATE, RUNTIME-STATE et la session.
+Les projets de ces tentatives sont conservés localement, sans reprise de leurs
+effets incertains ni conversion sous un autre modèle. La
+[preuve des tentatives](qualification/agentic-process/standard-startup-r05-prefix-2026-11-03.json)
+sépare FAIL, PASS borné et qualifications non exécutées. Les gardes restent
+inchangées ; le statut `reconciliation_required` et le refus observés ne sont
+pas convertis en réussites.
+
+**Livrable L2-GIT à ajouter explicitement :** une opération déterministe de
+checkpoint Git gouverné entre le rafraîchissement du contexte et l'admission
+de création du cycle. Aucun appel au modèle n'est requis pour cette opération.
+L'entrée désigne un contexte accepté ; le hôte reconstruit le périmètre fixe
+à partir des résultats authentifiés. Ni commande Git, ni chemins élargis, ni
+autorisation ne proviennent du JSON auteur ou du modèle.
+
+| Partie du lot | Fichiers proposés / concernés | Critère de sortie |
+| --- | --- | --- |
+| Port Git local et contrats | Nouveau port sous `src/core/ports/`, adaptateur borné sous `src/adapters/runtime/`, contrats input/plan/output et politique de plan sous `src/core/workflow/` | Préparation sans mutation, branche/HEAD/index/postimages liés au plan, refus de chemins ou changements étrangers |
+| Application, autorisation et journal | Use case `standard-workflow-git-checkpoint.mjs`, registry, contrats et hôte des opérations, empreintes d'implémentation et politiques de preuve | Autorisation explicite, effet réel limité au périmètre, commit corrélé et observé ; aucune permission de push/fusion implicite |
+| Attente et reprise | Journal signé et propriétaire existants ; observation/réconciliation de l'effet Git | Refus ou annulation sans succès ; effet partiel/inconnu conservé ; un commit déjà confirmé n'est pas répété après redémarrage |
+| Composition et qualification | Même JSON/catalogue/générateur, fixtures de port, parcours du modèle, ADR et traçabilité | Admission réelle inchangée ; démarrage puis création/plan/travail/clôture/promotion sans préparation Git/reload/R05 hors IR ; trois modes et preuves natives/installées séparées |
+
+Le port Git de runs/essais possède ses propres ressources et worktrees ; il ne
+constitue pas directement le checkpoint des métadonnées du projet courant.
+Réutiliser ses primitives seulement quand leurs contrats conviennent. Maintenir
+PostgreSQL facultatif et respecter les sources/projections de files, dual et
+DB-only, sans matérialisation ou conversion silencieuse pour committer.
+
+La sonde R05 s'arrête à l'entrée de `cycle_admit`, avant le prérequis Git connu
+comme manquant. Elle valide le diagnostic, sa finalisation, le démarrage et le
+replay/simulation du même modèle/réducteur ; elle ne ferme pas A1–A10. Les autres
+parcours de mode/cycle, incidents, clôture de session, revue/PR/fusion et
+synchronisation restent requis. Les nouvelles révisions de composants 67/65
+actualisent explicitement leurs pins ; leurs anciennes preuves gardent leurs
+snapshots et ne sont pas promues à cette nouvelle qualification.
+
+
+Le préfixe R05 sur le manifeste final passe sur le snapshot
+`58c88fe0b2fa8e82561fd70517ebedd5b51b896d` : neuf occurrences d'opérations
+applicatives, une activité diagnostique au transport simulé, une finalisation
+R05 confirmée et un démarrage confirmé. Le hôte est rouvert après le résultat
+natif conservé, dans le même processus, sans relancer l'activité. Le replay et
+la simulation retrouvent exactement l'instance courante ; celle-ci reste
+RUNNING à l'entrée de `cycle_admit`. Le gate obligatoire inclut ce contrôle
+borné. Les variantes de stockage de ce nouveau préfixe, le client natif réel,
+l'archive installée et le parcours COMMITTING complet restent non qualifiés.

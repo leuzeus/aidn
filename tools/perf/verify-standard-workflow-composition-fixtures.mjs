@@ -23,7 +23,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 31); assert.equal(assets.catalog.activities.length, 3);
+  assert.equal(assets.catalog.bindings.length, 39); assert.equal(assets.catalog.activities.length, 7);
 });
 test("completion of this component cannot claim completion of the standard workflow", () => {
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
@@ -56,7 +56,7 @@ test("execution and simulation start the same model and reducer with the same du
   assert.equal(instance.events.length, 0);
 });
 test("optional continuation is structural and requests no dummy context operation or native activity", () => {
-  for (const id of ["task_continue", "promotion_not_requested", "thinking_handoff", "exploring_handoff"])
+  for (const id of ["task_continue", "promotion_not_requested"])
     assert.deepEqual(assets.model.nodes.find(row => row.id === id).children, []);
 });
 test("source authoring preview leaves the exact published JSON bytes unchanged", () => {

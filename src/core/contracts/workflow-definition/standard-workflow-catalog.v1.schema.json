@@ -169,7 +169,8 @@
             "enum": [
               "standard-cycle-plan-proposal.v1",
               "standard-cycle-task-work-report.v1",
-              "standard-cycle-audit-report.v1"
+              "standard-cycle-audit-report.v1",
+              "standard-drift-report.v1"
             ]
           },
           "rule_refs": {

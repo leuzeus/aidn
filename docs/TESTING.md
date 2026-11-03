@@ -2308,3 +2308,27 @@ route. --retain-on-failure preserves an owned diagnostic root for inspection.
 The renderer appends history confirmation without rewriting the pending entry.
 These component checks do not establish a common-cursor path or native/archive
 execution, even when the fixed binding is registered.
+
+
+### Published standard startup R05 prefix
+
+`verify-standard-workflow-composition-fixtures.mjs` validates the distributed
+partial standard JSON, fixed operation/source pins and exact typed native
+outputs. It does not execute the declared business cycle.
+
+`verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=cycle_admit`
+loads that same published JSON through `createStandardWorkflowExecution`. The
+cursor drives real startup, authenticated mode choice, typed R05 diagnostic
+consumption, the actual R05 hook and startup checkpoint, then context refresh.
+The transport/controller wire is simulated; the application, admissions,
+canonical artifacts, operation/native journals and replay/simulation are real.
+A same-process host reopen follows the retained native result without rerunning
+that activity. This is not qualification of a real native client or process
+resume, and the test stops before the still-missing governed Git checkpoint.
+
+The selector also accepts `dual` and `db-only`; those variants must be reported
+separately. `--standard-composed-stop=plan` requests the longer cycle prefix,
+which is not qualified while cycle admission still lacks the governed Git
+checkpoint. Preserve failures with `--retain-on-failure`, inspect the signed
+journal and actual gate, and start a fresh disposable instance after an authored
+model revision. Never silently convert or rerun an uncertain old instance.

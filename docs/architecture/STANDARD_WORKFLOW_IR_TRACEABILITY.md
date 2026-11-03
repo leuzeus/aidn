@@ -294,3 +294,25 @@ result acceptance in a new process, retained redispatch, and exact replay/simula
 It uses the source installer with a Codex discovery stub. It does not execute
 the declared native activities or the composed COMMITTING cycle route, and does
 not qualify ordinary entrypoints, a native host or an exact installed archive.
+
+
+## R05 preflight and observed Git gap
+
+The current model revision 7 declares 68 nodes, 39 operation occurrences and
+seven native activities. A COMMITTING-only preflight runs the diagnostic,
+authenticated evaluation and real R05 finalizer before `session_start_finalize`.
+The same pattern is declared before cycle, closure and promotion checkpoints.
+Only the startup prefix has been exercised in the
+[bounded R05 proof](../qualification/agentic-process/standard-startup-r05-prefix-2026-11-03.json),
+with a fake native wire and actual application ports. Its replay/simulation use
+the exact published model and reducer. The host is reopened after the retained
+native result in the same process; this is not general native process resume.
+
+A governed Git checkpoint is now an explicit missing L2 deliverable: actual
+cycle admission refuses the metadata changes created by startup. Add the
+operation to the IR between `cycle_context_refresh` and `cycle_admit`, with a
+fixed host-derived scope, explicit authorization, correlated observed commit
+and durable uncertain-effect handling. Do not weaken the clean-tree admission
+or move an external fixture commit into an unverified successful receipt.
+The full COMMITTING cycle, other modes/tail, ordinary selection, actual native
+host and exact installed archive remain unqualified.

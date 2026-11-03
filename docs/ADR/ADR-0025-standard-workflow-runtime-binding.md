@@ -1226,3 +1226,30 @@ business path. R05 and incident routing, existing work/resume, THINKING/EXPLORIN
 work, session closure, PR review/merge, post-merge synchronization and ordinary
 mixed resume remain open in the [plan](../PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
 Native and exact installed-archive proofs remain mandatory for final acceptance.
+
+
+## Addendum: startup R05 ordering and governed Git checkpoint gap
+
+The composed standard model now branches on authenticated mode facts before
+its startup checkpoint. COMMITTING runs a typed native R05 diagnostic, its
+application evaluation and the existing real finalizer. The macro remains
+subject to its actual gate and strict observed postconditions; a gate warning
+is not a successful finalization. THINKING/EXPLORING require no diagnostic model
+call on this branch. Cycle/closure/promotion R05 nodes are also declared, with
+their integrated business qualification still outstanding.
+
+The internal `createStandardWorkflowExecution` composes the published model
+through the common mixed host and its source authority. The operation code
+fingerprint now includes the composed loader and its catalog schema. Native
+output mappings remain exact, and the closed catalog still requires partial
+scope. No ordinary workflow entrypoint is switched to this partial model.
+
+Real-port probes identified a required governed Git checkpoint before cycle
+creation. The [plan](../PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md) adds this
+as an explicit missing L2 deliverable. Its future host-derived scope and effect
+authorization must preserve Git admission, canonical/projection distinctions,
+result authentication and durable no-repeat recovery. Existing run-owned Git
+resources must not be relabeled as project-owned resources. Probe failures,
+the bounded fake-wire success, native evidence and installed-archive evidence
+are kept distinct in the recorded qualification; full standard acceptance
+remains open.

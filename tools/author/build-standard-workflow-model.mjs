@@ -29,12 +29,15 @@ const native = (id, role_ref, policy_ref, output_contract, skill_ids, rule_refs)
 };
 const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, node_id, condition]) => ({ flow_id, node_id, condition })) });
 
-seq("standard", ["startup", "mode_route"]);
+seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_route"]);
 nodes.push(...structuredClone(startup.nodes)); inputs.push(...structuredClone(startup.data_bindings.inputs));
+nodes.find(row => row.id === "startup").children = startup.nodes.find(row => row.id === "startup").children.filter(id => id !== "session_start_finalize");
 xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking", "thinking_handoff", "mode_thinking"], ["exploring", "exploring_handoff", "mode_exploring"]]);
 // These are component boundaries, not successful completion of either mode's
 // standard workflow. The catalog keeps both work routes explicitly outstanding.
 seq("thinking_handoff", []); seq("exploring_handoff", []);
+xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
+seq("thinking_preflight", []); seq("exploring_preflight", []);
 seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",
   "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "close_finalize", "promotion_decide", "promotion_route"]);
 const rename = id => `cycle_${id}`;
@@ -87,14 +90,35 @@ seq("promotion_not_requested", []);
 op("promotion_record", "baseline_promotion_record", operation("promotion_record", "decision_operation_id", "promotion_decide"));
 op("promotion_finalize", "baseline_promotion_finalize", operation("promotion_finalize", "record_operation_id", "promotion_record"));
 
+// A diagnostic never acknowledges R05 by itself. The real finalizer checks the
+// authenticated report and current scope before issuing the existing hook.
+// Drift/incomplete context blocks here until its recovery route is integrated.
+function checkpointDrift(id, parent, before) {
+  if (parent !== null) {
+    const sequence = nodes.find(row => row.id === parent);
+    const index = sequence.children.indexOf(before);
+    if (index < 0) throw Error("STANDARD_DRIFT_CHECKPOINT_POSITION_INVALID");
+    sequence.children.splice(index, 0, id);
+  }
+  seq(id, [id + "_report", id + "_evaluate", id + "_finalize"]);
+  native(id + "_report", "drift_auditor", "drift", "standard-drift-report.v1", ["drift-check"], ["SPEC-R05", "SPEC-R11"]);
+  op(id + "_evaluate", "drift_report_evaluate", occurrence(id + "_report"));
+  op(id + "_finalize", "drift_check_finalize", operation(id + "_finalize", "evaluation_operation_id", id + "_evaluate"));
+}
+checkpointDrift("startup_drift", null, null);
+checkpointDrift("cycle_drift", "cycle_create", "cycle_checkpoint");
+checkpointDrift("closure_drift", "committing", "close_finalize");
+checkpointDrift("promotion_drift", "promotion", "promotion_finalize");
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
   participants: [{ id: "project" }], roles: [
+    { id: "drift_auditor", role: "auditor", action: "analyze", skills: ["drift-check"] },
     { id: "planner", role: "auditor", action: "analyze", skills: ["cycle-create"] },
     { id: "implementer", role: "executor", action: "implement", skills: [] },
     { id: "auditor", role: "auditor", action: "audit", skills: ["cycle-close"] }],
-  policies: [policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
+  policies: [policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
   data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: ["session", "cycle"], inputs } };
@@ -107,7 +131,7 @@ assertAgenticProcessModel(model);
 const catalog = { contract_version: "standard-workflow-catalog.v1", component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
     entry_conditions: ["fresh_session_admission", "single_new_cycle"], remaining_activities: ["existing_session_resume", "thinking_work", "exploring_work_and_spike_conversion",
-      "cycle_choice_and_carryover", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },
+      "cycle_choice_and_carryover", "governed_git_checkpoints", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },
   model: { path: modelPath, sha256: shadowHash(model), model_id: model.model_id, revision: model.revision },
   specification: { path: "docs/SPEC.md", sha256: standardAssetHash(read("docs/SPEC.md")) },
   bindings: nodes.filter(row => row.kind === "operation").map(row => {
