@@ -1,5 +1,6 @@
 import { createStandardSessionBranchIntegration } from "./standard-session-branch-integration.mjs";
 import { createStandardSessionBranchIntegrationAuthority } from "./standard-session-branch-integration-authority.mjs";
+import { createStandardSessionPrOpen } from "./standard-session-pr-open.mjs";
 import { createStandardSessionPush } from "./standard-session-push.mjs";
 import { createStandardSessionPrAdmission } from "./standard-session-pr-admission.mjs";
 import { createStandardSessionClosureAuthority } from "./standard-session-closure-authority.mjs";
@@ -75,7 +76,7 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null }, { validationBoundaryFactory } = {}) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null }, { validationBoundaryFactory } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
@@ -386,15 +387,28 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (shadowHash(canonical) !== shadowHash(prior)) fail("STANDARD_SESSION_PR_CONTEXT_CHANGED");
       return { integration_operation_id: input.integration_operation_id, plan_sha256: shadowHash(plan), plan, output: selected.output, canonical };
     } }) : null;
+  async function readSessionPrAdmission(instance, input) {
+    const selected = acceptedForPromotion(instance, input.admission_operation_id, "session_pr_admit", "STANDARD_SESSION_PUSH_ADMISSION_REQUIRED");
+    const fresh = await sessionPrAdmission.prepare(instance, selected.record.preview.input);
+    if (!fresh.can_apply || fresh.integration_source_sha256 !== selected.record.preview.prepared.integration_source_sha256)
+      fail("STANDARD_SESSION_PUSH_ADMISSION_CHANGED");
+    return { admission_operation_id: input.admission_operation_id, output: selected.output,
+      integration_source_sha256: fresh.integration_source_sha256 };
+  }
   const sessionPush = sessionPrAdmission && sessionPushPort ? createStandardSessionPush({ targetRoot, now, pushPort: sessionPushPort,
+    readCurrent: id => current(id).record, readAdmission: readSessionPrAdmission }) : null;
+  const sessionPrOpen = sessionPush && sessionPullRequestPort ? createStandardSessionPrOpen({ targetRoot, now, pullRequestPort: sessionPullRequestPort,
     readCurrent: id => current(id).record,
-    async readAdmission(instance, input) {
-      const selected = acceptedForPromotion(instance, input.admission_operation_id, "session_pr_admit", "STANDARD_SESSION_PUSH_ADMISSION_REQUIRED");
-      const fresh = await sessionPrAdmission.prepare(instance, selected.record.preview.input);
-      if (!fresh.can_apply || fresh.integration_source_sha256 !== selected.record.preview.prepared.integration_source_sha256)
-        fail("STANDARD_SESSION_PUSH_ADMISSION_CHANGED");
-      return { admission_operation_id: input.admission_operation_id, output: selected.output,
-        integration_source_sha256: fresh.integration_source_sha256 };
+    async readPush(instance, input) {
+      const selected = acceptedForPromotion(instance, input.push_operation_id, "session_push", "STANDARD_SESSION_PR_OPEN_PUSH_REQUIRED");
+      const plan = selected.record.preview.prepared.plan, admission = await readSessionPrAdmission(instance, plan.input);
+      if (shadowHash(admission) !== plan.admission_sha256 || selected.output.facts.session_remote_head_confirmed !== true)
+        fail("STANDARD_SESSION_PR_OPEN_PUSH_CHANGED");
+      const git = await sessionPushPort.inspect(plan.git.branch), result = selected.output.observations.git;
+      if (git.head !== git.remote_head || git.head !== plan.git.head || git.local_sha256 !== plan.git.local_sha256
+        || shadowHash({ ...git, changed: result.changed, effect_status: result.effect_status }) !== shadowHash(result)) fail("STANDARD_SESSION_PR_OPEN_REMOTE_CHANGED");
+      return { push_operation_id: input.push_operation_id, output: selected.output, admission: admission.output,
+        admission_source_sha256: shadowHash(admission) };
     } }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
@@ -763,6 +777,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_open" ? await sessionPrOpen?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PR_OPEN_TRANSPORT_REQUIRED")
         : binding.id === "session_push" ? await sessionPush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PUSH_TRANSPORT_REQUIRED")
         : binding.id === "session_pr_admit" ? await sessionPrAdmission?.prepare(state.record, input) ?? fail("STANDARD_SESSION_PR_AUTHORITY_REQUIRED")
         : binding.id === "session_branch_integration_decision" ? await sessionBranchIntegration?.prepareDecision(state.record, input) ?? fail("STANDARD_SESSION_INTEGRATION_AUTHORITY_REQUIRED")
@@ -849,6 +864,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_pr_open") output = await sessionPrOpen.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_push") output = await sessionPush.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

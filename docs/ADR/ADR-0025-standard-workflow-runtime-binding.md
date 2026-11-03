@@ -1728,3 +1728,20 @@ retained. It grants no retry or remote merge. This is the existing L2/L4 effect
 protocol, not a new durable concept or a claim of general effect reconciliation.
 The production GitHub transport and complete composed/native/archive evidence
 remain separate work.
+
+## Explicit PR creation and recovery
+
+session_pr_open consumes a signed, accepted session_push result and revalidates
+its canonical admission/integration chain and actual remote head. A host-supplied
+provider capability fixes the repository, executable and authenticated transport;
+the IR supplies no endpoint, command, credential or self-authorized result. The
+exact grant binds the source, both branches, remote tips and provider plan.
+
+The GitHub adapter enumerates matching PRs completely within fixed bounds. An
+exact open non-draft PR is recovered without POST. Closed, merged, ambiguous and
+draft results require separate decisions. New creation is re-observed against the
+same repository/head/base. GitHub creation has no expected-head CAS; a race,
+timeout or lost authority after attempted creation remains unknown, with the
+existing owner and journal retained. No automatic retry is supplied. The open
+fact establishes neither review/check admission nor merge consent. The REST
+transport double is distinct from real GitHub and archive/native qualification.

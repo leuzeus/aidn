@@ -23,8 +23,19 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 55); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 56); assert.equal(assets.catalog.activities.length, 8);
 });
+test("PR creation/recovery follows confirmed push through an independent host transport", () => {
+  const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_open").binding;
+  assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "executor");
+  assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
+  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  assert.equal(children.indexOf("session_pr_open"), children.indexOf("session_push") + 1);
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_open").fields.push_operation_id,
+    { source: "operation_id", node_id: "session_push" });
+  assert.equal(assets.catalog.scope.complete_standard_workflow, false);
+});
+
 test("session push is a separate exact-plan effect after read-only admission, with host-owned transport", () => {
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_push").binding;
   assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "executor");

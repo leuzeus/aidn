@@ -2685,3 +2685,23 @@ owner of intent, dispatch and receipts. An external Git effect with no confirmed
 receipt requires reconciliation. Ordinary entrypoints and
 complete_standard_workflow remain unchanged. Native, GitHub and exact-archive
 qualification remain NOT_RUN.
+
+### Session PR creation and recovery
+
+`verify-github-pr-open-fixtures.mjs` uses the actual pinned gh/REST adapter and
+closed request/plan/link contracts, with HTTP transport doubled. It covers
+creation followed by complete re-observation, exact existing PR recovery with no
+POST, repository/ref/URL correlation, pagination limits, changed head/base,
+closed/merged/draft refusal, lost authority and unconfirmed effects. No API
+response or metadata marker grants review approval, merge or synchronization.
+
+`verify-standard-session-pr-open-fixtures.mjs --mode=<files|dual|db-only>` adds
+the actual application/owner protocol and provider adapter. Its doubled REST
+transport reads actual local bare Git refs and retains fake provider records
+outside the checkout. Accepted push/admission/current-instance capabilities are
+injected, so these components do not authenticate the standard host chain.
+Original preview expiry, source changes, exact grants, recovery and unknown-owner
+retention are verified independently. The composed fixture supplies the real
+signed upstream chain on a separate frozen source. A new source branch is seeded
+on its remote during fixture arrangement; only later session delivery is a
+workflow push receipt. GitHub/native/exact-archive qualification remains NOT_RUN.
