@@ -8,7 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `d2975de` et progression de tâches qualifiée hors ligne sur pins 54/52.
+Dernier état intégré relu : `7b3a01a`, progression de tâches qualifiée hors ligne sur pins 54/52.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -37,6 +37,16 @@ encore ouverts.
   Les autres effets de récupération restent ouverts. Le journal d'allocation signé constitue une tranche
   supplémentaire. La reprise native et l'hôte mixte sont des compositions
   internes explicites ; la garde du démarrage ordinaire reste inchangée.
+- La tranche intégrée L2/L4 couvre aussi le plan typé, sa conservation canonique,
+  le DoR, l’entrée en implémentation, la sélection/progression des tâches, les
+  vérifications physiques et l’entrée en VERIFYING. Les cinq scénarios de
+  progression passent hors ligne ; la boucle de tâches est encore un modèle
+  du corpus de tests, pas le workflow standard complet distribué.
+- Préparations isolées, hors de la preuve intégrée 54/52 : audit structuré en
+  qualification applicative et décision humaine de clôture avec contrôles purs
+  et inbox réelle files/dual/db-only. Le vérificateur humain de ces contrôles
+  est un double explicite. Le nouveau raccordement de décision au graphe,
+  les écritures de clôture et le hook final restent à terminer.
 - L3 : en cours, composants IR de démarrage et de squelette de cycle distribués,
   avec raccords de données déclarés dans leurs nouvelles révisions et consommés
   par les tests de ports réels ; le modèle standard complet reste à livrer.
