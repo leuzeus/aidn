@@ -1253,3 +1253,32 @@ resources must not be relabeled as project-owned resources. Probe failures,
 the bounded fake-wire success, native evidence and installed-archive evidence
 are kept distinct in the recorded qualification; full standard acceptance
 remains open.
+
+
+## Addendum: fixed session metadata Git checkpoint
+
+`session_git_checkpoint` is a deterministic, explicitly authorized operation
+between cycle-context refresh and cycle admission. Its input identifies an
+accepted refresh, not Git commands or paths. The host authenticates that refresh
+and startup result in the same instance, then binds CURRENT-STATE, RUNTIME-STATE
+and the owning session to their canonical postimages. Only present dirty
+projections matching those postimages may enter the Git plan; no DB-only export
+or canonical-source substitution is performed.
+
+The local port writes Git objects and the approved session ref with expected
+parent CAS. A private index builds the exact metadata tree; the worktree index
+is replaced under an owned Git index lock after ref/postimage checks. This
+bounded plumbing operation does not invoke repository hooks, filters, a shell,
+or a remote action. It preserves repository configuration and honors configured
+commit signing. This contract is distinct from a general-purpose `git commit`
+or the separate run-owned integration/worktree port.
+
+Foreign changes/index/locks, changed postimages or lost authorization refuse or
+retain uncertainty. An observed commit whose index has not been reconciled is
+reported as `commit_observed`, not a confirmed checkpoint. Retained dispatch
+must not create another commit. The recorded files prefix now qualifies actual
+startup/cycle admission and checkpoints up to `plan` with a fake native wire,
+including exact replay/simulation. A cold resumed divergent-objective case
+retains WAITING without repeating prior effects. Full crash/index reconciliation,
+the rest of the standard route, the native host and installed archive remain
+open; the prefix does not qualify them.

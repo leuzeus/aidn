@@ -78,6 +78,7 @@ const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const standardComposedStop = process.argv.find(value => value.startsWith("--standard-composed-stop="))?.slice("--standard-composed-stop=".length) ?? "plan";
 if (!["plan", "cycle_admit"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
+const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
 const selectedCycleClosureMode = process.argv.find(value => value.startsWith("--cycle-closure-mode="))?.slice("--cycle-closure-mode=".length);
@@ -545,6 +546,18 @@ function mixedFixture(stateMode = "files", options = {}) {
   const open = () => options.closure || options.standardModel ? sharedHost ??= compose() : compose();
   Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model, ...(options.recoveryCycle ? { cycleParameters: { cycle_id: options.changeRequest ? "C002" : "C001", cycle_type: "spike", title: "admitted-recovery" } } : {}) }); return f;
 }
+function restoreComposedFixture(data, options) {
+  if (data.proof_class !== "offline-fixture-only" || shadowHash(data.fixture.configuration) !== data.authorization.configuration_sha256)
+    throw Error("STANDARD_FIXTURE_RESUME_CONFIGURATION_CHANGED");
+  const f = { ...data.fixture }, key = Buffer.alloc(32, 91), t = transport(f, options), controllerFactory = journalController(f, t, options);
+  const model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+  assert.equal(shadowHash(model), loadStandardWorkflowAssets().source.model_sha256);
+  const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
+  let sharedHost;
+  const open = () => sharedHost ??= createStandardWorkflowExecution({ configuration: f.configuration, readSigningKey: () => key,
+    authorize: async () => grant, humanSource: options.humanSource }, { controllerFactory });
+  return Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model });
+}
 async function bootstrapMixed(f) {
   const input = { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" };
   const parameters = f.model.data_bindings ? { parameters: { session: input, ...(f.cycleParameters ? { cycle: f.cycleParameters } : {}) } } : {};
@@ -668,7 +681,9 @@ if (process.argv[2] === "--mixed-continue") {
       return claim && shadowHash(claim) === shadowHash(source) && source.question_sha256 === shadowHash(question)
         ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" };
     } };
-    const f = mixedFixture(mode, { standardModel: true, humanSource, answer({ params }) {
+    const resumed = standardComposedResume ? JSON.parse(fs.readFileSync(standardComposedResume, "utf8")) : null;
+    const factory = standardComposedResume ? (_mode, options) => restoreComposedFixture(resumed, options) : mixedFixture;
+    const f = factory(mode, { standardModel: true, humanSource, answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       return { outcome: "completed", summary: "Scoped diagnostic fixture; production ports remain real", report: {
         contract_version: "standard-drift-report.v1", context_sha256: observed.context_sha256,
@@ -677,16 +692,24 @@ if (process.argv[2] === "--mixed-continue") {
         split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
         recommendation: "continue", rationale: "Fake native wire diagnostic; no recovery or completion claim", evidence_refs: observed.evidence_refs } };
     } });
-    const parameters = { session: { session_id: "S001", session_branch: "S001-standard", objective: "Exercise the published standard workflow on a disposable project" },
-      cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: "Observe actual R05 before the cycle checkpoint" } };
-    const initial = f.open().initialize({ parameters });
-    f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
+    // The nominal prefix keeps one admitted objective. A distinct cycle goal
+    // raises the real objective_delta signal and requires the recovery route.
+    const objective = "Exercise the published standard workflow on a disposable project";
+    const parameters = { session: { session_id: "S001", session_branch: "S001-standard", objective },
+      cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective } };
+    let auth;
+    if (standardComposedResume) auth = resumed.authorization;
+    else {
+      const initial = f.open().initialize({ parameters });
+      f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
+      auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 300000;
+      fs.writeFileSync(path.join(f.configuration.control_root, "standard-resume.json"), JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs }, authorization: auth }));
+    }
     const operations = [];
     for (let step = 0; step < 32; step++) {
       const state = f.open().inspect(), frame = state.cursor.occurrences.find(row => row.status === "READY");
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
-      const auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 300000;
       let result = await f.open().step({ write: true, authorization: auth });
       if (result.operation_id) {
         if (result.status === "waiting_for_human") {
@@ -709,9 +732,10 @@ if (process.argv[2] === "--mixed-continue") {
     const final = f.open().inspect();
     assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
-    assert.equal(operations.find(row => row.intent.binding_ref === "drift_check_finalize").results.at(-1).output.facts.drift_check_completed, true);
-    if (standardComposedStop === "plan") assert.equal(operations.find(row => row.intent.binding_ref === "cycle_checkpoint_finalize").results.at(-1).output.outcome, "completed");
-    assert.equal(f.t.sessions.length, standardComposedStop === "plan" ? 2 : 1); assert.ok(f.t.sessions.every(row => row.closed));
+    const acceptedOperations = final.record.events.filter(event => event.kind === "operation_intent").map(event => f.open().readOperation(event.intent.operation_id));
+    assert.equal(acceptedOperations.find(row => row.intent.binding_ref === "drift_check_finalize").results.at(-1).output.facts.drift_check_completed, true);
+    if (standardComposedStop === "plan") assert.equal(acceptedOperations.find(row => row.intent.binding_ref === "cycle_checkpoint_finalize").results.at(-1).output.outcome, "completed");
+    assert.equal(f.t.sessions.length, (standardComposedStop === "plan" ? 2 : 1) - (resumed?.prior_native_activities ?? 0)); assert.ok(f.t.sessions.every(row => row.closed));
     const replay = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins,
       scopeId: final.record.scope_id, parameters: final.record.initial_parameters, facts: final.record.initial_facts, events: final.record.events });
     assert.equal(replay.trace.at(-1).instance_sha256, final.record.instance_sha256);

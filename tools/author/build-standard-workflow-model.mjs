@@ -47,6 +47,8 @@ for (const original of cycle.nodes) {
   if (copy.children) copy.children = copy.children.map(rename);
   nodes.push(copy);
 }
+nodes.find(row => row.id === "cycle_create").children.splice(1, 0, "session_git_checkpoint");
+op("session_git_checkpoint", "session_git_checkpoint", operation("session_git_checkpoint", "context_operation_id", "cycle_refresh_before"));
 for (const original of cycle.data_bindings.inputs) {
   const copy = structuredClone(original); copy.node_id = rename(copy.node_id);
   for (const field of Object.values(copy.fields)) {

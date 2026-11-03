@@ -2332,3 +2332,29 @@ which is not qualified while cycle admission still lacks the governed Git
 checkpoint. Preserve failures with `--retain-on-failure`, inspect the signed
 journal and actual gate, and start a fresh disposable instance after an authored
 model revision. Never silently convert or rerun an uncertain old instance.
+
+
+### Governed session Git checkpoint
+
+`verify-workflow-git-checkpoint-port-fixtures.mjs` uses real disposable Git
+repositories. It checks a metadata-only local object/ref/index checkpoint,
+read-only inspection, foreign/index/postimage/authorization refusals and
+post-ref uncertainty. `inspectCommit` distinguishes an observed commit from a
+fully reconciled index; replaying the effect is not recovery.
+
+The distributed standard model places `session_git_checkpoint` after context
+refresh and before unchanged cycle admission. The longer composed selector
+`--standard-composed-mode=files --standard-composed-stop=plan` exercises that
+connection through the actual application ports and a simulated native wire.
+Its PASS must come from the current frozen model/package, not these port
+fixtures. True native and exact installed-archive qualification remain separate.
+
+The [recorded files qualification](qualification/agentic-process/standard-governed-git-prefix-2026-11-03.json)
+separates the failed fixture deadline recreation, a cold-resumed objective-delta
+refusal, and the nominal PASS through 17 application operations and two
+fake-wire diagnostics. The nominal case keeps one admitted objective and one
+native authorization; it never refreshes a deadline per activity. This does not
+acknowledge a distinct goal or implement its recovery route. The retained
+refusal has an exact replay and remains WAITING, with one session, one governed
+commit and one cycle creation. The successful prefix stops READY at `plan`;
+full standard, other storage modes, real native and archive evidence remain open.

@@ -2639,3 +2639,34 @@ la simulation retrouvent exactement l'instance courante ; celle-ci reste
 RUNNING à l'entrée de `cycle_admit`. Le gate obligatoire inclut ce contrôle
 borné. Les variantes de stockage de ce nouveau préfixe, le client natif réel,
 l'archive installée et le parcours COMMITTING complet restent non qualifiés.
+
+
+### L2-GIT — raccord en cours
+
+Le port local de checkpoint gouverné dispose de dix contrôles hors ligne sur
+Git réel : observation sans mutation, portée/parent/postimages, refus de
+changements étrangers ou d'index, autorisation, confirmation perdue après
+mise à jour de ref et non-répétition du commit observé. Le binding déterministe
+`session_git_checkpoint`, son plan fermé, sa provenance signée et son insertion
+après `cycle_refresh_before` sont maintenant implémentés dans la tranche en
+cours. La portée vient du contexte accepté et du démarrage confirmé : trois
+métadonnées fixes, sans paramètre auteur de chemins ou de commande.
+
+Le modèle courant déclare 69 nœuds et 40 occurrences d'opérations. La
+[qualification enregistrée](qualification/agentic-process/standard-governed-git-prefix-2026-11-03.json)
+confirme le préfixe files jusqu'à l'entrée de planification : 17 opérations
+applicatives réelles, deux diagnostics de transport simulé, les deux
+finalisations R05, le checkpoint Git, l'admission inchangée et la création du
+cycle, son audit de branche et son checkpoint. Replay et simulation retrouvent
+exactement le hash de l'instance RUNNING, prête sur `plan`.
+
+Deux tentatives sont conservées : refus correct d'une augmentation d'échéance
+introduite par la fixture, puis reprise dans un nouveau processus avec
+l'autorisation initiale. Cette reprise ne répète ni session, ni commit, ni
+création de cycle ; R05 refuse ensuite les objectifs divergents et conserve
+WAITING, sans faits de réussite. Le scénario nominal emploie un objectif commun,
+une seule autorisation et les mêmes gardes.
+
+Les incertitudes d'index après effet Git, dual/DB-only pour ce nouveau préfixe,
+la suite travail/clôture/promotion, les autres parcours, le natif et l'archive
+installée restent à prouver. Le lot et A1–A10 demeurent ouverts.

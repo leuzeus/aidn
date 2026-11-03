@@ -308,11 +308,26 @@ with a fake native wire and actual application ports. Its replay/simulation use
 the exact published model and reducer. The host is reopened after the retained
 native result in the same process; this is not general native process resume.
 
-A governed Git checkpoint is now an explicit missing L2 deliverable: actual
-cycle admission refuses the metadata changes created by startup. Add the
-operation to the IR between `cycle_context_refresh` and `cycle_admit`, with a
-fixed host-derived scope, explicit authorization, correlated observed commit
-and durable uncertain-effect handling. Do not weaken the clean-tree admission
-or move an external fixture commit into an unverified successful receipt.
+The earlier bounded startup probe exposed a missing governed Git checkpoint:
+actual cycle admission refused the metadata changes created by startup. The
+connection below now supplies that operation from the IR with a fixed host-derived
+scope and explicit authorization. The clean-tree admission remains unchanged;
+an external fixture commit does not substitute for an authenticated receipt.
 The full COMMITTING cycle, other modes/tail, ordinary selection, actual native
 host and exact installed archive remain unqualified.
+
+
+## Governed Git connection in progress
+
+`session_git_checkpoint` consumes the accepted `cycle_context_refresh` and
+confirmed startup result. Its fixed application adapter authenticates canonical
+session/current/runtime postimages, authorizes the concrete local Git plan and
+observes the parent, commit and index. The IR inserts it before `cycle_admit`;
+that clean-tree admission is preserved. The local port's ten real-Git fixture
+checks are offline component evidence. The separate
+[files prefix qualification](../qualification/agentic-process/standard-governed-git-prefix-2026-11-03.json)
+executes 17 actual application operations and two fake-wire diagnostics through
+the distributed model, reaches `plan`, and reproduces the exact instance hash
+by replay/simulation. The retained cold-resume refusal remains WAITING and
+proves no repeated session, governed commit or cycle creation. Uncertain-index
+recovery, the full standard route, native host and installed archive remain open.

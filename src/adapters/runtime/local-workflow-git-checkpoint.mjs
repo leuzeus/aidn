@@ -1,0 +1,140 @@
+import fs from "node:fs";
+import path from "node:path";
+import { createHash, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { assertWorkflowGitCheckpointPort } from "../../core/ports/workflow-git-checkpoint-port.mjs";
+import { agentRunPhysicalPath } from "../../application/runtime/agent-run-configuration-service.mjs";
+
+const fail = code => { throw Object.assign(new Error(code), { code }); };
+const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+const sha = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value ?? "");
+const exact = value => JSON.stringify(value);
+const scopePath = name => /^(?:docs\/audit\/(?:CURRENT-STATE|RUNTIME-STATE)\.md|docs\/audit\/sessions\/S[0-9]{3,6}\.md)$/.test(name);
+
+// This port writes Git objects, one approved ref and its worktree index. It
+// does not execute repository hooks, filters, a shell or a remote operation.
+// Configured commit signing remains applicable to commit-tree.
+export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = process.env }, { beforeRef = null, afterRef = null } = {}) {
+  const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
+  if (Object.keys(environment).some(name => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(name)))
+    fail("WORKFLOW_GIT_ENV_SCOPE_CONFLICT");
+  const env = Object.fromEntries(Object.entries(environment).filter(([name]) => !/^GIT_/i.test(name)));
+  const run = (args, { input, binary = false, variables = {}, acceptable = [] } = {}) => {
+    try { return execFileSync("git", ["-C", root, "-c", "core.fsmonitor=false", "-c", "gc.auto=0", "-c", "maintenance.auto=false", ...args], {
+      input, encoding: binary ? undefined : "utf8", env: { ...env, GIT_OPTIONAL_LOCKS: "0", ...variables },
+      windowsHide: true, timeout: 60000, maxBuffer: 4 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"] }); }
+    catch (cause) { if (acceptable.includes(cause.status)) return null; throw Object.assign(new Error("WORKFLOW_GIT_COMMAND_FAILED"), { code: "WORKFLOW_GIT_COMMAND_FAILED", command: args[0], exit_code: cause.status }); }
+  };
+  if (path.resolve(run(["rev-parse", "--show-toplevel"]).trim()).toLowerCase() !== root.toLowerCase()) fail("WORKFLOW_GIT_TOPLEVEL_REQUIRED");
+  const gitDir = agentRunPhysicalPath(run(["rev-parse", "--absolute-git-dir"]).trim(), { directory: true });
+  const indexPath = agentRunPhysicalPath(path.resolve(root, run(["rev-parse", "--git-path", "index"]).trim()), { missing: true });
+  const lockPath = indexPath + ".lock";
+  function file(name) {
+    if (!scopePath(name)) fail("WORKFLOW_GIT_PATH_SCOPE_INVALID");
+    const absolute = agentRunPhysicalPath(path.join(root, name));
+    const before = fs.lstatSync(absolute);
+    if (!before.isFile() || before.nlink !== 1) fail("WORKFLOW_GIT_UNSAFE_FILE");
+    const bytes = fs.readFileSync(absolute), after = fs.lstatSync(absolute);
+    if (before.ino !== after.ino || before.dev !== after.dev || before.size !== after.size || before.mtimeMs !== after.mtimeMs) fail("WORKFLOW_GIT_FILE_RACE");
+    return { bytes, sha256: hash(bytes) };
+  }
+  const indexHash = () => fs.existsSync(indexPath) ? hash(fs.readFileSync(agentRunPhysicalPath(indexPath))) : null;
+  function inspect() {
+    const ref = run(["symbolic-ref", "--quiet", "HEAD"], { acceptable: [1] })?.trim() ?? null;
+    const head = run(["rev-parse", "--verify", "HEAD"]).trim();
+    if (!sha(head) || !ref?.startsWith("refs/heads/")) fail("WORKFLOW_GIT_NAMED_HEAD_REQUIRED");
+    const status = run(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+    const changes = status.split("\0").filter(Boolean).map(entry => {
+      if (entry.length < 4 || /[RCU]/.test(entry.slice(0, 2))) fail("WORKFLOW_GIT_STATUS_UNSUPPORTED");
+      return { status: entry.slice(0, 2), path: entry.slice(3) };
+    });
+    const indexClean = run(["diff", "--cached", "--quiet", "HEAD", "--"], { acceptable: [1] }) !== null;
+    const identity = run(["var", "GIT_AUTHOR_IDENT"]).trim().match(/^([^\r\n<>]+) <([^\r\n<>]+)> [0-9]+ [+-][0-9]{4}$/);
+    if (!identity) fail("WORKFLOW_GIT_IDENTITY_REQUIRED");
+    const signing = run(["config", "--bool", "--get", "commit.gpgSign"], { acceptable: [1] })?.trim() === "true";
+    return { branch: ref.slice(11), ref, head, index_sha256: indexHash(), index_clean: indexClean,
+      lock_present: fs.existsSync(lockPath), changes, identity: { name: identity[1], email: identity[2] }, signing };
+  }
+  function assertMaterial(plan) {
+    if (!/^op_[a-f0-9]{40}$/.test(plan?.operation_id ?? "") || !/^[a-f0-9]{64}$/.test(plan.plan_sha256 ?? "")
+      || !Number.isSafeInteger(plan.prepared_at_ms) || !Array.isArray(plan.files) || plan.files.length > 3
+      || new Set(plan.files.map(row => row.path)).size !== plan.files.length) fail("WORKFLOW_GIT_PLAN_INVALID");
+    for (const row of plan.files) if (!scopePath(row.path) || !/^[a-f0-9]{64}$/.test(row.sha256)) fail("WORKFLOW_GIT_PLAN_INVALID");
+  }
+  function assertFresh(plan, { ownLock = false } = {}) {
+    assertMaterial(plan);
+    const current = inspect();
+    for (const key of ["ref", "head", "index_sha256", "identity", "signing"])
+      if (exact(current[key]) !== exact(plan.observed[key])) fail("WORKFLOW_GIT_PRECONDITION_CHANGED");
+    if (!current.index_clean || current.lock_present && !ownLock || current.changes.some(row => !plan.files.some(file => file.path === row.path))
+      || current.changes.length !== plan.files.length) fail("WORKFLOW_GIT_FOREIGN_CHANGES");
+    for (const row of plan.files) if (file(row.path).sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");
+    return current;
+  }
+  const message = plan => `chore: checkpoint governed session metadata\n\nAIDN-Operation: ${plan.operation_id}\nAIDN-Plan: ${plan.plan_sha256}\n`;
+  function inspectCommit(plan) {
+    assertMaterial(plan);
+    const head = run(["rev-parse", "--verify", plan.observed.ref]).trim();
+    if (head === plan.observed.head) return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_NOT_OBSERVED" };
+    const parent = run(["rev-list", "--parents", "-n", "1", head]).trim().split(" ");
+    const body = run(["show", "-s", "--format=%B", head]);
+    const paths = run(["diff-tree", "--no-commit-id", "--name-only", "-r", "-z", head]).split("\0").filter(Boolean).sort();
+    if (parent.length !== 2 || parent[1] !== plan.observed.head || body.trimEnd() !== message(plan).trimEnd()
+      || exact(paths) !== exact(plan.files.map(row => row.path).sort())) return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_AMBIGUOUS" };
+    for (const row of plan.files) if (hash(run(["show", `${head}:${row.path}`], { binary: true })) !== row.sha256)
+      return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_POSTIMAGE_MISMATCH" };
+    const workspace = inspect(), ready = workspace.ref === plan.observed.ref && workspace.head === head && workspace.index_clean && workspace.changes.length === 0;
+    return { status: ready ? "confirmed" : "commit_observed", commit_sha: head, parent_sha: parent[1],
+      index_reconciled: workspace.index_clean, working_tree_clean: workspace.changes.length === 0, lock_present: workspace.lock_present };
+  }
+  async function commit(plan, { assertAuthorized } = {}) {
+    let attempted = false, lockFd = null, temporary = null, lockToken = null, primary = null;
+    function releaseOwnLock() {
+      if (lockFd !== null) { fs.closeSync(lockFd); lockFd = null; }
+      if (lockToken !== null) {
+        if (!fs.existsSync(lockPath) || fs.readFileSync(lockPath, "utf8") !== lockToken) fail("WORKFLOW_GIT_LOCK_OWNERSHIP_CHANGED");
+        fs.unlinkSync(lockPath); lockToken = null;
+      }
+    }
+    try {
+      if (typeof assertAuthorized !== "function") fail("WORKFLOW_GIT_AUTHORIZATION_REQUIRED");
+      assertFresh(plan); await assertAuthorized(); assertFresh(plan);
+      if (!plan.files.length) return { status: "no_change", head: plan.observed.head, effect_status: "no_effect" };
+      lockToken = JSON.stringify({ operation_id: plan.operation_id, plan_sha256: plan.plan_sha256, token: randomUUID() });
+      try { lockFd = fs.openSync(lockPath, "wx"); } catch { fail("WORKFLOW_GIT_INDEX_LOCKED"); }
+      attempted = true; fs.writeFileSync(lockFd, lockToken); fs.fsyncSync(lockFd);
+      assertFresh(plan, { ownLock: true });
+      temporary = fs.mkdtempSync(path.join(gitDir, "aidn-metadata-checkpoint-"));
+      const privateIndex = path.join(temporary, "index"), variables = { GIT_INDEX_FILE: privateIndex };
+      run(["read-tree", plan.observed.head], { variables });
+      for (const row of plan.files) {
+        const captured = file(row.path); if (captured.sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");
+        const blob = run(["hash-object", "-w", "--stdin"], { input: captured.bytes, variables }).trim();
+        run(["update-index", "--add", "--cacheinfo", `100644,${blob},${row.path}`], { variables });
+      }
+      const tree = run(["write-tree"], { variables }).trim(), date = `${Math.floor(plan.prepared_at_ms / 1000)} +0000`;
+      const identity = { GIT_AUTHOR_NAME: plan.observed.identity.name, GIT_AUTHOR_EMAIL: plan.observed.identity.email,
+        GIT_COMMITTER_NAME: plan.observed.identity.name, GIT_COMMITTER_EMAIL: plan.observed.identity.email, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date };
+      const next = run(["commit-tree", ...(plan.observed.signing ? ["-S"] : []), tree, "-p", plan.observed.head], { input: message(plan), variables: { ...variables, ...identity } }).trim();
+      await assertAuthorized(); assertFresh(plan, { ownLock: true });
+      await beforeRef?.({ expected_head: plan.observed.head });
+      run(["update-ref", plan.observed.ref, next, plan.observed.head]);
+      await afterRef?.({ commit_sha: next });
+      if (run(["symbolic-ref", "--quiet", "HEAD"]).trim() !== plan.observed.ref || indexHash() !== plan.observed.index_sha256)
+        fail("WORKFLOW_GIT_INDEX_RECONCILIATION_REQUIRED");
+      for (const row of plan.files) if (file(row.path).sha256 !== row.sha256) fail("WORKFLOW_GIT_POSTIMAGE_CHANGED");
+      fs.renameSync(privateIndex, indexPath);
+      const proof = inspectCommit(plan); if (proof.status !== "confirmed" || proof.commit_sha !== next) fail("WORKFLOW_GIT_COMMIT_UNCONFIRMED");
+      await assertAuthorized();
+      const final = inspect(); if (final.changes.length || !final.index_clean) fail("WORKFLOW_GIT_FINAL_STATE_UNCONFIRMED");
+      fs.rmdirSync(temporary); temporary = null;
+      releaseOwnLock();
+      return { ...proof, lock_present: false, effect_status: "confirmed" };
+    } catch (cause) { primary = cause; cause.effect_status = attempted ? "unknown" : "no_effect"; throw cause; }
+    finally {
+      try { releaseOwnLock(); } catch (cause) { if (!primary) { cause.effect_status = attempted ? "unknown" : "no_effect"; throw cause; } }
+      // An uncertain private index is retained for explicit reconciliation.
+    }
+  }
+  return assertWorkflowGitCheckpointPort(Object.freeze({ inspect, commit, inspectCommit }));
+}

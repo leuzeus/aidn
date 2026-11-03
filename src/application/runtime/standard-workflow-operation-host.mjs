@@ -1,3 +1,4 @@
+import { createStandardWorkflowGitCheckpoint } from "./standard-workflow-git-checkpoint.mjs";
 import { createStandardBaselinePromotionHook } from "./standard-baseline-promotion-hook.mjs";
 import { createStandardBaselinePromotionAuthority } from "./standard-baseline-promotion-authority.mjs";
 import { createStandardBaselinePromotion, baselinePromotionSourceMaterialSha256 } from "./standard-baseline-promotion.mjs";
@@ -167,14 +168,23 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const cycleCloseHook = processAuthority ? createStandardCycleCloseHook({ targetRoot, now,
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
-  function acceptedForPromotion(instance, id, binding) {
+  function acceptedForPromotion(instance, id, binding, reason = "STANDARD_PROMOTION_ACCEPTED_SOURCE_REQUIRED") {
     const record = retained(id).record, result = record.results.at(-1);
     const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding).at(-1);
     if (latest?.intent.operation_id !== id || record.intent.binding_ref !== binding || record.intent.instance_id !== instance.instance_id
       || record.intent.scope_id !== instance.scope_id || record.phase !== "receipted" || result?.receipt.outcome !== "completed"
-      || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail("STANDARD_PROMOTION_ACCEPTED_SOURCE_REQUIRED");
+      || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail(reason);
     return { record, output: result.output };
   }
+  const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
+    readContext(instance, input) {
+      const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
+      const startId = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "session_start_finalize").at(-1)?.intent.operation_id;
+      if (!startId) fail("STANDARD_GIT_ACCEPTED_START_REQUIRED");
+      const start = acceptedForPromotion(instance, startId, "session_start_finalize", "STANDARD_GIT_ACCEPTED_START_REQUIRED");
+      if (start.record.preview.input.session_id !== context.record.preview.prepared.plan.input.session_id) fail("STANDARD_GIT_ACCEPTED_START_REQUIRED");
+      return { context_plan: context.record.preview.prepared.plan, context_output: context.output, start_operation_id: startId, start_output: start.output };
+    } }) : null;
   const promotionAuthority = processAuthority ? createStandardBaselinePromotionAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readTerminalRecord: readAcceptedTerminalRecord,
     human: { question: record => human.question(record), captured: record => human.captured(record) } }) : null;
@@ -497,7 +507,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const resolved = resolveStandardProcessInput({ instance: state.record, occurrenceId, input, readOperation: id => retained(id).record });
       input = resolved.input;
       assertStandardOperationInput(binding.id, input);
-      const prepared = binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+      const prepared = binding.id === "session_git_checkpoint" ? await sessionGitCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
+        : binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "baseline_promotion_decision" ? await promotionReview?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_REVIEW_AUTHORITY_REQUIRED")
@@ -603,7 +614,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_mode_apply") {
           if (shadowHash(decisionInput(state.record, record.preview.input)) !== shadowHash(record.preview.prepared.plan.input)) fail("STANDARD_MODE_DECISION_CHANGED");
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
-        } else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        } else if (record.intent.binding_ref === "session_git_checkpoint") output = await sessionGitCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "baseline_promotion_finalize") output = await baselinePromotionHook.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
