@@ -57,6 +57,14 @@ encore ouverts.
   l’absence de fallback et la préservation SQLite lors d’un refus du wrapper.
   La [preuve d’admission de promotion](qualification/agentic-process/promotion-admission-2026-11-03.json)
   ne réalise ni décision de promotion, ni écriture baseline, ni raccord IR.
+- L’admission pré-écriture de promotion est également raccordée au validateur
+  canonique du cycle DONE sélectionné : libérer le focus ne doit pas réactiver
+  le cycle ni exiger un nouveau DoR d’implémentation. Les contrôles de sélection,
+  trace/gaps/usage et de fraîcheur runtime restent requis. Les preuves ciblées
+  et limites sont consignées dans la
+  [preuve pré-écriture](qualification/agentic-process/promotion-prewrite-2026-11-03.json).
+  Ce raccord ne réalise ni capture humaine de promotion, ni écriture baseline,
+  ni hook final, ni parcours standard complet.
 - L’écriture des six artefacts terminaux et le hook final restent des prototypes
   séparés. Les composants CAS et les contrôles du véritable hook passent, mais
   leur chaîne commune n’est pas qualifiée. Un essai d’écriture a refusé avant

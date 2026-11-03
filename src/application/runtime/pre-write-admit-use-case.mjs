@@ -63,10 +63,12 @@ const SKILL_POLICIES = Object.freeze({
     requireRuntimeClearInDbModes: true,
   },
   "promote-baseline": {
+    // Select a completed cycle without reactivating it or re-entering DoR.
+    // The pre-write port also requires the specialized canonical admission.
     requireBranchKind: true,
-    requireActiveCycle: true,
-    requireCycleStatus: true,
-    requireDorReady: true,
+    requireActiveCycle: false,
+    requireCycleStatus: false,
+    requireDorReady: false,
     requireFreshCurrentState: true,
     requireRuntimeClearInDbModes: true,
   },

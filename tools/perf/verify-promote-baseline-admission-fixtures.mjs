@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { verifyCanonicalBaselinePromotion } from "./verify-promote-baseline-canonical-fixtures.mjs";
+import { verifyPromotionPrewrite } from "./verify-promote-baseline-prewrite-fixtures.mjs";
 import { prepareActivationFixture, isActivationFixtureSource } from "./test-activation-fixture-lib.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -218,11 +219,14 @@ async function main() {
     args = parseArgs(process.argv.slice(2)); tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
     const runs = CASES.map(testCase => runCase(tmpRoot, testCase, target => createdTargets.push(target)));
     const canonical = await verifyCanonicalBaselinePromotion(), pass = runs.every(run => run.pass === true) && canonical.every(run => run.pass);
-    const output = { ts: new Date().toISOString(), runs, canonical, pass };
+    const prewrite = [];
+    for (const mode of ["files", "dual", "db-only"]) prewrite.push(await verifyPromotionPrewrite(mode));
+    const output = { ts: new Date().toISOString(), runs, canonical, prewrite, pass };
     if (args.json) console.log(JSON.stringify(output, null, 2));
     else {
       for (const run of runs) console.log(`${run.pass ? "PASS" : "FAIL"} ${run.id}`);
       for (const run of canonical) console.log(`PASS ${run.id}`);
+      for (const run of prewrite) console.log(`PASS promotion pre-write ${run.mode}: ${run.checks.length} cases`);
       console.log(`Result: ${pass ? "PASS" : "FAIL"}`);
     }
     if (!pass) process.exitCode = 1;

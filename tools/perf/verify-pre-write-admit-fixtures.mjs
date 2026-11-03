@@ -801,6 +801,12 @@ function main() {
       summary: "nominal + adversarial pending",
       rationale: "explicit temporary waiver approved in cycle decisions",
     });
+    // These promotion cases isolate usage readiness; provide the independently
+    // required traceability rather than relying on generic admission ignoring it.
+    for (const target of [promoteBaselineBlockedTarget, promoteBaselineWaivedTarget]) {
+      fs.writeFileSync(path.join(target, "docs/audit/cycles/C101-feature-alpha/traceability.md"),
+        "# Traceability\n\n| REQ | TEST | Evidence |\n| REQ-001 | TEST-001 | fixture |\n", "utf8");
+    }
     installDbOnlyIndexFixture(repoRoot, dbOnlyRequirementsTarget);
     installDbOnlyIndexFixture(repoRoot, dbOnlyCloseSessionTarget);
     installDbOnlyIndexFixture(repoRoot, dbOnlyDbFirstTarget);

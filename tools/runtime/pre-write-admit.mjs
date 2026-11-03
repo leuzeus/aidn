@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readActivation } from "../../src/application/install/project-activation-service.mjs";
+import { runPromoteBaselineAdmitUseCase } from "../../src/application/runtime/promote-baseline-admit-use-case.mjs";
 import { projectAdmissionAgentView, projectAgentDecisionError } from "../../src/application/runtime/agent-decision-projection.mjs";
 import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
 import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
@@ -665,6 +666,7 @@ export async function preWriteAdmit({
   sharedCoordination = null,
   sharedCoordinationOptions = {},
   nativeRequest = undefined,
+  promotionCycleId = null,
 } = {}) {
   const activationState = readActivation({ targetRoot: path.resolve(process.cwd(), targetRoot ?? ".") });
   const activation = {
@@ -936,6 +938,16 @@ export async function preWriteAdmit({
     })
     : null;
 
+  const promotion = skill === "promote-baseline"
+    ? await runPromoteBaselineAdmitUseCase({ targetRoot: absoluteTargetRoot, mode, cycleId: promotionCycleId }) : null;
+  if (promotion) {
+    addCheck(checks, "baseline_promotion_target", promotion.ok === true,
+      promotion.reason_code ?? "canonical promotion target admission passed",
+      { reason_code: promotion.reason_code, cycle_id: promotion.target_cycle?.cycle_id ?? null });
+    if (promotion.ok !== true) blockingReasons.push(...(promotion.blocking_reasons.length
+      ? promotion.blocking_reasons : [promotion.reason_code ?? "baseline promotion target admission failed"]));
+  }
+
   evaluatePreWriteGenericWorkflowGates({
     checks,
     addCheck,
@@ -954,11 +966,11 @@ export async function preWriteAdmit({
     derivedFirstPlanStep,
     dorState,
     dorOverrideReason,
-    cycleState,
-    usageMatrixScope,
-    usageMatrixState,
-    usageMatrixRationale,
-    activeCycleLabel: activeCycle,
+    cycleState: promotion ? promotion.target_cycle?.state ?? "UNKNOWN" : cycleState,
+    usageMatrixScope: promotion ? promotion.validation_summary.usage_matrix_scope ?? "local" : usageMatrixScope,
+    usageMatrixState: promotion ? promotion.validation_summary.usage_matrix_state ?? "NOT_DEFINED" : usageMatrixState,
+    usageMatrixRationale: promotion ? promotion.validation_summary.usage_matrix_rationale ?? "none" : usageMatrixRationale,
+    activeCycleLabel: promotion ? promotion.target_cycle?.cycle_id ?? "none" : activeCycle,
     cycleBranch,
     mappedCycleBranch,
     canonicalNone,

@@ -1,0 +1,101 @@
+{
+  "proof_class": "offline-selected-promotion-prewrite",
+  "status": "PASS",
+  "source_base": "ccd8fb8ed3f56b0bb85e889c035ee73b184045e7",
+  "lane": "ASSURED",
+  "scope": "Actual pre-write admission delegates target selection and DONE/traceability/open-gap/usage checks to canonical promotion admission without requiring that completed cycle to remain active or re-enter implementation DoR.",
+  "authority_resolution": {
+    "profile": "TARGETED",
+    "finding": "The post-closure empty focus was refused by active-cycle/status/implementation-DoR checks, while the mandatory promote-baseline skill and specialized admission select a DONE target.",
+    "resolution": "Keep the skill pre-write gate and add canonical selected-target admission inside it; preserve activation, runtime repair/freshness and source-of-truth checks. Internal selection changes no focus and grants no effect.",
+    "limits": "This is admission, not completed-cycle provenance authentication or actual baseline effects. The existing specialized admission checks open-gap entries; this proof does not claim a full audit of all cycle documents."
+  },
+  "source_sha256": {
+    "tools/runtime/pre-write-admit.mjs": "53426731f4c1cca04076854000d007c283b57b80a7232a822fe303d97d883cc8",
+    "src/application/runtime/pre-write-admit-use-case.mjs": "8383a9942487aba6cfafd8d6a57d715e5cc8d93d5d62d1f962d8605740904361",
+    "tools/perf/verify-pre-write-admit-use-case-fixtures.mjs": "1eef01e51b14d572a254333f4bde7e0809ad92a54f452ace691ca96c2ca947b0",
+    "tools/perf/verify-pre-write-admit-fixtures.mjs": "cfde2f306862e8a7472bc49ea4d42db150c6f109170c6d210e8e7ec049447012",
+    "tools/perf/verify-promote-baseline-admission-fixtures.mjs": "2bd55b9c7c5f205f07b6e05dae7978a749924839aae0ea067de1b9ca664ad5d2",
+    "tools/perf/verify-promote-baseline-prewrite-fixtures.mjs": "c6d4f935ca52dc3d315fd0c626a0d86ea9e139199e1e95396eecbdcb6b469aec"
+  },
+  "validation": {
+    "promotion_required_suite": {
+      "status": "PASS",
+      "handle": 76714,
+      "cases": 51,
+      "breakdown": {
+        "historical_wrapper": 5,
+        "canonical_admission": 17,
+        "prewrite_files": 9,
+        "prewrite_dual": 10,
+        "prewrite_db_only": 10
+      }
+    },
+    "prewrite_use_case": {
+      "status": "PASS"
+    },
+    "public_prewrite_regressions": {
+      "status": "PASS",
+      "handle": 34368,
+      "exit_code": 0,
+      "summary": "All public pre-write fixture assertions, lossless JSON/native-note cases and injected-failure cleanup passed; stdout pass:true and terminal zero."
+    },
+    "governance_route": {
+      "status": "PASS",
+      "lane": "ASSURED",
+      "snapshot": "ecd28e0f91d67b186bdf9c9257a2017fd45fd339"
+    },
+    "gate_catalog": {
+      "status": "PASS",
+      "gates": 63,
+      "locked_yaml": "2.9.1"
+    },
+    "pack_topology": {
+      "status": "PASS",
+      "handle": 33430,
+      "fresh_clients": 5,
+      "injected_failure_cleanup": "PASS",
+      "scope": "Source/scaffold package topology, not full standard workflow on exact installed archive"
+    },
+    "source_of_truth": {
+      "status": "PASS",
+      "policies": 35
+    },
+    "metadata": {
+      "status": "PASS",
+      "policies": 37
+    },
+    "governance_coverage": {
+      "status": "PASS",
+      "concepts": 38,
+      "scope": "Policy coverage only; standard workflow execution not completed"
+    },
+    "documentation": {
+      "status": "PASS",
+      "local_links": 387
+    },
+    "markdown_contract": {
+      "status": "PASS"
+    },
+    "diff_check": {
+      "status": "PASS"
+    },
+    "current_source_diagnostic_cases": {
+      "status": "PASS",
+      "handle": 99950,
+      "mode": "files",
+      "cases": 9,
+      "scope": "Current success wording and unchanged predicates; public CLI and schema included"
+    }
+  },
+  "native": "NOT_RUN",
+  "installed_archive": "NOT_RUN",
+  "full_standard_model": "NOT_COMPLETE",
+  "promotion_human_and_effect_ports": "NOT_QUALIFIED",
+  "updated_at": "2026-11-03T05:49:36.378693+00:00",
+  "observational_followup": {
+    "before_sha256": "18399c8d17db1cdb9f815dd3a35ff08b9b4c236e17874f52a3ef503c2f981409",
+    "change": "Success diagnostic now states that the canonical target admission passed. It does not claim a complete gap-document audit; the existing admission detects open-gap entries and does not establish document presence.",
+    "materiality": "Diagnostic wording only; target selection, permission, state and freshness predicates unchanged. Required suite51 remains scoped to those predicates; representative current-source files cases rechecked."
+  }
+}

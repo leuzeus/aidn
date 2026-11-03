@@ -792,3 +792,11 @@ preparation, then the existing bootstrap preview/apply/diagnose and persistence
 status commands. It has human-readable output, no public JSON contract.
 `-PersistUserConnection` is an explicit optional Windows user-environment write;
 native Codex trust is never changed. See [the setup guide](WINDOWS_PROJECT_SETUP.md).
+
+For `runtime pre-write-admit --skill promote-baseline`, the selected DONE cycle
+is checked by that canonical admission and exposed as the
+`checks.baseline_promotion_target` diagnostic. The cycle need not remain active,
+and promotion does not re-enter implementation DoR. Runtime freshness, repair,
+activation and source-of-truth gates remain. Missing or ambiguous targets still
+block; the internal host selection argument adds no CLI flag and changes no
+focus. The public output keeps its extensible v1 contract and read-only effect.

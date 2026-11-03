@@ -214,3 +214,12 @@ fixture PostgreSQL transport. Current focus, selected cycle and trace/gap/usage
 evidence come from one snapshot; refusal preserves canonical SQLite against
 post-hook import. It supplies no promotion decision, baseline mutation, final
 checkpoint completion or standard IR binding.
+
+Promotion pre-write now calls the canonical selected-DONE-cycle admission rather
+than requiring a released cycle to remain active or re-enter implementation DoR.
+The existing activation/runtime/source-of-truth gates remain; target traceability,
+open-gap and usage checks apply to the selected cycle. The required promotion
+suite covers the actual port/public CLI in files/dual/DB-only and fileless DB
+reads. See [promotion pre-write evidence](../qualification/agentic-process/promotion-prewrite-2026-11-03.json).
+This is admission only: the promotion human decision, baseline mutation binding,
+final hook and complete standard IR route still require their own qualification.

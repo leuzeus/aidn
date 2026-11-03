@@ -93,3 +93,13 @@ Output:
 - New baseline version
 - Next entry point
 
+
+## Completed target and active focus
+
+Promotion validates a selected DONE cycle, which may already have been removed
+from active focus by closure. Pre-write admission checks that target through
+the canonical promotion admission; it does not reactivate it or require a new
+implementation DoR. Inspect `checks.baseline_promotion_target` when selection,
+traceability, gaps or usage evidence blocks. Missing or ambiguous targets remain
+blocked; runtime freshness, repair, activation and source-of-truth checks still
+apply. An internal host selection is not write authorization.

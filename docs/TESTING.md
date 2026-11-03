@@ -2178,3 +2178,14 @@ The required `perf:verify-context-completion` gate includes this promotion suite
 Its real wrapper refusal checks both skill identities and explicit `--db-sync`;
 SQLite admission reads and refused wrapper calls must preserve database bytes.
 Configured PostgreSQL remains canonical even when the state-mode label is files.
+
+The same required promotion suite calls
+`verify-promote-baseline-prewrite-fixtures.mjs` for files, dual and DB-only.
+The actual pre-write port and public CLI must admit a selected DONE target after
+focus release without re-entering implementation DoR, preserve every observed
+file/SQLite byte, reject ambiguous/missing/non-retained targets, incomplete
+traceability/gaps/usage and stale runtime, and evaluate the selected target when
+another cycle is active. Dual/DB-only also remove the visible current/runtime,
+status/trace/gap projections before admission. These remain admission proofs;
+human promotion capture, baseline effects, final hooks and complete standard
+IR execution require separate evidence.

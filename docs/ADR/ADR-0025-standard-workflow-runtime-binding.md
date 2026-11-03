@@ -1001,3 +1001,23 @@ baseline/current/history/snapshot writes, final checkpoint, or full IR routing.
 Those effects still require an accepted completed cycle-close, explicit user
 selection/version, fresh admission and authorization, durable receipts and
 postconditions. Native and installed-archive qualification remain separate.
+
+### Promotion admission after completed cycle closure
+
+The promote-baseline skill keeps the real pre-write admission. Its cycle is a
+selected DONE target, not an implementation focus: closure may already have
+released active_cycle, and implementation DoR is not re-entered by promotion.
+The pre-write port now calls the existing canonical promotion admission and
+reports baseline_promotion_target in its checks. Selection, DONE, traceability,
+closed gaps and usage evidence remain required. Missing or ambiguous targets
+block; the internal promotionCycleId argument selects without changing focus
+and is not a public CLI flag or an authorization. Usage checks concern that
+target even if another cycle has become active. Activation, source-of-truth,
+shared-runtime, repair and freshness checks remain in force.
+
+This resolves the observed refusal of a post-closure promotion by the three
+implementation-focus checks. It does not waive pre-write, mark the cycle active,
+perform baseline writes or complete the standard workflow. The dedicated
+read-only files/dual/db-only cases and existing wrapper/canonical cases are
+run by the required promotion admission suite. No native or installed-package
+proof follows from these checks.
