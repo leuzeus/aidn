@@ -3228,3 +3228,32 @@ push were not reached. The source and retained fixture are preserved. Test-only
 commit93958bf imports the runner, leaving the model/runtime pin unchanged; a
 second clean snapshot is running with its own source and verdict. The component
 PASS results are not a composed PASS.
+
+
+### PR creation/recovery bound to the accepted push
+
+Revision42 adds session_pr_open after the accepted push. The actual host checks
+the signed push/admission/integration chain and current local/remote Git facts;
+a separate pinned GitHub adapter binds repository, branches and tips to the exact
+grant. It refuses changed refs, closed/merged/draft or ambiguous matches. Creation
+is followed by a complete observation of the exact PR. An existing exact open PR
+is recovered without POST. Attempted effects with a lost grant, malformed reply
+or head race remain unknown, retain the owner and produce no completion fact.
+
+The [separate component evidence](qualification/agentic-process/session-pr-create-recover-components-2026-11-03.json)
+records 15 provider checks and 6 application checks per files/dual/db-only, all
+PASS/code0 with cleanup. REST is doubled; application/owner/provider code and
+local bare refs are real. Accepted push/admission/current-instance sources are
+injected in the focused application components. Model42's complete signed chain
+has not run; the active37/39/41 verdicts cannot qualify it. The agentic aggregate
+gate is running on exact source93958bf/model41, separate from full runtime admission.
+
+The PR link is currently an authenticated process-operation result. The skill's
+canonical session PR lifecycle and CURRENT-STATE update are still missing; they
+need an explicit successor postimage authority, governed checkpoint and update
+push, preserving the old closed-delivery evidence. This mismatch is not solved by
+writing a positive open/merged/synced marker or by dropping byte/postimage guards.
+Review/checks/triage, authenticated durable events, explicit merge consent,
+fetch/divergence/post-merge synchronization and the real production Git push
+transport remain required. Ordinary entrypoints and complete_standard_workflow
+stay unchanged/false; A1-A10, native real and exact archive remain open.

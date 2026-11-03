@@ -2705,3 +2705,9 @@ retention are verified independently. The composed fixture supplies the real
 signed upstream chain on a separate frozen source. A new source branch is seeded
 on its remote during fixture arrangement; only later session delivery is a
 workflow push receipt. GitHub/native/exact-archive qualification remains NOT_RUN.
+
+The PR creation component currently retains its link in the authenticated process
+journal. It does not yet perform the skill-required canonical session PR lifecycle
+and CURRENT-STATE write, the corresponding governed checkpoint/update push, or
+review/merge/sync. Those successor postimages must be authenticated explicitly;
+relaxing the original closed-delivery byte guards is not an accepted shortcut.
