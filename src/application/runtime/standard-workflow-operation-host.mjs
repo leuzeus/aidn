@@ -1,5 +1,7 @@
 import { createStandardSessionBranchIntegration } from "./standard-session-branch-integration.mjs";
 import { createStandardSessionBranchIntegrationAuthority } from "./standard-session-branch-integration-authority.mjs";
+import { createStandardSessionPrRecord } from "./standard-session-pr-record.mjs";
+import { createStandardSessionPrRecordAuthority } from "./standard-session-pr-record-authority.mjs";
 import { createStandardSessionPrOpen } from "./standard-session-pr-open.mjs";
 import { createStandardSessionPush } from "./standard-session-push.mjs";
 import { createStandardSessionPrAdmission } from "./standard-session-pr-admission.mjs";
@@ -410,6 +412,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { push_operation_id: input.push_operation_id, output: selected.output, admission: admission.output,
         admission_source_sha256: shadowHash(admission) };
     } }) : null;
+  const sessionPrRecordAuthority = sessionPrOpen ? createStandardSessionPrRecordAuthority({ targetRoot,
+    readAcceptedOperation: acceptedForPromotion, pullRequestPort: sessionPullRequestPort }) : null;
+  const sessionPrRecord = sessionPrRecordAuthority ? createStandardSessionPrRecord({ targetRoot, now,
+    readSource: (instance, input) => sessionPrRecordAuthority.readSource(instance, input), readCurrent: id => current(id).record }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -777,6 +783,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_record" ? await sessionPrRecord?.prepare(state.record, input) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_open" ? await sessionPrOpen?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PR_OPEN_TRANSPORT_REQUIRED")
         : binding.id === "session_push" ? await sessionPush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PUSH_TRANSPORT_REQUIRED")
         : binding.id === "session_pr_admit" ? await sessionPrAdmission?.prepare(state.record, input) ?? fail("STANDARD_SESSION_PR_AUTHORITY_REQUIRED")
@@ -864,6 +871,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
         else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_pr_record") output = await sessionPrRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_pr_open") output = await sessionPrOpen.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

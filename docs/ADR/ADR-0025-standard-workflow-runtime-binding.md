@@ -1745,3 +1745,21 @@ timeout or lost authority after attempted creation remains unknown, with the
 existing owner and journal retained. No automatic retry is supplied. The open
 fact establishes neither review/check admission nor merge consent. The REST
 transport double is distinct from real GitHub and archive/native qualification.
+
+
+## Canonical PR lifecycle successor postimages
+
+session_pr_record is separate from remote PR creation. Its trusted authority
+follows accepted PR/push/admission/integration/delivery/closure receipts, checks
+physical closure events and re-observes the exact open PR. Original delivery
+hashes remain historical evidence. Before its own effect the writer requires
+those exact canonical content and metadata preimages. It then CAS-writes the
+session, CURRENT-STATE and snapshot, retains CLOSED, records review pending and
+returns its own successor postimages. It changes no Git ref/index or remote.
+
+The original closure reader is not relaxed to accept changed bytes. Later
+checkpoint/push/review must consume the explicit successor receipt. A failed
+second write, failed projection or lost authority is unknown, with the owner
+retained and no lifecycle completion fact. DB-only changes no physical export.
+This is a transition within the existing session and operation-journal concepts,
+not a new independent authority, merge permission or completed PR skill.

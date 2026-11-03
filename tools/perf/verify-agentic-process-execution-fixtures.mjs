@@ -910,6 +910,12 @@ if (process.argv[2] === "--mixed-continue") {
       const provider = createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root });
       assert.equal(provider.read().posts, 1); assert.equal(provider.read().pulls[0].head.sha, pushedHead);
       assert.equal(last("session_pr_open").observations.pull_request.node_id, provider.read().pulls[0].node_id);
+      assert.equal(last("session_pr_record").outcome, "completed"); assert.equal(last("session_pr_record").effect_status, "confirmed");
+      assert.deepEqual(last("session_pr_record").facts, { session_pr_lifecycle_recorded: true, session_pr_checkpoint_required: true });
+      const lifecycle = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+      assert.match(lifecycle.read("sessions/S001.md", { required: true }).content, /pr_status: open/);
+      assert.equal(last("session_pr_record").observations.checkpoint, "pending");
+      assert.equal(last("session_pr_record").observations.push, "pending");
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;

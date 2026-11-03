@@ -2706,8 +2706,20 @@ signed upstream chain on a separate frozen source. A new source branch is seeded
 on its remote during fixture arrangement; only later session delivery is a
 workflow push receipt. GitHub/native/exact-archive qualification remains NOT_RUN.
 
-The PR creation component currently retains its link in the authenticated process
-journal. It does not yet perform the skill-required canonical session PR lifecycle
-and CURRENT-STATE write, the corresponding governed checkpoint/update push, or
-review/merge/sync. Those successor postimages must be authenticated explicitly;
-relaxing the original closed-delivery byte guards is not an accepted shortcut.
+The PR creation component retains its link in the authenticated process journal.
+A separate session_pr_record now consumes that receipt, its historical delivery
+postimages and current physical/provider evidence. It advances the canonical
+session, CURRENT-STATE and context snapshot through explicit CAS/projection,
+retaining CLOSED and recording review pending. Its new receipt binds successor
+content and metadata hashes; the original delivery hashes are preserved. The
+corresponding governed checkpoint/update push and review/merge/sync remain open.
+
+`verify-standard-session-pr-record-authority-fixtures.mjs` checks the authority's
+historical lookup and physical-event/provider guards with accepted-record and
+provider capabilities injected. `verify-standard-session-pr-record-fixtures.mjs
+--mode=<files|dual|db-only>` checks the real canonical writer, stores, projection
+and isolated Git status on source-installed fixtures. Its closure/PR source is
+injected. It tests exact preimages/grants, real postimages and the db-only path
+without export or invented commit; a files-mode fault loses authority after the
+first CAS and requires unknown-owner retention. These components do not prove
+real human/provider identities or the complete signed standard chain.

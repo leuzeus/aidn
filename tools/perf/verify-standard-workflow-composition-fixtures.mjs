@@ -23,8 +23,18 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 56); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 57); assert.equal(assets.catalog.activities.length, 8);
 });
+test("canonical PR lifecycle recording follows its authenticated open receipt and leaves checkpoint separate", () => {
+  const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_record").binding;
+  assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "mutating");
+  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  assert.equal(children.indexOf("session_pr_record"), children.indexOf("session_pr_open") + 1);
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_record").fields.open_operation_id,
+    { source: "operation_id", node_id: "session_pr_open" });
+  assert.equal(assets.catalog.scope.complete_standard_workflow, false);
+});
+
 test("PR creation/recovery follows confirmed push through an independent host transport", () => {
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_open").binding;
   assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "executor");
