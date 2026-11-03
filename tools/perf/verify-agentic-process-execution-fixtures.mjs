@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
 import { attachCycleCloseRecordModel } from "./cycle-close-record-fixture-lib.mjs";
 import { attachCycleClosureModel, closureHumanSource } from "./cycle-closure-fixture-lib.mjs";
-import { attachCycleAuditModel } from "./cycle-audit-fixture-lib.mjs";
+import { attachCycleAuditModel, cycleAuditProposal } from "./cycle-audit-fixture-lib.mjs";
 import { CYCLE_AUDIT_CONTRACT } from "../../src/core/workflow/standard-cycle-audit.mjs";
 import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
@@ -11,7 +12,7 @@ import { CYCLE_PLAN_CONTRACT } from "../../src/core/workflow/standard-cycle-plan
 import { taskProgressModel } from "./cycle-task-progress-fixture-lib.mjs";
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
 import { verifyCycleWorkContracts } from "./cycle-work-contract-fixture-lib.mjs";
-import { fixtureValidationBoundary } from "./standard-cycle-validation-fixture-lib.mjs";
+import { fixtureValidationBoundary, createValidationProfileFixture } from "./standard-cycle-validation-fixture-lib.mjs";
 import { verifyCyclePlanningContracts, verifyCyclePlanExecution, verifyCycleReadinessContracts } from "./cycle-planning-fixture-lib.mjs";
 import fs from "node:fs";
 import os from "node:os";
@@ -77,7 +78,7 @@ if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-o
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const standardComposedStop = process.argv.find(value => value.startsWith("--standard-composed-stop="))?.slice("--standard-composed-stop=".length) ?? "plan";
-if (!["plan", "cycle_admit"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
+if (!["plan", "cycle_admit", "closure_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
@@ -555,7 +556,8 @@ function restoreComposedFixture(data, options) {
   const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
   let sharedHost;
   const open = () => sharedHost ??= createStandardWorkflowExecution({ configuration: f.configuration, readSigningKey: () => key,
-    authorize: async () => grant, humanSource: options.humanSource }, { controllerFactory });
+    authorize: async () => grant, humanSource: options.humanSource, validationProfile: f.validationProfile },
+    { controllerFactory, ...(f.validationProfile ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
   return Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model });
 }
 async function bootstrapMixed(f) {
@@ -683,8 +685,25 @@ if (process.argv[2] === "--mixed-continue") {
     } };
     const resumed = standardComposedResume ? JSON.parse(fs.readFileSync(standardComposedResume, "utf8")) : null;
     const factory = standardComposedResume ? (_mode, options) => restoreComposedFixture(resumed, options) : mixedFixture;
-    const f = factory(mode, { standardModel: true, humanSource, answer({ params }) {
+    const runsCycle = standardComposedStop === "closure_decide";
+    const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
+      if (observed.context.contract_version === "standard-cycle-plan-context.v1")
+        return { outcome: "completed", summary: "Scoped read-only plan proposal", report: cyclePlanProposal(observed) };
+      if (observed.context.contract_version === "standard-cycle-audit-context.v1")
+        return { outcome: "completed", summary: "Scoped read-only audit proposal", report: cycleAuditProposal(observed) };
+      if (observed.context.contract_version === "standard-cycle-task-work-context.v1") {
+        const context = observed.context;
+        const request = { tool_name: "apply_patch", cwd: f.configuration.target_root,
+          tool_input: { command: "*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = 1;\n+export const value = 2;\n*** End Patch" } };
+        const admission = await preWriteAdmit({ targetRoot: f.configuration.target_root, skill: "start-session", nativeRequest: request });
+        assert.equal(admission.write_decision.outcome, "allow", JSON.stringify(admission.write_decision));
+        fs.writeFileSync(path.join(f.configuration.product_root, "app.mjs"), "export const value = 2;\n");
+        return { outcome: "completed", summary: "Admitted fixture product change; host verification remains separate", report: {
+          contract_version: CYCLE_TASK_WORK_CONTRACT, context_sha256: observed.context_sha256, task_id: context.task.id, task: context.task.task,
+          work_outcome: "changed", changes: [{ path: "product/app.mjs", operation: "update" }], notes: ["Host verification remains separate"] } };
+      }
+      assert.equal(observed.context.contract_version, "standard-drift-context.v1");
       return { outcome: "completed", summary: "Scoped diagnostic fixture; production ports remain real", report: {
         contract_version: "standard-drift-report.v1", context_sha256: observed.context_sha256,
         original_objective: observed.context.original_objective, current_objective: observed.context.original_objective,
@@ -697,16 +716,22 @@ if (process.argv[2] === "--mixed-continue") {
     const objective = "Exercise the published standard workflow on a disposable project";
     const parameters = { session: { session_id: "S001", session_branch: "S001-standard", objective },
       cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective } };
+    if (runsCycle && !resumed) {
+      f.validationProfile = createValidationProfileFixture(f.base, { testRef: "TEST-001" }).profileRef;
+      const criteria = "The admitted local value becomes 2 while preserving its exported interface; host verification remains separate.";
+      fs.writeFileSync(f.configuration.criteria.path, criteria); f.configuration.criteria.sha256 = sha(criteria);
+      f.configuration.instructions.implement = "Implement only the host-selected task. Host validation, progression and governance writes remain separate.";
+    }
     let auth;
     if (standardComposedResume) auth = resumed.authorization;
     else {
       const initial = f.open().initialize({ parameters });
       f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
       auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 300000;
-      fs.writeFileSync(path.join(f.configuration.control_root, "standard-resume.json"), JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs }, authorization: auth }));
+      fs.writeFileSync(path.join(f.configuration.control_root, "standard-resume.json"), JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) }, authorization: auth }));
     }
     const operations = [];
-    for (let step = 0; step < 32; step++) {
+    for (let step = 0; step < 64; step++) {
       const state = f.open().inspect(), frame = state.cursor.occurrences.find(row => row.status === "READY");
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
@@ -734,8 +759,14 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
     const acceptedOperations = final.record.events.filter(event => event.kind === "operation_intent").map(event => f.open().readOperation(event.intent.operation_id));
     assert.equal(acceptedOperations.find(row => row.intent.binding_ref === "drift_check_finalize").results.at(-1).output.facts.drift_check_completed, true);
-    if (standardComposedStop === "plan") assert.equal(acceptedOperations.find(row => row.intent.binding_ref === "cycle_checkpoint_finalize").results.at(-1).output.outcome, "completed");
-    assert.equal(f.t.sessions.length, (standardComposedStop === "plan" ? 2 : 1) - (resumed?.prior_native_activities ?? 0)); assert.ok(f.t.sessions.every(row => row.closed));
+    if (standardComposedStop !== "cycle_admit") assert.equal(acceptedOperations.find(row => row.intent.binding_ref === "cycle_checkpoint_finalize").results.at(-1).output.outcome, "completed");
+    assert.equal(f.t.sessions.length, (runsCycle ? 5 : standardComposedStop === "plan" ? 2 : 1) - (resumed?.prior_native_activities ?? 0)); assert.ok(f.t.sessions.every(row => row.closed));
+    if (runsCycle) {
+      for (const binding of ["cycle_plan_record", "cycle_implementation_enter", "cycle_validation_execute", "cycle_task_advance", "cycle_verification_enter", "cycle_audit_evaluate"])
+        assert.equal(acceptedOperations.find(row => row.intent.binding_ref === binding)?.results.at(-1).output.outcome, "completed");
+      assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "cycle_closure_decision").length, 0);
+      assert.equal(final.cursor.status, "RUNNING");
+    }
     const replay = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins,
       scopeId: final.record.scope_id, parameters: final.record.initial_parameters, facts: final.record.initial_facts, events: final.record.events });
     assert.equal(replay.trace.at(-1).instance_sha256, final.record.instance_sha256);

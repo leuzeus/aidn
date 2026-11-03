@@ -2324,12 +2324,13 @@ The transport/controller wire is simulated; the application, admissions,
 canonical artifacts, operation/native journals and replay/simulation are real.
 A same-process host reopen follows the retained native result without rerunning
 that activity. This is not qualification of a real native client or process
-resume, and the test stops before the still-missing governed Git checkpoint.
+resume. The current model includes the governed Git checkpoint before this
+stop; older startup records retain their earlier model and evidence boundary.
 
 The selector also accepts `dual` and `db-only`; those variants must be reported
 separately. `--standard-composed-stop=plan` requests the longer cycle prefix,
-which is not qualified while cycle admission still lacks the governed Git
-checkpoint. Preserve failures with `--retain-on-failure`, inspect the signed
+which has a separate recorded files qualification through the governed Git
+checkpoint and actual cycle admission/finalization. Preserve failures with `--retain-on-failure`, inspect the signed
 journal and actual gate, and start a fresh disposable instance after an authored
 model revision. Never silently convert or rerun an uncertain old instance.
 
@@ -2358,3 +2359,22 @@ acknowledge a distinct goal or implement its recovery route. The retained
 refusal has an exact replay and remains WAITING, with one session, one governed
 commit and one cycle creation. The successful prefix stops READY at `plan`;
 full standard, other storage modes, real native and archive evidence remain open.
+
+### Published standard work and audit prefix
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=closure_decide --retain-on-failure`
+continues the published JSON through plan recording, DoR, implementation entry,
+host-selected work, real pre-write admission, deterministic Node verification,
+progression, VERIFYING and audit. The verifier executes the real Node check;
+its containment/qualification authority remains a fixture. No model is called
+for deterministic operations. The native transport and human/grant capabilities
+remain fixtures. The original native authorization is shared across activities.
+
+The [recorded result](qualification/agentic-process/standard-composed-work-audit-2026-11-03.json)
+covers 30 application operations, five simulated native activities and exact
+replay/simulation. This targeted selector stops before the human closure
+operation: READY `closure_decide`, workflow RUNNING, cycle VERIFYING. It proves
+neither the human wait nor closure/promotion/session/PR completion. Dual/DB-only,
+multiple tasks, refused/resumed closure, real native/boundary and exact archive
+remain separate acceptance work. This targeted result does not claim execution
+of the aggregate suite or merge readiness.

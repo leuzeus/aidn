@@ -264,7 +264,7 @@ not_requested is a recorded choice, never promotion completion or a rule waiver.
 
 The [standard model](../../package/catalogs/process-models/aidn-standard.v1.json)
 and its [catalog](../../package/catalogs/standard-workflow.v1.json) now compose
-49 nodes and 31 operation occurrences through the existing reducer and
+69 nodes and 40 operation occurrences through the existing reducer and
 [application loader](../../src/application/runtime/standard-workflow-composition.mjs).
 The catalog pins real bindings, SPEC and skills and declares typed native reports.
 Its closed contract still requires `complete_standard_workflow: false`.
@@ -273,9 +273,10 @@ It does not replace ordinary workflow selection.
 | Composed IR nodes | Current realization | Remaining qualification |
 | --- | --- | --- |
 | `startup`, `mode_route` | Existing six startup bindings and authenticated mode facts | Startup prefix only; THINKING/EXPLORING work remains open |
-| `cycle_create`, `plan`, `plan_evaluate`, `plan_record`, `readiness`, `implementation_enter` | Real cycle ports, native plan proposal, canonical plan CAS and admission | Actual composed COMMITTING route and startup R05 |
-| `task_loop`, `task_iteration`, `final_verification` | Common loop reducer, real task/validation/progress ports, independent native implementation action | Same published model on a disposable project; work drift and incidents |
-| `audit_select`, `audit_review`, `audit_evaluate`, `closure_decide`, `close_record`, `close_finalize` | Authenticated audit and decision, six terminal CAS, actual checkpoint | Same composed cursor, not substitution of component proofs |
+| `cycle_create`, `plan`, `plan_evaluate`, `plan_record`, `readiness`, `implementation_enter` | Real cycle ports, native plan proposal, canonical plan CAS and admission | Files composed prefix PASS with fake wire; other stores/native remain |
+| `task_loop`, `task_iteration`, `final_verification` | Common loop reducer and real task/validation/progress ports | One-task files path PASS with fake wire and fixture verification boundary; multi-task, other stores, work drift and incidents remain |
+| `audit_select`, `audit_review`, `audit_evaluate` | Selected scoped audit and authenticated evaluation | Files composed prefix PASS; real native/other stores remain |
+| `closure_decide`, `close_record`, `close_finalize` | Authenticated decision, six terminal CAS, actual checkpoint ports | Human wait, refusal/resume and closure through the same composed cursor remain |
 | `promotion_decide`, `promotion_route`, `promotion_record`, `promotion_finalize` | Authenticated promotion request, real five CAS and checkpoint | Same composed cursor after actual closure |
 
 The empty `promotion_not_requested` branch carries no baseline completion fact.
@@ -331,3 +332,19 @@ the distributed model, reaches `plan`, and reproduces the exact instance hash
 by replay/simulation. The retained cold-resume refusal remains WAITING and
 proves no repeated session, governed commit or cycle creation. Uncertain-index
 recovery, the full standard route, native host and installed archive remain open.
+
+## Composed work and audit evidence
+
+The [recorded files path](../qualification/agentic-process/standard-composed-work-audit-2026-11-03.json)
+drives the same distributed JSON through 30 application operations and five
+simulated native activities. Planning, admitted product work, real Node checks,
+canonical task progression, VERIFYING and audit precede READY `closure_decide`.
+Replay/simulation reproduce the exact instance hash. No fixture prepares a
+completed plan, task or verification state outside the IR for this path.
+
+The human/grant source, native wire and verification containment authority are
+fixtures. The case ends before starting human closure, and preserves pending
+closure rather than claiming a finished cycle. Its remaining acceptance includes
+human refusal/wait/cold resume, closure/promotion/session/PR effects, the other
+modes/stores, native reauthorization after long waits, a real native host and
+boundary, and the exact installed archive. The standard catalog remains partial.

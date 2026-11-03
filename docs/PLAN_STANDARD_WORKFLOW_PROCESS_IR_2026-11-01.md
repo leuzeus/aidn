@@ -2697,3 +2697,25 @@ Exiger refus sans nouvel appel natif quand l'autorisation manque, reprise après
 nouvelle autorisation valide, événement dupliqué/ancien/étranger refusé, contrôle
 des cumuls, arrêt incertain bloquant et replay/simulation exacts. Séparer fixture,
 hôte natif réel et archive installée. Rien de ce sous-lot n'est déclaré livré.
+
+### L3 — parcours publié jusqu'à la décision de clôture : PASS files borné
+
+La [qualification travail/audit](qualification/agentic-process/standard-composed-work-audit-2026-11-03.json)
+utilise directement le modèle JSON distribué, sans compilation XML ni seconde
+séquence métier de fixture. Son curseur conduit 30 opérations applicatives et
+cinq activités de transport natif simulé depuis une installation source jetable
+jusqu'à `closure_decide` : démarrage, R05/checkpoints/Git, création du cycle,
+plan enregistré, DoR, admission d'implémentation, sélection de la tâche, écriture
+admise du produit, validation Node réelle sous frontière de fixture, progression,
+vérification finale, transition VERIFYING et audit évalué. Une seule autorisation
+native couvre le parcours ; les hôtes sont rouverts après les résultats conservés.
+Replay et simulation reproduisent exactement le hash de l'instance.
+
+Ce cas nominal porte sur une tâche, en files, avec autorités humaines/d'effets,
+transport natif et preuve de frontière de vérification de fixture. Il s'arrête
+avant la question humaine de clôture : l'instance reste RUNNING, le cycle
+VERIFYING et la décision de clôture requise. Il ne prouve ni cette attente/reprise,
+ni la clôture/promotion, ni la fin de session/PR/synchronisation. Les autres
+modes, les refus/reprises de ce parcours, le vrai hôte natif, l'archive installée
+exacte et A1–A10 restent requis. Le sélecteur ciblé est documenté ; la suite
+agrégée et l'admission complète d'une PR ne sont pas déclarées exécutées.
