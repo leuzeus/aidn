@@ -983,3 +983,21 @@ deferral and cancellation remain distinct. A completed decision is not completed
 cycle-close: actual canonical writes, fresh effect authorization, final hook and
 its nested failures remain separate required work. Qualification of this human
 component must not be reported as full standard workflow integration.
+
+
+## Canonical baseline promotion prerequisite
+
+The standard promotion port must consume the existing promotion admission,
+whose current focus, cycle identity and trace/gap/usage evidence come from one
+fresh canonical snapshot in DB-backed or configured PostgreSQL mode. Unavailable
+or inconsistent authority stops without a Markdown fallback. A trusted internal
+caller may explicitly select a canonical cycle without rewriting CURRENT-STATE;
+selection is neither human authentication nor effect permission. The public CLI
+adds no selection flag in this tranche. Refusal also suppresses post-hook import
+so stale visible files cannot replace the evidence that prevented promotion.
+
+This prerequisite does not implement the standard promotion decision, actual
+baseline/current/history/snapshot writes, final checkpoint, or full IR routing.
+Those effects still require an accepted completed cycle-close, explicit user
+selection/version, fresh admission and authorization, durable receipts and
+postconditions. Native and installed-archive qualification remain separate.

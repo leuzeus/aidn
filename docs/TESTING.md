@@ -2160,3 +2160,21 @@ cold acceptance, changed product refusal, durable wait and exact replay. The
 human provider, native transport and validation boundary are fixture capabilities.
 The decision leaves VERIFYING and performs no canonical closure effects; neither
 full standard workflow nor native/installed-archive qualification is claimed.
+
+
+`verify-promote-baseline-admission-fixtures.mjs` also runs the canonical
+promotion regressions from `verify-promote-baseline-canonical-fixtures.mjs`.
+They use actual SQLite dual/db-only stores and the configured PostgreSQL adapter
+with fixture transport, plus stale visible files, missing/ambiguous identities,
+non-retained cycles, canonical trace/gap/usage evidence and explicit internal
+selection. Missing authority must not fall back or create a SQLite store. The
+actual Codex JSON wrapper refusal must preserve the SQLite bytes and skip DB
+import. Files authority remains separate. Historical wrapper cases install
+current activation assets on tracked temporary corpora, and cleanup also runs
+on assertion failure. These tests prove admission, not baseline writes, the
+full standard IR, native execution or an installed archive.
+
+The required `perf:verify-context-completion` gate includes this promotion suite.
+Its real wrapper refusal checks both skill identities and explicit `--db-sync`;
+SQLite admission reads and refused wrapper calls must preserve database bytes.
+Configured PostgreSQL remains canonical even when the state-mode label is files.

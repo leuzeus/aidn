@@ -235,7 +235,7 @@ function nestFirstContextInvocation(candidate, duplicate = false, group = admiss
   candidate.packageJson.scripts[group] = ["npm run fixture:context-leaf", ...commands].join(" && ");
 }
 const contextPositiveProbes = {
-  current_43_invocations_preserved: contextPolicyProbe(() => {}).length === 0,
+  historical_invocations_and_explicit_additions_preserved: contextPolicyProbe(() => {}).length === 0,
   agent_reuse_addition_equivalent_transitive_accepted: contextPolicyProbe((candidate) => {
     nestFirstContextInvocation(candidate, false, coordinationGroup);
   }).length === 0,

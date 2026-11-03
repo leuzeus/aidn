@@ -5,7 +5,7 @@ import {
   isDbBackedStateMode,
   resolveEffectiveStateMode,
 } from "../../core/state-mode/state-mode-policy.mjs";
-import { shouldAutoDbSyncForSkill } from "../../core/skills/skill-policy.mjs";
+import { resolveSkillId, shouldAutoDbSyncForSkill } from "../../core/skills/skill-policy.mjs";
 import {
   buildRunJsonHookSummary,
   deriveRepairLayerAdvice,
@@ -348,11 +348,12 @@ export async function runJsonHookUseCase({ args, targetRoot, agentAdapter, hookC
     payload: null,
     error: null,
   };
-  if (autoDbSync && ["cycle-close", "close-session"].includes(args.skill) && normalized.result !== "ok") {
+  const syncSkill = resolveSkillId(args.skill);
+  if (autoDbSync && ["cycle-close", "close-session", "promote-baseline"].includes(syncSkill) && (normalized.result !== "ok" || normalized.ok === false)) {
     // A refused or unfinished closure must not import local projections over
     // the canonical evidence that caused its refusal.
     dbSync.enabled = true;
-    dbSync.reason = args.skill === "cycle-close" ? "cycle_close_not_completed" : "session_close_not_completed";
+    dbSync.reason = syncSkill === "cycle-close" ? "cycle_close_not_completed" : syncSkill === "promote-baseline" ? "baseline_promotion_not_completed" : "session_close_not_completed";
   } else if (autoDbSync && isDbBackedStateMode(stateMode)) {
     dbSync.enabled = true;
     dbSync.skipped = false;

@@ -206,3 +206,11 @@ adds both actual offline mixed-host component paths, with a cold acceptance and
 exact reducer replay. Its provider/grant/native boundaries remain fixtures.
 Canonical terminal writes and the final hook are separate pending integrations;
 authenticated human disposition alone never establishes their success.
+
+
+The [canonical promotion admission prerequisite](../qualification/agentic-process/promotion-admission-2026-11-03.json)
+qualifies actual SQLite and configured PostgreSQL-adapter observations, with
+fixture PostgreSQL transport. Current focus, selected cycle and trace/gap/usage
+evidence come from one snapshot; refusal preserves canonical SQLite against
+post-hook import. It supplies no promotion decision, baseline mutation, final
+checkpoint completion or standard IR binding.

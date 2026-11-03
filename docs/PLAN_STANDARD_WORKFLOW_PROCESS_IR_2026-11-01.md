@@ -52,6 +52,11 @@ encore ouverts.
   et replay exact. La décision conserve VERIFYING et le skill en attente ; aucun
   effet canonique de clôture n’en découle. Voir la
   [preuve de décision humaine](qualification/agentic-process/cycle-human-closure-2026-11-03.json).
+- L’admission de promotion lit désormais focus, cycle et preuves depuis le même
+  snapshot canonique en mode DB. Les 22 contrôles hors ligne couvrent aussi
+  l’absence de fallback et la préservation SQLite lors d’un refus du wrapper.
+  La [preuve d’admission de promotion](qualification/agentic-process/promotion-admission-2026-11-03.json)
+  ne réalise ni décision de promotion, ni écriture baseline, ni raccord IR.
 - L’écriture des six artefacts terminaux et le hook final restent des prototypes
   séparés. Les composants CAS et les contrôles du véritable hook passent, mais
   leur chaîne commune n’est pas qualifiée. Un essai d’écriture a refusé avant

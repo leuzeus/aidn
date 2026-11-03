@@ -598,6 +598,15 @@ The wrapper skips post-hook DB synchronization on closure warning/refusal with
 reason `cycle_close_not_completed`; it must not replace the canonical evidence
 that prevented completion with local projections.
 
+The `promote-baseline` admission reads focus, cycle identity, status, usage matrix,
+traceability and gaps from one canonical snapshot in dual/db-only or configured
+PostgreSQL mode. Missing, ambiguous or inconsistent canonical data returns
+`PROMOTE_BASELINE_CANONICAL_RUNTIME_INVALID`; a local projection cannot supply
+missing evidence. A refused promotion skips post-hook DB synchronization with
+reason `baseline_promotion_not_completed`, including an explicitly requested
+sync and the public skill-name alias. An explicit false hook verdict also
+prevents import when an older nested payload still carries an admission result. Admission alone neither updates baseline artifacts nor proves promotion.
+
 The final `close-session` hook reads current state, session close decisions and
 cycle ownership from one canonical snapshot in db-backed or configured
 PostgreSQL mode. Stale bootstrap projections cannot satisfy admission. On the
