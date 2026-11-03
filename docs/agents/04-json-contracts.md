@@ -158,6 +158,13 @@ refusals; a valid shadow envelope grants no authority to execute.
 
 ## Internal Agent Execution Contracts
 
+Private task-selection/progression inputs, the advance plan and task output use
+versioned closed contracts. The distinct task-work report/output bind a selected
+task and explicit changed/unchanged result. Validation-evaluation input v2 adds
+an optional accepted progress identity for a verified causal bridge; its v1
+schema and historical readers remain retained. These are private workflow
+contracts, not new public CLI outputs or an implicit migration.
+
 The private workflow-definition namespace also contains validation-evaluation
 input and verification-entry input/plan/output v1 contracts. Accepted source
 identities, coverage facts and the four exact canonical changes are distinct

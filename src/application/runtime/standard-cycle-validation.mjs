@@ -61,7 +61,7 @@ export function createStandardCycleValidation({ targetRoot, profileRef, readWork
     assertWorkProductSnapshot(work.files);
     if (work.files.length > profile.limits.max_files || work.files.some(row => row.path.split("/")[0].toLowerCase() === "_aidn_checks")
       || work.files.reduce((sum, row) => sum + (row.bytes ?? 0), 0) > profile.limits.max_snapshot_bytes) fail("STANDARD_VALIDATION_SNAPSHOT_LIMIT");
-    const checks = selectStandardValidationChecks(profile, work.output.observations.task);
+    const checks = selectStandardValidationChecks(profile, work.validation_test_refs ? { test_refs: work.validation_test_refs } : work.output.observations.task);
     const plan = { contract_version: "standard-cycle-validation-plan.v1", operation_ref: "cycle_validation_execute", input, prepared_at_ms: preparedAt,
       work_sha256: work.evaluation_sha256, product_sha256: shadowHash(work.files), profile_sha256: shadowHash(profile), descriptor_sha256: materials.descriptor_sha256,
       proof_class: proofClass, files: work.files, checks, limits: profile.limits,

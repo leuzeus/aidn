@@ -1,5 +1,14 @@
 # Participants, roles and agentic control
 
+Selected task execution uses `cycle_task_select`, a distinct task-work native
+report, `cycle_task_work_evaluate` and authorized `cycle_task_advance` in the
+common IR loop. The host authenticates their ordered frozen-plan chain and
+requires actual task checks before progressing. The final task validates all
+cycle tests on the final code. A causal progress input bridges owned metadata
+changes before verification; it does not reuse a stale code verdict. Historical
+first-task contracts remain distinct. This component still requires assembly
+into the full standard graph and native/installed acceptance qualification.
+
 The internal standard ports also support `cycle_validation_evaluate` and
 `cycle_verification_enter`. The first reauthenticates code-check evidence; the
 second needs its accepted fresh result, all planned task work observed and a
@@ -14,7 +23,7 @@ exact product snapshot and the existing qualified sandbox boundary, without a
 model call. Completed execution can still report failed or unavailable checks;
 only an explicit passed fact can inform subsequent routing. An unknown stop or
 postcondition retains effect ownership for reconciliation. This component does
-not implement the full standard graph, task advancement or lifecycle closure.
+not implement the full standard graph or lifecycle closure.
 
 Explicit `process-data-bindings.v2` also maps accepted operation identities into
 native activity inputs; v1 keeps its operation-only rules. Standard coding binds

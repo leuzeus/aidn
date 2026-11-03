@@ -43,7 +43,7 @@ export function readStandardCycleValidationResult({ record, output, work, materi
     || plan.work_sha256 !== work.evaluation_sha256 || !equal(plan.files, work.files) || plan.product_sha256 !== shadowHash(work.files)
     || output.observations.product_sha256 !== plan.product_sha256 || output.observations.profile_sha256 !== plan.profile_sha256
     || output.observations.work_operation_id !== plan.input.work_operation_id
-    || !equal(plan.checks, selectStandardValidationChecks(profile, work.output.observations.task))) fail("STANDARD_VALIDATION_RESULT_BINDING_CHANGED");
+    || !equal(plan.checks, selectStandardValidationChecks(profile, work.validation_test_refs ? { test_refs: work.validation_test_refs } : work.output.observations.task))) fail("STANDARD_VALIDATION_RESULT_BINDING_CHANGED");
   const base = "validation_" + shadowHash({ input: plan.input, preparedAt: plan.prepared_at_ms, profile: plan.profile_sha256 }).slice(0, 32);
   if (plan.snapshot_path !== path.join(profile.snapshot_root, base) || output.observations.snapshot_path !== plan.snapshot_path
     || output.evidence_refs[0]?.ref !== `validation/${base}/result.json`) fail("STANDARD_VALIDATION_EVIDENCE_SCOPE_INVALID");

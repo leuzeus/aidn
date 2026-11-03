@@ -150,6 +150,7 @@ export function findCycleStatus(auditRoot, cycleId, targetRoot = "") {
 }
 
 export function deriveFirstPlanStep(planText) {
+  const progress = /^## Process task progress\r?\ncontract_version: standard-cycle-task-progress\.v1\r?$/m.test(String(planText));
   const lines = String(planText).split(/\r?\n/);
   let inTasks = false;
   for (const rawLine of lines) {
@@ -166,7 +167,8 @@ export function deriveFirstPlanStep(planText) {
     }
     const numbered = line.match(/^\d+\.\s+(.+)$/);
     if (numbered && normalizeScalar(numbered[1])) {
-      return normalizeScalar(numbered[1]);
+      if (progress && /^\[[xX]\]\s+/.test(numbered[1])) continue;
+      return normalizeScalar(progress ? numbered[1].replace(/^\[ \]\s+/, "") : numbered[1]);
     }
     const bullet = line.match(/^-\s+(.+)$/);
     if (bullet && normalizeScalar(bullet[1])) {

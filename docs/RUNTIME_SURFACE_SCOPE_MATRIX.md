@@ -1,5 +1,13 @@
 # Runtime Surface Scope Matrix
 
+Task selection and progress reuse existing cycle/process records. Selection and
+work evaluation are read-only; advancement changes exactly the owning cycle
+plan/status and current entry point, preserving metadata and the frozen scope.
+The same local owner, CAS and required projection rules apply, including unknown
+effect retention. No new table, shared synchronization, implicit db-only export
+or historical instance conversion is introduced. Final code-check evidence
+remains separate from lifecycle acceptance.
+
 Validation-result consumption reads existing signed operation/native evidence
 and immutable host-profile artifacts. Verification entry updates only the
 owning cycle status/traceability, context snapshot and current entry point through

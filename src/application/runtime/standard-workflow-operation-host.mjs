@@ -8,6 +8,7 @@ import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
 import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
 import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
+import { createStandardCycleTaskAdvance } from "./standard-cycle-task-advance.mjs";
 import { createStandardCycleVerification } from "./standard-cycle-verification.mjs";
 import { evaluateStandardCycleValidation } from "../../core/workflow/standard-cycle-verification.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
@@ -71,19 +72,23 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readWork: (instance, input) => processAuthority.readCycleWorkEvaluation(instance, input), readCurrent: id => current(id).record }, { boundaryFactory: validationBoundaryFactory }) : null;
   async function evaluateValidation(instance, input) {
     const source = await processAuthority.readCycleValidationExecution(instance, input), evidence = await cycleValidation.readResult(source);
-    return { output: evaluateStandardCycleValidation({ source, evidence, validationOperationId: input.validation_operation_id }), source };
+    return { output: evaluateStandardCycleValidation({ source, evidence, validationOperationId: input.validation_operation_id }), source, evidence };
   }
-  const cycleVerification = processAuthority ? createStandardCycleVerification({ targetRoot, now,
-    async readEvaluation(instance, input) {
-      assertStandardOperationInput("cycle_verification_enter", input);
+  async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter") {
+      assertStandardOperationInput(operation, input);
       const record = retained(input.evaluation_operation_id).record, result = record.results.at(-1);
       if (record.intent.binding_ref !== "cycle_validation_evaluate" || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id
         || record.phase !== "receipted" || result?.receipt.outcome !== "completed"
         || !instance.events.some(row => row.kind === "operation_result" && shadowHash(row.receipt) === shadowHash(result.receipt))) fail("STANDARD_VERIFICATION_EVALUATION_REQUIRED");
       const verified = await evaluateValidation(instance, record.preview.input);
       if (shadowHash(verified.output) !== shadowHash(result.output)) fail("STANDARD_VERIFICATION_EVALUATION_STALE");
-      return { output: verified.output, evaluation_sha256: shadowHash(verified.output), context: verified.source.context, context_sha256: verified.source.context_sha256 };
-    }, observeContext: () => processAuthority.observeCycleVerificationContext(), readCurrent: id => current(id).record }) : null;
+      return { output: verified.output, evaluation_sha256: shadowHash(verified.output), context: verified.source.context, context_sha256: verified.source.context_sha256, source: verified.source, evidence: verified.evidence };
+  }
+  const cycleVerification = processAuthority ? createStandardCycleVerification({ targetRoot, now,
+    readEvaluation: readValidationEvaluation, observeContext: () => processAuthority.observeCycleVerificationContext(), readCurrent: id => current(id).record }) : null;
+  const cycleTaskAdvance = processAuthority ? createStandardCycleTaskAdvance({ targetRoot, now,
+    readEvaluation: (instance, input) => readValidationEvaluation(instance, input, "cycle_task_advance"),
+    observeContext: () => processAuthority.observeCycleReadinessContext(), readCurrent: id => current(id).record }) : null;
   const recoveryCycle = processAuthority ? createStandardDriftCycle({ targetRoot, operations, now,
     readSource: (instance, operation, input) => cycleRecoverySource(instance, operation, input),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
@@ -385,7 +390,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_plan_record" ? await cyclePlanRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE")
         : binding.id === "cycle_implementation_enter" ? await cycleImplementation?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE")
         : binding.id === "cycle_validation_execute" ? await cycleValidation?.prepare(state.record, input) ?? fail("STANDARD_VALIDATION_AUTHORITY_UNAVAILABLE")
-        : binding.id === "cycle_verification_enter" ? await cycleVerification?.prepare(state.record, input) ?? fail("STANDARD_VERIFICATION_AUTHORITY_UNAVAILABLE") : null;
+        : binding.id === "cycle_verification_enter" ? await cycleVerification?.prepare(state.record, input) ?? fail("STANDARD_VERIFICATION_AUTHORITY_UNAVAILABLE")
+        : binding.id === "cycle_task_advance" ? await cycleTaskAdvance?.prepare(state.record, input) ?? fail("STANDARD_TASK_PROGRESS_AUTHORITY_UNAVAILABLE") : null;
       return signer.seal({ contract_version: "standard-operation-preview.v1", instance_id: instanceId, instance_sha256: expectedSha256,
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
         input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input,
@@ -443,6 +449,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_readiness_evaluate") output = await processAuthority?.evaluateCycleReadiness(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_READINESS_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_work_evaluate") output = await processAuthority?.evaluateCycleWork(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_WORK_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_validation_evaluate") output = (await evaluateValidation(state.record, record.preview.input)).output;
+        else if (record.intent.binding_ref === "cycle_task_select") output = await processAuthority.evaluateCycleTaskSelection(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "cycle_task_work_evaluate") output = await processAuthority.evaluateCycleTaskWork(state.record, record.preview.input);
         else if (record.intent.binding_ref === "drift_change_request_record") output = await changeRequest.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
@@ -471,6 +479,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_validation_execute") output = await cycleValidation.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_verification_enter") output = await cycleVerification.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "cycle_task_advance") output = await cycleTaskAdvance.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_checkpoint_finalize") output = await operations.finalizeCycleCheckpoint(record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record),

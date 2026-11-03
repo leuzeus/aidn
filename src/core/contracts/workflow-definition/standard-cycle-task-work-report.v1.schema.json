@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-task-work-report.v1",
+  "x-aidn-contract-version": "standard-cycle-task-work-report.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "context_sha256",
+    "task",
+    "changes",
+    "notes",
+    "task_id",
+    "work_outcome"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-task-work-report.v1"
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "changes": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "operation"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 192
+          },
+          "operation": {
+            "enum": [
+              "update",
+              "add",
+              "delete"
+            ]
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      }
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^TASK-[0-9]{3,6}$"
+    },
+    "work_outcome": {
+      "enum": [
+        "changed",
+        "unchanged"
+      ]
+    }
+  }
+}

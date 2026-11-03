@@ -1,3 +1,4 @@
+import { taskProgressProposal, taskProgressValidationProfile, verifyTaskProgressExecution } from "./cycle-task-progress-fixture-lib.mjs";
 import { verifyCycleVerificationEntry } from "./cycle-verification-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -16,7 +17,7 @@ import { evaluateStandardCyclePlan } from "../../src/application/runtime/standar
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { evaluateStandardCycleReadiness } from "../../src/core/workflow/standard-cycle-readiness.mjs";
 import { evaluateCurrentStateConsistency } from "./verify-current-state-consistency.mjs";
-import { CYCLE_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
+import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
 import { analyzeStructuredArtifact } from "../../src/lib/workflow/structured-artifact-parser-lib.mjs";
 import { createValidationProfileFixture } from "./standard-cycle-validation-fixture-lib.mjs";
 
@@ -107,12 +108,12 @@ export async function verifyCycleReadinessContracts(check) {
   });
 }
 
-export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false, verification = false }) {
-  for (const selected of (verification ? ["files", "dual", "db-only", "partial", "projection"] : validation ? ["files", "dual", "db-only"] : work ? ["files", "dual", "db-only", "report", "source"] : readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${verification ? "cycle verification" : validation ? "cycle validation" : work ? "cycle work" : readiness ? "cycle readiness" : "cycle plan"} ${selected}: ${work ? "execute the frozen task and authenticate observed work" : "authenticated native proposal records canonical planning and retains readiness barriers"}`, async () => {
-    const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["report", "source"].includes(selected) ? "files" : selected;
+export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script, readiness = false, work = false, validation = false, verification = false, taskProgress = false }) {
+  for (const selected of (taskProgress ? ["files", "db-only", "unchanged", "partial", "projection"] : verification ? ["files", "dual", "db-only", "partial", "projection"] : validation ? ["files", "dual", "db-only"] : work ? ["files", "dual", "db-only", "report", "source"] : readiness ? ["files", "dual", "db-only", "partial", "projection", "refusal", "stale"] : ["files", "dual", "db-only", "partial", "projection"])) await check(`${taskProgress ? "cycle tasks" : verification ? "cycle verification" : validation ? "cycle validation" : work ? "cycle work" : readiness ? "cycle readiness" : "cycle plan"} ${selected}: ${work ? "execute the frozen task and authenticate observed work" : "authenticated native proposal records canonical planning and retains readiness barriers"}`, async () => {
+    const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["report", "source", "unchanged"].includes(selected) ? "files" : selected;
     let allowed = true, tamper = false, root;
     const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
-    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, work, validation, verification, authorize: async request => {
+    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, work, validation, verification, taskProgress, taskFinalValue: selected === "unchanged" ? 2 : 3, authorize: async request => {
       if (tamper && request.binding.id === "cycle_plan_record") {
         tamper = false; const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
         try { const row = store.getArtifact("CURRENT-STATE.md"); store.upsertArtifact({ ...row, classification_reason: "fixture-planning-race" }); }
@@ -120,6 +121,17 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
       }
       return { ...grant, authorized: allowed };
     }, async answer({ params }) { const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
+      if (observed.context.contract_version === "standard-cycle-task-work-context.v1") {
+        const context = observed.context, value = context.task_ordinal === 1 || selected === "unchanged" ? 2 : 3;
+        const unchanged = context.task_ordinal === 2 && selected === "unchanged", before = context.task_ordinal === 1 ? 1 : 2;
+        const request = { tool_name: "apply_patch", cwd: root, tool_input: { command: `*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = ${before};\n+export const value = ${value};\n*** End Patch` } };
+        const admission = await preWriteAdmit({ targetRoot: root, skill: "start-session", nativeRequest: request });
+        assert.equal(admission.write_decision.outcome, "allow", JSON.stringify(admission.write_decision));
+        if (!unchanged) fs.writeFileSync(path.join(root, "product/app.mjs"), `export const value = ${value};\n`);
+        return { outcome: "completed", summary: "Observed selected task", report: { contract_version: CYCLE_TASK_WORK_CONTRACT,
+          context_sha256: observed.context_sha256, task_id: context.task.id, task: context.task.task, work_outcome: unchanged ? "unchanged" : "changed",
+          changes: unchanged ? [] : [{ path: "product/app.mjs", operation: "update" }], notes: [unchanged ? "Selected requirement already implemented; host validation still required" : "Separate host validation required"] } };
+      }
       if (observed.context.contract_version === "standard-cycle-work-context.v1") {
         const input = { tool_name: "apply_patch", cwd: root, tool_input: { command: "*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = 1;\n+export const value = 2;\n*** End Patch" } };
         const admission = await preWriteAdmit({ targetRoot: root, skill: "start-session", nativeRequest: input });
@@ -128,11 +140,11 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
         return { outcome: "completed", summary: "Observed bounded product task", report: { contract_version: CYCLE_WORK_CONTRACT, context_sha256: observed.context_sha256,
           task: observed.context.task.task, changes: [{ path: "product/app.mjs", operation: selected === "report" ? "delete" : "update" }], notes: ["Validation remains the host's separate responsibility"] } };
       }
-      const report = cyclePlanProposal(observed);
+      const report = taskProgress ? taskProgressProposal(cyclePlanProposal(observed), selected === "unchanged") : cyclePlanProposal(observed);
       if (readiness && selected === "refusal") { report.surface = "shared"; report.usage_matrix.push({ ...report.usage_matrix[0], kind: "alternate" }); }
       return { outcome: "completed", summary: "Read-only typed planning fixture", report }; } });
     root = f.configuration.target_root;
-    const verifier = validation ? createValidationProfileFixture(f.base, { testRef: "TEST-001" }) : null;
+    const verifier = taskProgress ? taskProgressValidationProfile(f.base, selected === "unchanged") : validation ? createValidationProfileFixture(f.base, { testRef: "TEST-001" }) : null;
     if (verifier) f.validationProfile = verifier.profileRef;
     const auth = await bootstrapMixed(f), operations = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
     if (work) { auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 60000; }
@@ -231,8 +243,12 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
         finally { store.close(); }
       }
     }
-    if (readiness) await verifyReadinessTransition({ f, artifacts, operations, selected: verification && ["partial", "projection"].includes(selected) ? mode : selected, root, cyclePath, recorded, script, work,
+    if (readiness) await verifyReadinessTransition({ f, artifacts, operations, selected: (verification || taskProgress) && ["partial", "projection", "unchanged"].includes(selected) ? mode : selected, root, cyclePath, recorded, script, work,
       setAllowed: value => { allowed = value; } });
+    if (taskProgress) {
+      await verifyTaskProgressExecution({ f, artifacts, cyclePath, selected, auth, verifier, script, setAllowed: value => { allowed = value; } });
+      return;
+    }
     if (work) await verifyWorkResult({ f, root, selected: verification && ["partial", "projection"].includes(selected) ? mode : selected, script, auth });
     if (validation) {
       console.log(`STEP cycle validation ${selected}: authenticated observed work accepted; deterministic validation next`);

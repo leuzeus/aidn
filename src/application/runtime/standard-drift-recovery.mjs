@@ -37,6 +37,12 @@ export function cycleVerificationBoundary(options, cyclePath) {
   return documentBoundary({ ...options, context: { ...options.context, cycle_state: null,
     metadata_pins: options.context.metadata_pins.filter(row => !own.includes(row.ref.slice(6))) } }, own);
 }
+export function cycleTaskProgressBoundary(options, cyclePath) {
+  if (!/^cycles\/C[0-9]{3,6}-[a-z]+-[A-Za-z0-9._-]+$/.test(cyclePath)) fail("STANDARD_CYCLE_PLAN_PATH_INVALID");
+  const own = [`${cyclePath}/plan.md`, `${cyclePath}/status.md`, "CURRENT-STATE.md"];
+  return documentBoundary({ ...options, context: { ...options.context,
+    metadata_pins: options.context.metadata_pins.filter(row => !own.includes(row.ref.slice(6))) } }, own);
+}
 export function recoveryCycleBoundary({ plan, originalReferences, artifacts, ...options }) {
   const { cycle_id, cycle_state, original_objective, context_use, completion, branch, ...body } = options.context;
   const context = { ...body, documents: originalReferences.map(row => {

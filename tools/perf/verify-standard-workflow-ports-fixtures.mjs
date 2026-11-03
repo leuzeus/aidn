@@ -65,8 +65,15 @@ try {
   });
   await check("closed typed operation bindings", () => {
     const bindings = standardWorkflowOperationBindings();
-    assert.deepEqual(bindings.map(row => row.id), ["cycle_validation_evaluate", "cycle_verification_enter", "cycle_validation_execute", "cycle_work_evaluate", "cycle_readiness_evaluate", "cycle_implementation_enter", "context_reload", "session_admit", "session_initialize", "mode_decision", "session_mode_apply", "session_start_finalize",
+    assert.deepEqual(bindings.map(row => row.id), ["cycle_task_select", "cycle_task_work_evaluate", "cycle_task_advance", "cycle_validation_evaluate", "cycle_verification_enter", "cycle_validation_execute", "cycle_work_evaluate", "cycle_readiness_evaluate", "cycle_implementation_enter", "context_reload", "session_admit", "session_initialize", "mode_decision", "session_mode_apply", "session_start_finalize",
       "cycle_admit", "cycle_context_refresh", "cycle_initialize", "branch_cycle_audit", "cycle_checkpoint_finalize", "cycle_plan_evaluate", "cycle_plan_record", "drift_report_evaluate", "drift_check_finalize", "drift_recovery_decision", "drift_recovery_record", "drift_change_request_record", "drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"]);
+    for (const id of ["cycle_task_select", "cycle_task_work_evaluate", "cycle_task_advance"]) {
+      const row = bindings.find(binding => binding.id === id);
+      assert.equal(row.executor_kind, "deterministic"); assert.equal(row.skill_id, "start-session");
+      assert.deepEqual(row.allowed_modes, ["COMMITTING"]); assert.equal(row.effect_class, id === "cycle_task_advance" ? "mutating" : "read-only");
+    }
+    assert.equal(bindings.find(row => row.id === "cycle_validation_evaluate").input_contract, "standard-cycle-validation-evaluate-input.v2");
+    assert.equal(bindings.find(row => row.id === "cycle_validation_evaluate").revision, 2);
     const cr = bindings.find(row => row.id === "drift_change_request_record");
     assert.equal(cr.effect_class, "mutating"); assert.equal(cr.executor_kind, "deterministic"); assert.equal(cr.skill_id, "drift-check");
     assert.equal(bindings.find(binding => binding.id === "mode_decision").executor_kind, "human");

@@ -913,3 +913,38 @@ cycle-close skill or its required checkpoint hook. Partial writes or unconfirmed
 projections retain the effect owner and signed reconciliation state, without
 rollback or repeat dispatch. These ports remain components of the full standard
 model and its remaining multi-task selection, audit and closure routes.
+
+
+### Selected task progression and final evidence
+
+The standard mixed host adds deterministic `cycle_task_select`,
+`cycle_task_work_evaluate` and explicitly authorized `cycle_task_advance` ports.
+Selection derives an ordered cursor from the frozen typed proposal and accepted
+signed progress/work/validation receipts. It checks the selection-context chain,
+predecessor, ordinal, exact task, scope and current canonical context. The JSON
+IR can place this sequence in the existing common loop reducer; no new reducer
+or model call selects or advances a task.
+
+A distinct `standard-cycle-task-work-report.v1` binds its selected task identity.
+An explicit unchanged result requires a reason and zero observed file changes;
+it still requires host validation. The historical first-task report/context
+remain separate. Only a versioned progress marker opts canonical plan parsing
+into checked-task handling, preserving historical literal task text.
+
+Advancement requires the current task's tests passed, fresh authenticated
+observed work, actual start-session admission and a current explicit effect
+grant. It writes exactly plan/status/CURRENT-STATE through metadata-preserving
+CAS. The ordered task list gains checked markers and a progress record; the
+frozen scope JSON remains unchanged. Partial writes or missing projections
+retain unknown effects and their owner instead of authorizing another task.
+
+The final task runs all planned cycle tests against the final product snapshot.
+Earlier intermediate checks cannot satisfy final coverage. Validation-evaluation
+input v2 optionally names the accepted progress operation to bridge only its
+owned canonical metadata changes. The host authenticates the whole causal
+chain, exact current context, unchanged code and pinned physical evidence.
+The v1 schema remains retained; historical instances receive no conversion.
+The final evaluator feeds the existing VERIFYING transition. Task progression
+is not audit acceptance, DONE, full skill completion or the complete standard
+workflow. The full distributed graph and A1–A10/native/installed acceptance
+obligations remain outstanding. Qualification status belongs in the plan.

@@ -1,5 +1,17 @@
 # Testing Guide
 
+`--cycle-task-mode=contract|files|db-only|unchanged|partial|projection` selects
+ordered two-task execution in the existing agentic execution corpus. The pure
+contract covers cursor/progress integrity, versioned task parsing and explicitly
+unchanged typed work. Integrated cases use actual canonical/admission/operation
+and source ports with fixture native, grant and validation-boundary transports.
+They require two selected tasks, final checks against the same final product,
+retained progress without repeated effects, and common-reducer simulation.
+Files resumes the first advance in a fresh Node process. Refused authorization,
+partial writes and missing projection preserve explicit non-success; unchanged
+work remains subject to checks. Native provider and exact installed archive
+qualification are separate. See the standard workflow plan for observed runs.
+
 `--cycle-verification-mode=contract|files|dual|db-only|partial|projection` in the
 agentic execution corpus selects evidence consumption and verification-entry
 checks. The contract case distinguishes incomplete task/test coverage from

@@ -63,9 +63,9 @@ loading; it never triggers runtime repair.
 | Required path | Current status |
 | --- | --- |
 | Existing session/cycle resume, carryover and cycle selection | Not delivered by the startup model |
-| Cycle creation, R1/R2/R3 continuity, branch audit and DoR | Remaining business adapters/model branches |
-| THINKING/EXPLORING/COMMITTING work, retained exploration | Remaining standard control and native work integration |
-| Drift, incidents, validation and independent review | Remaining model branches and actual ports |
+| Cycle creation, continuity, branch audit and DoR | R1/R2 scaffold JSON and business ports exist; checkpoint/DoR ports have offline evidence. R3, cycle choice and the full model remain |
+| THINKING/EXPLORING/COMMITTING work, retained exploration | Frozen COMMITTING task/work/validation/progression ports have offline mixed-host evidence. Other mode branches and full-model assembly remain |
+| Drift, incidents, validation and independent review | Drift/recovery and deterministic validation have ports; incident/review/audit completion and full-model branches remain |
 | Cycle close, optional promotion, open-cycle resolution and session close | Remaining standard control and observed effects |
 | PR submission, authenticated review/check events, corrections, merge and sync | Remaining provider adapters and durable mixed resume |
 | Full standard JSON/catalog, ordinary CLI/console entrypoints | Not replaced by this startup component |
@@ -151,3 +151,33 @@ repaired explicitly, never substituted for canonical authority. This is not yet
 the GitHub adapter, native human channel, R05 realization or mixed native resume.
 A source event only selects its declared IR branch; downstream business admission
 and explicit effect grants remain necessary.
+
+## Available work and verification ports
+
+These are fixed application/native components of the mixed host. Their two-task
+loop is currently authored in the executable fixture corpus. It is not another
+distributed standard model and does not replace the remaining full JSON graph
+or its ordinary CLI/console entrypoints.
+
+| Activity/port | SPEC and skill component | Actual realization |
+| --- | --- | --- |
+| `cycle_implementation_enter` | R03/R04, `start-session` admission | Fresh authenticated DoR, explicit grant and two canonical updates establish IMPLEMENTING/READY with frozen scope |
+| `cycle_task_select` | R03/R04, `start-session` context | Ordered cursor from the approved typed proposal, signed accepted progress and exact current context; no model or write |
+| Typed selected-task native activity | R03/R04, scoped implementation | Fixed native adapter, durable allocation, v2 activity data link and specific patch admission; report binds the selected task |
+| `cycle_task_work_evaluate` | R03/R04, observed work | Authenticated native result/context and actual before/after file observations; an explicit no-change still requires checks |
+| `cycle_validation_execute` | R04 validation | Pinned host check profile, bounded immutable snapshot and execution boundary; final task selects every planned cycle test, without a model call |
+| `cycle_task_advance` | R03/R04, `start-session` admission | Current task checks passed, reviewed grant and metadata-preserving CAS of plan/status/CURRENT-STATE; unchanged frozen scope; uncertainty retains its owner |
+| `cycle_validation_evaluate` | R04/R07, `cycle-close` evidence consumption | Reauthenticated physical manifest/logs/snapshot and exact code; explicit accepted progress bridges owned metadata changes, without rerunning effects |
+| `cycle_verification_enter` | R04/R07, `cycle-close` phase component | Fresh accepted evidence and all task work observed; actual admission/grant and four canonical updates enter VERIFYING with audit pending |
+
+Work observation does not authenticate a per-file writer or prove semantic
+acceptance. Failed/unavailable checks, unresolved audit and human decisions are
+not converted into DONE. These operations do not finalize `cycle-close`, promote
+baseline, merge code or finish a session. Historical contracts/readers remain
+separate; checked task text is interpreted as progress only with its versioned
+marker and the process host also requires the authenticated progress chain.
+
+The [task qualification record](../qualification/agentic-process/task-progression-2026-11-02.json)
+separates actual offline ports, fixture transports, source-package inclusion and
+remaining native/installed-archive proof. The complete standard model and A1–A10
+acceptance remain required.

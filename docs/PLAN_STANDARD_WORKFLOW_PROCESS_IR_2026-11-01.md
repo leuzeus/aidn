@@ -8,8 +8,7 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Dernier état relu : `906c935` et tranche courante de consommation des preuves
-et de passage explicite en vérification du cycle.
+Dernier état relu : `d2975de` et progression de tâches qualifiée hors ligne sur pins 54/52.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -2284,3 +2283,121 @@ Un résultat explicite sans modification de code y reste soumis à validation.
 Ce socle n'est pas encore raccordé aux ports de sélection/avancement ni à la
 boucle IR ; il ne qualifie aucun parcours applicatif, natif ou installé. Il
 reste séparé du code 52/50 qualifié ci-dessus.
+
+
+## Addendum — progression de tâches dans la boucle IR (préparation)
+
+État : préparation isolée fondée sur `d2975de`. L'implémentation et ses parcours
+applicatifs sont en validation ; aucune qualification native ni sur archive
+installée n'est revendiquée. Les pins 52/50 qualifiés ci-dessus décrivent la
+tranche précédente et ne prouvent pas cette nouvelle progression.
+
+Livrable L2/L4 : sélection déterministe de la tâche courante à partir du plan
+gelé et des reçus signés, rapport natif distinct lié à cette sélection,
+évaluation des changements observés, validation et avancement autorisé. Une
+boucle du modèle JSON utilise le même réducteur et ses liaisons de données ;
+aucun driver ne choisit les identités de tâches ou les résultats à consommer.
+Chaque avancement écrit plan/status/CURRENT-STATE par CAS conservant les
+métadonnées. Le JSON de périmètre reste identique ; le lecteur historique des
+tâches ne change qu'en présence du marqueur de progression versionné.
+
+Dépendances et refus : DoR et IMPLEMENTING déjà autorisés, même proposition,
+sélection et travail authentifiés, contrôles de la tâche passés, admission
+réelle et grant courant. Un résultat explicite sans changement exige une raison
+et reste soumis aux tests. Refus, attente et effet inconnu ne complètent pas la
+tâche. Un effet partiel conserve son propriétaire pour réconciliation.
+
+La dernière tâche réexécute l'ensemble des contrôles du cycle sur le produit
+final. L'entrée v2 de l'évaluation peut nommer le reçu d'avancement qui explique
+le seul changement de métadonnées canoniques ; autorité, code et preuves
+physiques sont revérifiés. L'ancien contrat d'entrée est conservé sans
+conversion d'instance. L'évaluation finale alimente VERIFYING, jamais DONE.
+
+Fichiers : `standard-cycle-task-progress.mjs` (cœur),
+`standard-cycle-task-advance.mjs` (port d'effet), autorité/hôte standard,
+observateur de travail, lecteur/exécuteur de validation, contrats privés,
+admission de prochaine tâche et pins d'implémentation ; corpus
+`cycle-task-progress-fixture-lib.mjs` et sélection `--cycle-task-mode`.
+ADR-0025, documentation des contrats/moteur et TESTING décrivent ces limites.
+
+Critères : deux tâches successives réellement admises et observées, un contrôle
+intermédiaire puis tous les contrôles sur le snapshot final, reprise durable,
+aucun effet ni processus de vérification répété par redispatch, scope inchangé,
+refus d'autorisation et écritures/projections incomplètes explicites. Le même
+modèle et le même réducteur doivent reproduire exactement le hash final.
+Les neuf contrôles purs, sept définitions de schéma, onze contrôles de validation,
+48 contrôles du moteur, 27 d'opérations et 22 de modèles passent. Les parcours
+applicatifs sont en cours ; natif et archive installée exacte sont NOT_RUN.
+
+Reste requis après cette tranche : audit structuré des exigences/usages/GAP/CR,
+décisions de clôture/report/non-conservation/annulation et hook, promotion,
+revue de PR et synchronisation. Le modèle standard complet distribué doit
+assembler tous ces parcours et être raccordé aux entrées ordinaires. A1–A10
+sur projet jetable, replay/simulation du même modèle puis preuves natives et
+sur archive installée exacte restent les conditions de terminaison du plan.
+
+
+Premier essai applicatif de progression : files et DB-only atteignent la sélection
+signée, puis refusent avant toute réponse native de travail avec
+`STANDARD_DRIFT_PRODUCT_REQUIRED`. Cause identifiée : dans le worker réservé,
+la source de sélection utilisait le callback de produit de l'hôte ordinaire,
+absent de ce worker, au lieu du snapshot déjà observé et transmis par le
+compositeur. Le raccordement transmet désormais cette empreinte explicitement,
+liée au snapshot et à la sélection authentifiée. Les protections restent actives.
+Les essais de faute préliminaires ont été arrêtés comme supersédés ; ils ne sont
+pas des PASS. Nouveau parcours files en cours sur pins 54/52.
+
+Les 14 vérifications de ports passent. Leur corpus historique nécessite une
+base SQLite de fixture ignorée, préparée localement avec empreinte vérifiée ;
+cette préparation ne vaut ni reproduction depuis checkout vierge ni archive
+installée exacte. Source/métadonnées/complétude, références, Markdown, catalogue
+de gates, sensibilité (1 770 fichiers suivis) et route ASSURED passent ; cela ne
+clôt pas les parcours applicatifs, natifs, installés ni l'admission complète de PR.
+
+
+Qualification de progression sur sources 54/52 : le parcours files passe avec
+les deux tâches, trois contrôles Node contrôlés, reprise de l’avancement dans un
+nouveau processus, redispatch retenu et simulation exacte. Les cas d’écriture
+partielle DB-only et de projection perdue dual passent : avancement non confirmé,
+faits de succès vides, propriétaire conservé et aucune répétition d’effet.
+DB-only nominal et résultat explicite sans changement sont encore en cours.
+Les transports/grants/frontière demeurent des capacités de fixture ; natif et
+archive installée exacte sont NOT_RUN. La boucle IR de cette tranche est un
+modèle du corpus applicatif ; elle ne remplace pas le modèle standard distribué
+L3 à assembler et raccorder aux entrées ordinaires.
+
+La préparation isolée suivante dispose de huit contrôles purs du rapport d’audit
+et de quatre contrôles du composant d’inventaire canonique. Un rapport favorable
+reste une observation avec décision humaine requise, sans état terminal,
+permission ni acceptation de risque déduite du modèle. L’inventaire refuse les
+redirections et l’absence de base canonique, et distingue DB-only des fichiers
+visibles. Sélecteur de vérification, pont de contexte et lecture des documents
+sont en préparation, sans qualification applicative. La décision humaine,
+les écritures approuvées, la clôture et son hook restent à implémenter/qualifier.
+
+L’enregistrement [des preuves de progression](qualification/agentic-process/task-progression-2026-11-02.json) sépare le code qualifié, les capacités de fixture et les preuves encore absentes.
+
+
+## Qualification finale de la progression de tâches
+
+Les cinq scénarios files, DB-only, sans changement, écriture partielle et
+projection perdue passent sur le même code 54/52. Les trois parcours nominaux
+traitent les deux tâches puis entrent en VERIFYING avec audit/clôture en attente.
+Le dernier réexécute les contrôles requis malgré un rapport explicite sans
+changement de code. Chaque scénario reproduit le hash final avec le même modèle
+et le même réducteur. Les deux fautes conservent leur effet inconnu, leur
+propriétaire et leurs faits de succès vides, sans redispatch destructeur.
+
+La preuve détaillée identifie les deux empreintes d’implémentation, les capacités
+de fixture, le prérequis SQLite historique et les limites. Les politiques,
+contrats/fixtures ciblés, références, Markdown, catalogue de gates, route ASSURED
+et topologie source sont cohérents. Le code natif réel, l’archive installée
+exacte, la suite monolithique et l’admission complète d’une PR restent NOT_RUN.
+Le modèle standard distribué L3, les entrées ordinaires L5 et A1–A10 restent
+ouverts ; ce succès de composants n’autorise aucun marqueur global de livraison.
+
+L’audit suivant possède neuf contrôles purs et quatre d’inventaire, cinq schémas
+privés et un raccordement read-only en qualification applicative séparée. Ses
+sources en préparation ne font pas partie de cette preuve 54/52. La décision
+humaine, la clôture effective et le hook, puis promotion/PR/synchronisation,
+restent explicitement à terminer.
