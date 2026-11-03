@@ -3,14 +3,6 @@
   "date": "2026-11-03",
   "status": "PASS_FILES_COMPOSED_CLOSURE_AND_COLD_RESTART",
   "complete_standard_workflow": false,
-  "current_model": {
-    "revision": 15,
-    "sha256": "da68d94a22d1b34dba05e269d7416f37312fb48f71bbd248187a35bce3c21369",
-    "nodes": 73,
-    "operation_occurrences": 41,
-    "unique_bindings": 40,
-    "catalog_sha256": "04f56d65b25904abc838921deb1bf5873dcae2e754661de972d4d94af000cb1c"
-  },
   "proof_class": "offline-production-composition-with-fake-native-wire-and-fixture-verification-boundary",
   "component_checks": {
     "git_port": 13,
@@ -158,5 +150,28 @@
     "ordinary-standard-selection",
     "public-CLI-streaming"
   ],
-  "merge_readiness": "NOT_CLAIMED"
+  "merge_readiness": "NOT_CLAIMED",
+  "qualified_model": {
+    "revision": 15,
+    "sha256": "da68d94a22d1b34dba05e269d7416f37312fb48f71bbd248187a35bce3c21369",
+    "nodes": 73,
+    "operation_occurrences": 41,
+    "unique_bindings": 40,
+    "catalog_sha256": "04f56d65b25904abc838921deb1bf5873dcae2e754661de972d4d94af000cb1c"
+  },
+  "integration_followups": [
+    {
+      "commit": "cd648739e2bb7add30c57fba9756882421610f2a",
+      "scope": "planned-REQ-TEST-matrix-producer-compatibility",
+      "evidence": "six-offline-planning-contract-checks-including-real-admission",
+      "full_composed_current_revision": "NOT_RUN"
+    },
+    {
+      "commit": "e96b1060371e620a2346c5d974c8f739b25c1430",
+      "scope": "descriptive-schema-identifiers",
+      "payload_constraints_changed": false,
+      "evidence": "six-contract-fourteen-composition-twenty-two-model-checks",
+      "full_composed_current_revision": "NOT_RUN"
+    }
+  ]
 }
