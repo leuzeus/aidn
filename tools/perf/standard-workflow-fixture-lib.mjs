@@ -16,7 +16,16 @@ const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { enco
 export function createStandardWorkflowFixture(mode = "files", owned = []) {
   const root = fs.mkdtempSync(path.join(temporary, "aidn-standard-ports-")); owned.push(root);
   const source = path.join(repo, "tests/fixtures/repo-installed-core");
-  fs.cpSync(source, root, { recursive: true, filter: name => isActivationFixtureSource(source, name) });
+  // Derive a temporary fixture only from tracked corpus bytes. A developer's
+  // ignored SQLite index must not change what a clean checkout tests.
+  const prefix = "tests/fixtures/repo-installed-core/";
+  const tracked = new Set(git(repo, "ls-files", "-z", "--", prefix).split("\0").filter(Boolean).map(name => name.slice(prefix.length)));
+  const directories = new Set([""]);
+  for (const name of tracked) { let parent = path.posix.dirname(name); while (parent !== ".") { directories.add(parent); parent = path.posix.dirname(parent); } }
+  fs.cpSync(source, root, { recursive: true, filter: name => {
+    const relative = path.relative(source, name).replaceAll("\\", "/");
+    return (tracked.has(relative) || directories.has(relative)) && isActivationFixtureSource(source, name);
+  } });
   // Current source template, real installed activation assets, fixture business
   // state. This is scaffold/fixture qualification, not archive qualification.
   fs.copyFileSync(path.join(repo, "scaffold/docs_audit/sessions/TEMPLATE_SESSION_SXXX.md"), path.join(root, "docs/audit/sessions/TEMPLATE_SESSION_SXXX.md"));
@@ -27,6 +36,12 @@ export function createStandardWorkflowFixture(mode = "files", owned = []) {
   const runtimeFile = path.join(root, "docs/audit/RUNTIME-STATE.md");
   fs.writeFileSync(runtimeFile, fs.readFileSync(runtimeFile, "utf8").replace(/^runtime_state_mode:.*$/m, `runtime_state_mode: ${mode}`));
   if (mode !== "files") {
+    // Explicit fixture construction, not a runtime fallback or conversion of
+    // historical instances. The real index projector creates the temporary
+    // canonical store from the copied Markdown before DB-first reads begin.
+    const seeded = JSON.parse(execFileSync(process.execPath, [path.join(repo, "tools/perf/index-sync.mjs"), "--target", root, "--store", "sqlite", "--with-content", "--json"],
+      { cwd: repo, env: { ...process.env, AIDN_STATE_MODE: "", AIDN_INDEX_STORE_MODE: "" }, encoding: "utf8", stdio: "pipe", timeout: 180000, windowsHide: true, maxBuffer: 8388608 }));
+    assert.equal(seeded.dry_run, false); assert.ok(seeded.summary.artifacts_count > 0);
     const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
     try {
       for (const [relative, kind, family] of [["sessions/TEMPLATE_SESSION_SXXX.md", "template", "normative"], ["RUNTIME-STATE.md", "runtime_state", "derived"]]) {

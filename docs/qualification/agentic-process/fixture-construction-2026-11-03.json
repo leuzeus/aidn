@@ -1,0 +1,58 @@
+{
+  "status": "PASS",
+  "proof_class": "offline-disposable-fixture",
+  "source_parent_commit": "fe3efab4ecd421d28f5eb5e2e2c2c63408080a1a",
+  "source_files": {
+    "tools/perf/standard-workflow-fixture-lib.mjs": "a9e7147479b5c18a4d9b95c930c88ec7f78d454425c5ca51af6479461ecf0879"
+  },
+  "change": "Construct standard workflow clients only from tracked corpus files; explicitly run the real content-bearing index projector before DB-first fixture reads. Do not copy ignored local SQLite data.",
+  "previous_failure": {
+    "command": "node tools/perf/verify-standard-workflow-ports-fixtures.mjs",
+    "reason_code": "ARTIFACT_STORE_MISSING",
+    "classification": "missing local-only fixture precondition; not a runtime fallback authorization"
+  },
+  "validation": [
+    {
+      "command": "node tools/perf/verify-standard-workflow-ports-fixtures.mjs",
+      "status": "PASS",
+      "checks": 14
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-host-fixtures.mjs",
+      "status": "PASS",
+      "checks": 20
+    },
+    {
+      "command": "node tools/verify/verify-doc-references.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node tools/perf/verify-markdown-contract-conformance-fixtures.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "governance-route.v1 resolver on candidate helper patch",
+      "status": "PASS",
+      "lane": "ASSURED"
+    }
+  ],
+  "coverage": [
+    "files, dual and db-only SQLite canonical reads and effects",
+    "durable authentic journal/receipt acceptance in a new Node process",
+    "same-model reducer replay and simulation",
+    "counterfeit self-hashed history and unsigned journal rejected",
+    "missing prepared canonical store refused without recreation",
+    "partial SQLite mutation retains uncertainty and blocks dispatch/replay",
+    "owned temporary clients removed"
+  ],
+  "boundaries": {
+    "runtime_fallback_added": false,
+    "historical_corpus_rewritten": false,
+    "historical_instance_conversion_added": false,
+    "native_transport": "NOT_RUN",
+    "exact_installed_archive": "NOT_RUN",
+    "full_standard_workflow": "NOT_YET_DELIVERED",
+    "host_authorization": "fixture-capability"
+  },
+  "dependencies": "Locked npm dependencies installed offline with lifecycle scripts disabled; SQLite uses the actual local adapter."
+}

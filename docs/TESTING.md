@@ -2131,3 +2131,17 @@ they do not prove native provider or exact installed archive execution. The
 audit fixture fixes its longer original deadline before any native allocation;
 no live authority or production limit is extended during execution. A favorable
 report must retain VERIFYING, pending human closure and no-effect status.
+
+
+Standard workflow corpus clients created by `standard-workflow-fixture-lib.mjs`
+copy tracked corpus bytes and install current integration assets. They never copy
+an ignored developer SQLite index. In dual/db-only fixture construction, the real
+index projector explicitly builds a temporary canonical store with content from
+the copied Markdown before DB-first reads. The current session template and
+runtime digest are then aligned through the artifact store. This is disposable
+fixture preparation, not a runtime missing-store fallback or a conversion of
+historical instances. Missing-store admission tests still remove that prepared
+store and require refusal without recreation. Source-install, native transport
+and exact installed-archive qualification remain separate evidence classes.
+
+The [fixture construction record](qualification/agentic-process/fixture-construction-2026-11-03.json) records the offline port/host checks and their proof boundaries.
