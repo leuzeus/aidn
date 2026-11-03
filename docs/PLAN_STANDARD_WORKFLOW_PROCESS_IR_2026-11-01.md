@@ -3034,3 +3034,30 @@ il ne constitue pas une exécution native ou une preuve d’archive installée.
 Les sources runtime, assets de modèle et vérificateur de ports restent identiques
 au snapshot LF testé. Les lecteurs historiques de mode (45), récupération (30),
 inbox cycle (9 par mode) et promotion (11) passent sur leur snapshot conservé.
+
+### Port Git d'intégration et résultat composé hérité — 2026-11-03
+
+Le port local d'intégration a désormais 15 contrôles comportementaux PASS sur de
+vrais dépôts jetables, avec nettoyage terminé. Il impose un plan exact, un grant
+frais, un FF borné et une transaction Git cible/HEAD avec source/index verrouillés.
+Il conserve les octets produit/index, désactive hooks et filtres, refuse les
+cibles divergentes ou utilisées ailleurs et conserve les effets inconnus. Sa
+confirmation exige les reflogs liés à l'opération ; des refs correspondantes
+seules ne constituent pas une preuve. Ce port reste sans binding ni nœud du
+modèle standard et ne vaut pas autorisation implicite d'intégration.
+
+L'exécution héritée du snapshot `0e469fd` (modèle 24) est terminale FAIL, code 1.
+Après promotion et admission de session, son R05 de session refuse avec
+`STANDARD_DRIFT_GATE_BLOCKED` et `scope_growth` sur cinq postimages de gouvernance.
+La revue R07 n'est pas atteinte. Le défaut de schéma files pressenti dans le relais
+n'est donc pas la panne observée. La fixture et les preuves originales restent
+conservées ; aucun hook n'est rejoué. Ce résultat n'est pas attribué au modèle 29.
+
+L'audit de gouvernance TARGETED a comparé la politique L2/L3, le finaliseur et le
+skill courant : la complétion du drift décharge seulement son âge, pas les autres
+signaux. Aucune règle n'est assouplie. La prochaine correction à vérifier est un
+checkpoint explicite, à scope fini dérivé des writers acceptés, après les CAS
+finaux de promotion et avant le R05 de session. Il ne doit inclure aucun fichier
+étranger, inventer un commit DB-only ou supprimer une preuve de dérive. La preuve
+composée modèle 29 tourne sur sa source figée distincte ; son résultat reste ouvert.
+Les ports humains/métier d'intégration, PR/revue/sync et A1–A10 restent requis.

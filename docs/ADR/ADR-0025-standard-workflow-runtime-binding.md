@@ -1548,3 +1548,35 @@ No failure may emit a completion fact, consume the run twice, or release an
 uncertain owner. A partial CLOSED artifact is not successful process completion.
 The positive path also rejects a changed physical start run before executing
 the final hook.
+
+### Local branch integration port, without standard selection (2026-11-03)
+
+The internal `WorkflowBranchIntegration` port is a separate Git effect, requiring
+an exact observed source/target plan, explicit write intent and a revalidated host
+grant. Its local adapter only fast-forwards a target to the already checked-out
+source tip. It preserves source, index and worktree bytes; it runs no checkout,
+merge driver, repository hook, configured clean/smudge/process filter or remote
+operation. Effective filter configuration is pinned before disabling execution
+overrides, and any later configuration change refuses.
+
+One native Git reference transaction compares the old target OID and old HEAD
+referent and updates target plus symbolic HEAD. The source ref and index remain
+locked while the transaction runs. Other-worktree ownership, clean status,
+ancestry, direct refs and unchanged preimages are required. An unavailable Git
+symbolic-reference transaction has no sequential fallback. Concurrent external
+Git changes still require observation; this port does not claim a universal
+transaction over independent worktrees or filesystem writers.
+
+Confirmation requires the exact appended target/HEAD reflog records bound to
+the operation and plan, preserved reflog prefixes, source tip, index and worktree
+registration. Matching refs alone are insufficient. Lost confirmation or a
+revoked grant after the effect remains unknown. Cold inspection may observe the
+effect but neither retries it nor grants workflow success or authorization.
+
+Fifteen real-Git fixture checks cover positive/no-op/equal-head paths, linked
+worktrees, filter overrides, dirty/staged/untracked changes, divergent/stale refs,
+foreign locks, source locking, concurrent target/HEAD movement, lost grant and
+reflog mismatch. This adapter is not yet a standard-model operation. Its tests
+authenticate no human integration decision, canonical session resolution, PR,
+native provider or installed archive. A retained cycle and a closed session do
+not implicitly authorize its integration.

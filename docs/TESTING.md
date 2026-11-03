@@ -2510,6 +2510,15 @@ transport and make no session-close, full-model or archive claim.
 
 ### Session closure decision and R05 physical authority
 
+For the separate local Git integration port, run
+`node tools/perf/verify-workflow-branch-integration-port-fixtures.mjs`.
+It exercises real disposable repositories and linked worktrees, exact FF/ref/HEAD
+effects, preserved index/product bytes, disabled filter execution, explicit grants,
+negative preconditions, concurrency and cold reflog observation. The final result
+and cleanup must both succeed. This is a port-only proof: no standard-model
+binding, canonical lifecycle decision, PR transport, native provider or installed
+archive is exercised. See ADR-0025 for its authority boundary.
+
 `verify-standard-session-closure-human-fixtures.mjs` checks the closed private
 contracts, provider verification, immutable v5 captures, refusal/deferral/cancellation
 and actual files/SQLite stores. `verify-standard-session-closure-context-fixtures.mjs`
