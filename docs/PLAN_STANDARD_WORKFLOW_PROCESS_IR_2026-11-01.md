@@ -357,7 +357,7 @@ seulement dans le lot concerné ; les nouveaux chemins de la section 4 sont prop
 | L1 — Contrats et décision | L0 | ADR-0025 mis en œuvre ; contrats binding/reçu/événement et versionnement modèle/instance ; `agentic-process-model.mjs`, réducteur/service, schémas, source-of-truth, métadonnées et diagnostics. | D/A/H distingués, résultats authentifiables par type, attentes et issues sans faux agent ; tests de schémas, refus d’extensions inconnues, anciens lecteurs et limites ; décision de version fixée avant L2–L4. Validé hors ligne. |
 | L2 — Ports réels | L1 | Modules standard-workflow operations proposés ; `*-admit-use-case`, `skill-hook-use-case`, `checkpoint-use-case`, `db-first-artifact-use-case`, adaptateurs Git et GitHub. | Chaque ligne du catalogue a réalisation/postcondition ou blocage explicite ; tests sur vrai projet jetable ; aucun modèle pour D/H ; admission distincte de réalisation ; échecs imbriqués visibles et effets sans autorisation refusés. |
 | L3 — Modèle standard et traçabilité | L1 + ports L2 consommés explicitement versionnés ; composition progressive avec L2 | JSON standard, catalogue/bindings et matrice de traçabilité proposés ; politiques de contrôle existantes ; scénarios de simulation. | Couverture R01–R11, trois modes de travail, chemins de cycle et PR, reports/annulations ; références de ports résolues ; aucun XML obligatoire ; modèle livré consommé par tests, sans copier ses décisions dans un orchestrateur parallèle. |
-| L4 — Reprise et événements | L1 + L2 + modèle L3 | Service de reprise proposé ; store/service/host/composition agentiques, garde de démarrage remplacée par une admission de reprise explicite ; contrats de journal/inbox, preuves de propriété et événements GitHub. | Reprise après chaque frontière intention/effet/résultat/attente ; déduplication, réconciliation des inconnus, CAS/concurrence, fermeture de l’ancien hôte et contributions conservées. L’attente existante du réducteur seule ne ferme pas le lot. |
+| L4 — Reprise et événements | L1 + L2 + modèle L3 | Service de reprise proposé ; store/service/host/composition agentiques, garde de démarrage remplacée par une admission de reprise explicite ; contrats de journal/inbox, preuves de propriété, réautorisation native après attente et événements GitHub. | Reprise après chaque frontière intention/effet/résultat/attente, y compris au-delà du budget natif initial ; déduplication, réconciliation des inconnus, CAS/concurrence, fermeture de l’ancien hôte et contributions conservées. Aucun plafond existant n’est augmenté implicitement. L’attente existante du réducteur seule ne ferme pas le lot. |
 | L5 — Entrées ordinaires | L2 + L3 + L4 | `workflow-run-service`, composition d’instances, CLI/registre/effets/contrats, console ; `workflow-step` comme observation du curseur ; skills et WORKFLOW-KERNEL source ; manifests/catalogues et résolution installée. | Un démarrage normal explicitement autorisé crée ou reprend l’instance du modèle standard livré, sans fournir à la main un modèle de démonstration. Les skills rejoignent cette même instance ; ils ne gardent pas une macro-orchestration concurrente. Lire contexte/JSON n’exécute rien implicitement. Modèles personnalisés et voie historique restent explicites. |
 | L6 — Qualification hors ligne | L1–L5 | Nouvelles fixtures standard, reprise et ports ; `package.json`, catalogue de gates et guards associés ; docs TESTING, CLI, SPEC/WORKFLOW et ADR alignés. | Parcours A1–A10 ci-dessous avec vrais ports métier, SQLite réel et Git local jetable ; transport distant simulé identifié. Replay exact et simulation ; mutations attendues vérifiées et absence d’effets du replay. Required gate dédiée, non simple inventaire de tests. |
 | L7 — Qualification native bornée | L6 | Scénarios et rapports de qualification versionnés ; configuration, critères, hooks et budgets épinglés. | Travail agentique réel via hôte commun, attente qui ferme les ressources, nouvelle allocation autorisée lors de la reprise, refus/annulation et fermeture prouvés. Contrôles D/H sans appels modèle. Transport GitHub réel uniquement sur sandbox autorisée pour les affirmations correspondantes. |
@@ -382,7 +382,7 @@ limite affichée ; les politiques, stores, services et ports métier resteront r
 | A1 — Nominal COMMITTING | Rechargement → démarrage → mode/cycle/DoR → audits → travail → validation → clôture du cycle → promotion si demandée → résolution des cycles restants et clôture de session → PR/revue/fusion → sync. Les préconditions actuelles fixent le placement exact des mutations. Chaque occurrence relie son appel réel, ses effets, reçus et postconditions. Le modèle est celui du catalogue livré. |
 | A2 — THINKING / EXPLORING | THINKING refuse les écritures produit ; EXPLORING peut terminer non retenu ou passer explicitement par conversion/cycle. Pas de promotion ni PR déduite de l’existence d’un fichier. |
 | A3 — Refus d’admission | Activation manquante, branche ambiguë, DoR incomplet, backend configuré indisponible, autorisation absente/périmée : effets métier et appels natifs à zéro. Aucun fallback de source canonique. |
-| A4 — Attente humaine / revue | Mode ou cycle indécidable, revue en attente, checks manquants : WAITING/BLOCKED durable, zéro polling modèle. Arrêt du processus et reprise après événement authentifié ; aucune re-création de session/cycle ni nouveau push confirmé. |
+| A4 — Attente humaine / revue | Mode ou cycle indécidable, revue en attente, checks manquants : WAITING/BLOCKED durable, zéro polling modèle. Arrêt du processus et reprise après événement authentifié, y compris après expiration du budget natif initial : sans réautorisation valide, aucun nouveau modèle ; avec une nouvelle autorisation authentifiée et fermeture prouvée, reprise sans réexécuter les effets confirmés ni modifier l’ancien plafond. Aucune re-création de session/cycle ni nouveau push confirmé. |
 | A5 — Événements et révisions | Doublon, faux auteur, mauvais scope/PR/head, événement ancien ou hors ordre refusés/dédupliqués. Push d’une correction invalide les approbations et validations liées à l’ancien head ; triage valide/invalide conserve justification et preuve. |
 | A6 — Crash et concurrence | Interruptions avant effet, après effet avant reçu, après reçu avant acceptation et après résultat accepté. Deux repreneurs concurrents : un propriétaire valide ; effet inconnu réconcilié, aucun effet confirmé répété. Les observations Git/GitHub doivent prouver la récupération, pas le scénario de test seul. |
 | A7 — Dérive / incident | Dérive → CR/nouveau cycle/rollback ou report ; incident L1/L2 distinct de STOP L3/L4. Reprise au checkpoint vérifié ; aucune édition de règle automatiquement autorisée. |
@@ -2670,3 +2670,30 @@ une seule autorisation et les mêmes gardes.
 Les incertitudes d'index après effet Git, dual/DB-only pour ce nouveau préfixe,
 la suite travail/clôture/promotion, les autres parcours, le natif et l'archive
 installée restent à prouver. Le lot et A1–A10 demeurent ouverts.
+
+### L4 — budget natif après une attente longue : écart confirmé
+
+La règle 7 de la section 5 reste à réaliser pour une attente dépassant le budget
+initial. L'allocateur actuel compare toute allocation aux limites de la première
+entrée du journal et refuse leur augmentation. Le lanceur borne par ailleurs une
+autorisation à trois heures. Ces gardes ont correctement refusé la fixture qui
+recréait une échéance ; les supprimer ou réinitialiser le journal ne fournirait
+pas une réautorisation sûre pour une revue de PR différée.
+
+Livrable restant : contrats et port hôte de réautorisation explicite, attribuée
+à une source authentifiée, puis journalisation séparant les budgets d'exécution
+successifs du curseur durable du workflow. Conserver l'ancien budget et sa
+consommation, les liens de modèle/configuration/scope, les résultats acceptés et
+la preuve de fermeture des générations précédentes. Une limite de générations
+ne doit pas être contournée par effacement de l'historique. Les anciens lecteurs
+et journaux v1 restent pris en charge sans conversion silencieuse.
+
+Fichiers concernés : `journaled-native-allocation.mjs`,
+`agentic-process-owned-run.mjs`, `native-allocation-journal.mjs`, leurs contrats,
+le port d'autorisation hôte et la composition/service de reprise, puis politiques,
+fixtures et ADR de reprise. Ce sous-lot dépend de la fermeture authentifiée et
+de l'inbox de décision, et conditionne l'acceptation A4 et le parcours revue/PR.
+Exiger refus sans nouvel appel natif quand l'autorisation manque, reprise après
+nouvelle autorisation valide, événement dupliqué/ancien/étranger refusé, contrôle
+des cumuls, arrêt incertain bloquant et replay/simulation exacts. Séparer fixture,
+hôte natif réel et archive installée. Rien de ce sous-lot n'est déclaré livré.
