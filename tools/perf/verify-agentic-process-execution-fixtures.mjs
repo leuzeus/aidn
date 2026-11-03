@@ -56,7 +56,7 @@ import { CODEX_STARTUP_ENVIRONMENT_PROFILES, createCodexHostEnvironment } from "
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { performance } from "node:perf_hooks";
-import { spawnSync } from "node:child_process";
+import { spawnSync, execFileSync } from "node:child_process";
 import { compileBpmnProcess } from "../../src/application/workflow/bpmn-process-service.mjs";
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, agenticProcessPrefixSha256 } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess, iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
