@@ -1,7 +1,7 @@
 {
   "contract_version": "standard-cycle-create-catalog.v1",
   "component_id": "aidn-standard-cycle-create",
-  "revision": 56,
+  "revision": 57,
   "scope": {
     "kind": "new_cycle_scaffold_component",
     "complete_standard_workflow": false,
@@ -29,9 +29,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard-cycle-create.v1.json",
-    "sha256": "0b944d2eb476c81ff35a2f6b543a7a5e765f43a84f5e2fd4873b290fa2042246",
+    "sha256": "7d1f840a1fac8a33771faa46c599a37ec2c12005df1f456247175ffa7148c8eb",
     "model_id": "aidn-standard-cycle-create",
-    "revision": 56
+    "revision": 57
   },
   "specification": {
     "path": "docs/SPEC.md",
@@ -58,7 +58,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "3f04519223436c065c93ece37002737250d5cc7e6d6c7e6262dabc6aceca9c65"
+        "implementation_sha256": "267b8c678abadbf4c7e6e918971619a4c6fed78b4ac56eefc98ac13f1e0d492a"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -84,7 +84,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "3f04519223436c065c93ece37002737250d5cc7e6d6c7e6262dabc6aceca9c65"
+        "implementation_sha256": "267b8c678abadbf4c7e6e918971619a4c6fed78b4ac56eefc98ac13f1e0d492a"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -110,7 +110,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "3f04519223436c065c93ece37002737250d5cc7e6d6c7e6262dabc6aceca9c65"
+        "implementation_sha256": "267b8c678abadbf4c7e6e918971619a4c6fed78b4ac56eefc98ac13f1e0d492a"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
@@ -136,7 +136,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "3f04519223436c065c93ece37002737250d5cc7e6d6c7e6262dabc6aceca9c65"
+        "implementation_sha256": "267b8c678abadbf4c7e6e918971619a4c6fed78b4ac56eefc98ac13f1e0d492a"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
@@ -163,7 +163,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "3f04519223436c065c93ece37002737250d5cc7e6d6c7e6262dabc6aceca9c65"
+        "implementation_sha256": "267b8c678abadbf4c7e6e918971619a4c6fed78b4ac56eefc98ac13f1e0d492a"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
@@ -191,7 +191,7 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "3f04519223436c065c93ece37002737250d5cc7e6d6c7e6262dabc6aceca9c65"
+        "implementation_sha256": "267b8c678abadbf4c7e6e918971619a4c6fed78b4ac56eefc98ac13f1e0d492a"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",

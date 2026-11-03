@@ -2189,3 +2189,10 @@ another cycle is active. Dual/DB-only also remove the visible current/runtime,
 status/trace/gap projections before admission. These remain admission proofs;
 human promotion capture, baseline effects, final hooks and complete standard
 IR execution require separate evidence.
+
+Changes to the shared pre-write implementation also change fixed-operation
+implementation pins. Run `verify-standard-workflow-model-fixtures.mjs` for that
+consumer even when the edited skill is not a node in the published components.
+Refresh reviewed component bindings explicitly during source authoring, producing
+a new model/catalog revision; runtime loading must continue to refuse stale
+pins. Admission-only and pack-topology checks do not establish model loading.

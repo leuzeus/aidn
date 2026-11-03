@@ -92,10 +92,35 @@
   "installed_archive": "NOT_RUN",
   "full_standard_model": "NOT_COMPLETE",
   "promotion_human_and_effect_ports": "NOT_QUALIFIED",
-  "updated_at": "2026-11-03T05:49:36.378693+00:00",
+  "updated_at": "2026-11-03T06:20:40.160654+00:00",
   "observational_followup": {
     "before_sha256": "18399c8d17db1cdb9f815dd3a35ff08b9b4c236e17874f52a3ef503c2f981409",
     "change": "Success diagnostic now states that the canonical target admission passed. It does not claim a complete gap-document audit; the existing admission detects open-gap entries and does not establish document presence.",
     "materiality": "Diagnostic wording only; target selection, permission, state and freshness predicates unchanged. Required suite51 remains scoped to those predicates; representative current-source files cases rechecked."
+  },
+  "shared_model_dependency_correction": {
+    "introduced_by": "94a3d2b0bc45241fc3edb831d84d6c08b04606ed",
+    "observed_failure": "Published component loader refused STANDARD_STARTUP_IMPLEMENTATION_CHANGED because pre-write admission source is included in the fixed-operation implementation closure. The admission-only gates did not cover that dependent loader.",
+    "correction": "Explicit source-authoring refresh only; startup58->59 and cycle-create56->57, authored graphs and binding semantics unchanged. Runtime still refuses stale pins; no historical conversion.",
+    "models": [
+      {
+        "component": "startup",
+        "revision": 59,
+        "model_sha256": "51c16dedb3d88019627490022fe6439ff4de961ee700f770d7c0985e693ce589",
+        "implementation_sha256": "267b8c678abadbf4c7e6e918971619a4c6fed78b4ac56eefc98ac13f1e0d492a"
+      },
+      {
+        "component": "cycle-create",
+        "revision": 57,
+        "model_sha256": "7d1f840a1fac8a33771faa46c599a37ec2c12005df1f456247175ffa7148c8eb",
+        "implementation_sha256": "267b8c678abadbf4c7e6e918971619a4c6fed78b4ac56eefc98ac13f1e0d492a"
+      }
+    ],
+    "model_fixture_cases": 22,
+    "historical_reducer_service_cases": 27,
+    "validation": "PASS current source, terminal80334 zero",
+    "full_standard_model": "NOT_DELIVERED",
+    "native": "NOT_RUN",
+    "installed_archive": "NOT_RUN"
   }
 }

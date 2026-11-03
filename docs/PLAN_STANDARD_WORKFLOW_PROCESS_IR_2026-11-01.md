@@ -63,6 +63,9 @@ encore ouverts.
   trace/gaps/usage et de fraîcheur runtime restent requis. Les preuves ciblées
   et limites sont consignées dans la
   [preuve pré-écriture](qualification/agentic-process/promotion-prewrite-2026-11-03.json).
+  Les composants publiés sont explicitement révisés en 59/57 après cette
+  modification de leur dépendance d’admission ; leurs 22 contrôles de chargement
+  passent, ainsi que les 27 contrôles des contrats/réducteurs et lecteurs v1.
   Ce raccord ne réalise ni capture humaine de promotion, ni écriture baseline,
   ni hook final, ni parcours standard complet.
 - L’écriture des six artefacts terminaux et le hook final restent des prototypes
