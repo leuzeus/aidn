@@ -1402,3 +1402,25 @@ This qualifies the bounded component with fixture human/effect/native authority,
 not a full standard workflow or real native/installed-archive delivery. The
 catalog's incomplete scope and ordinary selection are unchanged. The exact
 source/model/final hashes and negative component cases remain in the evidence.
+
+### Session artifact projection consistency (2026-11-03)
+
+The actual canonical session-close admission requires both the session artifact
+and its normalized session row from one database snapshot. A freshly initialized
+standard session exposed a SQLite producer gap: the artifact CAS updated artifacts,
+blobs and runtime heads, but left `sessions` empty. The existing admission correctly
+refused that state; this is not a reason to fall back to visible Markdown.
+
+SQLite session artifact writes now update the normalized session projection in the
+same CAS transaction, matching the PostgreSQL producer. Both producers preserve an
+explicit lifecycle `state` when present and otherwise project the declared mode;
+they do not infer closure. Contradictory session path/metadata identity is refused.
+A late projection failure rolls back the artifact and the normalized row together.
+Read-only admission performs no repair, migration, projection import or conversion
+of historical workflow instances. Previously incomplete canonical stores still
+require an explicit authorized reconciliation rather than a reader-side repair.
+
+The focused artifact-store fixtures exercise actual SQLite creation, revision,
+identity conflict and rollback, plus the existing PostgreSQL double. They do not
+qualify a live PostgreSQL backend, native model execution, an installed archive or
+completion of the standard workflow.

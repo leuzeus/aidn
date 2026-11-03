@@ -106,7 +106,7 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
       if (sessionId && artifact.content_format === 'utf8') {
         const context = analyzeStructuredArtifact(artifact.content, { classification: { kind: 'session' } }).derived_session_context;
         await upsert(client, 'sessions', { scope_key: scope, session_id: sessionId,
-          branch_name: context.session_branch || field('branch'), state: context.mode, owner: sessionId,
+          branch_name: context.session_branch || field('branch'), state: field('state') || context.mode || field('mode'), owner: sessionId,
           ...Object.fromEntries(['parent_session', 'branch_kind', 'cycle_branch', 'intermediate_branch',
             'integration_target_cycle', 'carry_over_pending', 'started_at', 'ended_at'].map(key => [key, field(key)])),
           integration_target_cycle: context.primary_focus_cycle || context.integration_target_cycle,

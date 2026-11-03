@@ -5,6 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { createArtifactStore } from '../../src/adapters/runtime/artifact-store.mjs';
+import { getDatabaseSync } from '../../src/lib/sqlite/workflow-db-schema-lib.mjs';
+import { artifactContentHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 import { resolveEffectiveRuntimePersistence } from '../../src/application/runtime/runtime-persistence-service.mjs';
 import { executePostgresArtifactCommand, validateArtifactPath } from '../../src/adapters/runtime/postgres-artifact-command-lib.mjs';
 import { createPostgresRuntimeArtifactStore } from '../../src/adapters/runtime/postgres-runtime-artifact-store.mjs';
@@ -48,6 +51,7 @@ export async function verifyProjectArtifactCommands() {
   assert.equal(client.queries.at(-1).sql, 'COMMIT');
   assert(!client.queries.some(q => q.sql.includes('pg_advisory_xact_lock')), 'absent supervision schema must not take a new scope lock'); count++;
   assert(client.queries.some(q => q.sql.startsWith('INSERT INTO aidn_runtime.sessions')));
+  assert.equal(client.queries.find(q => q.sql.startsWith('INSERT INTO aidn_runtime.sessions')).values[3], 'THINKING');
   assert(!client.queries.some(q => q.sql.includes('private') || q.sql.includes('codex/test'))); count++;
   for (const options of [{ failTable: 'artifact_blobs' }, { headPath: 'docs/audit/CURRENT-STATE.md' }]) {
     const broken = fake(options);
@@ -130,6 +134,30 @@ export async function verifyProjectArtifactCommands() {
     const scopeLock = bulkFake.state.queryLog.findIndex(q => q.sql.includes('pg_advisory_xact_lock'));
     assert(tableLock >= 0 && scopeLock > tableLock); count++;
   }
+  const sqliteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-artifact-session-projection-'));
+  try {
+    const sqliteFile = path.join(sqliteRoot, 'workflow.sqlite'), store = createArtifactStore({ sqliteFile });
+    const DatabaseSync = getDatabaseSync(), db = new DatabaseSync(sqliteFile);
+    try {
+      const artifact = { path: 'sessions/S001-test.md', kind: 'session', session_id: 'S001', content_format: 'utf8',
+        content: 'mode: THINKING\nsession_branch: S001-original\nparent_session: none\n' };
+      store.compareAndSwapArtifact({ artifact, expectedSha256: null });
+      assert.equal(db.prepare('SELECT branch_name FROM sessions WHERE session_id=?').get('S001').branch_name, 'S001-original'); count++;
+      const changed = { ...artifact, content: artifact.content.replace('THINKING', 'COMMITTING').replace('S001-original', 'S001-updated') };
+      store.compareAndSwapArtifact({ artifact: changed, expectedSha256: artifactContentHash(artifact.content) });
+      const row = db.prepare('SELECT * FROM sessions WHERE session_id=?').get('S001');
+      assert.equal(row.branch_name, 'S001-updated'); assert.equal(row.state, 'COMMITTING'); assert.equal(row.source_artifact_path, artifact.path); count++;
+      assert.throws(() => store.compareAndSwapArtifact({ artifact, expectedSha256: artifactContentHash(artifact.content) }), /ARTIFACT_REVISION_CONFLICT/);
+      assert.deepEqual(db.prepare('SELECT * FROM sessions WHERE session_id=?').get('S001'), row); count++;
+      assert.throws(() => store.compareAndSwapArtifact({ artifact: { ...changed, session_id: 'S002' }, expectedSha256: artifactContentHash(changed.content) }), /ARTIFACT_IDENTITY_CONFLICT/);
+      assert.equal(store.getArtifact(artifact.path).content, changed.content); assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 1); count++;
+      db.exec("CREATE TRIGGER reject_session_projection BEFORE UPDATE ON sessions BEGIN SELECT RAISE(ABORT, 'fixture projection failure'); END");
+      assert.throws(() => store.compareAndSwapArtifact({ artifact, expectedSha256: artifactContentHash(changed.content) }), /fixture projection failure/);
+      assert.equal(store.getArtifact(artifact.path).content, changed.content); assert.deepEqual(db.prepare('SELECT * FROM sessions WHERE session_id=?').get('S001'), row); count++;
+    } finally { db.close(); store.close(); }
+  } finally {
+    assert.equal(path.dirname(path.resolve(sqliteRoot)), path.resolve(os.tmpdir())); fs.rmSync(sqliteRoot, { recursive: true, force: true });
+  }
   const target = fs.mkdtempSync(path.join(os.tmpdir(), 'aidn-artifact-preview-'));
   try {
     const child = spawnSync(process.execPath, [fileURLToPath(new URL('../runtime/artifact-store.mjs', import.meta.url)),
@@ -139,7 +167,7 @@ export async function verifyProjectArtifactCommands() {
   } finally {
     assert.equal(path.dirname(path.resolve(target)), path.resolve(os.tmpdir())); fs.rmSync(target, { recursive: true, force: true });
   }
-  console.log(`PASS project artifact command fixtures: ${count} assertions; no live PostgreSQL claim`);
+  console.log(`PASS project artifact command fixtures: ${count} assertions; actual SQLite and PostgreSQL double; no live PostgreSQL claim`);
 }
 
 await verifyProjectArtifactCommands();
