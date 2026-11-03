@@ -68,6 +68,14 @@ encore ouverts.
   passent, ainsi que les 27 contrôles des contrats/réducteurs et lecteurs v1.
   Ce raccord ne réalise ni capture humaine de promotion, ni écriture baseline,
   ni hook final, ni parcours standard complet.
+- La bibliothèque privée baseline prépare cinq CAS et conserve l’historique,
+  avec contrôles réels d’admission, produit, métadonnées, version croissante et
+  autorisation. Les fixtures couvrent les trois modes et les effets incertains ;
+  l’autorité humaine/de clôture y reste doublée. La
+  [preuve du composant baseline](qualification/agentic-process/baseline-record-component-2026-11-03.json)
+  distingue ces contrôles du raccord manquant : inbox de promotion, lecteur hôte
+  de la clôture acceptée, binding IR, hook final et exécution/replay/simulation
+  via le même modèle standard restent à réaliser.
 - L’écriture des six artefacts terminaux et le hook final restent des prototypes
   séparés. Les composants CAS et les contrôles du véritable hook passent, mais
   leur chaîne commune n’est pas qualifiée. Un essai d’écriture a refusé avant

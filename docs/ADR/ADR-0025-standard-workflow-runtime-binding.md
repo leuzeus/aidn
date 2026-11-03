@@ -1021,3 +1021,28 @@ perform baseline writes or complete the standard workflow. The dedicated
 read-only files/dual/db-only cases and existing wrapper/canonical cases are
 run by the required promotion admission suite. No native or installed-package
 proof follows from these checks.
+
+### Baseline recording library, pending host binding
+
+The private standard-baseline-promotion factory prepares five canonical documents
+from a typed request and a completed retained cycle-close. Mandatory trusted host
+capabilities must authenticate the accepted request/close and read current product
+and process state; successful typed flags alone are not proof. Those real host
+readers and the authenticated human promotion inbox remain to be connected.
+
+One actual selected-target pre-write admission runs per context observation.
+Explicit intent, exact plan, fresh source/product and metadata CAS are required.
+Permission is checked before fresh preparation, immediately before effects and
+after postconditions. The original300000ms deadline is checked after the final
+grant before the first write. History is append-only. The bounded version profile
+vM.m or vM.m.p with optional prerelease identifiers must increase numerically,
+then by prerelease order. Duplicate history/version/cycle and stale approved
+baseline material refuse without automatic conversion.
+
+Confirmed writes record baseline, history, snapshot, index and current next
+action. They emit baseline_recorded true and promotion completion false; the
+actual final hook is pending. Unknown/partial effects, lost projections or
+post-effect revocation retain ownership and no completion facts. Physical store
+fixtures use actual source installation and fixture human/close authorities.
+This library is not a registered IR binding, full workflow, native execution or
+exact installed-archive proof. These remain separate acceptance work.

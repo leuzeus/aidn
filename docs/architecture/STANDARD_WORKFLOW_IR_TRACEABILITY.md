@@ -223,3 +223,10 @@ suite covers the actual port/public CLI in files/dual/DB-only and fileless DB
 reads. See [promotion pre-write evidence](../qualification/agentic-process/promotion-prewrite-2026-11-03.json).
 This is admission only: the promotion human decision, baseline mutation binding,
 final hook and complete standard IR route still require their own qualification.
+
+The [baseline-record component](../qualification/agentic-process/baseline-record-component-2026-11-03.json)
+provides a private five-document deterministic writer and closed schemas with
+source-installed physical-store tests. Human request/close authority is a fixture
+capability. Its actual mixed-host binding, authenticated promotion inbox, final
+hook and common-model replay/simulation remain required. Confirmed baseline
+record keeps promotion completion false.

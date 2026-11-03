@@ -2196,3 +2196,15 @@ consumer even when the edited skill is not a node in the published components.
 Refresh reviewed component bindings explicitly during source authoring, producing
 a new model/catalog revision; runtime loading must continue to refuse stale
 pins. Admission-only and pack-topology checks do not establish model loading.
+
+The required promotion suite also invokes
+`verify-standard-baseline-promotion-suite.mjs`. Its isolated private producers
+emit one JSON document with --json. Nine pure checks cover four schemas, version
+ordering, complete history/Unicode retention and refusal boundaries. Actual
+source-installed component cases cover files/dual/DB-only, duplicate apply,
+partial SQLite, lost dual projection, changed product/process and permission
+revoked before or after effects. Human/close capabilities remain fixtures.
+DB-only compares an existing bootstrap projection to its initial bytes instead
+of assuming absence. These are record-component proofs, not the missing human
+inbox, mixed-host replay, final hook, complete standard IR, real native client
+or exact installed archive.
