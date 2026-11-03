@@ -8,9 +8,9 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée relue : `3905217` ; composants publiés explicitement révisés en
-62/60 pour l’écriture terminale. Les preuves files et DB-only conservent leurs
-snapshots exacts ; le hook final reste séparé de cette tranche.
+Base intégrée relue : `6f1a25d` ; composants publiés explicitement révisés en
+63/61 pour le hook final. Les preuves de l’écriture terminale et de la reprise
+conservent leurs snapshots exacts ; le modèle standard complet reste à livrer.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -81,10 +81,14 @@ encore ouverts.
   authentifiée, reprise dans un nouveau processus, CAS, déduplication et replay.
   Les preuves conservent leurs snapshots exacts et révisions 61/59 puis 62/60 ;
   voir la [preuve d’écriture terminale](qualification/agentic-process/cycle-terminal-record-2026-11-03.json).
-  L’écriture conserve le hook et la clôture du skill en attente. Le composant du
-  véritable hook est encore séparé ; sa continuation sur une instance conservée
-  passe sans rejouer les six écritures, les validations ni les allocations.
-  Son raccord à cette base reste à intégrer. Le modèle standard complet, ses
+  L’écriture seule conserve le hook et la clôture du skill en attente. Le véritable
+  hook dispose désormais d’un binding déterministe et de trois écritures finales
+  corrélées au checkpoint. Ses sept cas de composant passent sur la base courante.
+  Sa [continuation authentifiée](qualification/agentic-process/cycle-close-hook-continuation-2026-11-03.json)
+  passe sur l’instance conservée de son snapshot initial, sans rejouer les six
+  écritures, les validations ni les allocations. Les préconditions externes Git,
+  reload et R05 sont des étapes explicites du test ; leur route dans le modèle
+  standard complet et la réconciliation d’une finalisation interrompue restent ouvertes. Le modèle standard complet, ses
   sorties précoces et les autres modes restent à terminer ; aucune preuve native
   ou d’archive installée n’est acquise.
 - La [préparation reproductible des fixtures](qualification/agentic-process/fixture-construction-2026-11-03.json)

@@ -462,6 +462,15 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const selection = acceptedOperation(instance, context.audit_operation_id, "cycle_audit_select");
     return { authenticated, context, selection, evidence_refs: [authenticated.reference, retained.ref, observed.ref] };
   }
+  function readCycleCloseValidation(instance, input) {
+    const native = readCycleAuditActivity(instance, input), machine = native.context.validation;
+    const validation = acceptedOperation(instance, machine.validation_operation_id, "cycle_validation_execute");
+    const work = acceptedWorkSnapshot(instance, validation.record.preview.input.work_operation_id);
+    const evaluation = acceptedOperation(instance, machine.evaluation_operation_id, "cycle_validation_evaluate");
+    if (evaluation.record.preview.input.validation_operation_id !== validation.record.operation_id || machine.work_complete !== true
+      || machine.product_sha256 !== native.context.product_sha256) fail("STANDARD_CYCLE_CLOSE_VALIDATION_REQUIRED");
+    return { ...validation, work, native, machine, evaluation };
+  }
   async function readCycleValidationExecution(instance, input) {
     assertStandardOperationInput("cycle_validation_evaluate", input);
     const validation = acceptedOperation(instance, input.validation_operation_id, "cycle_validation_execute");
@@ -492,5 +501,5 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   return Object.freeze({ profile: "standard-mixed.v1", read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
-    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
+    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
 import { attachCycleCloseRecordModel } from "./cycle-close-record-fixture-lib.mjs";
 import { attachCycleClosureModel, closureHumanSource } from "./cycle-closure-fixture-lib.mjs";
 import { attachCycleAuditModel } from "./cycle-audit-fixture-lib.mjs";
@@ -70,6 +71,8 @@ const selectedRecoveryCycleMode = process.argv.find(value => value.startsWith("-
 const selectedCyclePlanMode = process.argv.find(value => value.startsWith("--cycle-plan-mode="))?.slice("--cycle-plan-mode=".length);
 const selectedCycleReadinessMode = process.argv.find(value => value.startsWith("--cycle-readiness-mode="))?.slice("--cycle-readiness-mode=".length);
 const selectedCycleWorkMode = process.argv.find(value => value.startsWith("--cycle-work-mode="))?.slice("--cycle-work-mode=".length);
+const selectedCycleCloseFinalizeMode = process.argv.find(value => value.startsWith("--cycle-close-finalize-mode="))?.slice("--cycle-close-finalize-mode=".length);
+if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseFinalizeMode)) throw Error("CYCLE_CLOSE_FINALIZE_FIXTURE_MODE_INVALID");
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const selectedCycleClosureMode = process.argv.find(value => value.startsWith("--cycle-closure-mode="))?.slice("--cycle-closure-mode=".length);
@@ -89,12 +92,13 @@ if (selectedRecoveryCycleMode !== undefined && !["files", "dual", "db-only"].inc
 const sha = value => createHash("sha256").update(value).digest("hex");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
 const businessRoots = [];
-let serial = 0;
+let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (selectedCyclePlanMode && !name.startsWith(`cycle plan ${selectedCyclePlanMode}`)) return;
   if (selectedCycleReadinessMode && !name.startsWith(`cycle readiness ${selectedCycleReadinessMode}:`)) return;
   if (selectedCycleWorkMode && !name.startsWith(`cycle work ${selectedCycleWorkMode}:`)) return;
+  if (selectedCycleCloseFinalizeMode && !name.startsWith(`cycle close finalize ${selectedCycleCloseFinalizeMode}:`)) return;
   if (selectedCycleCloseRecordMode && !name.startsWith(`cycle close record ${selectedCycleCloseRecordMode}:`)) return;
   if (selectedCycleClosureMode && !name.startsWith(`cycle closure ${selectedCycleClosureMode}:`)) return;
   if (selectedCycleAuditMode && !name.startsWith(`cycle audit ${selectedCycleAuditMode}:`)) return;
@@ -109,7 +113,7 @@ async function check(name, callback) { if (process.argv.includes("--v2-only") &&
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
   if (process.argv.includes("--worker-only") && !name.startsWith("worker ")) return;
   if (process.argv.includes("--mixed-only") && !name.startsWith("mixed ")) return;
-  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan |cycle readiness |cycle work |cycle validation |cycle verification |cycle tasks |cycle audit |cycle closure |cycle close record )/.test(name)) return;
+  if (process.argv.includes("--nonmixed-only") && /^(mixed |drift |dataflow |cycle plan |cycle readiness |cycle work |cycle validation |cycle verification |cycle tasks |cycle audit |cycle closure |cycle close record |cycle close finalize )/.test(name)) return;
   const dataflowMode = process.argv.find(value => value.startsWith("--dataflow-mode="))?.slice("--dataflow-mode=".length);
   if (dataflowMode && !name.startsWith(`dataflow ${dataflowMode}:`)) return;
   const recoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
@@ -485,6 +489,7 @@ function mixedFixture(stateMode = "files", options = {}) {
     if (options.audit) attachCycleAuditModel(model, original);
     if (options.closure) attachCycleClosureModel(model);
     if (options.closeRecord) attachCycleCloseRecordModel(model);
+    if (options.closeFinalize) attachCycleCloseHookModel(model);
     const content = fs.readFileSync(new URL("../../scaffold/codex/aidn-cycle-create/SKILL.md", import.meta.url));
     f.configuration.skills["cycle-create"] = { path: put(f.base, "package/cycle-create.md", content), sha256: sha(content) };
     f.configuration.activity_outputs = { analyze: CYCLE_PLAN_CONTRACT };
@@ -602,14 +607,14 @@ if (process.argv[2] === "--mixed-continue") {
     process.stdout.write(JSON.stringify({ native, status: last.cursor.status, instance_sha256: last.record.instance_sha256, launches: f.launches,
       sessions: t.sessions.length, closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
-} else if (process.argv[2] === "--closure-accept") {
+} else if (["--closure-accept", "--closure-finalize"].includes(process.argv[2])) {
   try {
     const data = JSON.parse(fs.readFileSync(process.argv[3])), f = { ...data.fixture, launches: 0 }, key = Buffer.from(data.key_hex, "hex"), t = transport(f);
     const host = createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => key, validationProfile: data.validation_profile,
       humanSource: closureHumanSource(data.human_source_file), authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }) },
       { controllerFactory: journalController(f, t), validationBoundaryFactory: fixtureValidationBoundary });
-    const result = await host.acceptOperation(data.operation_id, { write: true });
-    process.stdout.write(JSON.stringify({ instance_sha256: result.record.instance_sha256, status: result.cursor.status, launches: f.launches, sessions: t.sessions.length }));
+    const result = process.argv[2] === "--closure-finalize" ? await host.step({ write: true }) : await host.acceptOperation(data.operation_id, { write: true });
+    process.stdout.write(JSON.stringify({ ...(result.operation_id ? { operation_id: result.operation_id } : {}), instance_sha256: result.record.instance_sha256, status: result.cursor.status, launches: f.launches, sessions: t.sessions.length }));
   } finally {
     const resolved = fs.realpathSync(root); assert.equal(path.dirname(resolved), fs.realpathSync(os.tmpdir())); assert.ok(path.basename(resolved).startsWith("aidn-agentic-execution-"));
     fs.rmSync(resolved, { recursive: true, force: true });
@@ -687,6 +692,14 @@ if (process.argv[2] === "--mixed-continue") {
     const preview = f.open().initialize({ parameters: { session: { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" } } }); assert.equal(preview.record.model.operation_pins.cycle_close_record, shadowHash(standardWorkflowOperationBindings().find(row => row.id === "cycle_close_record")));
     assert.equal(f.t.sessions.length, 0); assert.equal(f.launches ?? 0, 0);
   });
+  await check("cycle close finalize contract: model resolves the terminal journal identity with fixed implementation pins", () => {
+    const f = mixedFixture("files", { planning: true, readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true, closeRecord: true, closeFinalize: true, taskFinalValue: 3 });
+    const result = f.open().initialize({ parameters: { session: { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" } } });
+    assert.equal(result.record.model.operation_pins.cycle_close_finalize, shadowHash(standardWorkflowOperationBindings().find(row => row.id === "cycle_close_finalize")));
+    assert.deepEqual(result.record.model.data_bindings.inputs.find(row => row.node_id === "close_finalize").fields, { closure_operation_id: { source: "operation_id", node_id: "close_record" } });
+    assert.equal(f.t.sessions.length, 0); assert.equal(f.launches ?? 0, 0);
+  });
+  if (selectedCycleCloseFinalizeMode) await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true, closeRecord: true, closeFinalize: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url) });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true });
@@ -1982,12 +1995,21 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal((await rpc.close()).closed, true);
     }
   });
+  completed = true;
   console.log(JSON.stringify({ ok: true, checks, proof_class: "offline-production-composition-with-fake-native-wire", model_calls: 0, native_client: "NOT_RUN", native_process_tree: "NOT_RUN" }));
 } finally {
-  fs.rmSync(root, { recursive: true, force: true });
+  if (!completed && process.argv.includes("--retain-on-failure")) {
+    const report = path.join(root, "retained-fixture.json");
+    fs.writeFileSync(report, JSON.stringify({ proof_class: "offline-diagnostic-only", root, business_roots: businessRoots }, null, 2));
+    console.error("Fixture retained for diagnosis/restart: " + report);
+  } else {
+    const physicalRoot = fs.realpathSync(root);
+    if (path.dirname(physicalRoot) !== fs.realpathSync(os.tmpdir()) || !path.basename(physicalRoot).startsWith("aidn-agentic-execution-")) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID");
+    fs.rmSync(physicalRoot, { recursive: true, force: true });
   for (const businessRoot of businessRoots) {
     const physical = fs.realpathSync(businessRoot);
     if (path.dirname(physical) !== fs.realpathSync(os.tmpdir()) || !path.basename(physical).startsWith("aidn-standard-fresh-")) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID");
     fs.rmSync(physical, { recursive: true, force: true });
+  }
   }
 }

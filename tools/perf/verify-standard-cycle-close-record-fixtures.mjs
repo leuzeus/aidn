@@ -1,3 +1,6 @@
+import { createStandardCycleCloseHook } from "../../src/application/runtime/standard-cycle-close-hook.mjs";
+import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
+import { completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
 import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -22,6 +25,8 @@ if (!["files", "dual", "db-only", "partial", "projection", "stale", "slow-author
 const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["stale", "slow-authority", "expired"].includes(selected) ? "files" : selected;
 const choice = process.argv.find(value => value.startsWith("--choice="))?.slice(9) ?? "retain";
 if (!["retain", "no_go", "drop"].includes(choice)) throw Error("CLOSE_RECORD_FIXTURE_CHOICE_INVALID");
+const finalFault = process.argv.find(value => value.startsWith("--final-hook-fault="))?.slice("--final-hook-fault=".length);
+if (finalFault && !["event", "suffix", "projection", "grant_after"].includes(finalFault)) throw Error("CLOSE_HOOK_FIXTURE_FAULT_INVALID");
 const targetState = { retain: "DONE", no_go: "NO_GO", drop: "DROPPED" }[choice];
 const owned = [], temp = fs.realpathSync(os.tmpdir()), H = "a".repeat(64), op = "op_" + "a".repeat(40);
 let checks = 0; const pass = name => { checks++; console.log("PASS " + name); };
@@ -132,9 +137,71 @@ try {
       const after = (await observeContext()).context_sha256;
       await assert.rejects(writer.apply(instance, preview, { write: true, expectPlan: preview.plan_sha256, assertAuthorized: async () => {} }), cause => ["STANDARD_PREVIEW_CHANGED", "STANDARD_CYCLE_CLOSE_SOURCE_STALE"].includes(cause.code) && cause.effect_status === "no_effect");
       assert.equal((await observeContext()).context_sha256, after); assert.equal(artifacts.ownerPending(), false); pass("a repeated raw apply cannot repeat confirmed metadata effects");
+      if (process.argv.includes('--final-hook')) {
+        const hook = createStandardCycleCloseHook({ targetRoot: root, readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext, readCurrent: () => instance });
+        const hookInput = { closure_operation_id: op }, hookId = 'op_' + 'b'.repeat(40);
+        let hookPlan = await hook.prepare(instance, hookInput, hookId);
+        if (!hookPlan.can_apply) {
+          assert.equal(hookPlan.reason_code, 'STANDARD_CYCLE_CLOSE_HOOK_GATE_REQUIRED');
+          // Explicit fixture precondition via the actual R05 hook. This is not
+          // automatic acknowledgment or the full process model's diagnostic.
+          // Explicit real Git checkpoint, verified against the immutable recorded postimages.
+          git('add', '.'); git('commit', '--allow-empty', '-m', 'fixture approved terminal metadata checkpoint');
+          const reload = await runReloadCheckUseCase({ targetRoot: root, completionCycleId: 'C001', args: {
+            cache: '.aidn/runtime/cache/reload-state.json', stateMode: mode, stateModeExplicit: true,
+            indexFile: '.aidn/runtime/index/workflow-index.sqlite', indexBackend: 'auto', writeCache: true,
+          } });
+          assert.notEqual(reload.decision, 'stop');
+          completeDriftCheckFixture(root);
+          hookPlan = await hook.prepare(instance, hookInput, hookId);
+        }
+        assert.equal(hookPlan.can_apply, true, JSON.stringify(hookPlan));
+        const eventFile = path.join(root, '.aidn/runtime/perf/workflow-events.ndjson'), beforeHook = fs.readFileSync(eventFile);
+        await assert.rejects(hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => { throw Object.assign(Error('fixture denied'), { code: 'FIXTURE_GRANT_DENIED' }); } }), { code: 'FIXTURE_GRANT_DENIED' });
+        assert.deepEqual(fs.readFileSync(eventFile), beforeHook); assert.equal(artifacts.ownerPending(), false);
+        if (finalFault === 'suffix') {
+          assert.notEqual(mode, 'files'); const db = new (getDatabaseSync())(resolveRuntimeSqliteFile({ targetRoot: root }));
+          try { db.exec(`CREATE TRIGGER fixture_abort_close_completion BEFORE INSERT ON artifacts WHEN NEW.path='${cycle}/status.md' AND CAST(NEW.content AS TEXT) LIKE '%"cycle_close_completed": true%' BEGIN SELECT RAISE(ABORT,'fixture completion suffix'); END`); }
+          finally { db.close(); }
+        }
+        let finalized, grants = 0; const open = fs.openSync, write = fs.writeFileSync;
+        try {
+          if (finalFault === 'event') fs.openSync = (file, ...args) => {
+            if (typeof file === 'string' && path.resolve(file) === path.resolve(eventFile) && fs.statSync(file).size > beforeHook.length) throw Object.assign(Error('fixture event confirmation lost'), { code: 'FIXTURE_CLOSE_EVENT_LOST' });
+            return open(file, ...args);
+          };
+          if (finalFault === 'projection') { assert.equal(mode, 'dual'); fs.writeFileSync = (file, ...args) => {
+            if (typeof file === 'string' && path.resolve(file) === path.resolve(root, 'docs/audit/CURRENT-STATE.md')) return;
+            return write(file, ...args);
+          }; }
+          finalized = await hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => {
+            grants++; if (finalFault === 'grant_after' && grants === 2) throw Object.assign(Error('fixture authorization revoked after checkpoint'), { code: 'FIXTURE_GRANT_REVOKED_AFTER_HOOK' });
+          } });
+        } finally { fs.openSync = open; fs.writeFileSync = write; }
+        const afterHook = fs.readFileSync(eventFile); assert.notDeepEqual(afterHook, beforeHook);
+        if (finalFault) {
+          assert.equal(finalized.outcome, 'reconciliation_required', JSON.stringify(finalized)); assert.equal(finalized.effect_status, 'unknown'); assert.deepEqual(finalized.facts, {});
+          assert.ok(finalized.observations.hook.payload.checkpoint); assert.equal(artifacts.ownerPending(), true);
+          assert.equal(finalized.observations.committed.length, finalFault === 'projection' ? 3 : 0);
+          await assert.rejects(hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => {} }), { code: 'STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED' });
+          assert.deepEqual(fs.readFileSync(eventFile), afterHook);
+          pass('lost hook or completion confirmation retains unknown effects and prohibits a repeated checkpoint');
+        } else {
+          assert.equal(finalized.outcome, 'completed', JSON.stringify(finalized)); assert.equal(finalized.effect_status, 'confirmed');
+          assert.deepEqual(finalized.facts, { cycle_close_completed: true, cycle_retained: choice === 'retain' }); assert.equal(finalized.observations.committed.length, 3);
+          assert.ok(finalized.observations.hook.payload.checkpoint); assert.equal(finalized.observations.event.event, 'checkpoint_summary');
+          assert.ok(!artifacts.read('CURRENT-STATE.md').content.includes('Finalize the cycle-close hook'));
+          assert.match(artifacts.read('snapshots/context-snapshot.md').content, /cycle-close checkpoint completed/);
+          assert.equal(artifacts.read(cycle + '/plan.md').sha256, frozenPlan.sha256); assert.equal(artifacts.ownerPending(), false);
+          await assert.rejects(hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => {} }));
+          assert.deepEqual(fs.readFileSync(eventFile), afterHook); assert.equal(artifacts.ownerPending(), false);
+          pass('actual correlated cycle-close checkpoint and confirmed three-document completion do not repeat the hook');
+        }
+      }
+
     }
   }
-  console.log(JSON.stringify({ status: "PASS", checks, mode: selected, choice, proof: "canonical-close-record-component", decision_and_audit_authority: "fixture", full_process_host: "NOT_RUN", final_hook: "NOT_IMPLEMENTED", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+  console.log(JSON.stringify({ status: "PASS", checks, mode: selected, choice, final_hook_fault: finalFault ?? null, proof: "canonical-close-record-component", decision_and_audit_authority: "fixture", full_process_host: "NOT_RUN", final_hook: process.argv.includes("--final-hook") ? "actual-fixed-hook-component" : "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
 } finally {
   for (const folder of owned) { const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); }
 }

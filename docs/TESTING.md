@@ -2243,3 +2243,42 @@ pre-grant authentication. The second advances beyond the deadline inside the
 grant callback and requires refusal before any canonical write. Other component
 selectors retain the actual clock. These synthetic clock cases neither measure
 wall-time/native performance nor qualify the full process host.
+
+The final checkpoint component extends the terminal-record component selector
+with `--final-hook`. It runs the actual cycle-close hook after explicit Git,
+reload and R05 fixture preconditions, checks the correlated checkpoint event and
+confirms three current completion documents. The accepted record/human/audit
+authority remains a fixture. `--final-hook-fault=event|suffix|projection|grant_after`
+selects loss after real hook execution; uncertainty must retain ownership and
+prevent a second checkpoint. The suffix fault requires SQLite and projection
+fault requires dual mode. These selectors do not establish the full standard
+IR workflow or native human/model execution.
+
+`verify-standard-cycle-close-checkpoint-fixtures.mjs` checks read-only capture and
+actual Git history/content observations, including unrelated committed paths,
+changed physical bytes and changed context. A plausible clean Git state alone
+cannot replace the captured reviewed evidence.
+
+
+`verify-standard-cycle-close-hook-contract-fixtures.mjs` verifies the closed
+fixed input, supported schema vocabulary and correlation of confirmed, blocked
+and uncertain outcomes. `--cycle-close-finalize-mode=contract|files|db-only` in
+`verify-agentic-process-execution-fixtures.mjs` selects the new common-host
+consumer. The contract case checks IR identity mapping without execution. The
+execution case must cover a durable blocked receipt, separate actual Git,
+reload/R05 fixture preconditions, current product/log tampering, denied effect
+authorization and a cold-process finalizer without native allocation. Its
+replay uses the same authored model and reducer. These external fixture
+preconditions do not establish the still missing complete standard IR route.
+The retained common-host continuation passed on its exact earlier snapshot.
+Current actual-hook components are recorded separately; selector availability
+alone never proves common-host execution or the full standard workflow.
+
+The required agentic gate includes the real final-hook component for all three
+canonical modes and event/suffix/projection/post-effect-grant faults. These
+explicit selectors exercise actual application effects; schema/checkpoint
+observation tests alone do not prove hook execution. The retained common-host
+continuation and its original prefix failure are recorded separately in
+[the bounded proof](qualification/agentic-process/cycle-close-hook-continuation-2026-11-03.json).
+The private retained-fixture verifier only accepts owned disposable roots and
+uses the existing instance; it must never rerun its six writes or allocations.

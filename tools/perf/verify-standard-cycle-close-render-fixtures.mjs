@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { renderStandardCycleClose, cycleClosePaths } from "../../src/core/workflow/standard-cycle-close-render.mjs";
+import { renderStandardCycleClose, cycleClosePaths, cycleCloseCompletionPaths, renderStandardCycleCloseCompletion } from "../../src/core/workflow/standard-cycle-close-render.mjs";
 import { cycleClosureChoices } from "../../src/core/workflow/standard-cycle-closure-decision.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { shadowHash, checkShadowJson } from "../../src/core/workflow/shadow-json.mjs";
@@ -67,4 +67,19 @@ for (const mutate of [v => { v.documents[3].content += "\n## Process cycle closu
   const value = fixture(); mutate(value); for (const row of value.documents) row.sha256 = artifactContentHash(row.content); assert.throws(() => renderStandardCycleClose(value));
 }
 pass("existing closure records, missing snapshot ownership and conflicting active focus require reconciliation");
-console.log(JSON.stringify({ status: "PASS", checks, proof: "pure-terminal-metadata-renderer", authority: "fixture", actual_writes: "NOT_RUN", final_hook: "NOT_IMPLEMENTED", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+for (const choice of ['retain', 'no_go', 'drop']) {
+  const input = fixture(choice, choice !== 'retain'), terminal = renderStandardCycleClose(input);
+  const names = cycleCloseCompletionPaths(cyclePath);
+  const documents = names.map(path => { const row = terminal.changes.find(row => row.path === path), content = row.text_chunks.join(''); return { path, content, sha256: artifactContentHash(content) }; });
+  const data = { cyclePath, context: { ...input.context, cycle_state: terminal.target_state, context_use: 'cycle_completion' }, documents,
+    runId: 'process_close_' + 'c'.repeat(40), eventSha256: H, completedAt: input.preparedAt + 1000 };
+  const before = shadowHash(data), completed = renderStandardCycleCloseCompletion(data);
+  assert.equal(shadowHash(data), before); assert.equal(completed.length, 3);
+  const current = completed[2].text_chunks.join(''), snapshot = completed[1].text_chunks.join('');
+  assert.ok(!current.includes('Finalize the cycle-close hook')); assert.ok(snapshot.includes('cycle-close checkpoint completed')); assert.ok(snapshot.includes('C002: OPEN'));
+  assert.match(completed[0].text_chunks.join(''), /"cycle_close_completed": true/);
+  assert.throws(() => renderStandardCycleCloseCompletion({ ...data, eventSha256: 'not-evidence' }));
+  assert.throws(() => renderStandardCycleCloseCompletion({ ...data, context: { ...data.context, cycle_state: 'VERIFYING' } }));
+}
+pass('checkpoint completion updates only its three current artifacts after an exact event binding and preserves non-retained outcomes');
+console.log(JSON.stringify({ status: "PASS", checks, proof: "pure-terminal-metadata-renderer", authority: "fixture", actual_writes: "NOT_RUN", final_hook: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));

@@ -21,7 +21,7 @@ export function closureHumanSource(file) {
         ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" };
     } };
 }
-export async function verifyCycleClosureExecution({ f, artifacts, cyclePath, script, verifier, closeRecord = false, setAllowed }) {
+export async function verifyCycleClosureExecution({ f, artifacts, cyclePath, script, verifier, closeRecord = false, closeFinalize = false, setAllowed }) {
   const before = f.open().inspect(), waiting = before.cursor.occurrences.find(row => row.node_id === "closure_decide"), id = waiting.operation.intent.operation_id;
   process.stderr.write("cycle-closure: durable human question preparation\n");
   const request = await f.open().dispatchOperation(id, { write: true }), question = request.question;
@@ -65,5 +65,5 @@ export async function verifyCycleClosureExecution({ f, artifacts, cyclePath, scr
   const replay = simulateAgenticProcess({ instanceId: after.record.instance_id, model: after.record.model, parameters: after.record.initial_parameters,
     policyPins: after.record.policy_pins, scopeId: after.record.scope_id, events: after.record.events });
   assert.equal(replay.trace.at(-1).instance_sha256, after.record.instance_sha256);
-  if (closeRecord) await verifyCycleCloseRecordExecution({ f, artifacts, cyclePath, verifier, setAllowed });
+  if (closeRecord) await verifyCycleCloseRecordExecution({ f, artifacts, cyclePath, verifier, script, closeFinalize, setAllowed });
 }

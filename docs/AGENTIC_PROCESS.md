@@ -760,3 +760,13 @@ Its mixed-host component passed offline on files and DB-only. A confirmed termin
 leaves the real cycle-close hook pending and never sets `cycle_close_completed`
 to true. Earlier-phase exits, the final hook/drift retry, the complete standard
 model, ordinary entrypoints and installed/native qualification remain required.
+
+The deterministic `cycle_close_finalize` binding authenticates the accepted
+terminal record, human/audit provenance and current physical validation evidence.
+A closed gate blocks durably; only the actual correlated checkpoint and three
+confirmed completion postimages emit cycle_close_completed. Unknown effects
+retain ownership and cannot trigger another checkpoint. The component tests and
+[retained cold continuation](qualification/agentic-process/cycle-close-hook-continuation-2026-11-03.json)
+have distinct source snapshots. Git checkpoint, reload and R05 remain explicit
+fixture preconditions; their complete standard IR route and suffix reconciliation
+remain to implement, alongside ordinary entrypoints and native/archive proofs.

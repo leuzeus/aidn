@@ -1,3 +1,4 @@
+import { captureCycleCloseCheckpoint } from "./standard-cycle-close-checkpoint.mjs";
 import path from "node:path";
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
@@ -97,7 +98,7 @@ export function createStandardCycleCloseRecord({ targetRoot, readDecision, obser
           return { contract_version: "standard-cycle-close-output.v1", operation_ref: "cycle_close_record", outcome: "completed", effect_status: "confirmed",
             facts: { cycle_terminal_recorded: true, cycle_retained: plan.target_state === "DONE", cycle_close_completed: false },
             observations: { decision_operation_id: plan.input.decision_operation_id, target_state: plan.target_state, closure_hook: "pending", skill_completion: "pending", projection,
-              scope_sha256: plan.scope_sha256, committed, causal_transition: { before_context_sha256: plan.context_sha256, after_context_sha256: after.context_sha256, decision_material_sha256: plan.decision_material_sha256 } },
+              scope_sha256: plan.scope_sha256, committed, causal_transition: { before_context_sha256: plan.context_sha256, after_context_sha256: after.context_sha256, decision_material_sha256: plan.decision_material_sha256, state: captureCycleCloseCheckpoint({ root, context: after.context }) } },
             evidence_refs: plan.changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 })) };
         } catch (cause) {
           return { contract_version: "standard-cycle-close-output.v1", operation_ref: "cycle_close_record", outcome: "reconciliation_required", effect_status: "unknown", facts: {},

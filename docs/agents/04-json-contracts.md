@@ -265,3 +265,10 @@ Output correlation rejects completion facts on blocked or uncertain effects and
 keeps final hook completion false. They add no public CLI JSON root and confer
 neither human authority nor write authorization. Full host execution evidence
 is separate from schema/renderer/component checks.
+
+
+The private `standard-cycle-close-hook-input.v1`, plan and output contracts
+separate recorded terminal metadata from confirmed hook completion. Only an
+operation identity selects the accepted source. Unknown effects carry no success
+facts; confirmed completion includes the real checkpoint and three current
+postimages. These contracts add no public CLI JSON root or authored authority.

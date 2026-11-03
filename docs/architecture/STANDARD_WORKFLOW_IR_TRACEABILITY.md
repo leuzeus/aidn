@@ -241,5 +241,5 @@ native and installed-archive proof remain separately identified.
 | Terminal record component | Authority and binding | Proof boundary |
 | --- | --- | --- |
 | Six canonical closure artifacts | R04/R07, `cycle-close`, deterministic `cycle_close_record` | Actual source-install/CAS/projection component; common files/DB-only path with authenticated human fixture transport passed on exact snapshots |
-| Completed cycle-close skill | Actual final hook/checkpoint and conditional R05 retry | Still required; recorded DONE/NO_GO/DROPPED metadata leaves hook completion false |
+| Completed cycle-close skill | Deterministic cycle_close_finalize, actual correlated hook and three completion CAS | Source component and retained common-host continuation qualified on distinct exact snapshots; full IR Git/reload/R05 route and interrupted suffix reconciliation still required |
 | Earlier-phase and other-mode exits | Current SPEC plus explicit decisions | Still required in the complete standard IR; the COMMITTING/VERIFYING component is not a general abort path |

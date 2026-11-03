@@ -92,3 +92,32 @@ export function renderStandardCycleClose({ cyclePath, context, question, decisio
   return { target_state: targetState, changes: documents.map((row, index) => ({ path: row.path, before_sha256: row.sha256,
     text_chunks: chunks(contents[index]), after_sha256: artifactContentHash(contents[index]) })) };
 }
+
+
+export function cycleCloseCompletionPaths(cyclePath) {
+  const own = cycleClosePaths(cyclePath); return [own[0], own[4], own[5]];
+}
+export function renderStandardCycleCloseCompletion({ cyclePath, context, documents, runId, eventSha256, completedAt }) {
+  const names = cycleCloseCompletionPaths(cyclePath);
+  if (!['DONE', 'NO_GO', 'DROPPED'].includes(context.cycle_state) || context.context_use !== 'cycle_completion'
+    || !/^process_close_[a-f0-9]{40}$/.test(runId ?? '') || !/^[a-f0-9]{64}$/.test(eventSha256 ?? '')
+    || !Number.isSafeInteger(completedAt) || completedAt < 0 || documents.length !== 3 || names.some((name, index) => documents[index]?.path !== name)
+    || documents.some(row => artifactContentHash(row.content) !== row.sha256)) fail('STANDARD_CYCLE_CLOSE_COMPLETION_SOURCE_INVALID');
+  const next = context.cycle_state === 'DONE' ? 'Review optional baseline promotion or session integration with fresh admission and explicit authorization.'
+    : 'Review the next session or cycle decision while preserving the non-retained evidence.';
+  const at = new Date(completedAt).toISOString(), reference = 'aidn:cycle-close/' + runId;
+  let status = documents[0].content;
+  if (!new RegExp('^state: ' + context.cycle_state + '$', 'm').test(status)) fail('STANDARD_CYCLE_CLOSE_COMPLETION_SOURCE_INVALID');
+  for (const [key, value] of Object.entries({ 'next step': '\n  - ' + next, 'last updated': at, updated_at: at })) status = field(status, key, value);
+  status = appendReport(status, jsonBlock({ checkpoint: reference, checkpoint_event_sha256: eventSha256, cycle_close_completed: true, outcome: context.cycle_state }));
+  let snapshot = documents[1].content;
+  const recent = /^## Recently closed[^\r\n]*\r?\n([\s\S]*?)(?=^## |$(?![\s\S]))/m.exec(snapshot)?.[1];
+  const row = new RegExp('^([ \t]*-[ \t]*' + context.cycle_id + ':[^\r\n]*?)closure hook pending([^\r\n]*)$', 'gm');
+  if (recent === undefined || [...recent.matchAll(row)].length !== 1) fail('STANDARD_CYCLE_CLOSE_COMPLETION_SOURCE_INVALID');
+  snapshot = section(snapshot, 'Recently closed', recent.replace(row, (_match, before, after) => before + 'cycle-close checkpoint completed' + after).trim());
+  snapshot = section(snapshot, 'Next entry point', '- Session active: ' + context.session_id + '\n- Active cycle: none\n- Next action: ' + next);
+  let current = documents[2].content;
+  if (!/^active_cycle: none$/m.test(current)) fail('STANDARD_CYCLE_CLOSE_COMPLETION_SOURCE_INVALID');
+  current = field(field(current, 'first_plan_step', next), 'updated_at', at);
+  return documents.map((doc, index) => { const after = [status, snapshot, current][index]; return { path: doc.path, before_sha256: doc.sha256, text_chunks: chunks(after), after_sha256: artifactContentHash(after) }; });
+}

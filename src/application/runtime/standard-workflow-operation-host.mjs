@@ -1,3 +1,4 @@
+import { createStandardCycleCloseHook } from "./standard-cycle-close-hook.mjs";
 import { createStandardCycleCloseRecord } from "./standard-cycle-close-record.mjs";
 import { createStandardCycleClosureReview } from "./standard-cycle-closure-review.mjs";
 import { observeStandardCycleAudit } from "../../core/workflow/standard-cycle-audit.mjs";
@@ -138,6 +139,30 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const cycleCloseRecord = processAuthority ? createStandardCycleCloseRecord({ targetRoot, now,
     readDecision: readAcceptedClosureDecision, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
+  async function readAcceptedTerminalRecord(instance, input) {
+    function accepted(id, binding) {
+      const record = retained(id).record, result = record.results.at(-1);
+      const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding).at(-1);
+      if (latest?.intent.operation_id !== id || record.intent.binding_ref !== binding || record.intent.instance_id !== instance.instance_id
+        || record.intent.scope_id !== instance.scope_id || record.phase !== "receipted" || result?.receipt.outcome !== "completed"
+        || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail("STANDARD_CYCLE_CLOSE_RECORDED_SOURCE_REQUIRED");
+      return { record, output: result.output };
+    }
+    const closed = accepted(input.closure_operation_id, "cycle_close_record"), plan = closed.record.preview.prepared.plan;
+    const selected = accepted(plan.input.decision_operation_id, "cycle_closure_decision");
+    const question = human.question(selected.record), decision = human.captured(selected.record).source;
+    const audit = accepted(selected.record.preview.prepared.plan.audit_operation_id, "cycle_audit_evaluate");
+    const physical = processAuthority.readCycleCloseValidation(instance, audit.record.preview.input), evidence = await cycleValidation.readResult(physical);
+    const report = physical.native.authenticated.report, machine = physical.machine;
+    if (shadowHash({ question, decision, report }) !== plan.decision_material_sha256 || question.review.audit_output_sha256 !== shadowHash(audit.output)
+      || question.review.report_sha256 !== shadowHash(report) || closed.output.effect_status !== "confirmed" || closed.output.facts.cycle_terminal_recorded !== true
+      || closed.output.facts.cycle_close_completed !== false || evidence.plan.product_sha256 !== machine.product_sha256 || evidence.plan.profile_sha256 !== machine.profile_sha256
+      || evidence.manifest.status !== machine.status || shadowHash(evidence.checks) !== shadowHash(machine.checks)
+      || shadowHash(evidence.evidence_refs) !== shadowHash(machine.evidence_refs)) fail("STANDARD_CYCLE_CLOSE_RECORDED_PROVENANCE_CHANGED");
+    return { record_operation_id: closed.record.operation_id, plan, output: closed.output };
+  }
+  const cycleCloseHook = processAuthority ? createStandardCycleCloseHook({ targetRoot, now,
+    readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   async function readValidationEvaluation(instance, input, operation = "cycle_verification_enter") {
       assertStandardOperationInput(operation, input);
       const record = retained(input.evaluation_operation_id).record, result = record.results.at(-1);
@@ -443,6 +468,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const prepared = binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "cycle_close_finalize" ? await cycleCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "cycle_close_record" ? await cycleCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED")
         : binding.id === "cycle_closure_decision" ? await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED")
         : binding.id === "drift_recovery_decision" ? await recovery?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
@@ -543,6 +569,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           output = await operations.applyMode(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         } else if (record.intent.binding_ref === "cycle_context_refresh") output = await operations.refreshCycleContext(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
         else if (record.intent.binding_ref === "cycle_initialize") output = await operations.initializeCycle(record.preview.prepared, { write: true, expectPlan: record.preview.prepared.plan_sha256 });
+        else if (record.intent.binding_ref === "cycle_close_finalize") output = await cycleCloseHook.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_close_record") output = await cycleCloseRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "cycle_plan_record") output = await cyclePlanRecord.apply(state.record, record.preview.prepared,

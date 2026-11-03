@@ -1092,9 +1092,8 @@ and skill completion remain pending.
 
 Component fixtures use real source installation, admissions, Git, canonical
 CAS and projections, with an explicit fixture audit/decision authority. The files mixed-host case passed on its exact61/59 snapshot; current-source
-DB-only qualification on explicit62/60 pins passed on its frozen snapshot. The final actual cycle-close hook,
-its conditional drift retry, earlier-phase exits and other mode paths remain
-required. This component does not deliver the full standard workflow graph.
+DB-only qualification on explicit62/60 pins passed on its frozen snapshot. The full standard route for the actual final hook and conditional drift retry,
+earlier-phase exits and other mode paths remains required. This component does not deliver the full standard workflow graph.
 
 
 The terminal metadata effect checks its grant before rebuilding one fresh
@@ -1104,3 +1103,50 @@ the signed original plan. Repeating a complete audit before the same grant is
 not an additional authority. No verdict is cached across calls. The original
 300000ms preview deadline is rechecked after all preconditions immediately
 before the first canonical write; expiry refuses without business effects.
+
+### Final closure checkpoint component
+
+The fixed finalizer runs the actual cycle-close hook with its supported run
+identity, explicit authorization, canonical terminal admission and fresh gating.
+The wrapper forwards this identity without adding a new public flag. A wrapper
+success alone is insufficient: the nested checkpoint, non-skipped gate and exact
+checkpoint-summary event must agree.
+
+The terminal recorder captures a bounded reviewed Git-checkpoint manifest using
+the existing drift-recovery protocol. An explicit external commit may advance
+HEAD only when canonical material, reviewed physical/commit bytes, branch and
+allowed changed paths agree with that immutable state. A clean checkout cannot
+conceal an unrelated committed path. This observation neither authors a commit
+nor re-signs the original closure record. Missing cache, scope growth or R05
+requirements remain visible; fixture preparation uses actual Git, reload and
+explicit drift completion, not forced gate success.
+
+Only a confirmed actual checkpoint permits the finalizer to update status,
+snapshot and current next action. These three CAS writes preserve metadata;
+completion facts follow their confirmed postimages. A lost checkpoint event,
+revoked suffix authorization, partial canonical suffix or required projection
+loss retains ownership, uncertainty and empty success facts. A repeated raw
+apply must not execute the checkpoint again.
+
+This is a component protocol under qualification. A fixed common-host binding
+and trusted reader now authenticate the latest accepted terminal, human, audit
+and physical validation evidence. Their real mixed-host consumption remains to
+qualify. Complete standard IR gate/checkpoint/R05/retry routing and actual
+native/archive qualification remain required. Earlier-phase exits and
+other mode paths are not supplied by this COMMITTING component.
+
+
+The private finalizer contract preserves a blocked/no-effect preflight result
+with empty success facts. Closed gating must remain a durable engine wait,
+never a success or a malformed dispatch result. An eventual retry prepares a
+new authenticated intent after actual external preconditions; it cannot reuse
+a previous effect authorization. Completion document timestamps derive from
+the confirmed checkpoint event, keeping their rendering deterministic.
+
+Current actual-hook components pass on files, dual and DB-only, including
+non-retained outcomes and uncertain event/suffix/projection/post-grant cases.
+The authenticated common-host prefix and retained cold continuation are tied
+to their exact earlier snapshot; current component/source checks are separate.
+The full standard graph must model Git checkpoint, reload and R05 explicitly.
+Interrupted suffix reconciliation, ordinary entrypoints, native and exact
+installed-archive acceptance remain required.

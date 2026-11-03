@@ -1,3 +1,4 @@
+import { verifyCycleCloseHookExecution } from "./cycle-close-hook-fixture-lib.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
@@ -11,7 +12,7 @@ export function attachCycleCloseRecordModel(model) {
   model.operation_pins.cycle_close_record = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "cycle_close_record"));
 }
 
-export async function verifyCycleCloseRecordExecution({ f, artifacts, cyclePath, verifier, setAllowed }) {
+export async function verifyCycleCloseRecordExecution({ f, artifacts, cyclePath, verifier, script, closeFinalize = false, setAllowed }) {
   const sessions = f.t.sessions.length, checks = verifier.calls(), before = f.open().inspect();
   const preview = await f.open().step({ write: false });
   assert.equal(preview.preview.binding.id, "cycle_close_record"); assert.equal(preview.preview.prepared.can_apply, true);
@@ -36,7 +37,8 @@ export async function verifyCycleCloseRecordExecution({ f, artifacts, cyclePath,
   assert.equal(f.t.sessions.length, sessions); assert.equal(verifier.calls(), checks);
   const digest = shadowHash(record); assert.equal((await f.open().dispatchOperation(executed.operation_id, { write: true })).status, "retained_result");
   assert.equal(shadowHash(f.open().readOperation(executed.operation_id)), digest);
-  const after = f.open().inspect(); assert.equal(after.cursor.status, "WAITING");
+  const after = f.open().inspect(); if (!closeFinalize) assert.equal(after.cursor.status, "WAITING");
+  if (closeFinalize) await verifyCycleCloseHookExecution({ f, artifacts, cyclePath, verifier, script, setAllowed });
   const replay = simulateAgenticProcess({ instanceId: after.record.instance_id, model: after.record.model, parameters: after.record.initial_parameters,
     policyPins: after.record.policy_pins, scopeId: after.record.scope_id, events: after.record.events });
   assert.equal(replay.trace.at(-1).instance_sha256, after.record.instance_sha256);
