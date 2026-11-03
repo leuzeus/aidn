@@ -105,6 +105,15 @@ try {
       assert.equal(fs.readFileSync(path.join(f.root, file), "utf8"), "foreign"); refsUnchanged(f);
     }
   });
+  await check("cold integration refuses effective filter configuration changed after its preview", async () => {
+    const f = fixture(); git(f.root, "config", "filter.new.clean", "echo forbidden");
+    const cold = createLocalWorkflowBranchIntegration({ targetRoot: f.root });
+    await assert.rejects(cold.integrate(f.plan, grant), { code: "WORKFLOW_BRANCH_PREVIEW_CHANGED", effect_status: "no_effect" }); refsUnchanged(f);
+  });
+  await check("cold confirmation cannot substitute a new filter context after an observed integration", async () => {
+    const f = fixture(); await f.port.integrate(f.plan, grant); git(f.root, "config", "filter.new.clean", "echo forbidden");
+    const cold = createLocalWorkflowBranchIntegration({ targetRoot: f.root }); assert.equal(cold.inspectIntegration(f.plan).status, "not_confirmed");
+  });
   await check("source locking and CAS preserve concurrent target/HEAD changes", async () => {
     for (const kind of ["target", "HEAD"]) {
       const f = fixture(), port = createLocalWorkflowBranchIntegration({ targetRoot: f.root }, { beforeTransaction() {

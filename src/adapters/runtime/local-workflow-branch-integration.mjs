@@ -71,6 +71,7 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     const rows = worktrees(), status = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
     return { source_branch, target_branch, source_ref: sourceRef, target_ref: targetRef, source_head: sourceHead, target_head: targetHead,
       current_ref: currentRef, head: git(["rev-parse", "HEAD"]).trim(), index_sha256: indexHash(), clean: status === "", lock_present: fs.existsSync(lock),
+      filter_context_sha256: filterContextSha256,
       source_lock_present: fs.existsSync(gitPath(sourceRef + ".lock")),
       source_symbolic: spawnSync("git", [...fixed, "symbolic-ref", "--quiet", sourceRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1,
       target_symbolic: spawnSync("git", [...fixed, "symbolic-ref", "--quiet", targetRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1,
@@ -109,7 +110,7 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     const matches = observed.current_ref === expected.target_ref && observed.head === expected.source_head && observed.source_head === expected.source_head
       && observed.target_head === expected.source_head && observed.index_sha256 === expected.index_sha256 && observed.clean && !observed.lock_present
       && !observed.source_lock_present && !observed.source_symbolic && !observed.target_symbolic && !observed.target_checked_out_elsewhere
-      && observed.worktree_bindings_sha256 === expected.worktree_bindings_sha256
+      && observed.worktree_bindings_sha256 === expected.worktree_bindings_sha256 && observed.filter_context_sha256 === expected.filter_context_sha256
       && appendedLog("HEAD", expected.head_reflog, expected.source_head, expected.source_head, plan)
       && (expected.target_head === expected.source_head ? shadowHash(logState(expected.target_ref)) === shadowHash(expected.target_reflog)
         : appendedLog(expected.target_ref, expected.target_reflog, expected.target_head, expected.source_head, plan));
