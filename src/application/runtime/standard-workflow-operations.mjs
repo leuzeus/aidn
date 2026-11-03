@@ -1,3 +1,5 @@
+import { runCloseSessionAdmitUseCase } from "./close-session-admit-use-case.mjs";
+import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -17,7 +19,7 @@ import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-l
 import { createStandardSessionModeOperations } from "./standard-session-mode-operations.mjs";
 import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
 
-const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
+const files = ["close-session-admit-use-case.mjs", "close-session-context-service.mjs","standard-workflow-operations.mjs", "standard-workflow-artifacts.mjs", "start-session-admit-use-case.mjs", "reload-check-use-case.mjs",
   "standard-cycle-operations.mjs", "standard-cycle-checkpoint.mjs", "standard-cycle-plan-context.mjs", "standard-cycle-plan-record.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "cycle-close-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
   "standard-drift-recovery.mjs", "standard-drift-change-request.mjs", "standard-drift-cycle.mjs", "requirements-delta-admit-use-case.mjs", "runtime-head-resolution-service.mjs", "agent-run-configuration-service.mjs",
   "standard-workflow-operation-host.mjs", "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
@@ -25,7 +27,7 @@ const files = ["standard-workflow-operations.mjs", "standard-workflow-artifacts.
   "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
-  const refs = [new URL("standard-baseline-promotion-checkpoint.mjs", import.meta.url),
+  const refs = [new URL("../../adapters/runtime/artifact-store.mjs", import.meta.url), new URL("../../adapters/runtime/postgres-artifact-command-lib.mjs", import.meta.url), new URL("../../lib/workflow/structured-artifact-parser-lib.mjs", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-close-admission-output.v1.schema.json", import.meta.url),new URL("standard-baseline-promotion-checkpoint.mjs", import.meta.url),
     ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-baseline-promotion-checkpoint-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-cycle-terminal-checkpoint.mjs", import.meta.url),
     ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-cycle-terminal-checkpoint-${kind}.v1.schema.json`, import.meta.url)), new URL("standard-workflow-git-checkpoint.mjs", import.meta.url), new URL("../../adapters/runtime/local-workflow-git-checkpoint.mjs", import.meta.url), new URL("../../core/ports/workflow-git-checkpoint-port.mjs", import.meta.url),
 new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-input.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-output.v1.schema.json", import.meta.url), new URL("../../core/contracts/workflow-definition/standard-session-git-checkpoint-plan.v1.schema.json", import.meta.url),
@@ -72,6 +74,7 @@ export function assertStandardWorkflowImplementation() {
   if (implementation() !== loadedImplementation) fail("STANDARD_IMPLEMENTATION_CHANGED");
 }
 const definitions = [
+  ["session_close_admit", "close-session", "read-only", ["SPEC-R07", "SPEC-R11"], "standard-session-reference-input.v1", "deterministic", "standard-session-close-admission-output.v1"],
   ["baseline_promotion_checkpoint", "promote-baseline", "mutating", ["SPEC-R04", "SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-baseline-promotion-checkpoint-input.v1", "deterministic", "standard-baseline-promotion-checkpoint-output.v1"],
   ["baseline_promotion_finalize", "promote-baseline", "executor", ["SPEC-R04", "SPEC-R05", "SPEC-R07", "SPEC-R11"], "standard-baseline-promotion-hook-input.v1", "deterministic", "standard-baseline-promotion-hook-output.v1"],
   ["baseline_promotion_decision", "promote-baseline", "read-only", ["SPEC-R04", "SPEC-R07"], "standard-baseline-promotion-review-input.v1", "human", "standard-baseline-promotion-decision-output.v1"],
@@ -118,7 +121,7 @@ const definitions = [
 export function standardWorkflowOperationBindings() {
   return definitions.map(([id, skill_id, effect_class, rule_refs, input_contract, executor_kind = "deterministic", output_contract = "standard-operation-output.v1"]) => {
     const binding = { contract_version: "process-operation-binding.v1", id, revision: id === "cycle_validation_evaluate" ? 2 : 1, executor_kind, effect_class, skill_id,
-      input_contract, output_contract, rule_refs, allowed_modes: id === "session_initialize" ? ["UNKNOWN"] : id === "drift_change_request_record" || ["standard-baseline-promotion-checkpoint-output.v1", "standard-baseline-promotion-hook-output.v1", "standard-baseline-promotion-decision-output.v1", "standard-baseline-promotion-output.v1", "standard-cycle-readiness-output.v1", "standard-cycle-work-output.v1", "standard-cycle-validation-output.v1", "standard-cycle-verification-output.v1", "standard-cycle-task-output.v1", "standard-cycle-task-work-output.v1", "standard-cycle-audit-selection-output.v1", "standard-cycle-audit-output.v1", "standard-cycle-closure-decision-output.v1", "standard-cycle-close-output.v1", "standard-cycle-close-hook-output.v1"].includes(output_contract) ? ["COMMITTING"] : ["standard-cycle-output.v1", "standard-drift-cycle-output.v1", "standard-cycle-checkpoint-output.v1", "standard-cycle-planning-output.v1"].includes(output_contract) ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
+      input_contract, output_contract, rule_refs, allowed_modes: id === "session_close_admit" ? ["THINKING", "EXPLORING", "COMMITTING"] : id === "session_initialize" ? ["UNKNOWN"] : id === "drift_change_request_record" || ["standard-baseline-promotion-checkpoint-output.v1", "standard-baseline-promotion-hook-output.v1", "standard-baseline-promotion-decision-output.v1", "standard-baseline-promotion-output.v1", "standard-cycle-readiness-output.v1", "standard-cycle-work-output.v1", "standard-cycle-validation-output.v1", "standard-cycle-verification-output.v1", "standard-cycle-task-output.v1", "standard-cycle-task-work-output.v1", "standard-cycle-audit-selection-output.v1", "standard-cycle-audit-output.v1", "standard-cycle-closure-decision-output.v1", "standard-cycle-close-output.v1", "standard-cycle-close-hook-output.v1"].includes(output_contract) ? ["COMMITTING"] : ["standard-cycle-output.v1", "standard-drift-cycle-output.v1", "standard-cycle-checkpoint-output.v1", "standard-cycle-planning-output.v1"].includes(output_contract) ? ["EXPLORING", "COMMITTING"] : ["UNKNOWN", "THINKING", "EXPLORING", "COMMITTING"], implementation_sha256: loadedImplementation };
     assertProcessOperationBinding(binding); return binding;
   });
 }
@@ -242,6 +245,29 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
       return output("session_admit", observed.allowed ? "completed" : "blocked", "no_effect", observed, observed.allowed ? {
         session_creation_allowed: observed.lifecycle.action === "create_session_allowed", session_resume_allowed: ["resume_current_session", "resume_current_cycle"].includes(observed.lifecycle.action),
       } : {});
+    },
+    async admitSessionClose(input) {
+      assertStandardOperationInput("session_close_admit", input);
+      const emit = (allowed, observations, evidence_refs = []) => assertStandardOperationOutput({
+        contract_version: "standard-session-close-admission-output.v1", operation_ref: "session_close_admit", outcome: allowed ? "completed" : "blocked",
+        effect_status: "no_effect", facts: allowed ? { session_close_admission_satisfied: true } : {}, observations, evidence_refs });
+      if (artifacts.ownerPending()) return emit(false, { reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" });
+      const prewrite = await preWriteAdmit({ targetRoot: root, skill: "close-session" });
+      if (!prewrite.ok || !["admitted", "admitted_with_warnings"].includes(prewrite.admission_status))
+        return emit(false, { reason_code: "STANDARD_SESSION_CLOSE_ADMISSION_BLOCKED", prewrite });
+      const before = scope(), current = artifacts.read("CURRENT-STATE.md", { required: true });
+      const fields = analyzeStructuredArtifact(current.content).key_values, sessions = artifacts.sessions().filter(row => row.session_id === input.session_id);
+      if (fields.active_session !== input.session_id || sessions.length !== 1 || !["THINKING", "EXPLORING", "COMMITTING"].includes(fields.mode))
+        return emit(false, { reason_code: "STANDARD_SESSION_CLOSE_OWNER_REQUIRED" });
+      const session = sessions[0], admission = await runCloseSessionAdmitUseCase({ targetRoot: root, mode: fields.mode });
+      if (shadowHash(scope()) !== shadowHash(before) || artifacts.read("CURRENT-STATE.md").sha256 !== current.sha256
+        || artifacts.read(session.path).sha256 !== session.sha256 || artifacts.ownerPending())
+        return emit(false, { reason_code: "STANDARD_SESSION_CLOSE_CONTEXT_CHANGED" });
+      const allowed = admission.ok === true && admission.action === "close_session_allowed" && admission.active_session === input.session_id
+        && admission.mapped_session?.session_id === input.session_id && admission.branch === before.branch;
+      return emit(allowed, { prewrite, admission, scope_sha256: shadowHash(before), session_id: input.session_id,
+        closure_effects: "not_executed", skill_completion: "pending" },
+        [{ ref: "docs/audit/CURRENT-STATE.md", sha256: current.sha256 }, { ref: "docs/audit/" + session.path, sha256: session.sha256 }]);
     },
     prepareSession: input => build(input, now()),
     async initializeSession(prepared, { write = false, expectPlan = null } = {}) {

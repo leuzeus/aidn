@@ -1424,3 +1424,19 @@ The focused artifact-store fixtures exercise actual SQLite creation, revision,
 identity conflict and rollback, plus the existing PostgreSQL double. They do not
 qualify a live PostgreSQL backend, native model execution, an installed archive or
 completion of the standard workflow.
+
+### Read-only session-close admission in the partial IR (2026-11-03)
+
+The COMMITTING component continues after optional promotion with the real
+`session_close_admit` binding (SPEC-R07/R11), using the selected session identity
+from initialization. Admission and completion remain separate. The host dispatches
+the actual existing admission; its typed output has only an admission fact and
+no business effect. A blocked receipt remains WAITING in the common reducer.
+
+The source component has 43 operation occurrences, 35 referenced binding IDs and
+42 registered bindings, with seven native declarations. Focused actual-host
+fixtures cover signed retained outcomes and common replay/simulation in all local
+state modes; they are not a full execution of this published model. No model or
+business-effect grant is needed for the admission. The complete R07 decision,
+report/CAS/checkpoint/final-hook chain, branch integration, PR review and post-merge
+sync remain explicit work. Ordinary standard-workflow selection stays unchanged.

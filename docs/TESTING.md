@@ -2464,3 +2464,28 @@ fake-wire allocations (five parent, two child). Cold continuation preserves the
 original authorization and prior journals/event prefix. Both process exits and
 cleanup must be terminal before editing that worktree. This bounded result does
 not qualify the session/PR tail, real native calls or an exact installed archive.
+
+### Standard session-close admission and canonical session projection
+
+Run `node tools/perf/verify-standard-session-close-admission-fixtures.mjs` for
+files, then `--mode=dual` and `--mode=db-only` when changing the canonical path.
+`--retain-on-failure` preserves owned failed corpus for diagnosis. The fixture
+executes actual admissions, wrong-owner/open-cycle/incomplete-canonical refusals,
+and a focused IR through the actual operation host with signed retained results
+and exact replay/simulation. Completed means admission only; blocked stays WAITING.
+All direct reader checks preserve the project bytes. Explicit protocol writes
+belong to the host fixture. No model, business effect grant or native allocation
+is required. This focused IR is not the published standard-model acceptance run.
+
+`node tools/perf/verify-project-artifact-store-fixtures.mjs` adds actual SQLite
+session creation/update, stale CAS, identity conflict and late projection rollback;
+its PostgreSQL path remains a double. The canonical reader regressions are
+`node tools/perf/verify-close-session-canonical-fixtures.mjs`. Incomplete historical
+canonical rows must refuse without importing visible Markdown or silently repairing
+state. Keep the first simulation-fixture call with an undefined optional input
+classified as a fixture API failure, separately from product/runtime failures.
+
+Record offline/source-install, real native, live PostgreSQL and exact installed
+archive outcomes separately. Governance completeness does not establish complete
+standard-workflow execution. Session report/write/checkpoint/final hook and the
+later PR/post-merge path still require their own full acceptance evidence.

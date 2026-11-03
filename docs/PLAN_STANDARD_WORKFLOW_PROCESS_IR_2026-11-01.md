@@ -8,11 +8,12 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée avant le présent lot : `9fdc597`. Les composants startup/cycle sont
-en 76/74 et le modèle composé en 18 (74 nœuds, 42 occurrences d’opération,
-34 identifiants de liaison mobilisés parmi 41 liaisons enregistrées). Le parcours
-composé files jusqu’à la promotion est qualifié hors ligne sur le snapshot exact
-`c18320d`. Cette preuve partielle ne termine pas le workflow standard.
+Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
+les composants startup/cycle en 79/77 et le modèle composé en 21 (75 nœuds,
+43 occurrences d’opération, 35 identifiants de liaison mobilisés parmi 42 liaisons
+enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
+le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
 addenda et l’avancement distinguent les composants livrés des raccordements
 encore ouverts.
@@ -2840,3 +2841,46 @@ générale, la réautorisation longue et la réconciliation d’effets inconnus 
 à livrer. Humain/permissions/confinement/natif sont des fixtures ; le vérificateur
 Node et les ports applicatifs sont réels. Natif réel, archive exacte et agrégat
 ASSURED restent non qualifiés. Aucune sélection ordinaire du standard n’est activée.
+
+### Admission de clôture de session : port réel, fermeture encore à raccorder
+
+Le modèle JSON publié ajoute `session_close_admit` après la promotion éventuelle
+dans la branche COMMITTING. Le skill concerné est `close-session` ; l’adaptateur
+standard appelle `preWriteAdmit`, puis `runCloseSessionAdmitUseCase`. L’entrée est
+un `session_id` lié à `session_initialize`. Le résultat authentifié fournit
+uniquement `session_close_admission_satisfied`; il ne ferme pas la session.
+L’effet métier est `no_effect`, sans modèle ni demande de permission d’écriture.
+Le contrat fermé interdit une réussite de clôture et les faits sur un refus.
+
+Les ports applicatifs réels passent en files/dual/db-only, y compris le cycle
+ouvert sans décision, le propriétaire différent et l’état canonique incomplet.
+Une fixture IR ciblée vérifie le véritable hôte, le journal signé, le résultat
+conservé, le rejeu et la simulation par le même réducteur : l’admission acceptée
+termine seulement cette fixture ; le refus reste WAITING. Ce petit modèle ne
+remplace pas le parcours d’acceptation avec le modèle standard publié.
+
+La qualification a révélé un défaut producteur SQLite : la création de l’artefact
+de session n’alimentait pas sa ligne normalisée. Le correctif `86037a3` (snapshot `9aba7a3`) met la
+projection à jour dans le CAS, avec rollback commun et identité contrôlée.
+L’admission existante conserve ses refus ; aucune lecture ne répare les anciennes
+bases et aucune instance historique n’est convertie. Les producteurs et le parser
+concernés sont inclus dans les empreintes d’implémentation.
+
+Le [relevé de preuves](qualification/agentic-process/standard-session-close-admission-2026-11-03.json)
+sépare les ports et fixtures hors ligne, l’installation depuis les sources,
+le natif réel et l’archive exacte. Ces deux dernières preuves restent NOT_RUN.
+La complétude de gouvernance du concept `standard_workflow_model` ne prouve pas
+la couverture fonctionnelle du workflow standard.
+
+| Lot restant | Fichiers et dépendances | Acceptation et validations |
+|---|---|---|
+| Décision de clôture et résolution | Nouveaux `standard-session-close-review.mjs` et contrats de décision ; admission ci-dessus, choix explicites et ports de contexte existants | Attente, report, refus et annulation authentifiés restent non réussis ; aucun appel au modèle pour l’attente ou l’application de la décision. |
+| Rapport et écritures R07 | Nouveaux `standard-session-close-record.mjs` et contexte/contrats ; décision acceptée, résultats réels de cycles et preuve R05 | CAS des artefacts canoniques et de leurs métadonnées ; rapport traçable, lectures DB sans projection visible de secours ; aucun marqueur CLOSED avant confirmation de la chaîne réelle. |
+| Checkpoint et hook final | Nouveaux adaptateurs `standard-session-close-checkpoint.mjs` et `standard-session-close-hook.mjs` ; port Git local et `close-session-hook.mjs` existants | Scope Git fini et revu, admission fraîche, résultat physique du vrai hook corrélé au run de démarrage ; propriétaire conservé jusqu’à confirmation ; effet incertain conservé pour réconciliation. Le hook actuel ne prend pas `--run-id`. |
+| Intégration de branche, PR et suite | Port d’intégration locale explicitement autorisé, admission PR et observation GitHub existantes ; fermeture confirmée et modèle IR révisé | Pas de fusion implicite parce qu’un cycle est terminal. PR sur la branche de session attendue, revue externe authentifiée, reprise durable sans répéter les effets et synchronisation post-fusion réellement admise. |
+| Parcours standard et reprise générale | Modèle/catalogue versionnés, moteur/réducteur communs et harness composé | Même modèle publié exécuté sur projet jetable, rejoué puis simulé ; refus/attentes/reprises et lecteurs historiques ; preuves natives puis sur archive installée exacte séparées. Réautorisation longue et réconciliation générale des effets inconnus restent des dépendances explicites. |
+
+L’admission ajoutée ne satisfait donc pas à elle seule A1–A10. La clôture complète,
+les autres modes/parcours, la revue PR et l’après-fusion restent dans le périmètre
+restant ; le catalogue garde `complete_standard_workflow: false` et la sélection
+ordinaire du workflow standard n’est pas basculée.

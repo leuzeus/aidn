@@ -617,6 +617,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           throw Object.assign(new Error("STANDARD_HOST_PROCESS_CHANGED"), { code: "STANDARD_HOST_PROCESS_CHANGED", effect_status: "no_effect" });
         if (record.intent.binding_ref === "context_reload") output = await operations.reload(record.preview.input);
         else if (record.intent.binding_ref === "session_admit") output = await operations.admitSession(record.preview.input);
+        else if (record.intent.binding_ref === "session_close_admit") output = await operations.admitSessionClose(record.preview.input);
         else if (record.intent.binding_ref === "cycle_admit") output = await operations.admitCycle(record.preview.input);
         else if (record.intent.binding_ref === "branch_cycle_audit") output = await operations.auditCycle(record.preview.input);
         else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");

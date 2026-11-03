@@ -277,7 +277,7 @@ It does not replace ordinary workflow selection.
 | `task_loop`, `task_iteration`, `final_verification` | Common loop reducer and real task/validation/progress ports | One-task files path PASS with fake wire and fixture verification boundary; multi-task, other stores, work drift and incidents remain |
 | `audit_select`, `audit_review`, `audit_evaluate` | Selected scoped audit and authenticated evaluation | Files composed prefix PASS; real native/other stores remain |
 | `closure_decide`, `close_record`, `cycle_terminal_checkpoint`, `close_finalize` | Authenticated decision, six terminal CAS, captured-postimage Git/reload and actual final hook | Files deferred/cold-resume path PASS on recorded revision 15; composed other stores, native and archive remain |
-| `promotion_eligibility`, `promotion_decide`, `promotion_route`, `promotion_record`, `promotion_checkpoint`, `promotion_finalize` | Only a retained cycle enters optional promotion; authenticated request, five CAS, governed Git/reload, R05 and actual final hook | Frozen revision-18 composed files path PASS after deferral/cold continuation; components PASS in three stores; native and exact archive remain |
+| `promotion_eligibility`, `promotion_decide`, `promotion_route`, `promotion_record`, `promotion_checkpoint`, `promotion_finalize` | Only a retained cycle enters optional promotion; authenticated request, five CAS and checkpoint components | Frozen revision-18 composed files path PASS after deferral/cold continuation; components PASS in three stores; native and exact archive remain |
 
 The empty `promotion_not_requested` branch carries no baseline completion fact.
 Empty v2 structural sequences require no dummy reload or model call. Unknown
@@ -382,8 +382,6 @@ the sixth native activity; the parent verifies unchanged prior operation journal
 and event prefix. Streamed replay has 87 exact snapshots. Cleanup and both process
 exits completed. This proves the bounded component, not promotion admission or
 the full standard workflow; native and archive qualification remain open.
-<<<<<<< HEAD
-=======
 
 
 `promotion_checkpoint` now binds three predecessor operation IDs explicitly.
@@ -392,8 +390,8 @@ its approved set is six canonical postimages, with no product path supplied by
 process JSON. The same local port handles the exact commit and terminal reload.
 Foreign scope/parent and post-commit permission loss cannot produce promotion
 completion. The [component record](../qualification/agentic-process/standard-promotion-checkpoint-2026-11-03.json)
-separates fixture authority, actual Git/cache/final-hook effects and pending common
-host/native/archive evidence. The future session/PR tail remains outside this
+separates fixture authority and actual Git/cache/final-hook components from the
+qualified frozen common-host run and unqualified native/archive evidence. The future session/PR tail remains outside this
 partial component even when its process status becomes COMPLETED.
 
 
@@ -406,4 +404,24 @@ close and both processes/cleanup finish. Human/grant/native containment remain
 fixtures; application ports and the Node verifier are actual. This is partial
 component completion; session/PR/post-merge, real native and exact archive remain open.
 See the promotion qualification record for the frozen model/source/final hashes.
->>>>>>> 8d29f5d (feat: checkpoint baseline promotion from standard IR)
+
+## Session-close admission boundary
+
+`session_close_admit` binds SPEC-R07/R11 to the actual `close-session` admission:
+`preWriteAdmit` and `runCloseSessionAdmitUseCase`, through the fixed standard host.
+Its session input comes from `session_initialize`. It is deterministic/read-only;
+the closed output permits only admission satisfaction, never session completion.
+Wrong ownership, unresolved open cycles and incomplete canonical state remain
+blocked without model allocation, business mutation or reader-side repair.
+
+SQLite artifact CAS now projects the session row consumed by canonical admission,
+with the same transaction/rollback and path identity. The PostgreSQL projection
+keeps explicit lifecycle state or the declared mode. These producers and their
+parser are included in implementation pins. Historical stores are not repaired
+by inspection, and historical process readers are not converted.
+
+[Focused evidence](../qualification/agentic-process/standard-session-close-admission-2026-11-03.json)
+separates actual application ports and signed common-host/reducer fixtures from
+the full published-model path, native execution and installed-archive evidence.
+The remaining R07 decision, report, checkpoint and real final-hook chain, then
+explicit branch integration, PR review and post-merge sync, stay open in the plan.
