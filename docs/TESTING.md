@@ -2383,7 +2383,7 @@ of the aggregate suite or merge readiness.
 ### Standard terminal checkpoint, restart and streamed replay
 
 `node tools/perf/verify-standard-cycle-terminal-checkpoint-contract-fixtures.mjs`
-checks closed supported schemas, model-supplied path/command refusal, and the
+checks closed supported schemas and matching identifiers, model-supplied path/command refusal, and the
 separation between checkpoint and completed cycle-close skill. The real Git port
 suite also covers trusted terminal scope, literal paths, tracked executable mode,
 oversized or foreign files. The default session scope remains three files.

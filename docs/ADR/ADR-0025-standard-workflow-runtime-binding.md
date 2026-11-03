@@ -1346,3 +1346,15 @@ read-only promotion use case to test this representation boundary. It keeps the
 unsupported lists and requirement-free spike refusals. Its DONE state is fixture
 setup, not a cycle execution or composed promotion qualification. The native and
 installed-archive evidence and promotion Git/reload path remain open.
+
+
+## Addendum: terminal schema identifier consistency
+
+Terminal checkpoint input, plan and output metadata now name their own existing
+contract identifiers, including the inline plan input. Earlier copied descriptive
+labels named session/closure contracts despite correct terminal `$id` and value
+constraints. Payload shapes and validators are unchanged; historical payloads
+remain readable. The contract fixtures now compare these identifiers explicitly.
+The reviewed binding refresh records new source revisions rather than silently
+repairing stored process instances. This metadata correction is separate from
+business-path, real-native and installed-archive qualification.

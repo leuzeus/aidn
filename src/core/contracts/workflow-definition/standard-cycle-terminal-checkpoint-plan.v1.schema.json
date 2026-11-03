@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "aidn://contracts/workflow-definition/standard-cycle-terminal-checkpoint-plan.v1",
-  "x-aidn-contract-version": "standard-session-git-checkpoint-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-terminal-checkpoint-plan.v1",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -29,7 +29,7 @@
       "const": "cycle_terminal_checkpoint"
     },
     "input": {
-      "x-aidn-contract-version": "standard-cycle-close-hook-input.v1",
+      "x-aidn-contract-version": "standard-cycle-terminal-checkpoint-input.v1",
       "type": "object",
       "additionalProperties": false,
       "required": [

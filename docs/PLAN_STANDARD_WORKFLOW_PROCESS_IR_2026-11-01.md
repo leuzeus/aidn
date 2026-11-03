@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant le lot terminal : `9f86737`. Le lot en cours révise explicitement
-les composants startup/cycle en 74/72 et le modèle composé en 16 (73 nœuds,
+les composants startup/cycle en 75/73 et le modèle composé en 17 (73 nœuds,
 41 occurrences, 40 bindings). Les preuves conservent leurs snapshots exacts ;
 le modèle standard complet reste à livrer.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les

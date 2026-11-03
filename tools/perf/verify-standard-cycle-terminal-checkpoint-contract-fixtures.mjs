@@ -8,6 +8,11 @@ for (const kind of ["input", "plan", "output"]) test("terminal checkpoint " + ki
   const schema = JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-cycle-terminal-checkpoint-${kind}.v1.schema.json`, import.meta.url)));
   assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
   assert.equal(schema.additionalProperties, false);
+  const version = `standard-cycle-terminal-checkpoint-${kind}.v1`;
+  assert.equal(schema.$id, "aidn://contracts/workflow-definition/" + version);
+  assert.equal(schema["x-aidn-contract-version"], version);
+  if (schema.properties.contract_version) assert.equal(schema.properties.contract_version.const, version);
+  if (kind === "plan") assert.equal(schema.properties.input["x-aidn-contract-version"], "standard-cycle-terminal-checkpoint-input.v1");
 });
 const input = { closure_operation_id: "op_" + "a".repeat(40) };
 test("input identifies an authenticated closure rather than commands or granted paths", () => {
