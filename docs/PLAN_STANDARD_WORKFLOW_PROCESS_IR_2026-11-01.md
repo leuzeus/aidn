@@ -3220,3 +3220,11 @@ merge decision and post-merge fetch/divergence/sync remain open, as do the other
 modes/topologies, long reauthorization, general unknown-effect reconciliation and
 A1-A10. Ordinary selection is unchanged; complete_standard_workflow=false.
 Real native and exact installed-archive qualifications remain NOT_RUN.
+
+
+The first revision41 composed attempt (2f60933) failed during fixture arrangement:
+execFileSync was not imported. Standard initialization, native allocation and
+push were not reached. The source and retained fixture are preserved. Test-only
+commit93958bf imports the runner, leaving the model/runtime pin unchanged; a
+second clean snapshot is running with its own source and verdict. The component
+PASS results are not a composed PASS.

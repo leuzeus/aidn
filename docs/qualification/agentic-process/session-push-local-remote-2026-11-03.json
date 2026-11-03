@@ -81,7 +81,22 @@
     "difference": "before explicit TTL case, control pre-push and full-project byte comparison were added",
     "log_sha256": "d309e1258c7bace548b57dbb0f13f6b8e952bd194d36562a5487deb7b1d8c1c3"
   },
-  "composed_model41": "RUNNING on a frozen source; no verdict claimed",
+  "composed_model41": {
+    "first_attempt": {
+      "status": "FAIL",
+      "source_commit": "2f60933952eaa4ba910dd429c4e0398d34839c9f",
+      "exit_code": 1,
+      "reason": "fixture arrangement called execFileSync before its import; failed before standard host initialization, native allocation or push",
+      "log_sha256": "cf14549a0f66aa087cd910d6cf3c7dca3ae4b70a0ec88afdc398113fea3e27d3",
+      "fixture": "retained for diagnosis; no replay attempted"
+    },
+    "second_attempt": {
+      "status": "RUNNING",
+      "source_commit": "93958bff11dd2cfacbdb80e0d0c1d112f11fa0ff",
+      "change": "test import only; runtime model and implementation pin unchanged",
+      "verdict": "not yet available"
+    }
+  },
   "aggregate_runtime_family": "NOT_RUN",
   "native_real": "NOT_RUN",
   "github_real": "NOT_RUN",
