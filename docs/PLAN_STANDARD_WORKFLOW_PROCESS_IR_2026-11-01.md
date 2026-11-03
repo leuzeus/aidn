@@ -3257,3 +3257,34 @@ Review/checks/triage, authenticated durable events, explicit merge consent,
 fetch/divergence/post-merge synchronization and the real production Git push
 transport remain required. Ordinary entrypoints and complete_standard_workflow
 stay unchanged/false; A1-A10, native real and exact archive remain open.
+
+
+### Canonical PR lifecycle recording with explicit successor evidence
+
+Revision43 adds session_pr_record after the authenticated PR-open result. The
+new authority follows accepted historical PR/push/admission/integration/delivery/
+closure receipts, verifies the actual physical closure events and re-observes the
+exact open PR. Original delivery hashes are historical anchors, not rewritten
+permissions for changed files. The writer requires their exact canonical content
+and metadata preimages, then CAS-writes session/CURRENT-STATE/snapshot. It retains
+CLOSED and records PR open, review pending and checkpoint/push pending. Its own
+receipt carries successor content and metadata hashes. The old delivery reader
+and its exact-byte guards are unchanged.
+
+The [component record](qualification/agentic-process/session-pr-lifecycle-record-components-2026-11-03.json)
+separates 4 authority checks (accepted-record/provider capabilities injected;
+physical files real) from real canonical writer checks: files5, dual4 and db-only4,
+all PASS/code0 with cleanup. The writer components inject closure/PR source
+capabilities. Files includes lost authority after the first actual CAS: partial
+canonical state is unknown with owner retained and no completion fact. DB-only
+keeps physical files unchanged and creates no export/commit. These components do
+not prove the full signed model43 chain, real human/provider identity or an archive.
+
+A governed checkpoint and update push must consume the new successor receipt,
+then correlate the resulting PR head and invalidate earlier review/check evidence.
+They remain to connect, along with review/checks/triage, external events, explicit
+merge decision, fetch/divergence/sync and the production Git push transport.
+The aggregate agentic gate still runs on separate source93958bf/model41; full
+runtime/Governance Admission, model43 composition, A1-A10, native real and exact
+archive remain unqualified. Ordinary selection stays unchanged and
+complete_standard_workflow=false.
