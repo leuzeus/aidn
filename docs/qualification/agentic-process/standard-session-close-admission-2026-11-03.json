@@ -145,5 +145,16 @@
   },
   "governed_artifact_metadata": "PASS",
   "docs_gate": "PASS",
-  "delivery_lane": "ASSURED"
+  "delivery_lane": "ASSURED",
+  "primary_integration": {
+    "code_commit": "96900b8",
+    "projection_fix_commit": "86037a3",
+    "promotion_component_commit": "322693c",
+    "runtime_and_test_code_matches_isolated_commit": "ca96c6c",
+    "docs_merge_resolved": true,
+    "docs_gate": "PASS",
+    "composition_checks": 15,
+    "artifact_store_checks": 45,
+    "model_and_runtime_hashes_match_focused_snapshot": true
+  }
 }
