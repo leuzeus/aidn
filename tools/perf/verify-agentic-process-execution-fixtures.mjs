@@ -23,6 +23,7 @@ import { createProjectAgenticProcessExecution } from "../../src/application/runt
 import { runOwnedAgenticProcess } from "../../src/application/runtime/agentic-process-owned-run.mjs";
 import { createJournaledNativeAllocation } from "../../src/application/runtime/journaled-native-allocation.mjs";
 import { loadStandardWorkflowAssets, createStandardWorkflowExecution } from "../../src/application/runtime/standard-workflow-composition.mjs";
+import { createLocalWorkflowSessionPush } from "../../src/adapters/runtime/local-workflow-session-push.mjs";
 import { createStandardWorkflowMixedHost } from "../../src/application/runtime/standard-workflow-mixed-composition.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
 import { assertNativeActivityAnswer, nativeActivityAnswerSchema, assertStandardDriftReport } from "../../src/core/workflow/native-activity-output.mjs";
@@ -539,8 +540,13 @@ function mixedFixture(stateMode = "files", options = {}) {
     f.closureSourceFile = path.join(f.base, "human-closure-sources.json"); fs.writeFileSync(f.closureSourceFile, "{}");
     options.humanSource = closureHumanSource(f.closureSourceFile);
   }
+  if (options.standardModel) {
+    f.sessionPushRemoteRoot = path.join(f.base, "session-push-remote.git"); fs.mkdirSync(f.sessionPushRemoteRoot);
+    execFileSync("git", ["init", "--bare", f.sessionPushRemoteRoot], { stdio: "pipe", windowsHide: true, timeout: 30000 });
+  }
   const compose = () => (options.standardModel ? createStandardWorkflowExecution : createStandardWorkflowMixedHost)({ configuration: f.configuration, readSigningKey: () => key,
-    authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
+    authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile,
+    sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: projectRoot, remoteRoot: f.sessionPushRemoteRoot }) : null }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
   // The human path also qualifies a retained common host. Authority/evidence
   // reads remain inside its methods; acceptance still restarts in a cold Node.
   let sharedHost;
@@ -556,7 +562,8 @@ function restoreComposedFixture(data, options) {
   const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
   let sharedHost;
   const open = () => sharedHost ??= createStandardWorkflowExecution({ configuration: f.configuration, readSigningKey: () => key,
-    authorize: async () => grant, humanSource: options.humanSource, validationProfile: f.validationProfile },
+    authorize: async () => grant, humanSource: options.humanSource, validationProfile: f.validationProfile,
+    sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: f.configuration.target_root, remoteRoot: f.sessionPushRemoteRoot }) : null },
     { controllerFactory, ...(f.validationProfile ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
   return Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model });
 }
@@ -741,7 +748,7 @@ if (process.argv[2] === "--mixed-continue") {
         auth.max_responses = 8; auth.max_bytes = 32 * 1024 * 1024;
       }
       fs.writeFileSync(resumeFile, JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs,
-        human_source_file: sourceFile, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) }, authorization: auth }));
+        human_source_file: sourceFile, sessionPushRemoteRoot: f.sessionPushRemoteRoot, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) }, authorization: auth }));
     }
     const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
     let childNativeSessions = 0, coldContinuation = false;
@@ -885,6 +892,12 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("session_pr_admit").facts.session_pr_admitted, true);
       assert.equal(last("session_pr_admit").effect_status, "no_effect");
       assert.equal(last("session_pr_admit").observations.reload.cache_written, false);
+      assert.equal(last("session_push").outcome, "completed"); assert.equal(last("session_push").effect_status, "confirmed");
+      assert.equal(last("session_push").facts.session_remote_head_confirmed, true);
+      const pushedHead = execFileSync("git", ["--git-dir=" + f.sessionPushRemoteRoot, "rev-parse", "refs/heads/S001-standard"],
+        { encoding: "utf8", stdio: "pipe", windowsHide: true, timeout: 10000 }).trim();
+      assert.equal(pushedHead, last("session_pr_admit").observations.head);
+      assert.equal(last("session_push").observations.git.remote_head, pushedHead);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;
@@ -898,7 +911,7 @@ if (process.argv[2] === "--mixed-continue") {
       events: final.record.events.length, application_operations: acceptedOperations.length, native_sessions_started: f.t.sessions.length,
       native_sessions_started_in_child: childNativeSessions, native_prior_results: priorNativeResults, cold_resume: Boolean(resumed),
       cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: runsPromotion ? null : standardComposedStop, component_completed: runsPromotion, full_standard_workflow: false, workflow_status: final.cursor.status, model_calls: 0,
-      verification_boundary: runsCycle ? "fixture-with-actual-Node-check" : "not-used", human_and_effect_authority: "fixture", replay_exact: true }));
+      verification_boundary: runsCycle ? "fixture-with-actual-Node-check" : "not-used", human_and_effect_authority: "fixture", session_push_transport: runsPromotion ? "actual-local-bare-git" : "not-used", replay_exact: true }));
   });
   await check("cycle closure contract: typed review and authenticated inbox preserve pending lifecycle", () => {
     const cases = [["verify-standard-cycle-closure-decision-fixtures.mjs"], ["verify-standard-cycle-closure-review-fixtures.mjs"],

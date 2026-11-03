@@ -1709,3 +1709,22 @@ canonical artifact, writes no cache and performs no remote operation. No public
 CLI flag, old default admission behavior or historical process reader changes.
 Actual push, PR creation, checks/review/events, explicit merge and post-merge
 reconciliation remain separate required ports and effects.
+
+## Local session push component
+
+The explicit partial model can continue its accepted PR admission through a
+separate session_push operation. The trusted host supplies the transport
+capability; authored IR selects neither a destination nor executable commands.
+The current transport qualifies a local bare Git remote only. Its plan binds
+session, admission source, local head/material and observed remote tip to the
+exact grant. It requires a proven fast-forward and exact remote-tip CAS, then
+observes the actual remote ref. Equal head is a read-confirmed no-effect path.
+No upstream metadata or PR marker substitutes for that observation.
+
+The existing process operation journal owns this intent/result and the existing
+local effect owner fences cooperative callers. Timeout, lost permission or an
+unconfirmed postcondition after attempted push stays unknown with the owner
+retained. It grants no retry or remote merge. This is the existing L2/L4 effect
+protocol, not a new durable concept or a claim of general effect reconciliation.
+The production GitHub transport and complete composed/native/archive evidence
+remain separate work.

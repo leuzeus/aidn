@@ -2663,3 +2663,25 @@ No failure may emit a completion fact, consume the run twice, or release an
 uncertain owner. A partial CLOSED artifact is not successful process completion.
 The positive path also rejects a changed physical start run before executing
 the final hook.
+
+### Session push with an explicit local remote
+
+`verify-standard-session-push-fixtures.mjs --mode=<files|dual|db-only>` exercises
+closed private contracts, exact-plan permission checks, actual Git push to a
+host-supplied temporary bare remote, branch/ref postconditions, unchanged local
+refs/index, stale remote rejection and the equal-head path without another push.
+Loss of authority after the remote effect retains an unknown result and the
+local owner, without completion facts or automatic retry. Admission/closure and
+current-instance capabilities are injected in this focused component test;
+this does not authenticate the complete standard chain or a real operator.
+The SQLite modes use source-installed fixture stores; they do not prove canonical
+admission through the push component's injected source. The common composed
+fixture supplies the production signed chain separately.
+
+The local transport is fixed by the trusted embedding host, outside authored IR
+and native input. It accepts an absolute bare repository and refuses URL rewrites;
+it is not a GitHub transport qualification. The operation journal remains the
+owner of intent, dispatch and receipts. An external Git effect with no confirmed
+receipt requires reconciliation. Ordinary entrypoints and
+complete_standard_workflow remain unchanged. Native, GitHub and exact-archive
+qualification remain NOT_RUN.
