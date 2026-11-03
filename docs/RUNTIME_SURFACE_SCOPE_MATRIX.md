@@ -405,3 +405,13 @@ Any future shared surface must update this matrix, ADR-0007, CLI status output c
 Shared coordination access is expected to pass through the port contract described in `docs/ADR/ADR-0008-shared-coordination-ports.md` before any new shared behavior is considered stable.
 
 That port contract is implemented by `src/core/ports/shared-coordination-store-port.mjs` and asserted by the PostgreSQL shared coordination adapter; future shared behavior should extend that contract rather than bypass it.
+
+Authenticated GitHub push uses a separate host-owned temporary bare transport
+repository so checkout URL/HTTP/credential configuration cannot receive the
+credential or redirect the network operation. Its closed preparation manifest
+is local execution evidence attached to the already journaled push, with pinned
+host/repository/actor, branch/HEAD and observed-plan digest. It adds no shared
+table or synchronization, authority, implicit native grant or db-only export.
+The deterministic preparation identity is retained after an unknown effect;
+confirmed completion removes only that exact checked directory. Recovery and
+reconciliation remain explicit. Preview observation creates no preparation.

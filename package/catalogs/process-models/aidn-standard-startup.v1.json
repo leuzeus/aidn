@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard-startup",
-  "revision": 104,
+  "revision": 105,
   "participants": [
     {
       "id": "project"
@@ -11,12 +11,12 @@
   "policies": [],
   "entry": "startup",
   "operation_pins": {
-    "context_reload": "f49b88747dcb9fd951696231ba92222698b0fd697c9af31757cc1af6928ab0c8",
-    "session_admit": "10c4dd1991b644a1add26928a0826084fd123079c44c4f4c51867caf44314579",
-    "session_initialize": "2deece10e6b047a63dac75cdc1609b4d3563bb033f547842ef527b3014f37a34",
-    "mode_decision": "520c2a3546b92c3bb1e2e3b2dd87e626b6fc80edb15503b2d5947e1fc97d242e",
-    "session_mode_apply": "1939c9084ca25091635496da16789a45a1b9f4088c7e6faa31254411b1eb0ffc",
-    "session_start_finalize": "61790beac406b5173ef9e78f0184cc18a106493ab6dbb4e0efcb2e9ab2b79e34"
+    "context_reload": "f98db550b8dd28f0f66b57292f3133fbb786b55aaa338df69377f24a0c19a18f",
+    "session_admit": "d8480958f1485ac5797ea8b9e4c8ad73805d896455248f64ea78c61cda8376a1",
+    "session_initialize": "cf27d351bc4c00daef19f200e33c3a29769ef073749d143652c9b2b5b5414afa",
+    "mode_decision": "bea196367860f7872a5a73d00841261683a8c67917c291b992071bac2b7470a6",
+    "session_mode_apply": "a3536277891c2342e8a6a57d04c8d4c75a6272ede21d4cd4f9af0aa5f0b0753b",
+    "session_start_finalize": "66a526e4fbdb5c252874246761aac32bd0ed01762fae7b1de7e5676d3522b46d"
   },
   "nodes": [
     {

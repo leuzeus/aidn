@@ -68,7 +68,10 @@
       ],
       "properties": {
         "profile": {
-          "const": "local-bare-remote.v1"
+          "enum": [
+            "local-bare-remote.v1",
+            "github-https-git.v1"
+          ]
         },
         "remote_identity_sha256": {
           "type": "string",

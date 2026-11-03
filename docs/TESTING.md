@@ -2742,3 +2742,17 @@ closed input contract. Synthetic pure predecessor receipts replace all ports.
 A model37-shaped missing integration version and wrong authored versions must
 fail before dispatch without changing the model. Source authoring fixes future
 IR only; retained instances keep their original bytes and verdicts.
+
+`verify-github-session-push-fixtures.mjs` exercises the authenticated HTTPS
+adapter and the actual session push application with real local Git, object
+transfer, bare remote refs, force-with-lease and owner handling. HTTP and HTTPS
+transports are doubled; provider identities and upstream admission are fixture
+capabilities. Executable pins, actor/repository/permission changes, URL/HTTP/
+credential overrides, no-effect tips, cumulative deadlines, lost grants,
+post-effect timeouts and concurrent remote creation are checked separately.
+The isolated transport preparation has a closed manifest and contains no token.
+A checkout rewrite introduced at dispatch must not redirect credentials or the
+Git effect. Unknown results retain their preparation and cannot retry the same
+head; fixture cleanup explicitly removes its own retained preparations.
+These are bounded component checks, not real GitHub network/native/archive or
+full standard qualification.

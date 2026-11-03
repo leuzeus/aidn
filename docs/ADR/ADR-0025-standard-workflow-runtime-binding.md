@@ -1788,3 +1788,35 @@ stored expressions and rejects missing or wrong versions before dispatch. It doe
 not repair historical models or insert a version while reading. The pure boundary
 fixture exercises the published expressions through the actual reducer and input
 resolver; its predecessor receipts are synthetic and prove no service effect.
+
+## Host-pinned authenticated GitHub push transport
+
+The host may supply github-https-git.v1 separately from local-bare-remote.v1.
+Both private push plan schemas add this profile without converting retained
+plans or changing the local profile's meaning. A production capability pins
+Git and gh executables, repository node ID/name and authenticated actor node
+ID/login. It obtains a credential via [gh auth token](https://cli.github.com/manual/gh_auth_token),
+uses fixed read-only identity/ref endpoints and requires the repository's push
+permission before a network effect. The IR supplies none of these capabilities.
+
+The adapter keeps credentials out of arguments, files, plans, receipts and
+errors. Git receives the HTTPS header through its child environment using
+[--config-env](https://git-scm.com/docs/git). Redirects and credential helpers
+are disabled. Preview observations run outside any checkout. The granted push
+creates a dedicated bare transport repository with only an alternate object
+store pointing to the observed local objects. It cannot read checkout URL,
+credential or scoped HTTP configuration during transport. This preparation is
+an explicit local resource of the already journaled push, not a new authority.
+Its closed github-push-preparation.v1 manifest records bounded execution
+metadata only. The resource path is deterministically correlated to the host,
+branch and target HEAD. Confirmed completion removes that exact resource;
+an unknown effect retains it and blocks another dispatch for the same head.
+General reconciliation remains a separate requirement.
+
+The adapter proves local ancestry, uses an exact remote tip lease, then
+re-observes Git and authenticated API refs and identities. A changed actor,
+repository, tip, local context or grant cannot become a confirmed delivery.
+Transport errors after dispatch remain unknown. Neither the transport factory
+nor its offline doubles qualifies actual GitHub execution, a complete standard
+workflow or an installed archive. Real remote use still requires an explicit
+authorization for its actual destination and revision.
