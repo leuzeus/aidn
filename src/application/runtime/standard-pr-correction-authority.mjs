@@ -6,7 +6,7 @@ const fail = code => { throw Object.assign(Error(code), { code, effect_status: '
 // This component has no caller-supplied report, provider or self-authenticated
 // payload. Its capabilities must be bound by the trusted operation host.
 export function createStandardPrCorrectionAuthority({ readAcceptedOperation, reevaluateTriage, readControl, verifyEvent,
-  observeProduct, inspectPush, observeOwnedPush, observeRemote, readCurrent, reviewPort, now = Date.now }) {
+  observeProduct, inspectPush, observeOwnedPush, observeRemote, readCurrent, reviewPort, now = Date.now, readAcceptedUpdate = (instance, id) => readAcceptedOperation(instance, id, "session_pr_update_push") }) {
   if (![readAcceptedOperation, reevaluateTriage, readControl, verifyEvent, observeProduct, inspectPush, readCurrent].every(fn => typeof fn === 'function'))
     fail('STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED');
   const active = signal => { if (signal?.aborted) fail('STANDARD_PR_CORRECTION_ABORTED'); };
@@ -19,7 +19,7 @@ export function createStandardPrCorrectionAuthority({ readAcceptedOperation, ree
     const selection = readAcceptedOperation(instance, o.selection_operation_id, 'session_pr_triage_select');
     const received = readAcceptedOperation(instance, o.received_operation_id, 'session_pr_review_receive');
     const selected = selection.output.observations, payload = selected.payload;
-    const update = readAcceptedOperation(instance, payload.observation.observations.update_operation_id, 'session_pr_update_push');
+    const update = readAcceptedUpdate(instance, payload.observation.observations.update_operation_id);
     const p = update.output.observations.pull_request, capture = readControl(received.output.observations.inbox_id);
     if (selection.output.outcome !== 'completed' || selection.output.facts.session_pr_triage_source_selected !== true
       || received.output.outcome !== 'completed' || received.output.facts.session_pr_review_event_received !== true

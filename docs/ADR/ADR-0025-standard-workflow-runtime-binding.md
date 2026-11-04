@@ -2255,3 +2255,26 @@ Every operation/activity has its own correction occurrence and consumes the new
 cycle's accepted authorities. Source composition is not execution evidence.
 Session reclosure must preserve prior closure bodies and establish a fresh
 causal delivery; those adapters and their whole-journey qualification remain due.
+
+### Corrective PR redelivery source continuation, 2026-11-04
+
+The candidate correction branch continues after its fresh session integration
+through a distinct `session_pr_redelivery_push` binding. Its closed private
+input selects the accepted integration and admitted correction-cycle operations.
+The host authenticates their current canonical closure, physical integration,
+original PR request and previous accepted PR HEAD. It uses the same exact-plan,
+explicit-grant, local-owner push algorithm as the initial update, with separate
+contracts and unchanged legacy readers. Old checkpoint postimages are historical.
+
+Fresh content observation, provider-event waiting/receipt and native triage have
+separate correction occurrences bound to this new update. Review and checks stay
+pending; no previous approval or merge consent transfers. The source route ends
+at pending effects after fresh triage. Repeated correction choice, technical
+responses/resolutions or explicit exception, fresh genuine merge consent and
+post-merge synchronization still require completion and qualification.
+
+Source wiring and injected component checks are separate from an executed new-C2
+journey and the production-dispatcher UNKNOWN chain. The entire L1-L8/A1-A10
+acceptance remains incomplete, ordinary entry unchanged and
+`complete_standard_workflow=false`. Genuine human/provider/native/OS, configured
+PostgreSQL and the exact installed package remain separate NOT_RUN evidence.

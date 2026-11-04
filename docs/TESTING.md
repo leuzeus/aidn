@@ -3376,3 +3376,15 @@ late provider/authorization initializer cases once per mode/boundary.
 The composition suite checks the correction task and closure bindings against
 the new implementation/work/validation authorities. It leaves actual native
 work, cycle closure, session reclosure and causal redelivery unqualified.
+
+### Corrective PR redelivery component
+
+`node tools/perf/verify-standard-pr-redelivery-fixtures.mjs --mode=files|dual|db-only`
+uses real local branch integration, Git push and the production GitHub adapter
+with doubled REST. Accepted closure/cycle/human journal capabilities are injected.
+It checks distinct closed contracts, wrong cycle/uncertain integration/stale PR,
+preview and revoked authorization, fresh HEAD delivery and review source binding.
+It retains every disposable root, including on success; no cleanup or genuine
+human/provider/native/OS/PostgreSQL/installed qualification is implied. Published
+composition checks the separate correction content/event/triage occurrences.
+A component PASS does not qualify the complete new-C2 or dispatcher UNKNOWN chain.

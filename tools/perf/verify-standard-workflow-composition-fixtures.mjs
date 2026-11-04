@@ -27,7 +27,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   const correctionSequence = assets.model.nodes.find(row => row.id === "correction_cycle").children;
   assert.deepEqual(correctionSequence, ["correction_initialize", "correction_branch_audit", "correction_cycle_drift", "correction_cycle_checkpoint", "correction_session_start_finalize", "correction_plan", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter",
     "correction_task_loop", "correction_audit_select", "correction_audit_review", "correction_audit_evaluate", "correction_closure_decide", "correction_close_record", "correction_cycle_terminal_checkpoint", "correction_closure_drift", "correction_close_finalize",
-    "correction_promotion_eligibility", "correction_session_preclose_checkpoint", "correction_session_close_admit", "correction_session_closure_drift", "correction_session_closure_decide", "correction_session_close_record", "correction_session_close_checkpoint", "correction_session_close_finalize", "correction_session_delivery_checkpoint", "correction_session_branch_integration_decide", "correction_session_branch_integrate"]);
+    "correction_promotion_eligibility", "correction_session_preclose_checkpoint", "correction_session_close_admit", "correction_session_closure_drift", "correction_session_closure_decide", "correction_session_close_record", "correction_session_close_checkpoint", "correction_session_close_finalize", "correction_session_delivery_checkpoint", "correction_session_branch_integration_decide", "correction_session_branch_integrate", "correction_pr_redelivery"]);
   assert.equal(assets.model.nodes.find(row => row.id === "correction_initialize").binding_ref, "session_pr_correction_cycle_initialize");
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   assert.equal(assets.catalog.bindings.length, 108); assert.equal(assets.catalog.activities.length, 16);
@@ -227,6 +227,17 @@ test("PR admission is a read-only re-anchor after the separately confirmed Git i
     { source: "operation_id", node_id: "session_branch_integrate" });
 });
 
+test("corrective redelivery and review select fresh integration, cycle and update occurrences", () => {
+  const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
+  assert.equal(assets.model.nodes.find(row => row.id === "correction_pr_redelivery_push").binding_ref, "session_pr_redelivery_push");
+  assert.deepEqual(fields("correction_pr_redelivery_push").integration_operation_id, { source: "operation_id", node_id: "correction_session_branch_integrate" });
+  assert.deepEqual(fields("correction_pr_redelivery_push").cycle_operation_id, { source: "operation_id", node_id: "correction_initialize" });
+  for (const id of ["correction_pr_review_observe", "correction_pr_review_receive"])
+    assert.deepEqual(fields(id).update_operation_id, { source: "operation_id", node_id: "correction_pr_redelivery_push" });
+  assert.deepEqual(fields("correction_pr_triage_select").received_operation_id, { source: "operation_id", node_id: "correction_pr_review_receive" });
+  assert.deepEqual(fields("correction_pr_triage").selection_operation_id, { source: "operation_id", node_id: "correction_pr_triage_select" });
+  assert.deepEqual(fields("correction_pr_triage_evaluate").report_occurrence_id, { source: "occurrence_id", node_id: "correction_pr_triage" });
+});
 test("completion of this component cannot claim completion of the standard workflow", () => {
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
   for (const id of ["existing_session_resume", "thinking_work", "exploring_work_and_spike_conversion", "cycle_choice_and_carryover",

@@ -223,6 +223,38 @@ for (const id of correctionNodes) {
 }
 nodes.find(row => row.id === "correction_cycle").children.push(...correctionRoots.map(correctionName));
 
+// Corrective delivery consumes the fresh integration and admitted cycle.
+// Review/control/triage have their own occurrences and exact current HEAD.
+op("correction_pr_redelivery_push", "session_pr_redelivery_push", {
+  ...operation("correction_pr_redelivery_push", "integration_operation_id", "correction_session_branch_integrate"),
+  ...operation("correction_pr_redelivery_push", "cycle_operation_id", "correction_initialize") });
+const reviewRoots = ["session_pr_review_observe", "session_pr_review_wait", "session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate"];
+const reviewNodes = new Set();
+function collectReview(id) {
+  if (reviewNodes.has(id)) return;
+  reviewNodes.add(id); const source = nodes.find(row => row.id === id);
+  for (const child of [...(source.children ?? []), ...(source.branches ?? []).map(row => row.node_id)]) collectReview(child);
+}
+reviewRoots.forEach(collectReview);
+const reviewName = id => id === "session_pr_update_push" ? "correction_pr_redelivery_push" : reviewNodes.has(id) ? id.replace("session_pr_", "correction_pr_") : id;
+for (const id of reviewNodes) {
+  const copy = structuredClone(nodes.find(row => row.id === id)); copy.id = reviewName(id);
+  if (copy.children) copy.children = copy.children.map(reviewName);
+  if (copy.branches) copy.branches.forEach(row => { row.node_id = reviewName(row.node_id); });
+  nodes.push(copy);
+  const input = inputs.find(row => row.node_id === id);
+  if (input) {
+    const next = structuredClone(input); next.node_id = copy.id;
+    for (const field of Object.values(next.fields)) if (field.node_id) field.node_id = reviewName(field.node_id);
+    inputs.push(next);
+  }
+  const activity = activities.find(row => row.node_id === id);
+  if (activity) activities.push({ ...structuredClone(activity), node_id: copy.id });
+}
+seq("correction_pr_effects_pending", []);
+seq("correction_pr_redelivery", ["correction_pr_redelivery_push", ...reviewRoots.map(reviewName), "correction_pr_effects_pending"]);
+nodes.find(row => row.id === "correction_cycle").children.push("correction_pr_redelivery");
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,

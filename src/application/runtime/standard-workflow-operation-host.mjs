@@ -7,6 +7,8 @@ import { createStandardPrCorrectionAuthority } from "./standard-pr-correction-au
 import { createStandardPrCorrectionReopen } from "./standard-pr-correction-reopen.mjs";
 import { assertStandardPrCorrectionPlan } from "../../core/workflow/standard-operation-contracts.mjs";
 import { createStandardSessionPrReviewObservation, createStandardSessionPrReviewContentObservation } from "./standard-session-pr-review-observe.mjs";
+import { createStandardSessionPrRedeliveryAuthority } from "./standard-session-pr-redelivery-authority.mjs";
+import { createLocalWorkflowBranchIntegration } from "../../adapters/runtime/local-workflow-branch-integration.mjs";
 import { createStandardSessionPrSuccessorAuthority } from "./standard-session-pr-successor-authority.mjs";
 import { createStandardSessionPrCheckpoint } from "./standard-session-pr-checkpoint.mjs";
 import { createStandardSessionPrUpdatePush } from "./standard-session-pr-update-push.mjs";
@@ -395,8 +397,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { decision_operation_id: input.decision_operation_id, choice: capture.source.choice,
         source_sha256: shadowHash(capture.source), plan: selected.record.preview.prepared.plan };
     } }) : null;
-  const sessionPrAdmission = integrationAuthority ? createStandardSessionPrAdmission({ targetRoot,
-    async readIntegration(instance, input) {
+  async function readSessionIntegration(instance, input) {
       const selected = acceptedForPromotion(instance, input.integration_operation_id, "session_branch_integrate", "STANDARD_SESSION_PR_INTEGRATION_REQUIRED");
       const plan = selected.record.preview.prepared.plan;
       const canonical = await integrationAuthority.readSource(instance, { contract_version: "standard-session-branch-integration-review-input.v1",
@@ -404,7 +405,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const { git, ...prior } = plan.review;
       if (shadowHash(canonical) !== shadowHash(prior)) fail("STANDARD_SESSION_PR_CONTEXT_CHANGED");
       return { integration_operation_id: input.integration_operation_id, plan_sha256: shadowHash(plan), plan, output: selected.output, canonical };
-    } }) : null;
+  }
+  const sessionPrAdmission = integrationAuthority ? createStandardSessionPrAdmission({ targetRoot, readIntegration: readSessionIntegration }) : null;
   async function readSessionPrAdmission(instance, input) {
     const selected = acceptedForPromotion(instance, input.admission_operation_id, "session_pr_admit", "STANDARD_SESSION_PUSH_ADMISSION_REQUIRED");
     const fresh = await sessionPrAdmission.prepare(instance, selected.record.preview.input);
@@ -439,8 +441,21 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const sessionPrUpdatePush = sessionPrSuccessor ? createStandardSessionPrUpdatePush({ targetRoot, now,
     readCheckpoint: (instance, input) => sessionPrSuccessor.readCheckpoint(instance, input), readCurrent: id => current(id).record,
     pushPort: sessionPushPort, pullRequestPort: sessionPullRequestPort }) : null;
+  function readAcceptedPrUpdate(instance, id) {
+    const intent = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent;
+    if (!["session_pr_update_push", "session_pr_redelivery_push"].includes(intent?.binding_ref)) fail("STANDARD_PR_REVIEW_UPDATE_REQUIRED");
+    return acceptedForPromotion(instance, id, intent.binding_ref, "STANDARD_PR_REVIEW_UPDATE_REQUIRED");
+  }
+  const sessionPrRedeliveryAuthority = integrationAuthority ? createStandardSessionPrRedeliveryAuthority({
+    readAcceptedOperation: acceptedForPromotion, readAcceptedUpdate: readAcceptedPrUpdate, readIntegration: readSessionIntegration,
+    inspectIntegration: plan => createLocalWorkflowBranchIntegration({ targetRoot }).inspectIntegration({
+      operation_id: plan.operation_id, plan_sha256: shadowHash(plan), observed: plan.review.git }) }) : null;
+  const sessionPrRedeliveryPush = sessionPrRedeliveryAuthority && sessionPushPort && sessionPullRequestPort ? createStandardSessionPrUpdatePush({ targetRoot, now,
+    redelivery: true, readCheckpoint: sessionPrRedeliveryAuthority.readSource, readCurrent: id => current(id).record,
+    pushPort: sessionPushPort, pullRequestPort: sessionPullRequestPort }) : null;
   const sessionPrReviewAuthority = sessionPrSuccessor && sessionReviewPort ? createStandardSessionPrReviewAuthority({
-    readAcceptedOperation: acceptedForPromotion, readCheckpoint: sessionPrSuccessor.readCheckpoint, inspectPush: (branch, options) => sessionPushPort.inspect(branch, options) }) : null;
+    readAcceptedOperation: acceptedForPromotion, readAcceptedUpdate: readAcceptedPrUpdate, readRedelivery: sessionPrRedeliveryAuthority?.readSource,
+    readCheckpoint: sessionPrSuccessor.readCheckpoint, inspectPush: (branch, options) => sessionPushPort.inspect(branch, options) }) : null;
   const sessionPrReview = sessionPrReviewAuthority ? createStandardSessionPrReviewObservation({ now, reviewPort: sessionReviewPort,
     readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
   const sessionPrReviewContent = sessionPrReviewAuthority && model.nodes.some(node => node.binding_ref === "session_pr_review_content_observe")
@@ -455,7 +470,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (signal?.aborted) fail("PROCESS_CONTROL_PR_ABORTED");
       const actual = controlRequest({ instanceId: request.instance_id, expectedSha256: request.instance_sha256, occurrenceId: request.occurrence_id });
       const state = current(request.instance_id), frame = state.cursor.occurrences.find(row => row.occurrence_id === request.occurrence_id);
-      if (frame?.node_id !== "session_pr_review_wait" || shadowHash(actual) !== shadowHash(request)) fail("PROCESS_CONTROL_PR_CONTEXT_CHANGED");
+      if (!["session_pr_review_wait", "correction_pr_review_wait"].includes(frame?.node_id) || shadowHash(actual) !== shadowHash(request)) fail("PROCESS_CONTROL_PR_CONTEXT_CHANGED");
       const latest = state.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_pr_review_content_observe").at(-1);
       const accepted = acceptedForPromotion(state.record, latest?.intent.operation_id, "session_pr_review_content_observe", "PROCESS_CONTROL_PR_OBSERVATION_REQUIRED");
       const input = accepted.record.preview.input;
@@ -471,7 +486,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const frames = inspectAgenticProcess(instance).occurrences;
       const candidates = instance.events.filter(row => row.kind === "control")
         .map(event => ({ event, frame: frames.find(row => row.occurrence_id === event.occurrence_id), capture: controls.read(event.delivery.delivery_id) }))
-        .filter(row => row.frame?.node_id === "session_pr_review_wait" && row.capture.contract_version === "process-control-inbox.v2"
+        .filter(row => ["session_pr_review_wait", "correction_pr_review_wait"].includes(row.frame?.node_id) && row.capture.contract_version === "process-control-inbox.v2"
           && row.capture.payload.observation.observations.update_operation_id === input.update_operation_id);
       if (candidates.length !== 1 || candidates[0].frame.status !== "COMPLETED") fail("STANDARD_PR_RECEIVE_EVENT_REQUIRED");
       const { event, capture } = candidates[0];
@@ -480,7 +495,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         || capture.request.scope_id !== instance.scope_id || capture.request.model_sha256 !== instance.model_sha256
         || capture.request.instance_id !== instance.instance_id || capture.delivered_instance_sha256 !== controlCheckpoint(instance, event.event_id))
         fail("STANDARD_PR_RECEIVE_EVENT_REQUIRED");
-      acceptedForPromotion(instance, capture.payload.observation.observations.update_operation_id, "session_pr_update_push", "STANDARD_PR_RECEIVE_UPDATE_REQUIRED");
+      readAcceptedPrUpdate(instance, capture.payload.observation.observations.update_operation_id);
       return capture;
     } });
   const prTriage = processAuthority && sessionPrReviewReceiver ? createStandardPrTriageSource({
@@ -488,6 +503,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     observeReceived: (instance, input, options) => sessionPrReviewReceiver.observe(instance, input, options),
     observeProduct: () => processAuthority.observeProduct(), readNative: (instance, input) => processAuthority.readPrTriageActivity(instance, input) }) : null;
   const prCorrectionAuthority = prTriage && reviewControlSource ? createStandardPrCorrectionAuthority({
+    readAcceptedUpdate: readAcceptedPrUpdate,
     readAcceptedOperation: acceptedForPromotion,
     reevaluateTriage: (instance, input, options) => prTriage.evaluate(instance, input, options),
     readControl: id => controls.read(id),
@@ -911,6 +927,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_checkpoint" ? await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_redelivery_push" ? await sessionPrRedeliveryPush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_REDELIVERY_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_triage_select" ? await prTriage?.select(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_triage_evaluate" ? await prTriage?.evaluate(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
@@ -1045,6 +1062,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_close_record") output = await sessionCloseRecord.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_pr_checkpoint") output = await sessionPrCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "session_pr_redelivery_push") output = await sessionPrRedeliveryPush.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_pr_update_push") output = await sessionPrUpdatePush.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
