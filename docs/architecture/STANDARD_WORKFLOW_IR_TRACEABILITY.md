@@ -544,3 +544,12 @@ causal correction redelivery, review/resolution/fresh merge consent and R09 sync
 general L4, the production dispatcher UNKNOWN chain, ordinary entry and complete
 L1–L8/A1–A10 remain open. Genuine native/human/provider/PG/installed evidence is
 NOT_RUN. Earlier evidence keeps its original source and scope.
+
+Focused evidence on exact `defc2f24`: history 9, composition 31, integration
+authority 10 and operations/reducer 27 PASS, with nested capacity/history checks
+reported separately. Metadata, source-of-truth, governance completeness and doc
+references pass in their selected scopes. Actual close components in the three
+modes remain active at this observation. The original fixture injection failures
+and sibling-owner regression are retained with their original FAIL verdicts.
+See `docs/qualification/standard-workflow/correction-reclosure-components-2026-11-04.json`.
+The entire acceptance and the production-dispatcher UNKNOWN chain remain unproved.
