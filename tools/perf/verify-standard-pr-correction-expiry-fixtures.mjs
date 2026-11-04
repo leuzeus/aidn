@@ -55,7 +55,9 @@ try {
     git(remote, 'init', '--bare'); git(root, '-c', 'core.hooksPath=NUL', '-c', 'protocol.file.allow=always', 'push', remote, branch + ':refs/heads/' + branch);
     return remote;
   });
-  let clock = Date.now(); const bound = bindCorrectionRealPorts(f.saved, { now: () => clock });
+  // The business-plan test clock cannot make real current provider evidence
+  // appear to originate in the future. Authority/provider clocks stay real.
+  let clock = Date.now(); const bound = bindCorrectionRealPorts(f.saved, { now: () => clock, authorityNow: Date.now });
   for (const action of ['reopen', 'checkpoint']) {
     const input = action === 'reopen' ? f.input : f.checkpointInput;
     const prepare = () => action === 'reopen' ? bound.port.prepare(f.instance, input)

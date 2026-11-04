@@ -20,7 +20,7 @@ export const fixtureHash = 'a'.repeat(64), fixtureOp = n => 'op_' + String(n).re
 export const correctionFixtureSigner = createOperationJournalSigner(() => Buffer.alloc(32, 127));
 const signer = correctionFixtureSigner;
 const productHash = root => shadowHash({ product: fs.readFileSync(path.join(root, 'fixture-product.txt'), 'utf8') });
-export function bindCorrectionRealPorts(saved, { now = Date.now } = {}) {
+export function bindCorrectionRealPorts(saved, { now = Date.now, authorityNow = now } = {}) {
   const { root, remoteRoot, instance, input, p } = saved;
   const state = { eventCurrent: true, prefix: instance.instance_sha256, hook: null };
   const provider = createGithubReviewFixture({ workingDirectory: os.tmpdir(), pullRequest: p });
@@ -36,7 +36,7 @@ export function bindCorrectionRealPorts(saved, { now = Date.now } = {}) {
   const reviewPort = { ...provider.port, async observeReviewContent(...args) {
     await state.beforeReview?.(); return provider.port.observeReviewContent(...args);
   } };
-  const authority = createStandardPrCorrectionAuthority({ now, reviewPort, readCurrent, readAcceptedOperation,
+  const authority = createStandardPrCorrectionAuthority({ now: authorityNow, reviewPort, readCurrent, readAcceptedOperation,
     reevaluateTriage: async () => structuredClone(signer.verify(saved.rows[fixtureOp(1)]).output),
     readControl: id => { assert.equal(id, 'fixture-capture'); return structuredClone(signer.verify(saved.capture)); },
     verifyEvent: async capture => { signer.verify(capture); if (!state.eventCurrent) throw Error('FIXTURE_EVENT_NOT_CURRENT'); },
