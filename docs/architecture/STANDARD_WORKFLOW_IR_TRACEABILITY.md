@@ -10,8 +10,14 @@ finish the analysis component. `waiting` and `retain_requested` remain durable
 blocked/no-effect operations without success facts. SPIKE conversion, retained
 experiments, session closure and continuation after a new decision are still due.
 The new suites distinguish offline typed reports/reducer simulation from real
-artifact/Git context reads; neither is mixed native execution. Qualification is
-pending until an exact frozen source has run the relevant gates.
+artifact/Git context reads; neither is mixed native execution. On frozen
+`ca2fa2af`, contracts/reducer 13, composition 32, startup model 22, operation
+contracts/reducer 27, policies and docrefs pass. Each real-context suite passes
+six checks and retains its two projects. The initial three failures and pending
+composed preflight remain in the [bounded record](../qualification/standard-workflow/mode-analysis-components-2026-11-04.json).
+Wait/replay tests do not establish a cold mixed-host restart. New regression
+suites join the Runtime npm chain; its full current family and Governance
+Admission remain unproved. Ordinary entry and completion marker stay unchanged.
 
 The separate `composed-correction.v3.json` fixture targets both cycles in model
 101, including the accepted human-selected cycle fields, ordinary planning and

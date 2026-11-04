@@ -33,13 +33,22 @@ datés de `dd1dbab`, distincts de cet avancement.
   autorité/hôte, builder et assets IR. Dépendances : mode authentifié existant,
   opérations acceptées et même autorité native. Critères : rapport typé,
   lecture seule, contrôle contenu/métadonnées/produit/Git, attente non réussie,
-  rejeu du même réducteur ; suites ciblées hors ligne et ports de contexte
-  FILES/DUAL/DB-only à exécuter sur une nouvelle source gelée. Ces preuves
-  restent à obtenir. Les trois premiers cas sur `5ccf1ae7` ont terminé FAIL :
+  rejeu du même réducteur. Sur la source gelée `ca2fa2af`, rapports/réducteur
+  13, composition 32, modèle 22, opérations/réducteur 27, politiques et docrefs
+  passent. Les ports de contexte FILES/DUAL/DB-only passent chacun six contrôles
+  avec deux projets distincts conservés ; ils ne sont pas une exécution mixte
+  native. Le préflight composé reste en cours sur cette source au relevé.
+  La [preuve bornée](qualification/standard-workflow/mode-analysis-components-2026-11-04.json)
+  conserve dix cas PASS, trois FAIL et ce cas encore sans verdict terminal.
+  Les trois premiers cas sur `5ccf1ae7` ont terminé FAIL :
   le catalogue refusait le nouveau type de rapport et le test négatif de mode
   omettait l'owner d'effet requis pour son écriture de fixture. Les originaux
   et le projet de ce test sont conservés ; la correction exige une nouvelle
   source gelée et de nouveaux cas, sans modifier les anciens résultats.
+  Les nouvelles suites sont raccordées à la chaîne npm Runtime ; la famille
+  Runtime courante complète et Governance Admission ne sont pas prouvées.
+  Les tests d'attente/rejeu du réducteur n'exécutent pas de redémarrage à froid
+  de l'hôte mixte ; l'intitulé initial trop large a été corrigé.
   La conversion SPIKE admise, les expériences avec effets,
   la clôture dans ces modes et la reprise après nouvelle décision restent à
   raccorder et qualifier. A2 entier et l'ensemble L1–L8/A1–A10 restent ouverts.

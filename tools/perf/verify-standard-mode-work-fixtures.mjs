@@ -50,7 +50,7 @@ for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_co
     assert.ok(result.operations.includes(prefix + "_admit")); assert.ok(result.operations.includes(prefix + "_evaluate"));
     assert.ok(!result.operations.includes("cycle_initialize")); assert.equal(result.write_authorization, false);
   });
-  test(`${mode} blocked evaluation stops the reducer and a cold prefix remains non-success`, () => {
+  test(`${mode} blocked evaluation stops the common reducer and its replay remains non-success`, () => {
     const result = preflightStandardComposedFixture({ model, scenario: { ...scenario, mode, interruption: { node_id: prefix + "_evaluate", outcome: "blocked" } } });
     assert.equal(result.planned_status, "WAITING"); assert.equal(result.replay_exact, true); assert.equal(result.responses_required, 1);
     assert.equal(result.interrupted, true);
