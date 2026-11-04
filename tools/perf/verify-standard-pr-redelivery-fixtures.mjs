@@ -37,7 +37,7 @@ try {
     output: { outcome: 'completed', effect_status: 'confirmed', facts: { session_branch_integrated: true }, observations: { decision_operation_id: op('5'), git: proof } } };
   f.records.set(op('6'), { record: { operation_id: op('6'), intent: { binding_ref: 'session_branch_integrate' }, preview: { prepared: { plan: integrationPlan } } }, output: integrated.output });
   const cycle = { record: { operation_id: op('7'), intent: { binding_ref: 'session_pr_correction_cycle_initialize' }, preview: { prepared: { plan: {
-    input: { cycle_id: 'C002' }, review: { session_id: 'S001' }, origin: { session_id: 'S001', update_operation_id: op('4'), pull_request: initialOutput.observations.pull_request } } } } },
+    input: { cycle_id: 'C002' }, review: { session_id: 'S001' }, origin: { session_id: 'S001', update_operation_id: op('4'), pull_request: structuredClone(initialOutput.observations.pull_request) } } } } },
     output: { outcome: 'completed', effect_status: 'confirmed', facts: { session_pr_correction_cycle_initialized: true } } };
   f.records.set(op('7'), cycle);
   const instance = { ...f.instance, events: [{ kind: 'operation_intent', intent: { operation_id: op('1'), binding_ref: 'session_pr_open' } },
