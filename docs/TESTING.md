@@ -3347,3 +3347,10 @@ blocked and the effect is never retried. The initializer compares metadata again
 after the awaited guard against the values returned by its original CAS writes.
 Runtime context refresh applies the same final metadata fence. The ordinary
 FILES positive case remains separate from these injected competing-writer cases.
+
+`verify-process-model-capacity-fixtures.mjs`, also selected by the operation
+suite, checks v1 at 128 nodes and v2 at 256, rejects one node above each limit,
+and compares initial execution/simulation identities through the same reducer.
+The composition suite checks the correction task and closure bindings against
+the new implementation/work/validation authorities. It leaves actual native
+work, cycle closure, session reclosure and causal redelivery unqualified.

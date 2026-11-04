@@ -320,7 +320,7 @@
         ]
       },
       "minItems": 1,
-      "maxItems": 128
+      "maxItems": 256
     },
     "entry": {
       "type": "string",

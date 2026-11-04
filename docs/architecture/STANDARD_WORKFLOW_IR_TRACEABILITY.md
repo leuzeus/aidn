@@ -507,3 +507,13 @@ hashes returned by the actual CAS writes, preserving UNKNOWN and the held owner
 if a competing classification update occurs while provider or authorization
 observations are pending. The targeted component matrix remains separate from
 production dispatcher, native and whole-workflow qualification.
+
+The correction branch additionally reuses ordinary task/validation/progress,
+final verification, independent audit, human cycle closure, terminal checkpoint,
+R05 and finalization bindings. Distinct correction occurrences consume the new
+implementation and work/validation IDs. They cannot reuse the first cycle's
+accepted reports. The v2 structural node limit is now 256 (v1 stays 128), with
+both schema and semantic validation and a boundary regression. The candidate
+model has 147 nodes, 90 operations and 14 activities. Source checks do not prove
+the native planning/product-work/cycle-closure journey. Session reclosure/history
+and causal redelivery remain open; ordinary entry and complete status stay as-is.

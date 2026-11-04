@@ -20,6 +20,16 @@ encore ouverts.
 
 ### Avancement d’exécution
 
+- Le modèle candidat raccorde désormais le cycle correctif après son entrée
+  IMPLEMENTING aux tâches, à la validation de la nouvelle HEAD, à la progression,
+  à la vérification finale, à l'audit indépendant, à la décision de clôture, au
+  checkpoint terminal, à R05 et à la finalisation ordinaires. Chaque occurrence
+  consomme les autorités du nouveau cycle. La capacité structurelle v2 passe à
+  256 nœuds, avec refus au-delà et plafond historique v1 de 128 conservé.
+  Le modèle candidat compte 147 nœuds, 90 opérations et 14 activités. La preuve
+  de composition reste distincte du parcours exécuté. Reclôture de session avec
+  historique conservé et livraison causale restent à implémenter et qualifier.
+
 - Le contrôle final du créateur de cycle et du rafraîchissement de contexte
   revérifie les métadonnées après l'attente du guard, contre les empreintes
   renvoyées par les CAS effectifs. Une classification modifiée à contenu

@@ -25,10 +25,28 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
   const correctionSequence = assets.model.nodes.find(row => row.id === "correction_cycle").children;
-  assert.deepEqual(correctionSequence, ["correction_initialize", "correction_branch_audit", "correction_cycle_drift", "correction_cycle_checkpoint", "correction_plan", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"]);
+  assert.deepEqual(correctionSequence, ["correction_initialize", "correction_branch_audit", "correction_cycle_drift", "correction_cycle_checkpoint", "correction_plan", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter",
+    "correction_task_loop", "correction_audit_select", "correction_audit_review", "correction_audit_evaluate", "correction_closure_decide", "correction_close_record", "correction_cycle_terminal_checkpoint", "correction_closure_drift", "correction_close_finalize"]);
   assert.equal(assets.model.nodes.find(row => row.id === "correction_initialize").binding_ref, "session_pr_correction_cycle_initialize");
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
-  assert.equal(assets.catalog.bindings.length, 75); assert.equal(assets.catalog.activities.length, 11);
+  assert.equal(assets.catalog.bindings.length, 90); assert.equal(assets.catalog.activities.length, 14);
+});
+test("correction work and closure consume the new implementation and new validation authorities", () => {
+  const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
+  assert.deepEqual(fields("correction_task_select").implementation_operation_id, { source: "operation_id", node_id: "correction_implementation_enter" });
+  assert.deepEqual(fields("correction_audit_select").implementation_operation_id, { source: "operation_id", node_id: "correction_implementation_enter" });
+  assert.deepEqual(fields("correction_validate").work_operation_id, { source: "operation_id", node_id: "correction_work_evaluate" });
+  assert.deepEqual(fields("correction_final_validation").validation_operation_id, { source: "operation_id", node_id: "correction_validate" });
+  assert.deepEqual(fields("correction_close_record").decision_operation_id, { source: "operation_id", node_id: "correction_closure_decide" });
+  assert.deepEqual(fields("correction_cycle_terminal_checkpoint").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
+  assert.deepEqual(fields("correction_close_finalize").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
+  const operations = assets.catalog.bindings.filter(row => row.node_id.startsWith("correction_") && !["correction_initialize", "correction_branch_audit", "correction_cycle_checkpoint", "correction_cycle_drift_evaluate", "correction_cycle_drift_finalize", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"].includes(row.node_id));
+  assert.equal(operations.length, 15);
+  assert.ok(operations.every(row => row.binding.id !== "session_pr_open" && row.binding.id !== "session_push"));
+  const audit = assets.model.nodes.find(row => row.id === "correction_audit_review"); assert.equal(audit.policy_ref, "audit");
+  const sequence = assets.model.nodes.find(row => row.id === "correction_cycle").children;
+  assert.ok(sequence.indexOf("correction_task_loop") > sequence.indexOf("correction_implementation_enter"));
+  assert.equal(sequence.at(-1), "correction_close_finalize");
 });
 test("authored literal/operation-only inputs satisfy their actual closed operation contracts", () => {
   for (const spec of assets.model.data_bindings.inputs) {

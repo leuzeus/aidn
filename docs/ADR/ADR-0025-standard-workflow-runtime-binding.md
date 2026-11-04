@@ -24,6 +24,12 @@ authenticated-result protocol. A v2 `operation` instead has a `binding_ref`.
 It represents a host operation without a fabricated role, session or agent.
 Operation-only models may declare empty role and native-policy arrays.
 
+The v2 structured model accepts at most 256 nodes so the ordinary correction
+work and cycle closure can retain their own causal occurrences in the same IR.
+The v1 limit remains 128. Both limits stay enforced by schema and semantic
+validation; the next node is refused. Existing per-node fanout, nesting,
+occurrence, event, operation authority and effect limits remain in force.
+
 The versioned binding declares a fixed host identity, implementation hash,
 executor kind (`deterministic`, `human`, `external`), effect class, optional skill
 identity, input/output contract IDs, applicable modes and SPEC rule references.
@@ -2223,3 +2229,11 @@ DoR NOT_READY and scope unfrozen; the published subsequent planning, readiness
 and IMPLEMENTING entries retain their original authorities. Their source
 connection does not qualify the whole journey, authentic human/native execution,
 correction work, new-HEAD validation/reclosure or causal delivery.
+
+The correction branch now continues from its own IMPLEMENTING entry through
+ordinary task selection, work, actual validation, progress, final verification,
+independent audit, human cycle closure, terminal checkpoint, R05 and finalization.
+Every operation/activity has its own correction occurrence and consumes the new
+cycle's accepted authorities. Source composition is not execution evidence.
+Session reclosure must preserve prior closure bodies and establish a fresh
+causal delivery; those adapters and their whole-journey qualification remain due.

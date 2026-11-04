@@ -59,7 +59,8 @@ op("session_pr_triage_evaluate", "session_pr_triage_evaluate", occurrence("sessi
 // A classified finding selects only the explicit canonical owner transition.
 // Human continuation is bound to the accepted checkpoint. The subsequent
 // admission and initial implementation entry are connected below; fresh
-// physical work, reclosure and causal delivery remain outstanding.
+// physical work and cycle reclosure use the ordinary ports below. Session
+// reclosure/history and causal redelivery remain outstanding.
 xor("session_pr_after_triage", [["corrections", "session_pr_correction", "session_pr_corrections_required"],
   ["effects_pending", "session_pr_effects_pending", null]]);
 seq("session_pr_correction", ["session_pr_correction_reopen", "session_pr_correction_checkpoint", "session_pr_correction_decide", "session_pr_correction_requested"]);
@@ -181,6 +182,39 @@ checkpointDrift("correction_cycle_drift", "correction_cycle", "correction_cycle_
 checkpointDrift("closure_drift", "committing", "close_finalize");
 checkpointDrift("promotion_drift", "promotion", "promotion_finalize");
 checkpointDrift("session_closure_drift", null, null);
+
+// The correction is an ordinary new cycle. Reuse the governed task/validation
+// and closure subgraph with distinct occurrences and the new implementation
+// authority; never borrow the first cycle's accepted work or validation.
+const correctionRoots = ["task_loop", "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record",
+  "cycle_terminal_checkpoint", "closure_drift", "close_finalize"];
+const correctionNodes = new Set();
+function collectCorrection(id) {
+  if (correctionNodes.has(id)) return;
+  correctionNodes.add(id);
+  const source = nodes.find(row => row.id === id);
+  if (!source) throw Error("STANDARD_CORRECTION_SOURCE_NODE_MISSING");
+  for (const child of [...(source.children ?? []), ...(source.child ? [source.child] : []), ...(source.branches ?? []).map(row => row.node_id)]) collectCorrection(child);
+}
+correctionRoots.forEach(collectCorrection);
+const correctionName = id => correctionNodes.has(id) || id === "implementation_enter" ? "correction_" + id : id;
+for (const id of correctionNodes) {
+  const source = nodes.find(row => row.id === id), copy = structuredClone(source);
+  copy.id = correctionName(id);
+  if (copy.children) copy.children = copy.children.map(correctionName);
+  if (copy.child) copy.child = correctionName(copy.child);
+  if (copy.branches) copy.branches.forEach(row => { row.node_id = correctionName(row.node_id); });
+  nodes.push(copy);
+  const input = inputs.find(row => row.node_id === id);
+  if (input) {
+    const next = structuredClone(input); next.node_id = copy.id;
+    for (const field of Object.values(next.fields)) if (field.node_id) field.node_id = correctionName(field.node_id);
+    inputs.push(next);
+  }
+  const activity = activities.find(row => row.node_id === id);
+  if (activity) activities.push({ ...structuredClone(activity), node_id: copy.id });
+}
+nodes.find(row => row.id === "correction_cycle").children.push(...correctionRoots.map(correctionName));
 
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });

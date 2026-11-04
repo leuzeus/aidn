@@ -42,7 +42,7 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
       || new Set(rows.map(row => row.id)).size !== rows.length) fail("PROCESS_IDS_INVALID");
     return new Map(rows.map(row => [row.id, row]));
   };
-  const participants = table(model.participants, 32), roles = table(model.roles, 32, v2), policies = table(model.policies, 32, v2), nodes = table(model.nodes, 128);
+  const participants = table(model.participants, 32), roles = table(model.roles, 32, v2), policies = table(model.policies, 32, v2), nodes = table(model.nodes, v2 ? 256 : 128);
   for (const participant of participants.values()) if (!exactKeys(participant, ["id"])) fail("PROCESS_PARTICIPANT_INVALID");
   for (const role of roles.values()) if (!exactKeys(role, ["id", "role", "action", "skills"])
     || normalizeAgentRole(role.role) !== role.role || normalizeAgentAction(role.action) !== role.action
