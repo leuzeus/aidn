@@ -264,6 +264,28 @@ suites remain separate evidence and now also test registered contracts and the
 direct byte pins. Ordinary standard entry, real native/provider/human and exact
 installed archive qualification remain outstanding.
 
+The separate files/correction experiment adds
+`--standard-composed-host-trace --standard-composed-checkpoint-ack-loss` to that
+command. Its initial experiment selection is retained in the resume record and
+must match in the cold child. Bounded JSONL rows identify each host, PID, method,
+wall clock and elapsed call time, without result bodies or signing material.
+They measure the named public call, including its nested work and waits; they
+are not timings of individual internal functions or actual model usage.
+
+The fault interrupts only the atomic rename of a completed checkpoint receipt.
+The real signed dispatch remains, with its actual Git commit and released local
+effect owner. A new Node process invokes the mixed host's explicit-write
+`reconcileCorrectionCheckpoint`, preserves the original intent/preview/grant/
+dispatch owner, retains one result, accepts it through the real service, and
+checks that neither Git commits nor native allocations increased. Repeated
+observation must return the retained result. No journal is authored to imitate
+that interruption. The trace helper and synthetic preflight are preparation
+checks; this composed recovery is proved only if the driver actually reaches
+and passes it. General retained-owner or already-receipted unknown recovery,
+expired authority and positive db-only recovery remain outside this experiment.
+The fixture's native-session expectation now uses selected preflight occurrences
+instead of the obsolete eight-session constant that omitted PR triage.
+
 `verify-github-review-content-fixtures.mjs` exercises the explicit v2 review
 content and thread observations. Complete bounded review bodies, their hashes,
 comment actor node IDs and exact base/ref identities are required; oversized,

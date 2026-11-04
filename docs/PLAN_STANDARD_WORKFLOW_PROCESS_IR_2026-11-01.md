@@ -3955,3 +3955,25 @@ along with new-cycle admission, physical corrections, L4 native epochs and
 expired-plan reprepare, all other L1-L8/A1-A10, actual native/human/provider and
 the exact installed archive. Ordinary selection is unchanged and
 complete_standard_workflow remains false.
+
+### Addendum: composed missing-receipt experiment preparation, 2026-11-04
+
+The mixed composition now forwards the fixed host's explicit checkpoint
+reconciliation method. A distinct files/correction fixture can interrupt the
+actual atomic receipt rename after a completed Git checkpoint, retain the real
+dispatch, and request recovery in a new Node process. It keeps the initial
+experiment selection across cold continuation, the original native ceiling and
+deadline, and all original intent/preview/grant/dispatch-owner fields. Its
+bounded per-host call trace supplies new observations without extending a TTL,
+rewriting a previous trial, or claiming production identities.
+
+The preparation checks pass: 18 synthetic preflight checks, 20 generic signed
+host regressions, and three helper-only trace/fault checks. These do not prove
+the composed recovery. The fixed driver's native-session expectation now uses
+selected preflight occurrences; the previous constant omitted the triage turn.
+The composed experiment, including its terminal source and resource evidence,
+is recorded separately. General unknown-owner reconciliation, ordinary admitted
+correction cycles and physical fixes, native epochs, deterministic expired-plan
+reprepare, the rest of L1-L8/A1-A10, genuine native/human/provider behavior and
+the exact installed archive remain required. Ordinary selection and
+complete_standard_workflow=false are unchanged.

@@ -92,6 +92,14 @@ blocks retry. The composition, admitted cycle continuation, repeated closure/
 delivery lineage, genuine producer/provider qualification and complete correction
 lifecycle remain to be implemented and verified before ordinary use.
 
+The internal mixed composition exposes the same explicit-write checkpoint
+reconciliation capability as its fixed operation host. It introduces no new
+recovery authority, automatic retry, native allocation or ordinary entrypoint.
+An offline composed fixture can interrupt the actual receipt rename after a
+confirmed Git effect, then exercise that capability in a new Node process.
+Adding the experiment or passing its preparation checks does not establish its
+positive execution; its producer identities and transports remain fixtures.
+
 The composed offline fixture preflights its versioned deterministic scenario
 through this same model and reducer before fixture creation and initial
 authorization. Its response allowance counts selected native occurrences,

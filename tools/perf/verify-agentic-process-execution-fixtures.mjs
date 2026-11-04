@@ -2,6 +2,7 @@
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
+import { observeComposedHost, loseCheckpointReceipt } from "./standard-composed-observation-fixture-lib.mjs";
 import { standardPrTriageItems } from "../../src/core/workflow/standard-pr-triage.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
@@ -88,6 +89,9 @@ const standardComposedStop = process.argv.find(value => value.startsWith("--stan
 if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
+const standardHostTrace = process.argv.includes('--standard-composed-host-trace');
+const standardCheckpointAckLoss = process.argv.includes('--standard-composed-checkpoint-ack-loss');
+if ((standardHostTrace || standardCheckpointAckLoss) && !selectedStandardComposedMode) throw Error('STANDARD_FIXTURE_EXPERIMENT_MODE_REQUIRED');
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
 const standardComposedBudgetText = process.argv.find(value => value.startsWith("--standard-composed-budget-ms="))?.slice("--standard-composed-budget-ms=".length);
 const standardComposedBudgetMs = standardComposedBudgetText === undefined ? 7200000 : Number(standardComposedBudgetText);
@@ -113,6 +117,8 @@ if (standardResponseText !== undefined && (!selectedStandardComposedMode || !/^[
   || !Number.isSafeInteger(Number(standardResponseText)))) throw Error("STANDARD_FIXTURE_RESPONSE_LIMIT_INVALID");
 const standardScenarioName = process.argv.find(value => value.startsWith("--standard-composed-scenario="))?.slice("--standard-composed-scenario=".length) ?? "positive";
 if (!["positive", "correction"].includes(standardScenarioName) || standardScenarioName !== "positive" && !selectedStandardComposedMode) throw Error("STANDARD_FIXTURE_SCENARIO_INVALID");
+if (standardCheckpointAckLoss && (selectedStandardComposedMode !== 'files' || standardScenarioName !== 'correction' || standardComposedStop !== 'component_complete'))
+  throw Error('STANDARD_FIXTURE_CHECKPOINT_ACK_LOSS_SCOPE_INVALID');
 const standardScenario = selectedStandardComposedMode ? JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-" +
   (standardScenarioName === "correction" ? "correction.v2" : "positive.v1") + ".json", import.meta.url), "utf8")) : null;
 if (standardResponseText !== undefined) standardScenario.max_responses = Number(standardResponseText);
@@ -121,6 +127,8 @@ if (standardScenario && (standardScenario.mode !== "COMMITTING" || standardScena
   throw Error("STANDARD_FIXTURE_DRIVER_SCENARIO_UNSUPPORTED");
 const standardResumeInput = standardComposedResume ? JSON.parse(fs.readFileSync(standardComposedResume, "utf8")) : null;
 if (standardResumeInput) {
+  if (Boolean(standardResumeInput.experiment?.host_trace) !== standardHostTrace
+    || Boolean(standardResumeInput.experiment?.checkpoint_ack_loss) !== standardCheckpointAckLoss) throw Error('STANDARD_FIXTURE_ORIGINAL_EXPERIMENT_CHANGED');
   assert.deepEqual(standardResumeInput.scenario, standardScenario, "Cold resume must preserve the initial fixture scenario");
   assert.equal(standardResumeInput.authorization.max_responses, standardScenario.max_responses, "Cold resume must preserve the original cumulative ceiling");
 }
@@ -587,12 +595,13 @@ function mixedFixture(stateMode = "files", options = {}) {
     execFileSync("git", ["-C", projectRoot, "-c", "core.hooksPath=NUL", "push", "--", f.sessionPushRemoteRoot, "HEAD:refs/heads/dev"],
       { stdio: "pipe", windowsHide: true, timeout: 30000 });
   }
-  const compose = () => (options.standardModel ? createStandardWorkflowExecution : createStandardWorkflowMixedHost)({ configuration: f.configuration, readSigningKey: () => key,
+  const observe = host => options.hostTrace ? observeComposedHost(host, path.join(f.configuration.control_root, 'composed-host-' + process.pid + '.jsonl')) : host;
+  const compose = () => observe((options.standardModel ? createStandardWorkflowExecution : createStandardWorkflowMixedHost)({ configuration: f.configuration, readSigningKey: () => key,
     authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: projectRoot, remoteRoot: f.sessionPushRemoteRoot }) : null,
     sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
     sessionReviewEventPort: f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null,
-    sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
+    sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) }));
   // The human path also qualifies a retained common host. Authority/evidence
   // reads remain inside its methods; acceptance still restarts in a cold Node.
   let sharedHost;
@@ -607,13 +616,14 @@ function restoreComposedFixture(data, options) {
   assert.equal(shadowHash(model), loadStandardWorkflowAssets().source.model_sha256);
   const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
   let sharedHost;
-  const open = () => sharedHost ??= createStandardWorkflowExecution({ configuration: f.configuration, readSigningKey: () => key,
+  const observe = host => options.hostTrace ? observeComposedHost(host, path.join(f.configuration.control_root, 'composed-host-' + process.pid + '.jsonl')) : host;
+  const open = () => sharedHost ??= observe(createStandardWorkflowExecution({ configuration: f.configuration, readSigningKey: () => key,
     authorize: async () => grant, humanSource: options.humanSource, validationProfile: f.validationProfile,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: f.configuration.target_root, remoteRoot: f.sessionPushRemoteRoot }) : null,
     sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
     sessionReviewEventPort: f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null,
     sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null },
-    { controllerFactory, ...(f.validationProfile ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
+    { controllerFactory, ...(f.validationProfile ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) }));
   return Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model });
 }
 async function bootstrapMixed(f) {
@@ -742,7 +752,7 @@ if (process.argv[2] === "--mixed-continue") {
     const runsPromotion = standardComposedStop === "component_complete";
     const runsClosure = runsPromotion || standardComposedStop === "promotion_decide";
     const runsCycle = runsClosure || standardComposedStop === "closure_decide";
-    const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, async answer({ params }) {
+    const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       if (observed.context.contract_version === "standard-cycle-plan-context.v1")
         return { outcome: "completed", summary: "Scoped read-only plan proposal", report: cyclePlanProposal(observed) };
@@ -815,7 +825,8 @@ if (process.argv[2] === "--mixed-continue") {
       }
       fs.writeFileSync(resumeFile, JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs,
         human_source_file: sourceFile, sessionPushRemoteRoot: f.sessionPushRemoteRoot, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) },
-        scenario: standardScenario, preflight: standardPreflight, authorization: auth }));
+        scenario: standardScenario, preflight: standardPreflight, authorization: auth,
+        experiment: { host_trace: standardHostTrace, checkpoint_ack_loss: standardCheckpointAckLoss } }));
     }
     const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
     let childNativeSessions = 0, coldContinuation = false;
@@ -859,7 +870,22 @@ if (process.argv[2] === "--mixed-continue") {
       }
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
-      const result = await f.open().step({ write: true, authorization: auth });
+      let result;
+      if (standardCheckpointAckLoss && frame.node_id === 'session_pr_correction_checkpoint') {
+        const lost = await loseCheckpointReceipt({ targetRoot: f.configuration.target_root }, () => f.open().step({ write: true, authorization: auth }));
+        const original = f.open().readOperation(lost.operation_id);
+        assert.equal(original.phase, 'dispatching'); assert.deepEqual(original.results, []);
+        const child = JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL('standard-pr-correction-checkpoint-host-resume-fixture.mjs', import.meta.url)), resumeFile, lost.operation_id],
+          { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, timeout: 600000, maxBuffer: 1048576 }));
+        assert.equal(child.missing_receipt_recovered_by_real_host, true); assert.equal(child.new_native_allocations, 0);
+        assert.equal(f.reopen().inspect().record.instance_sha256, child.instance_sha256);
+        const recovered = f.open().readOperation(lost.operation_id);
+        for (const key of ['preview', 'intent', 'grant', 'owner']) assert.deepEqual(recovered[key], original[key]);
+        assert.equal(recovered.results.length, 1); assert.equal(recovered.results[0].receipt.receipt_id, lost.attempted_receipt.receipt_id);
+        assert.equal(recovered.results[0].output.observations.git.commit_sha, lost.output.observations.git.commit_sha);
+        console.log(JSON.stringify({ standard_checkpoint_ack_loss_proof: child, effect: 'actual Git commit; interrupted receipt rename; cold real-host recovery' }));
+        result = { kind: 'operation', operation_id: lost.operation_id, status: child.workflow_status };
+      } else result = await f.open().step({ write: true, authorization: auth });
       if (result.operation_id) {
         if (result.status === "waiting_for_human") {
           const binding = f.open().readOperation(result.operation_id).intent.binding_ref;
@@ -930,7 +956,8 @@ if (process.argv[2] === "--mixed-continue") {
           const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--standard-composed-mode=" + mode, "--standard-composed-stop=" + standardComposedStop,
             "--standard-composed-resume=" + resumeFile, "--standard-composed-budget-ms=" + standardComposedBudgetMs,
             "--standard-composed-scenario=" + standardScenarioName,
-            "--standard-composed-max-responses=" + standardScenario.max_responses, "--retain-on-failure"],
+            "--standard-composed-max-responses=" + standardScenario.max_responses, "--retain-on-failure",
+            ...(standardHostTrace ? ['--standard-composed-host-trace'] : []), ...(standardCheckpointAckLoss ? ['--standard-composed-checkpoint-ack-loss'] : [])],
           { encoding: "utf8", shell: false, windowsHide: true, timeout: Math.max(1, auth.global_deadline_ms - Date.now() + 60000), maxBuffer: 262144 });
           assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-16384)); process.stdout.write(child.stdout);
           const reports = child.stdout.split(/\r?\n/).filter(line => line.startsWith("{")).map(line => JSON.parse(line));
@@ -958,7 +985,7 @@ if (process.argv[2] === "--mixed-continue") {
     const last = binding => acceptedOperations.filter(row => row.intent.binding_ref === binding).at(-1)?.results.at(-1)?.output;
     assert.equal(last("drift_check_finalize").facts.drift_check_completed, true);
     if (standardComposedStop !== "cycle_admit") assert.equal(last("cycle_checkpoint_finalize").outcome, "completed");
-    const expectedNative = runsPromotion ? 8 : runsClosure ? 6 : runsCycle ? 5 : standardComposedStop === "plan" ? 2 : 1;
+    const expectedNative = standardPreflight.responses_required;
     assert.equal(f.t.sessions.length + childNativeSessions, expectedNative - priorNativeResults); assert.ok(f.t.sessions.every(row => row.closed));
     if (runsCycle) {
       for (const binding of ["cycle_plan_record", "cycle_implementation_enter", "cycle_validation_execute", "cycle_task_advance", "cycle_verification_enter", "cycle_audit_evaluate"])
