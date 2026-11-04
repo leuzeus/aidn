@@ -82,7 +82,8 @@ export function createStandardCycleCheckpoint({ artifacts, scope, session, audit
         plan = assertPlan(prepared?.plan); const age = now() - plan.prepared_at_ms;
         if (write !== true || !prepared.can_apply || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan
           || typeof assertAuthorized !== "function" || typeof assertCurrent !== "function"
-          || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED");
+          || !Number.isSafeInteger(age) || age < 0) fail("STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED");
+        if (age > 300000) fail("STANDARD_PLAN_EXPIRED");
       } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         let before;

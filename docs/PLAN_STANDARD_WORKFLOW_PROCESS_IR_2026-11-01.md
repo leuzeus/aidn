@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 132/130 et le modèle composé candidat en 73
+les composants startup/cycle en 133/131 et le modèle composé candidat en 74
 (107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
 63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est

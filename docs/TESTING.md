@@ -3176,9 +3176,14 @@ after 13 passing checks each: the initial hook guard returns
 age, before the later specific `STANDARD_PLAN_EXPIRED` check. The explicit
 reprepare path cannot accept that generic reason. The
 [gap record](qualification/agentic-process/cycle-checkpoint-expiry-gap-2026-11-04.json)
-pins all three failed sources/logs. It remains a failing opt-in requirement test;
-no successful checkpoint expiry, physical byte invariance after that refusal,
-fresh continuation or complete-component acceptance is claimed. The next change
-must distinguish initial expiry without weakening explicit intent or effect
-ownership, then rerun the same probe. Earlier 20-check results remain tied to
-their exact pre-option snapshots.
+pins all three failed sources/logs. Those failures remain historical evidence.
+The adapter now checks explicit intent and clock validity before reporting
+otherwise-valid expired plans as `STANDARD_PLAN_EXPIRED`, with `no_effect`
+before owner acquisition. Run
+`node tools/perf/verify-standard-cycle-checkpoint-expiry-guards-fixtures.mjs`
+for the 18 pre-owner guard cases, including missing intent/callbacks, mismatched
+hashes, negative admission, malformed plans and future/invalid clocks. Valid
+ages through 300000 ms still reach the owner boundary. This isolated check
+does not exercise the hook or fresh continuation; rerun the same
+`--expire-checkpoint` component in each mode for that evidence. Earlier 20-check
+results remain tied to their exact pre-option snapshots.
