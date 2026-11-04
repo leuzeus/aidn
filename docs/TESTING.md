@@ -1,5 +1,23 @@
 # Testing Guide
 
+`node tools/perf/verify-standard-composed-preflight-fixtures.mjs` checks the
+composed fixture's initial cumulative response allowance before a long run.
+The fixture driver also runs this check before creating temporary roots or
+authorizing execution; `--standard-composed-preflight-only` stops there.
+Its versioned positive scenario chooses COMMITTING, one task, retained closure,
+promotion, cold continuation and PR triage, with nine original responses.
+Synthetic receipts and choices drive the actual published model and common
+reducer. Task-loop occurrences, skipped promotion, non-retained closure,
+admission refusal, native failure and human non-success are checked separately;
+the catalog's activity count is not a consumption estimate. The fixture wire
+emits one completed response per successful native turn. This estimate is not
+a general model-response bound or live-provider qualification. A cold resume
+keeps the scenario, exact model and original allowance/deadline; production
+allocation journals still enforce actual cumulative consumption. Existing
+trials and production defaults are unchanged. The explicit fixture-only
+`--standard-composed-max-responses=<n>` selects an initial allowance for a new
+trial and fails if insufficient; it never renews an existing authorization.
+
 The candidate standard also selects deterministic `session_pr_triage_select`,
 the read-only independent `session_pr_triage` native activity, then deterministic
 `session_pr_triage_evaluate`. `verify-standard-pr-triage-fixtures.mjs` checks full

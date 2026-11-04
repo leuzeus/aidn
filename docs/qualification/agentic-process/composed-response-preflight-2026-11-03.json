@@ -1,0 +1,77 @@
+{
+  "observed_at_utc": "2026-11-04T03:55:22.884Z",
+  "parent_source_commit": "e29f301e3cae958a0164a9c17df86fad317fb3d5",
+  "scope": "offline fixture scenario and pre-execution response-budget check",
+  "model_revision": 65,
+  "model_sha256": "3719562854fa899b6d7e7a0b28b66120a3f04920182889b7dcd386a2014422bd",
+  "complete_standard_workflow": false,
+  "ordinary_entry_changed": false,
+  "production_limits_changed": false,
+  "existing_trial_limits_changed": false,
+  "positive_scenario": {
+    "mode": "COMMITTING",
+    "closure": "retain",
+    "promotion": "promote",
+    "task_iterations": 1,
+    "cold_resume": true,
+    "initial_max_responses": 9,
+    "selected_native_occurrences": 9,
+    "cold_prefix_native_occurrences": 5,
+    "continuation_native_occurrences": 4
+  },
+  "pass": [
+    {
+      "command": "node tools/perf/verify-standard-composed-preflight-fixtures.mjs",
+      "checks": 17,
+      "exit_code": 0,
+      "proof_class": "synthetic-fixture-only",
+      "stdout_sha256": "6d26e0674b1d8faca03fbbb84a5b64184a91bb94f7c3f7301ae32de6b4c8b811",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "checks": 27
+    },
+    {
+      "command": "node tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "checks": 22
+    },
+    {
+      "command": "node tools/verify/verify-gate-catalog.mjs",
+      "gates": 63,
+      "yaml_files": 4
+    },
+    {
+      "command": "git diff --check"
+    }
+  ],
+  "development_failures": [
+    {
+      "kind": "invocation-error",
+      "requested_path": "tools/perf/verify-gate-catalog-fixtures.mjs",
+      "reason": "nonexistent wrapper; actual verifier subsequently executed"
+    },
+    {
+      "kind": "gate-failure",
+      "command": "node tools/verify/verify-gate-catalog.mjs",
+      "reason": "immutable fixture command not updated with added preflight",
+      "resolution": "preserved prior invocations and mirrored explicit addition in workflow-policy-lib; final PASS"
+    }
+  ],
+  "skip": [],
+  "not_run": [
+    "full runtime family",
+    "Governance Admission",
+    "new long composed trial",
+    "live native/human/provider",
+    "exact installed archive"
+  ],
+  "limits": [
+    "Synthetic operation, assignment and control receipts validate routing only; they authenticate no actor or effect.",
+    "One response per selected successful turn is a property of the fixture wire, not a general native response bound.",
+    "Existing signed allocation journals enforce actual cumulative consumption; fixture preflight cannot renew authorization.",
+    "Cold JSON reconstruction is synthetic; original resource closure and independent inventory remain separate.",
+    "Alternate scenarios are synthetic preflight tests; the long driver supports the shipped positive scenario only."
+  ],
+  "lock_sha256": "5042197a61ebed568ddb29b18e0e8c1c9e15bc98f03c1bd808b3389b96f2dd3b"
+}

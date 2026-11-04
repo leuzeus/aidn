@@ -3706,3 +3706,28 @@ du nouveau HEAD, réponses/résolutions et boucles de suivi, consentement explic
 de fusion, effets/synchronisation, autres variantes A1–A10 et qualifications
 natif/fournisseur/humain réels et archive exacte restent ouverts. Le catalogue
 reste `complete_standard_workflow=false` et l'entrée ordinaire est inchangée.
+
+### Addendum: composed fixture response preflight, 2026-11-03
+
+The initial eight-response allowance of trial 65 remains unchanged. Its
+programmed COMMITTING/retain/promote/triage path requires at least nine completed
+native turns with its fixture wire, cumulatively across cold continuation.
+This describes an impossible positive scenario, not an observed terminal cause.
+A different refusal may precede exhaustion. Existing 61/65 trials are observed
+separately without relaunch, source edits or renewed authorization.
+
+New fixture sources provide a versioned positive scenario with nine initial
+responses. Before temporary roots, installation or authorization, a synthetic
+preflight drives the published IR through the common execution reducer. It
+counts selected activity occurrences and rejects an insufficient initial
+allowance. Scenario variants cover skipped promotion, non-retained outcomes,
+task-loop repetition, mode handoffs, refusal/wait/cancellation/failure and cold
+prefix preservation. They do not infer consumption from catalog size. The cold
+driver preserves the exact scenario/model and original cumulative ceiling;
+production signed journals remain responsible for observed consumption.
+
+This test preparation does not qualify physical PR corrections, replies,
+resolutions, merge, full L1-L8/A1-A10, live native/human/provider behavior or an
+exact installed archive. The complete plan and remaining qualification gates
+remain active. Validation results and later trial provenance are recorded
+separately from the immutable prior handoff.

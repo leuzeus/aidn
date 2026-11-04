@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
+import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
 import { standardPrTriageItems } from "../../src/core/workflow/standard-pr-triage.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
@@ -106,6 +107,32 @@ if (selectedCycleReadinessMode !== undefined && !["contract", "files", "dual", "
 if (selectedCyclePlanMode !== undefined && !["contract", "files", "dual", "db-only", "partial", "projection"].includes(selectedCyclePlanMode)) throw Error("CYCLE_PLAN_FIXTURE_MODE_INVALID");
 if (selectedRecoveryCycleMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryCycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
 const sha = value => createHash("sha256").update(value).digest("hex");
+const standardResponseText = process.argv.find(value => value.startsWith("--standard-composed-max-responses="))?.slice("--standard-composed-max-responses=".length);
+if (standardResponseText !== undefined && (!selectedStandardComposedMode || !/^[1-9][0-9]*$/.test(standardResponseText)
+  || !Number.isSafeInteger(Number(standardResponseText)))) throw Error("STANDARD_FIXTURE_RESPONSE_LIMIT_INVALID");
+const standardScenario = selectedStandardComposedMode ? JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-positive.v1.json", import.meta.url), "utf8")) : null;
+if (standardResponseText !== undefined) standardScenario.max_responses = Number(standardResponseText);
+if (standardScenario && (standardScenario.mode !== "COMMITTING" || standardScenario.closure !== "retain" || standardScenario.promotion !== "promote"
+  || standardScenario.task_iterations !== 1 || standardScenario.cold_resume !== true || standardScenario.interruption !== null))
+  throw Error("STANDARD_FIXTURE_DRIVER_SCENARIO_UNSUPPORTED");
+const standardResumeInput = standardComposedResume ? JSON.parse(fs.readFileSync(standardComposedResume, "utf8")) : null;
+if (standardResumeInput) {
+  assert.deepEqual(standardResumeInput.scenario, standardScenario, "Cold resume must preserve the initial fixture scenario");
+  assert.equal(standardResumeInput.authorization.max_responses, standardScenario.max_responses, "Cold resume must preserve the original cumulative ceiling");
+}
+// This check precedes temporary roots, fixture installation, process creation
+// and authorization time. No production ceiling or previous trial is modified.
+const standardPreflight = selectedStandardComposedMode ? preflightStandardComposedFixture({
+  model: loadStandardWorkflowAssets().model, scenario: standardScenario, stop: standardComposedStop }) : null;
+if (standardResumeInput) {
+  assert.equal(standardResumeInput.preflight.model_sha256, standardPreflight.model_sha256);
+  assert.equal(standardResumeInput.preflight.scenario_sha256, standardPreflight.scenario_sha256);
+  assert.equal(standardResumeInput.preflight.stop, standardComposedStop);
+}
+if (process.argv.includes("--standard-composed-preflight-only")) {
+  if (!standardPreflight) throw Error("STANDARD_FIXTURE_PREFLIGHT_MODE_REQUIRED");
+  console.log(JSON.stringify(standardPreflight)); process.exit(0);
+}
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
 const businessRoots = [];
 let serial = 0, completed = false;
@@ -706,7 +733,7 @@ if (process.argv[2] === "--mixed-continue") {
     let sourceFile;
     const humanSource = { read: options => sourceFile ? closureHumanSource(sourceFile).read(options) : null,
       verify: options => sourceFile ? closureHumanSource(sourceFile).verify(options) : { outcome: "unverified" } };
-    const resumed = standardComposedResume ? JSON.parse(fs.readFileSync(standardComposedResume, "utf8")) : null;
+    const resumed = standardResumeInput;
     const factory = standardComposedResume ? (_mode, options) => restoreComposedFixture(resumed, options) : mixedFixture;
     const runsPromotion = standardComposedStop === "component_complete";
     const runsClosure = runsPromotion || standardComposedStop === "promotion_decide";
@@ -773,12 +800,14 @@ if (process.argv[2] === "--mixed-continue") {
       const initial = f.open().initialize({ parameters });
       f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
       auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 300000;
+      auth.max_responses = standardScenario.max_responses;
       if (runsClosure) {
         auth.global_deadline_ms = auth.workflow_deadline_ms = auth.authorized_at_ms + standardComposedBudgetMs;
-        auth.max_responses = 8; auth.max_bytes = 32 * 1024 * 1024;
+        auth.max_bytes = 32 * 1024 * 1024;
       }
       fs.writeFileSync(resumeFile, JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs,
-        human_source_file: sourceFile, sessionPushRemoteRoot: f.sessionPushRemoteRoot, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) }, authorization: auth }));
+        human_source_file: sourceFile, sessionPushRemoteRoot: f.sessionPushRemoteRoot, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) },
+        scenario: standardScenario, preflight: standardPreflight, authorization: auth }));
     }
     const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
     let childNativeSessions = 0, coldContinuation = false;
@@ -891,13 +920,15 @@ if (process.argv[2] === "--mixed-continue") {
             operation_journals: retained, native_results_prior: beforeNative }));
           console.log(JSON.stringify({ composed_human_deferred: true, cursor: waiting.cursor.status, native_sessions: beforeNative, cold_resume_starting: true }));
           const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--standard-composed-mode=" + mode, "--standard-composed-stop=" + standardComposedStop,
-            "--standard-composed-resume=" + resumeFile, "--standard-composed-budget-ms=" + standardComposedBudgetMs, "--retain-on-failure"],
+            "--standard-composed-resume=" + resumeFile, "--standard-composed-budget-ms=" + standardComposedBudgetMs,
+            "--standard-composed-max-responses=" + standardScenario.max_responses, "--retain-on-failure"],
           { encoding: "utf8", shell: false, windowsHide: true, timeout: Math.max(1, auth.global_deadline_ms - Date.now() + 60000), maxBuffer: 262144 });
           assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-16384)); process.stdout.write(child.stdout);
           const reports = child.stdout.split(/\r?\n/).filter(line => line.startsWith("{")).map(line => JSON.parse(line));
           const proof = reports.find(row => row.standard_composed_proof === true);
           assert.ok(proof); assert.equal(proof.native_prior_results, beforeNative); assert.equal(proof.cold_resume, true);
-          childNativeSessions = proof.native_sessions_started; assert.equal(childNativeSessions, runsPromotion ? 3 : 1); coldContinuation = true;
+          childNativeSessions = proof.native_sessions_started;
+          assert.equal(childNativeSessions + beforeNative, standardPreflight.responses_required); coldContinuation = true;
           f.reopen();
           for (const item of retained) assert.equal(shadowHash(f.open().readOperation(item.id)), item.sha256);
           const afterChild = f.open().inspect(); assert.deepEqual(afterChild.record.events.slice(0, waiting.record.events.length), waiting.record.events);
@@ -1006,6 +1037,8 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(replayLast.instance_sha256, final.record.instance_sha256);
     console.log(JSON.stringify({ standard_composed_proof: true, model_sha256: final.record.model_sha256, instance_sha256: final.record.instance_sha256,
       events: final.record.events.length, application_operations: acceptedOperations.length, native_sessions_started: f.t.sessions.length,
+      scenario_sha256: standardPreflight.scenario_sha256, planned_responses: standardPreflight.responses_required,
+      original_max_responses: auth.max_responses, original_deadline_ms: auth.global_deadline_ms,
       native_sessions_started_in_child: childNativeSessions, native_prior_results: priorNativeResults, cold_resume: Boolean(resumed),
       cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: runsPromotion ? null : standardComposedStop, component_completed: runsPromotion, full_standard_workflow: false, workflow_status: final.cursor.status, model_calls: 0,
       verification_boundary: runsCycle ? "fixture-with-actual-Node-check" : "not-used", human_and_effect_authority: "fixture", session_push_transport: runsPromotion ? "actual-local-bare-git" : "not-used", pr_transport: runsPromotion ? "doubled-REST-reading-actual-bare-refs" : "not-used", replay_exact: true }));

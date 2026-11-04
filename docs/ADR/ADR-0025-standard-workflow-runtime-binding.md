@@ -52,6 +52,14 @@ postconditions are L2 work; authority doubles are not business execution proof.
 
 ## Control and effect semantics
 
+The composed offline fixture preflights its versioned deterministic scenario
+through this same model and reducer before fixture creation and initial
+authorization. Its response allowance counts selected native occurrences,
+including task loops and optional promotion, across the cold prefix and
+continuation. Synthetic planning is not an authorization or an execution proof.
+This fixture check changes neither production limits nor an existing trial's
+original cumulative ceiling, deadline or signed consumption journal.
+
 After an intent, the occurrence waits for its receipt. A completed receipt may
 project trusted boolean routing facts, including waking parallel routing waits.
 Blocked and deferred outcomes retain a wait and declare `no_effect`; further
