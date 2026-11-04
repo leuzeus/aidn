@@ -48,7 +48,10 @@ function remote(root, branch) {
   git(directory, 'init', '--bare'); git(root, '-c', 'core.hooksPath=NUL', '-c', 'protocol.file.allow=always', 'push', directory, branch + ':refs/heads/' + branch);
   return directory;
 }
-const fixture = () => createCorrectionRealPortFixture(mode, owned, remote);
+const fixture = async () => {
+  const f = await createCorrectionRealPortFixture(mode, owned, remote);
+  assertProjectionScope(f); return f;
+};
 function mutate(f, kind) {
   const fileMutation = (file, bytes) => { const before = fs.readFileSync(file); fs.writeFileSync(file, bytes ?? Buffer.concat([before, Buffer.from('\nforeign\n')])); return () => fs.writeFileSync(file, before); };
   if (kind === 'provider') { const old = f.provider.state.reviews[0].body; f.provider.state.reviews[0].body += ' Changed finding.'; return () => { f.provider.state.reviews[0].body = old; }; }
@@ -99,12 +102,22 @@ function mutate(f, kind) {
 }
 let checks = 0;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
+const physicalPreimages = new WeakMap();
 const assertProjectionScope = f => {
   if (mode !== 'db-only') return;
   assert.equal(f.artifacts.describe().database, true);
+  const physical = f.names.map(name => {
+    const file = path.join(f.root, 'docs/audit', name);
+    return { path: name, bytes: fs.existsSync(file) ? fs.readFileSync(file).toString('base64') : null };
+  });
+  // Minimal restart anchors can already exist in a DB-only source installation.
+  // Their retained bytes must not become projections of these canonical writes.
+  if (!physicalPreimages.has(f)) physicalPreimages.set(f, physical);
+  assert.deepEqual(physical, physicalPreimages.get(f), 'DB-only must preserve existing physical anchors and absence');
   for (const name of f.names) {
     assert.equal(f.artifacts.read(name, { required: true }).source, 'sqlite');
-    assert.equal(fs.existsSync(path.join(f.root, 'docs/audit', name)), false, 'DB-only must not fabricate a physical projection');
+    if (name.startsWith('sessions/')) assert.equal(fs.existsSync(path.join(f.root, 'docs/audit', name)), false,
+      'DB-only must not fabricate a detailed session projection');
   }
 };
 // A tiny preflight IR consumes the ACTUAL outputs with explicitly fixture-made
@@ -242,7 +255,7 @@ try {
   }
   for (const row of notApplicable) console.log('N/A ' + mode + ': ' + row.phase + ' ' + row.probe + ': ' + row.reason);
   evidence.push({ status: 'PASS', checks, mode, positiveOnly, grantOnly, not_applicable: notApplicable, skipped: [],
-    projection_scope: mode === 'db-only' ? 'absent; canonical SQLite required; no Git commit witness' : 'physical projection required',
+    projection_scope: mode === 'db-only' ? 'detailed session absent; existing minimal anchors unchanged; canonical SQLite required; no Git commit witness' : 'physical projection required',
     proof: 'real-application-canonical-metadata-Git-SQLite-with-authenticated-fixture-triage',
     fixture_key: 'public-key127', model_calls: 0, native_client: 'NOT_RUN', provider_transport: 'FIXTURE', production_dispatcher: 'NOT_RUN',
     full_standard_workflow: false, installed_archive: 'NOT_RUN', postgres: 'NOT_RUN', roots: owned });

@@ -3249,7 +3249,8 @@ owner and UNKNOWN, and cold preparation refuses to replay them.
 
 Projection fault injection applies to FILES and DUAL only. DB-only reports both
 projection probes as N/A, separately from passing checks, and asserts the
-absence of physical business projections before and after reopen/checkpoint.
+absence of detailed session projections before and after reopen/checkpoint,
+while retaining the exact bytes of any pre-existing minimal restart anchors.
 DUAL and DB-only also inject competing canonical content and metadata writes;
 all modes retain the foreign Git-file refusal. DB-only checkpoint verification
 requires zero Git commits and never creates a Git witness or visible export.
