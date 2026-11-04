@@ -1,5 +1,18 @@
 # Testing Guide
 
+`node tools/perf/verify-standard-pr-correction-decision-fixtures.mjs` checks the
+closed correction-review/human-source contracts, distinct wait/refuse/defer/cancel
+outcomes, exact subject binding, source reuse refusal and durable signed inbox v7
+on files/dual/db-only. It uses a trusted checkpoint-source double and a human
+provider double. `node tools/perf/verify-standard-pr-correction-review-ports-fixtures.mjs
+--mode=files|dual|db-only` separately checks review of actual canonical reopening
+and Git checkpoints, including the accepted no-effect DB-only boundary, fresh
+provider refusal, cancellation, retained ownership and foreign HEAD refusal.
+Its accepted records and provider authority are fixture doubles. Neither suite
+proves the production dispatcher chain, genuine human consent, admitted
+correction-cycle work, native execution or an installed archive. Published IR
+ordering and fixed bindings are checked by the composition suite.
+
 ### Explicit native authorization epochs
 
 Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs

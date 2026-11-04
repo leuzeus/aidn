@@ -149,7 +149,54 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
     [{ ref: 'git:pr-correction-checkpoint/' + operationId, sha256: shadowHash(result) },
       { ref: 'aidn:pr-correction-reopen/' + plan.input.reopen_operation_id, sha256: plan.source_sha256 }]);
   }
-  return Object.freeze({ reconcile, prepare: (instance, input, id, { signal } = {}) => prepare(instance, input, id, now(), false, signal),
+  // An accepted checkpoint can be reviewed without repeating its effect or
+  // renewing its plan. DB-only proves the original no-effect boundary directly;
+  // it never fabricates a Git commit as a witness.
+  async function readCompleted(instance, input, { signal } = {}) {
+    if (!/^op_[a-f0-9]{40}$/.test(input?.checkpoint_operation_id ?? '')) fail('STANDARD_PR_CORRECTION_CHECKPOINT_INPUT_INVALID');
+    const selected = readAcceptedOperation(instance, input.checkpoint_operation_id, 'session_pr_correction_checkpoint');
+    const plan = assertStandardPrCorrectionCheckpointPlan(selected.record.preview.prepared.plan);
+    const output = assertStandardOperationOutput(selected.output), retainedHash = shadowHash(selected);
+    if (selected.record.operation_id !== input.checkpoint_operation_id || plan.operation_id !== input.checkpoint_operation_id
+      || selected.record.preview.prepared.can_apply !== true || selected.record.preview.prepared.plan_sha256 !== shadowHash(plan)
+      || shadowHash(selected.record.preview.input) !== shadowHash(plan.input) || output.outcome !== 'completed'
+      || !['confirmed', 'no_effect'].includes(output.effect_status) || output.facts.session_pr_correction_checkpoint_completed !== true
+      || output.observations.reopen_operation_id !== plan.input.reopen_operation_id || output.observations.source_sha256 !== plan.source_sha256)
+      fail('STANDARD_PR_CORRECTION_CHECKPOINT_ACCEPTED_REQUIRED');
+    function observe() {
+      current(instance, signal);
+      if (artifacts.ownerPending()) fail('STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED');
+      if (shadowHash(readAcceptedOperation(instance, input.checkpoint_operation_id, 'session_pr_correction_checkpoint')) !== retainedHash)
+        fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+      const value = source(instance, plan.input), git = port(value), view = git.inspect();
+      if (shadowHash(value) !== plan.source_sha256 || plan.state_mode !== value.state_mode
+        || view.branch !== plan.git.observed.branch || view.ref !== plan.git.observed.ref || !view.index_clean || view.lock_present || view.changes.length
+        || shadowHash(view.identity) !== shadowHash(plan.git.observed.identity) || view.signing !== plan.git.observed.signing)
+        fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+      if (!plan.git.files.length) {
+        if (output.effect_status !== 'no_effect' || output.observations.git.effect_status !== 'no_effect'
+          || shadowHash(view) !== shadowHash(plan.git.observed)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_UNCONFIRMED');
+      } else {
+        const proof = git.inspectCommit({ ...plan.git, operation_id: plan.operation_id, prepared_at_ms: plan.prepared_at_ms, plan_sha256: shadowHash(plan) });
+        if (output.effect_status !== 'confirmed' || proof.status !== 'confirmed' || proof.commit_sha !== view.head
+          || output.observations.git.commit_sha !== proof.commit_sha || proof.parent_sha !== plan.git.observed.head)
+          fail('STANDARD_PR_CORRECTION_CHECKPOINT_UNCONFIRMED');
+      }
+      return { value, head: view.head, branch: view.branch };
+    }
+    const before = observe(), proof = await authority.verifyProviderSource(instance, before.value.correction_source, { signal });
+    if (proof?.origin_source_sha256 !== shadowHash(before.value.correction_source)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+    const after = observe();
+    if (shadowHash(before) !== shadowHash(after)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+    const origin = after.value.correction_source;
+    return { session_id: plan.session_id, checkpoint_operation_id: input.checkpoint_operation_id,
+      checkpoint_plan_sha256: shadowHash(plan), checkpoint_output_sha256: shadowHash(output),
+      reopen_operation_id: plan.input.reopen_operation_id, triage_operation_id: origin.triage_operation_id,
+      product_sha256: origin.product_sha256, provider_subject_sha256: shadowHash(origin.pull_request),
+      head_oid: after.head, head_branch: after.branch, remote_head_oid: origin.pull_request.head_oid,
+      base_oid: origin.pull_request.base_oid, state_mode: plan.state_mode, postimages: structuredClone(after.value.postimages) };
+  }
+  return Object.freeze({ reconcile, readCompleted, prepare: (instance, input, id, { signal } = {}) => prepare(instance, input, id, now(), false, signal),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized, signal } = {}) {
       const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
       active(signal);

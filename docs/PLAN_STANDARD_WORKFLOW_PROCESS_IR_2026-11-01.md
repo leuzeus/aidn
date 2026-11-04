@@ -4289,3 +4289,33 @@ plan/DoR/readiness/IMPLEMENTING, new-HEAD work/validation/reclosure and causal
 delivery. The protected earlier preflights qualify only their exact source;
 these new production edits need distinct validation. Ordinary entry remains
 unchanged and complete_standard_workflow remains false.
+
+### Ordinary correction human continuation, 2026-11-04
+
+The next bounded L2/L3 increment adds the actual human operation after the
+accepted correction checkpoint in the published JSON IR. Seven closed private
+contracts, a fixed checkpoint reader/review and signed decision inbox v7 bind
+the current checkpoint plan/output, triage, three canonical postimages, product,
+provider subject and HEAD/base. The dispatcher rechecks freshness around answer
+authentication and receipt acceptance and propagates cancellation. Historical
+inbox v1-v6 remain readable. A positive answer requests a new ordinary cycle;
+missing consent waits and refusal/deferral/cancellation carry no success fact.
+It changes no product permission or grant and adds no native/model call.
+
+The component contract/durable-inbox and actual-checkpoint review suites are
+the smallest targeted checks, with published ordering checked separately.
+Their trusted source and human/provider authorities remain doubles; final
+guarded results must identify their exact commit. No full-chain or genuine
+consent claim follows from those component checks.
+
+The dependent next increment must consume the accepted human decision through
+ordinary cycle admission and current continuity with the correct new branch,
+then freeze a plan and establish DoR/readiness/IMPLEMENTING before physical
+correction. New-HEAD validation, reclosure and causal delivery follow. The
+production producer/reopen/checkpoint/ack-loss UNKNOWN/mixed acceptance/cold
+authentication/two-observer-one-result-CAS/replay chain remains required,
+including general L4 recovery and expiry/fresh-grant cases. All other L1-L8 and
+A1-A10 alternatives, actual PR responses/resolutions/fresh merge consent and
+post-merge sync, native/human/provider/OS/configured-PostgreSQL/exact-installed
+qualification remain open. Ordinary entry and complete_standard_workflow=false
+remain unchanged. Earlier failures and uncertain effects stay immutable.

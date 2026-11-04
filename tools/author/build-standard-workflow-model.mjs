@@ -57,10 +57,12 @@ native("session_pr_triage", "pr_reviewer", "audit", "standard-pr-triage-report.v
 inputs.push({ node_id: "session_pr_triage", fields: operation("session_pr_triage", "selection_operation_id", "session_pr_triage_select") });
 op("session_pr_triage_evaluate", "session_pr_triage_evaluate", occurrence("session_pr_triage"));
 // A classified finding selects only the explicit canonical owner transition.
-// The following admitted correction cycle and fresh delivery remain outstanding.
+// Human continuation is bound to the accepted checkpoint. The subsequent
+// admitted correction cycle and fresh delivery remain outstanding.
 xor("session_pr_after_triage", [["corrections", "session_pr_correction", "session_pr_corrections_required"],
   ["effects_pending", "session_pr_effects_pending", null]]);
-seq("session_pr_correction", ["session_pr_correction_reopen", "session_pr_correction_checkpoint"]);
+seq("session_pr_correction", ["session_pr_correction_reopen", "session_pr_correction_checkpoint", "session_pr_correction_decide"]);
+op("session_pr_correction_decide", "session_pr_correction_decision", operation("session_pr_correction_decide", "checkpoint_operation_id", "session_pr_correction_checkpoint"));
 op("session_pr_correction_checkpoint", "session_pr_correction_checkpoint", operation("session_pr_correction_checkpoint", "reopen_operation_id", "session_pr_correction_reopen"));
 op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("session_pr_correction_reopen", "triage_operation_id", "session_pr_triage_evaluate"));
 seq("session_pr_effects_pending", []);

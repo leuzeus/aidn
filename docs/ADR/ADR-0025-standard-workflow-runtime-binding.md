@@ -75,6 +75,17 @@ any product edit. Reopening alone grants no native product admission and does
 not complete pr-orchestrate, validation, provider replies/resolutions or merge.
 The existing specific native write policy remains unchanged.
 
+The published correction prefix now asks a separate human operation after its
+accepted checkpoint. Its closed review binds that checkpoint's plan/output,
+original triage, exact canonical postimages, product/provider subject and current
+HEAD/base. The host freshly verifies the accepted checkpoint and provider before
+and after authenticating the answer. A distinct signed inbox v7 retains the
+human source; v1-v6 remain readable without conversion. Missing consent waits;
+refusal, deferral and cancellation retain their own outcomes. The sole positive
+fact requests an ordinary correction cycle. It does not admit that cycle,
+authorize product writes, accept findings or authorize merge. DB-only validates
+an accepted no-effect checkpoint directly and never fabricates a Git witness.
+
 The initial internal component prepares three exact canonical postimages under
 the existing local effect owner and metadata-preserving CAS/projection ports.
 Its source factory reauthenticates accepted triage/selection/receive/update

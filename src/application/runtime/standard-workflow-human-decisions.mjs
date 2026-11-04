@@ -1,3 +1,4 @@
+import { assertPrCorrectionQuestion, assertHumanPrCorrectionDecision, observeHumanPrCorrectionDecision, assertPrCorrectionDecisionOutput } from "../../core/workflow/standard-pr-correction-decision.mjs";
 import { assertSessionClosureQuestion, assertHumanSessionClosureDecision, observeHumanSessionClosureDecision, assertSessionClosureDecisionOutput } from "../../core/workflow/standard-session-closure-decision.mjs";
 import { assertBaselinePromotionQuestion, assertHumanBaselinePromotionDecision, observeHumanBaselinePromotionDecision } from "../../core/workflow/standard-baseline-promotion-decision.mjs";
 import { assertCycleClosureQuestion, assertHumanCycleClosureDecision, observeHumanCycleClosureDecision } from "../../core/workflow/standard-cycle-closure-decision.mjs";
@@ -6,13 +7,17 @@ import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
 export function createStandardHumanDecisions({ inbox, signer, source, projectionRequired }) {
+  const correction = record => record.intent.binding_ref === "session_pr_correction_decision";
   const integration = record => record.intent.binding_ref === "session_branch_integration_decision";
   const sessionClosure = record => record.intent.binding_ref === "session_closure_decision";
   const recovery = record => record.intent.binding_ref === "drift_recovery_decision";
   const promotion = record => record.intent.binding_ref === "baseline_promotion_decision";
   const closure = record => record.intent.binding_ref === "cycle_closure_decision";
   const question = record => {
-    if (!["session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+    if (!["session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+    if (correction(record)) return assertPrCorrectionQuestion({ contract_version: "standard-pr-correction-question.v1", operation_id: record.operation_id,
+      instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
+      session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
     if (integration(record)) return assertSessionBranchIntegrationQuestion({ contract_version: "standard-session-branch-integration-question.v1", operation_id: record.operation_id,
       instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
       session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
@@ -60,7 +65,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal) {
-    if (request.contract_version === "standard-session-branch-integration-question.v1") assertHumanSessionBranchIntegrationDecision(claim, request);
+    if (request.contract_version === "standard-pr-correction-question.v1") assertHumanPrCorrectionDecision(claim, request);
+    else if (request.contract_version === "standard-session-branch-integration-question.v1") assertHumanSessionBranchIntegrationDecision(claim, request);
     else if (request.contract_version === "standard-session-closure-question.v1") assertHumanSessionClosureDecision(claim, request);
     else if (request.contract_version === "standard-baseline-promotion-question.v1") assertHumanBaselinePromotionDecision(claim, request);
     else if (request.contract_version === "standard-cycle-closure-question.v1") assertHumanCycleClosureDecision(claim, request);
@@ -97,7 +103,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      return write({ contract_version: integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
+      return write({ contract_version: correction(record) ? "process-decision-inbox.v7" : integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
         source: claim, phase: "reserved", receipt_sha256: null }, null);
     },
     acknowledge(id, receipt) {
@@ -115,6 +121,12 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     },
     output(record, capture) {
       const request = question(record);
+      if (correction(record)) {
+        const observed = observeHumanPrCorrectionDecision({ question: request, decision: capture.source });
+        return assertPrCorrectionDecisionOutput({ contract_version: "standard-pr-correction-decision-output.v1", operation_ref: "session_pr_correction_decision", ...observed,
+          observations: { ...observed.observations, inbox_id: capture.inbox_id, source_ref: capture.source_ref },
+          evidence_refs: [{ ref: `aidn:decision-source/${capture.inbox_id}`, sha256: shadowHash(capture.source) }, ...capture.source.evidence_refs] });
+      }
       if (integration(record)) {
         const observed = observeHumanSessionBranchIntegrationDecision({ question: request, decision: capture.source });
         return assertSessionBranchIntegrationDecisionOutput({ contract_version: "standard-session-branch-integration-decision-output.v1", operation_ref: "session_branch_integration_decision", ...observed,

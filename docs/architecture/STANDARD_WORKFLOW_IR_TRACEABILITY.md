@@ -10,6 +10,14 @@ same owning session, current state and snapshot; prior closure bodies survive
 under historical headings. No cycle or product admission follows by implication.
 The new admitted correction cycle, actual correction, fresh delivery, technical
 responses/resolutions and explicit merge consent remain separate requirements.
+After the accepted checkpoint, `session_pr_correction_decide` resolves to the
+read-only human binding `session_pr_correction_decision` under these same rules
+and skill. Its input is only that checkpoint's operation identity. The fixed
+checkpoint observer and correction review build the subject; the signed v7
+inbox authenticates a human source and preserves older inbox readers. The
+positive result requests a correction cycle only. Ordinary cycle admission,
+branch continuity, plan freeze, DoR/readiness and IMPLEMENTING still precede
+all future product work and remain outstanding for this continuation.
 The component suites exercise source and writer separately; the versioned
 composed correction scenario is the host-path qualification target. Neither
 synthetic routing nor those separate suites establish its successful execution.

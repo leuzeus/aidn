@@ -1,3 +1,5 @@
+import prCorrectionReviewInput from "../contracts/workflow-definition/standard-pr-correction-review-input.v1.schema.json" with { type: "json" };
+import { assertPrCorrectionDecisionOutput } from "./standard-pr-correction-decision.mjs";
 import prCorrectionCheckpointInput from "../contracts/workflow-definition/standard-pr-correction-checkpoint-input.v1.schema.json" with { type: "json" };
 import prCorrectionCheckpointPlan from "../contracts/workflow-definition/standard-pr-correction-checkpoint-plan.v1.schema.json" with { type: "json" };
 import prCorrectionCheckpointOutput from "../contracts/workflow-definition/standard-pr-correction-checkpoint-output.v1.schema.json" with { type: "json" };
@@ -110,6 +112,10 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === "session_pr_correction_decision") {
+    if (checkShadowJson(value) || validateJsonSchema(value, prCorrectionReviewInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (["session_pr_correction_checkpoint", "session_pr_correction_reopen"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, operation === "session_pr_correction_checkpoint" ? prCorrectionCheckpointInput : prCorrectionInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -143,6 +149,7 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-pr-correction-decision-output.v1") return assertPrCorrectionDecisionOutput(value);
   if (["standard-pr-correction-checkpoint-output.v1", "standard-pr-correction-reopen-output.v1"].includes(value?.contract_version)) {
     if (checkShadowJson(value) || validateJsonSchema(value, value.contract_version === "standard-pr-correction-checkpoint-output.v1" ? prCorrectionCheckpointOutput : prCorrectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
