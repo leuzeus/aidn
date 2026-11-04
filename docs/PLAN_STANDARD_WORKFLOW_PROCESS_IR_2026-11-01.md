@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 127/125 et le modèle composé candidat en 68
+les composants startup/cycle en 129/127 et le modèle composé candidat en 70
 (107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
 63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -20,6 +20,13 @@ encore ouverts.
 
 ### Avancement d’exécution
 
+- Le checkpoint de correction possède un premier cas de reprise positive hors
+  ligne : commit exact déjà réalisé, propriétaire local libéré, dispatch signé
+  sans reçu. Le composant passe en fichiers/dual ; db-only refuse faute de témoin
+  Git. Le raccord source de l'hôte ne constitue pas une preuve de son exécution
+  positive. Réconciliation des inconnus avec propriétaire conservé, résultats
+  inconnus déjà reçus et autorité expirée restent requises. Voir la
+  [preuve bornée et ses limites](qualification/agentic-process/pr-correction-checkpoint-recovery-component-2026-11-04.json).
 - L0 : diagnostic terminé, conservé ci-dessous avec sa référence de code.
 - L1 : socle de contrats **VALIDÉ HORS LIGNE**. Contrats
   binding/intention/reçu/livraison de contrôle, formats
