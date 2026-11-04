@@ -8,6 +8,8 @@ import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
 import { closureHumanSource } from "./cycle-closure-fixture-lib.mjs";
+import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
+import { MODE_WORK_CONTRACT } from "../../src/core/workflow/standard-mode-work.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 
 // The production mixed host, shipped model, ports and journals are used here.
@@ -41,6 +43,14 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
       rationale: "Fixture report bound to the current authenticated context", evidence_refs: observed.evidence_refs,
     } };
   } });
+  // Missing or changed product context must fail with a bounded host code
+  // before authenticating an occurrence or allocating Native resources.
+  const authority = createStandardProcessAuthority({ configuration: f.configuration, model: f.model,
+    readSigningKey: () => f.key, readProductSha256: () => "a".repeat(64) });
+  for (const productSnapshot of [undefined, null, {}]) await assert.rejects(
+    authority.prepareActivityOutput({ contractRef: MODE_WORK_CONTRACT, productSha256: "a".repeat(64), productSnapshot }),
+    error => error.code === "STANDARD_MODE_WORK_PRODUCT_CHANGED");
+  assert.equal(f.t.sessions.length, 0);
   sourceFile = path.join(f.configuration.control_root, "mode-analysis-human-sources.json");
   fs.writeFileSync(sourceFile, "{}");
   const parameters = { session: { session_id: "S001", session_branch: "S001-analysis", objective: "Understand the current product without editing it" },
@@ -96,6 +106,11 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
   assert.equal(execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim(), originalHead);
   const complete = ["thinking_complete", "nonretained"].includes(disposition);
   const final = f.open().inspect();
+  const nativeResults = final.record.events.filter(row => row.kind === "result");
+  assert.equal(nativeResults.length, 1);
+  for (const kind of ["activity-context", "artifact-output", "native-result"])
+    assert.equal(nativeResults[0].result.evidence_refs.filter(row => row.ref.endsWith("-" + kind + ".json")).length, 1,
+      "Authenticated mode result must carry " + kind);
   assert.equal(final.cursor.status, complete ? "COMPLETED" : "WAITING");
   assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
   assert.equal(evaluation.effect_status, "no_effect");
