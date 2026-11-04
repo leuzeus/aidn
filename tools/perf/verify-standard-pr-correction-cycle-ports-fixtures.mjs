@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { createPrCorrectionReopenFixture } from './standard-pr-correction-fixture-lib.mjs';
 import { createStandardPrCorrectionCheckpoint } from '../../src/application/runtime/standard-pr-correction-checkpoint.mjs';
@@ -10,6 +11,9 @@ import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-sche
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { createStandardHumanDecisions } from '../../src/application/runtime/standard-workflow-human-decisions.mjs';
+import { createProcessDecisionInboxStore } from '../../src/adapters/runtime/process-decision-inbox-store.mjs';
+import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files', owned = [];
 const decisionV2 = process.argv.includes('--decision-v2');
 const decisionV3 = process.argv.includes('--decision-v3');
@@ -70,6 +74,30 @@ try {
     output: { contract_version: decisionV3 ? 'standard-pr-correction-decision-output.v3' : decisionV2 ? 'standard-pr-correction-decision-output.v2' : 'standard-pr-correction-decision-output.v1', operation_ref: 'session_pr_correction_decision', outcome: 'completed', effect_status: 'no_effect',
       facts: { session_pr_correction_cycle_requested: true }, observations: { ...(decisionV2 || decisionV3 ? { candidate_cycle: candidate, cycle_sha256: shadowHash(candidate) } : {}), question_sha256: H, choice: 'create-correction-cycle', review_sha256: shadowHash(review.plan.review),
         source_sha256: H, inbox_id: 'decision_' + '1'.repeat(40), source_ref: 'fixture:human' }, evidence_refs: [] } };
+  if (decisionV3) {
+    const key = randomBytes(32), signer = createOperationJournalSigner(() => key), claims = new Map();
+    Object.assign(human.record.intent, { instance_id: f.instance.instance_id, scope_id: 'fixture', occurrence_id: 'correction:0' });
+    human.record.results = [];
+    const decisions = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore({ targetRoot: f.root, stateMode: mode }), signer,
+      projectionRequired: mode === 'dual', source: {
+        read({ sourceRef, question }) {
+          const claim = { contract_version: 'human-pr-correction-decision.v3', source_kind: 'human', authority_id: 'fixture_operator', source_event_id: 'correction:chosen:1',
+            question_sha256: shadowHash(question), subject_sha256: shadowHash(question.review), choice: 'create-correction-cycle', selected_cycle: candidate,
+            cycle_sha256: shadowHash(candidate), rationale: 'Select the new corrective cycle for this current checkpoint.', evidence_refs: [{ ref: 'fixture/answer', sha256: H }] };
+          claims.set(sourceRef, structuredClone(claim)); return claim;
+        },
+        verify({ source, sourceRef }) { return { outcome: shadowHash(source) === shadowHash(claims.get(sourceRef)) ? 'verified' : 'rejected',
+          authority_id: source.authority_id, source_sha256: shadowHash(source) }; }
+      } });
+    assert.equal(Object.hasOwn(reviewInput, 'candidate_cycle'), false);
+    const capture = await decisions.reserve(human.record, 'fixture:human:selected');
+    assert.equal(capture.contract_version, 'process-decision-inbox.v9'); human.output = decisions.output(human.record, capture);
+    const receipt = { output_sha256: shadowHash(human.output) }; decisions.acknowledge(capture.inbox_id, receipt);
+    human.record.results.push({ output: human.output, receipt }); await decisions.verifyCaptured(human.record);
+    assert.deepEqual(human.output.observations.candidate_cycle, candidate);
+    console.log(JSON.stringify({ human_selection: 'actual_signed_inbox_v9_with_fixture_identity', selected_cycle: candidate,
+      candidate_parameter: false, operation_acceptance: 'fixture_capability' }));
+  }
   rows.set(op(3), human); assertStandardOperationOutput(human.output);
   let lateProbe = null;
   const make = (options = {}) => createStandardPrCorrectionCycle({ targetRoot: f.root, operations: f.ops, readAcceptedOperation,
