@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 131/129 et le modèle composé candidat en 72
+les composants startup/cycle en 132/130 et le modèle composé candidat en 73
 (107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
 63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -20,6 +20,27 @@ encore ouverts.
 
 ### Avancement d’exécution
 
+- Le replay réutilise les octets canoniques de chaque événement dans le seul
+  appel courant, conserve les empreintes de tous les préfixes et réutilise le
+  curseur calculé pendant la validation. Les contrôles de régression passent,
+  dont 96 événements avec inconnus et le replay exact du préfixe historique de
+  136 événements. Le profil local est descriptif et ne mesure pas le parcours
+  standard complet ; voir la
+  [preuve bornée](qualification/agentic-process/reducer-prefix-replay-2026-11-04.json).
+- La RCA historique des 31/22 réponses et la comparaison native mieux contrôlée
+  sont déjà documentées dans le
+  [rapport du 1er novembre](qualification/agentic-process/bpmn-v2-controlled-2026-11-01.md).
+  Elles portent sur la source `4501cbd3`, avec quatre cas IR/XML/XML/IR et
+  douze réponses par cas. Elles restent distinctes de la qualification du
+  workflow standard courant ; aucun nouvel essai historique n'est requis pour
+  recréer ce livrable existant.
+- Le driver prépare maintenant une perte d'acquittement après la libération
+  effective du propriétaire local du checkpoint. Le dispatcher doit produire
+  lui-même l'inconnu signé, puis la reprise à froid doit observer le commit,
+  ajouter un reçu distinct par CAS, conserver le précédent et comparer le replay
+  et la simulation. Ce nouveau chemin est **NON EXÉCUTÉ** ; sa syntaxe et les
+  suites hôte existantes ne prouvent pas sa réussite. Aucun nouvel essai long
+  n'a été lancé pour cette tranche.
 - Le journal conserve désormais les identifiants historiques du premier reçu
   et distingue les suivants par leur index ; la lecture d'un ancien reçu et
   son événement accepté restent possibles. Les 38 contrôles d'hôte passent

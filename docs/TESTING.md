@@ -3082,3 +3082,29 @@ Git effect. Unknown results retain their preparation and cannot retry the same
 head; fixture cleanup explicitly removes its own retained preparations.
 These are bounded component checks, not real GitHub network/native/archive or
 full standard qualification.
+
+### Canonical process-prefix replay
+
+`verify-process-operation-fixtures.mjs` also runs
+`verify-process-prefix-hashing-fixtures.mjs`. Its six pure checks construct
+96 events with independently hashed intent prefixes, unknown results and their
+distinct completed receipts. Every streamed simulation cursor and fingerprint
+must equal execution. Rehashed tampering, duplicate receipts and changed mutable
+input still refuse; inspection retains its frozen-cursor behavior. The replay
+reuses canonical bytes only within one call and does not cache external state
+or authorization. Keep the existing v1, agentic, BPMN and operation-host suites
+when changing this common reducer. The
+[local profile](qualification/agentic-process/reducer-prefix-replay-2026-11-04.json)
+is descriptive, separate from native and full-workflow performance.
+
+The explicit composed-driver option
+`--standard-composed-checkpoint-owner-ack-loss` requires the correction scenario,
+component-complete stop and files or dual mode. It loses the acknowledgement
+after the real local-owner unlink, allowing the real dispatcher to retain an
+unknown result. The cold helper then checks authenticated history, competing
+observations, a single appended result, exact old-receipt acceptance and exact
+replay/streamed simulation without another Git effect or native allocation.
+This option is prepared but NOT_RUN. Existing host/history checks and syntax
+checks do not qualify its composed execution. Provider, human and native
+identities remain fixture capabilities. Retained-owner closure, fresh recovery
+authority and positive db-only reconciliation require separate implementation.
