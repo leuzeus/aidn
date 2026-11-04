@@ -3351,6 +3351,14 @@ FILES positive case remains separate from these injected competing-writer cases.
 `verify-process-model-capacity-fixtures.mjs`, also selected by the operation
 suite, checks v1 at 128 nodes and v2 at 256, rejects one node above each limit,
 and compares initial execution/simulation identities through the same reducer.
+An additional v2 control-only model completes all 256 empty-sequence nodes and
+compares terminal cold replay/simulation without a model call. This establishes
+structural termination, not a business workflow. The context metadata suite
+`verify-standard-cycle-context-metadata-fixtures.mjs --mode=files|dual|db-only`
+checks a positive FILES wait and canonical classification-only changes after
+the actual runtime refresh CAS, requiring the same precise UNKNOWN reason and
+retained owner in DUAL/DB-only. The runtime gate selects these cases and the four
+late provider/authorization initializer cases once per mode/boundary.
 The composition suite checks the correction task and closure bindings against
 the new implementation/work/validation authorities. It leaves actual native
 work, cycle closure, session reclosure and causal redelivery unqualified.
