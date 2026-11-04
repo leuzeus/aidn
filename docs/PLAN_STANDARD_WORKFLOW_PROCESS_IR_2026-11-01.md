@@ -38,10 +38,15 @@ encore ouverts.
   effective du propriétaire local du checkpoint. Le dispatcher doit produire
   lui-même l'inconnu signé, puis la reprise à froid doit observer le commit,
   ajouter un reçu distinct par CAS, conserver le précédent et comparer le replay
-  et la simulation. Un nouvel essai FILES est **EN COURS** depuis un snapshot
-  figé, avec conservation du corpus en réussite comme en échec. Aucun verdict
-  terminal de récupération n'est acquis ; les suites hôte et la syntaxe restent
-  des preuves distinctes.
+  et la simulation. L'essai FILES figé est **TERMINAL FAIL** au triage natif de PR,
+  avant le checkpoint de correction : la réponse de fixture cherchait une
+  référence produit préfixée deux fois, absente du contexte réel. Les 144 événements
+  acceptés se rejouent et se simulent exactement. L'audit d'archive authentifie
+  huit allocations fermées et une échouée, leurs neuf réponses et les cumuls
+  d'origine, sans prouver l'extinction générale des ressources. La fixture
+  corrigée passe les gardes sur le contexte exact archivé et les 16 contrôles
+  de triage ; ce résultat ne termine pas la chaîne composée de récupération.
+  Voir la [preuve terminale et ses limites](qualification/agentic-process/composed-triage-terminal-failure-2026-11-04.json).
 - Le journal conserve désormais les identifiants historiques du premier reçu
   et distingue les suivants par leur index ; la lecture d'un ancien reçu et
   son événement accepté restent possibles. Les 38 contrôles d'hôte passent
@@ -4124,7 +4129,7 @@ remain unchanged/false; the entire L1-L8/A1-A10 objective remains incomplete.
 
 ### Expired cycle component bindings, 2026-11-04
 
-The published cycle-130 component now has a FILES proof with 20 checks through
+The published cycle-130 component now passes 20 checks per files/dual/db-only through
 its actual six-operation sequence, including the normal real checkpoint and
 refresh_after. Context refresh expires both before and after the checkpoint;
 cycle initialization also expires. Each refusal precedes business effects,
@@ -4141,10 +4146,15 @@ The targeted read-only session audit changed the fixture method, without changin
 a rule or gate. Isolated TTL probes do not renew native authority or counters;
 the normal checkpoint uses real wall time. Its expiry recovery is still due.
 
-This is two bindings at three occurrences on one source-installed FILES component,
-not the mixed standard facade, DUAL/db-only or the standard drift path. Runtime,
+This is two bindings at three occurrences on the source-installed cycle component.
+Physical DB/runtime byte invariance remains NOT_QUALIFIED on DUAL/db-only;
+FILES retains its full runtime-byte/directory check. The first DB-only attempt
+refused an already-clean initial Git commit; its distinct successful case uses
+an actual allow-empty checkpoint without visible DB exports. The mixed standard
+facade, checkpoint expiry and the standard drift path remain separate. Runtime,
 models, ordinary selection and complete_standard_workflow=false are unchanged.
-The separate frozen composed checkpoint case is still pending terminal collection.
+The separate frozen composed case is terminal FAIL before correction checkpoint;
+its exact archived prefix, failed allocation and original counters are retained.
 General unknown-owner recovery, native epochs, actual admitted correction cycles,
 physical corrections/reclosure/review/merge/sync, the remaining business expiries,
 all L1-L8/A1-A10 and genuine native/provider/human/PG/exact installed archive

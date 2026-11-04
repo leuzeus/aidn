@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
-import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario } from "./standard-pr-review-scenario-fixture-lib.mjs";
+import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario, standardReviewScenarioAnswer } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
 import { observeComposedHost, loseCheckpointReceipt, loseCheckpointOwnerReleaseAck } from "./standard-composed-observation-fixture-lib.mjs";
-import { standardPrTriageItems } from "../../src/core/workflow/standard-pr-triage.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
 import { attachCycleCloseRecordModel } from "./cycle-close-record-fixture-lib.mjs";
@@ -772,17 +771,7 @@ if (process.argv[2] === "--mixed-continue") {
         return { outcome: "completed", summary: "Scoped read-only plan proposal", report: cyclePlanProposal(observed) };
       if (observed.context.contract_version === "standard-cycle-audit-context.v1")
         return { outcome: "completed", summary: "Scoped read-only audit proposal", report: cycleAuditProposal(observed) };
-      if (observed.context.contract_version === "standard-pr-triage-context.v1") {
-        const context = observed.context;
-        return { outcome: "completed", summary: "Fixture-only review classification, effects pending", report: {
-          contract_version: "standard-pr-triage-report.v1", context_sha256: observed.context_sha256,
-          items: standardPrTriageItems(context.payload).map(row => ({ kind: row.kind, node_id: row.node_id, thread_id: row.thread_id,
-            body_sha256: row.body_sha256, disposition: standardScenarioName === "correction" ? "valid" : "not_a_finding",
-            rationale: standardScenarioName === "correction" ? "Fixture finding on the selected exported product value requires a new admitted cycle." : "The complete fixture body contains only a review acknowledgement.",
-            proposed_response: "", correction: standardScenarioName === "correction" ? "Correct the selected product value through a new admitted cycle and run impacted checks." : "",
-            evidence_refs: [{ ref: "github:" + row.kind + "/" + row.node_id, sha256: row.body_sha256 },
-              ...(standardScenarioName === "correction" ? [context.evidence_refs.find(ref => ref.ref === "product:product/app.mjs")] : [])] })) } };
-      }
+      if (observed.context.contract_version === "standard-pr-triage-context.v1") return standardReviewScenarioAnswer(observed, standardScenarioName);
       if (observed.context.contract_version === "standard-cycle-task-work-context.v1") {
         const context = observed.context;
         const request = { tool_name: "apply_patch", cwd: f.configuration.target_root,

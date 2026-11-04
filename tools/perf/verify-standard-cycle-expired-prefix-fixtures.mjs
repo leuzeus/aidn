@@ -65,7 +65,9 @@ if (process.argv[2] === "--prepare") {
     assert.equal((await operations.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
     prepared = await operations.prepareMode({ session_id: session.session_id, mode: "COMMITTING" });
     assert.equal((await operations.applyMode(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
-    git(target, "add", "."); git(target, "-c", "core.hooksPath=NUL", "commit", "-m", "fixture session checkpoint");
+    // DB-only can already have a clean checkout: still observe the external
+    // checkpoint with a real commit, without manufacturing visible exports.
+    git(target, "add", "."); git(target, "-c", "core.hooksPath=NUL", "commit", "--allow-empty", "-m", "fixture session checkpoint");
     const privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-cycle-expired-")); owned.push(privateRoot);
     fs.writeFileSync(path.join(privateRoot, "host.key"), randomBytes(32));
     fs.writeFileSync(path.join(privateRoot, "clock.json"), "null");

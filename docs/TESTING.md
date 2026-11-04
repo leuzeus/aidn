@@ -3105,8 +3105,24 @@ unknown result. The cold helper then checks authenticated history, competing
 observations, a single appended result, exact old-receipt acceptance and exact
 replay/streamed simulation without another Git effect or native allocation.
 The preparation evidence precedes a new retained FILES execution on a frozen
-source snapshot. That run is in progress with no terminal recovery verdict.
-Existing host/history checks and syntax do not qualify its composed execution. Provider, human and native
+source snapshot. That original run is terminal FAIL at native PR triage, before
+the correction checkpoint. Its 144-event prefix replays and simulates exactly;
+no checkpoint unknown or recovered receipt exists. The
+[terminal failure record](qualification/agentic-process/composed-triage-terminal-failure-2026-11-04.json)
+preserves all nine fixture-response debits and the failed allocation. The original
+success-only native audit refuses that failed phase. A separate archive-only audit
+authenticates the eight closed and one failed allocations, controls and counters;
+it does not change the case verdict or prove general OS resource closure.
+
+The composed triage fixture now resolves product evidence from each supplied
+snapshot path and hash. Its earlier hard-coded `product:product/app.mjs` did not
+exist in the actual `product:app.mjs` context and produced a null evidence entry
+rejected by the existing native-answer guard. A focused check reconstructs that
+refusal from the exact archived context, then validates the corrected answer and
+triage. The 16-check triage suite covers root-relative, checkout-prefixed and nested
+paths, missing/hash-mismatched evidence and the old null-answer refusal. The raw
+old answer itself was not retained. These checks qualify fixture construction;
+they do not complete the composed recovery chain. Provider, human and native
 identities remain fixture capabilities. Retained-owner closure, fresh recovery
 authority and positive db-only reconciliation require separate implementation.
 Use `--retain-always` to preserve the owned corpus after either success or
@@ -3136,7 +3152,11 @@ hook and refresh_after. Both context refreshes and initialization expire before
 effects. Accepted no-effect refusals survive cold same-subject preparation, fresh
 explicit grants/intents, retained redispatch and exact common-reducer simulation.
 FILES checks canonical business state, Git and every hidden runtime byte/directory
-around expired dispatch. DUAL and db-only have not run this new suite.
+around expired dispatch. DUAL and db-only also pass 20 checks each. These two
+modes verify canonical business state and Git; physical DB/runtime byte invariance
+remains NOT_QUALIFIED. DB-only's initial already-clean checkout uses a real
+`--allow-empty` session checkpoint, without generating visible DB exports. Its
+earlier nothing-to-commit failure remains retained.
 
 The component receives an actual external session Git checkpoint and an actual
 R05 hook on a stable session/cycle objective. The checkpoint itself is not expired.

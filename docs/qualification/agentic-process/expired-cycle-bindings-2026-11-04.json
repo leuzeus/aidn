@@ -33,8 +33,64 @@
       "installed_archive": "NOT_RUN",
       "full_standard_workflow": "NOT_COMPLETE"
     },
-    "dual": "NOT_RUN",
-    "db-only": "NOT_RUN"
+    "dual": {
+      "status": "PASS",
+      "checks": 20,
+      "state_mode": "dual",
+      "model_revision": 130,
+      "model_sha256": "b6a74f7bacb936a769da6657ee552a6f0a69815bbd2b822bfa600fe95f25fcbe",
+      "scope": "source-installed-published-cycle-component",
+      "expired_nodes": [
+        "refresh_before",
+        "initialize",
+        "refresh_after"
+      ],
+      "expired_bindings": [
+        "cycle_context_refresh",
+        "cycle_initialize"
+      ],
+      "physical_runtime_bytes": "NOT_QUALIFIED",
+      "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+      "authorization": "fixture-capability",
+      "native_allocations": 0,
+      "model_calls": 0,
+      "checkpoint": "actual-fixed-hook-completed-not-expired",
+      "external_r05_precondition": "actual-fixed-drift-hook",
+      "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+      "mixed_facade": "NOT_USED",
+      "native": "NOT_RUN",
+      "installed_archive": "NOT_RUN",
+      "full_standard_workflow": "NOT_COMPLETE"
+    },
+    "db-only": {
+      "status": "PASS",
+      "checks": 20,
+      "state_mode": "db-only",
+      "model_revision": 130,
+      "model_sha256": "b6a74f7bacb936a769da6657ee552a6f0a69815bbd2b822bfa600fe95f25fcbe",
+      "scope": "source-installed-published-cycle-component",
+      "expired_nodes": [
+        "refresh_before",
+        "initialize",
+        "refresh_after"
+      ],
+      "expired_bindings": [
+        "cycle_context_refresh",
+        "cycle_initialize"
+      ],
+      "physical_runtime_bytes": "NOT_QUALIFIED",
+      "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+      "authorization": "fixture-capability",
+      "native_allocations": 0,
+      "model_calls": 0,
+      "checkpoint": "actual-fixed-hook-completed-not-expired",
+      "external_r05_precondition": "actual-fixed-drift-hook",
+      "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+      "mixed_facade": "NOT_USED",
+      "native": "NOT_RUN",
+      "installed_archive": "NOT_RUN",
+      "full_standard_workflow": "NOT_COMPLETE"
+    }
   },
   "evidence": {
     "case_label": "source22-expired-cycle-component-files-r2-20261104",
@@ -71,6 +127,12 @@
       "exit": 1,
       "passing_checks": 12,
       "observation": "Real strict R05 hook refused objective_delta because session and cycle objectives differed. Preserved as genuine gate refusal, not product failure."
+    },
+    {
+      "label": "source23-expired-cycle-component-db-only-20261104",
+      "exit": 1,
+      "passing_checks": 0,
+      "observation": "The real initial Git commit refused nothing-to-commit on an already clean DB-only fixture. A new independent case uses an explicit real --allow-empty checkpoint without exporting canonical DB artifacts."
     }
   ],
   "diagnosis": {
@@ -82,14 +144,47 @@
   "limits": [
     "Source-installed fixture using the published cycle130 component, not the mixed standard facade or full standard workflow.",
     "Two bindings expire at three occurrences. The actual cycle checkpoint runs normally; expired checkpoint continuation is not qualified.",
-    "Only FILES is executed here; DUAL/db-only continuation and physical DB/runtime byte proof remain due.",
+    "FILES, DUAL and db-only pass the complete selected component. Physical DB/runtime byte invariance remains NOT_QUALIFIED for DUAL and db-only.",
     "Isolated host TTL clocks are test capabilities; normal hooks use real wall time. No native authorization, deadline or counter is renewed.",
     "Actual Git and fixed hooks supply external component preconditions. Stable-objective case does not qualify the standard drift path.",
     "Fixture authorization, zero native allocation/model calls; no genuine native/provider/human/PG/exact installed archive qualification.",
-    "Frozen composed source21 case remains separate; no terminal checkpoint reconciliation verdict established by this component."
+    "The separate frozen composed source21 case is terminal FAIL at native triage, before correction checkpoint recovery. Its archived prefix replays exactly; this component does not qualify composed reconciliation."
   ],
   "full_standard_workflow": false,
   "ordinary_selection_changed": false,
   "runtime_or_model_changed": false,
-  "adr_change_required": false
+  "adr_change_required": false,
+  "evidence_by_mode": {
+    "files": {
+      "case_label": "source22-expired-cycle-component-files-r2-20261104",
+      "source_head": "f3f0bc121d5f8b119281f34de67066acdf7407b4",
+      "source_file_sha256": "a51a8a8aca0e080a4205f06e9898b9211a17ddbdc1211b86c7521368da6ac18b",
+      "source_files_compared": 2101,
+      "source_initial_equals_terminal": true,
+      "stdout_sha256": "f81e592a1196753915044d568c376141b5c8a5e493964662c619aecdd5d1f5f4",
+      "exit": 0,
+      "started_utc": "2026-11-04T12:05:19.114092+00:00",
+      "terminal_utc": "2026-11-04T12:09:10.363895+00:00"
+    },
+    "dual": {
+      "case_label": "source23-expired-cycle-component-dual-20261104",
+      "source_head": "aefc5bf6c57860566ee7af87300adaf57d2c63fa",
+      "source_files_compared": 2102,
+      "source_initial_equals_terminal": true,
+      "exit": 0,
+      "started_utc": "2026-11-04T12:20:37.853680+00:00",
+      "terminal_utc": "2026-11-04T12:24:01.643436+00:00",
+      "stdout_sha256": "d3cab6d97de5884fe2a3fb348524175fcba3b0a52cedf07263d9740a88138aeb"
+    },
+    "db-only": {
+      "case_label": "source23-expired-cycle-component-db-only-r2-20261104",
+      "source_head": "aefc5bf6c57860566ee7af87300adaf57d2c63fa",
+      "source_files_compared": 2102,
+      "source_initial_equals_terminal": true,
+      "exit": 0,
+      "started_utc": "2026-11-04T12:27:21.464956+00:00",
+      "terminal_utc": "2026-11-04T12:30:48.298375+00:00",
+      "stdout_sha256": "a4b527c7e9f90ba802e0e2c0b8a3a65fa18200700c6f47d5001f7a11c5d72e14"
+    }
+  }
 }

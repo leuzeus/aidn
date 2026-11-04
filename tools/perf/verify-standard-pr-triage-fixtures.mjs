@@ -9,6 +9,7 @@ import { createStandardPrTriageSource } from '../../src/application/runtime/stan
 import { assertNativeActivityAnswer, nativeActivityOutputInstructions } from '../../src/core/workflow/native-activity-output.mjs';
 import { assertStandardOperationInput, assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
+import { standardReviewScenarioAnswer } from './standard-pr-review-scenario-fixture-lib.mjs';
 
 // Pure/app-component doubles: no canonical accepted-receipt, native identity,
 // event authentication or live provider qualification is claimed by this suite.
@@ -65,6 +66,27 @@ await test('selection and native context retain every body chunk and exact produ
   assert.equal(context.payload.observation.observations.evidence.reviews[0].body_chunks.join(''), body);
   assert.deepEqual(context.payload, payload); assert.equal(context.payload_sha256, shadowHash(payload));
   assert.equal(context.product_sha256, product); assert.equal(material.context_sha256, shadowHash(context));
+});
+await test('composed correction answer uses the actual product-root-relative evidence and passes native and triage guards', () => {
+  for (const file of ['app.mjs', 'product/app.mjs', 'nested/other.mjs']) {
+    const snapshot = [{ ...productSnapshot[0], path: file }];
+    const selected = structuredClone(selection); selected.output.observations.product_sha256 = shadowHash(snapshot);
+    const built = buildStandardPrTriageContext({ ...contextArgs, selection: selected, productSnapshot: snapshot, productSha256: shadowHash(snapshot) });
+    const answer = standardReviewScenarioAnswer(built, 'correction');
+    assertNativeActivityAnswer(answer, PR_TRIAGE_CONTRACT, built.context_sha256);
+    const output = run(answer.report, built.context);
+    assert.equal(output.facts.session_pr_corrections_required, true);
+    assert.ok(answer.report.items.every(row => row.evidence_refs.some(ref => ref.ref === `product:${file}`)));
+    const missing = structuredClone(built); missing.context.evidence_refs = missing.context.evidence_refs.filter(row => !row.ref.startsWith('product:'));
+    assert.throws(() => standardReviewScenarioAnswer(missing, 'correction'), /STANDARD_FIXTURE_PRODUCT_EVIDENCE_REQUIRED/);
+    const wrongHash = structuredClone(built); wrongHash.context.evidence_refs.find(row => row.ref === `product:${file}`).sha256 = H('f');
+    assert.throws(() => standardReviewScenarioAnswer(wrongHash, 'correction'), /STANDARD_FIXTURE_PRODUCT_EVIDENCE_REQUIRED/);
+    if (file === 'app.mjs') {
+      const old = structuredClone(answer);
+      old.report.items[0].evidence_refs[1] = built.context.evidence_refs.find(row => row.ref === 'product:product/app.mjs');
+      assert.throws(() => assertNativeActivityAnswer(JSON.parse(JSON.stringify(old)), PR_TRIAGE_CONTRACT, built.context_sha256), { code: 'PROCESS_SESSION_ANSWER_INVALID' });
+    }
+  }
 });
 await test('valid corrections and invalid technical replies remain obligations after classification', async () => {
   const output = await source().evaluate({}, evaluateInput); assertStandardOperationOutput(output);
