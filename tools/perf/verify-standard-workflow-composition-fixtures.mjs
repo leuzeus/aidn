@@ -32,7 +32,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 113); assert.equal(assets.catalog.activities.length, 17);
+  assert.equal(assets.catalog.bindings.length, 117); assert.equal(assets.catalog.activities.length, 19);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -242,7 +242,7 @@ test("corrective redelivery and review select fresh integration, cycle and updat
 });
 test("completion of this component cannot claim completion of the standard workflow", () => {
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
-  for (const id of ["existing_session_resume", "thinking_work", "exploring_work_and_spike_conversion", "cycle_choice_and_carryover",
+  for (const id of ["existing_session_resume", "thinking_session_closure", "exploring_experiments_and_spike_conversion", "cycle_choice_and_carryover",
     "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"])
     assert.ok(assets.catalog.scope.remaining_activities.includes(id));
 });

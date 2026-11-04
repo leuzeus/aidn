@@ -2,6 +2,19 @@
 
 ## Status
 
+The candidate composed model now has explicit read-only THINKING and EXPLORING
+analysis routes. Each uses a deterministic mode preflight, a typed native
+analysis and a fresh deterministic evaluation. The report binds the session
+objective, canonical content and metadata, product hash and Git observation.
+An accepted preflight is authenticated by the same operation/native authority;
+it grants neither product effects nor exploration retention. THINKING reasoning
+and nonretained EXPLORING analysis may complete this component only. Missing
+information and retention requests retain blocked/no-effect results. An admitted
+SPIKE conversion, experiments with effects, session closure and resumed decisions
+remain separate outstanding routes. This is source wiring, not native or installed
+qualification. The context/report remains evidence of the existing process
+operation and native-result concepts, without a new persistence authority.
+
 The correction continuation now has source wiring for a fresh start occurrence,
 optional promotion, new session R05 and human closure, final hook, delivery and
 branch integration. Each consumes the new cycle's operations. This wiring is

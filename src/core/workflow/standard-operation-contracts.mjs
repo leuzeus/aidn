@@ -1,3 +1,6 @@
+import modeWorkPreflight from "../contracts/workflow-definition/standard-mode-work-preflight-input.v1.schema.json" with { type: "json" };
+import modeWorkEvaluate from "../contracts/workflow-definition/standard-mode-work-evaluate-input.v1.schema.json" with { type: "json" };
+import modeWorkOutput from "../contracts/workflow-definition/standard-mode-work-output.v1.schema.json" with { type: "json" };
 import prCorrectionReviewInputV2 from "../contracts/workflow-definition/standard-pr-correction-review-input.v2.schema.json" with { type: "json" };
 import prCorrectionReviewInputV3 from "../contracts/workflow-definition/standard-pr-correction-review-input.v3.schema.json" with { type: "json" };
 import prCorrectionCycleInput from '../contracts/workflow-definition/standard-pr-correction-cycle-input.v1.schema.json' with { type: 'json' };
@@ -118,6 +121,10 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (["mode_work_preflight", "mode_work_evaluate"].includes(operation)) {
+    if (checkShadowJson(value) || validateJsonSchema(value, operation === "mode_work_preflight" ? modeWorkPreflight : modeWorkEvaluate, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === 'session_pr_correction_cycle_initialize') {
     if (checkShadowJson(value) || validateJsonSchema(value, prCorrectionCycleInput, '$', { contractKind: 'workflow-definition' }).length) fail('STANDARD_OPERATION_INPUT_INVALID');
     return value;
@@ -159,6 +166,13 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-mode-work-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, modeWorkOutput, "$", { contractKind: "workflow-definition" }).length
+      || (value.outcome === "blocked" ? Object.keys(value.facts).length !== 0
+        : value.operation_ref === "mode_work_preflight" ? shadowHash(value.facts) !== shadowHash({ mode_work_ready: true })
+        : value.facts.mode_analysis_completed !== true || typeof value.facts.exploration_nonretained !== "boolean" || Object.keys(value.facts).length !== 2)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === 'standard-pr-correction-cycle-output.v1') {
     if (checkShadowJson(value) || validateJsonSchema(value, prCorrectionCycleOutput, '$', { contractKind: 'workflow-definition' }).length
       || (value.outcome === 'completed' ? value.effect_status !== 'confirmed' || value.facts.session_pr_correction_cycle_initialized !== true || value.facts.cycle_dor_ready !== false : Object.keys(value.facts).length !== 0)) fail('STANDARD_OPERATION_OUTPUT_INVALID');

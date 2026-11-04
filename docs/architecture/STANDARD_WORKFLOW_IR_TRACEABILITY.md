@@ -1,5 +1,18 @@
 # Standard workflow IR traceability
 
+SOURCE38 replaces the four empty THINKING/EXPLORING sequences with mode-specific
+preflight, read-only analysis and report evaluation nodes. `mode_work_preflight`
+authenticates the current session/mode and fresh admission. The native policy
+permits `read:product` only. `mode_work_evaluate` authenticates the accepted
+native result and preflight, then checks the current objective, canonical content
+and metadata, product and Git observations. `thinking_complete` and `nonretained`
+finish the analysis component. `waiting` and `retain_requested` remain durable
+blocked/no-effect operations without success facts. SPIKE conversion, retained
+experiments, session closure and continuation after a new decision are still due.
+The new suites distinguish offline typed reports/reducer simulation from real
+artifact/Git context reads; neither is mixed native execution. Qualification is
+pending until an exact frozen source has run the relevant gates.
+
 The separate `composed-correction.v3.json` fixture targets both cycles in model
 101, including the accepted human-selected cycle fields, ordinary planning and
 readiness, actual admitted work, independent audit, retained closure, optional
@@ -9,7 +22,7 @@ initializer output. Its two planned checks independently expect values 2 and 3;
 neither check accepts both values. This driver preparation and its synthetic
 budget preflight are not evidence of a successful causal execution. The earlier
 v2 nine-response prefix and all its original authorities remain separate.
-General startup/session/mode/cycle choices, repeated corrections, A2, general L4,
+General startup/session/mode/cycle choices, repeated corrections, the remaining A2 routes, general L4,
 provider responses/resolutions, merge and full L1–L8/A1–A10 remain outstanding.
 The [bounded preparation record](../qualification/standard-workflow/composed-human-selected-cycle-driver-2026-11-04.json)
 retains six terminal checks on two exact sources and the separate pending full

@@ -37,11 +37,18 @@ seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_ro
 nodes.push(...structuredClone(startup.nodes)); inputs.push(...structuredClone(startup.data_bindings.inputs));
 nodes.find(row => row.id === "startup").children = startup.nodes.find(row => row.id === "startup").children.filter(id => id !== "session_start_finalize");
 xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking", "thinking_handoff", "mode_thinking"], ["exploring", "exploring_handoff", "mode_exploring"]]);
-// These are component boundaries, not successful completion of either mode's
-// standard workflow. The catalog keeps both work routes explicitly outstanding.
-seq("thinking_handoff", []); seq("exploring_handoff", []);
+// Analysis routes have read-only native policies. Exploration retention remains
+// a durable blocked result until a separate explicit SPIKE admission exists.
+for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
+  seq(`${prefix}_handoff`, [`${prefix}_analysis`, `${prefix}_evaluate`]);
+  native(`${prefix}_analysis`, "mode_analyst", `${prefix}_analysis_policy`, "standard-mode-work-report.v1", ["context-reload"], ["SPEC-R01", "SPEC-R02"]);
+  op(`${prefix}_evaluate`, "mode_work_evaluate", occurrence(`${prefix}_analysis`));
+}
 xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
-seq("thinking_preflight", []); seq("exploring_preflight", []);
+for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
+  seq(`${prefix}_preflight`, [`${prefix}_admit`]);
+  op(`${prefix}_admit`, "mode_work_preflight", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, mode: { source: "literal", value: mode } });
+}
 seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",
   "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
 seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_wait", "session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate", "session_pr_after_triage"]);
@@ -260,12 +267,14 @@ const policy = (id, assurance_profile, allowed_permissions, independent_review =
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
   participants: [{ id: "project" }], roles: [
+    { id: "mode_analyst", role: "auditor", action: "analyze", skills: ["context-reload"] },
     { id: "drift_auditor", role: "auditor", action: "analyze", skills: ["drift-check"] },
     { id: "planner", role: "auditor", action: "analyze", skills: ["cycle-create"] },
     { id: "implementer", role: "executor", action: "implement", skills: [] },
     { id: "auditor", role: "auditor", action: "audit", skills: ["cycle-close"] },
     { id: "pr_reviewer", role: "auditor", action: "audit", skills: ["pr-orchestrate"] }],
-  policies: [policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
+  policies: [{ ...policy("thinking_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "THINKING" },
+    { ...policy("exploring_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
   data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: ["session", "cycle"], inputs } };
@@ -277,7 +286,7 @@ if (existing) {
 assertAgenticProcessModel(model);
 const catalog = { contract_version: "standard-workflow-catalog.v1", component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
-    entry_conditions: ["fresh_session_admission", "single_new_cycle"], remaining_activities: ["existing_session_resume", "thinking_work", "exploring_work_and_spike_conversion",
+    entry_conditions: ["fresh_session_admission", "single_new_cycle"], remaining_activities: ["existing_session_resume", "thinking_session_closure", "exploring_experiments_and_spike_conversion",
       "cycle_choice_and_carryover", "governed_git_checkpoints", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },
   model: { path: modelPath, sha256: shadowHash(model), model_id: model.model_id, revision: model.revision },
   specification: { path: "docs/SPEC.md", sha256: standardAssetHash(read("docs/SPEC.md")) },

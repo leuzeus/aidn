@@ -9,8 +9,11 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Avancement courant au 4 novembre 2026 : les composants startup/cycle sont en
-159/157 et le modèle composé candidat en 101 (186 nœuds, 113 occurrences
-d’opération, 17 activités). Le snapshot SOURCE34 précédent était 155/153/97 ;
+161/159 avec SOURCE38 et le modèle composé 103 reçoit les routes
+d'analyse THINKING/EXPLORING (192 nœuds, 117 occurrences d’opération,
+19 activités). La source exacte sera conservée avec les résultats de
+qualification. Le snapshot SOURCE37 était 159/157/101 (186/113/17),
+et SOURCE34 était 155/153/97 ;
 le snapshot 147/145/89 (147/90/14) était une étape antérieure, pas les assets
 courants. Les preuves conservent chacune leur source exacte. Les raccordements
 SOURCE32 de promotion/reclôture avec histoire, puis SOURCE33 de redelivery et
@@ -20,6 +23,22 @@ inchangée et `complete_standard_workflow=false`. Les constats initiaux restent
 datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
+
+- SOURCE38 raccorde les quatre séquences de mode auparavant vides : préflight
+  déterministe, analyse native en lecture seule, puis évaluation du rapport lié
+  au contexte courant. THINKING peut terminer son analyse ; EXPLORING peut
+  terminer une analyse non retenue. Les demandes de rétention et les informations
+  manquantes restent bloquées sans fait de réussite ni autorisation d'effet.
+  Fichiers : `standard-mode-work`, lecteur de contexte canonique, contrats privés,
+  autorité/hôte, builder et assets IR. Dépendances : mode authentifié existant,
+  opérations acceptées et même autorité native. Critères : rapport typé,
+  lecture seule, contrôle contenu/métadonnées/produit/Git, attente non réussie,
+  rejeu du même réducteur ; suites ciblées hors ligne et ports de contexte
+  FILES/DUAL/DB-only à exécuter sur une nouvelle source gelée. Ces preuves
+  restent à obtenir. La conversion SPIKE admise, les expériences avec effets,
+  la clôture dans ces modes et la reprise après nouvelle décision restent à
+  raccorder et qualifier. A2 entier et l'ensemble L1–L8/A1–A10 restent ouverts.
+  Le C2 SOURCE37 continue sur sa source gelée distincte, sans nouvelle autorité.
 
 - SOURCE37 ajoute un scénario composé v3 distinct pour le parcours C2 complet
   du modèle 101 : choix humain libre, initialisation, planification depuis le

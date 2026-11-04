@@ -1,3 +1,5 @@
+import { MODE_WORK_CONTRACT, evaluateStandardModeWork } from "../../core/workflow/standard-mode-work.mjs";
+import { readStandardModeWorkContext } from "./standard-mode-work-context.mjs";
 import { readStandardCycleCloseContext } from "./standard-cycle-close-context.mjs";
 import { PR_TRIAGE_CONTRACT } from "../../core/workflow/standard-pr-triage.mjs";
 import { buildStandardPrTriageContext } from "./standard-pr-triage-context.mjs";
@@ -128,6 +130,10 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return result.value;
   }
   async function prepareActivityOutput({ contractRef, productSha256, instance, occurrenceId, productSnapshot }) {
+    if (contractRef === MODE_WORK_CONTRACT) {
+      if (shadowHash(productSnapshot) !== productSha256 || productSha256 !== readProductSha256?.()) fail("STANDARD_MODE_WORK_PRODUCT_CHANGED");
+      return prepareModeWorkActivity(instance);
+    }
     if (contractRef === PR_TRIAGE_CONTRACT) return preparePrTriageActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_AUDIT_CONTRACT) return prepareAuditActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_WORK_CONTRACT) return prepareWorkActivity({ instance, occurrenceId, productSha256, productSnapshot });
@@ -165,6 +171,34 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (answer.answer.outcome !== "completed") fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     return { report: answer.answer.report, reference: references[0], producer: { instance_id: instance.instance_id, model_sha256: instance.model_sha256,
       occurrence_id: occurrenceId, result_id: event.result.result_id } };
+  }
+  const observeModeWorkContext = () => readStandardModeWorkContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
+    productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
+  async function preflightModeWork(instance, input) {
+    assertStandardOperationInput("mode_work_preflight", input); authenticate(instance);
+    const observed = observeModeWorkContext(), admission = await preWriteAdmit({ targetRoot: configuration.target_root, skill: "context-reload" });
+    const fresh = observeModeWorkContext();
+    if (fresh.context_sha256 !== observed.context_sha256) fail("STANDARD_MODE_WORK_CONTEXT_CHANGED");
+    if (observed.context.session_id !== input.session_id || observed.context.mode !== input.mode) fail("STANDARD_MODE_WORK_MODE_REQUIRED");
+    const ready = admission.ok === true && admission.activation?.active === true && ["admitted", "admitted_with_warnings"].includes(admission.admission_status);
+    return { contract_version: "standard-mode-work-output.v1", operation_ref: "mode_work_preflight", outcome: ready ? "completed" : "blocked", effect_status: "no_effect",
+      facts: ready ? { mode_work_ready: true } : {}, observations: { session_id: input.session_id, mode: input.mode, context_sha256: fresh.context_sha256,
+        admission_status: admission.admission_status, reason_code: ready ? "STANDARD_MODE_WORK_READY" : "STANDARD_MODE_WORK_ADMISSION_BLOCKED" }, evidence_refs: fresh.evidence_refs };
+  }
+  function prepareModeWorkActivity(instance) {
+    const auth = nativeReservation ? { reservation: nativeReservation } : {};
+    authenticate(instance, auth);
+    const id = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "mode_work_preflight").at(-1)?.intent.operation_id;
+    if (!id) fail("STANDARD_MODE_WORK_PREFLIGHT_REQUIRED");
+    const accepted = acceptedOperation(instance, id, "mode_work_preflight", auth), current = observeModeWorkContext();
+    if (accepted.output.facts.mode_work_ready !== true || accepted.record.preview.input.session_id !== current.context.session_id
+      || accepted.record.preview.input.mode !== current.context.mode) fail("STANDARD_MODE_WORK_PREFLIGHT_REQUIRED");
+    const context = { ...current.context, preflight_operation_id: id };
+    return { ...current, context, context_sha256: shadowHash(context) };
+  }
+  async function evaluateModeWork(instance, input) {
+    assertStandardOperationInput("mode_work_evaluate", input);
+    return evaluateStandardModeWork(readActivityOutput(instance, input.report_occurrence_id, MODE_WORK_CONTRACT), prepareModeWorkActivity(instance));
   }
   async function evaluateDriftReport(instance, input) {
     assertStandardOperationInput("drift_report_evaluate", input);
@@ -548,6 +582,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation,
+  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation,
     evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

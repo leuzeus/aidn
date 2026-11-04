@@ -1,5 +1,17 @@
 # Testing Guide
 
+For the read-only THINKING/EXPLORING analysis component, run
+`node tools/perf/verify-standard-mode-work-fixtures.mjs` for typed reports,
+negative/wait outcomes and the published IR/common reducer simulation. Run
+`node tools/perf/verify-standard-mode-work-context-fixtures.mjs --mode=files`
+(also `dual` and `db-only`) for actual canonical artifact and Git context reads.
+The latter retains every disposable fixture project, including failed cases.
+These are separate evidence scopes: context ports and synthetic receipts do not
+qualify mixed native execution, SPIKE conversion, resumed decisions, genuine
+human decisions or installed archives. Run the composition and startup-model
+checks when their published pins change; keep full A2 and STANDARD acceptance
+open until their missing routes and execution evidence exist.
+
 `node tools/perf/verify-standard-pr-correction-decision-fixtures.mjs` checks the
 closed correction-review/human-source contracts, distinct wait/refuse/defer/cancel
 outcomes, exact subject binding, source reuse refusal and durable signed inbox v7
