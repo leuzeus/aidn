@@ -3473,3 +3473,23 @@ The transport fixtures exercise real direct Node subprocesses and doubled GitHub
 responses, with no network or model calls. Durable PR-specific events, complete
 review content, actual triage, merge consent/effect/sync and the rest of A1-A10
 remain open; complete_standard_workflow=false and ordinary selection unchanged.
+
+The [model51 transport evidence](qualification/agentic-process/pr-review-async-transport-2026-11-03.json)
+records source05bea1b:10 async controls,27 generic control-inbox/resume controls
+across files/dual/db-only,17 owned-allocation controls,25 composition,22 startup,
+27 operation contracts/reducer/service and43 published input boundaries PASS.
+Historical review/thread readers pass14/18 controls. Source-of-truth35,
+metadata37, gate catalog and document references pass. The async suite confirms
+fixture removal; the control/owned suites return code0 after their finally
+blocks. Full runtime, Governance Admission, composed51, native human/provider,
+PostgreSQL and exact installed archive are NOT_RUN; none is replaced by these
+component results. No SKIP is reported in this tranche.
+
+The separate agentic gate on source93958bf/model41 is terminal FAIL/code1 at
+2026-11-04T00:31:32.7693519Z. Its log reaches session_close_admit, then native
+entry refuses PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED/no_effect.
+The original child deadline00:30:48.350Z was not renewed. The former fixture and
+control paths are absent at the later observation, so terminal instance replay,
+allocation journals and owner are unavailable there. Parent/known child PID
+absence is only an OS snapshot; general resource cleanup is not proven. This is
+a separate run from the composed41 refusal whose retained104-event replay exists.
