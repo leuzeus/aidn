@@ -2278,3 +2278,8 @@ journey and the production-dispatcher UNKNOWN chain. The entire L1-L8/A1-A10
 acceptance remains incomplete, ordinary entry unchanged and
 `complete_standard_workflow=false`. Genuine human/provider/native/OS, configured
 PostgreSQL and the exact installed package remain separate NOT_RUN evidence.
+
+The shared initial/corrective push port rechecks its source, current instance and
+plan age after the final awaited authorization. A changed context after an actual
+push retains UNKNOWN, empty positive facts and the effect owner. This component
+refusal is separate from the production dispatcher acknowledgement-loss chain.

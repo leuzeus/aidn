@@ -3388,3 +3388,8 @@ It retains every disposable root, including on success; no cleanup or genuine
 human/provider/native/OS/PostgreSQL/installed qualification is implied. Published
 composition checks the separate correction content/event/triage occurrences.
 A component PASS does not qualify the complete new-C2 or dispatcher UNKNOWN chain.
+
+The shared initial/corrective push port rechecks its source, current instance and
+plan age after the final awaited authorization. A changed context after an actual
+push retains UNKNOWN, empty positive facts and the effect owner. This component
+refusal is separate from the production dispatcher acknowledgement-loss chain.

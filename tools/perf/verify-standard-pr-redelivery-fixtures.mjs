@@ -88,6 +88,31 @@ try {
     const saved = delivered.observations.review_head; delivered.observations.review_head = initialOutput.observations.review_head;
     await assert.rejects(reader.readConfirmedHead(instance, { update_operation_id: op('8') })); delivered.observations.review_head = saved;
   });
+  await test('late authorization context mutation after actual push retains UNKNOWN and its owner', async () => {
+    const priorSource = await authority.readSource(instance, input), oldHead = git(f.root, 'rev-parse', 'HEAD');
+    fs.appendFileSync(path.join(f.root, 'product.txt'), 'Second disposable change for the late authorization boundary\n');
+    git(f.root, 'add', 'product.txt'); git(f.root, 'commit', '-m', 'test: exercise late push authorization boundary');
+    const nextHead = git(f.root, 'rev-parse', 'HEAD');
+    const source = { ...priorSource, parent_head: oldHead, delivery_head: nextHead, pull_request: delivered.observations.pull_request };
+    let changed = false, readAfterPush = false;
+    // This isolated shared-port test injects source/current capabilities. It
+    // does not claim another authenticated corrective integration.
+    const late = createStandardSessionPrUpdatePush({ targetRoot: f.root, redelivery: true,
+      async readCheckpoint() {
+        if (f.pushPort.inspect('S001-record').remote_head === nextHead) readAfterPush = true;
+        return structuredClone(source);
+      }, readCurrent: () => changed ? { ...instance, instance_sha256: 'b'.repeat(64) } : instance,
+      pushPort: f.pushPort, pullRequestPort: f.provider.port });
+    const ready = await late.prepare(instance, input, op('9'));
+    const output = await late.apply(instance, ready, { ...grant(ready), async assertAuthorized() {
+      if (readAfterPush) { await Promise.resolve(); changed = true; }
+    } });
+    assert.equal(changed, true); assert.equal(output.outcome, 'reconciliation_required'); assert.equal(output.effect_status, 'unknown');
+    assert.deepEqual(output.facts, {}); assertStandardOperationOutput(output);
+    assert.equal(output.observations.reason_code, 'STANDARD_PR_UPDATE_CONTEXT_CHANGED');
+    assert.equal(f.pushPort.inspect('S001-record').remote_head, nextHead); assert.equal(f.artifacts.ownerPending(), true);
+    assert.equal((await late.prepare(instance, input, op('a'))).can_apply, false);
+  });
   console.log(JSON.stringify({ status: 'PASS', checks, mode, git_integration_push: 'ACTUAL_LOCAL_PORTS', provider: 'DOUBLED_REST',
     accepted_closure_cycle_human_journals: 'INJECTED_FIXTURE', full_standard_journey: 'NOT_RUN', genuine_human_provider_native_pg_installed: 'NOT_RUN', retained_roots: owned }));
 } finally { console.log(JSON.stringify({ retained_roots: owned, cleanup: 'NONE_RETAIN_ALWAYS' })); }

@@ -46,7 +46,8 @@ export function createStandardSessionPrRedeliveryAuthority({ readAcceptedOperati
       || request.head_branch !== pull_request.head_branch || request.base_branch !== pull_request.base_branch)
       fail('STANDARD_PR_REDELIVERY_ORIGINAL_REQUEST_REQUIRED');
     const proof = await inspectIntegration(plan);
-    if (proof.status !== 'confirmed' || shadowHash(proof) !== shadowHash(output.observations.git)
+    const { effect_status: integrationEffect, ...retainedProof } = output.observations.git ?? {};
+    if (integrationEffect !== 'confirmed' || proof.status !== 'confirmed' || shadowHash(proof) !== shadowHash(retainedProof)
       || proof.head !== canonical.delivery_head || proof.target_branch !== canonical.target_branch
       || proof.source_branch !== canonical.source_branch)
       fail('STANDARD_PR_REDELIVERY_INTEGRATION_CHANGED');
