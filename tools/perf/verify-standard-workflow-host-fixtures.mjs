@@ -12,7 +12,7 @@ import { standardWorkflowOperationBindings } from "../../src/application/runtime
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createProcessOperationJournalStore } from "../../src/adapters/runtime/process-operation-journal-store.mjs";
 import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
-import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
+import { createOperationJournalSigner, operationOutputRef } from "../../src/core/workflow/process-operation-journal.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { inspectAgenticProcess, createAgenticProcess, advanceAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
@@ -102,6 +102,52 @@ if (process.argv[2] === "--accept") {
       assert.deepEqual(simulation.trace.at(-1).cursor, inspectAgenticProcess(final.record));
       assert.equal(git(root, "branch", "--show-current"), input.session_branch);
       pass(`${mode}: durable event wait and exact replay/simulation with the execution reducer`);
+
+      // Fixture-signed history tests the receipt reader/acceptance boundary.
+      // It is not proof of a business recovery authority or resource closure.
+      const historySeed = runtime.initialize({ instanceId: "receipt-history" });
+      runtime.initialize({ instanceId: "receipt-history", write: true, expectedResultSha256: historySeed.record.instance_sha256 });
+      const historyFrame = runtime.inspect("receipt-history").cursor.occurrences.find(row => row.status === "READY");
+      const historyPreview = await runtime.preview({ instanceId: "receipt-history", expectedSha256: historySeed.record.instance_sha256,
+        occurrenceId: historyFrame.occurrence_id });
+      const historyStage = await runtime.stage(historyPreview, { write: true, expectedPreviewSha256: shadowHash(historyPreview) });
+      const historyId = historyStage.operation_id;
+      await runtime.dispatch(historyId, { write: true });
+      const historyStore = createProcessOperationJournalStore({ targetRoot: root, stateMode: mode }), complete = historyStore.read(historyId);
+      const completedResult = complete.record.results[0], signed = createOperationJournalSigner(() => fs.readFileSync(keyFile));
+      const unknownOutput = { ...completedResult.output, outcome: "reconciliation_required", effect_status: "unknown", facts: {},
+        observations: { reason_code: "FIXTURE_UNKNOWN_RESULT" }, evidence_refs: [] };
+      const unknownReceipt = { ...completedResult.receipt, outcome: "reconciliation_required", effect_status: "unknown", facts: {},
+        output_sha256: shadowHash(unknownOutput), evidence_refs: [{ ref: operationOutputRef(historyId), sha256: shadowHash(unknownOutput) }] };
+      const unknownRecord = signed.seal({ ...complete.record, revision: complete.record.revision + 1,
+        results: [{ output: unknownOutput, receipt: unknownReceipt }] });
+      historyStore.compareAndSwap(unknownRecord, complete.content_sha256);
+      const unknownAccepted = await host(root, keyFile).accept(historyId, { write: true });
+      assert.equal(unknownAccepted.cursor.status, "WAITING");
+      const secondReceipt = { ...completedResult.receipt, receipt_id: completedResult.receipt.receipt_id + "_1",
+        evidence_refs: [{ ref: operationOutputRef(historyId, 1), sha256: shadowHash(completedResult.output) }] };
+      const appended = signed.seal({ ...unknownRecord, revision: unknownRecord.revision + 1,
+        results: [...unknownRecord.results, { output: completedResult.output, receipt: secondReceipt }] });
+      const duplicate = signed.seal({ ...appended, results: [unknownRecord.results[0], unknownRecord.results[0]] });
+      assert.throws(() => historyStore.compareAndSwap(duplicate, historyStore.read(historyId).content_sha256), { code: "PROCESS_JOURNAL_RECEIPT_REUSED" });
+      historyStore.compareAndSwap(appended, historyStore.read(historyId).content_sha256);
+      assert.deepEqual(runtime.readOutput(operationOutputRef(historyId)), unknownOutput);
+      assert.deepEqual(runtime.readOutput(operationOutputRef(historyId, 1)), completedResult.output);
+      await assert.rejects(runtime.accept(historyId, { write: true, receiptId: "receipt_absent" }), { code: "PROCESS_OPERATION_RECEIPT_UNAVAILABLE" });
+      assert.equal((await host(root, keyFile).accept(historyId, { write: true, receiptId: unknownReceipt.receipt_id })).record.instance_sha256,
+        unknownAccepted.record.instance_sha256);
+      const oldEvent = unknownAccepted.record.events.at(-1);
+      const historyDone = await host(root, keyFile).accept(historyId, { write: true });
+      assert.deepEqual(historyDone.record.events.find(row => row.event_id === oldEvent.event_id), oldEvent);
+      assert.equal(historyDone.record.events.at(-1).event_id, oldEvent.event_id + "_1");
+      assert.equal(historyDone.record.events.at(-1).receipt.receipt_id, secondReceipt.receipt_id);
+      assert.equal((await host(root, keyFile).accept(historyId, { write: true })).record.instance_sha256, historyDone.record.instance_sha256);
+      assert.deepEqual(runtime.readJournal(historyId).results[0], unknownRecord.results[0]);
+      const historySim = simulateAgenticProcess({ instanceId: historyDone.record.instance_id, model: historyDone.record.model,
+        policyPins: historyDone.record.policy_pins, scopeId: historyDone.record.scope_id, events: historyDone.record.events });
+      assert.equal(historySim.trace.at(-1).instance_sha256, historyDone.record.instance_sha256);
+      assert.deepEqual(historySim.trace.at(-1).cursor, inspectAgenticProcess(historyDone.record));
+      pass(`${mode}: exact historical receipt lookup and distinct reconciliation event preserve signed unknown history`);
 
       const processStore = createAgenticProcessStore({ targetRoot: root, stateMode: mode }), canonical = processStore.read("bootstrap");
       let fake = createAgenticProcess({ instanceId: "bootstrap", model: final.record.model, policyPins: final.record.policy_pins, scopeId: final.record.scope_id });

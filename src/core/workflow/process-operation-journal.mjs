@@ -19,8 +19,11 @@ export function assertOperationJournal(value) {
   if (validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_JOURNAL_INVALID");
   if (value.operation_id !== value.intent.operation_id || value.phase === "staged" && (value.owner !== null || value.results.length)
     || value.phase !== "staged" && value.owner === null || (value.phase === "receipted") !== (value.results.length > 0)) fail("PROCESS_JOURNAL_PHASE_INVALID");
+  const receiptIds = new Set();
   for (const result of value.results) {
     assertProcessOperationReceipt(result.receipt, value.intent);
+    if (receiptIds.has(result.receipt.receipt_id)) fail("PROCESS_JOURNAL_RECEIPT_REUSED");
+    receiptIds.add(result.receipt.receipt_id);
     if (!result.output.facts || typeof result.output.facts !== "object") fail("PROCESS_JOURNAL_RESULT_INVALID");
     if (result.receipt.output_sha256 !== shadowHash(result.output) || result.receipt.outcome !== result.output.outcome
       || result.receipt.effect_status !== result.output.effect_status || shadowHash(result.receipt.facts) !== shadowHash(result.output.facts)) fail("PROCESS_JOURNAL_RESULT_INVALID");

@@ -82,13 +82,16 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
   // Retrospective observation only: no commit, index repair, owner takeover or
   // TTL extension. The host must authenticate the unreplied dispatch and keep
   // its original intent/grant. A retained uncertain owner is never removed.
+  // A prior unknown receipt is historical evidence, not a completed effect.
   async function reconcile(instance, operationId, { assertAuthorized, signal } = {}) {
     active(signal);
     if (typeof readDispatchedOperation !== 'function' || typeof assertAuthorized !== 'function')
       fail('STANDARD_PR_CORRECTION_CHECKPOINT_RECOVERY_AUTHORITY_REQUIRED');
     const selected = readDispatchedOperation(instance, operationId), prepared = selected.preview.prepared;
     const plan = assertStandardPrCorrectionCheckpointPlan(prepared?.plan);
-    if (selected.phase !== 'dispatching' || selected.results.length || selected.operation_id !== operationId
+    const last = selected.results.at(-1)?.receipt;
+    const unknown = selected.phase === 'receipted' && last?.outcome === 'reconciliation_required' && last.effect_status === 'unknown';
+    if (!(selected.phase === 'dispatching' && !selected.results.length || unknown) || selected.operation_id !== operationId
       || selected.intent.binding_ref !== 'session_pr_correction_checkpoint' || plan.operation_id !== operationId
       || prepared.can_apply !== true || shadowHash(plan) !== prepared.plan_sha256
       || shadowHash(selected.preview.input) !== shadowHash(plan.input)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');

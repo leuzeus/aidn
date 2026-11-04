@@ -78,7 +78,7 @@ import { processParameterOptions } from "../../core/workflow/process-data-contra
 import { resolveStandardProcessInput, assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
-const receiptId = id => "receipt_" + id.slice(3);
+const receiptId = (id, index) => "receipt_" + id.slice(3) + (index ? "_" + index : "");
 function controlCheckpoint(instance, eventId) {
   let replay = createAgenticProcess({ instanceId: instance.instance_id, model: instance.model, policyPins: instance.policy_pins,
     scopeId: instance.scope_id, facts: instance.initial_facts, ...processParameterOptions(instance) });
@@ -625,10 +625,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   function readDispatchedCheckpoint(instance, id) {
     const record = retained(id).record, state = current(instance.instance_id);
     const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
-    if (record.intent.binding_ref !== 'session_pr_correction_checkpoint' || record.phase !== 'dispatching' || record.results.length
+    const receipt = record.results.at(-1)?.receipt;
+    const unknown = record.phase === 'receipted' && receipt?.outcome === 'reconciliation_required' && receipt.effect_status === 'unknown';
+    if (record.intent.binding_ref !== 'session_pr_correction_checkpoint' || !(record.phase === 'dispatching' && !record.results.length || unknown)
       || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id
       || state.record.instance_sha256 !== instance.instance_sha256 || frame?.status !== 'WAITING'
-      || !frame.operation || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent))
+      || !frame.operation || frame.operation.receipt && shadowHash(frame.operation.receipt) !== shadowHash(receipt)
+      || shadowHash(frame.operation.intent) !== shadowHash(record.intent))
       fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');
     return record;
   }
@@ -668,8 +671,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { outcome: "verified", authority_id: intent.authority_id, intent_sha256: shadowHash(intent), binding_sha256: shadowHash(binding) };
     },
     readReceipt({ receipt_id, intent }) {
-      const record = retained(intent.operation_id).record, result = record.results.at(-1);
-      if (record.phase !== "receipted" || result?.receipt.receipt_id !== receipt_id || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RECEIPT_UNAVAILABLE");
+      const record = retained(intent.operation_id).record, result = record.results.find(row => row.receipt.receipt_id === receipt_id);
+      if (record.phase !== "receipted" || !result || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RECEIPT_UNAVAILABLE");
       return result.receipt;
     },
     async verifyReceipt({ receipt, intent, instance, signal }) {
@@ -681,7 +684,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
-      if (shadowHash(record.results.at(-1)?.receipt) !== shadowHash(receipt) || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
+      if (!record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt)) || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
   };
@@ -745,13 +748,15 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   function resultReceipt(record, output) {
     assertStandardOperationOutput(output);
-    return { contract_version: "process-operation-receipt.v1", receipt_id: receiptId(record.operation_id), operation_id: record.operation_id,
+    const index = record.results.length;
+    if (index >= 32) fail("PROCESS_JOURNAL_RESULTS_LIMIT");
+    return { contract_version: "process-operation-receipt.v1", receipt_id: receiptId(record.operation_id, index), operation_id: record.operation_id,
       intent_sha256: shadowHash(record.intent), authority_id: record.intent.authority_id, outcome: output.outcome, effect_status: output.effect_status,
       output_sha256: shadowHash(output), facts: output.facts,
       // Physical proof filenames belong to the authenticated output document.
       // The reducer receipt carries its bounded logical reference, not a second
       // copy constrained by the receipt URI grammar.
-      evidence_refs: [{ ref: operationOutputRef(record.operation_id), sha256: shadowHash(output) }] };
+      evidence_refs: [{ ref: operationOutputRef(record.operation_id, index), sha256: shadowHash(output) }] };
   }
   async function recoveryDecision(instance, input) {
     const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_recovery_decision").at(-1);
@@ -1128,9 +1133,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (write !== true) fail('STANDARD_HOST_EXPLICIT_WRITE_REQUIRED');
       const before = retained(id), record = before.record;
       if (record.intent.binding_ref !== 'session_pr_correction_checkpoint') fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');
-      // Existing results, including unknown/refused ones, are immutable. This
-      // path only fills an absent receipt for an authenticated original intent.
-      if (record.phase === 'receipted') return { status: 'retained_result', receipt: record.results.at(-1).receipt };
+      // A verified observation may follow an unknown result under the same
+      // intent. Earlier results and their accepted events remain immutable.
+      if (record.phase === 'receipted' && record.results.at(-1).receipt.outcome !== 'reconciliation_required')
+        return { status: 'retained_result', receipt: record.results.at(-1).receipt };
+      if (record.results.length >= 32) fail('PROCESS_JOURNAL_RESULTS_LIMIT');
       const state = current(record.intent.instance_id);
       readDispatchedCheckpoint(state.record, id);
       if (!prCorrectionCheckpoint) fail('STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED');
@@ -1141,7 +1148,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const receipt = resultReceipt(record, output), { authentication, key_id, ...body } = record;
       // Preserve the original dispatch owner, preview, intent and grant. The
       // CAS gives competing observers one result without another Git dispatch.
-      persist({ ...body, phase: 'receipted', revision: record.revision + 1, results: [{ output, receipt }] }, before.content_sha256);
+      persist({ ...body, phase: 'receipted', revision: record.revision + 1, results: [...record.results, { output, receipt }] }, before.content_sha256);
       return { status: 'receipted', receipt };
     },
     async receiveDecision(id, { sourceRef, write = false, signal } = {}) {
@@ -1179,13 +1186,14 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       human.acknowledge(capture.inbox_id, receipt);
       return { status: "receipted", receipt };
     },
-    async accept(id, { write = false } = {}) {
+    async accept(id, { write = false, receiptId: selectedReceiptId } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const record = retained(id).record, state = current(record.intent.instance_id);
-      const receipt = record.results.at(-1)?.receipt;
+      const index = selectedReceiptId === undefined ? record.results.length - 1 : record.results.findIndex(row => row.receipt.receipt_id === selectedReceiptId);
+      const receipt = record.results[index]?.receipt;
       if (!receipt) fail("PROCESS_OPERATION_RECEIPT_UNAVAILABLE");
       return service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,
-        eventId: "result_" + id.slice(3), receiptId: receipt.receipt_id, write: true });
+        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true });
     },
     readJournal: id => structuredClone(retained(id).record),
     readDecisionSource: ref => human.readSource(ref),

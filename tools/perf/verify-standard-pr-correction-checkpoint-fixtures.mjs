@@ -198,6 +198,31 @@ try {
     assert.equal(git(f.root, 'rev-parse', 'HEAD'), head); assert.equal(git(f.root, 'rev-list', '--count', 'HEAD'), countBefore);
     assert.equal(f.artifacts.ownerPending(), false);
   });
+  if (mode !== 'db-only') await test('a signed already-receipted unknown permits exact retrospective observation without rewriting the prior result', async () => {
+    const id = prepared.plan.operation_id, original = journal(f).read(id), head = git(f.root, 'rev-parse', 'HEAD');
+    const countBefore = git(f.root, 'rev-list', '--count', 'HEAD');
+    const output = { contract_version: 'standard-pr-correction-checkpoint-output.v1', operation_ref: 'session_pr_correction_checkpoint',
+      outcome: 'reconciliation_required', effect_status: 'unknown', facts: {}, observations: { reason_code: 'FIXTURE_ACK_UNCERTAIN' }, evidence_refs: [] };
+    const receipt = { contract_version: 'process-operation-receipt.v1', receipt_id: 'receipt_' + id.slice(3), operation_id: id,
+      intent_sha256: shadowHash(original.record.intent), authority_id: original.record.intent.authority_id,
+      outcome: output.outcome, effect_status: output.effect_status, output_sha256: shadowHash(output), facts: {},
+      evidence_refs: [{ ref: 'aidn:operation-output/' + id + '/0', sha256: shadowHash(output) }] };
+    const unknown = signer.seal({ ...original.record, phase: 'receipted', revision: original.record.revision + 1, results: [{ output, receipt }] });
+    journal(f).compareAndSwap(unknown, original.content_sha256);
+    const directory = fs.mkdtempSync(path.join(temporary, 'aidn-correction-checkpoint-')); owned.push(directory);
+    const file = path.join(directory, 'recover-receipted.json');
+    fs.writeFileSync(file, JSON.stringify({ root: f.root, selectedMode: mode, instance: f.instance, accepted: f.accepted, prepared, reconcile: true }));
+    const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--child=' + file],
+      { encoding: 'utf8', timeout: 180000, windowsHide: true, maxBuffer: 1048576 });
+    assert.equal(child.status, 0, child.stderr);
+    const result = JSON.parse(child.stdout);
+    assert.equal(result.outcome, 'completed'); assert.equal(result.effect_status, 'confirmed');
+    assert.equal(result.observations.git.commit_sha, head);
+    assert.equal(result.observations.dispatch_sha256, shadowHash(unknown));
+    assert.deepEqual(journal(f).read(id).record, unknown);
+    assert.equal(git(f.root, 'rev-parse', 'HEAD'), head); assert.equal(git(f.root, 'rev-list', '--count', 'HEAD'), countBefore);
+    assert.equal(f.artifacts.ownerPending(), false);
+  });
   if (mode !== 'db-only') await test('a clean foreign successor cannot stand in for the exact checkpoint witness', async () => {
     const old = git(f.root, 'rev-parse', 'HEAD');
     git(f.root, '-c', 'core.hooksPath=NUL', 'commit', '--allow-empty', '-m', 'test: unrelated successor after checkpoint');
