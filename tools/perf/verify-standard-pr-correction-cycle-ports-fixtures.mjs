@@ -24,6 +24,16 @@ try {
       outcome: 'reconciliation_required', effect_status: 'unknown', facts: { session_pr_correction_cycle_initialized: true }, observations: {}, evidence_refs: [] }));
   });
   const f = await createPrCorrectionReopenFixture(mode, owned);
+  // This synthetic closed-session fixture has never run the normal projector.
+  // Establish its real runtime precondition before the NEW source is selected;
+  // do not fabricate clear/fresh fields or weaken ordinary cycle admission.
+  const runtimePlan = await f.ops.prepareCycleContext({ session_id: 'S001' });
+  assert.equal(runtimePlan.can_apply, true, JSON.stringify(runtimePlan));
+  const runtimeOutput = await f.ops.refreshCycleContext(runtimePlan, { write: true, expectPlan: runtimePlan.plan_sha256 });
+  assert.equal(runtimeOutput.outcome, 'completed', JSON.stringify(runtimeOutput));
+  git(f.root, 'add', '.');
+  if (git(f.root, 'status', '--porcelain')) git(f.root, '-c', 'core.hooksPath=NUL', 'commit', '-m', 'test: establish actual runtime observation before correction');
+  f.source.pull_request.head_oid = git(f.root, 'rev-parse', 'HEAD');
   const reopenPlan = await f.port.prepare(f.instance, f.input), reopenOutput = await f.port.apply(f.instance, reopenPlan,
     { write: true, expectPlan: reopenPlan.plan_sha256, assertAuthorized() {} });
   assert.equal(reopenOutput.outcome, 'completed');

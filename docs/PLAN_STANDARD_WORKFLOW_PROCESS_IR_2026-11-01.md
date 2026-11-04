@@ -4347,3 +4347,13 @@ ordinary native plan/DoR/implementation, correction work/validation/reclosure,
 causal delivery, general recovery and full L1-L8/A1-A10 acceptance remain due.
 No complete-workflow or installed/native/human/PostgreSQL claim follows.
 Ordinary entry and `complete_standard_workflow=false` remain unchanged.
+
+
+The first guarded correction-cycle test source refused its embedded schema
+identities before any project creation; those failures are retained. A successor
+DB-only case reached the actual admission and correctly refused the synthetic
+fixture's unknown runtime repair/freshness fields. New test cases establish
+their runtime through the real projector before selecting the source/checkpoint;
+no clear marker is fabricated and the admission policy is unchanged. The
+ordinary parameter interface retains `session` and `cycle`, with correction
+values read only from `cycle.correction` when that branch is selected.
