@@ -364,6 +364,11 @@ different checks expecting exactly 2 and 3. Native transport and human/provider
 identities remain doubles; Git/bare, canonical storage and application ports
 remain real. Adding this scenario or passing preflight does not qualify it.
 The final review still does not establish provider replies/resolutions or merge.
+`verify-standard-composed-cycle-fixtures.mjs --retain-always` separately checks
+context-derived identities and the two actual Node verifiers: each must reject
+the other cycle's value. It does not run admission or the full composed journey.
+The full scenario compares canonical artifact/metadata, product, allocation,
+validation-call and provider witnesses before and after common replay/simulation.
 
 The candidate correction-host route is selected by
 `verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files

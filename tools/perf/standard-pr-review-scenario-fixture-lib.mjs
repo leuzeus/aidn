@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { standardPrTriageItems, PR_TRIAGE_CONTRACT } from '../../src/core/workflow/standard-pr-triage.mjs';
 import { assertNativeActivityAnswer } from '../../src/core/workflow/native-activity-output.mjs';
 
@@ -32,6 +33,8 @@ export function assertCapturedStandardReviewScenario(captured, scenario) {
 export function standardReviewScenarioAnswer(observed, scenario) {
   scenarioBody(scenario);
   const context = observed.context, correction = scenario === 'correction', corrected = scenario === 'corrected';
+  if (corrected) assert.ok(context.product_files.some(row => row.path === 'app.mjs' && row.present
+    && row.sha256 === createHash('sha256').update('export const value = 3;\n').digest('hex')), 'STANDARD_FIXTURE_CORRECTED_PRODUCT_REQUIRED');
   const productEvidence = correction || corrected ? context.product_files.filter(row => row.present).map(row => {
     const ref = context.evidence_refs.find(ref => ref.ref === `product:${row.path}` && ref.sha256 === row.sha256);
     assert.ok(ref, 'STANDARD_FIXTURE_PRODUCT_EVIDENCE_REQUIRED'); return ref;

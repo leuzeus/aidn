@@ -1207,6 +1207,15 @@ if (process.argv[2] === "--mixed-continue") {
         causal_operations: required, provider_review_deliveries: 2, final_product_value: 3, same_published_model: true,
         human_native_provider: 'fixture', provider_replies_and_merge: 'NOT_RUN', full_standard_workflow: false }));
     }
+    const replayWitness = () => {
+      const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+      return shadowHash({ product: sha(fs.readFileSync(path.join(f.configuration.product_root, 'app.mjs'))),
+        artifacts: ['CURRENT-STATE.md', 'snapshots/context-snapshot.md', 'sessions/S001.md', ...artifacts.cycles().map(row => row.path)]
+          .map(name => ({ path: name, sha256: artifacts.read(name, { required: true }).sha256, metadata_sha256: artifacts.metadataHash(name) })),
+        allocations: f.open().inspectAllocations(), validation_calls: fs.readFileSync(path.join(f.base, 'validation-control/calls.jsonl'), 'utf8'),
+        provider: fs.readFileSync(path.join(f.configuration.control_root, 'pr-open-provider-fixture.json'), 'utf8') });
+    };
+    const replayBefore = fullCorrection && runsPromotion ? replayWitness() : null;
     let replayLast, replaySteps = 0;
     for (const row of iterateAgenticProcessSimulation({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins,
       scopeId: final.record.scope_id, parameters: final.record.initial_parameters, facts: final.record.initial_facts, events: final.record.events })) {
@@ -1214,6 +1223,7 @@ if (process.argv[2] === "--mixed-continue") {
     }
     assert.equal(replaySteps, final.record.events.length + 1);
     assert.equal(replayLast.instance_sha256, final.record.instance_sha256);
+    if (replayBefore) assert.equal(replayWitness(), replayBefore);
     console.log(JSON.stringify({ standard_composed_proof: true, model_sha256: final.record.model_sha256, instance_sha256: final.record.instance_sha256,
       events: final.record.events.length, application_operations: acceptedOperations.length, native_sessions_started: f.t.sessions.length,
       scenario_sha256: standardPreflight.scenario_sha256, planned_responses: standardPreflight.responses_required,
