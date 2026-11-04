@@ -64,13 +64,13 @@ export function createStandardSessionPrUpdatePush({ targetRoot, readCheckpoint, 
           const pull_request = await observe(source, result.head, plan.operation_id);
           if (shadowHash(await readCheckpoint(instance, plan.input)) !== plan.source_sha256
             || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
-            throw Error('STANDARD_PR_UPDATE_CONTEXT_CHANGED');
+            throw Object.assign(Error('STANDARD_PR_UPDATE_CONTEXT_CHANGED'), { code: 'STANDARD_PR_UPDATE_CONTEXT_CHANGED' });
           await assertAuthorized();
           // Authorization can await a remote authority. Authenticate the source
           // and current instance again after that boundary before completion.
           if (shadowHash(await readCheckpoint(instance, plan.input)) !== plan.source_sha256
             || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
-            throw Error('STANDARD_PR_UPDATE_CONTEXT_CHANGED');
+            throw Object.assign(Error('STANDARD_PR_UPDATE_CONTEXT_CHANGED'), { code: 'STANDARD_PR_UPDATE_CONTEXT_CHANGED' });
           // Consumers must bind review/checks to this head. No approval/check
           // from the previous SHA is carried as acceptance for this revision.
           return emit('completed', result.effect_status, { [predecessorKey]: plan.input[predecessorKey],
