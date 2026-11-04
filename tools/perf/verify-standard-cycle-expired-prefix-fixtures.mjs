@@ -116,6 +116,18 @@ if (process.argv[2] === "--prepare") {
         const before = businessState(), head = git(target, "rev-parse", "HEAD"), branch = git(target, "branch", "--show-current");
         const runtimeBefore = mode === "files" ? snapshot(path.join(target, ".aidn/runtime")) : null;
         fs.writeFileSync(clockFile, JSON.stringify(preview.prepared.plan.prepared_at_ms + 300001));
+        if (nodeId === "checkpoint") {
+          // Observe the real adapter separately from the dispatch journal's
+          // intentional writes. This includes physical SQLite/runtime bytes in
+          // DB-backed modes, not only the canonical business artifact view.
+          const direct = createStandardWorkflowOperations({ targetRoot: target, now: clockNow }), allBytes = snapshot(target);
+          let callbacks = 0;
+          await assert.rejects(direct.finalizeCycleCheckpoint(preview.prepared, { write: true, expectPlan: preview.prepared.plan_sha256,
+            assertAuthorized: async () => { callbacks++; }, assertCurrent: async () => { callbacks++; } }),
+          error => error.code === "STANDARD_PLAN_EXPIRED" && error.effect_status === "no_effect");
+          assert.equal(callbacks, 0); assert.deepEqual(snapshot(target), allBytes);
+          pass("checkpoint: direct expired adapter preserves every physical checkout byte/directory, including SQLite/runtime, before dispatch journaling");
+        }
         const refused = await host.dispatch(id, { write: true }), original = host.readJournal(id);
         assert.equal(refused.receipt.outcome, "blocked"); assert.equal(refused.receipt.effect_status, "no_effect");
         assert.equal(original.results.at(-1).output.observations.reason_code, "STANDARD_PLAN_EXPIRED");
@@ -130,12 +142,18 @@ if (process.argv[2] === "--prepare") {
           { code: "STANDARD_HOST_REPREPARE_INPUT_INVALID" });
         assert.deepEqual(snapshot(target), waitingBytes); assert.equal(counters.grants, waitingGrants);
         pass(`${nodeId}: stale predecessor and substituted subject refuse without effects`);
+        // Expiry is a probe of the original dispatch only. Fresh preparation and
+        // the real hook use a progressing wall clock; a future frozen clock
+        // would make the hook's independently emitted event appear too old.
+        fs.writeFileSync(clockFile, "null");
+        const preparationStarted = actualNow();
         const child = JSON.parse(execFileSync(process.execPath, [here, "--prepare", target, privateRoot, id, accepted.record.instance_sha256],
           { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 180000, maxBuffer: 4194304, windowsHide: true }));
         preview = child.preview;
         assert.equal(child.counters.grants, 0); assert.deepEqual(snapshot(target), waitingBytes);
         assert.deepEqual(preview.input, original.preview.input); assert.equal(preview.occurrence_id, original.intent.occurrence_id);
-        assert.equal(preview.instance_sha256, accepted.record.instance_sha256); assert.equal(preview.prepared.plan.prepared_at_ms, clockNow());
+        assert.equal(preview.instance_sha256, accepted.record.instance_sha256);
+        assert.ok(preview.prepared.plan.prepared_at_ms >= preparationStarted && preview.prepared.plan.prepared_at_ms <= actualNow());
         assert.notEqual(preview.prepared.plan_sha256, original.preview.prepared.plan_sha256); assert.deepEqual(host.readJournal(id), original);
         pass(`${nodeId}: fresh Node rereads admissions and prepares the exact same subject without writes or authorization`);
         staged = await host.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
@@ -172,6 +190,7 @@ if (process.argv[2] === "--prepare") {
       scope: "source-installed-published-cycle-component", expired_nodes: expiredNodes,
       expired_bindings: ["cycle_context_refresh", "cycle_initialize", ...(expireCheckpoint ? ["cycle_checkpoint_finalize"] : [])],
       physical_runtime_bytes: mode === "files" ? "all-bytes-and-directories-unchanged-on-expiry" : "NOT_QUALIFIED",
+      direct_checkpoint_expiry_physical_bytes: expireCheckpoint ? "all-checkout-bytes-and-directories-including-SQLite-runtime-unchanged" : "NOT_RUN",
       clock: "isolated-host-operation-TTL-probes; real-wall-time-for-hook", authorization: "fixture-capability", native_allocations: 0, model_calls: 0,
       checkpoint: expireCheckpoint ? "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant" : "actual-fixed-hook-completed-not-expired",
       external_r05_precondition: "actual-fixed-drift-hook", external_session_git_checkpoint: "actual-Git-before-cycle-admission",
