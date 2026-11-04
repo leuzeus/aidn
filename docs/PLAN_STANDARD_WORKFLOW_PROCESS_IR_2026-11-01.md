@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 110/108 et le modèle composé candidat en 52
+les composants startup/cycle en 111/109 et le modèle composé candidat en 53
 (95 nœuds, 60 occurrences d’opération, 50 identifiants de liaison mobilisés parmi
 58 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -3514,3 +3514,18 @@ prerequisite for actual triage, not its completion or a policy/check acceptance,
 thread response/resolution, merge decision/effect, completed skill or durable
 PR-specific event. Those routes and the remaining standard requirements stay
 open; ordinary entry remains unchanged and complete_standard_workflow=false.
+
+The [complete-content component evidence](qualification/agentic-process/pr-review-complete-content-2026-11-03.json)
+retains source48106fa/model52:12 content reader controls and10 application
+controls in each of files/dual/db-only PASS, with cleanup confirmed. Async10,
+historical readers14/18, composition25, startup22, contracts27 and43 input
+boundaries also pass. Provider/history/grant capabilities are doubled; canonical
+CAS, Git, bare remote and application ports are real. Common-reducer replay and
+simulation use the real content output with synthetic boundary intent/receipt,
+not the complete signed standard composition.
+
+Four new schemas initially had CRLF bytes and failed the whitespace check.
+Their LF successor preserves parsed JSON exactly but changes implementation
+hashes, so components/model advance explicitly to111/109/53. Source52's
+application proofs remain attributed to52. No live instance is converted or
+repaired, and no verdict is transferred to a different runtime pin.
