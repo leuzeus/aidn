@@ -5,7 +5,7 @@ import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
 const H = "a".repeat(64), fail = code => { throw Object.assign(Error(code), { code }); };
-const stops = { plan: "plan", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
+const stops = { session_pr_correction_decide: "session_pr_correction_decide", plan: "plan", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
 const keys = (v, names) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join() === [...names].sort().join();
 
 // Test planning only. Synthetic receipts/control/assignments never authenticate

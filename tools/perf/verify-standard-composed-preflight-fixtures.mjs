@@ -21,6 +21,15 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.planned_status, "COMPLETED"); assert.equal(result.replay_exact, true);
   assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
 });
+test("correction prefix stops at a real undecided human occurrence without inventing a negative decision", () => {
+  const correction = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-correction.v2.json", import.meta.url)));
+  const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "session_pr_correction_decide" });
+  assert.equal(result.planned_status, "RUNNING"); assert.equal(result.replay_exact, true);
+  assert.ok(result.operations.includes("session_pr_correction_checkpoint"));
+  assert.ok(!result.operations.includes("session_pr_correction_decide"));
+  assert.ok(!result.operations.includes("correction_initialize"));
+  assert.equal(result.write_authorization, false);
+});
 test("insufficient original allowance is refused before the long driver creates any fixture", () => {
   const child = spawnSync(process.execPath, [fileURLToPath(new URL("./verify-agentic-process-execution-fixtures.mjs", import.meta.url)),
     "--standard-composed-mode=files", "--standard-composed-stop=component_complete", "--standard-composed-max-responses=8", "--standard-composed-preflight-only"],

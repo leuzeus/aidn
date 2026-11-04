@@ -3393,3 +3393,11 @@ The shared initial/corrective push port rechecks its source, current instance an
 plan age after the final awaited authorization. A changed context after an actual
 push retains UNKNOWN, empty positive facts and the effect owner. This component
 refusal is separate from the production dispatcher acknowledgement-loss chain.
+
+The composed correction driver also accepts
+`--standard-composed-stop=session_pr_correction_decide`. This is a bounded prefix
+ending before the fresh human choice, with the owner-release acknowledgement-loss
+option still available. Preflight uses the same reducer and proves this stopping
+point without inventing a decline, approval or positive routing fact. A requested
+`component_complete` correction that lacks a decision fails preflight as an
+unplanned wait. The bounded prefix does not qualify admitted C2 or reclosure.

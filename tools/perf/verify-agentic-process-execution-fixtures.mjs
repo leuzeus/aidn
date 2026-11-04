@@ -86,7 +86,7 @@ if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-o
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const standardComposedStop = process.argv.find(value => value.startsWith("--standard-composed-stop="))?.slice("--standard-composed-stop=".length) ?? "plan";
-if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
+if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete", "session_pr_correction_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 const standardHostTrace = process.argv.includes('--standard-composed-host-trace');
@@ -97,7 +97,7 @@ if ((standardHostTrace || standardCheckpointAckLoss || standardCheckpointOwnerAc
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
 const standardComposedBudgetText = process.argv.find(value => value.startsWith("--standard-composed-budget-ms="))?.slice("--standard-composed-budget-ms=".length);
 const standardComposedBudgetMs = standardComposedBudgetText === undefined ? 7200000 : Number(standardComposedBudgetText);
-if (standardComposedBudgetText !== undefined && (!selectedStandardComposedMode || !['promotion_decide', 'component_complete'].includes(standardComposedStop) || !/^[0-9]+$/.test(standardComposedBudgetText)
+if (standardComposedBudgetText !== undefined && (!selectedStandardComposedMode || !['promotion_decide', 'component_complete', 'session_pr_correction_decide'].includes(standardComposedStop) || !/^[0-9]+$/.test(standardComposedBudgetText)
   || !Number.isSafeInteger(standardComposedBudgetMs) || standardComposedBudgetMs < 3600000 || standardComposedBudgetMs > 10800000)) throw Error("STANDARD_COMPOSED_FIXTURE_BUDGET_INVALID");
 const selectedCycleClosureMode = process.argv.find(value => value.startsWith("--cycle-closure-mode="))?.slice("--cycle-closure-mode=".length);
 if (selectedCycleClosureMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleClosureMode)) throw Error("CYCLE_CLOSURE_FIXTURE_MODE_INVALID");
@@ -119,10 +119,10 @@ if (standardResponseText !== undefined && (!selectedStandardComposedMode || !/^[
   || !Number.isSafeInteger(Number(standardResponseText)))) throw Error("STANDARD_FIXTURE_RESPONSE_LIMIT_INVALID");
 const standardScenarioName = process.argv.find(value => value.startsWith("--standard-composed-scenario="))?.slice("--standard-composed-scenario=".length) ?? "positive";
 if (!["positive", "correction"].includes(standardScenarioName) || standardScenarioName !== "positive" && !selectedStandardComposedMode) throw Error("STANDARD_FIXTURE_SCENARIO_INVALID");
-if (standardCheckpointAckLoss && (selectedStandardComposedMode !== 'files' || standardScenarioName !== 'correction' || standardComposedStop !== 'component_complete'))
+if (standardCheckpointAckLoss && (selectedStandardComposedMode !== 'files' || standardScenarioName !== 'correction' || !['component_complete', 'session_pr_correction_decide'].includes(standardComposedStop)))
   throw Error('STANDARD_FIXTURE_CHECKPOINT_ACK_LOSS_SCOPE_INVALID');
 if (standardCheckpointOwnerAckLoss && (standardCheckpointAckLoss || !['files', 'dual'].includes(selectedStandardComposedMode)
-  || standardScenarioName !== 'correction' || standardComposedStop !== 'component_complete')) throw Error('STANDARD_FIXTURE_CHECKPOINT_OWNER_ACK_LOSS_SCOPE_INVALID');
+  || standardScenarioName !== 'correction' || !['component_complete', 'session_pr_correction_decide'].includes(standardComposedStop))) throw Error('STANDARD_FIXTURE_CHECKPOINT_OWNER_ACK_LOSS_SCOPE_INVALID');
 const standardScenario = selectedStandardComposedMode ? JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-" +
   (standardScenarioName === "correction" ? "correction.v2" : "positive.v1") + ".json", import.meta.url), "utf8")) : null;
 if (standardResponseText !== undefined) standardScenario.max_responses = Number(standardResponseText);
@@ -769,7 +769,8 @@ if (process.argv[2] === "--mixed-continue") {
       verify: options => sourceFile ? closureHumanSource(sourceFile).verify(options) : { outcome: "unverified" } };
     const resumed = standardResumeInput;
     const factory = standardComposedResume ? (_mode, options) => restoreComposedFixture(resumed, options) : mixedFixture;
-    const runsPromotion = standardComposedStop === "component_complete";
+    const stopsBeforeCorrectionChoice = standardComposedStop === "session_pr_correction_decide";
+    const runsPromotion = standardComposedStop === "component_complete" || stopsBeforeCorrectionChoice;
     const runsClosure = runsPromotion || standardComposedStop === "promotion_decide";
     const runsCycle = runsClosure || standardComposedStop === "closure_decide";
     const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
@@ -1014,7 +1015,7 @@ if (process.argv[2] === "--mixed-continue") {
       }
     }
     const final = f.open().inspect();
-    if (runsPromotion) assert.equal(final.cursor.status, "COMPLETED");
+    if (runsPromotion && !stopsBeforeCorrectionChoice) assert.equal(final.cursor.status, "COMPLETED");
     else assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
     const acceptedOperations = final.record.events.filter(event => event.kind === "operation_intent").map(event => f.open().readOperation(event.intent.operation_id));
@@ -1026,7 +1027,7 @@ if (process.argv[2] === "--mixed-continue") {
     if (runsCycle) {
       for (const binding of ["cycle_plan_record", "cycle_implementation_enter", "cycle_validation_execute", "cycle_task_advance", "cycle_verification_enter", "cycle_audit_evaluate"])
         assert.equal(last(binding)?.outcome, "completed");
-      assert.equal(final.cursor.status, runsPromotion ? "COMPLETED" : "RUNNING");
+      assert.equal(final.cursor.status, runsPromotion && !stopsBeforeCorrectionChoice ? "COMPLETED" : "RUNNING");
       if (!runsClosure) assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "cycle_closure_decision").length, 0);
     }
     if (runsClosure) {
