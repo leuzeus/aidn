@@ -125,6 +125,11 @@ review authors and revisions, check app identities and legacy status creators
 through fixed read-only GraphQL. It exhausts and compares two full collections;
 same-head reruns, dismissals, pagination drift, transport failures and stale
 sources refuse. The GitHub transport is doubled. No merge permission follows.
+The direct-pin case additionally requires both readers, their schemas and the
+common operation registry in the launch fingerprint. It simulates altered reader
+bytes through an intercepted file read, checks that the actual fingerprint
+changes, restores the reader and verifies the original fingerprint again; it
+does not alter the checkout.
 `verify-standard-session-pr-review-fixtures.mjs --mode=files|dual|db-only`
 connects the actual successor checkpoint/push and canonical postimages to this
 reader and the thread observer. Preview makes no provider call. Observation

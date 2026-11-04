@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createGithubReviewEvidenceAdapter, assertGithubReviewEvidence } from '../../src/adapters/git-provider/github-review-evidence.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
+import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
 import requestSchema from '../../src/core/contracts/workflow-definition/github-review-evidence-request.v1.schema.json' with { type: 'json' };
 import outputSchema from '../../src/core/contracts/workflow-definition/github-review-evidence.v1.schema.json' with { type: 'json' };
 const sha = data => createHash('sha256').update(data).digest('hex');
@@ -41,6 +42,21 @@ function fixture(handler, options = {}) {
 const checks = [], check = (name, fn) => { fn(); checks.push(name); console.log('PASS ' + name); };
 try {
   check('closed versioned contracts use supported vocabulary', () => { for (const schema of [requestSchema, outputSchema]) assert.deepEqual(validateJsonSchemaDefinition(schema, '#', { contractKind: 'workflow-definition' }), []); });
+  check('review dependencies are direct runtime pins and changed reader bytes change the launch fingerprint', () => {
+    const before = agenticProcessImplementationPins(), required = ['src/application/runtime/standard-session-pr-review-authority.mjs',
+      'src/application/runtime/standard-session-pr-review-observe.mjs', 'src/adapters/git-provider/github-review-evidence.mjs',
+      'src/adapters/git-provider/github-workflow-adapter.mjs', 'src/core/workflow/standard-operation-contracts.mjs',
+      ...['github-review-evidence-request.v1', 'github-review-evidence.v1', 'github-pr-observation-request.v1', 'github-pr-observation-output.v1',
+        'standard-session-pr-review-observe-input.v1', 'standard-session-pr-review-observe-output.v1'].map(name => 'src/core/contracts/workflow-definition/' + name + '.schema.json')];
+    for (const name of required) assert.equal(before.files.filter(row => row.path === name).length, 1, name);
+    const read = fs.readFileSync; let changed;
+    try {
+      fs.readFileSync = (file, ...args) => String(file).endsWith('/src/adapters/git-provider/github-review-evidence.mjs')
+        ? Buffer.concat([read(file, ...args), Buffer.from('\n// simulated byte alteration\n')]) : read(file, ...args);
+      changed = agenticProcessImplementationPins();
+    } finally { fs.readFileSync = read; }
+    assert.notEqual(changed.sha256, before.sha256); assert.deepEqual(agenticProcessImplementationPins(), before);
+  });
   check('actual adapter observes review identity, app identity, checks and legacy statuses at exact head/base', () => {
     const f = fixture(), value = f.instance.observeReviewEvidence(request); assertGithubReviewEvidence(value); assert.equal(f.calls(), 4);
     assert.equal(value.reviews[0].author.node_id, 'U_fixture'); assert.equal(value.checks[0].app.node_id, 'APP1'); assert.equal(value.checks[1].state, 'PENDING');

@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 107/105 et le modèle composé candidat en 49
+les composants startup/cycle en 108/106 et le modèle composé candidat en 50
 (95 nœuds, 60 occurrences d’opération, 50 identifiants de liaison mobilisés parmi
 57 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -3422,3 +3422,29 @@ review/check acceptance, explicit merge, fetch/divergence/sync, A1-A10, general
 unknown reconciliation, native human/provider and exact installed archive
 qualification remain open. Ordinary selection is unchanged and
 complete_standard_workflow=false.
+
+### Direct launch pins for review dependencies, model50
+
+Source73240f7/model49 pinned the new review readers in operation implementation
+hashes, but omitted them from the separate native launcher's direct file list.
+The direct-pin successor explicitly adds both GitHub readers, their contracts,
+the review authority/operation and the common standard-operation registry.
+The launcher now lists325 direct distributed files. The operation fingerprint
+also includes that pin-list implementation, so the source components advance
+explicitly to108/106 and the common model to50. Graph95/operations60 and their
+meaning are unchanged; this is not conversion of a running instance.
+
+The new pin case checks required membership and simulates changed reader bytes
+inside the actual fingerprint function, then restores the file reader and
+requires the original fingerprint. Model49 continues on its immutable source
+and initial three-hour fixture authorization. Its future composed verdict cannot
+qualify50. The13/10/10/10 component proofs retain source73240f7, while direct-pin
+and owned-launch checks have their own successor evidence. Full standard,
+external durable delivery, triage/policy acceptance, explicit merge/sync, general
+reconciliation, native human/provider and exact installed archive requirements
+remain open.
+
+The direct-pin successor passes14 reader/pin controls and17 owned-allocation
+controls, with no model calls and fixture native wire/controller capabilities.
+Composition25, startup22 and43 published input boundaries also pass; full native
+process-tree/provider and standard composition proofs remain separate.

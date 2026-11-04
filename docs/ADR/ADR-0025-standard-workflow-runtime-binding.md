@@ -1840,3 +1840,11 @@ collections and unavailable providers remain blocked with no facts. The common
 IR groups PR delivery in a sequence to preserve the existing children bound;
 no engine limit or historical reader is widened. External inbox authentication,
 actual triage, explicit merge and post-merge synchronization remain required.
+
+The direct native launch fingerprint also enumerates both review readers, their
+schemas, the review authority/operation and the common standard-operation
+contract registry. Binding hashes continue to cover their implementation bytes;
+the direct pins separately reject a changed distributed reader at launch. The
+model49 observation run retains its original314-file launch fingerprint. Its
+explicit successor uses325 direct files and a new model/source revision, without
+converting the running or retained instances.
