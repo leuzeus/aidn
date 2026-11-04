@@ -3187,3 +3187,26 @@ ages through 300000 ms still reach the owner boundary. This isolated check
 does not exercise the hook or fresh continuation; rerun the same
 `--expire-checkpoint` component in each mode for that evidence. Earlier 20-check
 results remain tied to their exact pre-option snapshots.
+
+The corrected opt-in probe now passes 25 checks per files/dual/db-only on the
+published cycle-131 component. It prepares the original expiring intention in
+the past and observes age 300001 ms before returning to the progressing real
+clock for cold preparation and the hook. Four original refusals remain accepted;
+each successor needs a distinct explicit grant and intent. The final assertion
+requires both checkpoint intentions, one retained expired no-effect result and
+exactly one confirmed checkpoint. Same-IR replay and simulation are exact.
+The existing cycle suite includes the 18 guard cases and passes 32 checks for
+FILES; the real operation-port suite passes 14 checks.
+
+The direct expired checkpoint adapter also preserves every physical checkout
+byte and directory, including SQLite/runtime, in all three modes. This check
+precedes dispatch journaling. Total DB/runtime byte invariance across the host's
+intentional journal writes remains NOT_QUALIFIED; canonical business state and
+Git remain checked. See the
+[bounded qualification and preserved attempts](qualification/agentic-process/cycle-checkpoint-expiry-2026-11-04.json).
+Its nine SOURCE24 failures retain their original verdicts, including uncertain
+checkpoint successors from the first clock probe. Separate archive-only pure
+postflights authenticate the completed prefix of the final-selector failures
+without upgrading their exits or reopening original paths. These are fixture
+components with zero model calls, not full standard, native/provider/human,
+configured PostgreSQL or exact installed-package acceptance.

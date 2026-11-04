@@ -20,6 +20,17 @@ encore ouverts.
 
 ### Avancement d’exécution
 
+- Le checkpoint de cycle distingue désormais l'expiration d'un plan explicite
+  valide des refus d'intention ou d'horloge invalide, avant acquisition du
+  propriétaire d'effet. Les mêmes sondes passent 25 contrôles en FILES, DUAL et
+  DB-only, avec refus conservés, préparation à froid, nouveaux grants/intents,
+  checkpoint réel unique et replay/simulation exacts. Le refus direct conserve
+  tous les octets du checkout, y compris SQLite/runtime dans les trois modes ;
+  les écritures légitimes du journal de dispatch restent une observation
+  distincte. Les neuf essais SOURCE24 en échec restent conservés, dont des
+  successeurs incertains dus à l'horloge de fixture. Cette
+  [qualification bornée](qualification/agentic-process/cycle-checkpoint-expiry-2026-11-04.json)
+  ne termine pas L4 ni le parcours standard complet.
 - Le replay réutilise les octets canoniques de chaque événement dans le seul
   appel courant, conserve les empreintes de tous les préfixes et réutilise le
   curseur calculé pendant la validation. Les contrôles de régression passent,

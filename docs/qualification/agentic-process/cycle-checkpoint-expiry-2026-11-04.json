@@ -1,0 +1,3964 @@
+{
+  "format": "aidn-cycle-checkpoint-expiry-qualification.v1",
+  "date": "2026-11-04",
+  "status": "BOUNDED_COMPONENT_PASS_ENTIRE_GOAL_INCOMPLETE",
+  "lane": "ASSURED",
+  "scope": "source-installed-published-cycle131-component; production adapter and exact current host; injected original-operation clock; fixture authorization",
+  "production_commit": "6a802802eb9c2a9a565b00f2f123923cb62b87d6",
+  "tested_source_commit": "bea696168281bf49fdd30b4f125f86f163448b1c",
+  "behavior": "Otherwise-valid explicitly authorized expired checkpoint plans refuse as STANDARD_PLAN_EXPIRED/no_effect before local effect-owner acquisition. Missing intent, callbacks, mismatched hashes, malformed plans and invalid/future clocks retain their guards.",
+  "successful_runs": {
+    "files": {
+      "case_label": "source24-expired-cycle-checkpoint-files-history-20261104",
+      "state_mode": "files",
+      "source_head": "bea696168281bf49fdd30b4f125f86f163448b1c",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:12:26.285885+00:00",
+        "observed_at_utc": "2026-11-04T13:17:53.161356+00:00",
+        "process_pid": 65500,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 25,
+      "stdout_sha256": "e3444cb7cb73d389d890836e043847f591673dfd2c32916b486bb3435ff6a51d",
+      "stderr_sha256": "f4b699f87d2a82e1957b1f580d1a26695d83170b5a19fe0ef82f198671fbe51d",
+      "archive_sha256": "c3abaac1d3d3feb7f48c2d1d1ac851a5d9a7a399d2479a05c41cdd5fa7ac3244",
+      "archive_manifest_sha256": "bca1826614f2c7985c2c363c5097a5c54c4d7bb4e33a29fdaea2aa904ce71401",
+      "archive_payloads": 2356,
+      "result": {
+        "status": "PASS",
+        "checks": 25,
+        "state_mode": "files",
+        "model_revision": 131,
+        "model_sha256": "a393795559f30379cb6e7ef26a13fc7625d6c276838fdfb0bc6ebfced390a87e",
+        "scope": "source-installed-published-cycle-component",
+        "expired_nodes": [
+          "refresh_before",
+          "initialize",
+          "checkpoint",
+          "refresh_after"
+        ],
+        "expired_bindings": [
+          "cycle_context_refresh",
+          "cycle_initialize",
+          "cycle_checkpoint_finalize"
+        ],
+        "physical_runtime_bytes": "all-bytes-and-directories-unchanged-on-expiry",
+        "direct_checkpoint_expiry_physical_bytes": "all-checkout-bytes-and-directories-including-SQLite-runtime-unchanged",
+        "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+        "authorization": "fixture-capability",
+        "native_allocations": 0,
+        "model_calls": 0,
+        "checkpoint": "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant",
+        "external_r05_precondition": "actual-fixed-drift-hook",
+        "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+        "mixed_facade": "NOT_USED",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      }
+    },
+    "dual": {
+      "case_label": "source24-expired-cycle-checkpoint-dual-history-20261104",
+      "state_mode": "dual",
+      "source_head": "bea696168281bf49fdd30b4f125f86f163448b1c",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:12:26.562527+00:00",
+        "observed_at_utc": "2026-11-04T13:17:46.798158+00:00",
+        "process_pid": 66580,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 25,
+      "stdout_sha256": "4db0a35ab266e6f8dc4c02de6c36431a12c455b23084bbffb8170c6a62ef457e",
+      "stderr_sha256": "89e87266cac23a076a6ee045010282db1fde4d026ba0ddd80594d939b86b5799",
+      "archive_sha256": "da692cbee2234d7acf75781c71e70a4e0b200f0188bff37a4ca5d95c0fb521fc",
+      "archive_manifest_sha256": "bc990bf4254293bf1266186b9e7cc25e09d1a8587109ef62e7821284b6458e31",
+      "archive_payloads": 2357,
+      "result": {
+        "status": "PASS",
+        "checks": 25,
+        "state_mode": "dual",
+        "model_revision": 131,
+        "model_sha256": "a393795559f30379cb6e7ef26a13fc7625d6c276838fdfb0bc6ebfced390a87e",
+        "scope": "source-installed-published-cycle-component",
+        "expired_nodes": [
+          "refresh_before",
+          "initialize",
+          "checkpoint",
+          "refresh_after"
+        ],
+        "expired_bindings": [
+          "cycle_context_refresh",
+          "cycle_initialize",
+          "cycle_checkpoint_finalize"
+        ],
+        "physical_runtime_bytes": "NOT_QUALIFIED",
+        "direct_checkpoint_expiry_physical_bytes": "all-checkout-bytes-and-directories-including-SQLite-runtime-unchanged",
+        "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+        "authorization": "fixture-capability",
+        "native_allocations": 0,
+        "model_calls": 0,
+        "checkpoint": "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant",
+        "external_r05_precondition": "actual-fixed-drift-hook",
+        "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+        "mixed_facade": "NOT_USED",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      }
+    },
+    "db-only": {
+      "case_label": "source24-expired-cycle-checkpoint-db-only-history-20261104",
+      "state_mode": "db-only",
+      "source_head": "bea696168281bf49fdd30b4f125f86f163448b1c",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:12:26.526968+00:00",
+        "observed_at_utc": "2026-11-04T13:17:37.410338+00:00",
+        "process_pid": 57860,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 25,
+      "stdout_sha256": "87d0f441ca3b5e2e669d0a1463f9f90f16bf396ce39edae81aace389eb73a37b",
+      "stderr_sha256": "ef9d7e7f179e8f9e8d19da1605f064c9424aa6b8c208a9dc733540d55063cebb",
+      "archive_sha256": "e4e34db150e03344291e65ac26406eb937ab41d794e9f24de7ee97749699aaf5",
+      "archive_manifest_sha256": "520eb04fc687186ab25e3374258b379fe71163e65c210fc57c903bb8e6d230c3",
+      "archive_payloads": 2312,
+      "result": {
+        "status": "PASS",
+        "checks": 25,
+        "state_mode": "db-only",
+        "model_revision": 131,
+        "model_sha256": "a393795559f30379cb6e7ef26a13fc7625d6c276838fdfb0bc6ebfced390a87e",
+        "scope": "source-installed-published-cycle-component",
+        "expired_nodes": [
+          "refresh_before",
+          "initialize",
+          "checkpoint",
+          "refresh_after"
+        ],
+        "expired_bindings": [
+          "cycle_context_refresh",
+          "cycle_initialize",
+          "cycle_checkpoint_finalize"
+        ],
+        "physical_runtime_bytes": "NOT_QUALIFIED",
+        "direct_checkpoint_expiry_physical_bytes": "all-checkout-bytes-and-directories-including-SQLite-runtime-unchanged",
+        "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+        "authorization": "fixture-capability",
+        "native_allocations": 0,
+        "model_calls": 0,
+        "checkpoint": "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant",
+        "external_r05_precondition": "actual-fixed-drift-hook",
+        "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+        "mixed_facade": "NOT_USED",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_label": "source24-expired-cycle-checkpoint-files-20261104",
+      "state_mode": "files",
+      "source_head": "6a802802eb9c2a9a565b00f2f123923cb62b87d6",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T12:54:14.798571+00:00",
+        "observed_at_utc": "2026-11-04T12:58:33.258148+00:00",
+        "process_pid": 40076,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 17,
+      "stdout_sha256": "90c4ca55071baffde4f2a3a88287b9ea84d231175b26f5ac971431fb442a9ffe",
+      "stderr_sha256": "eb389e1f6550bb5106ab1c1486d984e7117974ed7e09a138cf8c57b40e45c2f2",
+      "archive_sha256": "a01ffd91f188677b78a6a37fd9a1867dbce6bdfd1400ece88d180ed4b3f34c9c",
+      "archive_manifest_sha256": "fe36a46a229209d13b5340d060c335183cac2b7a3f929767ca917e75ad3a0f85",
+      "archive_payloads": 2355
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-dual-20261104",
+      "state_mode": "dual",
+      "source_head": "6a802802eb9c2a9a565b00f2f123923cb62b87d6",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T12:54:26.602867+00:00",
+        "observed_at_utc": "2026-11-04T12:58:42.141485+00:00",
+        "process_pid": 41572,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 17,
+      "stdout_sha256": "e1b88c2b41d7ade2ece6b163e6ea67e5780b1f2b589fe3ec189f75f5ee91de70",
+      "stderr_sha256": "0add32be45ece381b0a149cbe1c9530c9cd2eeaa83a4937cac470f987c2857a7",
+      "archive_sha256": "3b11e19af717ce0195b0efea6c86809388e979ada051feee94606321b9f27d8c",
+      "archive_manifest_sha256": "c4521bb6251f95f2bec18a0059705a1379a61a7a3233548a4cd3ba10605736f1",
+      "archive_payloads": 2356
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-db-only-20261104",
+      "state_mode": "db-only",
+      "source_head": "6a802802eb9c2a9a565b00f2f123923cb62b87d6",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T12:54:38.481712+00:00",
+        "observed_at_utc": "2026-11-04T12:58:47.672035+00:00",
+        "process_pid": 62364,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 17,
+      "stdout_sha256": "1d36185c0d371c735c0dda70e83956a2f1ef37ea80530971ed9ecbc482efb77e",
+      "stderr_sha256": "38532b1935e02fff55e808efc2705f35decae5045bbd6f3d631943f8c89e8ba3",
+      "archive_sha256": "6185b149f6547b4d3098249b373e4d76a108fbe055c0bb4eb0d58b7cde2635ce",
+      "archive_manifest_sha256": "4349665bf30fd50cd284a03a4bf71cc43ea616ca3ab230ed0d703c1caeb5eec5",
+      "archive_payloads": 2313
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-files-walltime-20261104",
+      "state_mode": "files",
+      "source_head": "fbc3df17b82976dfc94f3900a9be835bc44f0b7b",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:01:22.077920+00:00",
+        "observed_at_utc": "2026-11-04T13:02:19.870363+00:00",
+        "process_pid": 22952,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 2,
+      "stdout_sha256": "aee7dc4d00864d71b4c69d3e8667071830aae290e3a0813683f72b00ffdfc923",
+      "stderr_sha256": "f49b1899c6e97848b685015c138c5f5bd4b6a9be5c5163e9d97f4a950421713a",
+      "archive_sha256": "17a9b64c0c41f79f77acc81910015ee859bd2ea5114d5c5fc5a37497dc382c4d",
+      "archive_manifest_sha256": "cba183e0b8423402f22c6699feb0864ebe2e17337ea7fd50270bf577672accea",
+      "archive_payloads": 2330
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-dual-walltime-20261104",
+      "state_mode": "dual",
+      "source_head": "fbc3df17b82976dfc94f3900a9be835bc44f0b7b",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:01:22.554859+00:00",
+        "observed_at_utc": "2026-11-04T13:02:19.339409+00:00",
+        "process_pid": 53152,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 2,
+      "stdout_sha256": "d8d177265c2b2961cc0267582f661be3ac2efa9480e25ca5fbeba6ee0410caec",
+      "stderr_sha256": "ea20da85db314a21df08ef2e210ae1c45391d7c1b6ef87b469539dd44a555737",
+      "archive_sha256": "555a312730f041ebe7920997443d50cbc226eac89c59a9c9918fbdb102a028dd",
+      "archive_manifest_sha256": "f565f48cd1c58de0f3d33c6f1d0f7437f1c7a48af6b1f08754df72581259ca09",
+      "archive_payloads": 2331
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-db-only-walltime-20261104",
+      "state_mode": "db-only",
+      "source_head": "fbc3df17b82976dfc94f3900a9be835bc44f0b7b",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:01:22.637418+00:00",
+        "observed_at_utc": "2026-11-04T13:02:17.456508+00:00",
+        "process_pid": 64756,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 2,
+      "stdout_sha256": "7fa2891ade6b0a50ec442396f2f82919af6859668f3127f12498411d73e08e82",
+      "stderr_sha256": "cedee6781eba195dd24812337a54cd93d3e2bb714dd5172af008990ab698fdcc",
+      "archive_sha256": "a40ce483287c119611e8cc9d9b398dd7c84759c086d0dffcc2cc6a087baa0391",
+      "archive_manifest_sha256": "05032d4f05af27e1a04b4fcf510144237d202d910378e4a904a751a461a6b3ec",
+      "archive_payloads": 2307
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-files-pastplan-20261104",
+      "state_mode": "files",
+      "source_head": "c1a1d2dea7b0d1f2fdf07eab1223765ee6f72ca4",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:04:40.975748+00:00",
+        "observed_at_utc": "2026-11-04T13:10:52.871260+00:00",
+        "process_pid": 60788,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 24,
+      "stdout_sha256": "d56ba59e000c80f647c4297e0d4cb170b22ba0ffe8a7aa0309b3b975f0ee5234",
+      "stderr_sha256": "1d24e9e8f872c0286c653e11bc3b44356c279586fe077dc2a3ccf7ca31bed4de",
+      "archive_sha256": "bfd932ec03bf0e624021d0d1e288a52c5ed08f0139e7bf49fda0ce0b924db1d8",
+      "archive_manifest_sha256": "269bb64b6aaffcba4941196185088d592c21de374ea938a2ddc1483181153631",
+      "archive_payloads": 2356
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-dual-pastplan-20261104",
+      "state_mode": "dual",
+      "source_head": "c1a1d2dea7b0d1f2fdf07eab1223765ee6f72ca4",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:04:40.915751+00:00",
+        "observed_at_utc": "2026-11-04T13:10:47.088111+00:00",
+        "process_pid": 45496,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 24,
+      "stdout_sha256": "42eb4c60fd2fa2b9e36363118aa17634821c4e845e883eedb174d348d6af0798",
+      "stderr_sha256": "57930be8fee6f32b856c253e083667dc0812820012f0298e0d2a010332391af5",
+      "archive_sha256": "502c22d2c083454e05a9eaaef86ec68a604db4b6f268cf83109d1d4aaa9f62cb",
+      "archive_manifest_sha256": "bde0f18651b886a8964639efa3eceac79343bc3e16b860d42043d5353f611c86",
+      "archive_payloads": 2357
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-db-only-pastplan-20261104",
+      "state_mode": "db-only",
+      "source_head": "c1a1d2dea7b0d1f2fdf07eab1223765ee6f72ca4",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:04:40.972732+00:00",
+        "observed_at_utc": "2026-11-04T13:10:31.546468+00:00",
+        "process_pid": 22668,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 24,
+      "stdout_sha256": "07a1dbdf18568f85943ee6538c5d32ec915dd95675e4016716a9556c8c049c2f",
+      "stderr_sha256": "93cda2dc532b86ebba48098bde72f7f08805faa9357a5c1f86826f15b218bc91",
+      "archive_sha256": "59457e891af962b15724fabcc69a700505dd8c4895175fe2bcfdaa0f6ebda864",
+      "archive_manifest_sha256": "4404db8d5a084762da8bdee6f22e5af65586983f813d45856149408652e7c679",
+      "archive_payloads": 2312
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-files-history-20261104",
+      "state_mode": "files",
+      "source_head": "bea696168281bf49fdd30b4f125f86f163448b1c",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:12:26.285885+00:00",
+        "observed_at_utc": "2026-11-04T13:17:53.161356+00:00",
+        "process_pid": 65500,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 25,
+      "stdout_sha256": "e3444cb7cb73d389d890836e043847f591673dfd2c32916b486bb3435ff6a51d",
+      "stderr_sha256": "f4b699f87d2a82e1957b1f580d1a26695d83170b5a19fe0ef82f198671fbe51d",
+      "archive_sha256": "c3abaac1d3d3feb7f48c2d1d1ac851a5d9a7a399d2479a05c41cdd5fa7ac3244",
+      "archive_manifest_sha256": "bca1826614f2c7985c2c363c5097a5c54c4d7bb4e33a29fdaea2aa904ce71401",
+      "archive_payloads": 2356,
+      "result": {
+        "status": "PASS",
+        "checks": 25,
+        "state_mode": "files",
+        "model_revision": 131,
+        "model_sha256": "a393795559f30379cb6e7ef26a13fc7625d6c276838fdfb0bc6ebfced390a87e",
+        "scope": "source-installed-published-cycle-component",
+        "expired_nodes": [
+          "refresh_before",
+          "initialize",
+          "checkpoint",
+          "refresh_after"
+        ],
+        "expired_bindings": [
+          "cycle_context_refresh",
+          "cycle_initialize",
+          "cycle_checkpoint_finalize"
+        ],
+        "physical_runtime_bytes": "all-bytes-and-directories-unchanged-on-expiry",
+        "direct_checkpoint_expiry_physical_bytes": "all-checkout-bytes-and-directories-including-SQLite-runtime-unchanged",
+        "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+        "authorization": "fixture-capability",
+        "native_allocations": 0,
+        "model_calls": 0,
+        "checkpoint": "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant",
+        "external_r05_precondition": "actual-fixed-drift-hook",
+        "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+        "mixed_facade": "NOT_USED",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      }
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-dual-history-20261104",
+      "state_mode": "dual",
+      "source_head": "bea696168281bf49fdd30b4f125f86f163448b1c",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:12:26.562527+00:00",
+        "observed_at_utc": "2026-11-04T13:17:46.798158+00:00",
+        "process_pid": 66580,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 25,
+      "stdout_sha256": "4db0a35ab266e6f8dc4c02de6c36431a12c455b23084bbffb8170c6a62ef457e",
+      "stderr_sha256": "89e87266cac23a076a6ee045010282db1fde4d026ba0ddd80594d939b86b5799",
+      "archive_sha256": "da692cbee2234d7acf75781c71e70a4e0b200f0188bff37a4ca5d95c0fb521fc",
+      "archive_manifest_sha256": "bc990bf4254293bf1266186b9e7cc25e09d1a8587109ef62e7821284b6458e31",
+      "archive_payloads": 2357,
+      "result": {
+        "status": "PASS",
+        "checks": 25,
+        "state_mode": "dual",
+        "model_revision": 131,
+        "model_sha256": "a393795559f30379cb6e7ef26a13fc7625d6c276838fdfb0bc6ebfced390a87e",
+        "scope": "source-installed-published-cycle-component",
+        "expired_nodes": [
+          "refresh_before",
+          "initialize",
+          "checkpoint",
+          "refresh_after"
+        ],
+        "expired_bindings": [
+          "cycle_context_refresh",
+          "cycle_initialize",
+          "cycle_checkpoint_finalize"
+        ],
+        "physical_runtime_bytes": "NOT_QUALIFIED",
+        "direct_checkpoint_expiry_physical_bytes": "all-checkout-bytes-and-directories-including-SQLite-runtime-unchanged",
+        "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+        "authorization": "fixture-capability",
+        "native_allocations": 0,
+        "model_calls": 0,
+        "checkpoint": "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant",
+        "external_r05_precondition": "actual-fixed-drift-hook",
+        "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+        "mixed_facade": "NOT_USED",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      }
+    },
+    {
+      "case_label": "source24-expired-cycle-checkpoint-db-only-history-20261104",
+      "state_mode": "db-only",
+      "source_head": "bea696168281bf49fdd30b4f125f86f163448b1c",
+      "source_files_compared": 2105,
+      "exit": {
+        "started": "2026-11-04T13:12:26.526968+00:00",
+        "observed_at_utc": "2026-11-04T13:17:37.410338+00:00",
+        "process_pid": 57860,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "proof_limit": "terminal parent alone does not prove general resource closure"
+      },
+      "passing_checks": 25,
+      "stdout_sha256": "87d0f441ca3b5e2e669d0a1463f9f90f16bf396ce39edae81aace389eb73a37b",
+      "stderr_sha256": "ef9d7e7f179e8f9e8d19da1605f064c9424aa6b8c208a9dc733540d55063cebb",
+      "archive_sha256": "e4e34db150e03344291e65ac26406eb937ab41d794e9f24de7ee97749699aaf5",
+      "archive_manifest_sha256": "520eb04fc687186ab25e3374258b379fe71163e65c210fc57c903bb8e6d230c3",
+      "archive_payloads": 2312,
+      "result": {
+        "status": "PASS",
+        "checks": 25,
+        "state_mode": "db-only",
+        "model_revision": 131,
+        "model_sha256": "a393795559f30379cb6e7ef26a13fc7625d6c276838fdfb0bc6ebfced390a87e",
+        "scope": "source-installed-published-cycle-component",
+        "expired_nodes": [
+          "refresh_before",
+          "initialize",
+          "checkpoint",
+          "refresh_after"
+        ],
+        "expired_bindings": [
+          "cycle_context_refresh",
+          "cycle_initialize",
+          "cycle_checkpoint_finalize"
+        ],
+        "physical_runtime_bytes": "NOT_QUALIFIED",
+        "direct_checkpoint_expiry_physical_bytes": "all-checkout-bytes-and-directories-including-SQLite-runtime-unchanged",
+        "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+        "authorization": "fixture-capability",
+        "native_allocations": 0,
+        "model_calls": 0,
+        "checkpoint": "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant",
+        "external_r05_precondition": "actual-fixed-drift-hook",
+        "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+        "mixed_facade": "NOT_USED",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": "NOT_COMPLETE"
+      }
+    }
+  ],
+  "pins": {
+    "utc": "2026-11-04T13:13:14.237Z",
+    "standard_revision": 74,
+    "model_sha256": "9acd0bd5585fe9bf153fe93380dbcc3a263233c4624cdf54a88466f133bc2e4d",
+    "catalog_sha256": "dc8415990677160df2e4630655ca9a9316218e75c35b68a0d287a3055bb50aa4",
+    "source": {
+      "contract_version": "standard-workflow-model-source.v1",
+      "catalog_sha256": "dc8415990677160df2e4630655ca9a9316218e75c35b68a0d287a3055bb50aa4",
+      "model_sha256": "9acd0bd5585fe9bf153fe93380dbcc3a263233c4624cdf54a88466f133bc2e4d",
+      "catalog": {
+        "contract_version": "standard-workflow-catalog.v1",
+        "component_id": "aidn-standard",
+        "revision": 74,
+        "scope": {
+          "kind": "composed_committing_cycle_component",
+          "complete_standard_workflow": false,
+          "entry_conditions": [
+            "fresh_session_admission",
+            "single_new_cycle"
+          ],
+          "remaining_activities": [
+            "existing_session_resume",
+            "thinking_work",
+            "exploring_work_and_spike_conversion",
+            "cycle_choice_and_carryover",
+            "governed_git_checkpoints",
+            "startup_and_work_drift_routes",
+            "incidents_and_recovery",
+            "session_close",
+            "pr_review_and_merge",
+            "post_merge_sync",
+            "full_mixed_resume"
+          ]
+        },
+        "model": {
+          "path": "package/catalogs/process-models/aidn-standard.v1.json",
+          "sha256": "9acd0bd5585fe9bf153fe93380dbcc3a263233c4624cdf54a88466f133bc2e4d",
+          "model_id": "aidn-standard",
+          "revision": 74
+        },
+        "specification": {
+          "path": "docs/SPEC.md",
+          "sha256": "a37ae4413215c3b8572eb66e6f27788f33e613d87f6a325a43e6ddc107faa3ad"
+        },
+        "bindings": [
+          {
+            "node_id": "context_reload",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "context_reload",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "context-reload",
+              "input_contract": "standard-empty-input.v1",
+              "output_contract": "standard-operation-output.v1",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+              "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+            }
+          },
+          {
+            "node_id": "session_admit",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_admit",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "start-session",
+              "input_contract": "standard-empty-input.v1",
+              "output_contract": "standard-operation-output.v1",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "session_initialize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_initialize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "start-session",
+              "input_contract": "standard-session-initialize-input.v1",
+              "output_contract": "standard-operation-output.v1",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "UNKNOWN"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "mode_decision",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "mode_decision",
+              "revision": 1,
+              "executor_kind": "human",
+              "effect_class": "read-only",
+              "skill_id": "start-session",
+              "input_contract": "standard-session-reference-input.v1",
+              "output_contract": "standard-operation-output.v2",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R02"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "session_mode_apply",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_mode_apply",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "start-session",
+              "input_contract": "standard-mode-apply-input.v1",
+              "output_contract": "standard-operation-output.v2",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R02"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "session_start_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_start_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "start-session",
+              "input_contract": "standard-session-reference-input.v1",
+              "output_contract": "standard-operation-output.v2",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R04",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "session_pr_review_observe",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_review_content_observe",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-pr-review-observe-input.v1",
+              "output_contract": "standard-session-pr-review-content-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_review_receive",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_review_receive",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-pr-review-receive-input.v1",
+              "output_contract": "standard-session-pr-review-receive-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_triage_select",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_triage_select",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-pr-triage-select-input.v1",
+              "output_contract": "standard-pr-triage-select-output.v1",
+              "rule_refs": [
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_triage_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_triage_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-pr-triage-evaluate-input.v1",
+              "output_contract": "standard-pr-triage-output.v1",
+              "rule_refs": [
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_correction_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_correction_checkpoint",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-pr-correction-checkpoint-input.v1",
+              "output_contract": "standard-pr-correction-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04",
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_correction_reopen",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_correction_reopen",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-pr-correction-reopen-input.v1",
+              "output_contract": "standard-pr-correction-reopen-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04",
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_checkpoint",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-pr-checkpoint-input.v1",
+              "output_contract": "standard-session-pr-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_update_push",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_update_push",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-pr-update-push-input.v1",
+              "output_contract": "standard-session-pr-update-push-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_record",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_record",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-pr-record-input.v1",
+              "output_contract": "standard-session-pr-record-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_open",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_open",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-pr-open-input.v1",
+              "output_contract": "standard-session-pr-open-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_push",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_push",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-push-input.v1",
+              "output_contract": "standard-session-push-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_pr_admit",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_pr_admit",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-pr-admission-input.v1",
+              "output_contract": "standard-session-pr-admission-output.v1",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R07",
+                "SPEC-R08"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_branch_integration_decide",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_branch_integration_decision",
+              "revision": 1,
+              "executor_kind": "human",
+              "effect_class": "read-only",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-branch-integration-review-input.v1",
+              "output_contract": "standard-session-branch-integration-decision-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R07",
+                "SPEC-R08"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_branch_integrate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_branch_integrate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "pr-orchestrate",
+              "input_contract": "standard-session-branch-integrate-input.v1",
+              "output_contract": "standard-session-branch-integrate-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R07",
+                "SPEC-R08"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+              "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+            }
+          },
+          {
+            "node_id": "session_delivery_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_delivery_checkpoint",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "close-session",
+              "input_contract": "standard-session-delivery-checkpoint-input.v1",
+              "output_contract": "standard-session-delivery-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R08",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-close-session/SKILL.md",
+              "sha256": "d8779e57cae83dd4f6dcfa4c7d09884ea0941aa579329d67c20a62af5045a034"
+            }
+          },
+          {
+            "node_id": "session_preclose_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_preclose_checkpoint",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "close-session",
+              "input_contract": "standard-session-preclose-checkpoint-input.v1",
+              "output_contract": "standard-session-preclose-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-close-session/SKILL.md",
+              "sha256": "d8779e57cae83dd4f6dcfa4c7d09884ea0941aa579329d67c20a62af5045a034"
+            }
+          },
+          {
+            "node_id": "session_close_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_close_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "close-session",
+              "input_contract": "standard-session-close-hook-input.v1",
+              "output_contract": "standard-session-close-hook-output.v1",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-close-session/SKILL.md",
+              "sha256": "d8779e57cae83dd4f6dcfa4c7d09884ea0941aa579329d67c20a62af5045a034"
+            }
+          },
+          {
+            "node_id": "session_close_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_close_checkpoint",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "close-session",
+              "input_contract": "standard-session-close-checkpoint-input.v1",
+              "output_contract": "standard-session-close-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-close-session/SKILL.md",
+              "sha256": "d8779e57cae83dd4f6dcfa4c7d09884ea0941aa579329d67c20a62af5045a034"
+            }
+          },
+          {
+            "node_id": "session_close_record",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_close_record",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "close-session",
+              "input_contract": "standard-session-close-input.v1",
+              "output_contract": "standard-session-close-output.v1",
+              "rule_refs": [
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-close-session/SKILL.md",
+              "sha256": "d8779e57cae83dd4f6dcfa4c7d09884ea0941aa579329d67c20a62af5045a034"
+            }
+          },
+          {
+            "node_id": "session_close_admit",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_close_admit",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "close-session",
+              "input_contract": "standard-session-reference-input.v1",
+              "output_contract": "standard-session-close-admission-output.v1",
+              "rule_refs": [
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-close-session/SKILL.md",
+              "sha256": "d8779e57cae83dd4f6dcfa4c7d09884ea0941aa579329d67c20a62af5045a034"
+            }
+          },
+          {
+            "node_id": "session_closure_decide",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_closure_decision",
+              "revision": 1,
+              "executor_kind": "human",
+              "effect_class": "read-only",
+              "skill_id": "close-session",
+              "input_contract": "standard-session-closure-review-input.v1",
+              "output_contract": "standard-session-closure-decision-output.v1",
+              "rule_refs": [
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-close-session/SKILL.md",
+              "sha256": "d8779e57cae83dd4f6dcfa4c7d09884ea0941aa579329d67c20a62af5045a034"
+            }
+          },
+          {
+            "node_id": "cycle_refresh_before",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_context_refresh",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "projector",
+              "skill_id": "context-reload",
+              "input_contract": "standard-session-reference-input.v1",
+              "output_contract": "standard-cycle-output.v1",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R04",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+              "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+            }
+          },
+          {
+            "node_id": "cycle_admit",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_admit",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "cycle-create",
+              "input_contract": "standard-empty-input.v1",
+              "output_contract": "standard-cycle-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R06"
+              ],
+              "allowed_modes": [
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+              "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+            }
+          },
+          {
+            "node_id": "cycle_initialize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_initialize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "cycle-create",
+              "input_contract": "standard-cycle-initialize-input.v1",
+              "output_contract": "standard-cycle-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R06"
+              ],
+              "allowed_modes": [
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+              "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+            }
+          },
+          {
+            "node_id": "cycle_audit",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "branch_cycle_audit",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "branch-cycle-audit",
+              "input_contract": "standard-cycle-reference-input.v1",
+              "output_contract": "standard-cycle-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
+              "sha256": "a4e24737d7c4abd67c8c03be55f1577e42f733008c573668b5031c1c1ffa63b4"
+            }
+          },
+          {
+            "node_id": "cycle_refresh_after",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_context_refresh",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "projector",
+              "skill_id": "context-reload",
+              "input_contract": "standard-session-reference-input.v1",
+              "output_contract": "standard-cycle-output.v1",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R04",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-context-reload/SKILL.md",
+              "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+            }
+          },
+          {
+            "node_id": "cycle_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_checkpoint_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "cycle-create",
+              "input_contract": "standard-cycle-reference-input.v1",
+              "output_contract": "standard-cycle-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04",
+                "SPEC-R05",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+              "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+            }
+          },
+          {
+            "node_id": "session_git_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "session_git_checkpoint",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "start-session",
+              "input_contract": "standard-session-git-checkpoint-input.v1",
+              "output_contract": "standard-session-git-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R01",
+                "SPEC-R03",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "plan_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_plan_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "cycle-create",
+              "input_contract": "standard-cycle-plan-evaluate-input.v1",
+              "output_contract": "standard-cycle-planning-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+              "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+            }
+          },
+          {
+            "node_id": "plan_record",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_plan_record",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "cycle-create",
+              "input_contract": "standard-cycle-plan-record-input.v1",
+              "output_contract": "standard-cycle-planning-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+              "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+            }
+          },
+          {
+            "node_id": "readiness",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_readiness_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "start-session",
+              "input_contract": "standard-cycle-readiness-evaluate-input.v1",
+              "output_contract": "standard-cycle-readiness-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "implementation_enter",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_implementation_enter",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "cycle-create",
+              "input_contract": "standard-cycle-implementation-enter-input.v1",
+              "output_contract": "standard-cycle-readiness-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+              "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+            }
+          },
+          {
+            "node_id": "task_select",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_task_select",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "start-session",
+              "input_contract": "standard-cycle-task-select-input.v1",
+              "output_contract": "standard-cycle-task-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "work_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_task_work_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "start-session",
+              "input_contract": "standard-cycle-work-evaluate-input.v1",
+              "output_contract": "standard-cycle-task-work-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "validate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_validation_execute",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-validation-input.v1",
+              "output_contract": "standard-cycle-validation-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "task_validation",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_validation_evaluate",
+              "revision": 2,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-validation-evaluate-input.v2",
+              "output_contract": "standard-cycle-verification-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "task_advance",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_task_advance",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "start-session",
+              "input_contract": "standard-cycle-task-advance-input.v1",
+              "output_contract": "standard-cycle-task-output.v1",
+              "rule_refs": [
+                "SPEC-R03",
+                "SPEC-R04"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-start-session/SKILL.md",
+              "sha256": "2218e2c21193f4dd7418da3f6b30e3c6b07e8eb0c50f2e9e50e47ba037cdda8c"
+            }
+          },
+          {
+            "node_id": "final_validation",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_validation_evaluate",
+              "revision": 2,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-validation-evaluate-input.v2",
+              "output_contract": "standard-cycle-verification-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "verification_enter",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_verification_enter",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-verification-enter-input.v1",
+              "output_contract": "standard-cycle-verification-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "audit_select",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_audit_select",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-audit-select-input.v1",
+              "output_contract": "standard-cycle-audit-selection-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "audit_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_audit_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-audit-evaluate-input.v1",
+              "output_contract": "standard-cycle-audit-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "closure_decide",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_closure_decision",
+              "revision": 1,
+              "executor_kind": "human",
+              "effect_class": "read-only",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-closure-review-input.v1",
+              "output_contract": "standard-cycle-closure-decision-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "close_record",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_close_record",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-close-input.v1",
+              "output_contract": "standard-cycle-close-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "cycle_terminal_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_terminal_checkpoint",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-terminal-checkpoint-input.v1",
+              "output_contract": "standard-cycle-terminal-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "close_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "cycle_close_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "cycle-close",
+              "input_contract": "standard-cycle-close-hook-input.v1",
+              "output_contract": "standard-cycle-close-hook-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+              "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+            }
+          },
+          {
+            "node_id": "promotion_decide",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "baseline_promotion_decision",
+              "revision": 1,
+              "executor_kind": "human",
+              "effect_class": "read-only",
+              "skill_id": "promote-baseline",
+              "input_contract": "standard-baseline-promotion-review-input.v1",
+              "output_contract": "standard-baseline-promotion-decision-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
+              "sha256": "a2c9b8135f880e4c68972ea8f31c11b5624942374eccd1b5156586fc9c7f833c"
+            }
+          },
+          {
+            "node_id": "promotion_record",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "baseline_promotion_record",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "promote-baseline",
+              "input_contract": "standard-baseline-promotion-input.v1",
+              "output_contract": "standard-baseline-promotion-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R07"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
+              "sha256": "a2c9b8135f880e4c68972ea8f31c11b5624942374eccd1b5156586fc9c7f833c"
+            }
+          },
+          {
+            "node_id": "promotion_checkpoint",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "baseline_promotion_checkpoint",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "mutating",
+              "skill_id": "promote-baseline",
+              "input_contract": "standard-baseline-promotion-checkpoint-input.v1",
+              "output_contract": "standard-baseline-promotion-checkpoint-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
+              "sha256": "a2c9b8135f880e4c68972ea8f31c11b5624942374eccd1b5156586fc9c7f833c"
+            }
+          },
+          {
+            "node_id": "promotion_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "baseline_promotion_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "promote-baseline",
+              "input_contract": "standard-baseline-promotion-hook-input.v1",
+              "output_contract": "standard-baseline-promotion-hook-output.v1",
+              "rule_refs": [
+                "SPEC-R04",
+                "SPEC-R05",
+                "SPEC-R07",
+                "SPEC-R11"
+              ],
+              "allowed_modes": [
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-promote-baseline/SKILL.md",
+              "sha256": "a2c9b8135f880e4c68972ea8f31c11b5624942374eccd1b5156586fc9c7f833c"
+            }
+          },
+          {
+            "node_id": "startup_drift_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_report_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-evaluate-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "startup_drift_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_check_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-followup-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "cycle_drift_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_report_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-evaluate-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "cycle_drift_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_check_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-followup-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "closure_drift_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_report_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-evaluate-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "closure_drift_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_check_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-followup-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "promotion_drift_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_report_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-evaluate-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "promotion_drift_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_check_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-followup-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "session_closure_drift_evaluate",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_report_evaluate",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "read-only",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-evaluate-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          },
+          {
+            "node_id": "session_closure_drift_finalize",
+            "binding": {
+              "contract_version": "process-operation-binding.v1",
+              "id": "drift_check_finalize",
+              "revision": 1,
+              "executor_kind": "deterministic",
+              "effect_class": "executor",
+              "skill_id": "drift-check",
+              "input_contract": "standard-drift-followup-input.v1",
+              "output_contract": "standard-drift-output.v1",
+              "rule_refs": [
+                "SPEC-R05"
+              ],
+              "allowed_modes": [
+                "UNKNOWN",
+                "THINKING",
+                "EXPLORING",
+                "COMMITTING"
+              ],
+              "implementation_sha256": "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+            },
+            "skill_source": {
+              "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+              "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+            }
+          }
+        ],
+        "activities": [
+          {
+            "node_id": "session_pr_triage",
+            "output_contract": "standard-pr-triage-report.v1",
+            "rule_refs": [
+              "SPEC-R08",
+              "SPEC-R11"
+            ],
+            "skill_sources": [
+              {
+                "path": "scaffold/codex/aidn-pr-orchestrate/SKILL.md",
+                "sha256": "662f76281c9564c89b47fa2a87688784eaf75a5e152dd86d980dc814e081a274"
+              }
+            ]
+          },
+          {
+            "node_id": "plan",
+            "output_contract": "standard-cycle-plan-proposal.v1",
+            "rule_refs": [
+              "SPEC-R03",
+              "SPEC-R04"
+            ],
+            "skill_sources": [
+              {
+                "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
+                "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+              }
+            ]
+          },
+          {
+            "node_id": "implement",
+            "output_contract": "standard-cycle-task-work-report.v1",
+            "rule_refs": [
+              "SPEC-R03",
+              "SPEC-R04",
+              "SPEC-R06"
+            ],
+            "skill_sources": []
+          },
+          {
+            "node_id": "audit_review",
+            "output_contract": "standard-cycle-audit-report.v1",
+            "rule_refs": [
+              "SPEC-R04",
+              "SPEC-R06"
+            ],
+            "skill_sources": [
+              {
+                "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+                "sha256": "2f084195b183f09d9519dd747665a812c2278c297576943a86e44434c8ce5313"
+              }
+            ]
+          },
+          {
+            "node_id": "startup_drift_report",
+            "output_contract": "standard-drift-report.v1",
+            "rule_refs": [
+              "SPEC-R05",
+              "SPEC-R11"
+            ],
+            "skill_sources": [
+              {
+                "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+                "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+              }
+            ]
+          },
+          {
+            "node_id": "cycle_drift_report",
+            "output_contract": "standard-drift-report.v1",
+            "rule_refs": [
+              "SPEC-R05",
+              "SPEC-R11"
+            ],
+            "skill_sources": [
+              {
+                "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+                "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+              }
+            ]
+          },
+          {
+            "node_id": "closure_drift_report",
+            "output_contract": "standard-drift-report.v1",
+            "rule_refs": [
+              "SPEC-R05",
+              "SPEC-R11"
+            ],
+            "skill_sources": [
+              {
+                "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+                "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+              }
+            ]
+          },
+          {
+            "node_id": "promotion_drift_report",
+            "output_contract": "standard-drift-report.v1",
+            "rule_refs": [
+              "SPEC-R05",
+              "SPEC-R11"
+            ],
+            "skill_sources": [
+              {
+                "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+                "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+              }
+            ]
+          },
+          {
+            "node_id": "session_closure_drift_report",
+            "output_contract": "standard-drift-report.v1",
+            "rule_refs": [
+              "SPEC-R05",
+              "SPEC-R11"
+            ],
+            "skill_sources": [
+              {
+                "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+                "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "operation_implementation_hashes": [
+      "21c9377881ac8c65cfa9ff44c0524a66f2e74d946bbd4ca788a3748296693d19"
+    ],
+    "native_implementation": {
+      "files": [
+        {
+          "path": "src/application/runtime/standard-pr-correction-checkpoint.mjs",
+          "sha256": "4cb1ae5728296a89a641f0108be707c32eef802bef4fb6b7bc56a7823215ef15"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-correction-checkpoint-input.v1.schema.json",
+          "sha256": "e9b9d4fb9fd15264a38529a46c204e0c07195e91944b3165b7c1085f2ef01856"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-correction-checkpoint-plan.v1.schema.json",
+          "sha256": "a0a9c33c7ebbc2ce4ff5661bc5b70e9e9b2442b738f17ef08de29f8dbd9dd895"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-correction-checkpoint-output.v1.schema.json",
+          "sha256": "cdf5a93eacd25371c6406fa5ac6bddd2b2b48a56de0b20c0eec9527a205e44cb"
+        },
+        {
+          "path": "src/application/runtime/standard-pr-correction-authority.mjs",
+          "sha256": "e8e18251182c403b63cc43a393ff715048d06cca7490e0fee79a2febe3602dcf"
+        },
+        {
+          "path": "src/application/runtime/standard-pr-correction-reopen.mjs",
+          "sha256": "f36ed0734c1351d2476379f8d680a078cf00b94027ab1fb61dca224d3b6d0250"
+        },
+        {
+          "path": "src/core/workflow/standard-pr-correction-reopen.mjs",
+          "sha256": "9b578d5a391774d17989750930a2aba9da21725713643cf89f6eddd2c0088d84"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-correction-reopen-input.v1.schema.json",
+          "sha256": "f145d3e6ad9cb7beda36fb2fb42d5edcaa8870a67af5d69d44599f84e1aa4b5b"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-correction-reopen-plan.v1.schema.json",
+          "sha256": "d7bb396ab246c41fa44b1b4fbd9a9e68617d93d1a7a85fa34d69cc2431bba255"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-correction-reopen-output.v1.schema.json",
+          "sha256": "004ef6f53c665583d521fad5db1dc9c4d9c81c5c011281098fa498363d840420"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-workflow-catalog.v1.schema.json",
+          "sha256": "a6d676b26362d6ed09b909914998502b930a7a551581ab268412c4597e51b187"
+        },
+        {
+          "path": "src/application/runtime/standard-pr-triage-source.mjs",
+          "sha256": "efe2ab7d1844e8b6cd7abd2151845b85320b3b397085007f40300c23bd19fdcc"
+        },
+        {
+          "path": "src/application/runtime/standard-pr-triage-context.mjs",
+          "sha256": "77bf6276a398c325058899840ecd6a85c64b22daa63d8d0580c6281369360b67"
+        },
+        {
+          "path": "src/core/workflow/standard-pr-triage.mjs",
+          "sha256": "26b454d7c5a0e4ccca2d19ac7d5ba90215a97529b908e9e142aec1455610c279"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-triage-report.v1.schema.json",
+          "sha256": "7d23782fb40ac7c5718247d878acd94fb479ebd5d13d7c3e35a40fceefbf3029"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-triage-select-input.v1.schema.json",
+          "sha256": "fcec900a24d846cbedc2ee77882476c0e220645f772df9a0b5b0d0e4313282cc"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-triage-select-output.v1.schema.json",
+          "sha256": "987c42bad0e083d90a612bc641ffdeacd9b42ad070c24f84833a056e801b1c01"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-triage-evaluate-input.v1.schema.json",
+          "sha256": "146378955cdac198d411cede4a6a233c0036b1f600326644b0764cb8f0853a85"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-pr-triage-output.v1.schema.json",
+          "sha256": "2bb7d85f74a88621219564ad69c9cf0e244e669f93fc657ebee7e50d3b8e1881"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-review-receive.mjs",
+          "sha256": "7a3b9cf8f40ff9045d5c5021e444730c5179dfa8458e971c0e277a02b6cf3295"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-review-receive-input.v1.schema.json",
+          "sha256": "bfd35cc678da8031906fa36780ff05f36750cb2d7ee200debb87ed39dddb80e3"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-review-receive-output.v1.schema.json",
+          "sha256": "6df900cbd71e8daaea9f52e6a7f81778f34f3ad7624e30668ff88b6470a6d987"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-review-authority.mjs",
+          "sha256": "be2fcf45cb8e9b65cfbd4931b2797e3185e784954e97900d643775778a0a67c0"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-review-observe.mjs",
+          "sha256": "71dd79af6140c5821c67e8ec1d78445e05054d72a495f92f800d24722984f889"
+        },
+        {
+          "path": "src/adapters/git-provider/github-observation-transport.mjs",
+          "sha256": "7d11469eb6877080ac6e9a3d14d468e32c1baec4ba3a4bae13cae77b9d90c411"
+        },
+        {
+          "path": "src/adapters/git-provider/github-review-evidence.mjs",
+          "sha256": "50a8ce4cc83eb401dc8c2a92d21aec246cadd5628dbed5dfa211466f0bd98766"
+        },
+        {
+          "path": "src/adapters/git-provider/github-workflow-adapter.mjs",
+          "sha256": "731aaf64ed00740d93f0fe48f364fef7b5b744efde721731c113587199ecab20"
+        },
+        {
+          "path": "src/core/workflow/standard-operation-contracts.mjs",
+          "sha256": "f6cff8ed1b4ef16163a5ca650e38601428fb3914ad8780993a141d89e2e6d500"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-review-evidence.v2.schema.json",
+          "sha256": "445302b9c9c7f17b5cbc80982394bee8c88c970902207f67ed7aee497b218c28"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-pr-observation-request.v2.schema.json",
+          "sha256": "f0ff03b34ad69eb7e4f1da4b3aad38a7bf36d62c4410bdc150899a6ac7b1c472"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-pr-observation-output.v2.schema.json",
+          "sha256": "10771e1baf876b5a07feca30949c1ee26e7e37eb8a7ae421e57e73eeb5b3b7d6"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json",
+          "sha256": "6b13562dbc4e16a6c107eaf09c2c68094b22298827ce656c456995a70eac1d08"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-review-evidence-request.v1.schema.json",
+          "sha256": "b5403de4c83de5773a89716a73b7252a53a72ebc04e0ce575fd6da71b577b85d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-review-evidence.v1.schema.json",
+          "sha256": "5854f0d3d97a26bd483ab31e7794c71dacac6163b1ffc4749bc1f80badd90f73"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-pr-observation-request.v1.schema.json",
+          "sha256": "3bd682cad66a132171affc481e6180b928d03c33d243bdaaadf76d7383db5a8b"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-pr-observation-output.v1.schema.json",
+          "sha256": "404ac69c6affdd1d7bcfbfdf83dc5b8a889cf25f3e7d443433b91f3b53549868"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-review-observe-input.v1.schema.json",
+          "sha256": "e75a585624cf1b6846578c76e2807303913a7a9b2624bbfbede8bc17c2870f1c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-review-observe-output.v1.schema.json",
+          "sha256": "6018b7f547392a4d42e34e840b04a85bdc66f1afd13adc7479d9d7551afddeb2"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-push-preparation.v1.schema.json",
+          "sha256": "8736e8186869d46fb22bb1feb697ad009bef001d106729beb46dd28e17cdc0f9"
+        },
+        {
+          "path": "src/adapters/git-provider/github-session-push.mjs",
+          "sha256": "bea7f2d92047b6b4c4dd20a7addb40fcc1a3e732eddae1f26bf9b35828bc1229"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-successor-authority.mjs",
+          "sha256": "14bb65585c885a2ff2b31693a3e0a804591dbdfe906a9c1efa9fad9bb4019981"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-checkpoint.mjs",
+          "sha256": "e8b7ad6ea0fc2d57e6228f8929f6bc2dad87e4224ca13dd91c215c8e4dde4a67"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-update-push.mjs",
+          "sha256": "6f3328e76fcaf63ded6130bf1bcb43409ae9d28d417cd5f3b68c7a6e0452711e"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-checkpoint-input.v1.schema.json",
+          "sha256": "17e960a4a08502cc2a75c2ab5b21256bedd48c849514d523f39ab7ca41e81e08"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-checkpoint-plan.v1.schema.json",
+          "sha256": "d54c03af7e93c55a02eeae607235ec8af44e78e88cbf6676576283d1cbdd1699"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-checkpoint-output.v1.schema.json",
+          "sha256": "9b03d3ec3fda52e15bf63186ca38f607d334c98cf9e1fdfb31935f79a590617d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-update-push-input.v1.schema.json",
+          "sha256": "95fb6a214c101f2b66160987c38051051a18f22c4659eb28defbba16c1c2ad21"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-update-push-plan.v1.schema.json",
+          "sha256": "0b1b9767a64ec7eda5042883ac48640cd381a2eeae50813275dc33f72bb053e8"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-update-push-output.v1.schema.json",
+          "sha256": "680de664f11b112fa6050bdd89d2977d40f650617d65066ec899ce6fa525695d"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-record.mjs",
+          "sha256": "6283a3c5fe08fa56f8f74445322a72a6c92f0f1aeb9fa63af981afedb2348408"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-record-authority.mjs",
+          "sha256": "f55f0d0c71036b19e4c97ce660ff66d8359d4748e42384c8d58ca30c478477bd"
+        },
+        {
+          "path": "src/core/workflow/standard-session-pr-record.mjs",
+          "sha256": "47bd2305b479741302815ea32ab541bf1cf2e2f5a71e9fbebb9cbf555bb19a73"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-record-input.v1.schema.json",
+          "sha256": "908f565ba88a67360f03d0daae82083af3b05382e3e032452171cadc07486e10"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-record-plan.v1.schema.json",
+          "sha256": "4455bcb7a8d9da9c30a40e176af29c844710bad5a5c54f762024368d493a4466"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-record-output.v1.schema.json",
+          "sha256": "5b642761b91acba31b64d0b424bd7cac13349ea6d705e2239dae2b2944ab749d"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-open.mjs",
+          "sha256": "a94e773466eac4c819743cafd59c835af38d8eab8892ec2d0c51263cad5f4dc6"
+        },
+        {
+          "path": "src/adapters/git-provider/github-pull-request-open.mjs",
+          "sha256": "93171eb265c10015f337213dce9c72e3becb186b119e17abfbed3bbb35a6c371"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-pr-open-request.v1.schema.json",
+          "sha256": "46f889ba07db281b7faaa9946c32e39a2ae719a6479829a122a57d76a42586e3"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-pr-open-plan.v1.schema.json",
+          "sha256": "1a0a6c2ca47bd43f38a4ada49a6c38c6ab9b2d050bc37a6275567606161ce286"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-pr-link.v1.schema.json",
+          "sha256": "0989de31b06e5f7297ebc7f17a7521d11ee937d01dc174822d5fc428cd12b913"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-open-input.v1.schema.json",
+          "sha256": "0992cdff2fe31daf728e9f1f64c7ce766a7e21d1d0714c47310757ae0fa25cc5"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-open-plan.v1.schema.json",
+          "sha256": "b2b3ae7c150195c639dce2bfaa715fa4c9df3f770a81555fa0934599bf6a2c8e"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-open-output.v1.schema.json",
+          "sha256": "4c5d6548b442fb2cde8a3f4f55a6bd33ea2428c4ad2632a7bedcbc4f6725d250"
+        },
+        {
+          "path": "src/application/runtime/standard-session-push.mjs",
+          "sha256": "7a8c959bf582fdd3ba284afc4e63207216359c388217a70104c75f8c09c55ab5"
+        },
+        {
+          "path": "src/adapters/runtime/local-workflow-session-push.mjs",
+          "sha256": "77421ec4e7de446a330f4808608b51d30b67c13395d2330ce80ed649630a154d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-push-input.v1.schema.json",
+          "sha256": "096c143eaeffbdefb9a631337a5ab007a219ee6174663e1456bf83b659ebca0a"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-push-plan.v1.schema.json",
+          "sha256": "84d28e2594f8eb93ff5021364b1e1755d27eb7a925a0cc7141ff4250fdba81db"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-push-output.v1.schema.json",
+          "sha256": "48bcd7b81fe3f9f7728e6853c723077c1fceae672c57b68916a44df3089dbf72"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-admission.mjs",
+          "sha256": "8d99038a01989002eb2c28aff6312ead49e3c3535ff521f7f1e95936ebde6a87"
+        },
+        {
+          "path": "src/application/runtime/pr-orchestrate-admit-use-case.mjs",
+          "sha256": "94ac9d69ca653df5150b06a4ae60eb2e48a7a1cc8df106fc953a40d2f308e13c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-admission-input.v1.schema.json",
+          "sha256": "e41b23c9fcf6d92f78aba9121bb70b4049b583e47e0c6ec972003908caf9add3"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-pr-admission-output.v1.schema.json",
+          "sha256": "c9f22f280f5656534a7b487f55d5dc8b990ffcf1ba1d9926f10065341d36fe20"
+        },
+        {
+          "path": "src/application/runtime/standard-session-branch-integration.mjs",
+          "sha256": "16f8281d9df1cbbfb789c3062c28329afbba04ff5e1fc5dc5098963a39ad9513"
+        },
+        {
+          "path": "src/application/runtime/standard-session-branch-integration-authority.mjs",
+          "sha256": "09a105774774a54d33886f21daa5144c4625b9ae3201c11205eee2fda9811ed5"
+        },
+        {
+          "path": "src/core/workflow/standard-session-branch-integration-decision.mjs",
+          "sha256": "f9c24c4b0ce9e3ffedbc3bf19011d7e6436633eca6455c2f9ac4f03db28bca86"
+        },
+        {
+          "path": "src/adapters/runtime/local-workflow-branch-integration.mjs",
+          "sha256": "f4cc728a1e7152382d69845ca543ae4ec3b3a43e469ed7f731b37d054baacdb3"
+        },
+        {
+          "path": "src/core/ports/workflow-branch-integration-port.mjs",
+          "sha256": "95fe119862fd944d0abef3b981d9dc554270d238c44a4f5be09bc4e7381b337e"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/human-session-branch-integration-decision.v1.schema.json",
+          "sha256": "b5432ae827f0affbdb72d8733fc32c5234bbdfc5fe649123e827af54bced9d88"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-decision-inbox.v6.schema.json",
+          "sha256": "d51154b3ad2c8684807667f332c1f8e8478db6a15d881a67af0083dcb4b6d5b7"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-branch-integrate-input.v1.schema.json",
+          "sha256": "aa83726e8716025eb4cc14374d8db55ee910c24a308389790374c6ba6526b9f6"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-branch-integrate-output.v1.schema.json",
+          "sha256": "06431f5148960f3effc622f3976db223e61bfc35f930d048c8b6e795c4f90e3d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-branch-integrate-plan.v1.schema.json",
+          "sha256": "a08f19637e9afa5498a4050601cd4078f4917114bba67ce03597a1086549b6fe"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-decision-output.v1.schema.json",
+          "sha256": "d0952db4c1c5894c67575eda8697969450f17cb71069b1c6291bbd84cd4a78b0"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-question.v1.schema.json",
+          "sha256": "d2227ebc4f48d05257ec348b86550899818007490d28cc17f25d1cdf1272cecc"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-review-input.v1.schema.json",
+          "sha256": "d6c1aab3c41ae00541f5a266ac4330d7663420a53ec1fb47411fe1b0d5802b29"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-review-plan.v1.schema.json",
+          "sha256": "71bc5e6e92c7852d511976a5dde203b1c742b6f4f3cd84eeea8d24345a721b39"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-branch-integration-review.v1.schema.json",
+          "sha256": "63eaa4d1a686b975728cc71eff54bab86851e635cfabd31e5edad696d2588dd8"
+        },
+        {
+          "path": "src/application/runtime/standard-session-delivery-checkpoint.mjs",
+          "sha256": "9fc963d9affb5baeac779042fc98b5a5e7ba43b2480f827925a6727ba6e39a8d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-delivery-checkpoint-input.v1.schema.json",
+          "sha256": "3c5117dd423753b0e3abfb709013bff80ef3ce8564d2f53a2f0fc93b6223744b"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-delivery-checkpoint-plan.v1.schema.json",
+          "sha256": "9c350cc57a19a29a8b2e25199fcd0cc407cea91772d1f929d8d164db12a369a8"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-delivery-checkpoint-output.v1.schema.json",
+          "sha256": "c18933a420ac6afd73c812178aa6c71f821b6ea08c90786c63801bf39e7cee8a"
+        },
+        {
+          "path": "src/application/runtime/standard-session-preclose-checkpoint.mjs",
+          "sha256": "54297f002f42b95b70740c50c6da415be589c620d459442cd3ffa08e52c48806"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-preclose-checkpoint-input.v1.schema.json",
+          "sha256": "038a165512c91c7239ae3dcfb69ebc3d26762e07e41729fb001eddee7aa27dc3"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-preclose-checkpoint-plan.v1.schema.json",
+          "sha256": "9f50d344d8fb60d5c917a46e601bc55fc22cfba3bb4a1f6109ce6d34f1d12c73"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-preclose-checkpoint-output.v1.schema.json",
+          "sha256": "efb8a254867d01eb9f3f7a3651d17e0c8a8d46eef7f35107b967134b63d77a3a"
+        },
+        {
+          "path": "src/application/runtime/standard-session-close-hook.mjs",
+          "sha256": "3c9cb5243b6e9017ed8a49596da02f26c40973e5104ff35ce1d6409c02d21a7f"
+        },
+        {
+          "path": "tools/perf/close-session-hook.mjs",
+          "sha256": "4f5d7a6ef6a366e66a969d97e34f2d53d362f75407aeb5e08858570a7b524b08"
+        },
+        {
+          "path": "src/application/runtime/workflow-session-service.mjs",
+          "sha256": "01e7a819d4011105445b08c1576ece9c7a275efb48cb35eb1983263509a66e15"
+        },
+        {
+          "path": "src/application/runtime/sync-db-first-selective-use-case.mjs",
+          "sha256": "ff3f0c77a0a9b684637f58b0720a168d22f3a6c12995b59bacf1989a04c13caa"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-hook-input.v1.schema.json",
+          "sha256": "ae4cca32dbd673ff0eeb1bc4ff3f333cf0e8b31622a59ac555216f8bd342d9a6"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-hook-plan.v1.schema.json",
+          "sha256": "8f38b053467d9606be3f08bd30ff69763e0414d94dfe9f4257ba314acdd92ae0"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-hook-output.v1.schema.json",
+          "sha256": "3f61af8a90f213fd5eaecd93a0edd939384292519b2ccf635d90a7fc9e47435d"
+        },
+        {
+          "path": "src/application/runtime/standard-session-close-checkpoint.mjs",
+          "sha256": "8608192f7438daf1c6fe1c820a3a2db42c565f0e69c773bc9f6be49747369103"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-checkpoint-input.v1.schema.json",
+          "sha256": "3c3cf6a9631fa3c3ad3feab9d76e7490533d735869004cd1f6639978bde1500c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-checkpoint-plan.v1.schema.json",
+          "sha256": "5b55debb09d36fbd899fa2dfe3c564e496d14f6f2ebfd84edbf8b1eb542465ff"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-checkpoint-output.v1.schema.json",
+          "sha256": "f9031c885129fec0e29fd1fcf017614740fbafbc9d1d5a09772cf25d09bf0afb"
+        },
+        {
+          "path": "src/application/runtime/standard-session-close-record.mjs",
+          "sha256": "c4632ef6ed49c6d7c4ef0dc4c8a31f8c56ca1b33911851a407b155c4baa3a324"
+        },
+        {
+          "path": "src/core/workflow/standard-session-close-render.mjs",
+          "sha256": "534aef8f0031efefa57ddf1babb21afb21693e5af5a995be2b3116fc144cb6a3"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-input.v1.schema.json",
+          "sha256": "c8f0a4832bcb9cc8b2e2d83ed4d6c7edf64c2a87d9eb242eef98097cf12c855c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-plan.v1.schema.json",
+          "sha256": "e61972bc3ddfee88492a1de05596fe1e863f9490919f2a158752fa87f29cbf3b"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-output.v1.schema.json",
+          "sha256": "dcfd915db22b1a3855684e4e47bf055d2241a02cce3170895044a73168fee3f8"
+        },
+        {
+          "path": "src/application/runtime/standard-session-closure-authority.mjs",
+          "sha256": "2db2aa88c89074e168ee3b3382c679cd502b986a66037e821c145e6b8fbfd1e5"
+        },
+        {
+          "path": "src/core/workflow/standard-session-closure-decision.mjs",
+          "sha256": "bafcacc79e871c38a88789bc90576c06fc379b2f53c879ec9746aa8c95671270"
+        },
+        {
+          "path": "src/application/runtime/standard-session-closure-review.mjs",
+          "sha256": "8ae77f22ea3689daab5cb2101588f53def23c337480ada31e41893dd858792e7"
+        },
+        {
+          "path": "src/application/runtime/standard-session-closure-context.mjs",
+          "sha256": "2134edb73ef4bde109662e40c02eed931ca3cf8824620245e09ac1850a6a5d6e"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-closure-review.v1.schema.json",
+          "sha256": "1f3600e589e8566fc3c725b78f9f6bf14c8c89811fb13576d5c26d3f700f6e9c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-closure-review-input.v1.schema.json",
+          "sha256": "bde92f948ac7e5708be809c07adad72f2c68dd0b1c464d2d70036382352db1c5"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-closure-review-plan.v1.schema.json",
+          "sha256": "e20a5d52abaa742bfe2b227f04da0daa3223ad17ed2c0f1452cf2baa46b520b9"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-closure-question.v1.schema.json",
+          "sha256": "0fd6dfbba68ec81be7e76f49d9f9642a50db9d1c6ee8b15c31911c43b8635f04"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/human-session-closure-decision.v1.schema.json",
+          "sha256": "558aaf28a1bc82efa7527c563ccc40f6d52cf8507ee1c94b7320fdcbd9db3ba9"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-closure-decision-output.v1.schema.json",
+          "sha256": "7a0edb67845e3ac9d76a59922d9afd0900e6984ec37c5aa44e0717ac12c382f2"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-decision-inbox.v5.schema.json",
+          "sha256": "6154ab99817c254d7e125cff6ee831707ad226639583afa499374675c75dd0e1"
+        },
+        {
+          "path": "src/adapters/runtime/artifact-store.mjs",
+          "sha256": "92f397f54f63c1e71a1188468bb9c72684b53ad95c279e957a0c9f2cd13eb6a2"
+        },
+        {
+          "path": "src/lib/workflow/structured-artifact-parser-lib.mjs",
+          "sha256": "bb79ab11e846209cda605f3b5178d34cad04688c40f154622c1261673ed8a7e6"
+        },
+        {
+          "path": "src/application/runtime/close-session-admit-use-case.mjs",
+          "sha256": "7323d7527e31e50c322b69b9a3c8d02639b9629028a32bfbd96316b172763531"
+        },
+        {
+          "path": "src/application/runtime/close-session-context-service.mjs",
+          "sha256": "2cbd4b5bdd1fa1e4a3f71f704a9fd5c74353761de4004c40247ea7fd8e7f5178"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-close-admission-output.v1.schema.json",
+          "sha256": "854fb2df4deb957633ac0e95ed9a49968aab20d1dabef56c05672279055349a9"
+        },
+        {
+          "path": "src/application/runtime/standard-baseline-promotion-checkpoint.mjs",
+          "sha256": "7229cd69fe573b2bc6b11f893cb8b4b8c0e1115128af5b9d94b2ea3525fdfb9f"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-checkpoint-input.v1.schema.json",
+          "sha256": "a5542e20ab3ee0ac9d29f262037dedef1445b36fc6e983fc2202247cb00c0136"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-checkpoint-plan.v1.schema.json",
+          "sha256": "6696a9a98a2c4fb73857798769d552407edf5a9f6bfcf8a7203c516164e422b9"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-checkpoint-output.v1.schema.json",
+          "sha256": "cd114922236cb9e146b4e28d7c9f83dd033f8690d77e3b1a07d840da43e151fb"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-terminal-checkpoint.mjs",
+          "sha256": "6b31ab2b4ac7bf53ec5a67db5b6797115fb7abec3ecd0f0b143c9a5d2d43a5af"
+        },
+        {
+          "path": "src/application/runtime/standard-workflow-git-checkpoint.mjs",
+          "sha256": "eaaeeec3090ef12be08e760a9c43193b2a5b49192afd5ce8f49cce9f15ed2a4d"
+        },
+        {
+          "path": "src/adapters/runtime/local-workflow-git-checkpoint.mjs",
+          "sha256": "a285a69b33988ccef79de5829522a829c59976a519dd6fe605768bc94249b7d6"
+        },
+        {
+          "path": "src/core/ports/workflow-git-checkpoint-port.mjs",
+          "sha256": "5c2804ee1ca129eb31f2a7e29c39eed376b40de5dee6ce4acab186637e89de30"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-terminal-checkpoint-input.v1.schema.json",
+          "sha256": "401c1c85e9cf81ffd151fae2f1dd5e6161e1e89550f2834ee1e8c235247e87dc"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-terminal-checkpoint-plan.v1.schema.json",
+          "sha256": "e876273747adb2e3f5c6a934be2547d1f51681fc60cb189e70c148623e75acac"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-terminal-checkpoint-output.v1.schema.json",
+          "sha256": "1e46943f0d2817ad769cb2110b1bc9566fdbd8447c05172adf9773626c36167a"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-git-checkpoint-input.v1.schema.json",
+          "sha256": "877f64d65266f3532a3f6925e48fa487c6b4d25c48c3f766c298e1c26e45d160"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-git-checkpoint-plan.v1.schema.json",
+          "sha256": "f6dd6a07148589cc37d9d1968f14e169f3aa6f545201db126f37aca401faa3e0"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-session-git-checkpoint-output.v1.schema.json",
+          "sha256": "7fceace7a212049844e588c2c636ce5e1fa1d69307afa35f8a4fcae3cc76bb1e"
+        },
+        {
+          "path": "src/application/runtime/standard-baseline-promotion-hook.mjs",
+          "sha256": "14edde4972165e93d353b75b815c7cde0b1eb57ec49133c2a5f13bef8c58494f"
+        },
+        {
+          "path": "src/application/runtime/promote-baseline-checkpoint-use-case.mjs",
+          "sha256": "5c550599ff3aae9d9a8cb8b4cfe0a2ee6ba675a1e47d918a52b06e509a7bc740"
+        },
+        {
+          "path": "tools/perf/promote-baseline-hook.mjs",
+          "sha256": "212462467abb0bd5ec58e8fb6758463db1ac070cb4d22d308b2bf40b76e6d67c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-hook-input.v1.schema.json",
+          "sha256": "ed7197fae89100c5a0f8da9e066cb404c4557418f8f8bb93d456232f60f993c3"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-hook-plan.v1.schema.json",
+          "sha256": "b7be0cce3b878c5944d6c76fc522a4fdd93ae1f3ec6066a0e57b068f56435ffb"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-hook-output.v1.schema.json",
+          "sha256": "c5a4076db80ef4c54366f4e75ae3868c6fa73eaae21255d20aad03fe6a42dfa2"
+        },
+        {
+          "path": "src/application/runtime/standard-baseline-promotion-authority.mjs",
+          "sha256": "51417554acda75e6fe5e38996830f6b6f0218b972eeec62944eff424fa7b0203"
+        },
+        {
+          "path": "src/application/runtime/standard-baseline-promotion.mjs",
+          "sha256": "1b4ed69831c5c7afd4cf0b0c8428de7e8f7e57cbe837bf5a7f25b35ea0dd1145"
+        },
+        {
+          "path": "src/application/runtime/standard-baseline-promotion-review.mjs",
+          "sha256": "6053573a59a31cf65999dc26f4c5aae2f6805c6b5b870f4f7244e4d03dbcf655"
+        },
+        {
+          "path": "src/core/workflow/standard-baseline-promotion.mjs",
+          "sha256": "75dc5fe45acf6832480f9cdec18e6ce8840677ab088e160b781556e60dc4ac03"
+        },
+        {
+          "path": "src/core/workflow/standard-baseline-promotion-decision.mjs",
+          "sha256": "9f90d6c220eb968490f13098cac3f0b2376eab78cf9acc063d0353af2260fc09"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-input.v1.schema.json",
+          "sha256": "7e0a87445db29cec677145564bf72e6f4261bef7987e95796c54790acd3edd5d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-plan.v1.schema.json",
+          "sha256": "3d467a495883d4fbd990b5883e8a34409c343eff63e1e13064a15db6e8698fef"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-request.v1.schema.json",
+          "sha256": "6c1df2a302f343e8f299c4be5a507aa807365c8813aa4567103ce1f3773393bf"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-output.v1.schema.json",
+          "sha256": "54c5e16ad8b679fbbab45988837b8daffa7242b1d668fc7346d05ecdc3ee9413"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-question.v1.schema.json",
+          "sha256": "a76af797fcd394391da13e907dd1fadfb047cae783a031f4a05ea8a56b16f273"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-review-input.v1.schema.json",
+          "sha256": "0a7aeb38cf77bad8d6a7ef8f3085c88badaa784f23e5d6d642d290ee20cbaadb"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-review-plan.v1.schema.json",
+          "sha256": "817ecc66cdf0dc1bdc76c6adcd2b8d12e27ca015fc52a1e7a1e95de38f0f0ff1"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-baseline-promotion-decision-output.v1.schema.json",
+          "sha256": "02238e7ca3a2a2e6ce73c3d82b2f4f4a02044238a4ae8f95d76b5040593dfe82"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/human-baseline-promotion-decision.v1.schema.json",
+          "sha256": "d801579cf4459b1a66000af4390f5cb3fff951a65ba17411ed4a700396cdd632"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-decision-inbox.v4.schema.json",
+          "sha256": "d45debb790a51e6f25a382a0c184a25291c85a2427a16c6bf36ddb1e6bb92c27"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-close-hook.mjs",
+          "sha256": "b1ccd52b49dc3473133b0cb8423d870f8c52f79ec221819b973d812cdf081e6e"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-close-checkpoint.mjs",
+          "sha256": "68a09f40cfda45e140cdb9d53126d8454c2cc2d577bb30de829d7b149f86caf3"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-close-hook-input.v1.schema.json",
+          "sha256": "0132a607ed7c93e71a899f360f3d5ce5b7da8ade990a61d39f17389e4377a3e9"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-close-hook-plan.v1.schema.json",
+          "sha256": "9addc28c116a974fd8ebd067f806bf6420684ec4b7951f4e64cf5cdec6dc6f50"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-close-hook-output.v1.schema.json",
+          "sha256": "6fd40176635ba1c68221c5f40b677ff58e0834e129036a584b8348ed9d568dd5"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-close-context.mjs",
+          "sha256": "6dfcdd4af1b86e37a2125543043b4a25b58897d67c59d556e72906e03ea7cc45"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-close-record.mjs",
+          "sha256": "f6469263a92ae71c775a81b30d40cb691e2e4cfd0615d5f3ffc0bbbe07e2af40"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-close-render.mjs",
+          "sha256": "433b535c5d354296abf1e0532c724c338bafc2772a6cf7e62e43c6f665ccc7aa"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-close-input.v1.schema.json",
+          "sha256": "30c58d1846032ed3f58cc552c3e7f37e8640ee9741d3c810a33b53dcc7e455f1"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-close-plan.v1.schema.json",
+          "sha256": "e638dc0f185169eb8831c2e494bc459a1742fa6f1927357616526407d8393790"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-close-output.v1.schema.json",
+          "sha256": "d428f41846241b8b25169cd6490dcafa90ede38693bafc041452b4cd32a9b87b"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-closure-review.mjs",
+          "sha256": "24fa52b6e8d2cd189613f3f192ab4cdada12fbeb6cb09c40b7e321ff0b5e736f"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-closure-decision.mjs",
+          "sha256": "1e3494f334d011d0c316ee4952e9e355f2dfa52ce1cd3d4f9353b885495cc0e6"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/human-cycle-closure-decision.v1.schema.json",
+          "sha256": "e186dcec7ce62a071150c545b439144259dabae4b1fbeae6b7142a20a7b3c05b"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-decision-inbox.v3.schema.json",
+          "sha256": "981a6d3ef263a43004c79b3efcc09160e9ab14d9e95496e1557b65ed00308ae2"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-closure-question.v1.schema.json",
+          "sha256": "25a4552b4aa02906e48d04ed8966e7987abcaccebedccdd9acc48b17643bda7d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-closure-review.v1.schema.json",
+          "sha256": "897ba1033e236370b16aea93be8c569f06c4ad8fced11a119af3c3772a63109c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-closure-review-input.v1.schema.json",
+          "sha256": "b98ef083bacedc7ff39ea9aefb31126bd00b3f00361cd7ff68c67f0bf60d9fcb"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-closure-review-plan.v1.schema.json",
+          "sha256": "2c2020dfaf70d4b6ee7d690435853bfe5609c3e15bdf2766a762d6ef72baf796"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-closure-decision-output.v1.schema.json",
+          "sha256": "8d55233ee495e140e22f324b4eaab886021d527cb02570cca1e83d03d7c2b341"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-audit-context.mjs",
+          "sha256": "9446b0c30732e7dcb034acd46cb6d6bcb143acc2efbe4118122dc79a31e11d97"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-audit.mjs",
+          "sha256": "647ca61f09ffedeb5f8471c721681e26b2eae31796c52cc946b484ead939bca7"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-audit-report.v1.schema.json",
+          "sha256": "ba4f931a21bead7a0e0d7c82fa39c1b94f4e677119cca1c10e83d0da6c3d4954"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-audit-output.v1.schema.json",
+          "sha256": "10f6cf4a1f62c3838a4fef5370d3fb27fb536ddbc27d0497843e9cbca283ad75"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-audit-selection-output.v1.schema.json",
+          "sha256": "40ee56820cd866fd952239707ec4a43b454e4556bb89037b209759e5c4dd1e60"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-audit-select-input.v1.schema.json",
+          "sha256": "10ba90226452b5222b95bf1b7f9a36e5124a608d14fb537d3dcf3625893359bb"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-audit-evaluate-input.v1.schema.json",
+          "sha256": "e59fb67cd2f3999c1475b76c5c8178d09dcf03bf763b4bdfd25dd4961c65e492"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-task-advance.mjs",
+          "sha256": "fb4897220bd227476e59dfac5aa4578f073b5304a0862810de7180f6a149ba14"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-task-progress.mjs",
+          "sha256": "9ab798f30f945ed5376e22930286ecacf4d56adf2174d7cecb378c6ed8062351"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-task-select-input.v1.schema.json",
+          "sha256": "f9de7d21b2772b9e434e560d314db98451c79780e6537e2bb3ad32bd18c6b345"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-task-advance-input.v1.schema.json",
+          "sha256": "8cc602621585c006113d9052efecb4a44bbbbeca911a1d56a376153f7c29e214"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-task-advance-plan.v1.schema.json",
+          "sha256": "46bcdce1247390a0c714ead58382aa253da8065e9a6899621fbe2267f7f0e7c0"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-task-output.v1.schema.json",
+          "sha256": "159b3fed9584ad3993c880605bc275ae353bce8dd44eefe32da52a93072fd1ef"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-task-work-report.v1.schema.json",
+          "sha256": "16e86e3a72a1ceb0b916ce23ff3e3959580c15eeb6dda8291e96834016d72e74"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-task-work-output.v1.schema.json",
+          "sha256": "da52cd60c48658932ef5d04f6b1df3000f32e21bbb02a833065ca6b16da217de"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-validation-evaluate-input.v2.schema.json",
+          "sha256": "584ea6fdcd86949b4e9f9aaebcb3634989341282833c006d82a8ffb1484b330a"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-validation-result.mjs",
+          "sha256": "a8d138b6ad69a05137e51235a23cf6173f34d7a4fbc9f8db87f8f55889f32437"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-verification.mjs",
+          "sha256": "1b28740d7894cb3b7023778b782ac0c3b4dd53a797407c1fe41ef41ef9da3362"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-verification.mjs",
+          "sha256": "af8816d59684cd3641d1976481ddda5dd5de1636ec899eb9b4a64259ccb327f1"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-validation-evaluate-input.v1.schema.json",
+          "sha256": "73930a2d6682737fa703959e971bfb29fc33e030dc66cf6ea7b786a09ad8e5ca"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-verification-enter-input.v1.schema.json",
+          "sha256": "33e24f584941f8d3dbac7125df08208ae28713e970ad614153868c550f72fec6"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-verification-plan.v1.schema.json",
+          "sha256": "2f704163722fa7c7b7ff5a2c4d3a23e8cccf1b5545c3941cd54a3679297f35f5"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-verification-output.v1.schema.json",
+          "sha256": "5274e7b3164333d9a250503f94fe0e59c78d21fcf1ca66a2d4bbf1910bd2ce40"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-validation.mjs",
+          "sha256": "ba85b7d5f4e1a4c441ee24042c83324f84b92b5da2c7e556fefae2e1a712f3a4"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-validation.mjs",
+          "sha256": "7b541e27c5aa48c68c0726bbf08c7a4631fbb4d13f6ee0310218e4ff6a9e2839"
+        },
+        {
+          "path": "src/adapters/runtime/local-agent-verification.mjs",
+          "sha256": "34e590486023fca41dd4700ec3ff83c02a3fc8edac149d48b8abcd39014bdd57"
+        },
+        {
+          "path": "src/adapters/runtime/codex-sandbox-validation-boundary.mjs",
+          "sha256": "28e07cf5022b7dd6592f13822f8c05f8631903a057c88f71d71f2ec2cdb2327c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-validation-profile.v1.schema.json",
+          "sha256": "46308c70b6d4d2d5c5e14d24a1241237f0a5631d26352390dffe1f7b308536f8"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-validation-plan.v1.schema.json",
+          "sha256": "502a3461c282d788c0a3501dc920458e665a86d7f0c4b8387b2cf799a4401d46"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-validation-input.v1.schema.json",
+          "sha256": "bfb93d18660653d00536e6905b68cca430699cdd0905b6be4790e6d5ca2474bf"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-validation-output.v1.schema.json",
+          "sha256": "5db06894f1636faa69989f2558a0e9146f0ab0dfc2e5f87f9e86346417c7b499"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-work.mjs",
+          "sha256": "69c94eecd52188196b704ab0ed71adff0c41e6b5969ae8f0ae6c9e23a80b8a6b"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-data-bindings.v2.schema.json",
+          "sha256": "55aff2d736b3cc1fc3fb39628fe07b111d421b9f7e87ca490d96d0ee7b3a0e25"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-resolved-input.v2.schema.json",
+          "sha256": "28a2c2047e9fe8f4d72dd16516dc355a36ef055ddeea9f885bb502aecb714752"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-work-report.v1.schema.json",
+          "sha256": "862b428605905590db578934d0ce16edd2a6b213130f690022e8cd8142637d86"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-work-evaluate-input.v1.schema.json",
+          "sha256": "df70d5ec2b44ade81d5a78a877359a83d6494041b493e2e25af145fb5a15cb6a"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-work-output.v1.schema.json",
+          "sha256": "4949353bc1b36769119082e591308e0328b462a7f1af3c288fc51d2511c44e03"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-implementation.mjs",
+          "sha256": "c6b867fcc68bdda1f760842903ff83d72ef194981bff378b077418b68f8fec76"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-readiness.mjs",
+          "sha256": "5e47346153ce18dcf017ecc14b21cc546962e87f6813d8c00edf9c637d466a02"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-readiness-evaluate-input.v1.schema.json",
+          "sha256": "10cc59fbd4d33c7551a06ffe37c8f3cf1eac224cbb2d772921dc290e0278807e"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-implementation-enter-input.v1.schema.json",
+          "sha256": "99c9ae8aaea1b94eb0c13e64d8b0c8dba5b37d6ff7c29a6a631cac67eeaf48ed"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-readiness-output.v1.schema.json",
+          "sha256": "48699837b0d57e19f41728ce4aab5f8cf588307d4ca984c2198421cd2f3eb672"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-implementation-plan.v1.schema.json",
+          "sha256": "0e9781b64d5ea296a228b21b45ddd2444a2bff25ad40c8b162c28dfd9c02f149"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-plan-context.mjs",
+          "sha256": "e10fa533550fb593d0f6bc222d7378c84d4845d47cb8623d9c9036be5de92bef"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-plan-record.mjs",
+          "sha256": "5abd3dace0ca08beb42920b45c9a9a0171f316fba37194ff528f6868049930dc"
+        },
+        {
+          "path": "src/core/workflow/standard-cycle-planning.mjs",
+          "sha256": "c62c8c110f0689b2ea261aa963c6c1dc1332579cede704630d7684acec790ea9"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-plan-proposal.v1.schema.json",
+          "sha256": "0b09f100013cb85ecfd12b1481ce645df7e57fa0e79d750191d4dc9893853d6a"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-plan-evaluate-input.v1.schema.json",
+          "sha256": "9b56f71bd70f977ce1c3292914922344bea822f04b027fbd55e64b57f2d526ad"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-plan-record-input.v1.schema.json",
+          "sha256": "7df0d55e61a38ca66a05fa47a1ae601e31e4d269902bc0465af515b34ba5681b"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-plan-record-plan.v1.schema.json",
+          "sha256": "ab6f1dbe3f020af0a714d018b705795d82c655e8ba11ad2e98d5f81a7a8dab00"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-planning-output.v1.schema.json",
+          "sha256": "35dc7ca36a6fb44d5ed6edfc168d694ba40a3cdd1a746d3a96f289975dbb08e3"
+        },
+        {
+          "path": "src/application/runtime/standard-cycle-checkpoint.mjs",
+          "sha256": "14c033621ef754a29df7befb3c34810151022afa75dd526e76e3c58313e1898c"
+        },
+        {
+          "path": "tools/perf/cycle-create-hook.mjs",
+          "sha256": "cf870e69450807f57a8a7b4ca92a4b1c2ecb67af151ce1fa95a6bae3ba3258a7"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-checkpoint-plan.v1.schema.json",
+          "sha256": "8b1e32b47df68fdc307a42eeaf9de96efdcc2e5585a0be1ba7dfada7f2f8829e"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-checkpoint-output.v1.schema.json",
+          "sha256": "dfc83e6218ff44682088d229341ad561b988b1e258ef8602ec670c42376343f8"
+        },
+        {
+          "path": "src/application/runtime/standard-drift-cycle.mjs",
+          "sha256": "6e54bab228623b089f6df8e03cfccd5e3955a816c1dc6d4d2313b3545cdd8f21"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-cycle-context-input.v1.schema.json",
+          "sha256": "49f00091e13e21206c0c779bc7f4d93184fc83b89d224b77dbdab6b850362702"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-cycle-checkpoint-input.v1.schema.json",
+          "sha256": "06ca5cd47e2e95fa744a6c1acfe1c2f8a30166b1a062ab7f8c297b4a44d68ccf"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-cycle-initialize-input.v1.schema.json",
+          "sha256": "81ed6d222c6bbb85656db19513e1959661a3be8ae38a7427ba40cdb2336b258f"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-cycle-output.v1.schema.json",
+          "sha256": "0636a15c053191325730996d006b291fa26d7e911058660870d8475a8d256e88"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-cycle-plan.v1.schema.json",
+          "sha256": "e77163ae50fb8c31c7b5f7d71870557255107960cd96ce2cdd2888ec0c867ed1"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-initialize-plan.v2.schema.json",
+          "sha256": "0901635cbd3261725ac9bfd7d4c402a7fe54e4729da2cdd66973c8f0090d5e8d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-cycle-context-plan.v2.schema.json",
+          "sha256": "c734a4ff7d7efb223232f41561ffd85509980fc4bdaf0d58c55d3133979ab422"
+        },
+        {
+          "path": "src/application/runtime/standard-drift-change-request.mjs",
+          "sha256": "6d55f4f8d882a4960e0e68dd54b29bbcca1feaf343ea0023061a61a25e3d16d1"
+        },
+        {
+          "path": "src/application/runtime/requirements-delta-admit-use-case.mjs",
+          "sha256": "66300d8a07866876388ad0b1ac2e3a3f65a507d1f59184f557daba007ff6ca13"
+        },
+        {
+          "path": "src/application/runtime/workflow-continuity-context-service.mjs",
+          "sha256": "302cae0ec4c3342023ff1506c15b50ececdfd07b8c4f01d5aa106d94e954c20b"
+        },
+        {
+          "path": "src/lib/workflow/session-context-lib.mjs",
+          "sha256": "f8bff2e233c271ac2f0a54ae452637078b9af5c938952e940893c0d68e3ae2a7"
+        },
+        {
+          "path": "tools/perf/requirements-delta-hook.mjs",
+          "sha256": "afc401c6f29b358b9478ee921c04c2999d5619110948cac2873da33a28c1ce17"
+        },
+        {
+          "path": "src/application/runtime/runtime-head-resolution-service.mjs",
+          "sha256": "089b1219c7fb140d165d7a0f574a4a52151cbc9e98dbbe4b6402e6c07deddeef"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-change-request-input.v1.schema.json",
+          "sha256": "13f373ac4b6da68a8b6e35f13211b75c90b059aa6018d7e4a3fa71518bccec87"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-change-request-plan.v1.schema.json",
+          "sha256": "39962ac9b450e064e93e53103a6bd1c760d4a838b060922f7c16a38cbb14013d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-change-request-output.v1.schema.json",
+          "sha256": "559378c9de00b14cd8b81b1b1675edd0aa9ff1187b3bce42390f24215101419a"
+        },
+        {
+          "path": "src/core/workflow/process-data-contracts.mjs",
+          "sha256": "abc85bfdadcc8990ae3a465770c22955ba06c087f319e84defc92bcf90b4ac15"
+        },
+        {
+          "path": "src/core/workflow/process-input-resolution.mjs",
+          "sha256": "dc92ddaccf60e4d7578e0da388282facc1383940dae25d31cdde9a505539381c"
+        },
+        {
+          "path": "src/application/runtime/standard-process-inputs.mjs",
+          "sha256": "c9df017417b6329312fcd1f7accadb04680145b6f6fc7a4f26febb984131006a"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-data-bindings.v1.schema.json",
+          "sha256": "fbfc9a506c2a376c9802b69c3216c26dcfd326903104af5c436b49646a0375a7"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-resolved-input.v1.schema.json",
+          "sha256": "065577036ae249ffc0483f4de90460928820173a2ad922869941564a76bdb5b3"
+        },
+        {
+          "path": "src/application/runtime/standard-drift-recovery.mjs",
+          "sha256": "b858d7a6c3a10e9ab9d66a1ee51bd246bc7af52ba8712ee064c6a34af7740e3c"
+        },
+        {
+          "path": "src/application/runtime/agent-run-configuration-service.mjs",
+          "sha256": "3d33f896121aeb00d873729ca9a618a85bd5b5f4d14fa723b766e851c6cb4bae"
+        },
+        {
+          "path": "src/core/workflow/process-decision-inbox.mjs",
+          "sha256": "15af83db8260b5397f8cec2db5ae8696d81db2ca52c1ce720335479eed650a5f"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/human-drift-recovery-decision.v1.schema.json",
+          "sha256": "5947a1bd8e4baebde766c08354c532ab178424875b4d122c4b572cc31ac433df"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-recovery-question.v1.schema.json",
+          "sha256": "fe95b48ae2c6c373ba14e9428394e2bc73e69511b4cc562199d0cf5b0775edb8"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-recovery-plan.v1.schema.json",
+          "sha256": "339814731c5030b066ef388a0c2f60f722a4c14103bc96e667251d38e7712fc2"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-recovery-output.v1.schema.json",
+          "sha256": "e728c57b678484257afe001da5064bf8657db67c4c0a358d316268e3717b6e4b"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-recovery-record-input.v1.schema.json",
+          "sha256": "3d40fc6a190e19899aafe0abf1b0209c14b3899f36be1f5ea67e45c1951238cc"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-decision-inbox.v2.schema.json",
+          "sha256": "57b9ae8361ea1dc8756ef6d519c4d585323f61d0253b78935e6ae0d1c94004b8"
+        },
+        {
+          "path": "src/application/runtime/agentic-process-implementation-pins.mjs",
+          "sha256": "6a3862b09e6abe0ac8c765aa827506eff1617e565eea17c77d2917a0f3ec58d9"
+        },
+        {
+          "path": "src/application/runtime/agentic-process-persistence.mjs",
+          "sha256": "cada16a6427fa1653542d38b3c656f81100c3bfb0f5762943037272bedd37f13"
+        },
+        {
+          "path": "src/application/runtime/runtime-persistence-service.mjs",
+          "sha256": "4b92fe312d5c045680f52cfeaba0925c64a7ec647588f69db9d3cdb96ceae256"
+        },
+        {
+          "path": "src/application/runtime/project-artifact-store-service.mjs",
+          "sha256": "5ab5d18919bc79ef1272072073ba3de98106758ba7012536452a2b26dd9527d4"
+        },
+        {
+          "path": "src/application/runtime/project-artifact-store-worker.mjs",
+          "sha256": "d8495f29a6660a60245a3541295ad7500f351a903ee0ac5e231f26651cdd5144"
+        },
+        {
+          "path": "src/adapters/runtime/postgres-runtime-artifact-store.mjs",
+          "sha256": "5c60da45fd6b49250e6e388e2bd9eb02054978b288189cf7f7dee5e91b307bcf"
+        },
+        {
+          "path": "src/adapters/runtime/postgres-artifact-command-lib.mjs",
+          "sha256": "4b0e4f4d90f21773856cf498ef8e4593e45b9ad0fb28cc3e84ead14a1117cc0b"
+        },
+        {
+          "path": "src/adapters/runtime/agent-execution-fence.mjs",
+          "sha256": "eaf3e5c6e62138f032b0f73f7fe82d69cc83243387df434798674a0b2187abdd"
+        },
+        {
+          "path": "src/core/workflow/artifact-compare-swap.mjs",
+          "sha256": "672664b473841c47491e6bb42a5536ace8464b1b4b6c84a9f792163ab75b3160"
+        },
+        {
+          "path": "src/application/runtime/agentic-process-execution-composition.mjs",
+          "sha256": "d5d4314b860233ebf293977d38ffd5ab32a7b5bdfc98435a31ffd0977c6f9dfe"
+        },
+        {
+          "path": "src/application/runtime/agentic-process-execution-host.mjs",
+          "sha256": "c65ee10dd8b5d1b8d3f8d2bb9225889f6c5c890bfcd3ee952962f1c0bc0565dc"
+        },
+        {
+          "path": "src/application/runtime/agentic-process-owned-run.mjs",
+          "sha256": "a754cfe73cbb3b952ffe59f5039cae1fcbe038ddd73b2179e58f5ace4a129d82"
+        },
+        {
+          "path": "src/application/runtime/agentic-process-service.mjs",
+          "sha256": "638026cfb5f829a8d031db2c1ba15c4edb23de6ce20708441e363fd8329ebb57"
+        },
+        {
+          "path": "src/application/runtime/journaled-native-allocation.mjs",
+          "sha256": "703ab9e15ee3fd00c4066d325825665341a7d399eadec2416c1b004b98196322"
+        },
+        {
+          "path": "src/adapters/runtime/native-allocation-journal-store.mjs",
+          "sha256": "e44b3e9a5f676955d0da3cff63b4ac3ecf986fb507b6dfe60ce6dfa0fa395011"
+        },
+        {
+          "path": "src/application/runtime/native-allocation-evidence.mjs",
+          "sha256": "8c22d2a17260d508a22482ae9e9e62d76c70915f364151c7a9192c25388b3ddc"
+        },
+        {
+          "path": "src/application/runtime/native-allocation-worker-authority.mjs",
+          "sha256": "708534ffcf05b37bba87682cc51fe85a94339070a710603644bd20a870dfdcc9"
+        },
+        {
+          "path": "src/application/runtime/native-allocation-controls.mjs",
+          "sha256": "f24bd01f905641ac6fed21a9dab8aa702046b93e7946361a55d2ae0f08407cab"
+        },
+        {
+          "path": "src/application/runtime/standard-process-authority.mjs",
+          "sha256": "8cf2c203be578d2bb367dbaa5deea7554f868166e021fe1221464e7e7a53b09b"
+        },
+        {
+          "path": "src/application/runtime/standard-workflow-mixed-composition.mjs",
+          "sha256": "4eb4c98d8ad79b2970091169466167af9c59c92377dd3469021f634196ce0e5c"
+        },
+        {
+          "path": "src/application/runtime/standard-drift-report.mjs",
+          "sha256": "cc96f7d3e1dc1c74d2aa3d98f955eb40bc8e1de39dffade7d7954523f7bdb8aa"
+        },
+        {
+          "path": "src/application/runtime/standard-drift-git.mjs",
+          "sha256": "3b49b48d746d7f600af656a6b6d304de8ff15ca0c1fc89ac1202326fb9447096"
+        },
+        {
+          "path": "src/core/workflow/native-activity-output.mjs",
+          "sha256": "9830f54c47484b2961d31a8ca3680fbc9954f912cd6b89be33c22f19864273ae"
+        },
+        {
+          "path": "src/application/runtime/standard-drift-finalization.mjs",
+          "sha256": "03fa8d2d13bf42b6b6366fccb180bb48e2b2b018470bfe6c13c5c922c6719180"
+        },
+        {
+          "path": "src/application/runtime/skill-hook-use-case.mjs",
+          "sha256": "fe86f279e1e1a32d6e4e5304911ce915c8acaf01a53362a07c26890e96618d69"
+        },
+        {
+          "path": "src/application/runtime/gating-evaluate-use-case.mjs",
+          "sha256": "feb242a8dbe8d39fe8b5b8ab1b96410861027410506d198162f03bd6bce6a2a8"
+        },
+        {
+          "path": "src/application/runtime/cycle-close-admit-use-case.mjs",
+          "sha256": "efb8000a9aaba0596ba6c198cb59fb9b13f8ff878f7003e8f0796a442cfc442f"
+        },
+        {
+          "path": "src/lib/workflow/branch-kind-lib.mjs",
+          "sha256": "9cc79a8d2a1ca19be8550b409382581c770d8a584999df671a0a0a31b01fea0c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-followup-input.v1.schema.json",
+          "sha256": "5a145853fc707162ecaa18a62c756e31a8dd5a4c89b542b9f6b6c0e2e53af5f9"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-finalize-plan.v1.schema.json",
+          "sha256": "3abede5d5ed7a301d0bfed3fc8e6fc9836dd094381bf082101422077b6082fb9"
+        },
+        {
+          "path": "scaffold/root/.gitignore.append",
+          "sha256": "b004b164710562c0801d3a2c0559b95fa3733fb29c67a97b78da8494983314c8"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-report.v1.schema.json",
+          "sha256": "76f1e43769e8e4b59c8c4fb9205eef8b2a4d93139e14c9137c2ddd7535130210"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-evaluate-input.v1.schema.json",
+          "sha256": "36acf38563df62973b16abd0984bc66a3e91453a0eb06fbc4f1ff538cce0f308"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-drift-output.v1.schema.json",
+          "sha256": "4c6cbaa1178f633f7418551e48c423c0100c1ac5497acac4e58c8b7d9d75e880"
+        },
+        {
+          "path": "scaffold/codex/aidn-drift-check/SKILL.md",
+          "sha256": "fadadc303a1ef6355e6c6f778e48ce33b18ac7b743a5ee53dabd8fb0580f60ff"
+        },
+        {
+          "path": "src/application/runtime/standard-workflow-operation-host.mjs",
+          "sha256": "d0d7ffc92cd3b298bb194dd16b07e262cbbffa6e62c1a44b013a084be91b16fe"
+        },
+        {
+          "path": "src/application/runtime/standard-workflow-operations.mjs",
+          "sha256": "00df78dad40b3628a35dbe74733a08f156a494f7edd9f8baec080e8dbdd7c2b7"
+        },
+        {
+          "path": "src/application/runtime/standard-workflow-human-decisions.mjs",
+          "sha256": "5d6d4551b74ae931817c3b17979ea7e14741635d84bfed9495a9a0d2e23cf0e4"
+        },
+        {
+          "path": "src/adapters/runtime/process-operation-journal-store.mjs",
+          "sha256": "f897a6674adddbfd0952e1aa638606ad52ef06c8941287bdda2b9f126dee88e4"
+        },
+        {
+          "path": "src/adapters/runtime/process-decision-inbox-store.mjs",
+          "sha256": "05acdbff6be2ba2e210ca1f206fbd3ed56a9939c90443154750b7ceb52a38cc2"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/standard-operation-preview.v1.schema.json",
+          "sha256": "ed935a2c1a267567c647049e9abd419209360e29ffc77271a60303b3e722b7bf"
+        },
+        {
+          "path": "src/application/runtime/standard-workflow-control-inbox.mjs",
+          "sha256": "870f494085f74705fe795b0cbbaf2a7c8dcbf0b1922608c3adc2af702a1b4374"
+        },
+        {
+          "path": "src/application/runtime/standard-session-pr-review-control-source.mjs",
+          "sha256": "09a2ae5c1a73e0dec5b2630a9aa302437891f1d6a98cec34afdc5bb5721e8c1c"
+        },
+        {
+          "path": "src/adapters/runtime/process-control-inbox-store.mjs",
+          "sha256": "cd48109e0da5c0156b88995ed187a37be83cd6ec9c730ea6e60512310a34b92b"
+        },
+        {
+          "path": "src/core/workflow/process-control-inbox.mjs",
+          "sha256": "edddacea503ae9e1d20aed427f556f430d60b931130845623551695ac06e889e"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-pr-review-payload.v1.schema.json",
+          "sha256": "ca36476b6835fddd94ed7fde1f70a58e96c7159fc085a46bf1d1d23eecbb9928"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/github-pr-review-event.v1.schema.json",
+          "sha256": "1a60d54737782d9043b29133cbc7d0e5e8cbec3f88d0db251fe62c58c80d62e5"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-control-inbox.v1.schema.json",
+          "sha256": "bbc6bcfc594a0e94594d8ba566d47c00e4cc5a21229dd8bf9cbc17fdf3304618"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-control-inbox.v2.schema.json",
+          "sha256": "27b8feada38ea45721eca804af9a0cc6fce779dec5f90c7777e8f79ae5a49d70"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-control-request.v1.schema.json",
+          "sha256": "72a318461680f9e26aae34f89e4275f61c238ae3a58cdfd0313e0a5c9b25d306"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-control-source.v1.schema.json",
+          "sha256": "3d66379d1af81e99d29c079c7b37ea219b0aa3e914599064fe60faafbf5fe638"
+        },
+        {
+          "path": "src/core/workflow/native-allocation-journal.mjs",
+          "sha256": "3a42193fbf946377a4f8fa99a7fd1fce81a5d73088fc3a8ef273cc1ece685c9d"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/native-allocation-journal.v1.schema.json",
+          "sha256": "0fb56dbd5a7a60b07f670c1c868cd297875b61601a8305706ab1fbb0da42c3ac"
+        },
+        {
+          "path": "src/core/workflow/process-operation-journal.mjs",
+          "sha256": "dc1d4635e2d04580fdd9d7d0367542db6b77991fe40edc5c5d5101355c788508"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-operation-journal.v1.schema.json",
+          "sha256": "66244d6f6c98beb83348b6ab9370e2d6b0982ef936f6bd2dc1f34dba31c5d936"
+        },
+        {
+          "path": "src/application/runtime/agent-reuse-decision-service.mjs",
+          "sha256": "390fdf358c5cebd369a6977b397083f741974d635e093732cc42164077ed3613"
+        },
+        {
+          "path": "src/application/runtime/workflow-instance-composition.mjs",
+          "sha256": "227b4b9416fa9c251ea2eb6b63d5c449bc7faa96d36da5e284f3aba3a7bc0c0e"
+        },
+        {
+          "path": "src/adapters/agents/agentic-process-worker.mjs",
+          "sha256": "39a7f916965eb82dc8c451f0e6041a0fbb8e3d49ce365973a0ba07d0af8ad1eb"
+        },
+        {
+          "path": "src/adapters/agents/agentic-codex-rpc.mjs",
+          "sha256": "8087ad9175483de209fbe8cf802f9f8806341cafc650946163343d54ad0445a5"
+        },
+        {
+          "path": "src/adapters/agents/agentic-codex-session.mjs",
+          "sha256": "4f6ea29657249593363fb0bc18d86eba9d38b78a64b9f94783fe85659ed6ca62"
+        },
+        {
+          "path": "src/adapters/agents/process-tree/windows-process-tree-controller.mjs",
+          "sha256": "088f4e6316832c0f519df3f3c3c19aee1c516a4a3c8f0f737ab3a9be56f62200"
+        },
+        {
+          "path": "src/adapters/runtime/agentic-process-store.mjs",
+          "sha256": "355a2a97ac6ed11308ea4e9d0ed5f326a3a412ee3ef45bd745b6a3c427ad7c8d"
+        },
+        {
+          "path": "src/adapters/runtime/workflow-record-store.mjs",
+          "sha256": "a12b81874cc83ba92033e615e325b87c83471a92f05e7716a8ad818482aaafe3"
+        },
+        {
+          "path": "src/core/agents/agent-reuse-policy.mjs",
+          "sha256": "bddcab5efc3690599923f8e3881022c0cb015c8ad4c492371826a13fc359e16c"
+        },
+        {
+          "path": "src/core/agents/agent-transition-policy.mjs",
+          "sha256": "892733c0e97531b8bc1f0c929c1bf51ad91f7ef755f2a0950197c793f4bdbdfb"
+        },
+        {
+          "path": "src/core/agents/agent-role-model.mjs",
+          "sha256": "75c35396aa2586b8eb88c2351676fefdf39d61da02aa0407a2f9bb4da1cfcc54"
+        },
+        {
+          "path": "src/core/agents/codex-startup-arguments.mjs",
+          "sha256": "db671a7f56dc789342b6ba429cb9609ff778e3d50f9707829e1d3f4b7005839b"
+        },
+        {
+          "path": "src/core/workflow/agentic-process-model.mjs",
+          "sha256": "9b2a0495ab09d7f1a503e74ec2c7ea092430646255ee6a056ad233863fb70216"
+        },
+        {
+          "path": "src/core/workflow/agentic-process.mjs",
+          "sha256": "2d1bf64f40e9c2295572a9d88c0e90f336f836f38eef4aa5a56e61ce482b1a9a"
+        },
+        {
+          "path": "src/core/workflow/shadow-json.mjs",
+          "sha256": "50996feb454c420da7ad04afea44e645ab77511500bbf3e8e09d33cbb100000f"
+        },
+        {
+          "path": "src/core/workflow/agentic-process-control-scenario.mjs",
+          "sha256": "323b6809dba8c458fe672b567559a63fb84590a0104b9701bc1403a777bcb784"
+        },
+        {
+          "path": "src/core/workflow/process-operation-contracts.mjs",
+          "sha256": "a789c2d968fc0c1b9cbe133d3cb7d90de225beedf707a014b71ef23a735809af"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/agentic-process-model.v2.schema.json",
+          "sha256": "c4eb2515b166ee9c616ac20d9abec456703cd0c91fac7e10453e11d26418b94c"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/agentic-process-instance.v2.schema.json",
+          "sha256": "1335f2500080904ab710753bd489ee266e228231df1ae397694a8ac306240937"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-operation-binding.v1.schema.json",
+          "sha256": "fafaea88d3324088741d45beb44f2935621ee8f54200b498eead9477e74104c9"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-operation-intent.v1.schema.json",
+          "sha256": "b43ed1e8412f6a59354c4cfea558cb5121555486c3f03cabedcd51ee867c19f8"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-operation-receipt.v1.schema.json",
+          "sha256": "59563d2dabf200cc5d67c955eb4dc53c4fe7baf9dde9d6c7287dd35d1d5145fc"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/process-control-event.v1.schema.json",
+          "sha256": "0db7eaa1c48537358d6f6416778622f8464ad194602edae887603e259e03bc08"
+        },
+        {
+          "path": "src/core/workflow/agentic-process-start.mjs",
+          "sha256": "bb0dcb8693457b39b0324ff17d1d048fb1eff2dcbe1b4c771d9d4aa0150c185b"
+        },
+        {
+          "path": "src/core/workflow/workflow-engine-policy.mjs",
+          "sha256": "b714d29c4255a24eb8d14e54e0f41edd8c7fa7f1de8f793e6fbc6a98146198a5"
+        },
+        {
+          "path": "src/core/workflow/native-host-state.mjs",
+          "sha256": "d49f8d16cdfffbd9322c8b28f94d7d8800e89bb538b5bb4919fad0fe1de238a1"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/native-host-state.v1.schema.json",
+          "sha256": "ad12406ac1b1039b9d53929e25e04d1fce644c583f5bc4f89d4a1aaf5afd2a2e"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/agentic-process-control-scenario.v1.schema.json",
+          "sha256": "5282b958f797767d58059a61fdd1af1fd7b2dc8046ffb554d1ae67616c74aa36"
+        },
+        {
+          "path": "src/adapters/runtime/broker-product-file.mjs",
+          "sha256": "7cd3558e2695b11007b1f8c41a8a63fe34242ecd4470bc0056da51d31d02719a"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/agentic-process-model.v1.schema.json",
+          "sha256": "a993348d88a81cf3da075f06d51b22af669f2837a53ad869adf87e75c620d889"
+        },
+        {
+          "path": "src/core/contracts/workflow-definition/agentic-process-instance.v1.schema.json",
+          "sha256": "fa982014b4c8d31dca2b6babf5cfd4bfe58fff54ea46d273c80cfcd516dce11a"
+        },
+        {
+          "path": "VERSION",
+          "sha256": "06c53dd4f22b2e0038ca2bb9af32cc1ab7e69898d99cc3bfa22bd965f21aac8f"
+        },
+        {
+          "path": "package.json",
+          "sha256": "bd1cc0f02efec9696809e7539f34c6bbf26f4b54297174d54179569933c02d77"
+        }
+      ],
+      "sha256": "94af33ef64272ae11b94a22ea5d74ae93d19b254685202c79bb24b6abe8f0853",
+      "coverage": "direct distributed process implementation plus package manifest/version; dependency lock and installed versions require separate pins"
+    }
+  },
+  "preserved_failure_interpretation": {
+    "original_source23": "All three generic initial-expiry failures remain in cycle-checkpoint-expiry-gap-2026-11-04.json.",
+    "fixed_runtime_original_clock": "Three attempts retain the correct expired refusal then a successor unknown/event-unconfirmed, because the isolated future clock was frozen during the real hook. Never retried/reclassified; captured separately.",
+    "walltime_reprepare": "Three attempts reset the clock before cold preparation, which correctly refused because the original predecessor no longer appeared expired. No checkpoint successor effect was reached.",
+    "pastplan_final_assertion": "Three attempts prepared the original plan in the past, reached COMPLETED and confirmed one checkpoint, but selected the retained original refusal at the final assertion. Original exits remain FAIL; distinct archive-only postflights authenticate exact replay/simulation without reopening original paths.",
+    "final_history_assertion": "Fresh independent fixtures require exactly two checkpoint intents, original blocked/no_effect/expired preserved, one distinct confirmed successor, unchanged old records and exact same-model replay/simulation."
+  },
+  "physical_byte_scope": {
+    "direct_expired_checkpoint_adapter": "Every checkout byte and directory unchanged, including canonical SQLite/runtime in all three modes, before intentional dispatch-journal writes.",
+    "dispatched_expiry": "FILES compares every hidden runtime byte/directory; all modes compare canonical business documents, Git and absent effect owner. DUAL/DB-only total runtime byte invariance across dispatch journaling is NOT_QUALIFIED.",
+    "retained_redispatch": "Each completed successor retains its result and every checkout byte on redispatch."
+  },
+  "pastplan_archive_postflights": {
+    "files": {
+      "utc": "2026-11-04T13:16:19.572423+00:00",
+      "status": "PASS",
+      "exit_code": 0,
+      "archive_sha256": "bfd932ec03bf0e624021d0d1e288a52c5ed08f0139e7bf49fda0ce0b924db1d8",
+      "payloads_verified": 2356,
+      "replay": {
+        "status": "PASS",
+        "case_exit": 1,
+        "case_verdict": "FAIL_PRESERVED",
+        "source_commit": "c1a1d2dea7b0d1f2fdf07eab1223765ee6f72ca4",
+        "state_mode": "files",
+        "model_revision": 131,
+        "events": 20,
+        "simulation_rows": 21,
+        "journals": 10,
+        "expired_refusals": 4,
+        "checkpoint_intents": 2,
+        "confirmed_checkpoints": 1,
+        "old_refusal_preserved": true,
+        "distinct_successor_grant": true,
+        "causal_successor_intent": true,
+        "exact_common_reducer_replay": true,
+        "exact_common_reducer_simulation": true,
+        "instance_sha256": "e7948e8adc520ecde5af86fb3a0f9323eb2e369c6c0517f99afc95fa4788e813",
+        "original_project_or_control_or_store_accessed": false,
+        "business_port_calls": 0,
+        "model_calls": 0,
+        "full_standard_workflow": false
+      },
+      "proof_limit": "Archive-only postflight never upgrades the original fixture exit or proves general resource closure, native/provider/human behavior or exact installed archive qualification."
+    },
+    "dual": {
+      "utc": "2026-11-04T13:16:19.656513+00:00",
+      "status": "PASS",
+      "exit_code": 0,
+      "archive_sha256": "502c22d2c083454e05a9eaaef86ec68a604db4b6f268cf83109d1d4aaa9f62cb",
+      "payloads_verified": 2357,
+      "replay": {
+        "status": "PASS",
+        "case_exit": 1,
+        "case_verdict": "FAIL_PRESERVED",
+        "source_commit": "c1a1d2dea7b0d1f2fdf07eab1223765ee6f72ca4",
+        "state_mode": "dual",
+        "model_revision": 131,
+        "events": 20,
+        "simulation_rows": 21,
+        "journals": 10,
+        "expired_refusals": 4,
+        "checkpoint_intents": 2,
+        "confirmed_checkpoints": 1,
+        "old_refusal_preserved": true,
+        "distinct_successor_grant": true,
+        "causal_successor_intent": true,
+        "exact_common_reducer_replay": true,
+        "exact_common_reducer_simulation": true,
+        "instance_sha256": "cb983b3be4e33a61d2c6ee805096fae600c8c5c12b4e9f88222308473f131200",
+        "original_project_or_control_or_store_accessed": false,
+        "business_port_calls": 0,
+        "model_calls": 0,
+        "full_standard_workflow": false
+      },
+      "proof_limit": "Archive-only postflight never upgrades the original fixture exit or proves general resource closure, native/provider/human behavior or exact installed archive qualification."
+    },
+    "db-only": {
+      "utc": "2026-11-04T13:15:44.530122+00:00",
+      "status": "PASS",
+      "exit_code": 0,
+      "archive_sha256": "59457e891af962b15724fabcc69a700505dd8c4895175fe2bcfdaa0f6ebda864",
+      "payloads_verified": 2312,
+      "replay": {
+        "status": "PASS",
+        "case_exit": 1,
+        "case_verdict": "FAIL_PRESERVED",
+        "source_commit": "c1a1d2dea7b0d1f2fdf07eab1223765ee6f72ca4",
+        "state_mode": "db-only",
+        "model_revision": 131,
+        "events": 20,
+        "simulation_rows": 21,
+        "journals": 10,
+        "expired_refusals": 4,
+        "checkpoint_intents": 2,
+        "confirmed_checkpoints": 1,
+        "old_refusal_preserved": true,
+        "distinct_successor_grant": true,
+        "causal_successor_intent": true,
+        "exact_common_reducer_replay": true,
+        "exact_common_reducer_simulation": true,
+        "instance_sha256": "b9f7d0e885494b83b1480d5e4e3c5fff583a794bebb16e0460ac5bfe7bb8f42d",
+        "original_project_or_control_or_store_accessed": false,
+        "business_port_calls": 0,
+        "model_calls": 0,
+        "full_standard_workflow": false
+      },
+      "proof_limit": "Archive-only postflight never upgrades the original fixture exit or proves general resource closure, native/provider/human behavior or exact installed archive qualification."
+    }
+  },
+  "limits": [
+    "This component uses real application/Git/SQLite ports but fixture authorization; no genuine native/provider/human allocation.",
+    "Actual external session Git and R05 hook are preconditions; no drift-path proof is inferred.",
+    "Equal archived reads are not transactional snapshots or general resource closure.",
+    "Separate SOURCE23 running case is frozen at dd2ff0db/model73; it does not execute this production fix/model74.",
+    "General expiration of all bindings, general positive unknown reconciliation, native epochs, ordinary correction cycles and all remaining L1-L8/A1-A10 stay open."
+  ],
+  "native_model_calls": 0,
+  "architecture_decision_change": false,
+  "ordinary_selection_changed": false,
+  "complete_standard_workflow": false,
+  "NOT_RUN": [
+    "full runtime family/Governance Admission",
+    "configured real PostgreSQL",
+    "genuine native/provider/human",
+    "exact installed package archive/reload/loaded-code qualification"
+  ]
+}
