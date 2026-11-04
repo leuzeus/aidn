@@ -1,5 +1,14 @@
 # Standard workflow IR traceability
 
+SOURCE39 adds a targeted mixed execution fixture for the published model 104
+mode paths, separate from synthetic planning and canonical-context components.
+It uses doubled Native/human capabilities with real application, Git and SQLite
+ports. It checks unchanged product/HEAD, zero extra model responses for D/H and
+missing answers, cold read-only polling and common-reducer replay/simulation
+with canonical/Git/product/allocation/journal witnesses. New frozen-source runs
+remain pending. Cold polling does not establish continuation after a new event,
+SPIKE conversion, effectful experiments, session closure or complete A2.
+
 SOURCE38 replaces the four empty THINKING/EXPLORING sequences with mode-specific
 preflight, read-only analysis and report evaluation nodes. `mode_work_preflight`
 authenticates the current session/mode and fresh admission. The native policy

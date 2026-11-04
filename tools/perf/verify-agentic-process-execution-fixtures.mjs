@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
+import { verifyModeAnalysisExecution } from "./standard-mode-analysis-execution-fixture-lib.mjs";
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario, standardReviewScenarioAnswer } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
 import { composedCyclePlan, composedCycleValidationProfile, composedCorrectionChoice } from "./standard-composed-cycle-fixture-lib.mjs";
@@ -90,6 +91,12 @@ const standardComposedStop = process.argv.find(value => value.startsWith("--stan
 if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete", "session_pr_correction_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
+const selectedModeWorkMode = process.argv.find(value => value.startsWith("--standard-mode-work-mode="))?.split("=")[1];
+const selectedModeWorkSession = process.argv.find(value => value.startsWith("--standard-mode-work-session="))?.split("=")[1] ?? "THINKING";
+const selectedModeWorkDisposition = process.argv.find(value => value.startsWith("--standard-mode-work-disposition="))?.split("=")[1] ?? (selectedModeWorkSession === "THINKING" ? "thinking_complete" : "nonretained");
+if (selectedModeWorkMode !== undefined && (selectedStandardComposedMode || !["files", "dual", "db-only"].includes(selectedModeWorkMode)
+  || !["THINKING", "EXPLORING"].includes(selectedModeWorkSession)
+  || !(selectedModeWorkSession === "THINKING" ? ["thinking_complete", "waiting"] : ["nonretained", "waiting", "retain_requested"]).includes(selectedModeWorkDisposition))) throw Error("STANDARD_MODE_WORK_FIXTURE_ARGUMENTS_INVALID");
 const standardHostTrace = process.argv.includes('--standard-composed-host-trace');
 const standardCheckpointAckLoss = process.argv.includes('--standard-composed-checkpoint-ack-loss');
 const standardCheckpointOwnerAckLoss = process.argv.includes('--standard-composed-checkpoint-owner-ack-loss');
@@ -165,7 +172,7 @@ function retainComposedChild(controlRoot, label, child) {
 }
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
-async function check(name, callback) { if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+async function check(name, callback) { if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   const epochMode = process.argv.find(value => value.startsWith("--native-epoch-mode="))?.slice("--native-epoch-mode=".length);
   if (epochMode && !["files", "dual", "db-only"].includes(epochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
   if (epochMode && !name.startsWith(`native epoch ${epochMode}:`)) return;
@@ -764,6 +771,9 @@ if (process.argv[2] === "--mixed-continue") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  if (selectedModeWorkMode) await check("standard mode analysis: published mixed execution and cold read-only polling", () => verifyModeAnalysisExecution({
+    storageMode: selectedModeWorkMode, sessionMode: selectedModeWorkSession, disposition: selectedModeWorkDisposition, mixedFixture,
+  }));
   if (selectedStandardComposedMode) await check(`standard composed ${selectedStandardComposedMode}: shipped model owns actual startup/cycle/R05 prefix to ${standardComposedStop}`, async () => {
     const mode = selectedStandardComposedMode;
     let sourceFile;

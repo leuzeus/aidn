@@ -201,6 +201,18 @@ trials and production defaults are unchanged. The explicit fixture-only
 `--standard-composed-max-responses=<n>` selects an initial allowance for a new
 trial and fails if insufficient; it never renews an existing authorization.
 
+The execution fixture's separate `--standard-mode-work-mode=files|dual|db-only`
+selection runs the published model through the mixed host for one authenticated
+mode choice and typed analysis. `--standard-mode-work-session=THINKING|EXPLORING`
+and `--standard-mode-work-disposition=thinking_complete|nonretained|waiting|retain_requested`
+select compatible new cases. Native transport and human authentication remain
+fixture capabilities; artifact, SQLite, Git, admission and dispatcher ports are
+real. The fixture preserves product/HEAD, checks D/H and missing-answer polling
+allocate no Native, then tests read-only polling in a new Node and common-reducer
+replay/simulation with canonical/product/Git/allocation/journal witnesses.
+Read-only cold polling is not continuation after a new decision, SPIKE admission,
+session closure, installed behavior or genuine Native/Human qualification.
+
 The candidate standard also selects deterministic `session_pr_triage_select`,
 the read-only independent `session_pr_triage` native activity, then deterministic
 `session_pr_triage_evaluate`. `verify-standard-pr-triage-fixtures.mjs` checks full

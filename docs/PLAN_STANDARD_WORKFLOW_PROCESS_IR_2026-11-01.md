@@ -24,6 +24,18 @@ datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
 
+- SOURCE39 ajoute un driver mixte ciblé pour les analyses des modes du modèle
+  publié 104, avec choix humain et transport Native doublés, ports applicatifs,
+  Git et SQLite réels. Fichiers : driver d'exécution, helper d'analyse et sonde
+  froide distincte. Dépendances : mode authentifié, préflight SOURCE38 et résultat
+  Native authentifié. Critères : une analyse, D/H/attentes sans allocation,
+  absence d'écriture produit et de nouvelle HEAD, attente sans faits positifs,
+  relecture froide et même réducteur avec témoins d'effets inchangés.
+  Les cas sur nouvelle source gelée restent à exécuter ; ce driver ne prouve pas
+  encore le parcours. La relecture d'une attente ne satisfait pas la reprise après
+  nouvel événement. Conversion SPIKE, expériences, clôture de session et A2
+  entier restent ouverts, ainsi que l'ensemble L1–L8/A1–A10.
+
 - SOURCE38 raccorde les quatre séquences de mode auparavant vides : préflight
   déterministe, analyse native en lecture seule, puis évaluation du rapport lié
   au contexte courant. THINKING peut terminer son analyse ; EXPLORING peut
