@@ -2293,3 +2293,13 @@ inside a single synchronous inspection. The five-minute plan TTL and all effect
 ownership, postimage, grant and UNKNOWN semantics remain unchanged. This cost
 reduction requires separate qualification; a timed fixture is not the composed
 production-dispatcher recovery or entire standard acceptance.
+
+A separate disposable Git counterexample exposed the first retained-port
+candidate's stale physical binding after gitfile redirection. A retained port
+now resolves the checkout, physical gitdir and index again at each inspection,
+compares the original binding, and refuses a change without rebasing it.
+`verify-retained-workflow-git-binding-fixtures.mjs` covers same-HEAD/content
+redirection to a different index for both checkpoint and branch ports, repeated
+refusal and a separately constructed fresh port. Earlier component/timing
+results on `2c3171de` do not qualify this correction. Its retained projects and
+any terminal PASS remain scoped to that earlier source.

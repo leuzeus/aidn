@@ -56,9 +56,13 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
       windowsHide: true, timeout: 60000, maxBuffer: 4 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"] }); }
     catch (cause) { if (acceptable.includes(cause.status)) return null; throw Object.assign(new Error("WORKFLOW_GIT_COMMAND_FAILED"), { code: "WORKFLOW_GIT_COMMAND_FAILED", command: args[0], exit_code: cause.status }); }
   };
-  if (path.resolve(run(["rev-parse", "--show-toplevel"]).trim()).toLowerCase() !== root.toLowerCase()) fail("WORKFLOW_GIT_TOPLEVEL_REQUIRED");
-  const gitDir = agentRunPhysicalPath(run(["rev-parse", "--absolute-git-dir"]).trim(), { directory: true });
-  const indexPath = agentRunPhysicalPath(path.resolve(root, run(["rev-parse", "--git-path", "index"]).trim()), { missing: true });
+  function repositoryBinding() {
+    const rows = run(["rev-parse", "--show-toplevel", "--absolute-git-dir", "--git-path", "index"]).trimEnd().split(/\r?\n/);
+    if (rows.length !== 3 || path.resolve(rows[0]).toLowerCase() !== root.toLowerCase()) fail("WORKFLOW_GIT_TOPLEVEL_REQUIRED");
+    return { gitDir: agentRunPhysicalPath(rows[1], { directory: true }),
+      indexPath: agentRunPhysicalPath(path.resolve(root, rows[2]), { missing: true }) };
+  }
+  const binding = repositoryBinding(), { gitDir, indexPath } = binding;
   const lockPath = indexPath + ".lock";
   function file(name) {
     if (!scopePath(name)) fail("WORKFLOW_GIT_PATH_SCOPE_INVALID");
@@ -72,6 +76,9 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   }
   const indexHash = () => fs.existsSync(indexPath) ? hash(fs.readFileSync(agentRunPhysicalPath(indexPath))) : null;
   function inspect() {
+    // A gitfile can be redirected while this capability is retained. Never
+    // combine Git observations from its new repository with the old index.
+    if (exact(repositoryBinding()) !== exact(binding)) fail("WORKFLOW_GIT_REPOSITORY_BINDING_CHANGED");
     if (hash(filters()) !== filterContextSha256) fail("WORKFLOW_GIT_FILTER_CONTEXT_CHANGED");
     const ref = run(["symbolic-ref", "--quiet", "HEAD"], { acceptable: [1] })?.trim() ?? null;
     const head = run(["rev-parse", "--verify", "HEAD"]).trim();

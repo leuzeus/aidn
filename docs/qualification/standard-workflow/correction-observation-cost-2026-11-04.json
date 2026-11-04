@@ -1,5 +1,5 @@
 {
-  "status": "BASELINE_MEASURED_CANDIDATE_VALIDATION_PENDING",
+  "status": "BASELINE_MEASURED_PHYSICAL_BINDING_CORRECTION_PENDING",
   "date": "2026-11-04",
   "lane": "ASSURED",
   "baseline": {
@@ -49,5 +49,16 @@
     "The baseline completed; it does not locate expiration in an older immutable failed case.",
     "TTL, grants, plans, budgets and existing effects are unchanged.",
     "Frozen baseline and composed acknowledgement-loss runs retain their exact source; future source is separately qualified."
-  ]
+  ],
+  "retained_binding_counterexample": {
+    "candidate_head": "2c3171deb0d090cf39882f376139866ad3e4ce56",
+    "scope": "independent disposable Git diagnostic, not workflow qualification",
+    "observation": "A redirected gitfile retained the old index hash while fresh construction observed a distinct index; cached identity stayed unchanged.",
+    "resolution": "Each retained port re-resolves and compares its original physical gitdir/index binding before inspection. Changed bindings refuse; they are never silently adopted.",
+    "codes": [
+      "WORKFLOW_GIT_REPOSITORY_BINDING_CHANGED",
+      "WORKFLOW_BRANCH_REPOSITORY_BINDING_CHANGED"
+    ],
+    "validation": "PENDING"
+  }
 }

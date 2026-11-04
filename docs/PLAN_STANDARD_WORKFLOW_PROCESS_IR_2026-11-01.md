@@ -4461,3 +4461,13 @@ The composed production-dispatcher acknowledgement-loss case runs independently
 on its original `0d51c497` source. It cannot qualify a future revision. The
 entire L1-L8/A1-A10 plan, full C2, general L4, native/provider/human, PostgreSQL
 and exact installed-archive qualification remain incomplete.
+
+A separate disposable Git counterexample exposed the first retained-port
+candidate's stale physical binding after gitfile redirection. A retained port
+now resolves the checkout, physical gitdir and index again at each inspection,
+compares the original binding, and refuses a change without rebasing it.
+`verify-retained-workflow-git-binding-fixtures.mjs` covers same-HEAD/content
+redirection to a different index for both checkpoint and branch ports, repeated
+refusal and a separately constructed fresh port. Earlier component/timing
+results on `2c3171de` do not qualify this correction. Its retained projects and
+any terminal PASS remain scoped to that earlier source.

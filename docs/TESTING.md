@@ -3413,3 +3413,13 @@ not authority to retry an uncertain business effect. No observation or result is
 cached across guards. The existing real-port reopening suite remains required
 for the canonical/provider/authorization boundaries. Timings are separate
 diagnostics and do not replace the negative matrix or full composed recovery.
+
+A separate disposable Git counterexample exposed the first retained-port
+candidate's stale physical binding after gitfile redirection. A retained port
+now resolves the checkout, physical gitdir and index again at each inspection,
+compares the original binding, and refuses a change without rebasing it.
+`verify-retained-workflow-git-binding-fixtures.mjs` covers same-HEAD/content
+redirection to a different index for both checkpoint and branch ports, repeated
+refusal and a separately constructed fresh port. Earlier component/timing
+results on `2c3171de` do not qualify this correction. Its retained projects and
+any terminal PASS remain scoped to that earlier source.

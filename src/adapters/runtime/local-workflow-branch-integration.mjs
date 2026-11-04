@@ -22,7 +22,13 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     try { return execFileSync("git", [...fixed, ...args], { input, env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 1048576, stdio: ["pipe", "pipe", "pipe"] }); }
     catch (cause) { throw Object.assign(Error("WORKFLOW_BRANCH_GIT_FAILED"), { code: "WORKFLOW_BRANCH_GIT_FAILED", command: args[0], exit_code: cause.status }); }
   }
-  if (key(path.resolve(git(["rev-parse", "--show-toplevel"]).trim())) !== key(root)) fail("WORKFLOW_BRANCH_TOPLEVEL_REQUIRED");
+  function repositoryBinding() {
+    const rows = git(["rev-parse", "--show-toplevel", "--absolute-git-dir", "--git-path", "index"]).trimEnd().split(/\r?\n/);
+    if (rows.length !== 3 || key(path.resolve(rows[0])) !== key(root)) fail("WORKFLOW_BRANCH_TOPLEVEL_REQUIRED");
+    return { gitDir: agentRunPhysicalPath(rows[1], { directory: true }),
+      index: agentRunPhysicalPath(path.resolve(root, rows[2]), { missing: true }) };
+  }
+  const binding = repositoryBinding();
   // Read effective repository filters without our disabling overrides. Comparing
   // the overridden configuration to this preimage would reject every LFS repo.
   const configArguments = [...fixed];
@@ -36,7 +42,7 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     fixed.push("-c", `filter.${name}.required=false`);
   }
   if (git(["ls-files", "--stage", "-z"]).split("\0").some(row => row.startsWith("160000 "))) fail("WORKFLOW_BRANCH_SUBMODULE_SCOPE_UNSUPPORTED");
-  const index = agentRunPhysicalPath(path.resolve(root, git(["rev-parse", "--git-path", "index"]).trim())), lock = index + ".lock";
+  const index = binding.index, lock = index + ".lock";
   const gitPath = name => agentRunPhysicalPath(path.resolve(root, git(["rev-parse", "--git-path", name]).trim()), { missing: true });
   function logBytes(ref) {
     const file = gitPath("logs/" + ref);
@@ -60,6 +66,7 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     return rows;
   }
   function inspect({ source_branch, target_branch }) {
+    if (shadowHash(repositoryBinding()) !== shadowHash(binding)) fail("WORKFLOW_BRANCH_REPOSITORY_BINDING_CHANGED");
     const currentFilters = spawnSync("git", [...configArguments, "config", "--null", "--get-regexp", "^filter\\..*\\.(clean|smudge|process|required)$"],
       { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
     if (![0, 1].includes(currentFilters.status) || hash(currentFilters.stdout) !== filterContextSha256) fail("WORKFLOW_BRANCH_FILTER_CONTEXT_CHANGED");
