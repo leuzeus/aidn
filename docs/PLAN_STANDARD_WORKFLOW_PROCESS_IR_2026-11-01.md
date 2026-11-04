@@ -3669,3 +3669,40 @@ NOT_RUN. Le début de triage (schémas, validateur de rapport/contexte et suppor
 type de réponse native) est conservé dans un patch de travail séparé, non appliqué
 et non qualifié. Il lui manque le raccord hôte/autorité/IR, la sélection et la
 fraîcheur des sources, les tests, bindings/pins et la documentation alignée.
+
+### Source de triage natif sélectionnée et liée aux preuves, 2026-11-03
+
+Le commit `b39e5572` applique et complète le raccord de classification : réception
+signée, sélection déterministe acceptée, activité indépendante en lecture seule,
+puis évaluation déterministe par l'hôte. Le worker reconstruit son autorité sans
+port fournisseur ; son contexte conserve les corps complets et les références
+produit. L'évaluation vérifie résultat/contexte/produit et résolution d'entrée
+au vrai préfixe précédant l'assignation, puis réauthentifie l'événement et collecte
+à nouveau le contenu courant. Une classification n'établit aucun effet suivant.
+Chaque finding valide conserve une correction requise ; les findings valides
+et invalides conservent leurs réponses requises/proposées, justifications et
+preuves. Auteur inconnu, corps vide ou thread vide restent incertains. Les
+dispositions incertaines bloquent sans faits de réussite et les threads ouverts
+restent explicitement présents.
+
+La source 65 comporte 102 nœuds, 63 occurrences d'opération, neuf activités
+natives et 346 fichiers directement épinglés. Quinze contrôles de triage/pins,
+27 de composition, trois du résolveur couvrant 45 frontières publiées, 22 de
+démarrage, neuf d'audit, 27 d'opérations/service et 52 de contrats/réducteur
+passent sur le commit figé. Source-of-truth, metadata, governance-completeness
+et gate-catalog passent également. Les limites et sources exactes sont dans
+`docs/qualification/agentic-process/pr-native-triage-source-2026-11-03.json`.
+Les doubles des composants ne prouvent pas l'authentification des producteurs
+dans le parcours composé. Les refus de brouillons restent distingués du verdict
+de la source retenue.
+
+Un composé 65 est lancé dans un checkout figé distinct. Le triage natif n'y est
+pas encore observé ; aucune réussite composée n'est déduite. Sa fixture conserve
+un budget initial de huit réponses pour neuf activités natives sélectionnées :
+le plafond et la consommation doivent être examinés, sans augmentation du budget
+de cet essai. Son échéance initiale de trois heures est inchangée. Le composé 61
+continue séparément et ne qualifie jamais 65. Les corrections physiques, checks
+du nouveau HEAD, réponses/résolutions et boucles de suivi, consentement explicite
+de fusion, effets/synchronisation, autres variantes A1–A10 et qualifications
+natif/fournisseur/humain réels et archive exacte restent ouverts. Le catalogue
+reste `complete_standard_workflow=false` et l'entrée ordinaire est inchangée.

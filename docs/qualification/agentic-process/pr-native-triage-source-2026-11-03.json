@@ -1,0 +1,260 @@
+{
+  "observed_at_utc": "2026-11-04T03:26:26.373Z",
+  "source_commit": "b39e55729bf3c43022d0cad7a0de08779515c01c",
+  "lane": "ASSURED",
+  "objective_complete": false,
+  "ordinary_standard_entry_changed": false,
+  "complete_standard_workflow": false,
+  "model": {
+    "revision": 65,
+    "sha256": "3719562854fa899b6d7e7a0b28b66120a3f04920182889b7dcd386a2014422bd",
+    "catalog_sha256": "dbe22a9a99eeae3240f84a16b6b8d11393bed58992be9d860d4271db4c84a4f0",
+    "runtime_pin": "0dd75e9bbb2e74ce87345250385b47ac420c64333132a8bd2d3862756347a389",
+    "direct_files": 346,
+    "nodes": 102,
+    "operation_occurrences": 63,
+    "native_activities": 9
+  },
+  "implemented": [
+    "standard IR receive -> deterministic accepted source selection -> independent read-only native report -> deterministic host evaluation",
+    "worker context from accepted signed operations, exact pre-assignment input, observed product and owned native evidence",
+    "host fresh event and complete provider content after native result; current HEAD/base/content/revision/product fences",
+    "exact body coverage, rationale and supplied source/product evidence; uncertainty blocks with empty facts",
+    "valid-finding correction and valid/invalid-finding response obligations preserved; unresolved threads retained; checks, effects and merge remain pending"
+  ],
+  "pass": [
+    {
+      "label": "triage",
+      "command": "node tools/perf/verify-standard-pr-triage-fixtures.mjs",
+      "status": "PASS",
+      "checks": 15,
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:36.8196288Z",
+      "ended_at_utc": "2026-11-04T03:21:37.9456141Z",
+      "stdout": {
+        "file": "model65-qualification-triage-20261103.stdout.log",
+        "sha256": "4b0b251a02cdda8927bb100d7343c5bc9de3bd21bdc3d0c7e2c4757891f95268"
+      },
+      "stderr": {
+        "file": "model65-qualification-triage-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "composition",
+      "command": "node tools/perf/verify-standard-workflow-composition-fixtures.mjs",
+      "status": "PASS",
+      "checks": 27,
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:37.9740110Z",
+      "ended_at_utc": "2026-11-04T03:21:39.7360064Z",
+      "stdout": {
+        "file": "model65-qualification-composition-20261103.stdout.log",
+        "sha256": "cdb860fbe189f4a94ab02f8136f8829d584fbbaad6a096ec24088d14a1bd9baf"
+      },
+      "stderr": {
+        "file": "model65-qualification-composition-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "input",
+      "command": "node tools/perf/verify-standard-process-binding-input-fixtures.mjs",
+      "status": "PASS",
+      "checks": 3,
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:39.7387888Z",
+      "ended_at_utc": "2026-11-04T03:21:41.0183907Z",
+      "stdout": {
+        "file": "model65-qualification-input-20261103.stdout.log",
+        "sha256": "a8ed0a57cc26e11f97565bb85e732dddcf17904dffe787b7c77ad3fb8e78a84f"
+      },
+      "stderr": {
+        "file": "model65-qualification-input-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "startup",
+      "command": "node tools/perf/verify-standard-workflow-model-fixtures.mjs",
+      "status": "PASS",
+      "checks": 22,
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:36.2745880Z",
+      "ended_at_utc": "2026-11-04T03:21:38.7156164Z",
+      "stdout": {
+        "file": "model65-qualification-startup-20261103.stdout.log",
+        "sha256": "90a1622927d5acbc3d3af629c31771fa1ae52dd2401ff8ace275544dae8ceb55"
+      },
+      "stderr": {
+        "file": "model65-qualification-startup-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "audit",
+      "command": "node tools/perf/verify-standard-cycle-audit-fixtures.mjs",
+      "status": "PASS",
+      "checks": 9,
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:38.7433765Z",
+      "ended_at_utc": "2026-11-04T03:21:39.3561162Z",
+      "stdout": {
+        "file": "model65-qualification-audit-20261103.stdout.log",
+        "sha256": "d661f486f4fce723f349a1c3d73a049f68be382499e3085c6bdbea94efd56d34"
+      },
+      "stderr": {
+        "file": "model65-qualification-audit-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "operations",
+      "command": "node tools/perf/verify-process-operation-fixtures.mjs",
+      "status": "PASS",
+      "checks": 27,
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:39.3596516Z",
+      "ended_at_utc": "2026-11-04T03:21:45.1462528Z",
+      "stdout": {
+        "file": "model65-qualification-operations-20261103.stdout.log",
+        "sha256": "07957b3d19e91d3a8afe8ed7fc4b6e07bf1a266837facc853e2f207e7b65e517"
+      },
+      "stderr": {
+        "file": "model65-qualification-operations-20261103.stderr.log",
+        "sha256": "18ff71714c9f20f79bac48e368fd8375f3c892bfcaeeef7d5219b4bbf465d3a4"
+      }
+    },
+    {
+      "label": "source-policy",
+      "command": "node tools/perf/verify-source-of-truth-policy.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:36.8600488Z",
+      "ended_at_utc": "2026-11-04T03:21:37.1712198Z",
+      "stdout": {
+        "file": "model65-qualification-source-policy-20261103.stdout.log",
+        "sha256": "b3a5cb758d1ccf8a34e5cdb2cac3792471631cc19d47647cfac9b97ae9cb4432"
+      },
+      "stderr": {
+        "file": "model65-qualification-source-policy-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "policies": 35
+    },
+    {
+      "label": "metadata",
+      "command": "node tools/perf/verify-metadata-policy.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:37.1979555Z",
+      "ended_at_utc": "2026-11-04T03:21:37.4050837Z",
+      "stdout": {
+        "file": "model65-qualification-metadata-20261103.stdout.log",
+        "sha256": "8a0f62f755be2b3081e5cbfbb900478d5c510e1885bb43ec921b620f3a294d75"
+      },
+      "stderr": {
+        "file": "model65-qualification-metadata-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "policies": 37
+    },
+    {
+      "label": "governance",
+      "command": "node tools/perf/verify-governance-completeness.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:37.4089853Z",
+      "ended_at_utc": "2026-11-04T03:21:44.8995869Z",
+      "stdout": {
+        "file": "model65-qualification-governance-20261103.stdout.log",
+        "sha256": "837a12ac33aab34d3fb59d3d4e5632c37464dbb022e89aae3c6a9fd820c4f960"
+      },
+      "stderr": {
+        "file": "model65-qualification-governance-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "gates",
+      "command": "node tools/verify/verify-gate-catalog.mjs",
+      "status": "PASS",
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:44.9032881Z",
+      "ended_at_utc": "2026-11-04T03:21:46.5216951Z",
+      "stdout": {
+        "file": "model65-qualification-gates-20261103.stdout.log",
+        "sha256": "0f7c07e43ef01af6a1625865378f1f3f9d8f12fff04f87aac153458498b1dc22"
+      },
+      "stderr": {
+        "file": "model65-qualification-gates-20261103.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "contracts",
+      "command": "node tools/perf/verify-agentic-process-fixtures.mjs",
+      "status": "PASS",
+      "checks": 52,
+      "exit_code": 0,
+      "started_at_utc": "2026-11-04T03:21:36.6044470Z",
+      "ended_at_utc": "2026-11-04T03:21:48.5889012Z",
+      "stdout": {
+        "file": "model65-qualification-contracts-20261103.stdout.log",
+        "sha256": "4343d4bffc976ce8ad21ad09ae3c63619ad37479cfce447be1ca10e8d3f05fd5"
+      },
+      "stderr": {
+        "file": "model65-qualification-contracts-20261103.stderr.log",
+        "sha256": "5a55cb6ebdc967affc14b18c46547cb0158e3c1baa1f4041307752ee52bbfd44"
+      }
+    }
+  ],
+  "skip": [],
+  "fail_on_retained_source": [],
+  "development_refusals": [
+    {
+      "status": "FAIL_INTERMEDIATE_NOT_RETAINED",
+      "reason": "First catalog authoring attempt refused the new report outside the closed output_contract enum before writing the full model. Enum explicitly extended."
+    },
+    {
+      "status": "FAIL_INTERMEDIATE_NOT_RETAINED",
+      "reason": "First new unit corpus changed an empty thread but retained the old evidence inventory. Evaluator rejected the foreign thread reference; fixture now rebuilds the inventory. Final 15 cases pass."
+    }
+  ],
+  "composed": {
+    "model61": {
+      "status": "RUNNING_AT_SEPARATE_OBSERVATION",
+      "source_commit": "fa243d96f1a3bbea5c2c1f65595714c6338fde28",
+      "qualifies65": false
+    },
+    "model65": {
+      "status": "RUNNING",
+      "source_commit": "b39e55729bf3c43022d0cad7a0de08779515c01c",
+      "native_triage_executed": "NOT_OBSERVED",
+      "provider_and_native": "fixture doubles",
+      "initial_budget_ms": 10800000,
+      "initial_max_responses": 8,
+      "original_deadline_utc": "2026-11-04T06:19:03.667Z",
+      "renewed": false,
+      "resource_concern": "Fixture still initializes max_responses=8 while the selected promotion/triage graph has nine native activities. Check actual consumption and terminal outcome; no budget increase or retry is authorized by this note."
+    }
+  },
+  "not_run": [
+    "complete runtime gate and Governance Admission rollup on current source",
+    "authenticated composed native triage outcome on model65",
+    "physical PR corrections, fresh new-HEAD checks, observed provider replies/resolutions and follow-up loops",
+    "general unknown reconciliation/concurrency and post-wait native reauthorization after proven resource closure",
+    "full A1-A10 variants and ordinary standard entry",
+    "real native/human/provider qualification",
+    "PostgreSQL on current source",
+    "exact installed archive provenance and controlled XML/IR follow-up where still open"
+  ],
+  "boundaries": [
+    "Pure triage/application tests use capability doubles, including accepted source and native evidence; they do not test canonical producer authentication.",
+    "Composition/model tests prove the authored graph, fixed pins and contracts, not executed native or provider effects.",
+    "The running composed fixture uses actual local canonical/application/Git ports and doubled native/provider/human transports and identity.",
+    "No model61 evidence qualifies model65. Historical FAIL/inconclusive/resource records remain unchanged.",
+    "Git synchronous reads remain non-preemptible; signal propagation is not a general closure or end-to-end deadline proof.",
+    "Bundle is Git source history, not an installed distribution archive."
+  ]
+}
