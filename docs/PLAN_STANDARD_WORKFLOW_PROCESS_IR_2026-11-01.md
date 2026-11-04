@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Avancement courant au 4 novembre 2026 : les composants startup/cycle sont en
-161/159 avec SOURCE38 et le modèle composé 103 reçoit les routes
+162/160 avec SOURCE38 et le modèle composé 104 reçoit les routes
 d'analyse THINKING/EXPLORING (192 nœuds, 117 occurrences d’opération,
 19 activités). La source exacte sera conservée avec les résultats de
 qualification. Le snapshot SOURCE37 était 159/157/101 (186/113/17),
@@ -35,7 +35,12 @@ datés de `dd1dbab`, distincts de cet avancement.
   lecture seule, contrôle contenu/métadonnées/produit/Git, attente non réussie,
   rejeu du même réducteur ; suites ciblées hors ligne et ports de contexte
   FILES/DUAL/DB-only à exécuter sur une nouvelle source gelée. Ces preuves
-  restent à obtenir. La conversion SPIKE admise, les expériences avec effets,
+  restent à obtenir. Les trois premiers cas sur `5ccf1ae7` ont terminé FAIL :
+  le catalogue refusait le nouveau type de rapport et le test négatif de mode
+  omettait l'owner d'effet requis pour son écriture de fixture. Les originaux
+  et le projet de ce test sont conservés ; la correction exige une nouvelle
+  source gelée et de nouveaux cas, sans modifier les anciens résultats.
+  La conversion SPIKE admise, les expériences avec effets,
   la clôture dans ces modes et la reprise après nouvelle décision restent à
   raccorder et qualifier. A2 entier et l'ensemble L1–L8/A1–A10 restent ouverts.
   Le C2 SOURCE37 continue sur sa source gelée distincte, sans nouvelle autorité.

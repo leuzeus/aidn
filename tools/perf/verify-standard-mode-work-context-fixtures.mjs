@@ -40,7 +40,10 @@ try {
     assert.throws(() => evaluateStandardModeWork(authenticated, observe()), { code: "STANDARD_MODE_WORK_CONTEXT_CHANGED" });
     console.log(`PASS ${stateMode}/${mode}: changed real product/Git evidence rejects the earlier typed report`); checks++;
     const current = artifacts.read("CURRENT-STATE.md");
-    artifacts.compareAndSwap({ path: current.path, before_sha256: current.sha256, after: current.content.replace(/mode:\s*(THINKING|EXPLORING)/, "mode: COMMITTING") });
+    await artifacts.withLocalEffectOwner(shadowHash({ fixture: "mode-substitution", mode, stateMode }), async () => {
+      artifacts.compareAndSwap({ path: current.path, before_sha256: current.sha256, after: current.content.replace(/mode:\s*(THINKING|EXPLORING)/, "mode: COMMITTING") });
+      return { effect_status: "confirmed" };
+    });
     assert.throws(observe, { code: "STANDARD_MODE_WORK_MODE_REQUIRED" });
     console.log(`PASS ${stateMode}/${mode}: canonical mode substitution refuses; no branch or cycle guessed`); checks++;
   }
