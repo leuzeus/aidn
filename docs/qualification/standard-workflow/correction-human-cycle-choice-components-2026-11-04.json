@@ -146,9 +146,8 @@
     }
   ],
   "pending_cases": [
-    "files actual correction-cycle ports",
-    "dual actual correction-cycle ports",
-    "db-only actual correction-cycle ports"
+    "source35-human-cycle-files-20261104",
+    "source35-human-cycle-dual-20261104"
   ],
   "prelaunch_errors": [
     {
@@ -166,5 +165,6 @@
     "Genuine native/human/provider/OS, configured PostgreSQL and exact installed archive remain NOT_RUN.",
     "Earlier source failures and UNKNOWN results remain unchanged.",
     "Current production graph remains 186 nodes,113 operation occurrences,17 activities; startup157/cycle155/standard99; ordinary entry unchanged and complete_standard_workflow=false."
-  ]
+  ],
+  "observation_utc": "2026-11-04T20:11:00Z"
 }
