@@ -268,6 +268,7 @@ try {
       event: { kind: "facts", event_id: "forged", facts: { approved: true } } } });
     assert.deepEqual(refused.errors, ["PROCESS_AUTHENTICATED_CONTROL_REQUIRED"]);
   });
+  await import('./verify-process-prefix-hashing-fixtures.mjs');
   console.log(JSON.stringify({ status: "PASS", checks: count, proof: "offline-contracts-reducer-service", native_calls: 0, standard_workflow_integration: "NOT_YET_DELIVERED" }));
 } finally {
   const physical = fs.realpathSync(root), parent = fs.realpathSync(os.tmpdir());

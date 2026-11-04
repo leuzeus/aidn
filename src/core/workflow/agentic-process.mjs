@@ -1,5 +1,6 @@
 import { assertAgenticProcessModel, AGENTIC_PROCESS_PROFILE, AGENTIC_PROCESS_OPERATION_PROFILE, exactKeys, processId, processFail as fail } from "./agentic-process-model.mjs";
-import { checkShadowJson, freezeShadow, shadowHash } from "./shadow-json.mjs";
+import { checkShadowJson, freezeShadow, shadowHash, canonicalShadowJson } from "./shadow-json.mjs";
+import { createHash } from "node:crypto";
 import { assertAgentReuseRequest, fingerprintAgentReuse } from "../agents/agent-reuse-policy.mjs";
 import decisionSchema from "../contracts/agent-reuse/agent-reuse-decision.v1.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
@@ -13,6 +14,25 @@ const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value
 const factsValid = value => exactKeys(value, [], Object.keys(value ?? {})) && Object.keys(value).length <= 128
   && Object.entries(value).every(([key, item]) => processId(key) && typeof item === "boolean");
 const content = ({ instance_sha256, ...value }) => value;
+
+// Replay still authenticates every intent against its exact historical instance
+// fingerprint. Reuse only canonical bytes within this one validated replay:
+// neither an instance, a cursor nor any external authority is cached.
+function prefixHasher(instance) {
+  const keys = Object.keys(content(instance)).sort(), eventIndex = keys.indexOf("events");
+  const entry = key => JSON.stringify(key) + ":" + canonicalShadowJson(instance[key]);
+  const head = "{" + keys.slice(0, eventIndex).map(entry).join(",") + ',"events":[';
+  const tail = keys.slice(eventIndex + 1).map(key => key === "revision" ? null : entry(key));
+  const hash = createHash("sha256").update(head, "utf8"); let count = 0;
+  return eventCount => {
+    while (count < eventCount) {
+      if (count) hash.update(",", "utf8");
+      hash.update(canonicalShadowJson(instance.events[count++]), "utf8");
+    }
+    const suffix = tail.map(part => part ?? '"revision":' + (eventCount + 1)).join(",");
+    return hash.copy().update("]," + suffix + "}", "utf8").digest("hex");
+  };
+}
 
 export function assertActivityAssignment(instance, node, occurrenceId, request, decision) {
   assertAgentReuseRequest(request);
@@ -37,6 +57,7 @@ export function assertProcessResult(result, assignment) {
 // All nodes and waits become visible before any external resource is assigned.
 function replay(instance) {
   const v2 = instance.contract_version === "agentic-process-instance.v2";
+  const prefixSha256 = v2 ? prefixHasher(instance) : null;
   const nodes = new Map(instance.model.nodes.map(node => [node.id, node]));
   const frames = new Map(); let facts = { ...instance.initial_facts }, failure = null;
   function stop(frame, status, reason) {
@@ -141,8 +162,8 @@ function replay(instance) {
     if (event.kind === "operation_intent") {
       if (!v2 || !exactKeys(event, ["event_id", "kind", "occurrence_id", "intent"]) || node.kind !== "operation"
         || !(frame.status === "READY" || frame.status === "WAITING" && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
-      const prefix = { ...content(instance), revision: eventIds.size, events: instance.events.slice(0, eventIds.size - 1) };
-      assertProcessOperationIntent(event.intent, { instance, node, revision: eventIds.size, occurrenceId: frame.occurrence_id, expectedInstanceSha256: shadowHash(prefix) });
+      assertProcessOperationIntent(event.intent, { instance, node, revision: eventIds.size, occurrenceId: frame.occurrence_id,
+        expectedInstanceSha256: prefixSha256(eventIds.size - 1) });
       if (operationIds.has(event.intent.operation_id)) fail("PROCESS_OPERATION_ID_REUSED");
       operationIds.add(event.intent.operation_id);
       frame.operation = { intent: event.intent, receipt: null };
@@ -166,8 +187,8 @@ function replay(instance) {
       let message = event;
       if (event.kind === "control") {
         if (!v2 || !exactKeys(event, ["event_id", "kind", "occurrence_id", "delivery"])) fail("PROCESS_CONTROL_INVALID");
-        const prefix = { ...content(instance), revision: eventIds.size, events: instance.events.slice(0, eventIds.size - 1) };
-        assertProcessControlEvent(event.delivery, { instance, occurrence: frame, revision: eventIds.size, expectedInstanceSha256: shadowHash(prefix) });
+        assertProcessControlEvent(event.delivery, { instance, occurrence: frame, revision: eventIds.size,
+          expectedInstanceSha256: prefixSha256(eventIds.size - 1) });
         const source = shadowHash([event.delivery.authority_id, event.delivery.source_kind, event.delivery.source_event_id]);
         if (deliveryIds.has(event.delivery.delivery_id) || sourceEvents.has(source)) fail("PROCESS_CONTROL_REUSED");
         deliveryIds.add(event.delivery.delivery_id); sourceEvents.add(source);
@@ -203,7 +224,7 @@ function replay(instance) {
     waiting: [...frames.values()].filter(frame => frame.status === "WAITING").map(frame => frame.occurrence_id) };
 }
 
-export function assertAgenticProcessInstance(instance) {
+function validateAndReplay(instance) {
   const v2 = instance?.contract_version === "agentic-process-instance.v2";
   if (checkShadowJson(instance) || validateJsonSchema(instance, v2 ? instanceSchemaV2 : instanceSchema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(instance, ["contract_version", "profile", "instance_id", "model", "model_sha256", "policy_pins", "scope_id", "initial_facts", "revision", "events", "instance_sha256"], v2 ? ["initial_parameters"] : [])
     || !["agentic-process-instance.v1", "agentic-process-instance.v2"].includes(instance.contract_version)
@@ -215,7 +236,10 @@ export function assertAgenticProcessInstance(instance) {
     || instance.instance_sha256 !== shadowHash(content(instance))) fail("PROCESS_INSTANCE_INVALID");
   assertAgenticProcessModel(instance.model, { policyPins: instance.policy_pins });
   if (Object.hasOwn(instance, "initial_parameters") !== Object.hasOwn(instance.model, "data_bindings")) fail("PROCESS_PARAMETERS_INVALID");
-  assertProcessParameters(instance.model, instance.initial_parameters); replay(instance); return instance;
+  assertProcessParameters(instance.model, instance.initial_parameters); return replay(instance);
+}
+export function assertAgenticProcessInstance(instance) {
+  validateAndReplay(instance); return instance;
 }
 function seal(value) {
   const instance = { ...value, instance_sha256: shadowHash(value) };
@@ -231,7 +255,7 @@ export function createAgenticProcess({ instanceId, model, policyPins, scopeId, f
     model: structuredClone(model), model_sha256: shadowHash(model), policy_pins: structuredClone(policyPins), scope_id: scopeId,
     initial_facts: structuredClone(facts), ...(declared ? { initial_parameters: structuredClone(parameters ?? {}) } : {}), revision: 1, events: [] });
 }
-export function inspectAgenticProcess(instance) { assertAgenticProcessInstance(instance); return freezeShadow(replay(instance)); }
+export function inspectAgenticProcess(instance) { return freezeShadow(validateAndReplay(instance)); }
 // A fully validated journal proves all of its prefixes. Hashing an earlier
 // checkpoint does not require replaying every prefix again or inventing a
 // second reducer. Keep the instance fingerprint format owned by this module.
