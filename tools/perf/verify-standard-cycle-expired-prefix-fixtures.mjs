@@ -182,9 +182,19 @@ if (process.argv[2] === "--prepare") {
     const final = host.inspect("cycle-expiry"), bytes = snapshot(target);
     assert.equal(final.cursor.status, "COMPLETED");
     assert.deepEqual(expiredNodes, ["refresh_before", "initialize", ...(expireCheckpoint ? ["checkpoint"] : []), "refresh_after"]);
-    const checkpointIntent = final.record.events.find(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_checkpoint_finalize");
-    assert.ok(checkpointIntent);
-    assert.equal(host.readJournal(checkpointIntent.intent.operation_id).results.at(-1).output.facts.cycle_checkpoint_completed, true);
+    const checkpointIntents = final.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_checkpoint_finalize");
+    assert.equal(checkpointIntents.length, expireCheckpoint ? 2 : 1);
+    const checkpointJournals = checkpointIntents.map(row => host.readJournal(row.intent.operation_id));
+    const confirmed = checkpointJournals.filter(row => row.results.at(-1).receipt.outcome === "completed"
+      && row.results.at(-1).receipt.effect_status === "confirmed" && row.results.at(-1).output.facts.cycle_checkpoint_completed === true);
+    assert.equal(confirmed.length, 1, "exactly one checkpoint intent must have a confirmed hook result");
+    if (expireCheckpoint) {
+      const refused = checkpointJournals.filter(row => row !== confirmed[0]); assert.equal(refused.length, 1);
+      assert.equal(refused[0].results.length, 1); assert.equal(refused[0].results[0].receipt.outcome, "blocked");
+      assert.equal(refused[0].results[0].receipt.effect_status, "no_effect");
+      assert.equal(refused[0].results[0].output.observations.reason_code, "STANDARD_PLAN_EXPIRED");
+      assert.ok(originals.some(row => row.id === refused[0].operation_id && shadowHash(row.record) === shadowHash(refused[0])));
+    }
     for (const row of originals) assert.deepEqual(host.readJournal(row.id), row.record);
     assert.equal(final.record.model_sha256, assets.source.model_sha256);
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, parameters: final.record.initial_parameters,
