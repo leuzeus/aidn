@@ -11,6 +11,9 @@ budget preflight are not evidence of a successful causal execution. The earlier
 v2 nine-response prefix and all its original authorities remain separate.
 General startup/session/mode/cycle choices, repeated corrections, A2, general L4,
 provider responses/resolutions, merge and full L1–L8/A1–A10 remain outstanding.
+The [bounded preparation record](../qualification/standard-workflow/composed-human-selected-cycle-driver-2026-11-04.json)
+retains six terminal checks on two exact sources and the separate pending full
+FILES case. It does not promote static identity or synthetic routing to execution.
 
 The candidate PR continuation includes `session_pr_correction_reopen` under
 SPEC R03/R04/R07/R08/R11 and packaged `pr-orchestrate`. The deterministic mutating

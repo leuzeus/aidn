@@ -21,18 +21,27 @@ datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
 
-- SOURCE37 prépare un scénario composé v3 distinct pour le parcours C2 complet
+- SOURCE37 ajoute un scénario composé v3 distinct pour le parcours C2 complet
   du modèle 101 : choix humain libre, initialisation, planification depuis le
   contexte authentifié, admission du travail, vérificateur propre au cycle,
   audit, clôture, promotion, reclôture et redelivery suivie d'une nouvelle revue.
   Le driver consomme l'identité renvoyée par la décision acceptée, plutôt qu'un
-  identifiant C2 dans ses paramètres. Le préflight prévoit 17 réponses pour ce
-  nouveau scénario ; ce nombre reste à vérifier sur source gelée et ne modifie
-  aucun ancien plafond. Fichiers : driver composé, helper de cycle, scénario
+  identifiant C2 dans ses paramètres. Le préflight vérifié sur 4e62c478 prévoit
+  17 réponses pour ce nouveau scénario, sans modifier aucun ancien plafond.
+  La suite synthétique passe 20 contrôles sur ff8b732f ; la composition 32 et les
+  ports réels positifs FILES 3 sur cette même source. Le helper passe 9 contrôles
+  et les références documentaires passent sur 4e62c478. Le nouveau cas composé
+  FILES, avec son plafond initial distinct de 17 réponses et trois heures, a
+  été lancé sur 4e62c478 le 4 novembre à 21:25:41 UTC ; aucun verdict final n'est
+  encore disponible. Les refus de valeurs croisées sont vérifiés par de vrais
+  processus Node ; les identités Native, humaines et fournisseur restent doublées.
+  Fichiers : driver composé, helper de cycle, scénario
   `composed-correction.v3.json` et vérification de préflight. Dépendances : ports
   SOURCE30–33 et décision v3 SOURCE36. Critère : parcours causal sur projet
   distinct, puis replay/simulation du même modèle sans répéter les effets.
-  À ce stade la préparation du driver n'est pas sa qualification. Les choix
+  La [preuve bornée](qualification/standard-workflow/composed-human-selected-cycle-driver-2026-11-04.json)
+  distingue les deux sources gelées et les six cas terminaux de ce parcours en
+  cours. À ce stade la préparation du driver n'est pas sa qualification. Les choix
   généraux de démarrage/session/mode/cycle/topologie, A2, L4 et l'ensemble
   L1–L8/A1–A10 restent ouverts ; entrée ordinaire et marqueur inchangés.
 

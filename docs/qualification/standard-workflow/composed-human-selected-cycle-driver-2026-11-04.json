@@ -1,0 +1,54 @@
+{
+  "proof_class": "offline-fixture-driver-preparation-not-entire-integration",
+  "date": "2026-11-04",
+  "implementation_scope": "published model 101; scenario and driver only; production/catalog/scaffold unchanged",
+  "sources": [
+    {
+      "commit": "ff8b732f55915b6ca2c08146b2cf0b218cc7ed5c",
+      "terminal_cases": [
+        { "label": "source37-full-c2-preflight-20261104", "status": "PASS", "checks": 20, "boundary": "synthetic same-model/common-reducer planning" },
+        { "label": "source37-full-c2-composition-20261104", "status": "PASS", "checks": 32, "boundary": "published composition and exact binding checks" },
+        { "label": "source37-full-c2-real-preflight-20261104", "status": "PASS", "checks": 3, "boundary": "actual FILES canonical/Git ports with authenticated fixture source", "finished_utc": "2026-11-04T21:24:23.049918+00:00" }
+      ]
+    },
+    {
+      "commit": "4e62c478869d100ed463e0b06a14582e849d8bf5",
+      "terminal_cases": [
+        { "label": "source37-full-c2-cycle-checks-r2-20261104", "status": "PASS", "checks": 9, "boundary": "host-context fixture proposals and two actual Node verifiers with crossed-value refusals" },
+        { "label": "source37-full-c2-driver-preflight-r2-20261104", "status": "PASS", "planned_responses": 17, "boundary": "actual driver preflight-only; no fixture or authorization created" },
+        { "label": "source37-full-c2-docrefs-r2-20261104", "status": "PASS", "boundary": "document references and negative probes" }
+      ],
+      "pending_case": {
+        "label": "source37-full-c2-files-r2-20261104",
+        "started_utc": "2026-11-04T21:25:41.729538+00:00",
+        "status": "NO_TERMINAL_GUARD_VERDICT",
+        "scenario": "composed-correction.v3.json",
+        "initial_max_responses": 17,
+        "initial_budget_ms": 10800000,
+        "stop": "component_complete",
+        "retain_always": true,
+        "scope": "new distinct case; no old authorization or uncertain effect reused"
+      }
+    }
+  ],
+  "causal_target": [
+    "human-selected cycle v3 signed inbox and accepted output",
+    "ordinary cycle admission, correct branch, fresh context and session start",
+    "Native planning from actual host context, frozen plan, readiness and IMPLEMENTING before product edits",
+    "separate corrective task and value-3 validation, independent audit and retained closure",
+    "fresh promotion, session closure/history, integration and redelivery",
+    "second authenticated review event and fresh triage",
+    "same published IR/common reducer replay and simulation with effect witnesses unchanged"
+  ],
+  "preserved": ["historical v1/v2 scenarios and readers", "original long case and cumulative budget", "all earlier failures and unknown results", "ordinary entry and complete_standard_workflow=false"],
+  "limits": [
+    "Six terminal component/preflight cases are not the full corrective journey.",
+    "The two frozen source commits remain separate; static production equality transfers no execution.",
+    "Human/Native/provider identities and transport are fixture doubles. Local Git/bare, stores and application ports are real.",
+    "General session/mode/existing-or-new-cycle/topology choices, repeated corrections and actual THINKING/EXPLORING routes remain open.",
+    "Provider technical replies, observed resolutions or explicit exception, fresh genuine merge consent and postmerge remain open.",
+    "General L4 expiry/retained-owner/unknown-result/all-resource recovery, DUAL/DB-only full journey, real PostgreSQL, genuine Native/human/provider/OS and exact installed archive are not established.",
+    "Full current Runtime family and Governance Admission are not established. Entire L1-L8/A1-A10 remains incomplete."
+  ],
+  "entire_plan_complete": false
+}
