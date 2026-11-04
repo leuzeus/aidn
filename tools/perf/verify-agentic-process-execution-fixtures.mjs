@@ -2,7 +2,7 @@
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
-import { observeComposedHost, loseCheckpointReceipt } from "./standard-composed-observation-fixture-lib.mjs";
+import { observeComposedHost, loseCheckpointReceipt, loseCheckpointOwnerReleaseAck } from "./standard-composed-observation-fixture-lib.mjs";
 import { standardPrTriageItems } from "../../src/core/workflow/standard-pr-triage.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
@@ -91,7 +91,8 @@ const standardComposedResume = process.argv.find(value => value.startsWith("--st
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 const standardHostTrace = process.argv.includes('--standard-composed-host-trace');
 const standardCheckpointAckLoss = process.argv.includes('--standard-composed-checkpoint-ack-loss');
-if ((standardHostTrace || standardCheckpointAckLoss) && !selectedStandardComposedMode) throw Error('STANDARD_FIXTURE_EXPERIMENT_MODE_REQUIRED');
+const standardCheckpointOwnerAckLoss = process.argv.includes('--standard-composed-checkpoint-owner-ack-loss');
+if ((standardHostTrace || standardCheckpointAckLoss || standardCheckpointOwnerAckLoss) && !selectedStandardComposedMode) throw Error('STANDARD_FIXTURE_EXPERIMENT_MODE_REQUIRED');
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
 const standardComposedBudgetText = process.argv.find(value => value.startsWith("--standard-composed-budget-ms="))?.slice("--standard-composed-budget-ms=".length);
 const standardComposedBudgetMs = standardComposedBudgetText === undefined ? 7200000 : Number(standardComposedBudgetText);
@@ -119,6 +120,8 @@ const standardScenarioName = process.argv.find(value => value.startsWith("--stan
 if (!["positive", "correction"].includes(standardScenarioName) || standardScenarioName !== "positive" && !selectedStandardComposedMode) throw Error("STANDARD_FIXTURE_SCENARIO_INVALID");
 if (standardCheckpointAckLoss && (selectedStandardComposedMode !== 'files' || standardScenarioName !== 'correction' || standardComposedStop !== 'component_complete'))
   throw Error('STANDARD_FIXTURE_CHECKPOINT_ACK_LOSS_SCOPE_INVALID');
+if (standardCheckpointOwnerAckLoss && (standardCheckpointAckLoss || !['files', 'dual'].includes(selectedStandardComposedMode)
+  || standardScenarioName !== 'correction' || standardComposedStop !== 'component_complete')) throw Error('STANDARD_FIXTURE_CHECKPOINT_OWNER_ACK_LOSS_SCOPE_INVALID');
 const standardScenario = selectedStandardComposedMode ? JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-" +
   (standardScenarioName === "correction" ? "correction.v2" : "positive.v1") + ".json", import.meta.url), "utf8")) : null;
 if (standardResponseText !== undefined) standardScenario.max_responses = Number(standardResponseText);
@@ -128,7 +131,8 @@ if (standardScenario && (standardScenario.mode !== "COMMITTING" || standardScena
 const standardResumeInput = standardComposedResume ? JSON.parse(fs.readFileSync(standardComposedResume, "utf8")) : null;
 if (standardResumeInput) {
   if (Boolean(standardResumeInput.experiment?.host_trace) !== standardHostTrace
-    || Boolean(standardResumeInput.experiment?.checkpoint_ack_loss) !== standardCheckpointAckLoss) throw Error('STANDARD_FIXTURE_ORIGINAL_EXPERIMENT_CHANGED');
+    || Boolean(standardResumeInput.experiment?.checkpoint_ack_loss) !== standardCheckpointAckLoss
+    || Boolean(standardResumeInput.experiment?.checkpoint_owner_ack_loss) !== standardCheckpointOwnerAckLoss) throw Error('STANDARD_FIXTURE_ORIGINAL_EXPERIMENT_CHANGED');
   assert.deepEqual(standardResumeInput.scenario, standardScenario, "Cold resume must preserve the initial fixture scenario");
   assert.equal(standardResumeInput.authorization.max_responses, standardScenario.max_responses, "Cold resume must preserve the original cumulative ceiling");
 }
@@ -826,7 +830,7 @@ if (process.argv[2] === "--mixed-continue") {
       fs.writeFileSync(resumeFile, JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs,
         human_source_file: sourceFile, sessionPushRemoteRoot: f.sessionPushRemoteRoot, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) },
         scenario: standardScenario, preflight: standardPreflight, authorization: auth,
-        experiment: { host_trace: standardHostTrace, checkpoint_ack_loss: standardCheckpointAckLoss } }));
+        experiment: { host_trace: standardHostTrace, checkpoint_ack_loss: standardCheckpointAckLoss, checkpoint_owner_ack_loss: standardCheckpointOwnerAckLoss } }));
     }
     const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
     let childNativeSessions = 0, coldContinuation = false;
@@ -871,7 +875,23 @@ if (process.argv[2] === "--mixed-continue") {
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
       let result;
-      if (standardCheckpointAckLoss && frame.node_id === 'session_pr_correction_checkpoint') {
+      if (standardCheckpointOwnerAckLoss && frame.node_id === 'session_pr_correction_checkpoint') {
+        const lost = await loseCheckpointOwnerReleaseAck({ targetRoot: f.configuration.target_root }, () => f.open().step({ write: true, authorization: auth }));
+        const original = f.open().readOperation(lost.operation_id);
+        assert.equal(lost.result.status, 'WAITING'); assert.equal(original.results[0].receipt.effect_status, 'unknown');
+        assert.ok(f.open().inspect().record.events.some(row => row.kind === 'operation_result' && shadowHash(row.receipt) === shadowHash(original.results[0].receipt)));
+        const child = spawnSync(process.execPath, [fileURLToPath(new URL('standard-pr-correction-checkpoint-host-resume-fixture.mjs', import.meta.url)), resumeFile, lost.operation_id],
+          { encoding: 'utf8', windowsHide: true, timeout: 600000, maxBuffer: 1048576 });
+        console.error(JSON.stringify({ checkpoint_recovery_child: true, pid: child.pid ?? null, status: child.status, signal: child.signal,
+          error_code: child.error?.code ?? null, stdout_bytes: Buffer.byteLength(child.stdout ?? ''), stderr_bytes: Buffer.byteLength(child.stderr ?? '') }));
+        assert.equal(child.status, 0, ((child.stdout ?? '') + (child.stderr ?? '')).slice(-16384));
+        const proof = JSON.parse(child.stdout);
+        assert.equal(proof.dispatcher_unknown_recovered_by_real_host, true); assert.equal(proof.new_native_allocations, 0);
+        assert.equal(f.reopen().inspect().record.instance_sha256, proof.instance_sha256);
+        assert.deepEqual(f.open().readOperation(lost.operation_id).results[0], original.results[0]);
+        console.log(JSON.stringify({ standard_checkpoint_unknown_proof: proof, fault: 'actual owner unlink succeeded; acknowledgement lost; dispatcher signed unknown', owner: lost.owner }));
+        result = { kind: 'operation', operation_id: lost.operation_id, status: proof.workflow_status };
+      } else if (standardCheckpointAckLoss && frame.node_id === 'session_pr_correction_checkpoint') {
         const lost = await loseCheckpointReceipt({ targetRoot: f.configuration.target_root }, () => f.open().step({ write: true, authorization: auth }));
         const original = f.open().readOperation(lost.operation_id);
         assert.equal(original.phase, 'dispatching'); assert.deepEqual(original.results, []);
@@ -958,7 +978,8 @@ if (process.argv[2] === "--mixed-continue") {
             "--standard-composed-resume=" + resumeFile, "--standard-composed-budget-ms=" + standardComposedBudgetMs,
             "--standard-composed-scenario=" + standardScenarioName,
             "--standard-composed-max-responses=" + standardScenario.max_responses, "--retain-on-failure",
-            ...(standardHostTrace ? ['--standard-composed-host-trace'] : []), ...(standardCheckpointAckLoss ? ['--standard-composed-checkpoint-ack-loss'] : [])],
+            ...(standardHostTrace ? ['--standard-composed-host-trace'] : []), ...(standardCheckpointAckLoss ? ['--standard-composed-checkpoint-ack-loss'] : []),
+            ...(standardCheckpointOwnerAckLoss ? ['--standard-composed-checkpoint-owner-ack-loss'] : [])],
           { encoding: "utf8", shell: false, windowsHide: true, timeout: childTimeoutMs, maxBuffer: 262144 });
           // Keep the subprocess failure distinct from the parent assertion.
           // These observations neither renew authority nor prove tree closure.
