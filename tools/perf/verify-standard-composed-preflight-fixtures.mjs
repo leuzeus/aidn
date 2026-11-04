@@ -40,7 +40,8 @@ test("insufficient original allowance is refused before the long driver creates 
 });
 test("versioned correction route selects canonical reopening without another native response", () => {
   const correction = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-correction.v2.json", import.meta.url)));
-  const result = preflightStandardComposedFixture({ model, scenario: correction });
+  assert.throws(() => preflightStandardComposedFixture({ model, scenario: correction }), { code: "STANDARD_FIXTURE_PREFLIGHT_UNPLANNED_WAIT" });
+  const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "session_pr_correction_decide" });
   assert.equal(result.responses_required, 9); assert.ok(result.operations.includes("session_pr_correction_reopen"));
   assert.ok(result.operations.includes("session_pr_correction_checkpoint"));
   assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
