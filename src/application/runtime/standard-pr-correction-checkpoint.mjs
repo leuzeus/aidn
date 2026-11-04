@@ -63,14 +63,27 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
       if (!approved || row.status !== ' M' || value.state_mode === 'db-only') fail('STANDARD_PR_CORRECTION_CHECKPOINT_FOREIGN_CHANGE');
       return { path: row.path, sha256: approved.sha256 };
     });
-    const external = await authority.verifySource(instance, value.correction_source, { signal });
+    const plan = { contract_version: 'standard-pr-correction-checkpoint-plan.v1', operation_ref: 'session_pr_correction_checkpoint',
+      input, operation_id: operationId, prepared_at_ms: at, session_id: value.correction_source.session_id,
+      state_mode: value.state_mode, source_sha256: shadowHash(value), git: { operation_kind: 'terminal-objects-ref-index.v1', observed, files } };
+    // The accepted reopen receipt determines the finite postimages. This is
+    // read-only preparation, including on cold entry; it grants no push intent.
+    let pushIdentity = null;
+    const assertLocal = localView => {
+      current(instance, signal);
+      if (acquired) artifacts.assertLocalEffectOwner(shadowHash(plan));
+      else if (artifacts.ownerPending()) fail('STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED');
+      if (shadowHash(source(instance, input)) !== shadowHash(value) || shadowHash(port(value).inspect()) !== shadowHash(observed))
+        fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+      const identity = shadowHash(localView);
+      if (pushIdentity !== null && pushIdentity !== identity) fail('STANDARD_PR_CORRECTION_CHECKPOINT_GIT_CHANGED');
+      pushIdentity = identity;
+    };
+    const external = await authority.verifySource(instance, value.correction_source, { signal, assertLocal });
     if (external?.origin_source_sha256 !== shadowHash(value.correction_source)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
     current(instance, signal);
     if (shadowHash(source(instance, input)) !== shadowHash(value) || shadowHash(port(value).inspect()) !== shadowHash(observed))
       fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
-    const plan = { contract_version: 'standard-pr-correction-checkpoint-plan.v1', operation_ref: 'session_pr_correction_checkpoint',
-      input, operation_id: operationId, prepared_at_ms: at, session_id: value.correction_source.session_id,
-      state_mode: value.state_mode, source_sha256: shadowHash(value), git: { operation_kind: 'terminal-objects-ref-index.v1', observed, files } };
     if (!valid(plan, planSchema)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_PLAN_INVALID');
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }

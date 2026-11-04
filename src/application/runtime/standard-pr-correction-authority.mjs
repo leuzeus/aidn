@@ -6,7 +6,7 @@ const fail = code => { throw Object.assign(Error(code), { code, effect_status: '
 // This component has no caller-supplied report, provider or self-authenticated
 // payload. Its capabilities must be bound by the trusted operation host.
 export function createStandardPrCorrectionAuthority({ readAcceptedOperation, reevaluateTriage, readControl, verifyEvent,
-  observeProduct, inspectPush, readCurrent, reviewPort, now = Date.now }) {
+  observeProduct, inspectPush, observeOwnedPush, readCurrent, reviewPort, now = Date.now }) {
   if (![readAcceptedOperation, reevaluateTriage, readControl, verifyEvent, observeProduct, inspectPush, readCurrent].every(fn => typeof fn === 'function'))
     fail('STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED');
   const active = signal => { if (signal?.aborted) fail('STANDARD_PR_CORRECTION_ABORTED'); };
@@ -38,11 +38,16 @@ export function createStandardPrCorrectionAuthority({ readAcceptedOperation, ree
       payload_sha256: o.payload_sha256, product_sha256: o.product_sha256, pull_request: p,
       corrections: o.corrections, source_material_sha256: shadowHash([triage.output, selection.output, received.output, update.output, capture]) }, capture, payload, triage };
   }
-  async function verify(instance, expected, { signal } = {}, localHeadRequired = true) {
+  async function verify(instance, expected, { signal, assertLocal } = {}, localHeadRequired = true) {
+    // Only a trusted component can supply this function. IR inputs remain
+    // closed operation identities and never carry local cleanliness claims.
+    if (assertLocal !== undefined && (typeof assertLocal !== 'function' || typeof observeOwnedPush !== 'function'))
+      fail('STANDARD_PR_CORRECTION_OWNED_OBSERVATION_REQUIRED');
+    const inspect = assertLocal ? branch => observeOwnedPush(branch, { signal, assertLocal }) : branch => inspectPush(branch, { signal });
     active(signal); const before = immutable(instance, { triage_operation_id: expected.triage_operation_id });
     if (shadowHash(before.source) !== shadowHash(expected)) fail('STANDARD_PR_CORRECTION_SOURCE_CHANGED');
     await verifyEvent(before.capture, { signal }); active(signal);
-    const gitBefore = await inspectPush(expected.pull_request.head_branch, { signal }); active(signal);
+    const gitBefore = await inspect(expected.pull_request.head_branch); active(signal);
     if (localHeadRequired && gitBefore.head !== expected.pull_request.head_oid || gitBefore.remote_head !== expected.pull_request.head_oid)
       fail('STANDARD_PR_CORRECTION_REMOTE_CHANGED');
     const observer = createStandardSessionPrReviewContentObservation({ now, reviewPort, readCurrent,
@@ -58,7 +63,7 @@ export function createStandardPrCorrectionAuthority({ readAcceptedOperation, ree
       || observed.evidence.evidence_sha256 !== old.evidence.evidence_sha256 || observed.threads.observation_sha256 !== old.threads.observation_sha256)
       fail('STANDARD_PR_CORRECTION_PROVIDER_CHANGED');
     await verifyEvent(before.capture, { signal }); active(signal);
-    const gitAfter = await inspectPush(expected.pull_request.head_branch, { signal }); active(signal);
+    const gitAfter = await inspect(expected.pull_request.head_branch); active(signal);
     if (localHeadRequired && gitAfter.head !== expected.pull_request.head_oid || gitAfter.remote_head !== expected.pull_request.head_oid)
       fail('STANDARD_PR_CORRECTION_REMOTE_CHANGED');
     if (shadowHash(immutable(instance, { triage_operation_id: expected.triage_operation_id }).source) !== shadowHash(expected)) fail('STANDARD_PR_CORRECTION_SOURCE_CHANGED');

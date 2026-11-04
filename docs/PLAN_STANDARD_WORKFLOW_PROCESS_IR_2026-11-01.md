@@ -4201,3 +4201,64 @@ recovery, retained owners, admitted correction cycles, physical work, fresh
 validation/reclosure, review/resolution/consent/merge/sync, all remaining
 L1-L8/A1-A10 and exact installed archive qualification remain required. Ordinary
 entry is unchanged and complete_standard_workflow remains false.
+
+
+### Exact owned postimages during correction observation, 2026-11-04
+
+The missing composition edge is between `standard-pr-correction-reopen.mjs`,
+`standard-pr-correction-authority.mjs`, the fixed operation host, and the real
+session push adapters. Strict push inspection correctly rejects a dirty tree;
+reusing it during the owned canonical transition had stopped after its first
+postimage. The historical partial UNKNOWN remains a failure and must not be
+retried, renewed or converted to completion.
+
+The source now composes a distinct host-only `observeOwned` capability on local
+and GitHub push adapters. Authored JSON cannot supply the required function or
+an arbitrary path allowance. The writer proves its current exclusive owner,
+exact frozen plan, instance/prefix, canonical metadata and committed prefix of
+physical postimages before and after remote/provider observation. Index, named
+HEAD/ref, relevant Git locks and the remaining local context stay fenced.
+Authorization is checked again after the asynchronous provider observation and
+before each synchronous CAS. Ordinary `inspect` and `push` keep strict clean-tree
+admission. The subsequent checkpoint derives its observation scope from the
+accepted reopening receipt, including cold read-only preparation. DB-only emits
+no projection or fabricated Git witness.
+
+Files changed for this edge are the two push adapters, correction authority,
+reopen/checkpoint components, workflow artifacts and operation host. The
+qualification dependencies are
+`standard-pr-correction-real-port-fixture-lib.mjs`,
+`verify-standard-pr-correction-real-ports-fixtures.mjs`, the GitHub push fixtures,
+and refreshed standard/startup/cycle catalogs. The existing agentic-process
+family selects the real-port preflight once per files/dual/db-only mode.
+
+Acceptance for this edge requires three real canonical postimages and the cold
+checkpoint; unchanged closure bodies, product and remote; strict push refusal;
+source/provider/event/product/instance/index/ref/lock/projection refusals before
+and after a partial mutation; concurrent and retained owners; cancellation and
+waiting; grant revocation during provider observation before any CAS; cold
+refusal of uncertain effects and unchanged UNKNOWN through common replay.
+Each negative case prepares its own fresh plan before injecting its fault.
+No timestamp, native budget or failed case is renewed.
+
+Status at source authoring: implementation and deterministic preflight added;
+final three-mode matrix is pending. One earlier FILES positive source snapshot
+passed cold preparation, all three postimages, strict push refusal and the actual
+checkpoint with exact tiny-IR replay. That snapshot predates the additional
+post-provider grant check and is not final-source qualification. Two preceding
+harness failures are retained: an undefined serialization field and evidence in
+an unignored directory; neither established a product regression. Exact source
+sizes/hashes and raw outcomes are retained externally.
+
+This preflight uses actual application CAS/metadata/projections, Git and SQLite.
+Its selected triage/accepted chain is synthetic and authenticated with public
+fixture key127; provider transport is doubled. Its tiny replay IR consumes real
+outputs with explicitly fixture-made receipts. It does not prove a production
+dispatcher, canonical native producer, mixed-host checkpoint ack-loss recovery,
+actual human/provider/native resources, configured PostgreSQL or an exact
+installed archive. No long composed experiment may start before this preflight
+passes. All remaining L1-L8/A1-A10 requirements, ordinary correction-cycle human
+choice/admission/plan/DoR/readiness/IMPLEMENTING, physical work, fresh validation,
+reclosure, causal delivery, technical review, fresh human merge consent and
+merge/fetch/divergence/strategy/sync remain due. Ordinary entry is unchanged and
+`complete_standard_workflow=false` remains exact.

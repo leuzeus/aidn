@@ -47,10 +47,17 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
     const [head, name] = rows[0].split('\t');
     if (!oid(head) || name !== target) fail('WORKFLOW_PUSH_REMOTE_REF_INVALID'); return head;
   }
-  function inspect(branch) {
-    config(); const local = createLocalWorkflowBranchIntegration({ targetRoot: root, environment }).inspect({ source_branch: branch, target_branch: branch });
-    if (!local.clean || local.current_ref !== ref(branch) || local.head !== local.source_head || local.source_symbolic || local.target_symbolic
+  function inspectLocal(branch) {
+    for (const name of ['HEAD.lock', 'packed-refs.lock', 'config.lock'])
+      if (fs.existsSync(agentRunPhysicalPath(path.resolve(root, git(['rev-parse', '--git-path', name])), { missing: true })))
+        fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
+    return createLocalWorkflowBranchIntegration({ targetRoot: root, environment }).inspect({ source_branch: branch, target_branch: branch });
+  }
+  function inspectInternal(branch, assertLocal = null) {
+    config(); const local = assertLocal ? inspectLocal(branch) : createLocalWorkflowBranchIntegration({ targetRoot: root, environment }).inspect({ source_branch: branch, target_branch: branch });
+    if ((!assertLocal && !local.clean) || local.current_ref !== ref(branch) || local.head !== local.source_head || local.source_symbolic || local.target_symbolic
       || local.lock_present || local.source_lock_present) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
+    if (assertLocal) assertLocal(structuredClone(local));
     const head = remoteHead(branch);
     // Reading objects directly is local qualification only; it changes no fetch
     // ref/FETCH_HEAD. An unrelated remote history is never force-pushed.
@@ -62,8 +69,19 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
       if (![0, 1].includes(ancestor.status)) fail('WORKFLOW_PUSH_ANCESTRY_UNAVAILABLE'); fastForward = ancestor.status === 0;
     }
     if (!fastForward) fail('WORKFLOW_PUSH_REMOTE_DIVERGED');
+    if (assertLocal) {
+      const after = inspectLocal(branch); assertLocal(structuredClone(after));
+      if (shadowHash(after) !== shadowHash(local)) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_CHANGED');
+    }
     return { profile: 'local-bare-remote.v1', remote_identity_sha256: remoteIdentity, branch, ref: ref(branch), head: local.head,
       remote_head: head, local_sha256: shadowHash(local) };
+  }
+  const inspect = branch => inspectInternal(branch);
+  // Host-only observation capability. A JSON boolean or path list cannot
+  // replace the component's exact-plan, canonical postimage and owner proof.
+  function observeOwned(branch, { assertLocal } = {}) {
+    if (typeof assertLocal !== 'function') fail('WORKFLOW_PUSH_OWNED_OBSERVATION_REQUIRED');
+    return inspectInternal(branch, assertLocal);
   }
   async function push(observed, { write = false, assertAuthorized } = {}) {
     let attempted = false;
@@ -89,5 +107,5 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
         { code: attempted ? 'WORKFLOW_PUSH_RECONCILIATION_REQUIRED' : cause.code ?? 'WORKFLOW_PUSH_CONTEXT_UNAVAILABLE', effect_status: attempted ? 'unknown' : 'no_effect' });
     }
   }
-  return Object.freeze({ inspect, push });
+  return Object.freeze({ inspect, observeOwned, push });
 }

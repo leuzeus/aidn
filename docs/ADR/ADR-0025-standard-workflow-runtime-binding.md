@@ -2154,3 +2154,25 @@ the prior owner and resources closed before any finalization; missing proof
 retains waiting/refusal. Component fixture HMAC/Git observation and negative
 generic-host tests do not prove positive recovery through the full correction
 producer/host chain. Ordinary entry and complete-workflow status stay unchanged.
+
+
+### Owned canonical correction observation
+
+Push admission remains a clean-checkout observation. During correction reopening,
+the fixed host instead supplies a distinct read-only `observeOwned` capability.
+It accepts a trusted component callback, never a JSON cleanliness assertion or
+caller-authored path allowance. The component proves the exact plan, current
+instance/accepted prefix, active owner and canonical metadata/physical prefix
+before and after remote/provider reads. The writer rechecks authorization after
+those asynchronous reads before each synchronous CAS. Lost freshness after a
+partial write retains UNKNOWN and its owner.
+
+The correction checkpoint derives its observation scope from the authenticated
+accepted reopen plan/output/postimages, including read-only cold preparation.
+Its explicit Git effect and retrospective commit witness remain separate.
+DB-only creates no physical projection or Git witness. Existing grants, receipts,
+instances and unknown outcomes are retained; no historical instance is converted.
+The source-installed real-port fixture preflight uses a synthetic authenticated
+triage and fixture provider transport, and cannot establish the production native
+producer/dispatcher or whole standard workflow. See the current plan and testing
+guide for its required three-mode matrix and remaining qualification.

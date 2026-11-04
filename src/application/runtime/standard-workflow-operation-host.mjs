@@ -492,6 +492,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     verifyEvent: (capture, options) => reviewControlSource.verifyCapturedEvent(capture, options),
     observeProduct: () => processAuthority.observeProduct(),
     inspectPush: (branch, options) => sessionPushPort.inspect(branch, options),
+    observeOwnedPush: (branch, options) => {
+      if (typeof sessionPushPort?.observeOwned !== 'function') fail('STANDARD_PR_CORRECTION_OWNED_OBSERVATION_REQUIRED');
+      return sessionPushPort.observeOwned(branch, options);
+    },
     readCurrent: id => current(id).record, reviewPort: sessionReviewPort, now }) : null;
   const prCorrectionReopen = prCorrectionAuthority ? createStandardPrCorrectionReopen({ targetRoot, now,
     authority: prCorrectionAuthority, readCurrent: id => current(id).record }) : null;

@@ -142,6 +142,22 @@ try {
     git(u.root, 'push', u.remote, other + ':refs/heads/S001-host');
     assert.throws(() => u.port().inspect('S001-host'), { code: 'GITHUB_PUSH_REMOTE_DIVERGED' }); assert.equal(u.state.pushes, 0); assert.equal(u.ref('S001-host'), other);
   });
+  await test('owned observation requires a host function, checks real dirty bytes twice and never weakens push', async () => {
+    const u = fixture(), port = u.port(), file = path.join(u.root, 'app.txt'); let baseline, observations = 0;
+    port.observeOwned('S001-host', { assertLocal(view) { baseline = view; } });
+    fs.writeFileSync(file, 'exact owned postimage\n');
+    const assertLocal = view => {
+      observations++; assert.deepEqual({ ...view, clean: true }, baseline);
+      assert.equal(fs.readFileSync(file, 'utf8'), 'exact owned postimage\n');
+    };
+    assert.throws(() => port.observeOwned('S001-host', { assertLocal: true }));
+    assert.throws(() => port.observeOwned('S001-host', { clean: true, approved_paths: ['app.txt'] }));
+    const observed = port.observeOwned('S001-host', { assertLocal }); assert.equal(observations, 2);
+    assert.throws(() => port.inspect('S001-host'), { code: 'GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED' });
+    await assert.rejects(port.push(observed, { write: true, assertAuthorized() {} }), { code: 'GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED' });
+    const racing = u.port({ runRemoteGit(...args) { const result = u.seams.runRemoteGit(...args); fs.writeFileSync(file, 'foreign postimage\n'); return result; } });
+    assert.throws(() => racing.observeOwned('S001-host', { assertLocal })); assert.equal(u.state.pushes, 0);
+  });
   console.log(JSON.stringify({ status: 'PASS', checks, git_local_ancestry_lease_remote_and_application: 'ACTUAL', http_and_https_transports: 'DOUBLED',
     authenticated_actor_repository_responses: 'FIXTURE', admission_source: 'INJECTED_FIXTURE', real_github_network: 'NOT_RUN', full_standard_chain: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN' }));
 } finally {

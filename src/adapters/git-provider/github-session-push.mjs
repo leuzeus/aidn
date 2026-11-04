@@ -128,25 +128,41 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
     if (observed?.ref !== target || observed.object?.type !== 'commit' || observed.object.sha !== head) fail('GITHUB_PUSH_REMOTE_REF_CHANGED');
     return head;
   }
-  function inspect(branch) {
+  function inspectLocal(branch, state) {
+    for (const name of ['HEAD.lock', 'packed-refs.lock', 'config.lock'])
+      if (fs.existsSync(agentRunPhysicalPath(path.resolve(root, local(['rev-parse', '--git-path', name], state).stdout.trim()), { missing: true })))
+        fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
+    return createLocalWorkflowBranchIntegration({ targetRoot: root, environment: inspectionEnv }).inspect({ source_branch: branch, target_branch: branch });
+  }
+  function inspectInternal(branch, assertLocal = null) {
     const state = budget(); configuration(state);
-    const localView = createLocalWorkflowBranchIntegration({ targetRoot: root, environment: inspectionEnv }).inspect({ source_branch: branch, target_branch: branch });
-    if (!localView.clean || localView.current_ref !== ref(branch, state) || localView.head !== localView.source_head || localView.source_symbolic
+    const localView = assertLocal ? inspectLocal(branch, state) : createLocalWorkflowBranchIntegration({ targetRoot: root, environment: inspectionEnv }).inspect({ source_branch: branch, target_branch: branch });
+    if ((!assertLocal && !localView.clean) || localView.current_ref !== ref(branch, state) || localView.head !== localView.source_head || localView.source_symbolic
       || localView.target_symbolic || localView.lock_present || localView.source_lock_present) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
+    if (assertLocal) assertLocal(structuredClone(localView));
     const credentials = credential(state), head = remoteHead(branch, state, credentials);
     if (head !== null && head !== localView.head) {
       local(['cat-file', '-e', head + '^{commit}'], state);
       if (local(['merge-base', '--is-ancestor', head, localView.head], state, [0, 1]).status !== 0) fail('GITHUB_PUSH_REMOTE_DIVERGED');
     }
+    if (assertLocal) {
+      const after = inspectLocal(branch, state); assertLocal(structuredClone(after));
+      if (shadowHash(after) !== shadowHash(localView)) fail('GITHUB_PUSH_LOCAL_CONTEXT_CHANGED');
+    }
     return { profile: 'github-https-git.v1', remote_identity_sha256: context, branch, ref: ref(branch, state), head: localView.head,
       remote_head: head, local_sha256: shadowHash(localView) };
+  }
+  const inspect = branch => inspectInternal(branch);
+  function observeOwned(branch, { assertLocal } = {}) {
+    if (typeof assertLocal !== 'function') fail('GITHUB_PUSH_OWNED_OBSERVATION_REQUIRED');
+    return inspectInternal(branch, assertLocal);
   }
   pinned();
   // Read-only network commands must also be outside any checkout. Git push
   // receives a dedicated host-owned bare configuration only after a grant.
   const outside = spawnSync(gitBinary, ['-C', transportCwd, 'rev-parse', '--absolute-git-dir'], { env: localEnv, encoding: 'utf8', shell: false, windowsHide: true, timeout: 10000, stdio: 'pipe' });
   if (outside.status !== 128 || outside.error || outside.signal) fail('GITHUB_PUSH_TRANSPORT_CWD_REQUIRED');
-  return Object.freeze({ inspect,
+  return Object.freeze({ inspect, observeOwned,
     async push(observed, { write = false, assertAuthorized } = {}) {
       let attempted = false, confirmed = false, preparation = null;
       try {

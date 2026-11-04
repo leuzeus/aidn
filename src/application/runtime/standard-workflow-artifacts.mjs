@@ -125,7 +125,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
       fs.writeFileSync(descriptor, JSON.stringify(owner)); fs.fsyncSync(descriptor);
     }
     catch (cause) { fs.closeSync(descriptor); throw cause; }
-    activeOwner = true;
+    activeOwner = { owner, descriptor };
     let uncertain = true;
     return Promise.resolve().then(operation).then(result => { uncertain = !["confirmed", "no_effect"].includes(result?.effect_status); return result; })
     .catch(cause => { uncertain = cause?.effect_status !== "no_effect"; throw cause; }).finally(() => {
@@ -135,6 +135,13 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
       if (retained.token !== token) fail("STANDARD_EFFECT_OWNER_CHANGED");
       if (!uncertain) fs.unlinkSync(file);
     });
+  }
+  function assertLocalEffectOwner(planSha) {
+    if (!activeOwner || activeOwner.owner.plan_sha256 !== planSha) fail("STANDARD_EFFECT_OWNER_REQUIRED");
+    const file = lock(), retained = readAgentRunFile(file).value;
+    const actual = fs.lstatSync(file), opened = fs.fstatSync(activeOwner.descriptor);
+    if (!actual.isFile() || actual.nlink !== 1 || actual.ino !== opened.ino || actual.dev !== opened.dev
+      || shadowHash(retained) !== shadowHash(activeOwner.owner)) fail("STANDARD_EFFECT_OWNER_CHANGED");
   }
   function inventory() {
     const selected = describe(); let names = [];
@@ -191,5 +198,5 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (new Set(result.map(row => BigInt(row.cycle_id.slice(1)).toString())).size !== result.length) fail("STANDARD_CYCLE_ID_AMBIGUOUS");
     return result;
   }
-  return Object.freeze({ root, describe, read, inventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
+  return Object.freeze({ root, describe, read, inventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
 }

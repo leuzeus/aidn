@@ -3235,3 +3235,26 @@ postflights authenticate the completed prefix of the final-selector failures
 without upgrading their exits or reopening original paths. These are fixture
 components with zero model calls, not full standard, native/provider/human,
 configured PostgreSQL or exact installed-package acceptance.
+
+
+### Real-port correction observation preflight
+
+`node tools/perf/verify-standard-pr-correction-real-ports-fixtures.mjs
+--mode=files|dual|db-only --retain-always` selects the new deterministic preflight.
+The default required family runs each mode once. `--positive-only` is a narrow
+positive diagnostic; `--grant-only` checks the provider-await revocation boundary
+and cannot qualify the full matrix. Each case derives a fresh plan normally;
+expiry cannot stand in for the injected refusal. Partial failures retain their
+owner and UNKNOWN, and cold preparation refuses to replay them.
+
+The suite composes actual correction authority, canonical CAS/metadata,
+projection, local/bare-remote Git and SQLite. Triage, accepted sources and event
+identity are authenticated synthetic fixtures using public key127. Provider
+transport remains a fixture; no model or native client is called. Three actual
+postimages lead to a checkpoint prepared in a new Node process. A tiny v2 IR
+consumes those actual outputs with fixture receipts through the common reducer
+and simulation; this does not exercise the production dispatcher or published
+standard graph. Separate composed producer/triage/checkpoint/ack-loss recovery,
+real native/human/provider, configured PostgreSQL and exact installed archive
+qualification remain required. `--retain-always` leaves projects and raw outcomes
+for terminal capture; it is not a resource-closure assertion.

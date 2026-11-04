@@ -36,10 +36,10 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
       // Projection may lag only inside the owned transaction, before project().
     }
   }
-  function projections(changes, after = false) {
+  function projections(changes, committed = []) {
     if (artifacts.describe().state_mode === 'db-only') return;
-    for (const row of changes) if (readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit', row.path)), { json: false, maxBytes: 1048576 }).sha256
-      !== (after ? row.after_sha256 : row.before_sha256)) fail('STANDARD_PR_CORRECTION_PROJECTION_CHANGED');
+    for (const [index, row] of changes.entries()) if (readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit', row.path)), { json: false, maxBytes: 1048576 }).sha256
+      !== (committed[index]?.sha256 ?? row.before_sha256)) fail('STANDARD_PR_CORRECTION_PROJECTION_CHANGED');
   }
   async function prepare(instance, input, at, acquired = false, signal) {
     if (!valid(input, inputSchema)) fail('STANDARD_PR_CORRECTION_INPUT_INVALID'); active(signal);
@@ -76,19 +76,30 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
           const fresh = await prepare(instance, plan.input, plan.prepared_at_ms, true, signal);
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail('STANDARD_PR_CORRECTION_PREVIEW_CHANGED');
         } catch (cause) { cause.effect_status = 'no_effect'; throw cause; }
-        const committed = []; let attempted = false;
-        async function unchanged() {
-          active(signal); await assertAuthorized(); active(signal);
+        const committed = []; let attempted = false, pushIdentity = null;
+        function local(localView) {
+          active(signal); artifacts.assertLocalEffectOwner(expectPlan);
+          if (artifacts.describe().state_mode !== plan.state_mode) fail('STANDARD_PR_CORRECTION_DOCUMENT_CHANGED');
           if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
             fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
-          assertDocuments(plan.changes, committed);
-          const proof = await authority.verifySource(instance, plan.source, { signal }); active(signal);
-          if (proof?.origin_source_sha256 !== plan.source_sha256) fail('STANDARD_PR_CORRECTION_CAUSAL_SOURCE_CHANGED');
-          assertDocuments(plan.changes, committed);
+          assertDocuments(plan.changes, committed); projections(plan.changes, committed);
           const view = git(plan.source).inspect();
           const expected = plan.state_mode === 'db-only' ? [] : committed.map(row => 'docs/audit/' + row.path).sort();
           if (identity(view) !== plan.git_identity_sha256 || shadowHash(view.changes.map(row => row.path).sort()) !== shadowHash(expected)
             || view.changes.some(row => row.status !== ' M')) fail('STANDARD_PR_CORRECTION_GIT_CHANGED');
+          if (localView) {
+            const value = shadowHash({ ...localView, clean: true });
+            if (pushIdentity !== null && value !== pushIdentity) fail('STANDARD_PR_CORRECTION_GIT_CHANGED');
+            pushIdentity = value;
+          }
+        }
+        async function unchanged() {
+          active(signal); await assertAuthorized(); local();
+          const proof = await authority.verifySource(instance, plan.source, { signal, assertLocal: local }); active(signal);
+          if (proof?.origin_source_sha256 !== plan.source_sha256) fail('STANDARD_PR_CORRECTION_CAUSAL_SOURCE_CHANGED');
+          // Provider observation can await arbitrary time. Revalidate the grant
+          // after that boundary and immediately fence the synchronous CAS.
+          await assertAuthorized(); local();
           return proof;
         }
         try {
@@ -100,7 +111,7 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
             // Keep dual/files projection aligned with each admitted postimage.
             artifacts.project([row.path]);
           }
-          const causal = await unchanged(); projections(plan.changes, true);
+          const causal = await unchanged(); projections(plan.changes, committed);
           active(signal); assertDocuments(plan.changes, committed);
           return emit('completed', 'confirmed', { triage_operation_id: plan.input.triage_operation_id, session_id: plan.source.session_id,
             source_sha256: plan.source_sha256, postimages: committed, causal, cycle: 'not-created', implementation_admission: 'not-established',
