@@ -18,6 +18,10 @@ composed preflight remain in the [bounded record](../qualification/standard-work
 Wait/replay tests do not establish a cold mixed-host restart. New regression
 suites join the Runtime npm chain; its full current family and Governance
 Admission remain unproved. Ordinary entry and completion marker stay unchanged.
+The final `c3499752` contract/docref checks pass, while its gate-catalog check
+fails on the immutable Runtime fixture command. The matching command authority
+now receives the same four additional invocations; historical argv/order stay
+intact. A new frozen-source catalog check is required, preserving that failure.
 
 The separate `composed-correction.v3.json` fixture targets both cycles in model
 101, including the accepted human-selected cycle fields, ordinary planning and

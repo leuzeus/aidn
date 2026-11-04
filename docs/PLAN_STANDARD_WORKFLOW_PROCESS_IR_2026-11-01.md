@@ -47,6 +47,11 @@ datés de `dd1dbab`, distincts de cet avancement.
   source gelée et de nouveaux cas, sans modifier les anciens résultats.
   Les nouvelles suites sont raccordées à la chaîne npm Runtime ; la famille
   Runtime courante complète et Governance Admission ne sont pas prouvées.
+  Sur `c3499752`, les 13 contrôles de rapports et les docrefs passent, mais le
+  catalogue de gates refuse la chaîne npm modifiée : son obligation de commande
+  exacte n'avait pas été actualisée. La politique de cette chaîne reçoit donc
+  les mêmes quatre ajouts, en conservant tous les appels historiques ; son
+  contrôle exige une nouvelle source gelée. Ce FAIL reste conservé séparément.
   Les tests d'attente/rejeu du réducteur n'exécutent pas de redémarrage à froid
   de l'hôte mixte ; l'intitulé initial trop large a été corrigé.
   La conversion SPIKE admise, les expériences avec effets,
