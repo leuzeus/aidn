@@ -1872,6 +1872,14 @@ canonical stores required by a scenario must still be initialized explicitly.
 
 ### 4. Documentation / Generated Output Verifications
 
+The generated-document golden corpus retains its explicit workflow snapshot
+version `0.12.0`. The gate renders with the current package `VERSION`, checks
+that exact single metadata field independently, and compares all remaining
+bytes against the retained snapshot. It does not rewrite the corpus or ignore
+arbitrary version changes. Negative controls reject a wrong rendered version,
+an unpinned snapshot version and drift outside this scalar. This separates
+current version propagation from historical rendering content.
+
 Examples:
 
 - `npm run perf:verify-generated-docs`

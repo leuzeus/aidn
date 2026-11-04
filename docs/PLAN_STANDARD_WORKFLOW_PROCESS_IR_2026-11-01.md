@@ -3635,3 +3635,15 @@ ne vaut pas PASS. Dual/db-only, contrôles historiques et gate générale doiven
 être requalifiés. Le défaut golden documentaire reste à diagnostiquer. Triage,
 fusion/synchronisation, autres variantes A1–A10, entrée ordinaire, réautorisation
 native et archive exacte restent ouverts. `complete_standard_workflow=false`.
+
+### Contexte de version du golden documentaire, 2026-11-03
+
+Le rendu propriétaire injecte la version du package dans le scalaire
+`workflow_version`. La fixture conserve son snapshot 0.12.0 ; comparer ses
+octets sans distinguer ce paramètre faisait échouer le rendu 0.19.0. La gate
+rend toujours avec `VERSION`, contrôle la présence exacte et unique de cette
+version, puis compare tous les autres octets au snapshot explicitement épinglé.
+Des contrôles négatifs refusent une autre version rendue, une version de snapshot
+non épinglée et tout ajout hors de ce scalaire. Les 17 assertions passent sur
+la nouvelle source de gate. La fixture et le renderer restent inchangés ; les
+FAIL observés sur 54/58 sont conservés et ne deviennent pas des PASS rétroactifs.
