@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 108/106 et le modèle composé candidat en 50
+les composants startup/cycle en 109/107 et le modèle composé candidat en 51
 (95 nœuds, 60 occurrences d’opération, 50 identifiants de liaison mobilisés parmi
 57 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -3452,3 +3452,24 @@ The direct-pin successor passes14 reader/pin controls and17 owned-allocation
 controls, with no model calls and fixture native wire/controller capabilities.
 Composition25, startup22 and43 published input boundaries also pass; full native
 process-tree/provider and standard composition proofs remain separate.
+
+### Cancellable GitHub observation transport, model51
+
+Both GitHub readers expose explicit asynchronous interfaces backed by the same
+fixed-query/pagination/validation protocol as their retained synchronous v1
+interfaces. Their transport uses direct asynchronous subprocess I/O, propagates
+cancellation through each page, and discards aborted, expired or oversized
+responses. It returns only after the direct child's close. Control capture now
+propagates caller cancellation through source read and verification; the existing
+five-second authority timeout cancels an actual asynchronous reader without a
+late retained capture or successful event.
+
+The transport is covered by binding hashes and a direct launch pin. Source
+components advance explicitly to109/107 and common model51; graph95/operations60
+and the remaining standard routes are unchanged. This is not a conversion of
+retained/running instances. Direct observation subprocess closure is separate
+from general native process-tree reconciliation and long-wait reauthorization.
+The transport fixtures exercise real direct Node subprocesses and doubled GitHub
+responses, with no network or model calls. Durable PR-specific events, complete
+review content, actual triage, merge consent/effect/sync and the rest of A1-A10
+remain open; complete_standard_workflow=false and ordinary selection unchanged.

@@ -38,15 +38,15 @@ export function createStandardControlInbox({ store, signer, source, projectionRe
   }
   return Object.freeze({
     read: id => structuredClone(read(id).record),
-    async reserve(request, sourceRef) {
+    async reserve(request, sourceRef, { signal } = {}) {
       assertControlRequest(request);
       if (typeof sourceRef !== "string" || !sourceRef || sourceRef.length > 256 || /[\x00-\x1f]/.test(sourceRef)) fail("PROCESS_CONTROL_SOURCE_REF_INVALID");
-      const claim = await invoke("read", { sourceRef, request });
+      const claim = await invoke("read", { sourceRef, request }, signal);
       if (claim === null) return null;
       assertControlSource(claim, request);
       const body = { contract_version: "process-control-inbox.v1", inbox_id: controlInboxId(claim), source_ref: sourceRef,
         request: structuredClone(request), source: claim, delivery: controlDelivery(request, claim), phase: "reserved", delivered_instance_sha256: null };
-      await verify(body);
+      await verify(body, signal);
       const before = store.read(body.inbox_id);
       if (before.record) {
         signer.verify(before.record);

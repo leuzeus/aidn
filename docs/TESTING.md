@@ -120,6 +120,17 @@ provider and exact installed-archive qualification remain separate.
 
 ## Structured agentic process
 
+`verify-github-observation-async-fixtures.mjs` exercises the explicit async
+interfaces of both GitHub readers through the same observation protocol as
+their historical synchronous interfaces. It compares complete typed outputs,
+rejects cancelled/foreign/partial responses and terminates real direct Node
+subprocesses on abort, deadline and buffer overflow. A real async transport under
+the control inbox's five-second timeout must observe cancellation, close its
+direct subprocess and leave no capture or late success. Capture also propagates
+caller cancellation through read and verification. Provider responses are
+fixtures; no network, model, native process-tree reconciliation, durable PR wait
+route or complete standard workflow is qualified by this transport suite.
+
 `verify-github-review-evidence-fixtures.mjs` observes exact PR head/base refs,
 review authors and revisions, check app identities and legacy status creators
 through fixed read-only GraphQL. It exhausts and compares two full collections;

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { driveGithubObservation, driveGithubObservationAsync, runGithubObservationCommand } from './github-observation-transport.mjs';
 import { performance } from 'node:perf_hooks';
 import { validateJsonSchema } from '../../core/contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash } from '../../core/workflow/shadow-json.mjs';
@@ -42,7 +43,7 @@ export function assertGithubReviewEvidence(value) {
 }
 // This is a live observation capability supplied by the trusted embedding.
 // JSON validation/digests do not authenticate data from arbitrary callers.
-export function createGithubReviewEvidenceAdapter({ executable, executableSha256, workingDirectory, repository, environment = process.env },
+function createGithubReviewEvidenceProtocol({ executable, executableSha256, workingDirectory, repository, environment = process.env },
   { run = spawnSync, now = Date.now } = {}) {
   if (!path.isAbsolute(executable ?? '') || !/^[a-f0-9]{64}$/.test(executableSha256 ?? '') || !path.isAbsolute(workingDirectory ?? '')
     || !repository || Object.keys(repository).some(key => !['owner', 'name', 'node_id'].includes(key))
@@ -57,7 +58,7 @@ export function createGithubReviewEvidenceAdapter({ executable, executableSha256
       || !fs.statSync(cwd).isDirectory() || sha(fs.readFileSync(binary)) !== executableSha256) fail('GITHUB_REVIEW_HOST_CHANGED');
   }
   pinned();
-  return Object.freeze({ observeReviewEvidence(request) {
+  return function* observeReviewEvidence(request) {
     if (!valid(request, requestSchema)) fail('GITHUB_REVIEW_REQUEST_INVALID');
     const start = now(), mono = performance.now(); let requests = 0;
     if (!Number.isSafeInteger(start) || start < 0) fail('GITHUB_REVIEW_CLOCK_INVALID');
@@ -66,14 +67,14 @@ export function createGithubReviewEvidenceAdapter({ executable, executableSha256
       if (!Number.isSafeInteger(time) || time < start || elapsed >= githubReviewEvidenceLimits.deadlineMs) fail('GITHUB_REVIEW_DEADLINE');
       return Math.floor(githubReviewEvidenceLimits.deadlineMs - elapsed);
     }
-    function call(kind, cursor) {
+    function* call(kind, cursor) {
       pinned(); const timeout = remaining();
       if (++requests > githubReviewEvidenceLimits.requests) fail('GITHUB_REVIEW_LIMIT');
       let result, data;
-      try { result = run(binary, ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], {
+      try { result = yield [binary, ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], {
         cwd, env, shell: false, windowsHide: true, encoding: 'utf8', timeout, maxBuffer: 4194304,
         input: JSON.stringify({ query: queries[kind], variables: { owner: repo.owner, name: repo.name, number: request.pull_request_number, cursor } }),
-      }); } catch { fail('GITHUB_REVIEW_UNAVAILABLE'); }
+      }]; } catch { fail('GITHUB_REVIEW_UNAVAILABLE'); }
       if (result?.error || result?.status !== 0 || result?.signal) fail('GITHUB_REVIEW_UNAVAILABLE');
       try { data = JSON.parse(result.stdout); } catch { fail('GITHUB_REVIEW_UNAVAILABLE'); }
       if (!data || data.errors !== undefined && (!Array.isArray(data.errors) || data.errors.length) || !data.data?.repository) fail('GITHUB_REVIEW_UNAVAILABLE');
@@ -102,11 +103,11 @@ export function createGithubReviewEvidenceAdapter({ executable, executableSha256
         created_at: row.createdAt, updated_at: row.updatedAt, creator: actor(row.creator), commit_oid: row.commit?.oid };
       fail('GITHUB_REVIEW_EVIDENCE_INVALID');
     }
-    function collect(kind, expected) {
+    function* collect(kind, expected) {
       let cursor = null, total = null, original = expected, rollupState;
       const ids = new Set(), cursors = new Set(), rows = [];
       do {
-        const r = call(kind, cursor), m = metadata(r);
+        const r = yield* call(kind, cursor); const m = metadata(r);
         if (original && shadowHash(original) !== shadowHash(m)) fail('GITHUB_REVIEW_SOURCE_CHANGED'); original ??= m;
         const rollup = r.pullRequest.statusCheckRollup;
         if (kind === 'checks') {
@@ -132,11 +133,11 @@ export function createGithubReviewEvidenceAdapter({ executable, executableSha256
       if (rows.length !== total) fail('GITHUB_REVIEW_PAGINATION_INVALID');
       return { metadata: original, rows: rows.sort(order), ...(kind === 'checks' ? { rollup_state: rollupState } : {}) };
     }
-    function scan() {
-      const reviews = collect('reviews'), checks = collect('checks', reviews.metadata);
+    function* scan() {
+      const reviews = yield* collect('reviews'); const checks = yield* collect('checks', reviews.metadata);
       return { ...reviews.metadata, reviews: reviews.rows, checks: checks.rows, rollup_state: checks.rollup_state };
     }
-    const first = scan(), second = scan();
+    const first = yield* scan(); const second = yield* scan();
     // Re-read entire collections: PR updatedAt alone does not fence mutable
     // check runs, review dismissal or a rerun at an unchanged head.
     if (shadowHash(first) !== shadowHash(second)) fail('GITHUB_REVIEW_COLLECTION_CHANGED');
@@ -144,5 +145,14 @@ export function createGithubReviewEvidenceAdapter({ executable, executableSha256
     return assertGithubReviewEvidence({ contract_version: 'github-review-evidence.v1', ...second,
       observed_from: new Date(start).toISOString(), observed_until: new Date(end).toISOString(), requests,
       consistency: 'two-complete-identical-collections', evidence_sha256: shadowHash(second) });
-  } });
+  };
+}
+
+export function createGithubReviewEvidenceAdapter(configuration, { run = spawnSync, now = Date.now } = {}) {
+  const observe = createGithubReviewEvidenceProtocol(configuration, { run, now });
+  return Object.freeze({ observeReviewEvidence: request => driveGithubObservation(observe(request), run) });
+}
+export function createGithubReviewEvidenceAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
+  const observe = createGithubReviewEvidenceProtocol(configuration, { run, now });
+  return Object.freeze({ observeReviewEvidence: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
 }

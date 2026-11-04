@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { driveGithubObservation, driveGithubObservationAsync, runGithubObservationCommand } from "./github-observation-transport.mjs";
 import { performance } from "node:perf_hooks";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "../../core/workflow/shadow-json.mjs";
@@ -59,7 +60,7 @@ export function assertGithubPrObservation(value) {
 }
 // The embedding host pins the executable/repository. The runner is a test seam,
 // never configuration, an IR binding parameter or an authenticated-result flag.
-export function createGithubWorkflowAdapter({ executable, executableSha256, workingDirectory, repository, environment = process.env }, { run = spawnSync, now = Date.now } = {}) {
+function createGithubWorkflowProtocol({ executable, executableSha256, workingDirectory, repository, environment = process.env }, { run = spawnSync, now = Date.now } = {}) {
   if (!path.isAbsolute(executable ?? "") || !/^[a-f0-9]{64}$/.test(executableSha256 ?? "") || !path.isAbsolute(workingDirectory ?? "")
     || !repository || Object.keys(repository).some(key => !["owner", "name", "node_id"].includes(key))
     || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(repository.owner ?? "")
@@ -72,19 +73,19 @@ export function createGithubWorkflowAdapter({ executable, executableSha256, work
       || !fs.statSync(cwd).isDirectory() || sha(fs.readFileSync(binary)) !== executableSha256) fail("GITHUB_PR_HOST_PIN_CHANGED");
   }
   pinned();
-  return Object.freeze({ observePullRequest(request) {
+  return function* observePullRequest(request) {
     if (!valid(request, requestSchema)) fail("GITHUB_PR_OBSERVATION_REQUEST_INVALID");
     const start = now(), mono = performance.now(); let requests = 0, threadPages = 0, commentPages = 0, totalComments = 0, totalBytes = 0;
     if (!Number.isSafeInteger(start) || start < 0) fail("GITHUB_PR_OBSERVATION_CLOCK_INVALID");
-    function call(kind, variables) {
+    function* call(kind, variables) {
       pinned();
       const elapsed = Math.max(now() - start, performance.now() - mono), remaining = Math.floor(githubObservationLimits.deadlineMs - elapsed);
       if (!Number.isFinite(elapsed) || elapsed < 0 || remaining <= 0) fail("GITHUB_PR_OBSERVATION_DEADLINE");
       if (++requests > githubObservationLimits.requests) fail("GITHUB_PR_OBSERVATION_LIMIT");
       let result;
-      try { result = run(binary, ["api", "graphql", "--hostname", "github.com", "--input", "-"], {
+      try { result = yield [binary, ["api", "graphql", "--hostname", "github.com", "--input", "-"], {
         cwd, env, shell: false, windowsHide: true, encoding: "utf8", input: JSON.stringify({ query: queries[kind], variables }), timeout: remaining, maxBuffer: 4194304,
-      }); } catch { fail("GITHUB_PR_OBSERVATION_UNAVAILABLE"); }
+      }]; } catch { fail("GITHUB_PR_OBSERVATION_UNAVAILABLE"); }
       if (result?.error || result?.status !== 0 || result?.signal) fail("GITHUB_PR_OBSERVATION_UNAVAILABLE");
       let response;
       try { response = JSON.parse(result.stdout); } catch { fail("GITHUB_PR_OBSERVATION_UNAVAILABLE"); }
@@ -124,7 +125,7 @@ export function createGithubWorkflowAdapter({ executable, executableSha256, work
     }
     const threads = [], seenThreads = new Set(), threadCursors = new Set(); let cursor = null, expectedTotal = null, original = null;
     do {
-      const data = call("threads", { ...variables, cursor }); threadPages++;
+      const data = yield* call("threads", { ...variables, cursor }); threadPages++;
       const current = metadata(data); if (original && shadowHash(current) !== shadowHash(original)) fail("GITHUB_PR_SOURCE_CHANGED"); original ??= current;
       const page = connection(data.repository.pullRequest.reviewThreads, githubObservationLimits.threads, seenThreads, expectedTotal); expectedTotal = page.total;
       for (const row of page.nodes) {
@@ -132,7 +133,7 @@ export function createGithubWorkflowAdapter({ executable, executableSha256, work
         const count = pageComments.total, comments = pageComments.nodes.map(normalizeComment);
         while (next !== null) {
           if (cursors.has(next)) fail("GITHUB_PR_PAGINATION_INVALID"); cursors.add(next);
-          const data = call("comments", { id: row.id, cursor: next }); commentPages++;
+          const data = yield* call("comments", { id: row.id, cursor: next }); commentPages++;
           if (data.node?.id !== row.id || data.node?.pullRequest?.id !== request.expected_pull_request_id || data.node.pullRequest.headRefOid !== request.expected_head_oid) fail("GITHUB_PR_SOURCE_CHANGED");
           pageComments = connection(data.node.comments, githubObservationLimits.comments, seen, count); comments.push(...pageComments.nodes.map(normalizeComment)); next = pageComments.next;
         }
@@ -143,11 +144,20 @@ export function createGithubWorkflowAdapter({ executable, executableSha256, work
       cursor = page.next; if (cursor !== null) { if (threadCursors.has(cursor)) fail("GITHUB_PR_PAGINATION_INVALID"); threadCursors.add(cursor); }
     } while (cursor !== null);
     if (threads.length !== expectedTotal) fail("GITHUB_PR_PAGINATION_INVALID");
-    if (shadowHash(metadata(call("metadata", variables))) !== shadowHash(original)) fail("GITHUB_PR_SOURCE_CHANGED");
+    if (shadowHash(metadata(yield* call("metadata", variables))) !== shadowHash(original)) fail("GITHUB_PR_SOURCE_CHANGED");
     pinned(); const end = now(); if (!Number.isSafeInteger(end) || end < start || Math.max(end - start, performance.now() - mono) > githubObservationLimits.deadlineMs) fail("GITHUB_PR_OBSERVATION_DEADLINE");
     threads.sort((a, b) => compareId(a.node_id, b.node_id));
     const observation = { contract_version: "github-pr-observation.v1", ...original, threads, observed_from: new Date(start).toISOString(), observed_until: new Date(end).toISOString(),
       pagination: { requests, thread_pages: threadPages, comment_pages: commentPages, complete: true }, consistency: "head-and-pr-metadata-rechecked" };
     return assertGithubPrObservation({ ...observation, observation_sha256: shadowHash(content(observation)) });
-  } });
+  };
+}
+
+export function createGithubWorkflowAdapter(configuration, { run = spawnSync, now = Date.now } = {}) {
+  const observe = createGithubWorkflowProtocol(configuration, { run, now });
+  return Object.freeze({ observePullRequest: request => driveGithubObservation(observe(request), run) });
+}
+export function createGithubWorkflowAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
+  const observe = createGithubWorkflowProtocol(configuration, { run, now });
+  return Object.freeze({ observePullRequest: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
 }

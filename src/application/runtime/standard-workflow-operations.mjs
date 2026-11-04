@@ -28,7 +28,7 @@ const files = ["standard-session-pr-successor-authority.mjs", "standard-session-
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];
 function implementation() {
   const refs = [new URL("agentic-process-implementation-pins.mjs", import.meta.url), new URL("standard-session-pr-review-observe.mjs", import.meta.url), new URL("standard-session-pr-review-authority.mjs", import.meta.url),
-    new URL("../../adapters/git-provider/github-review-evidence.mjs", import.meta.url), new URL("../../adapters/git-provider/github-workflow-adapter.mjs", import.meta.url),
+    new URL("../../adapters/git-provider/github-observation-transport.mjs", import.meta.url), new URL("../../adapters/git-provider/github-review-evidence.mjs", import.meta.url), new URL("../../adapters/git-provider/github-workflow-adapter.mjs", import.meta.url),
     ...["github-review-evidence-request.v1", "github-review-evidence.v1", "github-pr-observation-request.v1", "github-pr-observation-output.v1", "standard-session-pr-review-observe-input.v1", "standard-session-pr-review-observe-output.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
     new URL("../../core/workflow/standard-session-pr-record.mjs", import.meta.url),
     ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-session-pr-record-${kind}.v1.schema.json`, import.meta.url)),new URL("../../adapters/git-provider/github-pull-request-open.mjs", import.meta.url),

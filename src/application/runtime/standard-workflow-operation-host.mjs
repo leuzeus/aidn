@@ -750,10 +750,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     inspect: id => current(id),
     prepareControl: input => structuredClone(controlRequest(input)),
-    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, write = false }) {
+    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, write = false }) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const request = controlRequest({ instanceId, expectedSha256, occurrenceId });
-      const capture = await controls.reserve(request, sourceRef);
+      const capture = await controls.reserve(request, sourceRef, { signal });
       if (!capture) return { status: "waiting_for_control", request };
       // A retained capture survives races/crashes, but may not wake a changed
       // instance or business context. Such a capture needs explicit reconciliation.

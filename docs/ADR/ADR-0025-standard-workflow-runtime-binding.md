@@ -1848,3 +1848,25 @@ the direct pins separately reject a changed distributed reader at launch. The
 model49 observation run retains its original314-file launch fingerprint. Its
 explicit successor uses325 direct files and a new model/source revision, without
 converting the running or retained instances.
+
+### Cancellable observation transport prerequisite, 2026-11-03
+
+The explicit asynchronous GitHub reader interfaces consume the same fixed
+query, pagination and validation protocol as their retained synchronous v1
+interfaces. Their host transport uses asynchronous direct subprocess I/O,
+without a shell or model, and propagates an AbortSignal to each request. Abort,
+deadline and output overflow discard buffered output and wait for the direct
+child's close before returning. Per-observation deadlines are not renewed by
+page boundaries. An inbox timeout cancels the source; the inbox neither captures
+a late response nor emits a successful event. Caller cancellation also reaches
+capture and source verification.
+
+This transport capability is host code, never authored IR or credentials in
+JSON. It is covered by binding implementation hashes and direct launch pins.
+No durable concept or contract version changes here. The existing signed
+control inbox remains the retention authority. Its timeout return does not
+itself certify subprocess closure: the transport's close is tested separately.
+Direct observation subprocess closure does not qualify the general native
+process-tree reconciliation or long-wait reauthorization protocol. Provider
+authentication, durable PR-specific event delivery and actual triage remain
+separate requirements.
