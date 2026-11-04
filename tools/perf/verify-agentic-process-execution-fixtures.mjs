@@ -8,6 +8,7 @@ import { CYCLE_AUDIT_CONTRACT } from "../../src/core/workflow/standard-cycle-aud
 import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import assert from "node:assert/strict";
+import { createComposedGithubReviewFixture } from "./github-review-evidence-fixture-lib.mjs";
 import { CYCLE_PLAN_CONTRACT } from "../../src/core/workflow/standard-cycle-planning.mjs";
 import { taskProgressModel } from "./cycle-task-progress-fixture-lib.mjs";
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
@@ -84,6 +85,10 @@ if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_co
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
+const standardComposedBudgetText = process.argv.find(value => value.startsWith("--standard-composed-budget-ms="))?.slice("--standard-composed-budget-ms=".length);
+const standardComposedBudgetMs = standardComposedBudgetText === undefined ? 7200000 : Number(standardComposedBudgetText);
+if (standardComposedBudgetText !== undefined && (!selectedStandardComposedMode || !['promotion_decide', 'component_complete'].includes(standardComposedStop) || !/^[0-9]+$/.test(standardComposedBudgetText)
+  || !Number.isSafeInteger(standardComposedBudgetMs) || standardComposedBudgetMs < 3600000 || standardComposedBudgetMs > 10800000)) throw Error("STANDARD_COMPOSED_FIXTURE_BUDGET_INVALID");
 const selectedCycleClosureMode = process.argv.find(value => value.startsWith("--cycle-closure-mode="))?.slice("--cycle-closure-mode=".length);
 if (selectedCycleClosureMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleClosureMode)) throw Error("CYCLE_CLOSURE_FIXTURE_MODE_INVALID");
 const selectedCycleAuditMode = process.argv.find(value => value.startsWith("--cycle-audit-mode="))?.slice("--cycle-audit-mode=".length);
@@ -552,7 +557,8 @@ function mixedFixture(stateMode = "files", options = {}) {
   const compose = () => (options.standardModel ? createStandardWorkflowExecution : createStandardWorkflowMixedHost)({ configuration: f.configuration, readSigningKey: () => key,
     authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: projectRoot, remoteRoot: f.sessionPushRemoteRoot }) : null,
-    sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
+    sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
+    sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
   // The human path also qualifies a retained common host. Authority/evidence
   // reads remain inside its methods; acceptance still restarts in a cold Node.
   let sharedHost;
@@ -570,7 +576,8 @@ function restoreComposedFixture(data, options) {
   const open = () => sharedHost ??= createStandardWorkflowExecution({ configuration: f.configuration, readSigningKey: () => key,
     authorize: async () => grant, humanSource: options.humanSource, validationProfile: f.validationProfile,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: f.configuration.target_root, remoteRoot: f.sessionPushRemoteRoot }) : null,
-    sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null },
+    sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
+    sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null },
     { controllerFactory, ...(f.validationProfile ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
   return Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model });
 }
@@ -745,13 +752,17 @@ if (process.argv[2] === "--mixed-continue") {
     }
     const resumeFile = path.join(f.configuration.control_root, "standard-resume.json");
     let auth;
-    if (resumed) auth = resumed.authorization;
+    if (resumed) {
+      auth = resumed.authorization;
+      if (standardComposedBudgetText !== undefined && (auth.global_deadline_ms - auth.authorized_at_ms !== standardComposedBudgetMs
+        || auth.workflow_deadline_ms !== auth.global_deadline_ms)) throw Error("STANDARD_COMPOSED_FIXTURE_ORIGINAL_BUDGET_CHANGED");
+    }
     else {
       const initial = f.open().initialize({ parameters });
       f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
       auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 300000;
       if (runsClosure) {
-        auth.global_deadline_ms = auth.workflow_deadline_ms = auth.authorized_at_ms + 7200000;
+        auth.global_deadline_ms = auth.workflow_deadline_ms = auth.authorized_at_ms + standardComposedBudgetMs;
         auth.max_responses = 8; auth.max_bytes = 32 * 1024 * 1024;
       }
       fs.writeFileSync(resumeFile, JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs,
@@ -835,7 +846,8 @@ if (process.argv[2] === "--mixed-continue") {
             operation_journals: retained, native_results_prior: beforeNative }));
           console.log(JSON.stringify({ composed_human_deferred: true, cursor: waiting.cursor.status, native_sessions: beforeNative, cold_resume_starting: true }));
           const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--standard-composed-mode=" + mode, "--standard-composed-stop=" + standardComposedStop,
-            "--standard-composed-resume=" + resumeFile, "--retain-on-failure"], { encoding: "utf8", shell: false, windowsHide: true, timeout: 5400000, maxBuffer: 262144 });
+            "--standard-composed-resume=" + resumeFile, "--standard-composed-budget-ms=" + standardComposedBudgetMs, "--retain-on-failure"],
+          { encoding: "utf8", shell: false, windowsHide: true, timeout: Math.max(1, auth.global_deadline_ms - Date.now() + 60000), maxBuffer: 262144 });
           assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-16384)); process.stdout.write(child.stdout);
           const reports = child.stdout.split(/\r?\n/).filter(line => line.startsWith("{")).map(line => JSON.parse(line));
           const proof = reports.find(row => row.standard_composed_proof === true);
@@ -922,6 +934,12 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("session_pr_update_push").observations.pull_request.head_oid, pushedHead);
       assert.equal(last("session_pr_update_push").observations.inherited_review_evidence, "none");
       assert.equal(last("session_pr_update_push").observations.review, "pending");
+      const review = last("session_pr_review_observe");
+      assert.equal(review.outcome, "completed"); assert.equal(review.effect_status, "no_effect");
+      assert.deepEqual(review.facts, { session_pr_review_evidence_available: true, session_pr_triage_required: true });
+      assert.equal(review.observations.head_oid, pushedHead);
+      assert.equal(review.observations.merge_authorization, "not-established");
+      assert.equal(review.observations.evidence.pull_request.head_oid, pushedHead);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;

@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 105/103 et le modèle composé candidat en 47
-(93 nœuds, 59 occurrences d’opération, 49 identifiants de liaison mobilisés parmi
-56 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 107/105 et le modèle composé candidat en 49
+(95 nœuds, 60 occurrences d’opération, 50 identifiants de liaison mobilisés parmi
+57 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3371,3 +3371,54 @@ events, explicit merge decisions, merge/fetch/divergence/sync, A1-A10, full runt
 and CI admission, native and archive evidence remain required. No new review
 lot was started in this tranche. The full goal remains open, ordinary selection
 is unchanged and complete_standard_workflow=false.
+
+### Exact-head PR review observation, model49, 2026-11-03
+
+The common IR now consumes `session_pr_review_observe` after the confirmed
+successor push. This deterministic read authenticates the accepted push and
+checkpoint chain, canonical PR postimages and current local/bare remote head.
+The host supplies fixed GitHub readers; authored IR supplies only its accepted
+upstream operation identity. Review authors/revisions, check app identities and
+legacy status creators are retained at the exact PR head/base and branches.
+Two complete identical review/check collections and separately repeated thread
+observations are required. A same-head rerun/dismissal, foreign source, expired
+observation or changed local/remote context blocks without success facts.
+
+The output establishes evidence availability and pending triage only. It does
+not accept a check, approve a PR, resolve a thread, complete the orchestration
+skill, authorize merge or satisfy an external wait. The composed graph groups
+PR delivery in a structural sequence to keep the existing children limit; the
+runtime limits and historical readers remain unchanged. The candidate has95
+nodes,60 operation occurrences,50 referenced bindings among57 registered and8
+native activities. Startup/cycle components are107/105; model49 is distinct from
+the earlier unqualified draft48. The runtime pin and exact hashes accompany the
+component qualification record.
+
+The current source passes13 provider-adapter controls and10 real application
+component controls in each of files/dual/db-only, with cleanup confirmed.
+Canonical stores, CAS, Git and bare remote are actual; accepted-history lookup,
+provider transport and human/grant identities are fixture capabilities. The
+actual observation output also passes a common-reducer replay/simulation at a
+synthetic boundary without provider re-execution. Composition25, startup22,
+operation contracts/reducer/service27,43 published input boundaries, legacy
+thread-adapter18, policies and focused governance checks pass. These are
+component proofs, not full signed standard composition or Governance Admission.
+
+The existing model41 corrected run is FAIL/code1 on93958bf: after104 events,
+`session_close_admit` completed, then native entry refused with
+`PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED` and `no_effect`. Its seven
+native generations are closed, no eighth was reserved, and no owner remained
+at capture. Read-only replay/simulation reproduces104 events/105 lines exactly.
+The original deadline is retained; no retry/renewal occurred. Resource cleanup
+is not claimed. This differs from model39's retained reserved generation8 and
+unknown resources; its exact cause remains undetermined. Model46 and the
+separate agentic gate41 retain their own observation state and source identities.
+
+For a new offline composed fixture only, an explicit initial three-hour budget
+can be selected within the existing runtime ceiling. The cold child must retain
+the exact original authorization; this is not reauthorization after a long wait.
+Full composition, durable authenticated provider events and waits, actual triage,
+review/check acceptance, explicit merge, fetch/divergence/sync, A1-A10, general
+unknown reconciliation, native human/provider and exact installed archive
+qualification remain open. Ordinary selection is unchanged and
+complete_standard_workflow=false.

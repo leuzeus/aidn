@@ -24,7 +24,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 59); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 60); assert.equal(assets.catalog.activities.length, 8);
 });
 test("authored literal/operation-only inputs satisfy their actual closed operation contracts", () => {
   for (const spec of assets.model.data_bindings.inputs) {
@@ -35,8 +35,22 @@ test("authored literal/operation-only inputs satisfy their actual closed operati
     assertStandardOperationInput(node.binding_ref, input);
   }
 });
+function committingSteps() {
+  const node = assets.model.nodes.find(row => row.id === "committing"), delivery = assets.model.nodes.find(row => row.id === "session_pr_delivery");
+  assert.equal(delivery.kind, "sequence"); assert.equal(node.children.at(-1), delivery.id);
+  return node.children.flatMap(id => id === delivery.id ? delivery.children : [id]);
+}
+test("review evidence is a deterministic observation after confirmed update, with no merge or triage success", () => {
+  const children = committingSteps(), binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_review_observe").binding;
+  assert.equal(children.indexOf("session_pr_review_observe"), children.indexOf("session_pr_update_push") + 1);
+  assert.equal(binding.effect_class, "read-only"); assert.equal(binding.executor_kind, "deterministic"); assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_review_observe").fields.update_operation_id,
+    { source: "operation_id", node_id: "session_pr_update_push" });
+  assert.equal(assets.catalog.scope.complete_standard_workflow, false);
+});
+
 test("successor checkpoint and update follow the accepted canonical PR record with explicit inputs", () => {
-  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  const children = committingSteps();
   assert.equal(children.indexOf("session_pr_checkpoint"), children.indexOf("session_pr_record") + 1);
   assert.equal(children.indexOf("session_pr_update_push"), children.indexOf("session_pr_checkpoint") + 1);
   for (const id of ["session_pr_checkpoint", "session_pr_update_push"]) assert.equal(assets.catalog.bindings.find(row => row.node_id === id).binding.executor_kind, "deterministic");
@@ -46,7 +60,7 @@ test("successor checkpoint and update follow the accepted canonical PR record wi
 test("canonical PR lifecycle recording follows its authenticated open receipt and leaves checkpoint separate", () => {
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_record").binding;
   assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "mutating");
-  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  const children = committingSteps();
   assert.equal(children.indexOf("session_pr_record"), children.indexOf("session_pr_open") + 1);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_record").fields.open_operation_id,
     { source: "operation_id", node_id: "session_pr_open" });
@@ -57,7 +71,7 @@ test("PR creation/recovery follows confirmed push through an independent host tr
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_open").binding;
   assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "executor");
   assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
-  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  const children = committingSteps();
   assert.equal(children.indexOf("session_pr_open"), children.indexOf("session_push") + 1);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_open").fields.push_operation_id,
     { source: "operation_id", node_id: "session_push" });
@@ -68,7 +82,7 @@ test("session push is a separate exact-plan effect after read-only admission, wi
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_push").binding;
   assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "executor");
   assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
-  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  const children = committingSteps();
   assert.equal(children.indexOf("session_push"), children.indexOf("session_pr_admit") + 1);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_push").fields.admission_operation_id,
     { source: "operation_id", node_id: "session_pr_admit" });
@@ -80,7 +94,7 @@ test("session close admission is a deterministic read-only continuation, separat
   const binding = assets.catalog.bindings.find(row => row.node_id === node.id).binding;
   assert.equal(node.kind, "operation"); assert.equal(binding.skill_id, "close-session"); assert.equal(binding.effect_class, "read-only");
   assert.equal(binding.input_contract, "standard-session-reference-input.v1"); assert.equal(binding.output_contract, "standard-session-close-admission-output.v1");
-  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  const children = committingSteps();
   assert.equal(children.indexOf("session_preclose_checkpoint"), children.indexOf("promotion_eligibility") + 1);
   assert.equal(children.indexOf("session_close_admit"), children.indexOf("session_preclose_checkpoint") + 1);
   assert.ok(assets.catalog.scope.remaining_activities.includes("session_close"));
@@ -98,13 +112,13 @@ test("delivery checkpoint follows confirmed session finalization with no implied
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_delivery_checkpoint").binding;
   assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "mutating");
   assert.equal(binding.input_contract, "standard-session-delivery-checkpoint-input.v1");
-  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  const children = committingSteps();
   assert.equal(children.indexOf("session_delivery_checkpoint"), children.indexOf("session_close_finalize") + 1);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_delivery_checkpoint").fields.finalization_operation_id,
     { source: "operation_id", node_id: "session_close_finalize" });
 });
 test("local integration has a separate explicit human subject and deterministic Git effect after delivery", () => {
-  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  const children = committingSteps();
   assert.equal(children.indexOf("session_branch_integration_decide"), children.indexOf("session_delivery_checkpoint") + 1);
   assert.equal(children.indexOf("session_branch_integrate"), children.indexOf("session_branch_integration_decide") + 1);
   const human = assets.catalog.bindings.find(row => row.node_id === "session_branch_integration_decide").binding;
@@ -117,7 +131,7 @@ test("local integration has a separate explicit human subject and deterministic 
     { source: "operation_id", node_id: "session_branch_integration_decide" });
 });
 test("PR admission is a read-only re-anchor after the separately confirmed Git integration", () => {
-  const children = assets.model.nodes.find(row => row.id === "committing").children;
+  const children = committingSteps();
   assert.equal(children.indexOf("session_pr_admit"), children.indexOf("session_branch_integrate") + 1);
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_admit").binding;
   assert.equal(binding.effect_class, "read-only"); assert.equal(binding.executor_kind, "deterministic");

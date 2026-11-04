@@ -1820,3 +1820,23 @@ Transport errors after dispatch remain unknown. Neither the transport factory
 nor its offline doubles qualifies actual GitHub execution, a complete standard
 workflow or an installed archive. Real remote use still requires an explicit
 authorization for its actual destination and revision.
+
+### Exact-head PR review evidence, 2026-11-03
+
+The private `session_pr_review_observe` binding consumes the accepted
+`session_pr_update_push` receipt and reauthenticates its causal checkpoint,
+canonical successor postimages and current local/remote Git head. Its host-only
+review capability observes the expected repository/PR/head/base identities,
+review authors and revisions, check app identities and legacy status creators.
+Two complete identical collections are required, since PR metadata alone does
+not fence same-head check reruns or review dismissal. Fresh thread observations
+are retained separately and reread around the review/check collection.
+
+This deterministic operation performs no model call or business write. Its
+signed output establishes only evidence availability and pending triage. It
+does not approve checks, finish the pr-orchestrate skill, accept unresolved
+threads, authorize merge or infer a human decision. Stale snapshots, changed
+collections and unavailable providers remain blocked with no facts. The common
+IR groups PR delivery in a sequence to preserve the existing children bound;
+no engine limit or historical reader is widened. External inbox authentication,
+actual triage, explicit merge and post-merge synchronization remain required.

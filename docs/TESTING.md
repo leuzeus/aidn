@@ -120,6 +120,31 @@ provider and exact installed-archive qualification remain separate.
 
 ## Structured agentic process
 
+`verify-github-review-evidence-fixtures.mjs` observes exact PR head/base refs,
+review authors and revisions, check app identities and legacy status creators
+through fixed read-only GraphQL. It exhausts and compares two full collections;
+same-head reruns, dismissals, pagination drift, transport failures and stale
+sources refuse. The GitHub transport is doubled. No merge permission follows.
+`verify-standard-session-pr-review-fixtures.mjs --mode=files|dual|db-only`
+connects the actual successor checkpoint/push and canonical postimages to this
+reader and the thread observer. Preview makes no provider call. Observation
+retains both fresh snapshots, with triage and policy acceptance still pending.
+The accepted-history lookup and provider transports are fixture capabilities;
+canonical CAS, Git, bare remote and application ports are real. Its common
+reducer replay/simulation uses the actual observation output with a synthetic
+boundary intent. Full signed IR composition, external inbox delivery, actual
+triage, native human/provider and exact installed archive qualification remain
+separate requirements.
+
+The composed fixture accepts `--standard-composed-budget-ms=10800000` only with
+`--standard-composed-mode` and a `promotion_decide` or `component_complete` stop.
+It selects a new fixture's initial offline authorization, within the existing
+three-hour runtime ceiling; the default stays two hours. A cold child must
+reuse the exact original authorization and explicitly matching budget. Its
+outer observation timeout follows that original deadline plus a bounded minute
+for terminal collection. This test option cannot renew an earlier run or
+qualify native reauthorization after a long human wait.
+
 `verify-drift-recovery-fixtures.mjs` checks closed recovery questions/plans and
 typed human outcomes with a synthetic source/inbox, real Git boundary checks,
 and actual canonical CAS/projection ports under a doubled evaluation authority.
