@@ -30,7 +30,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
     "correction_promotion_eligibility", "correction_session_preclose_checkpoint", "correction_session_close_admit", "correction_session_closure_drift", "correction_session_closure_decide", "correction_session_close_record", "correction_session_close_checkpoint", "correction_session_close_finalize", "correction_session_delivery_checkpoint", "correction_session_branch_integration_decide", "correction_session_branch_integrate", "correction_pr_redelivery"]);
   assert.equal(assets.model.nodes.find(row => row.id === "correction_initialize").binding_ref, "session_pr_correction_cycle_initialize");
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
-  assert.equal(assets.catalog.bindings.length, 108); assert.equal(assets.catalog.activities.length, 16);
+  assert.equal(assets.catalog.bindings.length, 113); assert.equal(assets.catalog.activities.length, 17);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -42,12 +42,12 @@ test("correction work and closure consume the new implementation and new validat
   assert.deepEqual(fields("correction_cycle_terminal_checkpoint").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
   assert.deepEqual(fields("correction_close_finalize").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
   const operations = assets.catalog.bindings.filter(row => row.node_id.startsWith("correction_") && !["correction_initialize", "correction_branch_audit", "correction_cycle_checkpoint", "correction_cycle_drift_evaluate", "correction_cycle_drift_finalize", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"].includes(row.node_id));
-  assert.equal(operations.length, 33);
+  assert.equal(operations.length, 38);
   assert.ok(operations.every(row => row.binding.id !== "session_pr_open" && row.binding.id !== "session_push"));
   const audit = assets.model.nodes.find(row => row.id === "correction_audit_review"); assert.equal(audit.policy_ref, "audit");
   const sequence = assets.model.nodes.find(row => row.id === "correction_cycle").children;
   assert.ok(sequence.indexOf("correction_task_loop") > sequence.indexOf("correction_implementation_enter"));
-  assert.equal(sequence.at(-1), "correction_session_branch_integrate");
+  assert.equal(sequence.at(-1), "correction_pr_redelivery");
 });
 test("correction promotion and session reclosure use new cycle, R05, human and delivery identities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
