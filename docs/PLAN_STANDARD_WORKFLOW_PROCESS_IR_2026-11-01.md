@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 133/131 et le modèle composé candidat en 74
+les composants startup/cycle en 134/132 et le modèle composé candidat en 75
 (107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
 63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -20,6 +20,12 @@ encore ouverts.
 
 ### Avancement d’exécution
 
+- Les trois catalogues ont été explicitement réépinglés après l'ajout des
+  politiques des epochs natives. Le chargement refusait l'ancienne empreinte
+  d'implémentation ; le helper d'édition des sources actualise les bindings et
+  incrémente les révisions sans modifier le graphe, les paramètres, les flux de
+  données, les règles ou les skills. Les instances historiques conservent leurs
+  modèles exacts. Cette cohérence des assets ne qualifie pas le parcours complet.
 - Le checkpoint de cycle distingue désormais l'expiration d'un plan explicite
   valide des refus d'intention ou d'horloge invalide, avant acquisition du
   propriétaire d'effet. Les mêmes sondes passent 25 contrôles en FILES, DUAL et
