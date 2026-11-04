@@ -52,6 +52,32 @@ postconditions are L2 work; authority doubles are not business execution proof.
 
 ## Control and effect semantics
 
+For PR findings that require physical correction, the continuation route is to
+reopen the same canonical session owner while preserving its prior closure
+report and completion evidence. It must then create a new admitted correction
+cycle, freeze its plan and enter IMPLEMENTING on that cycle's branch before
+any product edit. Reopening alone grants no native product admission and does
+not complete pr-orchestrate, validation, provider replies/resolutions or merge.
+The existing specific native write policy remains unchanged.
+
+The initial internal component prepares three exact canonical postimages under
+the existing local effect owner and metadata-preserving CAS/projection ports.
+Its source factory reauthenticates accepted triage/selection/receive/update
+records, reexecutes triage before preparing, and checks unchanged product,
+current event, complete fresh provider bodies and local/remote heads. Over the
+owned canonical transition it keeps immutable source authentication separate
+from exact admitted document pre/postimages, and retains a causal observation.
+Changed remote content, product, source or head/base refuses continuation;
+partial writes retain unknown state and ownership. This bridge covers only
+these canonical writes. It is not permission to reuse triage after a provider
+mutation, product correction or a new HEAD.
+
+This component is not yet registered in the operation host, contracts dispatcher,
+direct implementation pins or shipped IR. Its source and canonical suites test
+separate capability boundaries. The composition, cycle continuation, repeated
+closure/delivery lineage, genuine producer/provider qualification and complete
+correction lifecycle remain to be implemented and verified before ordinary use.
+
 The composed offline fixture preflights its versioned deterministic scenario
 through this same model and reducer before fixture creation and initial
 authorization. Its response allowance counts selected native occurrences,

@@ -3731,3 +3731,34 @@ resolutions, merge, full L1-L8/A1-A10, live native/human/provider behavior or an
 exact installed archive. The complete plan and remaining qualification gates
 remain active. Validation results and later trial provenance are recorded
 separately from the immutable prior handoff.
+
+### Addendum: canonical PR correction continuation component, 2026-11-03
+
+The selected route preserves the CLOSED owner's prior report and completion
+evidence, explicitly reopens that same session, then requires a new admitted
+correction cycle, frozen plan and IMPLEMENTING branch before product writes.
+The existing native write admission is unchanged. A component implements the
+three canonical document changes with exact-plan authorization, preserved DB
+metadata, projection rules, local Git fences and retained unknown effects.
+It leaves active_cycle none; no physical fix, validation, provider mutation,
+response/resolution or merge permission follows from this transition.
+
+A separate source factory consumes accepted triage/selection/receive/update
+records and the delivered capture. It requires a fresh triage reevaluation
+before the transition and checks unchanged product, authenticated current event,
+complete provider content and local/remote heads around the continuation.
+Specific canonical pre/postimages provide the causal bridge over the three
+owned writes. This bridge cannot cover a provider mutation or changed product
+HEAD; those require their own fresh lineage and evaluation.
+
+These are internal, separately tested components. The source suite doubles
+accepted/native/event/Git/product/transport capabilities; the canonical suite
+doubles source freshness while using actual local CAS/projection/Git/admission.
+They do not qualify their complete composition. No operation host binding,
+registry/contract-dispatch registration, direct execution pin or IR route selects
+the component yet. The published model remains 65 with unchanged semantic hash;
+complete_standard_workflow is false. Next work must bind these authorities in
+the trusted host, add real operation contracts/pins and graph routing, then run
+the ordinary admitted correction cycle and prove fresh correction/delivery/
+review loops. Changes to session-state fields and preserved history must be
+rechecked against those actual authorities at integration time.
