@@ -74,10 +74,10 @@ test("current and archived v2 completions require the exact record, decision and
 });
 test("missing, reordered, duplicated or changed historical completion cannot be silently repaired", () => {
   const opened = reopen(complete(record(docs()))), pending = record(opened, "f");
-  for (const content of [pending[0].content.replace('"Verified current correction"', '"tampered"'),
-    pending[0].content.replace('"record_sha256":', '"foreign":'),
-    opened[0].content.replace(/^## Historical Process session closure completion[^\n]*\n[\s\S]*?(?=^## )/m, "")]) {
-    assert.throws(() => readSessionClosureHistory(content), { code: "STANDARD_SESSION_CLOSURE_HISTORY_INVALID" });
+  for (const [label, content] of [["changed ancestor", pending[0].content.replace('"Verified current correction"', '"tampered"')],
+    ["invalid completion", pending[0].content.replace('"record_sha256":', '"foreign":')],
+    ["missing completion", opened[0].content.replace(/^## Historical Process session closure completion[^\n]*\n[\s\S]*?(?=^## )/m, "")]]) {
+    assert.throws(() => readSessionClosureHistory(content), { code: "STANDARD_SESSION_CLOSURE_HISTORY_INVALID" }, label);
   }
 });
 test("legacy pending and completed records stay readable without a silent v2 conversion", () => {

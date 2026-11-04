@@ -55,6 +55,12 @@ export function createStandardSessionBranchIntegrationAuthority({ targetRoot, re
       const intent = instance.events.find(row => row.kind === 'operation_intent' && row.intent.operation_id === entry.receipt.operation_id)?.intent;
       if (!['cycle_close_finalize', 'baseline_promotion_record', 'baseline_promotion_finalize'].includes(intent?.binding_ref)) continue;
       const accepted = readAcceptedOperation(instance, intent.operation_id, intent.binding_ref);
+      if (intent.binding_ref === 'cycle_close_finalize' && accepted.record.preview.prepared.plan.scope.session_id === final.session_id) {
+        const scope = accepted.record.preview.prepared.plan.scope;
+        const original = owned.filter(row => row.cycle_id === scope.cycle_id);
+        if (original.length !== 1 || fields(original[0]).branch_name !== scope.branch)
+          fail('STANDARD_SESSION_INTEGRATION_CANONICAL_OWNER_CHANGED');
+      }
       for (const ref of accepted.output.evidence_refs) if (owned.some(row => ref.ref === 'docs/audit/' + row.path)) {
         if (accepted.output.effect_status !== 'confirmed') fail('STANDARD_SESSION_INTEGRATION_POSTIMAGE_CHANGED');
         latest.set(ref.ref, ref.sha256);
