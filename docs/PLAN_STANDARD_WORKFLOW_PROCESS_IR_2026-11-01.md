@@ -32,8 +32,16 @@ datés de `dd1dbab`, distincts de cet avancement.
   absence d'écriture produit et de nouvelle HEAD, attente sans faits positifs,
   relecture froide et même réducteur avec témoins d'effets inchangés.
   Le préflight corrigé passe 50 contrôles sur `a905347e`. Trois nouveaux cas
-  mixtes sont en cours sur `f5fa0875` : THINKING FILES, EXPLORING non retenu
-  DUAL et EXPLORING en attente DB-only. Leur démarrage ne prouve pas le parcours.
+  mixtes sur `f5fa0875` ont terminé FAIL : THINKING FILES, EXPLORING non retenu
+  DUAL et EXPLORING en attente DB-only. Après le préflight et la finalisation
+  de démarrage, l'entrée Native renvoie `failed` plutôt que `closed`. Le résultat
+  retient PROCESS_EXECUTION_FAILED et zéro réponse observée ; la cause interne
+  n'est pas établie. Les projets incertains restent sur place, sans copie comme
+  quiescents ni droit de retry. L'évaluation du rapport et la relecture froide
+  ne sont pas atteintes. Un quatrième cas THINKING FILES sur `62619943`, lancé
+  avant ces verdicts pour les assertions de motifs affinées, reste distinct et
+  en cours. Son autorité initiale n'est pas modifiée. Le diagnostic de l'entrée
+  Native est la prochaine action nécessaire ; A2 reste ouvert.
   La [preuve courante](qualification/standard-workflow/mode-analysis-mixed-2026-11-04.json)
   conserve les sources, préconditions, verdicts et observations datées. Les quinze
   variantes mode/stockage rejoignent la chaîne Runtime et son autorité exacte,

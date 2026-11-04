@@ -6,8 +6,14 @@ It uses doubled Native/human capabilities with real application, Git and SQLite
 ports. It checks unchanged product/HEAD, zero extra model responses for D/H and
 missing answers, cold read-only polling and common-reducer replay/simulation
 with canonical/Git/product/allocation/journal witnesses. The a905347e preflight
-passes 50 synthetic checks. Three mixed cases remain running on f5fa0875,
-without a terminal verdict. The [current record](../qualification/standard-workflow/mode-analysis-mixed-2026-11-04.json)
+passes 50 synthetic checks. Three mixed cases on f5fa0875 are terminal FAIL at
+Native entry after successful deterministic preflight/start finalization.
+The retained result is PROCESS_EXECUTION_FAILED with zero observed responses;
+the internal cause is not established. No report evaluation or cold poll was
+reached. Uncertain projects stay in place and are not copied as quiescent.
+A separate 62619943 THINKING FILES case, started before these verdicts to test
+the refined admission diagnostics, is still running under its original authority.
+Native-entry diagnosis is the next required action. The [current record](../qualification/standard-workflow/mode-analysis-mixed-2026-11-04.json)
 separates their scopes. Fifteen new case invocations join the exact Runtime
 authority; all 143 existing calls remain in order (158 total). Full Runtime and
 Governance Admission remain unproved. Cold polling does not establish continuation after a new event,
