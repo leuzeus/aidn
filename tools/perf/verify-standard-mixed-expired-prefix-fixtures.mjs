@@ -86,6 +86,11 @@ if (process.argv[2] === "--prepare") {
 } else {
   const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("MIXED_PREFIX_MODE_INVALID");
+  const expiredBindings = (process.argv.find(value => value.startsWith("--expire-bindings="))?.slice("--expire-bindings=".length)
+    ?? "session_initialize").split(",");
+  if (!expiredBindings.length || new Set(expiredBindings).size !== expiredBindings.length
+    || expiredBindings.some(id => !["session_initialize", "session_mode_apply", "session_start_finalize"].includes(id)))
+    throw Error("MIXED_PREFIX_EXPIRED_BINDINGS_INVALID");
   const owned = [], assets = loadStandardWorkflowAssets(), counters = { grants: 0, native: 0 };
   let checks = 0, success = false;
   const pass = message => { checks++; console.log(`PASS mixed expired ${mode}: ${message}`); };
@@ -112,18 +117,30 @@ if (process.argv[2] === "--prepare") {
       assert.equal(preview.prepared?.can_apply ?? true, true, JSON.stringify(preview.prepared));
       let staged = await runtime.stageOperation(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
       const id = staged.operation_id;
-      if (preview.binding.id === "session_initialize") {
+      if (expiredBindings.includes(preview.binding.id)) {
         const business = createStandardWorkflowArtifacts({ targetRoot: target });
-        const before = preview.prepared.plan.changes.map(row => business.read(row.path)), head = git(target, "rev-parse", "HEAD");
+        // Some fixed operations invoke a hook instead of carrying a CAS list.
+        // Observe canonical business artifacts, excluding only host journals,
+        // which the expired dispatch must legitimately append to.
+        const businessState = () => business.inventory().paths.filter(name => !name.startsWith("workflows/"))
+          .map(name => ({ artifact: business.read(name), metadata_sha256: business.metadataHash(name) }));
+        const before = businessState(), head = git(target, "rev-parse", "HEAD");
+        // FILES has no canonical SQLite journal writes to exclude. Include all
+        // hidden runtime files/directories, since the start hook can write there.
+        // DB modes keep their separate logical-artifact proof, not this claim.
+        const runtimeBefore = mode === "files" ? snapshot(path.join(target, ".aidn/runtime")) : null;
         fs.writeFileSync(clockFile, JSON.stringify(preview.prepared.plan.prepared_at_ms + 300001));
         const refused = await runtime.step({ write: true });
         const original = runtime.readOperation(id), refusedState = runtime.inspect();
         assert.equal(refused.kind, "operation"); assert.equal(refused.status, "WAITING");
         assert.equal(original.results.at(-1).receipt.outcome, "blocked"); assert.equal(original.results.at(-1).receipt.effect_status, "no_effect");
         assert.equal(original.results.at(-1).output.observations.reason_code, "STANDARD_PLAN_EXPIRED");
-        assert.deepEqual(preview.prepared.plan.changes.map(row => business.read(row.path)), before);
+        assert.deepEqual(businessState(), before);
+        if (mode === "files") assert.deepEqual(snapshot(path.join(target, ".aidn/runtime")), runtimeBefore,
+          "expired dispatch must preserve every hidden runtime file and directory");
         assert.equal(git(target, "rev-parse", "HEAD"), head); assert.equal(business.ownerPending(), false);
-        pass("actual mixed.step accepts the expired dispatch as WAITING/no_effect, before any business write");
+        pass("actual mixed.step accepts expired dispatch as WAITING/no_effect; canonical business artifacts are unchanged"
+          + (mode === "files" ? " and every hidden runtime byte/directory is unchanged" : "; physical DB/runtime bytes are not qualified"));
 
         const waitingBytes = snapshot(target), grantsAtWait = counters.grants;
         for (const write of [false, true]) {
@@ -153,7 +170,7 @@ if (process.argv[2] === "--prepare") {
         assert.notEqual(staged.operation_id, id); assert.ok(counters.grants > grantsAtWait);
         const replacement = runtime.readOperation(staged.operation_id);
         assert.notDeepEqual(replacement.grant, original.grant); assert.equal(replacement.intent.instance_sha256, refusedState.record.instance_sha256);
-        originals.push({ id, record: original });
+        originals.push({ id, binding: original.intent.binding_ref, record: original });
         pass("explicit successor staging obtains a distinct grant/intent bound to the accepted predecessor history");
       }
       let result = await runtime.step({ write: true });
@@ -182,7 +199,8 @@ if (process.argv[2] === "--prepare") {
     assert.equal(final.cursor.occurrences.some(row => row.node_id === "cycle_create"), false);
     assert.equal(parseSessionMetadata(createStandardWorkflowArtifacts({ targetRoot: target }).read("sessions/S001.md").content).mode, "THINKING");
     assert.deepEqual(fs.readFileSync(path.join(target, "product/app.mjs")), product);
-    assert.equal(originals.length, 1); for (const row of originals) assert.deepEqual(runtime.readOperation(row.id), row.record);
+    assert.deepEqual(originals.map(row => row.binding).sort(), [...expiredBindings].sort());
+    for (const row of originals) assert.deepEqual(runtime.readOperation(row.id), row.record);
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, parameters: final.record.initial_parameters,
       policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256); assert.deepEqual(simulation.trace.at(-1).cursor, final.cursor);
@@ -190,15 +208,17 @@ if (process.argv[2] === "--prepare") {
     pass("same shipped IR/reducer replay and simulation preserve the refusal, THINKING terminal state and every checkout byte");
     success = true;
     console.log(JSON.stringify({ status: "PASS", checks, state_mode: mode, model_revision: assets.model.revision, model_sha256: assets.source.model_sha256,
-      scope: "source-installed-published-mixed-startup-prefix", clock: "test-process-wall-clock-injection", native_allocations: 0, native_model_calls: counters.native,
+      scope: "source-installed-published-mixed-startup-prefix", expired_bindings: expiredBindings,
+      expired_dispatch_hidden_runtime: mode === "files" ? "all-bytes-and-directories-unchanged" : "NOT_QUALIFIED",
+      clock: "test-process-wall-clock-injection", native_allocations: 0, native_model_calls: counters.native,
       authorization: "fixture-capability", human: "authenticated-fixture-source", native: "NOT_RUN", installed_archive: "NOT_RUN", full_standard_workflow: "NOT_COMPLETE" }));
   } finally {
     clockFile = null;
-    if (success) for (const directory of owned) {
+    if (success && !process.argv.includes("--retain-always")) for (const directory of owned) {
       const real = fs.realpathSync(directory);
       if (path.dirname(real) !== temporary || !path.basename(real).startsWith("aidn-standard-")) throw Error("MIXED_PREFIX_CLEANUP_SCOPE_INVALID");
       fs.rmSync(real, { recursive: true, force: true });
     }
-    else console.error(JSON.stringify({ retained_failure_roots: owned }));
+    else console.error(JSON.stringify({ retained_roots: owned, success }));
   }
 }

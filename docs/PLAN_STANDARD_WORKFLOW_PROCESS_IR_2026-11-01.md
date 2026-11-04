@@ -38,9 +38,10 @@ encore ouverts.
   effective du propriétaire local du checkpoint. Le dispatcher doit produire
   lui-même l'inconnu signé, puis la reprise à froid doit observer le commit,
   ajouter un reçu distinct par CAS, conserver le précédent et comparer le replay
-  et la simulation. Ce nouveau chemin est **NON EXÉCUTÉ** ; sa syntaxe et les
-  suites hôte existantes ne prouvent pas sa réussite. Aucun nouvel essai long
-  n'a été lancé pour cette tranche.
+  et la simulation. Un nouvel essai FILES est **EN COURS** depuis un snapshot
+  figé, avec conservation du corpus en réussite comme en échec. Aucun verdict
+  terminal de récupération n'est acquis ; les suites hôte et la syntaxe restent
+  des preuves distinctes.
 - Le journal conserve désormais les identifiants historiques du premier reçu
   et distingue les suivants par leur index ; la lecture d'un ancien reçu et
   son événement accepté restent possibles. Les 38 contrôles d'hôte passent
@@ -4100,3 +4101,22 @@ complete_standard_workflow=false are unchanged. General expired business
 operations, unknown-owner recovery, native epochs, ordinary admitted correction
 cycles and the remaining L1-L8/A1-A10 stay open. The separate frozen revision-70
 correction experiment retains its original source, authority and deadline.
+
+
+### Expired startup bindings, 2026-11-04
+
+The shipped revision-73 mixed startup prefix now has explicit expiry cases for
+session initialization, mode application and start finalization: 23 checks pass
+per files/dual/db-only mode. A separate 13-check FILES finalization case also
+observes every hidden runtime byte and directory around the expired dispatch.
+The DB-mode cases qualify canonical business artifacts, with physical runtime
+and SQLite byte absence explicitly unqualified. Every run preserves the refused
+predecessor, prepares the same subject in a new Node without writes or a model,
+and requires a fresh grant/intent before the successor executes. Common-reducer
+replay and simulation remain exact. The first fixture failure incorrectly assumed
+that a hook plan carried CAS changes; its exact source and terminal logs remain
+retained. See the [bounded proof](qualification/agentic-process/expired-startup-bindings-2026-11-04.json).
+This extends three startup bindings only; other expiries and general unknown
+recovery remain open. The separate frozen composed checkpoint case is running,
+with no terminal reconciliation verdict. Ordinary selection and complete status
+remain unchanged/false; the entire L1-L8/A1-A10 objective remains incomplete.

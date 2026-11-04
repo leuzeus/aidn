@@ -3104,8 +3104,9 @@ after the real local-owner unlink, allowing the real dispatcher to retain an
 unknown result. The cold helper then checks authenticated history, competing
 observations, a single appended result, exact old-receipt acceptance and exact
 replay/streamed simulation without another Git effect or native allocation.
-This option is prepared but NOT_RUN. Existing host/history checks and syntax
-checks do not qualify its composed execution. Provider, human and native
+The preparation evidence precedes a new retained FILES execution on a frozen
+source snapshot. That run is in progress with no terminal recovery verdict.
+Existing host/history checks and syntax do not qualify its composed execution. Provider, human and native
 identities remain fixture capabilities. Retained-owner closure, fresh recovery
 authority and positive db-only reconciliation require separate implementation.
 Use `--retain-always` to preserve the owned corpus after either success or
@@ -3113,3 +3114,14 @@ failure; it propagates to the composed cold continuation. The cold continuation
 and checkpoint recovery child leave separate stdout, stderr and exit observations
 in the control root before their status assertions. Retention changes no scenario,
 authorization ceiling or deadline and does not establish resource-tree closure.
+
+`verify-standard-mixed-expired-prefix-fixtures.mjs` accepts an explicit
+`--expire-bindings=session_initialize,session_mode_apply,session_start_finalize`.
+The three-mode corpus passes 23 checks per mode. A separate FILES finalization
+case passes 13 checks and compares all hidden runtime bytes/directories around
+the expired dispatch, including paths a hook could write. DB cases prove the
+canonical artifact observation; physical SQLite/runtime byte absence is not
+qualified. Each cold preparation preserves the accepted refusal and requires a
+new explicit grant/intent before execution. See the
+[bounded results](qualification/agentic-process/expired-startup-bindings-2026-11-04.json).
+The initial CAS-list fixture failure and its source remain retained separately.
