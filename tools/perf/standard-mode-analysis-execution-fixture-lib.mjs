@@ -50,6 +50,10 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
   // A separate, new fixture authority, never an extension of a retained case.
   const auth = { ...f.authorize(), max_responses: 1, max_turn_ms: 300000 };
   auth.global_deadline_ms = auth.workflow_deadline_ms = auth.authorized_at_ms + 1800000;
+  fs.writeFileSync(path.join(f.base, "mode-analysis-original-authority.json"), JSON.stringify({
+    proof_class: "fixture-only-not-retry-authority", configuration: f.configuration, parameters,
+    storage_mode: storageMode, session_mode: sessionMode, disposition, authorization: auth,
+  }));
   const originalAuthority = shadowHash(auth), originalProduct = fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"), "utf8");
   const originalHead = execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
   let evaluation;
