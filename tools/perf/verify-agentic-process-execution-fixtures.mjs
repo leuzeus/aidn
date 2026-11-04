@@ -846,7 +846,9 @@ if (process.argv[2] === "--mixed-continue") {
         const captured = f.open().readControl(reserved.inbox_id);
         assert.equal(captured.request.instance_sha256, request.instance_sha256);
         assert.equal(captured.payload.observation.observations.update_operation_id, intent.operation_id);
-        assert.equal(captured.payload.observation.observations.evidence.reviews[0].body_chunks.join(""), "Complete fixture review evidence.");
+        assert.equal(captured.payload.observation.observations.evidence.reviews[0].body_chunks.join(""), standardScenarioName === "correction"
+          ? "The exported product value needs a bounded correction in a new admitted cycle, followed by impacted validation and fresh delivery."
+          : "Complete fixture review evidence.");
         assert.equal(captured.phase, "reserved"); assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
         const allocations = f.open().inspectAllocations();
         const child = JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL("standard-pr-review-control-resume-fixture.mjs", import.meta.url)), resumeFile, reserved.inbox_id],
