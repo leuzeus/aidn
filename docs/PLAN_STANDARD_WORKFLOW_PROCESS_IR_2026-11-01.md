@@ -27,7 +27,10 @@ datés de `dd1dbab`, distincts de cet avancement.
   candidat. L’initialiseur consomme ces valeurs depuis la sortie acceptée et
   refuse leur substitution avant admission/effet. Les paramètres restent une
   proposition présentée à la personne. Lecteurs v1/v7 conservés, sans conversion.
-  Qualification ciblée en attente ; ce raccord ne termine pas les choix généraux
+  Les contrôles décision/inbox (18), modèle (22) et opérations/réducteur (27)
+  passent sur leur source gelée ; composition (32) sur sa source distincte. Les
+  essais d’initialisation réelle restent en cours. La [preuve ciblée](qualification/standard-workflow/correction-human-cycle-choice-components-2026-11-04.json)
+  conserve le premier FAIL de fixture et les limites ; ce raccord ne termine pas les choix généraux
   de mode/cycle/topologie, les corrections répétables ou le parcours C2 complet.
 
 - Le modèle candidat raccorde désormais le cycle correctif après son entrée
