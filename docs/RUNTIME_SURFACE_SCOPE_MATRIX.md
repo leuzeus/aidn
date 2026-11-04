@@ -1,5 +1,14 @@
 # Runtime Surface Scope Matrix
 
+Native authorization epochs are versioned retained members of the existing
+native allocation journal. Explicit activation retains its signed v1 origin
+and uses the same canonical CAS, local mixed-host owner and required projection.
+It adds no table, shared synchronization, backend fallback or db-only export.
+The trusted approval/resource-closure source is composed outside process JSON;
+fixture evidence cannot establish actual human/provider/native termination.
+Historical process instances and v1 journals retain their readers.
+
+
 PR triage selection and evaluation use the existing authenticated operation
 journal. The accepted selection retains the complete delivered review payload
 and product identity. The native worker reads that signed source without provider

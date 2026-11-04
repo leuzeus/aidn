@@ -27,6 +27,7 @@ import { fileURLToPath } from "node:url";
 import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
 import { runOwnedAgenticProcess } from "../../src/application/runtime/agentic-process-owned-run.mjs";
 import { createJournaledNativeAllocation } from "../../src/application/runtime/journaled-native-allocation.mjs";
+import { verifyNativeAuthorizationEpochs } from "./native-authorization-epoch-fixture-lib.mjs";
 import { loadStandardWorkflowAssets, createStandardWorkflowExecution } from "../../src/application/runtime/standard-workflow-composition.mjs";
 import { createGithubPrOpenTransportFixture } from "./github-pr-open-fixture-lib.mjs";
 import { createLocalWorkflowSessionPush } from "../../src/adapters/runtime/local-workflow-session-push.mjs";
@@ -163,6 +164,9 @@ function retainComposedChild(controlRoot, label, child) {
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+  const epochMode = process.argv.find(value => value.startsWith("--native-epoch-mode="))?.slice("--native-epoch-mode=".length);
+  if (epochMode && !["files", "dual", "db-only"].includes(epochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
+  if (epochMode && !name.startsWith(`native epoch ${epochMode}:`)) return;
   if (selectedCyclePlanMode && !name.startsWith(`cycle plan ${selectedCyclePlanMode}`)) return;
   if (selectedCycleReadinessMode && !name.startsWith(`cycle readiness ${selectedCycleReadinessMode}:`)) return;
   if (selectedCycleWorkMode && !name.startsWith(`cycle work ${selectedCycleWorkMode}:`)) return;
@@ -385,7 +389,7 @@ function journalFixture(options = {}) {
   f.configuration.controller = { node_sha256: sha(fs.readFileSync(process.execPath)), worker_sha256: sha(fs.readFileSync(worker)),
     helper_path: "fixture", helper_sha256: "a".repeat(64), helper_source_sha256: "b".repeat(64) };
   const key = Buffer.alloc(32, 73), t = transport(f, options), controllerFactory = journalController(f, t, options);
-  const open = (readSigningKey = () => key) => createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey,
+  const open = (readSigningKey = () => key, nativeAuthorizationSource = options.nativeAuthorizationSource) => createJournaledNativeAllocation({ configuration: f.configuration, readSigningKey, nativeAuthorizationSource,
     ...(f.environment ? { environment: f.environment } : {}), ...(options.controlSource ? { controlSource: options.controlSource } : {}) }, { controllerFactory });
   Object.assign(f, { key, t, open, actor: open() }); return f;
 }
@@ -610,7 +614,7 @@ function mixedFixture(stateMode = "files", options = {}) {
   }
   const observe = host => options.hostTrace ? observeComposedHost(host, path.join(f.configuration.control_root, 'composed-host-' + process.pid + '.jsonl')) : host;
   const compose = () => observe((options.standardModel ? createStandardWorkflowExecution : createStandardWorkflowMixedHost)({ configuration: f.configuration, readSigningKey: () => key,
-    authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile,
+    authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile, nativeAuthorizationSource: options.nativeAuthorizationSource,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: projectRoot, remoteRoot: f.sessionPushRemoteRoot }) : null,
     sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
     sessionReviewEventPort: f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null,
@@ -1201,6 +1205,7 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(f.t.sessions.length, 0); assert.equal(f.launches ?? 0, 0);
   });
   if (selectedCycleCloseFinalizeMode) await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true, closeRecord: true, closeFinalize: true });
+  await verifyNativeAuthorizationEpochs(check, { readyResumeFixture, mixedFixture, bootstrapMixed });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url) });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true });
@@ -1835,6 +1840,7 @@ if (process.argv[2] === "--mixed-continue") {
   });
   await check("journal preview retains no files, reservation or native allocation", async () => {
     const f = journalFixture(), view = f.actor.preview(); assert.equal(view.phase, "absent"); assert.equal(view.written, false);
+    assert.throws(() => f.actor.prepareAuthorizationEpoch({ originalAuthorization: f.authorize() }), /NATIVE_EPOCH_HISTORY_REQUIRED/);
     assert.equal(f.actor.inspect(), null); assert.equal(f.launches, undefined); assert.equal(f.t.sessions.length, 0);
     assert.equal(fs.existsSync(path.join(f.configuration.target_root, "docs/audit/workflows/native-allocations")), false);
     await assert.rejects(f.actor.run({ execute: true, authorization: { approved: true } }), /EXPLICIT_AUTHORIZATION_REQUIRED/);

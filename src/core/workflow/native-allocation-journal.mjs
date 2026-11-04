@@ -1,4 +1,6 @@
 import schema from "../contracts/workflow-definition/native-allocation-journal.v1.schema.json" with { type: "json" };
+import schemaV2 from "../contracts/workflow-definition/native-allocation-journal.v2.schema.json" with { type: "json" };
+import { assertNativeEpochHistory, nativeEpochForGeneration, nativeAllocationTotals, nativeLimitsOf } from "./native-authorization-epoch.mjs";
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
 import { assertNativeHostState } from "./native-host-state.mjs";
@@ -11,7 +13,20 @@ export function nativeJournalPath(id) {
   return `workflows/native-allocations/${id}.json`;
 }
 export function assertNativeAllocationJournal(value) {
-  if (checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length) fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
+  const epochs = value?.contract_version === "native-allocation-journal.v2";
+  if (checkShadowJson(value) || validateJsonSchema(value, epochs ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
+  if (epochs) {
+    const { initial_authorization, origin_journal, epochs: history, ...legacy } = value;
+    // Same allocation schema, without changing the historical v1 revision cap.
+    if (validateJsonSchema({ ...legacy, contract_version: "native-allocation-journal.v1", revision: Math.min(value.revision, 64) }, schema, "$", { contractKind: "workflow-definition" }).length)
+      fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
+    assertNativeEpochHistory(value);
+    assertNativeAllocationJournal(origin_journal);
+    if (origin_journal.contract_version !== "native-allocation-journal.v1"
+      || shadowHash(origin_journal) !== history[0].request.journal_sha256
+      || origin_journal.instance_id !== value.instance_id || origin_journal.scope_id !== value.scope_id || origin_journal.model_sha256 !== value.model_sha256
+      || shadowHash(origin_journal.allocations) !== history[0].request.allocations_sha256) fail("NATIVE_EPOCH_ORIGINAL_JOURNAL_CHANGED");
+  }
   if (value.journal_id !== nativeJournalId(value)) fail("NATIVE_ALLOCATION_SCOPE_CHANGED");
   for (const [index, entry] of value.allocations.entries()) {
     if (entry.generation !== index + 1 || entry.limits.configuration_sha256 !== entry.configuration_sha256
@@ -26,7 +41,13 @@ export function assertNativeAllocationJournal(value) {
       || new Set(entry.consumption.response_sha256).size !== entry.consumption.response_sha256.length)) fail("NATIVE_ALLOCATION_CONSUMPTION_INVALID");
     if (entry.phase === "closed" && (entry.consumption.responses_observed > entry.limits.max_responses
       || entry.consumption.storage_debit_bytes > entry.limits.max_bytes)) fail("NATIVE_ALLOCATION_CONSUMPTION_EXCEEDS_LIMIT");
-    if (index) {
+    const epoch = nativeEpochForGeneration(value, entry.generation);
+    if (epoch) {
+      const totals = nativeAllocationTotals(value.allocations.slice(0, index)), grant = epoch.grant.authorization;
+      const effective = { ...grant, max_responses: grant.max_responses - totals.responses, max_bytes: grant.max_bytes - totals.bytes };
+      if (!totals.known || shadowHash(entry.limits) !== shadowHash(nativeLimitsOf(effective))
+        || entry.authorization_sha256 !== shadowHash(effective)) fail("NATIVE_EPOCH_ALLOCATION_UNBOUND");
+    } else if (index) {
       const ceiling = value.allocations[0].limits;
       if (["max_responses", "max_bytes", "max_turn_ms", "global_deadline_ms", "workflow_deadline_ms"].some(key => entry.limits[key] > ceiling[key])) fail("NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED");
     }

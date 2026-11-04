@@ -1,5 +1,13 @@
 # 04 JSON Contracts
 
+The private workflow-definition namespace adds `native-allocation-journal.v2`
+and explicit native authorization/request/grant/resource-closure v1 contracts.
+V2 retains the full signed v1 origin and is created only through an authenticated
+explicit activation. Historical instance/checkpoint/v1 journal readers remain
+unchanged; reads never activate an epoch. These internal contracts add no public
+CLI output case. See ADR-0026.
+
+
 ## Purpose
 
 Every stable public JSON output must have an explicit contract under `src/core/contracts/cli-output/`.

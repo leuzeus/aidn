@@ -9,7 +9,7 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 // The common reducer owns control flow. This adapter selects a port for the
 // cursor's ready leaf; it contains no standard-workflow routing decisions.
 export function createStandardWorkflowMixedHost({ configuration: suppliedConfiguration, modelSource = null, readSigningKey, authorize, humanSource, controlSource,
-  environment = process.env, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null }, { controllerFactory, validationBoundaryFactory } = {}) {
+  environment = process.env, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, nativeAuthorizationSource }, { controllerFactory, validationBoundaryFactory } = {}) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value;
@@ -17,7 +17,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   let native;
   const processAuthority = createStandardProcessAuthority({ configuration, model, modelSource, readSigningKey, environment,
     readProductSha256: () => native.preview().product_sha256 });
-  native = createJournaledNativeAllocation({ configuration, readSigningKey, environment, processAuthority }, { controllerFactory });
+  native = createJournaledNativeAllocation({ configuration, readSigningKey, environment, processAuthority, nativeAuthorizationSource }, { controllerFactory });
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
     authorize, humanSource, controlSource, processAuthority, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort }, { validationBoundaryFactory });
   const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
@@ -35,6 +35,8 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     previewNative: () => native.preview(),
     inspectAllocations: () => native.inspect(),
     readCheckpoint: generation => native.readCheckpoint(generation),
+    prepareNativeAuthorizationEpoch: input => native.prepareAuthorizationEpoch(input),
+    activateNativeAuthorizationEpoch: (request, input) => native.activateAuthorizationEpoch(request, input),
     prepareOperation: input => operations.preview({ ...input, instanceId: configuration.instance_id }),
     reprepareExpiredOperation: (id, input) => operations.reprepareExpiredOperation(id, input),
     stageOperation: (preview, input) => operations.stage(preview, input),

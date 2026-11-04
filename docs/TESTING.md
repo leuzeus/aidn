@@ -1,5 +1,26 @@
 # Testing Guide
 
+### Explicit native authorization epochs
+
+Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--native-epoch-mode=files|dual|db-only --retain-on-failure` separately per mode.
+Actual allocator/worker admission, authenticated journals and canonical stores
+consume a fresh explicit grant, retaining the unchanged initial deadline and
+all cumulative debits. The injected fixture clock passes the old deadline.
+Refusals cover incomplete/foreign closure, missing/unverified/reused consent,
+stale current state, wrong exact grant and unknown accounting. FILES also retains
+an unused expired epoch and uses the mixed IR host across a deterministic
+operation, external wait and native continuation. Cold reads and simulation
+must preserve every original accepted event and checkpoint.
+
+Approval, native transport and process control are doubles. Genuine human,
+provider and native all-resource closure, general unknown-effect reconciliation,
+correction-cycle admission and exact installed archive qualification remain
+separate. The initial unused grant before any allocation has no epoch route.
+Existing `--journal-only`, `--resume-only` and `--mixed-only` remain separate
+regression checks. See ADR-0026 for the source and persistence contract.
+
+
 `node tools/perf/verify-standard-expired-plan-fixtures.mjs` checks a restricted
 explicit preparation path after an accepted `STANDARD_PLAN_EXPIRED` refusal.
 The fixed operation host rereads the current authority and prepares the same

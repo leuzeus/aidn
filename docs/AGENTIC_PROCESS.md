@@ -1,5 +1,16 @@
 # Participants, roles and agentic control
 
+The internal journaled allocator and mixed host expose read-only epoch
+preparation and explicit epoch activation. A host-composed source must verify
+fresh human approval and complete native/provider/process resource closure for
+the exact signed request. V2 journals retain the original signed v1 journal,
+all grants, checkpoints and cumulative debits. New worker ceilings subtract
+all previous consumption. An epoch does not grant business effects, bypass
+cycle admission or revive failed/unknown allocations. See
+[ADR-0026](ADR/ADR-0026-explicit-native-authorization-epochs.md) for contracts,
+unused-epoch expiry, source responsibilities and qualification limits.
+
+
 Selected task execution uses `cycle_task_select`, a distinct task-work native
 report, `cycle_task_work_evaluate` and authorized `cycle_task_advance` in the
 common IR loop. The host authenticates their ordered frozen-plan chain and

@@ -16,6 +16,8 @@ import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
 import { readNativeAllocationCheckpoint, readNativeAllocationHistory, verifyNativeResultEvidence, nativeAllocationOutputId, assertNativeAllocationProjection } from "./native-allocation-evidence.mjs";
 import { createNativeAllocationControls, readNativeControlContext } from "./native-allocation-controls.mjs";
+import { createNativeAuthorizationEpochs } from "./native-authorization-epochs.mjs";
+import { effectiveNativeEpochAuthorization } from "../../core/workflow/native-authorization-epoch.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const limitKeys = ["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms", "max_turn_ms", "max_responses", "max_bytes"];
@@ -24,7 +26,7 @@ const json = file => { const data = readAgentRunFile(file, { json: false, maxByt
 // The controller and RPC seams belong to the trusted embedding, never authored
 // configuration. The observer only denies launches or retains actual observations;
 // it cannot replace the worker's assignment/result or termination verdicts.
-export function createJournaledNativeAllocation({ configuration, readSigningKey, environment = process.env, controlSource, processAuthority }, { controllerFactory } = {}) {
+export function createJournaledNativeAllocation({ configuration, readSigningKey, environment = process.env, controlSource, processAuthority, nativeAuthorizationSource }, { controllerFactory } = {}) {
   if (checkShadowJson(configuration)) fail("NATIVE_ALLOCATION_CONFIGURATION_INVALID");
   const config = structuredClone(configuration), configurationSha = shadowHash(config);
   const executor = createProjectAgenticProcessExecution(config, { environment, processAuthority }), preview = executor.preview();
@@ -42,6 +44,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     const value = store.read(journalId);
     if (value.record) {
       signer.verify(value.record);
+      if (value.record.origin_journal) signer.verify(value.record.origin_journal);
       if (value.record.instance_id !== config.instance_id || value.record.scope_id !== current.scope_id || value.record.model_sha256 !== current.model_sha256) fail("NATIVE_ALLOCATION_SCOPE_CHANGED");
     }
     return value;
@@ -74,11 +77,15 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     return { known: true, responses: entries.reduce((sum, entry) => sum + entry.consumption.responses_observed, 0),
       bytes: entries.reduce((sum, entry) => sum + entry.consumption.storage_debit_bytes, 0) };
   }
+  const epochs = createNativeAuthorizationEpochs({ configuration: config, signer, read, write, checkpoint, authenticatedCurrent,
+    preview: () => executor.preview(), source: nativeAuthorizationSource, processAuthority,
+    materialize: () => { if (projectionRequired) store.materialize(journalId, { write: true }); } });
   return Object.freeze({
     preview() { const value = read(); return { ...executor.preview(), journal_id: journalId, journal_sha256: value.record ? shadowHash(value.record) : null,
       generation: value.record?.allocations.length ?? 0, phase: value.record?.allocations.at(-1)?.phase ?? "absent", consumption: totals(value.record), native_started: false, written: false }; },
     inspect() { const value = read(); return value.record ? structuredClone(value.record) : null; },
     prepareControl: controls.prepare, captureControl: controls.capture, deliverControl: controls.deliver, readControl: controls.read,
+    prepareAuthorizationEpoch: epochs.prepare, activateAuthorizationEpoch: epochs.activate,
     readCheckpoint(generation) {
       const record = read().record, entry = record?.allocations.find(row => row.generation === generation);
       if (!entry) fail("NATIVE_ALLOCATION_GENERATION_UNAVAILABLE");
@@ -107,9 +114,10 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       }
       if (!consumed.known) fail("NATIVE_ALLOCATION_CONSUMPTION_UNKNOWN");
       if (before.record?.allocations.length >= 32) fail("NATIVE_ALLOCATION_GENERATION_LIMIT");
-      const auth = structuredClone(authorization);
+      let auth = structuredClone(authorization);
       if (checkShadowJson(auth) || auth?.approved !== true || auth.model_allowed !== true || auth.configuration_sha256 !== configurationSha) fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
-      if (previous) {
+      if (before.record?.contract_version === "native-allocation-journal.v2") auth = effectiveNativeEpochAuthorization(before.record, auth);
+      else if (previous) {
         const ceiling = before.record.allocations[0].limits;
         if (["max_responses", "max_bytes", "max_turn_ms", "global_deadline_ms", "workflow_deadline_ms"].some(key => auth[key] > ceiling[key])) fail("NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED");
         auth.max_responses -= consumed.responses; auth.max_bytes -= consumed.bytes;
@@ -133,7 +141,8 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
             authorization_sha256: shadowHash(auth), initial_instance_sha256: canonical?.instance_sha256 ?? createAgenticProcess(creation).instance_sha256,
             limits: limitsOf(auth), phase: "reserved", owned_result_sha256: null, tree_proof_sha256: null, tree_closed: false, owned_status: null,
             first_failure: null, checkpoint: null, closure_ref: null, consumption: null };
-          const body = { contract_version: "native-allocation-journal.v1", journal_id: journalId, instance_id: config.instance_id, scope_id: actual.scope_id,
+          const body = { contract_version: now.record?.contract_version ?? "native-allocation-journal.v1", journal_id: journalId, instance_id: config.instance_id, scope_id: actual.scope_id,
+            ...(now.record?.epochs ? { initial_authorization: now.record.initial_authorization, origin_journal: now.record.origin_journal, epochs: now.record.epochs } : {}),
             model_sha256: actual.model_sha256, revision: (now.record?.revision ?? 0) + 1, allocations: [...(now.record?.allocations ?? []), entry] };
           write(body, now.content_sha256); claim = entry;
           return { generation: entry.generation, owner_id: entry.owner_id, output_id: nativeAllocationOutputId(config.instance_id, entry.generation) };

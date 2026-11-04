@@ -4170,3 +4170,21 @@ General unknown-owner recovery, native epochs, actual admitted correction cycles
 physical corrections/reclosure/review/merge/sync, the remaining business expiries,
 all L1-L8/A1-A10 and genuine native/provider/human/PG/exact installed archive
 qualification remain required.
+
+
+### Explicit native authorization epochs, 2026-11-04
+
+The source allocator and mixed host expose explicit versioned epoch preparation
+and activation (ADR-0026), with fresh verified approval/all-resource closure,
+exact-prefix CAS, retained signed v1 origin, original and subsequent grants,
+checkpoints/results and cumulative consumption. Unused expired epochs may be
+superseded at the same next native generation while retaining their history.
+The focused mode/mixed-host results remain separate evidence; source/schema
+availability alone is not the complete L4 deliverable.
+
+Initial unused authorization before any allocation still has no epoch route.
+Genuine human/native/provider resource closure, general positive unknown-effect
+recovery, retained owners, admitted correction cycles, physical work, fresh
+validation/reclosure, review/resolution/consent/merge/sync, all remaining
+L1-L8/A1-A10 and exact installed archive qualification remain required. Ordinary
+entry is unchanged and complete_standard_workflow remains false.
