@@ -25,7 +25,7 @@ export async function verifyInitialNativeAuthorizationEpochs(check, { journalFix
     }, async verify({ grant }) { verified++; return { outcome: "verified", authority_id: grant.authority_id, grant_sha256: shadowHash(grant), evidence_class: "fixture" }; } };
     const actor = () => f.open(() => f.key, source);
     try {
-      await assert.rejects(f.open().run({ execute: true, authorization: original }), /AUTHORIZATION_EXPIRED/);
+      await assert.rejects(f.open().run({ execute: true, authorization: original }), { code: "PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED" });
       assert.equal(actor().inspect(), null); assert.equal(f.launches ?? 0, 0);
       const request = actor().prepareAuthorizationEpoch({ originalAuthorization: original });
       assert.equal(request.contract_version, "native-authorization-epoch-request.v2"); assert.equal(request.next_generation, 1);
