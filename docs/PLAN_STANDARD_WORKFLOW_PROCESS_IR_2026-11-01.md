@@ -4437,3 +4437,7 @@ journey and the production-dispatcher UNKNOWN chain. The entire L1-L8/A1-A10
 acceptance remains incomplete, ordinary entry unchanged and
 `complete_standard_workflow=false`. Genuine human/provider/native/OS, configured
 PostgreSQL and the exact installed package remain separate NOT_RUN evidence.
+
+The dated `qualification/standard-workflow/correction-redelivery-components-2026-11-04.json`
+records distinct sources, retained failures and jobs still active at observation.
+It does not promote component or synthetic preflight results to whole acceptance.
