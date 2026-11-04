@@ -4262,3 +4262,14 @@ choice/admission/plan/DoR/readiness/IMPLEMENTING, physical work, fresh validatio
 reclosure, causal delivery, technical review, fresh human merge consent and
 merge/fetch/divergence/strategy/sync remain due. Ordinary entry is unchanged and
 `complete_standard_workflow=false` remains exact.
+
+The DB-only projection injection subsequently failed in the harness before its
+port invocation: the expected physical session projection does not exist. That
+terminal failure and its exact C402 source remain retained. The next isolated
+source scopes projection faults to FILES/DUAL and records DB-only projection
+probes as N/A. It adds canonical content/metadata faults for database modes,
+checks DB-only physical projection absence and preserves foreign Git refusal
+and zero checkpoint commits. These are harness changes, with no production or
+catalog update and no new authority. Original protected matrices keep their
+source; only distinct guarded cases may qualify the corrected harness. The
+complete preflight and all later L1-L8/A1-A10 acceptance remain pending.

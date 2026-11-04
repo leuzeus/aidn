@@ -13,12 +13,20 @@ import { agenticPolicyPins } from '../../src/core/workflow/agentic-process-model
 import { standardWorkflowOperationBindings } from '../../src/application/runtime/standard-workflow-operations.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
+import { artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe', windowsHide: true }).trim();
 const here = fileURLToPath(import.meta.url), temporary = fs.realpathSync(os.tmpdir()), owned = [], evidence = [];
 const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
 const positiveOnly = process.argv.includes('--positive-only'), retain = process.argv.includes('--retain-always');
 const grantOnly = process.argv.includes('--grant-only');
+assert.ok(['files', 'dual', 'db-only'].includes(mode), 'FIXTURE_STATE_MODE_INVALID');
+const projectionCases = mode === 'db-only' ? [] : ['projection'];
+const canonicalCases = mode === 'files' ? [] : ['canonical', 'metadata'];
+const notApplicable = mode === 'db-only' && !positiveOnly && !grantOnly
+  ? ['before-effect', 'after-first-CAS'].map(phase => ({ phase, probe: 'projection', status: 'N/A',
+    reason: 'DB-only has no physical business projection; canonical content/metadata and foreign Git probes remain required' })) : [];
 const child = process.argv.find(arg => arg.startsWith('--child='));
 if (child) {
   const saved = signer.verify(JSON.parse(fs.readFileSync(child.slice(8), 'utf8'))), f = bindCorrectionRealPorts(saved.fixture);
@@ -49,6 +57,27 @@ function mutate(f, kind) {
   if (kind === 'prefix') { f.state.prefix = 'b'.repeat(64); return () => { f.state.prefix = f.instance.instance_sha256; }; }
   if (kind === 'product') return fileMutation(path.join(f.root, 'fixture-product.txt'));
   if (kind === 'projection') return fileMutation(path.join(f.root, 'docs/audit', f.names[0]));
+  if (kind === 'canonical' || kind === 'metadata') {
+    assert.notEqual(mode, 'files');
+    const store = createProjectArtifactStore({ targetRoot: f.root, existingOnly: true });
+    let previous, changed;
+    try {
+      previous = store.getArtifact(f.names[0]); assert.ok(previous);
+      // Deliberate competing canonical writer, independent of the held owner.
+      // Preserve the exact historical row for before-effect fixture restoration;
+      // never alter a prepared plan or an authorization timestamp.
+      const artifact = kind === 'canonical'
+        ? { ...previous, content: previous.content + '\nforeign canonical content\n', sha256: undefined, size_bytes: undefined, canonical_json: undefined }
+        : { ...previous, classification_reason: previous.classification_reason + '-foreign' };
+      store.compareAndSwapArtifact({ artifact, expectedSha256: previous.sha256, expectedMetadataSha256: artifactMetadataHash(previous) });
+      changed = store.getArtifact(f.names[0]);
+    } finally { store.close(); }
+    return () => {
+      const restore = createProjectArtifactStore({ targetRoot: f.root, existingOnly: true });
+      try { restore.compareAndSwapArtifact({ artifact: previous, expectedSha256: changed.sha256, expectedMetadataSha256: artifactMetadataHash(changed) }); }
+      finally { restore.close(); }
+    };
+  }
   if (kind === 'foreign') { const file = path.join(f.root, 'unapproved.txt'); fs.writeFileSync(file, 'foreign'); return () => fs.unlinkSync(file); }
   if (kind === 'index') {
     const file = path.resolve(f.root, git(f.root, 'rev-parse', '--git-path', 'index')), bytes = fs.readFileSync(file);
@@ -70,6 +99,14 @@ function mutate(f, kind) {
 }
 let checks = 0;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
+const assertProjectionScope = f => {
+  if (mode !== 'db-only') return;
+  assert.equal(f.artifacts.describe().database, true);
+  for (const name of f.names) {
+    assert.equal(f.artifacts.read(name, { required: true }).source, 'sqlite');
+    assert.equal(fs.existsSync(path.join(f.root, 'docs/audit', name)), false, 'DB-only must not fabricate a physical projection');
+  }
+};
 // A tiny preflight IR consumes the ACTUAL outputs with explicitly fixture-made
 // receipts. This checks the common reducer only, not the production dispatcher,
 // native producer, long standard graph or checkpoint ack-loss recovery chain.
@@ -101,11 +138,12 @@ try {
   save(f, 'initial', { fixture: f.saved, prepared, original });
   await test(mode + ': fresh and cold preparation authenticate fixture source through real local/remote Git ports', async () => {
     assert.equal(cold(f, 'reopen').can_apply, true); assert.deepEqual(snapshot(f), original);
+    assertProjectionScope(f);
     assert.throws(() => f.push.observeOwned(f.p.head_branch, { assertLocal: true }));
     assert.throws(() => f.push.observeOwned(f.p.head_branch, { clean: true, approved_paths: f.names }));
   });
   if (!positiveOnly) {
-    for (const kind of grantOnly ? [] : ['provider', 'event', 'source', 'prefix', 'product', 'projection', 'foreign', 'index', 'head', 'ref', 'remote', 'index-lock', 'ref-lock', 'head-lock', 'packed-lock']) {
+    for (const kind of grantOnly ? [] : ['provider', 'event', 'source', 'prefix', 'product', ...projectionCases, ...canonicalCases, 'foreign', 'index', 'head', 'ref', 'remote', 'index-lock', 'ref-lock', 'head-lock', 'packed-lock']) {
       await test(mode + ': before-effect ' + kind + ' refuses without owned CAS', async () => {
         prepared = await f.port.prepare(f.instance, f.input); assert.equal(prepared.can_apply, true);
         const restore = mutate(f, kind), before = snapshot(f); let result, error;
@@ -117,6 +155,7 @@ try {
         if (result) assert.equal(result.effect_status, 'no_effect');
         assert.deepEqual(snapshot(f), before); assert.equal(f.artifacts.ownerPending(), false);
         restore(); assert.deepEqual(snapshot(f), original);
+        assertProjectionScope(f);
       });
     }
     if (!grantOnly) await test(mode + ': provider wait retains owner, concurrent/cold observer waits, cancellation releases only before-effect owner', async () => {
@@ -155,6 +194,7 @@ try {
     assert.match(f.artifacts.read(f.names[0]).content, /completion retained verbatim/);
     assert.match(f.artifacts.read(f.names[1]).content, /^active_cycle: none$/m);
     assert.deepEqual(fs.readFileSync(path.join(f.root, 'fixture-product.txt')), product);
+    assertProjectionScope(f);
     if (mode !== 'db-only') {
       assert.throws(() => f.push.inspect(f.p.head_branch), { code: 'WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED' });
       await assert.rejects(f.push.push({ branch: f.p.head_branch }, { write: true, assertAuthorized() {} }), { code: 'WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED' });
@@ -175,9 +215,10 @@ try {
     const head = git(f.root, 'rev-parse', 'HEAD'), state = replay([output, result]); assert.equal(inspectAgenticProcess(state).status, 'COMPLETED');
     save(f, 'reducer', { instance: state, proof: 'tiny-preflight-IR-fixture-receipts-actual-outputs', production_dispatcher: 'NOT_RUN' });
     assert.equal(git(f.root, 'rev-parse', 'HEAD'), head); assert.deepEqual(snapshot(f), before);
+    assertProjectionScope(f);
   });
   if (!positiveOnly) {
-    for (const kind of ['provider', 'event', 'source', 'prefix', 'product', 'projection', 'foreign', 'index', 'head', 'ref', 'remote', 'index-lock', 'ref-lock', 'head-lock', 'packed-lock', 'owner', 'grant', 'cancel']) {
+    for (const kind of ['provider', 'event', 'source', 'prefix', 'product', ...projectionCases, ...canonicalCases, 'foreign', 'index', 'head', 'ref', 'remote', 'index-lock', 'ref-lock', 'head-lock', 'packed-lock', 'owner', 'grant', 'cancel']) {
       await test(mode + ': after-first-CAS ' + kind + ' retains UNKNOWN/owner and cold refusal', async () => {
         const partial = await fixture(), p = await partial.port.prepare(partial.instance, partial.input), controller = new AbortController(); let mutated = false;
         const result = await partial.port.apply(partial.instance, p, { write: true, expectPlan: p.plan_sha256, signal: controller.signal,
@@ -192,13 +233,17 @@ try {
         const before = snapshot(partial), lock = fs.readFileSync(path.join(partial.root, '.aidn/runtime/standard-workflow/effects.lock'));
         assert.equal((await partial.port.prepare(partial.instance, partial.input)).can_apply, false); assert.equal(cold(partial, 'reopen').can_apply, false);
         assert.deepEqual(snapshot(partial), before); assert.deepEqual(fs.readFileSync(path.join(partial.root, '.aidn/runtime/standard-workflow/effects.lock')), lock);
+        assertProjectionScope(partial);
         const state = replay([result]); assert.equal(inspectAgenticProcess(state).status, 'WAITING');
         save(partial, 'reducer', { instance: state, proof: 'unknown-retained-tiny-preflight-IR-fixture-receipt' });
       });
     }
   }
   }
-  evidence.push({ status: 'PASS', checks, mode, positiveOnly, grantOnly, proof: 'real-application-canonical-metadata-Git-SQLite-with-authenticated-fixture-triage',
+  for (const row of notApplicable) console.log('N/A ' + mode + ': ' + row.phase + ' ' + row.probe + ': ' + row.reason);
+  evidence.push({ status: 'PASS', checks, mode, positiveOnly, grantOnly, not_applicable: notApplicable, skipped: [],
+    projection_scope: mode === 'db-only' ? 'absent; canonical SQLite required; no Git commit witness' : 'physical projection required',
+    proof: 'real-application-canonical-metadata-Git-SQLite-with-authenticated-fixture-triage',
     fixture_key: 'public-key127', model_calls: 0, native_client: 'NOT_RUN', provider_transport: 'FIXTURE', production_dispatcher: 'NOT_RUN',
     full_standard_workflow: false, installed_archive: 'NOT_RUN', postgres: 'NOT_RUN', roots: owned });
   console.log(JSON.stringify(evidence.at(-1)));

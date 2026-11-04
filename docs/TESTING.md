@@ -3247,6 +3247,17 @@ and cannot qualify the full matrix. Each case derives a fresh plan normally;
 expiry cannot stand in for the injected refusal. Partial failures retain their
 owner and UNKNOWN, and cold preparation refuses to replay them.
 
+Projection fault injection applies to FILES and DUAL only. DB-only reports both
+projection probes as N/A, separately from passing checks, and asserts the
+absence of physical business projections before and after reopen/checkpoint.
+DUAL and DB-only also inject competing canonical content and metadata writes;
+all modes retain the foreign Git-file refusal. DB-only checkpoint verification
+requires zero Git commits and never creates a Git witness or visible export.
+The earlier DB-only ENOENT from a projection injection is a retained harness
+failure, not a product regression or a passing matrix. New cases use their own
+fresh plans and exact guarded source; these edits do not qualify a matrix until
+its real terminal outcome is captured.
+
 The suite composes actual correction authority, canonical CAS/metadata,
 projection, local/bare-remote Git and SQLite. Triage, accepted sources and event
 identity are authenticated synthetic fixtures using public key127. Provider
