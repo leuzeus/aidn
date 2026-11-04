@@ -17,7 +17,7 @@ const H = 'a'.repeat(64), O = 'b'.repeat(40), op = x => 'op_' + x.repeat(40), ke
 const baseReview = () => ({ session_id: 'S001', checkpoint_operation_id: op('a'), checkpoint_plan_sha256: H, checkpoint_output_sha256: H,
   reopen_operation_id: op('b'), triage_operation_id: op('c'), product_sha256: H, provider_subject_sha256: H,
   head_oid: O, head_branch: 'S001-example', remote_head_oid: 'c'.repeat(40), base_oid: 'd'.repeat(40), state_mode: 'files',
-  postimages: ['sessions/S001.md', 'CURRENT-STATE.md', 'snapshots/context-snapshot.md'].map(path => ({ path, sha256: H, metadata_sha256: H })) });
+  postimages: ['sessions/S001.md', 'CURRENT-STATE.md', 'snapshots/context-snapshot.md'].map(path => ({ path, sha256: H, metadata_sha256: null })) });
 function fixture(makeInbox) {
   const rows = new Map(), sources = new Map(); let verified = true;
   const inbox = makeInbox ? makeInbox() : {
@@ -60,11 +60,16 @@ await test('four genuine-source choices keep refusal, defer and cancellation dis
 await test('checkpoint, triage, product, provider, HEAD and each postimage bind the human subject', async () => {
   for (const change of [r => r.checkpoint_operation_id = op('f'), r => r.triage_operation_id = op('f'), r => r.product_sha256 = 'b'.repeat(64),
     r => r.provider_subject_sha256 = 'b'.repeat(64), r => r.head_oid = 'f'.repeat(40), r => r.base_oid = 'f'.repeat(40),
-    ...[0, 1, 2].map(i => r => r.postimages[i].sha256 = 'b'.repeat(64)), r => r.postimages[0].metadata_sha256 = 'b'.repeat(64)]) {
+    ...[0, 1, 2].map(i => r => r.postimages[i].sha256 = 'b'.repeat(64))]) {
     const f = fixture(), original = f.claim(); change(f.record.preview.prepared.plan.review); f.sources.set('fixture:answer', original);
     await assert.rejects(f.human().reserve(f.record, 'fixture:answer'), { code: 'PROCESS_HUMAN_QUESTION_CHANGED' }); assert.equal(f.rows.size, 0);
   }
   const wrong = baseReview(); wrong.postimages.reverse(); assert.throws(() => assertPrCorrectionReview(wrong));
+  for (const mode of ['dual', 'db-only']) {
+    const review = baseReview(); review.state_mode = mode; assert.throws(() => assertPrCorrectionReview(review));
+    review.postimages.forEach(row => row.metadata_sha256 = H); assertPrCorrectionReview(review);
+    review.postimages[0].metadata_sha256 = null; assert.throws(() => assertPrCorrectionReview(review));
+  }
 });
 await test('old integration consent and source event reuse cannot become a correction request', async () => {
   const f = fixture(), old = f.claim(); old.contract_version = 'human-session-branch-integration-decision.v1'; old.choice = 'integrate-to-session'; f.sources.set('fixture:old', old);

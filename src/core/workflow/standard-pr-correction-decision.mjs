@@ -10,7 +10,8 @@ const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(
 export const prCorrectionChoices = Object.freeze(['create-correction-cycle', 'refused', 'deferred', 'cancelled']);
 export function assertPrCorrectionReview(value) {
   if (!valid(value, reviewSchema) || Buffer.byteLength(JSON.stringify(value)) > 16384
-    || shadowHash(value.postimages.map(row => row.path)) !== shadowHash(prCorrectionReopenPaths(value.session_id)))
+    || shadowHash(value.postimages.map(row => row.path)) !== shadowHash(prCorrectionReopenPaths(value.session_id))
+    || value.postimages.some(row => value.state_mode === 'files' ? row.metadata_sha256 !== null : !/^[a-f0-9]{64}$/.test(row.metadata_sha256 ?? '')))
     fail('STANDARD_PR_CORRECTION_REVIEW_INVALID');
   return value;
 }
