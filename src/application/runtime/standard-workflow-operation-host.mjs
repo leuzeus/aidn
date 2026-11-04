@@ -96,7 +96,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
   const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
   if (model.contract_version !== "agentic-process-model.v2" || typeof authorize !== "function") fail("STANDARD_HOST_CONFIGURATION_INVALID");
-  if (controlSource != null && (typeof controlSource.read !== "function" || typeof controlSource.verify !== "function")) fail("STANDARD_HOST_CONTROL_CONFIGURATION_INVALID");
+  if (controlSource != null && ![["read", "verify"], ["readReview", "verifyReview"]].some(pair => pair.every(key => typeof controlSource[key] === "function")))
+    fail("STANDARD_HOST_CONTROL_CONFIGURATION_INVALID");
   const operations = createStandardWorkflowOperations({ targetRoot, now }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
   const cyclePlanRecord = processAuthority ? createStandardCyclePlanRecord({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readCyclePlanEvaluation(instance, input),
@@ -753,10 +754,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     inspect: id => current(id),
     prepareControl: input => structuredClone(controlRequest(input)),
-    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, write = false }) {
+    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, captureKind = "claim", write = false }) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
+      if (!["claim", "pr-review-content"].includes(captureKind)) fail("PROCESS_CONTROL_CAPTURE_KIND_INVALID");
       const request = controlRequest({ instanceId, expectedSha256, occurrenceId });
-      const capture = await controls.reserve(request, sourceRef, { signal });
+      const capture = await (captureKind === "pr-review-content" ? controls.reserveReview : controls.reserve)(request, sourceRef, { signal });
       if (!capture) return { status: "waiting_for_control", request };
       // A retained capture survives races/crashes, but may not wake a changed
       // instance or business context. Such a capture needs explicit reconciliation.

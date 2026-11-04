@@ -1,5 +1,16 @@
 # Testing Guide
 
+`node tools/perf/verify-standard-pr-review-control-fixtures.mjs` selects complete
+PR event/content capture on files, dual and db-only; `--mode=<mode>` selects one.
+The actual canonical inbox, host/service, SQLite CAS and common reducer are used.
+Event authentication, accepted update authority and provider responses are fixture
+capabilities. Cases reject stale/foreign/current-revision/actor failures, preserve
+full content before delivery, reject same-head changes and conflicting duplicates,
+then resume in a new Node process and compare exact replay/simulation. DB-only
+also injects a failed acknowledgement after the canonical event and repairs it
+without the source. These are component checks; the candidate standard graph's
+PR wait/triage route, live provider/native and exact archive remain separate.
+
 `node tools/perf/verify-github-observation-async-fixtures.mjs` includes cancellation
 through the external inbox, application PR observer and actual direct subprocess.
 It observes that subprocess's close separately from the inbox return. Human

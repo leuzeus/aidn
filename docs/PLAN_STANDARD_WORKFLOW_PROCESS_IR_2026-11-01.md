@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 112/110 et le modèle composé candidat en 54
+les composants startup/cycle en 116/114 et le modèle composé candidat en 58
 (95 nœuds, 60 occurrences d’opération, 50 identifiants de liaison mobilisés parmi
 58 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -3546,3 +3546,38 @@ journal has seven closed/tree_closed generations, no eighth reservation and no
 owner at capture. Independent replay/simulation reproduce104/105 exactly without
 constructing effect ports. Fixtures are retained; cleanup and independent
 all-resource extinction are not claimed. This verdict does not qualify53 or49.
+
+## Addendum — application cancellation and explicit PR payload inbox
+
+The [model54 application-cancellation evidence](qualification/agentic-process/pr-review-application-cancellation-2026-11-03.json)
+separates12 asynchronous transport/application cases,11 PR component cases per
+storage mode and27 historical control-inbox cases. The observer forwards its
+caller signal through all collections and confirmed-head rereads. Human capture
+combines caller cancellation with its internal timeout for read and verification.
+Synchronous Git readers remain uninterruptible while occupying the JavaScript
+thread; direct subprocess close evidence does not establish whole-source or
+general native process-tree closure. The first malformed fixture request failed
+before its new application scenario; its temporary directory remains retained
+after automatic deletion review rejected cleanup. Subsequent fixtures cleaned up.
+
+The explicit successor introduces `process-control-inbox.v2` and
+`process-pr-review-payload.v1`, under the existing governed control-inbox concept.
+The complete observation and authenticated event actor/revision, repository/PR,
+head/base and branches are signed and CAS-retained before reducer delivery and
+acknowledgement. The host selects the explicit `pr-review-content` capture kind;
+historical v1 claims and human inbox v1-v6 are not converted. Source authentication
+requires trusted host event and canonical-context ports. A hash or fixture actor
+does not authenticate a live provider. Fresh verification compares full same-head
+collections and the current event revision before delivery. A signed capture may
+survive its initial event-age window only with current authentication and fresh
+content; no native budget or effect grant is renewed.
+
+The dedicated PR-control component fixture belongs to the required runtime gate;
+its omission is rejected by the governed command policy. The files case passes
+eight controls including cold-process delivery and exact common-reducer
+simulation. Other mode results and failures remain separately attributed to
+their exact source. This is still a component: the candidate standard graph's PR
+wait/triage route, accepted native triage/dispositions, actual responses/resolutions,
+merge consent/effect, post-merge synchronization and the remaining A1–A10/L4–L8
+work remain required. Ordinary selection and `complete_standard_workflow` stay
+unchanged. No live remote effect, installed archive or native identity is claimed.

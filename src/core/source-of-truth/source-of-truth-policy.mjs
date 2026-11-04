@@ -47,10 +47,10 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     owner: "trusted process human/external delivery host",
     lifecycle: "reserved after source verification -> delivered; missing acknowledgement is reconciled from the canonical event",
     scope: "physical project, source event identity and exact pinned occurrence/revision/context",
-    retention: "retain immutable source, request, delivery, deduplication identity and delivery checkpoint without automatic purge",
-    migration: "new explicit inbox records; no inference from historical messages or silent instance conversion",
+    retention: "retain immutable source, request, delivery, deduplication identity and delivery checkpoint without automatic purge; explicit v2 PR capture also retains complete review/check/thread content and authenticated event actor/revision before acknowledgement",
+    migration: "new explicit inbox records; v1 claim-only and v2 PR payload readers stay separate, without upgrading old records or inferring content from historical messages",
     replacement: "signed artifact CAS; a source event cannot authorize a different request and accepted effects are never replayed",
-    evidence_targets: ["src/core/workflow/process-control-inbox.mjs", "src/adapters/runtime/process-control-inbox-store.mjs", "src/application/runtime/standard-workflow-control-inbox.mjs", "tools/perf/verify-standard-workflow-control-fixtures.mjs"],
+    evidence_targets: ["src/core/workflow/process-control-inbox.mjs", "src/adapters/runtime/process-control-inbox-store.mjs", "src/application/runtime/standard-workflow-control-inbox.mjs", "src/application/runtime/standard-session-pr-review-control-source.mjs", "src/core/contracts/workflow-definition/process-control-inbox.v2.schema.json", "tools/perf/verify-standard-pr-review-control-fixtures.mjs", "tools/perf/verify-standard-workflow-control-fixtures.mjs"],
   },
   process_decision_inbox: {
     owner: "trusted human decision capture host",
@@ -455,7 +455,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/control-inbox/<id>.json only when the configured derived projection is required",
-    notes: "Existing canonical artifact CAS, no shared coordination table. A trusted source verifies identity and an exact request including instance, correlation, available events, branch/head and context hash. Signed reservation precedes the reducer event, acknowledgement follows it. Reopening authenticates both operation and control histories. Missing sources wait without polling or model allocation. Generic delivery is not proof of a GitHub adapter, provider freshness, business approval or native mixed resume.",
+    notes: "Existing canonical artifact CAS, no shared coordination table. A trusted source verifies identity and an exact request including instance, correlation, available events, branch/head and context hash. Explicit v2 PR capture retains complete content plus event repository/PR/head/base/actor/revision before the reducer event; v1 remains claim-only. Source authentication and fresh collection verification precede delivery, acknowledgement follows it. Reopening authenticates both histories. Missing sources wait without polling or model allocation. Capture is not triage, business approval, native mixed resume or live-provider qualification.",
   }),
   policy({
     concept: "process_decision_inbox", label: "Authenticated human decision inbox",

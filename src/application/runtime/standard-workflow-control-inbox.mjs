@@ -1,4 +1,4 @@
-import { assertControlRequest, assertControlSource, controlInboxId, controlDelivery } from "../../core/workflow/process-control-inbox.mjs";
+import { assertControlRequest, assertControlSource, assertControlReviewPayload, controlInboxId, controlDelivery } from "../../core/workflow/process-control-inbox.mjs";
 import { checkShadowJson, shadowHash } from "../../core/workflow/shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -32,31 +32,40 @@ export function createStandardControlInbox({ store, signer, source, projectionRe
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
   async function verify(record, signal) {
-    const proof = await invoke("verify", { source: record.source, sourceRef: record.source_ref, request: record.request }, signal);
+    const proof = await invoke(record.contract_version === "process-control-inbox.v2" ? "verifyReview" : "verify",
+      { source: record.source, sourceRef: record.source_ref, request: record.request,
+        ...(record.contract_version === "process-control-inbox.v2" ? { payload: record.payload } : {}) }, signal);
     if (proof?.outcome !== "verified" || proof.authority_id !== record.source.authority_id
       || proof.source_sha256 !== shadowHash(record.source)) fail("PROCESS_CONTROL_NOT_AUTHENTICATED");
   }
-  return Object.freeze({
-    read: id => structuredClone(read(id).record),
-    async reserve(request, sourceRef, { signal } = {}) {
+  async function reserve(request, sourceRef, { signal } = {}, withPayload = false) {
       assertControlRequest(request);
       if (typeof sourceRef !== "string" || !sourceRef || sourceRef.length > 256 || /[\x00-\x1f]/.test(sourceRef)) fail("PROCESS_CONTROL_SOURCE_REF_INVALID");
-      const claim = await invoke("read", { sourceRef, request }, signal);
-      if (claim === null) return null;
+      const capture = await invoke(withPayload ? "readReview" : "read", { sourceRef, request }, signal);
+      if (capture === null) return null;
+      if (withPayload && (Object.keys(capture).sort().join(",") !== "payload,source")) fail("PROCESS_CONTROL_REVIEW_CAPTURE_INVALID");
+      const claim = withPayload ? capture.source : capture;
       assertControlSource(claim, request);
-      const body = { contract_version: "process-control-inbox.v1", inbox_id: controlInboxId(claim), source_ref: sourceRef,
+      if (withPayload) assertControlReviewPayload(capture.payload, claim, request);
+      const body = { contract_version: withPayload ? "process-control-inbox.v2" : "process-control-inbox.v1", inbox_id: controlInboxId(claim), source_ref: sourceRef,
+        ...(withPayload ? { payload: capture.payload } : {}),
         request: structuredClone(request), source: claim, delivery: controlDelivery(request, claim), phase: "reserved", delivered_instance_sha256: null };
       await verify(body, signal);
       const before = store.read(body.inbox_id);
       if (before.record) {
         signer.verify(before.record);
-        if (shadowHash(before.record.request) !== shadowHash(request) || shadowHash(before.record.source) !== shadowHash(claim)
+        if (before.record.contract_version !== body.contract_version || shadowHash(before.record.request) !== shadowHash(request) || shadowHash(before.record.source) !== shadowHash(claim)
+          || withPayload && shadowHash(before.record.payload) !== shadowHash(capture.payload)
           || before.record.source_ref !== sourceRef) fail("PROCESS_CONTROL_SOURCE_ALREADY_USED");
         if (projectionRequired) store.materialize(body.inbox_id, { write: true });
         return before.record;
       }
       return persist(body, null);
-    },
+  }
+  return Object.freeze({
+    read: id => structuredClone(read(id).record),
+    reserve: (request, sourceRef, options) => reserve(request, sourceRef, options),
+    reserveReview: (request, sourceRef, options) => reserve(request, sourceRef, options, true),
     async verifyDelivery(id, signal) { const record = read(id).record; await verify(record, signal); return record.delivery; },
     acknowledge(id, instanceSha256) {
       const before = read(id), record = before.record;

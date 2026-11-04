@@ -1917,3 +1917,38 @@ capabilities, not authored executable data. Synchronous Git/checkpoint readers
 cannot be interrupted while they occupy the JavaScript thread. Propagation is
 therefore not proof of an end-to-end inbox deadline or general process-tree
 closure. The subprocess transport's independent close evidence stays separate.
+
+### Explicit durable PR content capture, 2026-11-03
+
+`process-control-inbox.v2` retains a `process-pr-review-payload.v1` containing
+the authenticated provider event and complete v2 review/check/thread observation.
+The event binds repository, PR number/node ID, head/base OIDs and branches,
+provider revision, time and actor node ID/login/type. The source claim binds
+that entire payload to the exact request, scope, instance and occurrence. A
+trusted event port must authenticate the actor and current event revision;
+JSON or a content digest cannot do that. A trusted canonical context port binds
+the current request and accepted update operation. The application observer
+collects complete content through its host provider capability. Verification
+rereads the event around a fresh complete collection and compares content
+digests, so same-head edits or a changed event cannot wake the occurrence.
+
+Capture uses the explicit `pr-review-content` kind and `readReview`/`verifyReview`
+ports. Generic claim capture retains its v1 protocol. Existing v1 records and
+human inbox v1-v6 remain unchanged and acquire no inferred payload. V2 source,
+event and full content are signed and CAS-persisted before reducer delivery;
+acknowledgement follows the canonical event. A conflicting duplicate cannot
+replace a captured payload. A missing acknowledgement is repaired against the
+authenticated canonical event without another provider read or repeated event.
+New captures refuse events older than five minutes. A retained signed capture
+may outlive that window only with fresh current-event authentication and complete
+content reobservation. This delivery grants no new native budget or effect right.
+
+This is a version of the existing `process_control_inbox` concept under its
+trusted delivery host, physical-project/occurrence scope, no-purge retention,
+canonical files/configured-runtime authority and required dual projection rules.
+There is no new shared table, implicit migration, replacement of v1, automatic
+db-only export or source event polling. The source factory composes host ports;
+its fixture event authentication does not qualify a live webhook/provider or
+native human identity. The candidate standard graph still needs its PR wait and
+triage route. Persisted content alone neither resolves findings nor accepts
+checks, finishes the skill or authorizes merge.

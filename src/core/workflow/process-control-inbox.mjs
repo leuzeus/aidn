@@ -1,6 +1,11 @@
 import requestSchema from "../contracts/workflow-definition/process-control-request.v1.schema.json" with { type: "json" };
 import sourceSchema from "../contracts/workflow-definition/process-control-source.v1.schema.json" with { type: "json" };
 import inboxSchema from "../contracts/workflow-definition/process-control-inbox.v1.schema.json" with { type: "json" };
+import inboxV2 from "../contracts/workflow-definition/process-control-inbox.v2.schema.json" with { type: "json" };
+import reviewPayloadSchema from "../contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json" with { type: "json" };
+import eventSchema from "../contracts/workflow-definition/github-pr-review-event.v1.schema.json" with { type: "json" };
+import payloadSchema from "../contracts/workflow-definition/process-pr-review-payload.v1.schema.json" with { type: "json" };
+import { createHash } from "node:crypto";
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { assertProcessControlEvent } from "./process-operation-contracts.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
@@ -35,11 +40,52 @@ export function controlDelivery(request, source) {
     evidence_refs: structuredClone(source.evidence_refs) };
 }
 export function assertControlInbox(value) {
-  schema(value, inboxSchema, "PROCESS_CONTROL_INBOX_INVALID");
+  schema(value, value?.contract_version === "process-control-inbox.v2" ? inboxV2 : inboxSchema, "PROCESS_CONTROL_INBOX_INVALID");
   assertControlSource(value.source, value.request);
+  if (value.contract_version === "process-control-inbox.v2") assertControlReviewPayload(value.payload, value.source, value.request);
   if (value.inbox_id !== controlInboxId(value.source) || shadowHash(value.delivery) !== shadowHash(controlDelivery(value.request, value.source))
     || (value.phase === "delivered") !== (value.delivered_instance_sha256 !== null)) fail("PROCESS_CONTROL_INBOX_BINDING_CHANGED");
   assertProcessControlEvent(value.delivery, { instance: { ...value.request, instance_sha256: value.request.instance_sha256, revision: value.request.instance_revision },
     occurrence: value.request });
   return value;
 }
+
+// A v2 record retains the complete provider evidence before reducer delivery.
+// It is a new explicit capture format; v1 claims are never upgraded on read.
+export function assertControlReviewPayload(value, source, request) {
+  schema(value, payloadSchema, "PROCESS_CONTROL_REVIEW_PAYLOAD_INVALID");
+  const { observation, event } = value;
+  schema(observation, reviewPayloadSchema, "PROCESS_CONTROL_REVIEW_PAYLOAD_INVALID");
+  assertControlReviewEvent(event);
+  assertControlSource(source, request);
+  if (observation.outcome !== "completed" || source.source_kind !== "external"
+    || !["review_snapshot", "checks_snapshot"].includes(source.event_key)
+    || event.event_key !== source.event_key || event.source_event_id !== source.source_event_id
+    || event.authority_id !== source.authority_id || shadowHash(event.actor) !== source.subject_sha256
+    || source.payload_sha256 !== shadowHash(value)) fail("PROCESS_CONTROL_REVIEW_PAYLOAD_INVALID");
+  const { evidence, threads, head_oid, base_oid } = observation.observations, p = evidence.pull_request, t = threads.pull_request;
+  if (request.head !== head_oid || p.head_oid !== head_oid || t.head_oid !== head_oid
+    || p.base_oid !== base_oid || t.base_oid !== base_oid || request.branch !== p.head_ref || t.head_ref !== p.head_ref
+    || p.base_ref !== t.base_ref || p.node_id !== t.node_id || p.number !== t.number
+    || p.state !== "OPEN" || t.state !== "OPEN" || p.is_draft || t.is_draft
+    || shadowHash(evidence.repository) !== shadowHash(threads.repository)
+    || event.repository_id !== evidence.repository.node_id || event.pull_request_id !== p.node_id || event.pull_request_number !== p.number
+    || event.head_oid !== head_oid || event.base_oid !== base_oid || event.head_ref !== p.head_ref || event.base_ref !== p.base_ref)
+    fail("PROCESS_CONTROL_REVIEW_PAYLOAD_INVALID");
+  const { repository, pull_request, reviews, checks, rollup_state } = evidence;
+  if (evidence.evidence_sha256 !== shadowHash({ repository, pull_request, reviews, checks, rollup_state })
+    || threads.observation_sha256 !== shadowHash({ repository: threads.repository, pull_request: t, threads: threads.threads }))
+    fail("PROCESS_CONTROL_REVIEW_PAYLOAD_INVALID");
+  const sha = text => createHash("sha256").update(text, "utf8").digest("hex");
+  for (const rows of [reviews, threads.threads.flatMap(row => row.comments)]) {
+    let bytes = 0;
+    for (const row of rows) {
+      const text = row.body_chunks.join(""), size = Buffer.byteLength(text); bytes += size;
+      if (size > 65536 || sha(text) !== row.body_sha256) fail("PROCESS_CONTROL_REVIEW_PAYLOAD_INVALID");
+    }
+    if (bytes > 1048576) fail("PROCESS_CONTROL_REVIEW_PAYLOAD_INVALID");
+  }
+  return value;
+}
+
+export const assertControlReviewEvent = value => schema(value, eventSchema, "PROCESS_CONTROL_REVIEW_EVENT_INVALID");
