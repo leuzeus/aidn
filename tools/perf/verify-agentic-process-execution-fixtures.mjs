@@ -110,7 +110,10 @@ const sha = value => createHash("sha256").update(value).digest("hex");
 const standardResponseText = process.argv.find(value => value.startsWith("--standard-composed-max-responses="))?.slice("--standard-composed-max-responses=".length);
 if (standardResponseText !== undefined && (!selectedStandardComposedMode || !/^[1-9][0-9]*$/.test(standardResponseText)
   || !Number.isSafeInteger(Number(standardResponseText)))) throw Error("STANDARD_FIXTURE_RESPONSE_LIMIT_INVALID");
-const standardScenario = selectedStandardComposedMode ? JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-positive.v1.json", import.meta.url), "utf8")) : null;
+const standardScenarioName = process.argv.find(value => value.startsWith("--standard-composed-scenario="))?.slice("--standard-composed-scenario=".length) ?? "positive";
+if (!["positive", "correction"].includes(standardScenarioName) || standardScenarioName !== "positive" && !selectedStandardComposedMode) throw Error("STANDARD_FIXTURE_SCENARIO_INVALID");
+const standardScenario = selectedStandardComposedMode ? JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-" +
+  (standardScenarioName === "correction" ? "correction.v2" : "positive.v1") + ".json", import.meta.url), "utf8")) : null;
 if (standardResponseText !== undefined) standardScenario.max_responses = Number(standardResponseText);
 if (standardScenario && (standardScenario.mode !== "COMMITTING" || standardScenario.closure !== "retain" || standardScenario.promotion !== "promote"
   || standardScenario.task_iterations !== 1 || standardScenario.cold_resume !== true || standardScenario.interruption !== null))
@@ -749,8 +752,11 @@ if (process.argv[2] === "--mixed-continue") {
         return { outcome: "completed", summary: "Fixture-only review classification, effects pending", report: {
           contract_version: "standard-pr-triage-report.v1", context_sha256: observed.context_sha256,
           items: standardPrTriageItems(context.payload).map(row => ({ kind: row.kind, node_id: row.node_id, thread_id: row.thread_id,
-            body_sha256: row.body_sha256, disposition: "not_a_finding", rationale: "The complete fixture body contains only a review acknowledgement.",
-            proposed_response: "", correction: "", evidence_refs: [{ ref: "github:" + row.kind + "/" + row.node_id, sha256: row.body_sha256 }] })) } };
+            body_sha256: row.body_sha256, disposition: standardScenarioName === "correction" ? "valid" : "not_a_finding",
+            rationale: standardScenarioName === "correction" ? "Fixture finding on the selected exported product value requires a new admitted cycle." : "The complete fixture body contains only a review acknowledgement.",
+            proposed_response: "", correction: standardScenarioName === "correction" ? "Correct the selected product value through a new admitted cycle and run impacted checks." : "",
+            evidence_refs: [{ ref: "github:" + row.kind + "/" + row.node_id, sha256: row.body_sha256 },
+              ...(standardScenarioName === "correction" ? [context.evidence_refs.find(ref => ref.ref === "product:product/app.mjs")] : [])] })) } };
       }
       if (observed.context.contract_version === "standard-cycle-task-work-context.v1") {
         const context = observed.context;
@@ -772,6 +778,8 @@ if (process.argv[2] === "--mixed-continue") {
         recommendation: "continue", rationale: "Fake native wire diagnostic; no recovery or completion claim", evidence_refs: observed.evidence_refs } };
     } });
     sourceFile = resumed?.fixture.human_source_file ?? path.join(f.configuration.control_root, "standard-human-sources.json");
+    if (!resumed && standardScenarioName === "correction") fs.writeFileSync(path.join(f.configuration.control_root, "standard-pr-correction-fixture.json"), JSON.stringify({
+      review_body: "The exported product value needs a bounded correction in a new admitted cycle, followed by impacted validation and fresh delivery." }));
     if (!resumed) fs.writeFileSync(sourceFile, "{}");
     if (!fs.existsSync(sourceFile)) throw Error("STANDARD_FIXTURE_HUMAN_SOURCE_HISTORY_REQUIRED");
     const publish = (ref, claim) => {
@@ -921,6 +929,7 @@ if (process.argv[2] === "--mixed-continue") {
           console.log(JSON.stringify({ composed_human_deferred: true, cursor: waiting.cursor.status, native_sessions: beforeNative, cold_resume_starting: true }));
           const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--standard-composed-mode=" + mode, "--standard-composed-stop=" + standardComposedStop,
             "--standard-composed-resume=" + resumeFile, "--standard-composed-budget-ms=" + standardComposedBudgetMs,
+            "--standard-composed-scenario=" + standardScenarioName,
             "--standard-composed-max-responses=" + standardScenario.max_responses, "--retain-on-failure"],
           { encoding: "utf8", shell: false, windowsHide: true, timeout: Math.max(1, auth.global_deadline_ms - Date.now() + 60000), maxBuffer: 262144 });
           assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-16384)); process.stdout.write(child.stdout);
@@ -1022,9 +1031,31 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(received.observations.payload.observation.observations.head_oid, pushedHead);
       const classified = last("session_pr_triage_evaluate");
       assert.equal(classified.outcome, "completed"); assert.equal(classified.effect_status, "no_effect");
-      assert.deepEqual(classified.facts, { session_pr_findings_classified: true, session_pr_corrections_required: false, session_pr_responses_required: false });
+      const correction = standardScenarioName === "correction";
+      assert.deepEqual(classified.facts, { session_pr_findings_classified: true, session_pr_corrections_required: correction, session_pr_responses_required: correction });
       assert.equal(classified.observations.triage_completion, "pending-effects-and-verification");
       assert.equal(classified.observations.merge_authorization, "not-established");
+      if (correction) {
+        const reopened = last("session_pr_correction_reopen");
+        assert.equal(reopened.outcome, "completed", JSON.stringify(reopened)); assert.equal(reopened.effect_status, "confirmed");
+        assert.deepEqual(reopened.facts, { session_pr_correction_context_open: true, session_pr_correction_cycle_required: true });
+        const session = lifecycle.read("sessions/S001.md", { required: true }).content;
+        assert.match(session, /^state: OPEN$/m); assert.match(session, /^session_closure_status: correction_pending$/m);
+        assert.match(session, /^## Historical Process session closure before op_/m);
+        assert.match(session, /^## Historical Process session closure completion before op_/m);
+        assert.match(lifecycle.read("CURRENT-STATE.md", { required: true }).content, /^active_cycle: none$/m);
+        for (const row of reopened.observations.postimages) {
+          assert.equal(lifecycle.read(row.path, { required: true }).sha256, row.sha256);
+          assert.equal(lifecycle.metadataHash(row.path), row.metadata_sha256);
+        }
+        assert.equal(reopened.observations.implementation_admission, "not-established");
+        assert.equal(reopened.observations.merge_authorization, "not-established");
+        const denied = await preWriteAdmit({ targetRoot: f.configuration.target_root, skill: "start-session", nativeRequest: {
+          tool_name: "apply_patch", cwd: f.configuration.target_root, tool_input: { command: "*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = 2;\n+export const value = 3;\n*** End Patch" } } });
+        assert.equal(denied.write_decision.outcome, "deny");
+        console.log(JSON.stringify({ standard_correction_host_proof: true, canonical_writes: "confirmed", received_and_triage_producers: "authenticated-host-and-native-fixture",
+          product_write_admission: "denied-no-new-cycle", provider_transport: "fixture", native_transport: "fixture", full_standard: false }));
+      }
       assert.equal(final.record.events.filter(row => row.kind === "control").length, 1);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }

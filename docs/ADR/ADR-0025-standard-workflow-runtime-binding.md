@@ -2047,3 +2047,32 @@ confirms a reply, resolution, physical correction, fresh checks, skill completio
 or explicit human merge consent. Those subsequent operations and full R08
 qualification remain outstanding. This uses existing operation/native records
 and their concept policies, with no new table or shared coordination surface.
+
+### Candidate canonical correction reopening through the operation host, 2026-11-03
+
+The fixed operation host now composes the correction-source authority from its
+authenticated accepted-operation reader, triage reevaluator, signed delivered
+control inbox, current event verifier, product observer, complete provider reader
+and local/remote Git inspector. Authored IR supplies only the accepted triage
+operation identity. The host dispatches the exact reviewed three-postimage plan
+under its normal signed preview/intent/grant/result protocol and the existing
+local owner, metadata-preserving CAS and projection fences. The input, plan and
+output dispatchers and both direct implementation closures include this route.
+
+After a completed triage with corrections required, the candidate IR selects
+`session_pr_correction_reopen`. This explicitly reopens the same CLOSED session
+owner, preserves the full closure report and completion bodies as history and
+resets the closure gates. Active cycle stays none. An uncertain classification
+still blocks at triage. The alternate branch records no reply, resolution,
+merge consent or completed PR skill. The next admitted correction cycle, frozen
+plan, readiness, IMPLEMENTING branch, fresh checks and causal delivery are
+separate required work. Reopening itself grants no product-write permission.
+
+The actual SPEC R03/R04/R07/R08 requirements and packaged `pr-orchestrate`,
+`start-session` and `cycle-create` procedures govern that continuation. The
+explicit correction procedure belongs to PR orchestration; the diagnostic
+session-start hook still cannot reopen a session. No existing admission is
+weakened. Component tests and synthetic routing do not qualify the composed
+host path; the versioned correction driver must establish signed producer and
+canonical writer composition separately. Ordinary entry remains unchanged and
+`complete_standard_workflow` stays false.

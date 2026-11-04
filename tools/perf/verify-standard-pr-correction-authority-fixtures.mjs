@@ -78,4 +78,4 @@ await test('cancellation refuses before observing a late source', async () => {
   await assert.rejects(f.authority.readSource(instance, f.input, { signal: controller.signal }), { code: 'STANDARD_PR_CORRECTION_ABORTED' });
 });
 console.log(JSON.stringify({ status: 'PASS', checks, proof_class: 'component-capability-doubles', review_content_adapters: 'ACTUAL',
-  accepted_receipts_native_event_and_transport: 'DOUBLED', canonical_writes: 'NOT_RUN', host_ir_binding: 'NOT_IMPLEMENTED', full_standard: false }));
+  accepted_receipts_native_event_and_transport: 'DOUBLED', canonical_writes: 'NOT_RUN', host_ir_binding: 'NOT_EXERCISED_BY_THIS_SUITE', full_standard: false }));

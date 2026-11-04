@@ -14,7 +14,7 @@ const fail = code => { throw Object.assign(Error(code), { code, effect_status: '
 const valid = (x, schema) => !checkShadowJson(x) && !validateJsonSchema(x, schema, '$', { contractKind: 'workflow-definition' }).length;
 const text = row => row.text_chunks.join('');
 
-// Internal component, not yet selected by the shipped standard graph. Only the
+// The candidate standard graph selects this internal component. Only the
 // authenticated source factory may bridge an unchanged provider/product source
 // over these exact canonical writes; ordinary native admission is unchanged.
 export function createStandardPrCorrectionReopen({ targetRoot, authority, readCurrent, now = Date.now }) {

@@ -5,7 +5,9 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // Bounded direct implementation closure. Existing runtime dependencies retain
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
-const files = ["src/core/contracts/workflow-definition/standard-workflow-catalog.v1.schema.json", "src/application/runtime/standard-pr-triage-source.mjs", "src/application/runtime/standard-pr-triage-context.mjs", "src/core/workflow/standard-pr-triage.mjs",
+const files = ["src/application/runtime/standard-pr-correction-authority.mjs", "src/application/runtime/standard-pr-correction-reopen.mjs",
+  "src/core/workflow/standard-pr-correction-reopen.mjs",
+  ...["input", "plan", "output"].map(kind => `src/core/contracts/workflow-definition/standard-pr-correction-reopen-${kind}.v1.schema.json`), "src/core/contracts/workflow-definition/standard-workflow-catalog.v1.schema.json", "src/application/runtime/standard-pr-triage-source.mjs", "src/application/runtime/standard-pr-triage-context.mjs", "src/core/workflow/standard-pr-triage.mjs",
   ...["report", "select-input", "select-output", "evaluate-input", "output"].map(kind => `src/core/contracts/workflow-definition/standard-pr-triage-${kind}.v1.schema.json`), "src/application/runtime/standard-session-pr-review-receive.mjs",
   ...["input", "output"].map(kind => `src/core/contracts/workflow-definition/standard-session-pr-review-receive-${kind}.v1.schema.json`),
   "src/application/runtime/standard-session-pr-review-authority.mjs", "src/application/runtime/standard-session-pr-review-observe.mjs",

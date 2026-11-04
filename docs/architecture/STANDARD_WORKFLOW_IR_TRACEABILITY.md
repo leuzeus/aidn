@@ -1,5 +1,19 @@
 # Standard workflow IR traceability
 
+The candidate PR continuation includes `session_pr_correction_reopen` under
+SPEC R03/R04/R07/R08/R11 and packaged `pr-orchestrate`. The deterministic mutating
+binding resolves only the prior accepted triage identity. Its fixed host composes
+signed accepted triage/selection/receive/update records, native reevaluation,
+delivered inbox/event authentication and fresh product/provider/Git observations
+with `standard-pr-correction-reopen.mjs`. Exact-plan canonical CAS updates the
+same owning session, current state and snapshot; prior closure bodies survive
+under historical headings. No cycle or product admission follows by implication.
+The new admitted correction cycle, actual correction, fresh delivery, technical
+responses/resolutions and explicit merge consent remain separate requirements.
+The component suites exercise source and writer separately; the versioned
+composed correction scenario is the host-path qualification target. Neither
+synthetic routing nor those separate suites establish its successful execution.
+
 The target is AIDN's complete standard session/cycle/work/review/PR workflow,
 authored in JSON IR and executed, resumed, replayed and simulated by the common
 engine. BPMN is an optional authoring/compiler path. The historical shadow

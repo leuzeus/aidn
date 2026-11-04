@@ -11,8 +11,10 @@ const keys = (v, names) => v && typeof v === "object" && !Array.isArray(v) && Ob
 // Test planning only. Synthetic receipts/control/assignments never authenticate
 // a human, native producer, provider or effect. Routing uses the execution reducer.
 export function preflightStandardComposedFixture({ model, scenario, stop = "component_complete" }) {
-  if (!keys(scenario, ["contract_version", "mode", "closure", "promotion", "task_iterations", "cold_resume", "max_responses", "interruption"])
-    || scenario.contract_version !== "fixture-standard-composed-scenario.v1"
+  const correctionScenario = scenario?.contract_version === "fixture-standard-composed-scenario.v2";
+  if (!keys(scenario, ["contract_version", "mode", "closure", "promotion", "task_iterations", "cold_resume", "max_responses", "interruption", ...(correctionScenario ? ["review_disposition"] : [])])
+    || !["fixture-standard-composed-scenario.v1", "fixture-standard-composed-scenario.v2"].includes(scenario.contract_version)
+    || correctionScenario && !["acknowledgement", "valid_finding"].includes(scenario.review_disposition)
     || !["COMMITTING", "THINKING", "EXPLORING"].includes(scenario.mode)
     || !["retain", "drop", "no_go"].includes(scenario.closure) || !["promote", "skip"].includes(scenario.promotion)
     || !Number.isSafeInteger(scenario.task_iterations) || scenario.task_iterations < 1 || scenario.task_iterations > 32
@@ -65,6 +67,8 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (node.binding_ref === "cycle_task_advance") facts = { cycle_tasks_finished: ++advanced >= scenario.task_iterations };
         if (node.binding_ref === "cycle_close_finalize") facts = { cycle_retained: scenario.closure === "retain" };
         if (node.binding_ref === "baseline_promotion_decision") facts = { baseline_promotion_requested: scenario.promotion === "promote", baseline_promotion_not_requested: scenario.promotion === "skip" };
+        if (node.binding_ref === "session_pr_triage_evaluate") facts = { session_pr_findings_classified: true,
+          session_pr_corrections_required: scenario.review_disposition === "valid_finding", session_pr_responses_required: scenario.review_disposition === "valid_finding" };
         opResult(frame, intent, "completed", facts);
       }
       operations.push(node.id);

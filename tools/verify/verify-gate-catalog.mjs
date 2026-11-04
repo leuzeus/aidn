@@ -868,6 +868,12 @@ const negativeProbes = {
       .replace("node tools/perf/verify-standard-pr-triage-fixtures.mjs && ", "");
     return candidateRejected({ candidatePackageJson: candidate });
   })(),
+  standard_pr_correction_host_invocation_omission_rejected: (() => {
+    const candidate = clone(packageJson);
+    candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]
+      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=component_complete --standard-composed-scenario=correction && ", "");
+    return candidateRejected({ candidatePackageJson: candidate });
+  })(),
   standard_workflow_cycle_invocation_omission_rejected: (() => {
     const candidate = clone(packageJson);
     candidate.scripts["perf:verify-agentic-process"] = candidate.scripts["perf:verify-agentic-process"]

@@ -202,6 +202,24 @@ provider and exact installed-archive qualification remain separate.
 
 ## Structured agentic process
 
+The candidate correction-host route is selected by
+`verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files
+--standard-composed-stop=component_complete --standard-composed-scenario=correction`.
+Its distinct `composed-correction.v2.json` scenario retains nine initial responses
+and its own cold prefix. Before any temporary root or initial authorization,
+preflight uses the current model/common reducer, including the valid-finding
+branch. A correction variant cannot be substituted into a positive v1 resume.
+The driver exercises actual host-signed accepted producers, delivered control,
+native producer authentication and exact canonical writer composition. Provider,
+native transport, identities and human/effect consent remain fixtures, with local
+Git/bare and application/CAS ports real. It must preserve closure history, leave
+active_cycle none, deny native product writing without a new cycle, and replay
+the exact model/journal. Merely adding this driver or passing its synthetic
+preflight is not a completed composed proof. The source and canonical component
+suites remain separate evidence and now also test registered contracts and the
+direct byte pins. Ordinary standard entry, real native/provider/human and exact
+installed archive qualification remain outstanding.
+
 `verify-github-review-content-fixtures.mjs` exercises the explicit v2 review
 content and thread observations. Complete bounded review bodies, their hashes,
 comment actor node IDs and exact base/ref identities are required; oversized,

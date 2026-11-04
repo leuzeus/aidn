@@ -3762,3 +3762,37 @@ the trusted host, add real operation contracts/pins and graph routing, then run
 the ordinary admitted correction cycle and prove fresh correction/delivery/
 review loops. Changes to session-state fields and preserved history must be
 rechecked against those actual authorities at integration time.
+
+### Addendum: candidate correction operation selected by the common IR, 2026-11-03
+
+The fixed operation host now composes the actual accepted-record reader, triage
+reevaluator, signed delivered control, current event, product, complete provider
+and local/remote Git capabilities into the source authority and canonical writer.
+The private input/output/plan dispatchers, mutating binding and direct native and
+operation implementation pins include the component. The authored common IR
+selects it only after successful triage says corrections are required. Unknown
+triage still blocks, and the alternate branch confirms no technical response,
+resolution, merge consent or PR skill completion.
+
+The reopened owner is the same session; closure report and completion bodies
+are preserved as history. Gates reset and active_cycle remains none. This route
+was confronted with SPEC R03/R04/R07/R08/R11 and packaged PR orchestration,
+session-start and cycle-create procedures. The PR skill now states the explicit
+transition; the diagnostic session-start hook does not reopen an owner and no
+native product admission was relaxed.
+
+A distinct v2 correction fixture and cold-resume driver select a valid finding
+against the actual product evidence. They retain nine initial responses and the
+original deadline; neither their preflight nor separate component tests establish
+successful host composition. The driver must prove signed accepted producers,
+actual writer/owner/CAS/projections, denial of product writes without a new cycle,
+and exact replay. Current execution results are recorded separately from the
+immutable earlier component proof. No old trial is modified or requalified.
+
+The [binding evidence](qualification/agentic-process/pr-correction-host-binding-2026-11-03.json)
+separates executed component checks from the unexecuted composed assertions.
+The entire L1-L8/A1-A10 objective remains incomplete. The next admitted correction
+cycle, frozen plan, readiness/IMPLEMENTING branch, physical corrections, new-HEAD
+checks and causal delivery, replies/resolutions or documented exception, fresh
+review loops, explicit fresh human merge consent and postmerge reconciliation
+remain required. Ordinary entry is unchanged; complete_standard_workflow=false.

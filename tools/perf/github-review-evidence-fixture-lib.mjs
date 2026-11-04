@@ -41,9 +41,17 @@ export function createComposedGithubReviewFixture({ controlRoot, remoteRoot }) {
     const row = state.pulls[0];
     const ref = branch => execFileSync('git', ['--git-dir=' + remoteRoot, 'rev-parse', '--verify', 'refs/heads/' + branch],
       { encoding: 'utf8', windowsHide: true, stdio: 'pipe', timeout: 10000 }).trim();
-    return createGithubReviewFixture({ workingDirectory: controlRoot, pullRequest: { repository_id: row.head.repo.node_id,
+    const fixture = createGithubReviewFixture({ workingDirectory: controlRoot, pullRequest: { repository_id: row.head.repo.node_id,
       node_id: row.node_id, number: row.number, head_oid: ref(row.head.ref), base_oid: ref(row.base.ref), head_branch: row.head.ref,
-      base_branch: row.base.ref, state: row.state.toUpperCase(), draft: row.draft } }).port;
+      base_branch: row.base.ref, state: row.state.toUpperCase(), draft: row.draft } });
+    const correctionFile = path.join(controlRoot, 'standard-pr-correction-fixture.json');
+    if (fs.existsSync(correctionFile)) {
+      const correction = JSON.parse(fs.readFileSync(correctionFile, 'utf8'));
+      if (typeof correction.review_body !== 'string' || !correction.review_body.trim()) throw Error('FIXTURE_REVIEW_BODY_INVALID');
+      fixture.state.reviews[0].body = correction.review_body;
+      fixture.state.reviews[0].state = 'CHANGES_REQUESTED';
+    }
+    return fixture.port;
   }
   return { observeReviewEvidence: input => port().observeReviewEvidence(input), observePullRequest: input => port().observePullRequest(input),
     observeReviewContent: (input, options) => port().observeReviewContent(input, options), observePrContent: (input, options) => port().observePrContent(input, options) };

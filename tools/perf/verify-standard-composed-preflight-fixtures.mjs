@@ -29,6 +29,14 @@ test("insufficient original allowance is refused before the long driver creates 
   assert.match(child.stderr, /STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT/);
   assert.equal(child.stdout, "");
 });
+test("versioned correction route selects canonical reopening without another native response", () => {
+  const correction = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-correction.v2.json", import.meta.url)));
+  const result = preflightStandardComposedFixture({ model, scenario: correction });
+  assert.equal(result.responses_required, 9); assert.ok(result.operations.includes("session_pr_correction_reopen"));
+  assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
+  assert.ok(!plan().operations.includes("session_pr_correction_reopen"));
+  assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, review_disposition: "unknown" } }), { code: "STANDARD_FIXTURE_SCENARIO_INVALID" });
+});
 test("skipped promotion selects eight turns despite nine catalog activities", () => {
   const result = plan({ promotion: "skip", max_responses: 8 }); assert.equal(result.responses_required, 8);
   assert.ok(!result.native_occurrences.some(n => n.node_id === "promotion_drift_report"));

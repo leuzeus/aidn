@@ -71,6 +71,16 @@ preparation does not authorize push, PR creation, merge or post-merge sync.
 - `merge_pull_request`: merge only after explicit approval and evidence.
 - `post_merge_sync_required`: reconcile the source branch locally before any new session or cycle creation.
 
+For an authenticated valid finding requiring product changes, explicitly reopen
+the same CLOSED owning session under the reviewed correction plan. Preserve the
+complete prior closure report and completion proof as historical records; reset
+closure/snapshot gates and keep active_cycle none. Reopening grants no product
+write. Create a new cycle through its ordinary admission and continuity choice,
+freeze its plan, satisfy readiness and enter IMPLEMENTING on its cycle branch
+before product edits. Run impacted validations for the new HEAD and close/deliver
+again through a fresh causal successor. Replies, resolutions and merge consent
+remain separate; refresh review observations after provider changes.
+
 5) Update `docs/audit/CURRENT-STATE.md` when present:
 - `updated_at`
 - `active_session`

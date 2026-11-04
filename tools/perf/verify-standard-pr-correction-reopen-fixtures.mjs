@@ -12,6 +12,8 @@ import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-sche
 import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { artifactContentHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardPrCorrectionPlan } from '../../src/core/workflow/standard-operation-contracts.mjs';
+import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
 const H = 'a'.repeat(64), op = 'op_' + '1'.repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
@@ -61,11 +63,28 @@ try {
   await test('three private schemas validate with supported keywords', () => {
     for (const kind of ['input', 'plan', 'output']) assert.deepEqual(validateJsonSchemaDefinition(JSON.parse(fs.readFileSync(new URL('../../src/core/contracts/workflow-definition/standard-pr-correction-reopen-' + kind + '.v1.schema.json', import.meta.url))), '#', { contractKind: 'workflow-definition' }), []);
   });
+  await test('registered input and direct byte pins include every correction authority, writer, renderer and contract', () => {
+    const paths = ['src/application/runtime/standard-pr-correction-authority.mjs', 'src/application/runtime/standard-pr-correction-reopen.mjs',
+      'src/core/workflow/standard-pr-correction-reopen.mjs', ...['input', 'plan', 'output'].map(kind => 'src/core/contracts/workflow-definition/standard-pr-correction-reopen-' + kind + '.v1.schema.json')];
+    const pins = agenticProcessImplementationPins(), read = fs.readFileSync;
+    for (const name of paths) {
+      assert.equal(pins.files.filter(row => row.path === name).length, 1, name);
+      try {
+        fs.readFileSync = (file, ...args) => String(file).endsWith('/' + name) ? Buffer.concat([read(file, ...args), Buffer.from('\n')]) : read(file, ...args);
+        assert.notEqual(agenticProcessImplementationPins().sha256, pins.sha256, name);
+      } finally { fs.readFileSync = read; }
+    }
+    assert.deepEqual(agenticProcessImplementationPins(), pins);
+    assertStandardOperationInput('session_pr_correction_reopen', { contract_version: 'standard-pr-correction-reopen-input.v1', triage_operation_id: op });
+    assert.throws(() => assertStandardOperationInput('session_pr_correction_reopen', { contract_version: 'standard-pr-correction-reopen-input.v1', triage_operation_id: op, payload: {} }));
+  });
   const f = await fixture(mode), rows = () => f.names.map(name => f.artifacts.read(name, { required: true }));
   const original = rows(), bytes = original.map(row => row.sha256), product = fs.readFileSync(path.join(f.root, 'docs/audit/CURRENT-STATE.md'));
   let prepared;
   await test('read-only preparation binds exact canonical preimages, source and Git without writes', async () => {
     prepared = await f.port.prepare(f.instance, f.input); assert.equal(prepared.can_apply, true);
+    assertStandardPrCorrectionPlan(prepared.plan);
+    assert.throws(() => assertStandardPrCorrectionPlan({ ...prepared.plan, source_sha256: H }));
     assert.deepEqual(rows().map(row => row.sha256), bytes); assert.equal(f.artifacts.ownerPending(), false);
     await assert.rejects(f.port.apply(f.instance, prepared, { write: true, expectPlan: H, assertAuthorized() {} }));
     const forged = structuredClone(prepared); forged.plan.changes[0].text_chunks.push('\nUnreviewed data\n');
@@ -83,6 +102,8 @@ try {
   await test('canonical reopening preserves closure bodies, leaves no cycle and grants no product admission', async () => {
     const result = await f.port.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
     assert.equal(result.outcome, 'completed', JSON.stringify(result)); assert.equal(result.effect_status, 'confirmed');
+    assertStandardOperationOutput(result);
+    assert.throws(() => assertStandardOperationOutput({ ...result, effect_status: 'no_effect' }));
     assert.deepEqual(result.facts, { session_pr_correction_context_open: true, session_pr_correction_cycle_required: true });
     const session = rows()[0].content;
     assert.match(session, /^state: OPEN$/m); assert.match(session, /^session_closure_status: correction_pending$/m);
@@ -112,7 +133,7 @@ try {
     assert.equal(partial.artifacts.ownerPending(), true); assert.equal((await partial.port.prepare(partial.instance, partial.input)).can_apply, false);
   });
   console.log(JSON.stringify({ status: 'PASS', checks, mode, canonical_cas_projection_git_admission: 'ACTUAL', accepted_triage_and_external_source: 'DOUBLED',
-    source_factory: 'SEPARATE_SUITE', host_ir_binding: 'NOT_IMPLEMENTED', native_corrections: 'NOT_RUN', full_standard: false, installed_archive: 'NOT_RUN' }));
+    source_factory: 'SEPARATE_SUITE', host_ir_binding: 'NOT_EXERCISED_BY_THIS_SUITE', native_corrections: 'NOT_RUN', full_standard: false, installed_archive: 'NOT_RUN' }));
 } finally {
   for (const root of owned.reverse()) { const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary); assert.ok(path.basename(real).startsWith('aidn-standard-fresh-')); fs.rmSync(real, { recursive: true, force: true }); }
   console.log(JSON.stringify({ fixture_cleanup: 'completed', independent_process_inventory: 'NOT_CAPTURED' }));

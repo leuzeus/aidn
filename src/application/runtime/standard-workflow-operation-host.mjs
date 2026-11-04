@@ -1,5 +1,8 @@
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
 import { createStandardPrTriageSource } from "./standard-pr-triage-source.mjs";
+import { createStandardPrCorrectionAuthority } from "./standard-pr-correction-authority.mjs";
+import { createStandardPrCorrectionReopen } from "./standard-pr-correction-reopen.mjs";
+import { assertStandardPrCorrectionPlan } from "../../core/workflow/standard-operation-contracts.mjs";
 import { createStandardSessionPrReviewObservation, createStandardSessionPrReviewContentObservation } from "./standard-session-pr-review-observe.mjs";
 import { createStandardSessionPrSuccessorAuthority } from "./standard-session-pr-successor-authority.mjs";
 import { createStandardSessionPrCheckpoint } from "./standard-session-pr-checkpoint.mjs";
@@ -481,6 +484,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readReceived: (instance, id) => acceptedForPromotion(instance, id, "session_pr_review_receive", "STANDARD_PR_TRIAGE_RECEIVED_REQUIRED"),
     observeReceived: (instance, input, options) => sessionPrReviewReceiver.observe(instance, input, options),
     observeProduct: () => processAuthority.observeProduct(), readNative: (instance, input) => processAuthority.readPrTriageActivity(instance, input) }) : null;
+  const prCorrectionAuthority = prTriage && reviewControlSource ? createStandardPrCorrectionAuthority({
+    readAcceptedOperation: acceptedForPromotion,
+    reevaluateTriage: (instance, input, options) => prTriage.evaluate(instance, input, options),
+    readControl: id => controls.read(id),
+    verifyEvent: (capture, options) => reviewControlSource.verifyCapturedEvent(capture, options),
+    observeProduct: () => processAuthority.observeProduct(),
+    inspectPush: (branch, options) => sessionPushPort.inspect(branch, options),
+    readCurrent: id => current(id).record, reviewPort: sessionReviewPort, now }) : null;
+  const prCorrectionReopen = prCorrectionAuthority ? createStandardPrCorrectionReopen({ targetRoot, now,
+    authority: prCorrectionAuthority, readCurrent: id => current(id).record }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -584,6 +597,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   function validatePreview(preview) {
     if (validateJsonSchema(preview, previewSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_HOST_PREVIEW_INVALID");
     signer.verify(preview); assertProcessOperationBinding(preview.binding); assertStandardOperationInput(preview.binding.id, preview.input);
+    if (preview.binding.id === "session_pr_correction_reopen" && preview.prepared?.can_apply) {
+      assertStandardPrCorrectionPlan(preview.prepared.plan);
+      if (shadowHash(preview.prepared.plan) !== preview.prepared.plan_sha256
+        || shadowHash(preview.input) !== shadowHash(preview.prepared.plan.input)) fail("STANDARD_HOST_PREVIEW_INVALID");
+    }
     assertStandardResolvedPreview(preview, model);
     if (shadowHash(bindings.get(preview.binding.id)) !== shadowHash(preview.binding)) fail("STANDARD_HOST_BINDING_CHANGED");
     return preview;
@@ -855,6 +873,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_triage_select" ? await prTriage?.select(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_triage_evaluate" ? await prTriage?.evaluate(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_correction_reopen" ? await prCorrectionReopen?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_observe" ? await sessionPrReview?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
@@ -960,6 +979,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
         else if (record.intent.binding_ref === "session_pr_triage_select") output = await prTriage.select(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_triage_evaluate") output = await prTriage.evaluate(state.record, record.preview.input, { signal });
+        else if (record.intent.binding_ref === "session_pr_correction_reopen") output = await prCorrectionReopen.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
         else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_content_observe") output = await sessionPrReviewContent.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_observe") output = await sessionPrReview.observe(state.record, record.preview.input, { signal });
