@@ -1,5 +1,46 @@
 # Testing Guide
 
+`node tools/perf/verify-standard-expired-plan-fixtures.mjs` checks a restricted
+explicit preparation path after an accepted `STANDARD_PLAN_EXPIRED` refusal.
+The fixed operation host rereads the current authority and prepares the same
+input for the same occurrence. The preview is read-only; staging a successor
+still requires explicit write and a fresh grant. Its new operation identity
+binds the accepted predecessor history through the existing v2 intent contract.
+The original preview, grant, receipt and event are retained without modification.
+The mixed host forwards this capability and returns
+`operation_reprepare_required` when its ordinary step encounters that refusal;
+it does not automatically stage a replacement.
+
+The dedicated fixture suite uses actual session initialization, admission,
+Git, canonical stores and HMAC journals on files/dual/db-only, with an injected
+clock and fixture authorization capability. A fresh Node process prepares the
+successor without an authorization call or any checkout-file change, then a
+separate explicit stage obtains a distinct grant. The suite checks expired
+refusal before business writes, missing acceptance, stale revision, subject
+override, abort, refused new authorization, changed storage authority, a real
+local effect owner and a conflicting Git branch. After one successful effect,
+both original and successor receipts remain readable, repeated dispatch retains
+them, and common-reducer replay/simulation reproduces the exact final state.
+The generic signed-host suite includes these checks and separately rejects this
+path for a genuinely partial SQLite effect with an accepted unknown outcome.
+
+`node tools/perf/verify-standard-workflow-composition-prefix-fixtures.mjs
+--mode=files --expire-initialize` additionally consumes the actual shipped
+standard JSON and its data bindings. It accepts and retains an expired
+initialization refusal, prepares the same resolved input in a fresh Node,
+stages a new identity and continues through deferred/THINKING decisions to
+exact replay. This is a source-installed fixture prefix, with no native model
+or exact installed-archive claim.
+
+These are session-initialization and published-prefix proofs. They do not exercise the
+mixed host's new wait branch or prove expired-plan continuation for every
+business operation. Only an accepted, authenticated deterministic
+`blocked/no_effect/STANDARD_PLAN_EXPIRED` receipt with a genuinely expired plan
+is eligible. Unreceipted dispatches, uncertain effects, confirmed results and
+changed subjects are excluded. Existing TTLs, native allocations and historical
+readers are unchanged. No model is called; full standard, genuine native/
+provider/human and exact installed-archive qualification remain separate.
+
 PR correction continuation has separate internal component suites. The candidate
 standard graph and signed operation host select the reopening operation, but
 these suites do not prove that complete composition.

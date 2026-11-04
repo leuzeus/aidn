@@ -16,6 +16,7 @@ const H = "a".repeat(64), temp = fs.realpathSync(os.tmpdir());
 function host(targetRoot, privateRoot) {
   const readClaim = () => JSON.parse(fs.readFileSync(path.join(privateRoot, "claim.json"), "utf8"));
   return createStandardWorkflowHost({ targetRoot, readSigningKey: () => fs.readFileSync(path.join(privateRoot, "host.key")),
+    now: () => fs.existsSync(path.join(privateRoot, "clock.json")) ? JSON.parse(fs.readFileSync(path.join(privateRoot, "clock.json"), "utf8")) : Date.now(),
     authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H }),
     humanSource: { read: () => readClaim(), verify: ({ source, question }) => {
       const actual = readClaim();
@@ -23,7 +24,11 @@ function host(targetRoot, privateRoot) {
         ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" };
     } } });
 }
-if (process.argv[2] === "--accept") {
+if (process.argv[2] === "--reprepare-expired") {
+  const [, , , target, privateRoot, operationId, expectedSha256] = process.argv;
+  const preview = await host(target, privateRoot).reprepareExpiredOperation(operationId, { expectedSha256 });
+  console.log(JSON.stringify(preview));
+} else if (process.argv[2] === "--accept") {
   const [, , , target, privateRoot, operationId] = process.argv;
   const result = await host(target, privateRoot).accept(operationId, { write: true });
   console.log(JSON.stringify({ instance_sha256: result.record.instance_sha256 }));
@@ -44,9 +49,27 @@ if (process.argv[2] === "--accept") {
       const state = runtime.inspect("standard-prefix"), frame = state.cursor.occurrences.find(row => row.status === "READY")
         ?? state.cursor.occurrences.find(row => row.operation?.receipt?.outcome === "deferred");
       assert.ok(frame, JSON.stringify(state.cursor));
-      const preview = await runtime.preview({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id });
+      let preview = await runtime.preview({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id });
       assert.equal(preview.prepared?.can_apply ?? true, true, JSON.stringify(preview.prepared));
-      const staged = await runtime.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
+      let staged = await runtime.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
+      if (process.argv.includes("--expire-initialize") && preview.binding.id === "session_initialize") {
+        fs.writeFileSync(path.join(privateRoot, "clock.json"), JSON.stringify(preview.prepared.plan.prepared_at_ms + 300001));
+        const refused = await runtime.dispatch(staged.operation_id, { write: true });
+        assert.equal(refused.receipt.outcome, "blocked"); assert.equal(refused.receipt.effect_status, "no_effect");
+        const originalId = staged.operation_id, original = runtime.readJournal(originalId);
+        assert.equal(original.results[0].output.observations.reason_code, "STANDARD_PLAN_EXPIRED");
+        const accepted = await runtime.accept(originalId, { write: true });
+        const candidate = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), "--reprepare-expired", target, privateRoot, originalId, accepted.record.instance_sha256],
+          { encoding: "utf8", windowsHide: true, timeout: 180000, stdio: ["ignore", "pipe", "pipe"] }));
+        assert.ok(candidate.input_resolution, "the actual published model must use its resolved data bindings");
+        assert.deepEqual(candidate.input, original.preview.input);
+        assert.equal(candidate.instance_sha256, accepted.record.instance_sha256);
+        assert.equal(runtime.inspect("standard-prefix").record.instance_sha256, accepted.record.instance_sha256);
+        preview = candidate;
+        staged = await runtime.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
+        assert.notEqual(staged.operation_id, originalId); assert.deepEqual(runtime.readJournal(originalId), original);
+        console.log(`PASS prefix ${stateMode}: published IR data bindings, expired no-effect refusal and explicit cold same-subject preparation`);
+      }
       let result = await runtime.dispatch(staged.operation_id, { write: true });
       if (preview.binding.executor_kind === "human") {
         assert.equal(result.status, "waiting_for_human");
@@ -79,7 +102,7 @@ if (process.argv[2] === "--accept") {
     const simulation = simulateAgenticProcess({ instanceId: final.record.instance_id, model: final.record.model, parameters: final.record.initial_parameters,
       policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256); success = true;
-    console.log(JSON.stringify({ status: "PASS", checks: acceptedCount + 2, scope: "source-installed-standard-composition-startup-prefix", state_mode: stateMode,
+    console.log(JSON.stringify({ status: "PASS", checks: acceptedCount + 2 + Number(process.argv.includes("--expire-initialize")), scope: "source-installed-standard-composition-startup-prefix", state_mode: stateMode,
       accepted_business_bindings: 6, deferred_decisions: 1, model_calls: 0, replay_simulation: "same-model-same-reducer", native: "NOT_RUN", installed_archive: "NOT_RUN",
       committing_cycle_route: "NOT_RUN", full_standard_workflow: "NOT_COMPLETE" }));
   } finally {

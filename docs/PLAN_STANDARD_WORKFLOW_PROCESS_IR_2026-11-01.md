@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 129/127 et le modèle composé candidat en 70
+les composants startup/cycle en 130/128 et le modèle composé candidat en 71
 (107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
 63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -20,6 +20,15 @@ encore ouverts.
 
 ### Avancement d’exécution
 
+- Le premier raccord explicite de préparation après un refus accepté
+  `STANDARD_PLAN_EXPIRED` passe ses 15 contrôles de composant files/dual/db-only.
+  Le préfixe du modèle distribué avec ses liaisons réelles passe aussi 10 contrôles
+  en fichiers, dont cette reprise et la fin THINKING sans modèle. Le raccord
+  conserve le refus et sa grant, prépare le même sujet dans un nouveau Node
+  sans écriture ni appel modèle, puis exige une nouvelle intention/grant avant
+  effet. La reprise générale des opérations expirées et le parcours mixte
+  restent à qualifier ; voir la
+  [preuve bornée](qualification/agentic-process/expired-plan-reprepare-component-2026-11-04.json).
 - Le checkpoint de correction possède un premier cas de reprise positive hors
   ligne : commit exact déjà réalisé, propriétaire local libéré, dispatch signé
   sans reçu. Le composant passe en fichiers/dual ; db-only refuse faute de témoin
@@ -3977,3 +3986,43 @@ correction cycles and physical fixes, native epochs, deterministic expired-plan
 reprepare, the rest of L1-L8/A1-A10, genuine native/human/provider behavior and
 the exact installed archive remain required. Ordinary selection and
 complete_standard_workflow=false are unchanged.
+
+### Addendum: explicit preparation after an expired no-effect refusal, 2026-11-04
+
+The fixed host can now prepare a new preview for an accepted, authenticated
+deterministic `blocked/no_effect/STANDARD_PLAN_EXPIRED` predecessor. The original
+plan must really be older than its existing five-minute validity. Current
+authority and business preparation are read again for the same input and
+occurrence. An active effect owner, changed subject, unaccepted result, uncertain
+dispatch or confirmed effect refuses this path. The returned preview is
+read-only; separate explicit staging obtains a fresh grant and creates a new
+intent bound to the current accepted history. Original receipts, grants and
+events remain available, without extending a TTL or resetting a native budget.
+
+The first 15 component checks pass on files/dual/db-only with actual session
+initialization/admission, canonical stores and Git, an injected clock and fixture
+authorization. Cold preparation leaves all checkout bytes unchanged, does not
+call authorization or a model, and preserves the expired refusal. The new
+intent executes once and exact replay/simulation retains both outcomes. A
+first distinct test attempt failed because `{}` was incorrectly assumed to
+force an authority rejection; it is retained as a fixture assertion failure.
+The corrected negative case changes the actual configured storage authority.
+
+The generic signed-host regression passes 35 checks, including those 15 and
+rejection of this path for a real partial SQLite unknown outcome. A separate
+10-check files prefix consumes the actual shipped revision-71 JSON and its
+data bindings. It expires session initialization, retains and accepts the real
+refusal, prepares the same input in a new Node, stages a new identity and
+continues through explicit deferred/THINKING decisions to exact replay. This
+is source-installed fixture qualification with no native model; it does not
+exercise mixed.step. The suite source fingerprints remain unchanged throughout
+their runs. The final documentation updates follow those completed checks.
+
+The mixed host forwards this explicit method and stops automatic expiry
+replacement with `operation_reprepare_required`. That branch and general
+expired-operation continuation still need their own positive qualification.
+The running frozen revision-70 correction experiment is separate and retains
+its exact source, grants and deadline. This component changes neither its
+evidence nor the remaining native epochs, unknown-owner reconciliation,
+correction-cycle admission, physical work or other L1-L8/A1-A10 requirements.
+Ordinary selection remains unchanged; complete_standard_workflow=false.

@@ -36,6 +36,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     inspectAllocations: () => native.inspect(),
     readCheckpoint: generation => native.readCheckpoint(generation),
     prepareOperation: input => operations.preview({ ...input, instanceId: configuration.instance_id }),
+    reprepareExpiredOperation: (id, input) => operations.reprepareExpiredOperation(id, input),
     stageOperation: (preview, input) => operations.stage(preview, input),
     dispatchOperation: (id, input) => operations.dispatch(id, input),
     reconcileCorrectionCheckpoint: (id, input) => operations.reconcileCorrectionCheckpoint(id, input),
@@ -56,6 +57,11 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
         ?? cursor.occurrences.find(frame => nodeFor(frame).kind === "operation" && frame.status === "WAITING"
           && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome));
       if (operation) {
+        if (operation.operation?.receipt?.outcome === "blocked") {
+          const id = operation.operation.intent.operation_id, record = operations.readJournal(id);
+          if (record.results.at(-1)?.output.observations?.reason_code === "STANDARD_PLAN_EXPIRED")
+            return { kind: "operation_reprepare_required", status: "WAITING", written: false, operation_id: id };
+        }
         const preview = await operations.preview({ instanceId: configuration.instance_id, expectedSha256: state.record.instance_sha256,
           occurrenceId: operation.occurrence_id, input });
         if (!write) return { kind: "operation_preview", status: cursor.status, written: false, preview };

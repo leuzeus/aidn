@@ -52,6 +52,21 @@ postconditions are L2 work; authority doubles are not business execution proof.
 
 ## Control and effect semantics
 
+An internal explicit `reprepareExpiredOperation` path handles one deterministic
+predecessor class: an authenticated and accepted
+`blocked/no_effect/STANDARD_PLAN_EXPIRED` receipt whose prepared plan has expired.
+It rereads the current authority and prepares the same input and occurrence;
+changed subject, pending ownership, unaccepted refusal and uncertain or confirmed
+effects cannot enter this path. Preparation grants no effect and writes nothing.
+The existing explicit stage obtains a fresh grant and records a new operation
+identity bound to the accepted predecessor history. Original plans, grants,
+refusals and events remain immutable; no new schema, information authority,
+TTL extension, native budget or historical-instance conversion is introduced.
+The mixed host exposes the same method and leaves an expired refusal waiting
+for explicit preparation. The positive component proof uses real session ports
+and stores with fixture authorization and an injected clock; general expired
+business-operation and mixed-host continuation remain to be qualified.
+
 For PR findings that require physical correction, the continuation route is to
 reopen the same canonical session owner while preserving its prior closure
 report and completion evidence. It must then create a new admitted correction

@@ -18,6 +18,7 @@ import { inspectAgenticProcess, createAgenticProcess, advanceAgenticProcess } fr
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
+import { verifyStandardExpiredPlans } from "./verify-standard-expired-plan-fixtures.mjs";
 
 const H = "a".repeat(64), grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
 const input = { session_id: "S001", session_branch: "S001-standard", objective: "Execute actual bootstrap ports through the common IR" };
@@ -158,12 +159,15 @@ if (process.argv[2] === "--accept") {
     assert.equal(unknown.receipt.outcome, "reconciliation_required"); assert.deepEqual(unknown.receipt.facts, {});
     partial = host(partialRoot, keyFile, async () => grant, one);
     const accepted = await partial.accept(pending.operation_id, { write: true }); assert.equal(accepted.cursor.status, "WAITING");
+    await assert.rejects(partial.reprepareExpiredOperation(pending.operation_id, { expectedSha256: accepted.record.instance_sha256 }),
+      { code: "STANDARD_HOST_ACCEPTED_EXPIRED_NO_EFFECT_REQUIRED" });
     assert.equal((await partial.dispatch(pending.operation_id, { write: true })).receipt.outcome, "reconciliation_required");
     await assert.rejects(partial.preview({ instanceId: "partial", expectedSha256: accepted.record.instance_sha256,
       occurrenceId: pendingFrame.occurrence_id, input }), { code: "PROCESS_OPERATION_ORDER_INVALID" });
     assert.equal(git(partialRoot, "branch", "--show-current"), input.session_branch);
     assert.equal(createStandardWorkflowArtifacts({ targetRoot: partialRoot }).ownerPending(), true);
     pass("real partial SQLite effects retain an authenticated unknown result and prohibit fresh dispatch after reopen");
+    checks += await verifyStandardExpiredPlans();
     process.stdout.write(JSON.stringify({ status: "PASS", checks, proof: "offline-real-business-ports-common-reducer-and-new-node-hosts", authorization: "fixture-capability", native: "NOT_RUN", installed_archive: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }) + "\n");
   } finally {
     for (const root of owned) {

@@ -829,7 +829,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return service.prepareOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
       occurrenceId: record.intent.occurrence_id, eventId: "intent_" + id.slice(3), write: true });
   }
-  return Object.freeze({
+  const operationHost = {
     initialize(input) {
       if (input.facts && Object.keys(input.facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
       return service.initialize({ ...input, model, facts: {} });
@@ -933,6 +933,39 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         scope_id: state.record.scope_id, model_sha256: state.record.model_sha256, occurrence_id: occurrenceId, binding,
         input: ["session_initialize", "cycle_initialize"].includes(binding.id) ? prepared?.plan?.input ?? input : input,
         ...(resolved.input_resolution ? { input_resolution: resolved.input_resolution } : {}), prepared, snapshot: snapshot(), prepared_at_ms: now() });
+    },
+    async reprepareExpiredOperation(id, options = {}) {
+      if (!options || Object.keys(options).some(key => !["expectedSha256", "signal"].includes(key)))
+        fail("STANDARD_HOST_REPREPARE_INPUT_INVALID");
+      const { expectedSha256, signal } = options;
+      const active = () => { if (signal?.aborted) fail("STANDARD_HOST_REPREPARE_ABORTED"); };
+      active();
+      const record = retained(id).record, state = current(record.intent.instance_id), result = record.results.at(-1);
+      if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
+      const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
+      const age = now() - record.preview.prepared?.plan?.prepared_at_ms;
+      // An accepted, authenticated refusal is the predecessor. Neither an
+      // unreceipted dispatch nor an unknown/confirmed effect can use this path.
+      if (record.phase !== "receipted" || record.preview.binding.executor_kind !== "deterministic"
+        || result?.receipt.outcome !== "blocked" || result.receipt.effect_status !== "no_effect"
+        || result.output.observations?.reason_code !== "STANDARD_PLAN_EXPIRED"
+        || !Number.isSafeInteger(age) || age <= 300000
+        || frame?.status !== "WAITING" || shadowHash(frame.operation?.intent ?? null) !== shadowHash(record.intent)
+        || shadowHash(frame.operation?.receipt ?? null) !== shadowHash(result.receipt)
+        || !state.record.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt)))
+        fail("STANDARD_HOST_ACCEPTED_EXPIRED_NO_EFFECT_REQUIRED");
+      if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+      const preview = await operationHost.preview({ instanceId: state.record.instance_id, expectedSha256,
+        occurrenceId: record.intent.occurrence_id, ...(model.data_bindings ? {} : { input: record.preview.input }) });
+      active();
+      if (shadowHash(preview.input) !== shadowHash(record.preview.input)) fail("STANDARD_HOST_REPREPARE_SUBJECT_CHANGED");
+      if (current(state.record.instance_id).record.instance_sha256 !== expectedSha256
+        || shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_REVISION_CONFLICT");
+      if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+      // Existing v2 intent semantics bind the successor to this exact accepted
+      // history. Preparation writes nothing; stage still needs a fresh grant
+      // and explicit write. All original plans, grants and receipts survive.
+      return preview;
     },
     async stage(preview, { write = false, expectedPreviewSha256 } = {}) {
       preview = structuredClone(preview);
@@ -1163,5 +1196,6 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (!result) fail("PROCESS_JOURNAL_OUTPUT_UNAVAILABLE");
       return structuredClone(result.output);
     },
-  });
+  };
+  return Object.freeze(operationHost);
 }
