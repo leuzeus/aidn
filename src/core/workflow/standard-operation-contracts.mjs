@@ -1,4 +1,5 @@
 import prCorrectionReviewInputV2 from "../contracts/workflow-definition/standard-pr-correction-review-input.v2.schema.json" with { type: "json" };
+import prCorrectionReviewInputV3 from "../contracts/workflow-definition/standard-pr-correction-review-input.v3.schema.json" with { type: "json" };
 import prCorrectionCycleInput from '../contracts/workflow-definition/standard-pr-correction-cycle-input.v1.schema.json' with { type: 'json' };
 import prCorrectionCycleOutput from '../contracts/workflow-definition/standard-pr-correction-cycle-output.v1.schema.json' with { type: 'json' };
 import prCorrectionReviewInput from "../contracts/workflow-definition/standard-pr-correction-review-input.v1.schema.json" with { type: "json" };
@@ -122,7 +123,7 @@ export function assertStandardOperationInput(operation, value) {
     return value;
   }
   if (operation === "session_pr_correction_decision") {
-    if (checkShadowJson(value) || validateJsonSchema(value, value?.contract_version === "standard-pr-correction-review-input.v2" ? prCorrectionReviewInputV2 : prCorrectionReviewInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    if (checkShadowJson(value) || validateJsonSchema(value, value?.contract_version === "standard-pr-correction-review-input.v3" ? prCorrectionReviewInputV3 : value?.contract_version === "standard-pr-correction-review-input.v2" ? prCorrectionReviewInputV2 : prCorrectionReviewInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
   if (["session_pr_correction_checkpoint", "session_pr_correction_reopen"].includes(operation)) {
@@ -163,7 +164,7 @@ export function assertStandardOperationOutput(value) {
       || (value.outcome === 'completed' ? value.effect_status !== 'confirmed' || value.facts.session_pr_correction_cycle_initialized !== true || value.facts.cycle_dor_ready !== false : Object.keys(value.facts).length !== 0)) fail('STANDARD_OPERATION_OUTPUT_INVALID');
     return value;
   }
-  if (["standard-pr-correction-decision-output.v1", "standard-pr-correction-decision-output.v2"].includes(value?.contract_version)) return assertPrCorrectionDecisionOutput(value);
+  if (["standard-pr-correction-decision-output.v1", "standard-pr-correction-decision-output.v2", "standard-pr-correction-decision-output.v3"].includes(value?.contract_version)) return assertPrCorrectionDecisionOutput(value);
   if (["standard-pr-correction-checkpoint-output.v1", "standard-pr-correction-reopen-output.v1"].includes(value?.contract_version)) {
     if (checkShadowJson(value) || validateJsonSchema(value, value.contract_version === "standard-pr-correction-checkpoint-output.v1" ? prCorrectionCheckpointOutput : prCorrectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;

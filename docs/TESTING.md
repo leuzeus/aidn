@@ -3448,3 +3448,24 @@ real-port correction-cycle suite selects `--decision-v2` separately in each
 remain doubles. Component evidence cannot establish the production dispatcher
 UNKNOWN chain, genuine human/native/provider/OS, configured PostgreSQL or exact
 installed archive. Exact-source results remain pending at this source change.
+
+### Human-selected new corrective cycle, 2026-11-04
+
+Correction review v3 carries the current checkpoint subject and a digest of the
+canonical cycle inventory, including metadata in database modes. It offers no
+caller-supplied candidate. The authenticated v3 human source selects the new cycle
+ID, title and objective; signed inbox v9 retains those values and their hash.
+The published IR obtains initializer fields only from that accepted output.
+An existing cycle number, field substitution, stale inventory or legacy answer
+cannot authorize the new occurrence. Refusal, deferral and cancellation carry
+no selected cycle or positive facts. V1/v2 and inbox v7/v8 remain readable without
+conversion. Ordinary admission, continuity, plan freeze, DoR and IMPLEMENTING
+remain mandatory. The PR correction authority requires a new corrective cycle;
+startup selection of an existing cycle is a separate outstanding route.
+
+The decision/inbox suite covers v3 subject/selection and cold FILES/DUAL/DB-only
+reads. The real initializer suite selects `--decision-v3` separately per mode,
+with accepted-operation/provider/human fixture capabilities. Source wiring and
+these components do not establish repeated correction, the full C2 journey,
+genuine human/native/provider/OS, configured PostgreSQL or exact installed
+archive behavior. Exact-source qualification is pending at this edit.

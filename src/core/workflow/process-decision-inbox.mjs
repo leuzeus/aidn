@@ -1,4 +1,5 @@
 import inboxV8 from "../contracts/workflow-definition/process-decision-inbox.v8.schema.json" with { type: "json" };
+import inboxV9 from "../contracts/workflow-definition/process-decision-inbox.v9.schema.json" with { type: "json" };
 import inboxV7 from "../contracts/workflow-definition/process-decision-inbox.v7.schema.json" with { type: "json" };
 import { assertHumanPrCorrectionDecision } from "./standard-pr-correction-decision.mjs";
 import inboxV5 from "../contracts/workflow-definition/process-decision-inbox.v5.schema.json" with { type: "json" };
@@ -57,9 +58,9 @@ export function decisionInboxPath(id) {
   return `workflows/decision-inbox/${id}.json`;
 }
 export function assertDecisionInbox(value) {
-  const definition = value?.contract_version === "process-decision-inbox.v8" ? inboxV8 : value?.contract_version === "process-decision-inbox.v7" ? inboxV7 : value?.contract_version === "process-decision-inbox.v6" ? inboxV6 : value?.contract_version === "process-decision-inbox.v5" ? inboxV5 : value?.contract_version === "process-decision-inbox.v4" ? inboxV4 : value?.contract_version === "process-decision-inbox.v3" ? inboxV3 : value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
+  const definition = value?.contract_version === "process-decision-inbox.v9" ? inboxV9 : value?.contract_version === "process-decision-inbox.v8" ? inboxV8 : value?.contract_version === "process-decision-inbox.v7" ? inboxV7 : value?.contract_version === "process-decision-inbox.v6" ? inboxV6 : value?.contract_version === "process-decision-inbox.v5" ? inboxV5 : value?.contract_version === "process-decision-inbox.v4" ? inboxV4 : value?.contract_version === "process-decision-inbox.v3" ? inboxV3 : value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
   if (checkShadowJson(value) || validateJsonSchema(value, definition, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_DECISION_INBOX_INVALID");
-  if (["process-decision-inbox.v7", "process-decision-inbox.v8"].includes(value.contract_version)) assertHumanPrCorrectionDecision(value.source);
+  if (["process-decision-inbox.v7", "process-decision-inbox.v8", "process-decision-inbox.v9"].includes(value.contract_version)) assertHumanPrCorrectionDecision(value.source);
   else if (value.contract_version === "process-decision-inbox.v6") assertHumanSessionBranchIntegrationDecision(value.source);
   else if (value.contract_version === "process-decision-inbox.v5") assertHumanSessionClosureDecision(value.source);
   else if (value.contract_version === "process-decision-inbox.v4") assertHumanBaselinePromotionDecision(value.source);

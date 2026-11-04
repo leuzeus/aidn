@@ -20,6 +20,7 @@ const baseReview = () => ({ session_id: 'S001', checkpoint_operation_id: op('a')
   postimages: ['sessions/S001.md', 'CURRENT-STATE.md', 'snapshots/context-snapshot.md'].map(path => ({ path, sha256: H, metadata_sha256: null })) });
 const candidate = () => ({ cycle_id: 'C002', title: 'review-correction', objective: 'Correct the current reviewed product boundary.' });
 function fixture(makeInbox, v2 = false) {
+  const version = v2 === 3 ? 3 : v2 ? 2 : 1;
   const rows = new Map(), sources = new Map(); let verified = true;
   const inbox = makeInbox ? makeInbox() : {
     read(id) { const record = structuredClone(rows.get(id) ?? null); return { record, content_sha256: record ? shadowHash(record) : null }; },
@@ -29,10 +30,11 @@ function fixture(makeInbox, v2 = false) {
   const human = () => createStandardHumanDecisions({ inbox, signer, source, projectionRequired: false });
   const record = { operation_id: op('e'), intent: { binding_ref: 'session_pr_correction_decision', instance_id: 'fixture', scope_id: 'scope', occurrence_id: 'correction:0' },
     preview: { prepared: { plan: { review: baseReview(), choices: [...prCorrectionChoices] } } }, results: [] };
-  if (v2) Object.assign(record.preview.prepared.plan, { contract_version: 'standard-pr-correction-review-plan.v2', candidate_cycle: candidate() });
-  const claim = (choice = 'create-correction-cycle') => { const question = human().question(record); return { contract_version: v2 ? 'human-pr-correction-decision.v2' : 'human-pr-correction-decision.v1',
-    ...(v2 ? { cycle_sha256: shadowHash(question.candidate_cycle) } : {}), source_kind: 'human', authority_id: 'fixture_operator',
-    source_event_id: v2 ? 'correction:v2:1' : 'correction:1', question_sha256: shadowHash(question), subject_sha256: shadowHash(question.review), choice, rationale: 'Request an ordinary admitted correction cycle', evidence_refs: [{ ref: 'fixture/selection', sha256: H }] }; };
+  if (version === 2) Object.assign(record.preview.prepared.plan, { contract_version: 'standard-pr-correction-review-plan.v2', candidate_cycle: candidate() });
+  if (version === 3) Object.assign(record.preview.prepared.plan, { contract_version: 'standard-pr-correction-review-plan.v3', cycle_constraints: { kind: 'new-admitted-corrective-cycle', minimum_cycle_number: 2, inventory_sha256: H } });
+  const claim = (choice = 'create-correction-cycle') => { const question = human().question(record); return { contract_version: 'human-pr-correction-decision.v' + version,
+    ...(version === 3 ? { selected_cycle: choice === 'create-correction-cycle' ? candidate() : null, cycle_sha256: choice === 'create-correction-cycle' ? shadowHash(candidate()) : null } : version === 2 ? { cycle_sha256: shadowHash(question.candidate_cycle) } : {}), source_kind: 'human', authority_id: 'fixture_operator',
+    source_event_id: 'correction:v' + version + ':1', question_sha256: shadowHash(question), subject_sha256: shadowHash(question.review), choice, rationale: 'Request an ordinary admitted correction cycle', evidence_refs: [{ ref: 'fixture/selection', sha256: H }] }; };
   return { rows, sources, inbox, human, record, claim, deny: () => { verified = false; } };
 }
 let checks = 0;
@@ -40,7 +42,7 @@ const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + n
 await test('seven new private contracts retain closed schemas and exact identities', () => {
   const directory = new URL('../../src/core/contracts/workflow-definition/', import.meta.url);
   const names = ['standard-pr-correction-review.v1', 'standard-pr-correction-review-input.v1', 'standard-pr-correction-review-plan.v1', 'standard-pr-correction-question.v1', 'standard-pr-correction-decision-output.v1', 'human-pr-correction-decision.v1', 'process-decision-inbox.v7'];
-  names.push('standard-pr-correction-review-input.v2', 'standard-pr-correction-review-plan.v2', 'standard-pr-correction-question.v2', 'human-pr-correction-decision.v2', 'standard-pr-correction-decision-output.v2', 'process-decision-inbox.v8');
+  names.push('standard-pr-correction-review-input.v3', 'standard-pr-correction-review-plan.v3', 'standard-pr-correction-question.v3', 'human-pr-correction-decision.v3', 'standard-pr-correction-decision-output.v3', 'process-decision-inbox.v9', 'standard-pr-correction-review-input.v2', 'standard-pr-correction-review-plan.v2', 'standard-pr-correction-question.v2', 'human-pr-correction-decision.v2', 'standard-pr-correction-decision-output.v2', 'process-decision-inbox.v8');
   for (const name of names) { const schema = JSON.parse(fs.readFileSync(new URL(name + '.schema.json', directory))); assert.equal(schema.$id, 'aidn://contracts/workflow-definition/' + name); assert.deepEqual(validateJsonSchemaDefinition(schema, '#', { contractKind: 'workflow-definition' }), []); }
   assertStandardOperationInput('session_pr_correction_decision', { contract_version: 'standard-pr-correction-review-input.v1', checkpoint_operation_id: op('a') });
   assert.throws(() => assertStandardOperationInput('session_pr_correction_decision', { checkpoint_operation_id: op('a'), authorized: true }));
@@ -117,10 +119,60 @@ await test('v2 preparation retains candidate and checkpoint through a fresh revi
   assert.deepEqual(prepared.plan.candidate_cycle, candidate());
   await assert.rejects(port.prepare({}, { ...input, candidate_cycle: { ...candidate(), authority: true } }, op('e')));
 });
+for (const choice of prCorrectionChoices) await test('v3 human selects cycle fields or retains ' + choice + ' without positive authority', async () => {
+  const f = fixture(undefined, 3), source = f.claim(choice);
+  if (choice === 'create-correction-cycle') {
+    source.selected_cycle = { cycle_id: 'C017', title: 'chosen-by-person', objective: 'Implement the newly selected current review corrections.' };
+    source.cycle_sha256 = shadowHash(source.selected_cycle);
+  }
+  f.sources.set('fixture:v3', source);
+  const capture = await f.human().reserve(f.record, 'fixture:v3'), output = f.human().output(f.record, capture);
+  assert.equal(capture.contract_version, 'process-decision-inbox.v9'); assertStandardOperationOutput(output);
+  assert.equal(output.contract_version, 'standard-pr-correction-decision-output.v3');
+  assert.deepEqual(output.observations.candidate_cycle, source.selected_cycle);
+  assert.equal(Object.hasOwn(f.human().question(f.record), 'candidate_cycle'), false);
+  assert.deepEqual(output.facts, choice === 'create-correction-cycle' ? { session_pr_correction_cycle_requested: true } : {});
+});
+await test('v3 rejects old cycle numbers, substitutions, malformed selection, legacy consent and answer reuse', async () => {
+  for (const change of [s => s.selected_cycle.cycle_id = 'C001', s => s.cycle_sha256 = H,
+    s => s.selected_cycle.authorized = true, s => s.selected_cycle = null,
+    s => { s.choice = 'deferred'; }, s => { s.contract_version = 'human-pr-correction-decision.v2'; delete s.selected_cycle; }]) {
+    const f = fixture(undefined, 3), claim = f.claim(); change(claim);
+    if (claim.selected_cycle && claim.cycle_sha256 !== H) claim.cycle_sha256 = shadowHash(claim.selected_cycle);
+    f.sources.set('fixture:v3', claim); await assert.rejects(f.human().reserve(f.record, 'fixture:v3')); assert.equal(f.rows.size, 0);
+  }
+  const f = fixture(undefined, 3); f.sources.set('fixture:v3', f.claim()); await f.human().reserve(f.record, 'fixture:v3');
+  f.record.operation_id = op('f'); f.record.intent.occurrence_id = 'correction:1'; f.sources.set('fixture:reused', f.claim());
+  await assert.rejects(f.human().reserve(f.record, 'fixture:reused'), { code: 'PROCESS_HUMAN_SOURCE_ALREADY_USED' });
+});
+await test('v3 authenticates current inventory bytes and metadata without accepting caller cycle parameters', async () => {
+  const rows = [{ cycle_id: 'C006', path: 'cycles/C006-feature-prior/status.md', sha256: H, metadata_sha256: null }];
+  const input = { contract_version: 'standard-pr-correction-review-input.v3', checkpoint_operation_id: op('a') };
+  const port = createStandardPrCorrectionReview({ readCheckpoint: async () => baseReview(), readCycleInventory: async () => structuredClone(rows) });
+  const prepared = await port.prepare({}, input, op('e')); assert.equal(prepared.plan.cycle_constraints.minimum_cycle_number, 7);
+  await port.assertFresh({}, prepared.plan);
+  rows[0].sha256 = 'b'.repeat(64); await assert.rejects(port.assertFresh({}, prepared.plan), { code: 'STANDARD_PR_CORRECTION_REVIEW_STALE' });
+  rows[0].metadata_sha256 = H; await assert.rejects(port.prepare({}, input, op('e')), { code: 'STANDARD_PR_CORRECTION_CYCLE_INVENTORY_INVALID' });
+  await assert.rejects(port.prepare({}, { ...input, candidate_cycle: candidate() }, op('e')), { code: 'STANDARD_PR_CORRECTION_REVIEW_INPUT_INVALID' });
+  await assert.rejects(createStandardPrCorrectionReview({ readCheckpoint: async () => baseReview() }).prepare({}, input, op('e')), { code: 'STANDARD_PR_CORRECTION_CYCLE_INVENTORY_REQUIRED' });
+  for (const mode of ['dual', 'db-only']) {
+    const review = baseReview(); review.state_mode = mode; review.postimages.forEach(row => row.metadata_sha256 = H);
+    const db = createStandardPrCorrectionReview({ readCheckpoint: async () => review, readCycleInventory: async () => structuredClone(rows) });
+    const before = await db.prepare({}, input, op('e')); rows[0].metadata_sha256 = 'b'.repeat(64);
+    await assert.rejects(db.assertFresh({}, before.plan), { code: 'STANDARD_PR_CORRECTION_REVIEW_STALE' }); rows[0].metadata_sha256 = H;
+  }
+});
 const owned = [], temporary = fs.realpathSync(os.tmpdir()); let completed = false;
 try {
   for (const mode of ['files', 'dual', 'db-only']) {
     const root = createStandardWorkflowFixture(mode, owned);
+    await test(mode + ' v9 human-selected fields survive a cold signed inbox without a proposed candidate', async () => {
+      const store = () => createProcessDecisionInboxStore({ targetRoot: root, stateMode: mode }), f = fixture(store, 3);
+      f.sources.set('fixture:v3', f.claim()); const capture = await f.human().reserve(f.record, 'fixture:v3');
+      const output = f.human().output(f.record, capture), receipt = { output_sha256: shadowHash(output) };
+      f.human().acknowledge(capture.inbox_id, receipt); f.record.results.push({ output, receipt });
+      await f.human().verifyCaptured(f.record); assert.deepEqual(store().read(capture.inbox_id).record, f.human().captured(f.record));
+    });
     await test(mode + ' v8 authenticated decision survives cold signed inbox reads', async () => {
       const store = () => createProcessDecisionInboxStore({ targetRoot: root, stateMode: mode }), f = fixture(store, true);
       f.sources.set('fixture:v2', f.claim()); const capture = await f.human().reserve(f.record, 'fixture:v2');
@@ -141,7 +193,7 @@ try {
   }
   completed = true;
 } finally {
-  if (completed) for (const root of owned.reverse()) { const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary); assert.ok(path.basename(real).startsWith('aidn-standard-ports-')); fs.rmSync(real, { recursive: true, force: true }); }
+  if (completed && !process.argv.includes('--retain-always')) for (const root of owned.reverse()) { const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary); assert.ok(path.basename(real).startsWith('aidn-standard-ports-')); fs.rmSync(real, { recursive: true, force: true }); }
   else console.log(JSON.stringify({ fixture_cleanup: 'retained', roots: owned }));
 }
 console.log(JSON.stringify({ status: 'PASS', checks, proof: 'component-contracts-trusted-source-double-and-durable-signed-human-inbox', model_calls: 0,

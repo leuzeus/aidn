@@ -38,7 +38,14 @@ export function createStandardPrCorrectionCycle({ targetRoot, operations, readAc
       || output.effect_status !== 'no_effect' || output.facts.session_pr_correction_cycle_requested !== true
       || output.observations.choice !== 'create-correction-cycle' || output.observations.review_sha256 !== shadowHash(review))
       fail('STANDARD_PR_CORRECTION_CYCLE_DECISION_REQUIRED');
-    if (plan.contract_version === 'standard-pr-correction-review-plan.v2') {
+    if (plan.contract_version === 'standard-pr-correction-review-plan.v3') {
+      const candidate = { cycle_id: input.cycle_id, title: input.title, objective: input.objective };
+      if (output.contract_version !== 'standard-pr-correction-decision-output.v3'
+        || shadowHash(candidate) !== shadowHash(output.observations.candidate_cycle)
+        || plan.cycle_constraints?.kind !== 'new-admitted-corrective-cycle'
+        || !Number.isSafeInteger(plan.cycle_constraints.minimum_cycle_number)
+        || Number(input.cycle_id.slice(1)) < plan.cycle_constraints.minimum_cycle_number) fail('STANDARD_PR_CORRECTION_CYCLE_CHOICE_CHANGED');
+    } else if (plan.contract_version === 'standard-pr-correction-review-plan.v2') {
       const candidate = { cycle_id: input.cycle_id, title: input.title, objective: input.objective };
       if (output.contract_version !== 'standard-pr-correction-decision-output.v2'
         || shadowHash(candidate) !== shadowHash(plan.candidate_cycle)

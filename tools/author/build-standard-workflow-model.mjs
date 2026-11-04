@@ -85,8 +85,7 @@ op("correction_plan_record", "cycle_plan_record", operation("correction_plan_rec
 op("correction_readiness", "cycle_readiness_evaluate", operation("correction_readiness", "record_operation_id", "correction_plan_record"));
 op("correction_implementation_enter", "cycle_implementation_enter", operation("correction_implementation_enter", "evaluation_operation_id", "correction_readiness"));
 op("session_pr_correction_decide", "session_pr_correction_decision", {
-  ...operation("session_pr_correction_decide", "checkpoint_operation_id", "session_pr_correction_checkpoint"),
-  candidate_cycle: { source: "parameter", key: "cycle", path: ["correction"] } });
+  ...operation("session_pr_correction_decide", "checkpoint_operation_id", "session_pr_correction_checkpoint") });
 op("session_pr_correction_checkpoint", "session_pr_correction_checkpoint", operation("session_pr_correction_checkpoint", "reopen_operation_id", "session_pr_correction_reopen"));
 op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("session_pr_correction_reopen", "triage_operation_id", "session_pr_triage_evaluate"));
 seq("session_pr_effects_pending", []);

@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Avancement courant au 4 novembre 2026 : les composants startup/cycle sont en
-157/155 et le modèle composé candidat en 99 (186 nœuds, 113 occurrences
+159/157 et le modèle composé candidat en 101 (186 nœuds, 113 occurrences
 d’opération, 17 activités). Le snapshot SOURCE34 précédent était 155/153/97 ;
 le snapshot 147/145/89 (147/90/14) était une étape antérieure, pas les assets
 courants. Les preuves conservent chacune leur source exacte. Les raccordements
@@ -21,6 +21,15 @@ datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
 
+- SOURCE36 ajoute la décision corrective v3 : la personne choisit elle-même
+  l’identifiant, le titre et l’objectif du nouveau cycle, plutôt que valider
+  un candidat fourni par les paramètres. La question lie le checkpoint et
+  l’inventaire canonique courant, métadonnées comprises en modes DB. L’inbox v9
+  conserve la source et son empreinte ; l’IR consomme la sortie acceptée. Les
+  lecteurs historiques sont conservés. Qualification exacte en préparation.
+  Le choix général d’un cycle existant au démarrage, les corrections répétées,
+  A2, le parcours C2 et l’ensemble L1–L8/A1–A10 restent ouverts.
+
 - La continuation SOURCE35 présente l’identité, le titre et l’objectif du
   cycle correctif dans la question humaine v2 liée au checkpoint courant.
   La source v2 authentifiée et l’inbox signée v8 conservent l’empreinte de ce
@@ -29,7 +38,8 @@ datés de `dd1dbab`, distincts de cet avancement.
   proposition présentée à la personne. Lecteurs v1/v7 conservés, sans conversion.
   Les contrôles décision/inbox (18), modèle (22) et opérations/réducteur (27)
   passent sur leur source gelée ; composition (32) sur sa source distincte. Les
-  essais d’initialisation réelle restent en cours. La [preuve ciblée](qualification/standard-workflow/correction-human-cycle-choice-components-2026-11-04.json)
+  essais d’initialisation réelle SOURCE35 ont terminé avec six contrôles par
+  mode FILES/DUAL/DB-only sur leur source ae4b, avec autorités doublées. La [preuve ciblée](qualification/standard-workflow/correction-human-cycle-choice-components-2026-11-04.json)
   conserve le premier FAIL de fixture et les limites ; ce raccord ne termine pas les choix généraux
   de mode/cycle/topologie, les corrections répétables ou le parcours C2 complet.
 

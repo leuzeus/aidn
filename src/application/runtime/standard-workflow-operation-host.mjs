@@ -528,7 +528,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readAcceptedOperation: acceptedForPromotion, readCheckpoint: prCorrectionCheckpoint.readCompleted,
     verifyContinuationSource: prCorrectionAuthority.verifyContinuationSource, observeProduct: () => processAuthority.observeProduct(),
     readCurrent: id => current(id).record }) : null;
-  const prCorrectionReview = prCorrectionCheckpoint ? createStandardPrCorrectionReview({ readCheckpoint: prCorrectionCheckpoint.readCompleted }) : null;
+  const prCorrectionReview = prCorrectionCheckpoint ? createStandardPrCorrectionReview({ readCheckpoint: prCorrectionCheckpoint.readCompleted,
+    readCycleInventory: () => artifacts.cycles().map(row => ({ cycle_id: row.cycle_id, path: row.path, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(row.path) })) }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");

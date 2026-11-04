@@ -134,7 +134,7 @@ test("ordinary correction request uses the human executor after its accepted che
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_correction_decide").binding;
   assert.equal(binding.executor_kind, "human"); assert.equal(binding.effect_class, "read-only"); assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_correction_decide").fields,
-    { contract_version: { source: "literal", value: "standard-pr-correction-review-input.v2" }, checkpoint_operation_id: { source: "operation_id", node_id: "session_pr_correction_checkpoint" }, candidate_cycle: { source: "parameter", key: "cycle", path: ["correction"] } });
+    { contract_version: { source: "literal", value: "standard-pr-correction-review-input.v3" }, checkpoint_operation_id: { source: "operation_id", node_id: "session_pr_correction_checkpoint" } });
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
 });
 

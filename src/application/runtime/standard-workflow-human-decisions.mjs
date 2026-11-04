@@ -15,7 +15,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
   const closure = record => record.intent.binding_ref === "cycle_closure_decision";
   const question = record => {
     if (!["session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
-    if (correction(record)) return assertPrCorrectionQuestion({ contract_version: record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v2" ? "standard-pr-correction-question.v2" : "standard-pr-correction-question.v1",
+    if (correction(record)) return assertPrCorrectionQuestion({ contract_version: record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v3" ? "standard-pr-correction-question.v3" : record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v2" ? "standard-pr-correction-question.v2" : "standard-pr-correction-question.v1",
+      ...(record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v3" ? { cycle_constraints: structuredClone(record.preview.prepared.plan.cycle_constraints) } : {}),
       ...(record.preview.prepared.plan.contract_version === "standard-pr-correction-review-plan.v2" ? { candidate_cycle: structuredClone(record.preview.prepared.plan.candidate_cycle) } : {}), operation_id: record.operation_id,
       instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
       session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
@@ -66,7 +67,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal) {
-    if (["standard-pr-correction-question.v1", "standard-pr-correction-question.v2"].includes(request.contract_version)) assertHumanPrCorrectionDecision(claim, request);
+    if (["standard-pr-correction-question.v1", "standard-pr-correction-question.v2", "standard-pr-correction-question.v3"].includes(request.contract_version)) assertHumanPrCorrectionDecision(claim, request);
     else if (request.contract_version === "standard-session-branch-integration-question.v1") assertHumanSessionBranchIntegrationDecision(claim, request);
     else if (request.contract_version === "standard-session-closure-question.v1") assertHumanSessionClosureDecision(claim, request);
     else if (request.contract_version === "standard-baseline-promotion-question.v1") assertHumanBaselinePromotionDecision(claim, request);
@@ -104,7 +105,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      return write({ contract_version: correction(record) ? (claim.contract_version === "human-pr-correction-decision.v2" ? "process-decision-inbox.v8" : "process-decision-inbox.v7") : integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
+      return write({ contract_version: correction(record) ? (claim.contract_version === "human-pr-correction-decision.v3" ? "process-decision-inbox.v9" : claim.contract_version === "human-pr-correction-decision.v2" ? "process-decision-inbox.v8" : "process-decision-inbox.v7") : integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? "process-decision-inbox.v2" : "process-decision-inbox.v1", inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
         source: claim, phase: "reserved", receipt_sha256: null }, null);
     },
     acknowledge(id, receipt) {
@@ -124,7 +125,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       const request = question(record);
       if (correction(record)) {
         const observed = observeHumanPrCorrectionDecision({ question: request, decision: capture.source });
-        return assertPrCorrectionDecisionOutput({ contract_version: request.contract_version === "standard-pr-correction-question.v2" ? "standard-pr-correction-decision-output.v2" : "standard-pr-correction-decision-output.v1", operation_ref: "session_pr_correction_decision", ...observed,
+        return assertPrCorrectionDecisionOutput({ contract_version: request.contract_version === "standard-pr-correction-question.v3" ? "standard-pr-correction-decision-output.v3" : request.contract_version === "standard-pr-correction-question.v2" ? "standard-pr-correction-decision-output.v2" : "standard-pr-correction-decision-output.v1", operation_ref: "session_pr_correction_decision", ...observed,
           observations: { ...observed.observations, inbox_id: capture.inbox_id, source_ref: capture.source_ref },
           evidence_refs: [{ ref: `aidn:decision-source/${capture.inbox_id}`, sha256: shadowHash(capture.source) }, ...capture.source.evidence_refs] });
       }
