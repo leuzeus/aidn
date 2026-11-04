@@ -1,5 +1,5 @@
 {
-  "observed_utc": "2026-11-04T23:15:58.077253+00:00",
+  "observed_utc": "2026-11-04T23:33:28.028273+00:00",
   "scope": "SOURCE40 bounded native-entry diagnosis and mixed fixture requalification; not entire STANDARD",
   "diagnostic": {
     "utc": "2026-11-04T23:11:55.588716+00:00",
@@ -186,12 +186,62 @@
         "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
         "head": "f2d45317a753780f823310c2127363947506d549"
       },
+      "terminal": {
+        "started_utc": "2026-11-04T23:14:23.220257+00:00",
+        "finished_utc": "2026-11-04T23:22:26.158112+00:00",
+        "pid": 64636,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source40-mode-mixed-thinking-files-r2-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--standard-mode-work-mode=files",
+          "--standard-mode-work-session=THINKING",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
+        "head_before": "f2d45317a753780f823310c2127363947506d549",
+        "head_after": "f2d45317a753780f823310c2127363947506d549"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 593,
+          "sha256": "c5abf93d987c2f08e3990aca8637b27b54dfac5acc2cbf448c6b00e6362c9a2a",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 977,
+          "sha256": "757b9907b323b1ffde215b455af02cfc023d0ee88ed4a2d2b8f1deb1bfeb8125",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source40-mode-mixed-thinking-files-r3-20261104",
+      "source_head": "83f4f404d29ec07fba3147e9dbd1121e13ac1e62",
+      "started": {
+        "started_utc": "2026-11-04T23:25:28.029686+00:00",
+        "pid": 54108,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-worker-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--standard-mode-work-mode=files",
+          "--standard-mode-work-session=THINKING",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-worker-source40-20261104",
+        "head": "83f4f404d29ec07fba3147e9dbd1121e13ac1e62"
+      },
       "terminal": null,
       "original_logs": [
         {
           "name": "stdout.log",
-          "bytes": 82,
-          "sha256": "5f46ac0d0c45223e6bdf9aeacbf5434137f884adabfd348926d9e74950f5fe15",
+          "bytes": 593,
+          "sha256": "c5abf93d987c2f08e3990aca8637b27b54dfac5acc2cbf448c6b00e6362c9a2a",
           "scope": "dated prefix, may grow"
         },
         {
@@ -247,6 +297,52 @@
       ]
     },
     {
+      "name": "source40-mode-native-admission-20261104",
+      "source_head": "f2d45317a753780f823310c2127363947506d549",
+      "started": {
+        "started_utc": "2026-11-04T23:21:56.755675+00:00",
+        "pid": 64256,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104\\tools\\perf\\verify-native-write-admission-fixtures.mjs",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
+        "head": "f2d45317a753780f823310c2127363947506d549"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T23:21:56.755675+00:00",
+        "finished_utc": "2026-11-04T23:23:03.389038+00:00",
+        "pid": 64256,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source40-mode-native-admission-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104\\tools\\perf\\verify-native-write-admission-fixtures.mjs",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
+        "head_before": "f2d45317a753780f823310c2127363947506d549",
+        "head_after": "f2d45317a753780f823310c2127363947506d549"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 576,
+          "sha256": "bc3683ffd65d908243dc461a3646971f5c7651533807030b4106ba9ea9e13322",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 97,
+          "sha256": "645e198949fdf4cdb1aa2d81a601e9a7fffa695c35e8857816a9285d58aea3f9",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
       "name": "source40-mode-native-entry-diagnostic-20261104",
       "source_head": "28c1deff4494ff4bc2e8f77ac3d7b5f48571e9f9",
       "started": {
@@ -295,19 +391,112 @@
           "scope": "terminal original"
         }
       ]
+    },
+    {
+      "name": "source40-mode-worker-boundary-20261104",
+      "source_head": "83f4f404d29ec07fba3147e9dbd1121e13ac1e62",
+      "started": {
+        "started_utc": "2026-11-04T23:25:28.054689+00:00",
+        "pid": 60692,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-worker-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--worker-only",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-worker-source40-20261104",
+        "head": "83f4f404d29ec07fba3147e9dbd1121e13ac1e62"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T23:25:28.054689+00:00",
+        "finished_utc": "2026-11-04T23:26:40.176600+00:00",
+        "pid": 60692,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2184,
+        "name": "source40-mode-worker-boundary-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-worker-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--worker-only",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-worker-source40-20261104",
+        "head_before": "83f4f404d29ec07fba3147e9dbd1121e13ac1e62",
+        "head_after": "83f4f404d29ec07fba3147e9dbd1121e13ac1e62"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 556,
+          "sha256": "72fb4a368ebb21dbf8916cf585ecb0cb2a3df2facee90c94a7e6054b83289003",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 126,
+          "sha256": "d800f9627a9cdca8591b3b32189c28c8a969465cff31432a2c7b82a526349112",
+          "scope": "terminal original"
+        }
+      ]
     }
   ],
-  "pass": 2,
-  "fail": 3,
+  "pass": 4,
+  "fail": 4,
   "pending": [
-    "source40-mode-mixed-thinking-files-r2-20261104"
+    "source40-mode-mixed-thinking-files-r3-20261104"
   ],
   "limits": [
-    "Actual inner Node exception code was not retained; the host stage and source establish the omitted input defect, pending positive mixed proof.",
+    "The first case retained only a safe host stage; the next case retained the actual STANDARD_MODE_WORK_PRODUCT_CHANGED code. Source identifies both missing input/evidence and missing fresh worker observer. Positive mixed proof depends on the separate latest case.",
     "SOURCE39 remains 7 PASS/4 FAIL; originals unchanged. New cases have independent original authority.",
     "Synthetic/static model and composition checks are not Native execution. Native/human capabilities remain fixtures.",
     "No uncertain physical project/control/store is copied as quiescent or granted retry.",
     "Entire L1-L8/A1-A10 remains incomplete; mode resumes, SPIKE/experiments/closure, ordinary choices, general L4, real provider/review/merge, genuine Native/Human/OS/PG and installed exact archive remain due.",
     "Full current Runtime/GovernanceAdmission not established."
-  ]
+  ],
+  "worker_product_observer": {
+    "utc": "2026-11-04T23:24:55.006650+00:00",
+    "source_head": "f2d45317a753780f823310c2127363947506d549",
+    "case": "source40-mode-mixed-thinking-files-r2-20261104",
+    "actual_host_diagnostic": {
+      "code": "STANDARD_MODE_WORK_PRODUCT_CHANGED",
+      "stage": "activity_output_context"
+    },
+    "origin": "C:\\Users\\leuz9\\AppData\\Local\\Temp\\aidn-agentic-execution-Tqo5bi\\case-1\\control\\case\\00001-execution-failure.json",
+    "bytes": 80,
+    "sha256": "8f30658064af7084c68c884caeb8a6206547e689e348fc69317f948c98db2a91",
+    "cause": "Native worker authority omitted readProductSha256. The parent mixed host already supplied a fresh preview callback; worker mode preparation could never match its undefined observation.",
+    "correction": "Compose the same live executor-preview callback in the real worker and fixture controller, preserving snapshot comparison, instance authentication and reservation.",
+    "limits": [
+      "No old receipt, grant, snapshot, deadline or owner changed.",
+      "This is a new observed cause after the input/evidence fix, not evidence of successful mixed analysis.",
+      "Uncertain project/control/store remain on place; only individual diagnostic bytes retained."
+    ]
+  },
+  "late_source37_c2": {
+    "terminal": {
+      "started_utc": "2026-11-04T21:25:41.729538+00:00",
+      "finished_utc": "2026-11-04T23:29:42.246528+00:00",
+      "pid": 37220,
+      "exit_code": 1,
+      "source_unchanged": true,
+      "protected_files": 2170,
+      "name": "source37-full-c2-files-r2-20261104",
+      "args": [
+        "node",
+        "G:\\aidn-worktrees\\standard-full-c2-source37-r2-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+        "--standard-composed-mode=files",
+        "--standard-composed-stop=component_complete",
+        "--standard-composed-scenario=correction-full",
+        "--standard-composed-budget-ms=10800000",
+        "--standard-composed-host-trace",
+        "--retain-always"
+      ],
+      "root": "G:\\aidn-worktrees\\standard-full-c2-source37-r2-20261104",
+      "head_before": "4e62c478869d100ed463e0b06a14582e849d8bf5",
+      "head_after": "4e62c478869d100ed463e0b06a14582e849d8bf5"
+    },
+    "cause": "FIRST_NATIVE_CAUSE_NOT_ESTABLISHED",
+    "limits": "No all-resource closure, absence of effects or retry authority follows. Original budgets/grants/receipts/resources remain untouched."
+  }
 }

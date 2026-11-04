@@ -24,23 +24,28 @@ datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
 
-- SOURCE40 localise l'échec Native dans le préparateur de contexte du rapport,
-  sur une nouvelle source gelée `28c1deff` : le stade retenu est
-  `activity_output_context`, avec PROCESS_EXECUTION_FAILED et zéro réponse.
-  Le type d'exception interne n'a pas été retenu. Le code propriétaire excluait
-  le contrat de mode des deux raccords qui fournissent instance, occurrence,
-  snapshot produit, puis preuves de contexte et d'artefact. La correction
-  `463b342c` transmet ces données et conserve l'authentification ; un snapshot
-  absent ou mal formé est refusé par un code typé. Ses deux essais ont échoué
-  au chargement des pins d'implémentation, avant l'analyse : ils restent FAIL.
-  Les générateurs officiels actualisent ensuite startup/cycle/standard en
-  163/161/105 sur `f2d45317`, sans changer le graphe ni ses permissions.
-  Composition 32 et modèle 22 passent sur cette source ; le nouveau parcours
-  mixte THINKING FILES est encore en cours. Il doit atteindre une analyse,
-  l'évaluation authentifiée avec toutes ses preuves, la sonde froide et le même
-  réducteur avec témoins d'effets inchangés. Les échecs et projets incertains
-  sont conservés. La [preuve bornée](qualification/standard-workflow/mode-native-entry-2026-11-04.json)
-  sépare diagnostic, pins et exécution ; elle ne ferme ni A2 ni le plan entier.
+- SOURCE40 conserve deux échecs d'entrée Native sur de nouveaux cas indépendants.
+  `28c1deff` retient PROCESS_EXECUTION_FAILED au stade `activity_output_context` ;
+  le type d'exception interne reste inconnu. Le code excluait le contrat de mode
+  des raccords instance/occurrence/snapshot et preuves contexte/artefact.
+  `463b342c` corrige ces raccords sans retirer l'authentification. Deux essais
+  échouent ensuite au chargement des pins périmés ; ils restent FAIL. Les outils
+  officiels produisent 163/161/105 sur `f2d45317`, avec graphe, politiques, rôles
+  et dépendances inchangés. Composition 32, modèle 22 et admission Native passent
+  sur cette source ; son cas mixte termine FAIL avec le code réel
+  STANDARD_MODE_WORK_PRODUCT_CHANGED au même stade, avant toute réponse.
+  L'autorité du worker omettait le lecteur frais du produit. `83f4f404` fournit
+  le callback du preview de l'exécuteur au worker réel et au contrôleur fixture,
+  sans cache ni substitution d'un ancien hash et en gardant la comparaison.
+  Les deux contrôles de frontière worker passent sur cette source.
+  Le nouveau cas THINKING FILES reste pending à l'observation datée du registre.
+  Les [preuves datées](qualification/standard-workflow/mode-native-entry-2026-11-04.json)
+  distinguent chaque source, résultat, autorité et limite. Les transports Native/
+  humains restent doublés ; A2, la reprise après nouvelle décision, SPIKE,
+  les expériences avec effets, les clôtures et le plan entier restent ouverts.
+  Le long C2 SOURCE37 sur `4e62c478` est désormais terminal FAIL, exit 1 le
+  4 novembre à 23:29:42 UTC. La première cause Native reste à établir ; les
+  anciens budgets, autorisations et ressources ne sont ni réparés ni relancés.
 
 - SOURCE39 ajoute un driver mixte ciblé pour les analyses des modes du modèle
   publié 104, avec choix humain et transport Native doublés, ports applicatifs,
@@ -125,7 +130,7 @@ datés de `dd1dbab`, distincts de cet avancement.
   La conversion SPIKE admise, les expériences avec effets,
   la clôture dans ces modes et la reprise après nouvelle décision restent à
   raccorder et qualifier. A2 entier et l'ensemble L1–L8/A1–A10 restent ouverts.
-  Le C2 SOURCE37 continue sur sa source gelée distincte, sans nouvelle autorité.
+  Le C2 SOURCE37 est terminal FAIL sur sa source gelée distincte ; aucune nouvelle autorité ni relance ne sont déduites.
 
 - SOURCE37 ajoute un scénario composé v3 distinct pour le parcours C2 complet
   du modèle 101 : choix humain libre, initialisation, planification depuis le
@@ -138,16 +143,17 @@ datés de `dd1dbab`, distincts de cet avancement.
   ports réels positifs FILES 3 sur cette même source. Le helper passe 9 contrôles
   et les références documentaires passent sur 4e62c478. Le nouveau cas composé
   FILES, avec son plafond initial distinct de 17 réponses et trois heures, a
-  été lancé sur 4e62c478 le 4 novembre à 21:25:41 UTC ; aucun verdict final n'est
-  encore disponible. Les refus de valeurs croisées sont vérifiés par de vrais
+  été lancé sur 4e62c478 le 4 novembre à 21:25:41 UTC et termine FAIL, exit 1 le
+  même jour à 23:29:42 UTC. La source reste inchangée ; la cause Native reste
+  à diagnostiquer et les ressources incertaines sont conservées. Les refus de valeurs croisées sont vérifiés par de vrais
   processus Node ; les identités Native, humaines et fournisseur restent doublées.
   Fichiers : driver composé, helper de cycle, scénario
   `composed-correction.v3.json` et vérification de préflight. Dépendances : ports
   SOURCE30–33 et décision v3 SOURCE36. Critère : parcours causal sur projet
   distinct, puis replay/simulation du même modèle sans répéter les effets.
   La [preuve bornée](qualification/standard-workflow/composed-human-selected-cycle-driver-2026-11-04.json)
-  distingue les deux sources gelées et les six cas terminaux de ce parcours en
-  cours. À ce stade la préparation du driver n'est pas sa qualification. Les choix
+  conserve les deux sources et six contrôles de préparation ; le parcours long
+  est désormais terminal FAIL, distinct de ces contrôles. À ce stade la préparation du driver n'est pas sa qualification. Les choix
   généraux de démarrage/session/mode/cycle/topologie, A2, L4 et l'ensemble
   L1–L8/A1–A10 restent ouverts ; entrée ordinaire et marqueur inchangés.
 

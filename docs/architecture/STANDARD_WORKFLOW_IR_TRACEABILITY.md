@@ -1,17 +1,23 @@
 # Standard workflow IR traceability
 
-SOURCE40's independent 28c1deff diagnostic case is terminal FAIL with the retained
-host stage `activity_output_context`, PROCESS_EXECUTION_FAILED and zero observed
-responses. The inner exception type was not retained. Owning source excludes the
-mode contract from both native-input and evidence predicates: instance, occurrence
-and product snapshot are omitted, then context/output evidence is omitted.
-463b342c corrects both predicates and gives missing/malformed snapshots a typed
-refusal, preserving authentication. Its first two checks failed at stale pinned
-implementation admission and never tested the native correction. Official source
-generators then produce startup/cycle/standard revisions 163/161/105 on f2d45317,
-with unchanged graph/permissions. Composition 32 and model 22 pass there; the new
-THINKING FILES mixed case is pending. The [bounded record](../qualification/standard-workflow/mode-native-entry-2026-11-04.json)
-keeps these separate. No old allocation is retried, repaired or declared quiescent.
+SOURCE40 retains two independent native-entry failures. 28c1deff records
+PROCESS_EXECUTION_FAILED at `activity_output_context`; the inner Node exception
+type was not retained. 463b342c supplies the missing instance/occurrence/product
+snapshot and context/output evidence, preserving authentication. Two stale-pin
+checks fail before testing that correction. Official refresh produces revisions
+163/161/105 on f2d45317 with unchanged graph/roles/policies/data dependencies.
+Composition 32, model 22 and native admission pass there. Its mixed case then
+fails with the actual STANDARD_MODE_WORK_PRODUCT_CHANGED at the same stage,
+before any response. The worker authority omitted its fresh product reader.
+83f4f404 supplies the actual executor-preview callback in both the real worker
+and fixture controller, preserving comparison and reservation/authentication.
+Both worker-boundary checks pass there. The new THINKING FILES case is pending at the record timestamp.
+The [dated record](../qualification/standard-workflow/mode-native-entry-2026-11-04.json)
+separates sources and scopes. Old failures/resources stay unchanged; new-decision
+resumes, SPIKE/experiments/closure, genuine Native/Human/Provider/OS and whole
+L1-L8/A1-A10 remain open. The separate SOURCE37 C2 case on 4e62c478 is terminal
+FAIL at 23:29:42 UTC, with unchanged source; its first Native cause is still
+unknown and no retry or global resource closure follows.
 
 SOURCE39 adds a targeted mixed execution fixture for the published model 104
 mode paths, separate from synthetic planning and canonical-context components.
@@ -85,8 +91,8 @@ v2 nine-response prefix and all its original authorities remain separate.
 General startup/session/mode/cycle choices, repeated corrections, the remaining A2 routes, general L4,
 provider responses/resolutions, merge and full L1–L8/A1–A10 remain outstanding.
 The [bounded preparation record](../qualification/standard-workflow/composed-human-selected-cycle-driver-2026-11-04.json)
-retains six terminal checks on two exact sources and the separate pending full
-FILES case. It does not promote static identity or synthetic routing to execution.
+retains six preparation checks on two exact sources. The separate full FILES
+case is now terminal FAIL, with unchanged source and uncertain resources retained. It does not promote static identity or synthetic routing to execution.
 
 The candidate PR continuation includes `session_pr_correction_reopen` under
 SPEC R03/R04/R07/R08/R11 and packaged `pr-orchestrate`. The deterministic mutating
