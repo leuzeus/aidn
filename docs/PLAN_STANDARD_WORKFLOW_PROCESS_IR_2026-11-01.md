@@ -31,8 +31,14 @@ datés de `dd1dbab`, distincts de cet avancement.
   Native authentifié. Critères : une analyse, D/H/attentes sans allocation,
   absence d'écriture produit et de nouvelle HEAD, attente sans faits positifs,
   relecture froide et même réducteur avec témoins d'effets inchangés.
-  Les cas sur nouvelle source gelée restent à exécuter ; ce driver ne prouve pas
-  encore le parcours. La relecture d'une attente ne satisfait pas la reprise après
+  Le préflight corrigé passe 50 contrôles sur `a905347e`. Trois nouveaux cas
+  mixtes sont en cours sur `f5fa0875` : THINKING FILES, EXPLORING non retenu
+  DUAL et EXPLORING en attente DB-only. Leur démarrage ne prouve pas le parcours.
+  La [preuve courante](qualification/standard-workflow/mode-analysis-mixed-2026-11-04.json)
+  conserve les sources, préconditions, verdicts et observations datées. Les quinze
+  variantes mode/stockage rejoignent la chaîne Runtime et son autorité exacte,
+  en conservant les 143 appels antérieurs dans le même ordre (158 au total).
+  La famille entière et Governance Admission restent non prouvées. La relecture d'une attente ne satisfait pas la reprise après
   nouvel événement. Conversion SPIKE, expériences, clôture de session et A2
   entier restent ouverts, ainsi que l'ensemble L1–L8/A1–A10.
 
@@ -54,7 +60,8 @@ datés de `dd1dbab`, distincts de cet avancement.
   zéro réponse pour THINKING alors que le modèle prévoit une analyse.
   SOURCE39 corrige cette attente pour les deux modes et ajoute des assertions
   de zéro réponse supplémentaire pour D/H, refus, report, annulation et attente.
-  Cette correction attend son propre contrôle sur une nouvelle source gelée.
+  Son contrôle sur la nouvelle source gelée `a905347e` passe 50 assertions ;
+  ce PASS synthétique ne remplace pas le FAIL historique ni le parcours mixte.
   La [preuve bornée](qualification/standard-workflow/mode-analysis-components-2026-11-04.json)
   conserve les 22 cas SOURCE38 terminaux : 15 PASS et 7 FAIL sur six sources.
   Les trois premiers cas sur `5ccf1ae7` ont terminé FAIL :

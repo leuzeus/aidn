@@ -5,8 +5,12 @@ mode paths, separate from synthetic planning and canonical-context components.
 It uses doubled Native/human capabilities with real application, Git and SQLite
 ports. It checks unchanged product/HEAD, zero extra model responses for D/H and
 missing answers, cold read-only polling and common-reducer replay/simulation
-with canonical/Git/product/allocation/journal witnesses. New frozen-source runs
-remain pending. Cold polling does not establish continuation after a new event,
+with canonical/Git/product/allocation/journal witnesses. The a905347e preflight
+passes 50 synthetic checks. Three mixed cases remain running on f5fa0875,
+without a terminal verdict. The [current record](../qualification/standard-workflow/mode-analysis-mixed-2026-11-04.json)
+separates their scopes. Fifteen new case invocations join the exact Runtime
+authority; all 143 existing calls remain in order (158 total). Full Runtime and
+Governance Admission remain unproved. Cold polling does not establish continuation after a new event,
 SPIKE conversion, effectful experiments, session closure or complete A2.
 
 SOURCE38 replaces the four empty THINKING/EXPLORING sequences with mode-specific
@@ -26,8 +30,8 @@ six checks and retains its two projects. All 22 SOURCE38 cases are terminal:
 15 PASS and 7 FAIL on six separate sources. The ca2fa2af preflight failed after
 eight checks because its assertion still required zero mode-analysis responses.
 SOURCE39 expects exactly one read-only analysis and checks zero extra model
-responses for D/H and waiting/non-success paths; a new frozen-source execution
-is required. Original failures remain in the [bounded record](../qualification/standard-workflow/mode-analysis-components-2026-11-04.json).
+responses for D/H and waiting/non-success paths; its new a905347e run passes
+50 synthetic checks, with unchanged protected source. Original failures remain in the [bounded record](../qualification/standard-workflow/mode-analysis-components-2026-11-04.json).
 Wait/replay tests do not establish a cold mixed-host restart. New regression
 suites join the Runtime npm chain; its full current family and Governance
 Admission remain unproved. Ordinary entry and completion marker stay unchanged.
