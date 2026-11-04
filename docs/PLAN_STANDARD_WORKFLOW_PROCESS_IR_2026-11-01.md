@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 109/107 et le modèle composé candidat en 51
+les composants startup/cycle en 110/108 et le modèle composé candidat en 52
 (95 nœuds, 60 occurrences d’opération, 50 identifiants de liaison mobilisés parmi
-57 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+58 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3493,3 +3493,24 @@ control paths are absent at the later observation, so terminal instance replay,
 allocation journals and owner are unavailable there. Parent/known child PID
 absence is only an OS snapshot; general resource cleanup is not proven. This is
 a separate run from the composed41 refusal whose retained104-event replay exists.
+
+### Complete review content in the common observation leaf, model52
+
+The candidate IR selects the distinct session_pr_review_content_observe binding
+at its existing observation leaf. It authenticates the same accepted successor
+push/checkpoint and local/remote/canonical postimages, then retains explicit v2
+review and thread observations. Complete bounded review bodies and their hashes,
+comment actor node IDs, head/base/branch identities and revisions are preserved.
+Body edits at unchanged provider timestamps invalidate the two-scan collection;
+missing or excessive content refuses without truncating evidence. Historical v1
+reader contracts and the original observation binding remain available.
+
+Graph95/operations60 and eight native activities remain unchanged, with50
+referenced bindings among58 registered. Startup/cycle components advance to
+110/108 and the composed candidate to52 with four additional direct schema pins.
+The output still establishes evidence availability and pending triage only.
+Provider reads are host capabilities; preview makes none. Full text is a
+prerequisite for actual triage, not its completion or a policy/check acceptance,
+thread response/resolution, merge decision/effect, completed skill or durable
+PR-specific event. Those routes and the remaining standard requirements stay
+open; ordinary entry remains unchanged and complete_standard_workflow=false.

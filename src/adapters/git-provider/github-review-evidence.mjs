@@ -8,6 +8,7 @@ import { validateJsonSchema } from '../../core/contracts/json-schema-validator.m
 import { checkShadowJson, shadowHash } from '../../core/workflow/shadow-json.mjs';
 import requestSchema from '../../core/contracts/workflow-definition/github-review-evidence-request.v1.schema.json' with { type: 'json' };
 import outputSchema from '../../core/contracts/workflow-definition/github-review-evidence.v1.schema.json' with { type: 'json' };
+import contentSchema from '../../core/contracts/workflow-definition/github-review-evidence.v2.schema.json' with { type: 'json' };
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 const sha = data => createHash('sha256').update(data).digest('hex');
@@ -27,11 +28,18 @@ const queries = Object.freeze({
     ... on StatusContext { id context state createdAt updatedAt creator { ${actorFields} } commit { oid } }
   } pageInfo { hasNextPage endCursor } } }`),
 });
+const contentQueries = Object.freeze({ ...queries, reviews: query(`reviews(first:50,after:$cursor) { totalCount nodes { id state submittedAt updatedAt body
+    author { ${actorFields} } commit { oid } } pageInfo { hasNextPage endCursor } }`) });
+function chunks(text) {
+  const result = []; let part = '';
+  for (const c of text) { if (part.length + c.length > 8192) { result.push(part); part = ''; } part += c; }
+  result.push(part); return result;
+}
 export const githubReviewEvidenceLimits = Object.freeze({ requests: 48, rows: 500, deadlineMs: 60000, pageSize: 50 });
 const content = value => ({ repository: value.repository, pull_request: value.pull_request, reviews: value.reviews, checks: value.checks,
   rollup_state: value.rollup_state });
-export function assertGithubReviewEvidence(value) {
-  if (!valid(value, outputSchema) || value.evidence_sha256 !== shadowHash(content(value))
+function assertEvidence(value, schema) {
+  if (!valid(value, schema) || value.evidence_sha256 !== shadowHash(content(value))
     || Date.parse(value.observed_until) < Date.parse(value.observed_from)) fail('GITHUB_REVIEW_EVIDENCE_INVALID');
   for (const rows of [value.reviews, value.checks]) {
     if (new Set(rows.map(row => row.node_id)).size !== rows.length
@@ -39,12 +47,21 @@ export function assertGithubReviewEvidence(value) {
   }
   for (const row of value.checks) if (row.commit_oid !== value.pull_request.head_oid
     || row.kind === 'CheckRun' && (row.status === 'COMPLETED') !== (row.conclusion !== null)) fail('GITHUB_REVIEW_EVIDENCE_INVALID');
+  if (schema === contentSchema) {
+    let bytes = 0;
+    for (const row of value.reviews) { const body = row.body_chunks.join(''), size = Buffer.byteLength(body); bytes += size;
+      if (size > 65536 || sha(body) !== row.body_sha256) fail('GITHUB_REVIEW_EVIDENCE_INVALID');
+    }
+    if (bytes > 1048576) fail('GITHUB_REVIEW_EVIDENCE_INVALID');
+  }
   return value;
 }
+export const assertGithubReviewEvidence = value => assertEvidence(value, outputSchema);
+export const assertGithubReviewContent = value => assertEvidence(value, contentSchema);
 // This is a live observation capability supplied by the trusted embedding.
 // JSON validation/digests do not authenticate data from arbitrary callers.
 function createGithubReviewEvidenceProtocol({ executable, executableSha256, workingDirectory, repository, environment = process.env },
-  { run = spawnSync, now = Date.now } = {}) {
+  { run = spawnSync, now = Date.now } = {}, includeContent = false) {
   if (!path.isAbsolute(executable ?? '') || !/^[a-f0-9]{64}$/.test(executableSha256 ?? '') || !path.isAbsolute(workingDirectory ?? '')
     || !repository || Object.keys(repository).some(key => !['owner', 'name', 'node_id'].includes(key))
     || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(repository.owner ?? '')
@@ -73,7 +90,7 @@ function createGithubReviewEvidenceProtocol({ executable, executableSha256, work
       let result, data;
       try { result = yield [binary, ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], {
         cwd, env, shell: false, windowsHide: true, encoding: 'utf8', timeout, maxBuffer: 4194304,
-        input: JSON.stringify({ query: queries[kind], variables: { owner: repo.owner, name: repo.name, number: request.pull_request_number, cursor } }),
+        input: JSON.stringify({ query: (includeContent ? contentQueries : queries)[kind], variables: { owner: repo.owner, name: repo.name, number: request.pull_request_number, cursor } }),
       }]; } catch { fail('GITHUB_REVIEW_UNAVAILABLE'); }
       if (result?.error || result?.status !== 0 || result?.signal) fail('GITHUB_REVIEW_UNAVAILABLE');
       try { data = JSON.parse(result.stdout); } catch { fail('GITHUB_REVIEW_UNAVAILABLE'); }
@@ -92,8 +109,12 @@ function createGithubReviewEvidenceProtocol({ executable, executableSha256, work
         state: p.state, is_draft: p.isDraft, updated_at: p.updatedAt } };
     }
     const actor = row => row === null ? null : { node_id: row?.id, login: row?.login, type: row?.__typename };
-    const review = row => ({ node_id: row.id, state: row.state, submitted_at: row.submittedAt, updated_at: row.updatedAt,
-      author: actor(row.author), commit_oid: row.commit?.oid ?? null });
+    function review(row) {
+      if (includeContent && (typeof row.body !== 'string' || Buffer.byteLength(row.body) > 65536)) fail('GITHUB_REVIEW_CONTENT_LIMIT');
+      return { node_id: row.id, state: row.state, submitted_at: row.submittedAt, updated_at: row.updatedAt,
+        author: actor(row.author), commit_oid: row.commit?.oid ?? null,
+        ...(includeContent ? { body_chunks: chunks(row.body), body_sha256: sha(row.body) } : {}) };
+    }
     function check(row) {
       if (row.__typename === 'CheckRun') return { node_id: row.id, kind: 'CheckRun', name: row.name, status: row.status,
         conclusion: row.conclusion, started_at: row.startedAt, completed_at: row.completedAt,
@@ -105,7 +126,7 @@ function createGithubReviewEvidenceProtocol({ executable, executableSha256, work
     }
     function* collect(kind, expected) {
       let cursor = null, total = null, original = expected, rollupState;
-      const ids = new Set(), cursors = new Set(), rows = [];
+      const ids = new Set(), cursors = new Set(), rows = []; let bodyBytes = 0;
       do {
         const r = yield* call(kind, cursor); const m = metadata(r);
         if (original && shadowHash(original) !== shadowHash(m)) fail('GITHUB_REVIEW_SOURCE_CHANGED'); original ??= m;
@@ -123,7 +144,9 @@ function createGithubReviewEvidenceProtocol({ executable, executableSha256, work
         total = page.totalCount;
         for (const row of page.nodes) {
           if (typeof row?.id !== 'string' || !row.id || row.id.length > 256 || ids.has(row.id)) fail('GITHUB_REVIEW_PAGINATION_INVALID');
-          ids.add(row.id); rows.push(kind === 'reviews' ? review(row) : check(row));
+          ids.add(row.id); const normalized = kind === 'reviews' ? review(row) : check(row);
+          if (includeContent && kind === 'reviews') { bodyBytes += Buffer.byteLength(row.body); if (bodyBytes > 1048576) fail('GITHUB_REVIEW_CONTENT_LIMIT'); }
+          rows.push(normalized);
         }
         cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
         if (cursor !== null) {
@@ -142,7 +165,7 @@ function createGithubReviewEvidenceProtocol({ executable, executableSha256, work
     // check runs, review dismissal or a rerun at an unchanged head.
     if (shadowHash(first) !== shadowHash(second)) fail('GITHUB_REVIEW_COLLECTION_CHANGED');
     pinned(); remaining(); const end = now();
-    return assertGithubReviewEvidence({ contract_version: 'github-review-evidence.v1', ...second,
+    return (includeContent ? assertGithubReviewContent : assertGithubReviewEvidence)({ contract_version: includeContent ? 'github-review-evidence.v2' : 'github-review-evidence.v1', ...second,
       observed_from: new Date(start).toISOString(), observed_until: new Date(end).toISOString(), requests,
       consistency: 'two-complete-identical-collections', evidence_sha256: shadowHash(second) });
   };
@@ -154,5 +177,11 @@ export function createGithubReviewEvidenceAdapter(configuration, { run = spawnSy
 }
 export function createGithubReviewEvidenceAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
   const observe = createGithubReviewEvidenceProtocol(configuration, { run, now });
+  return Object.freeze({ observeReviewEvidence: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
+}
+
+// Complete review bodies are an explicit version, never an in-place v1 upgrade.
+export function createGithubReviewContentAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
+  const observe = createGithubReviewEvidenceProtocol(configuration, { run, now }, true);
   return Object.freeze({ observeReviewEvidence: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
 }

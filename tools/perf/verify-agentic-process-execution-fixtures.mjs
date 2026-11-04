@@ -934,7 +934,7 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("session_pr_update_push").observations.pull_request.head_oid, pushedHead);
       assert.equal(last("session_pr_update_push").observations.inherited_review_evidence, "none");
       assert.equal(last("session_pr_update_push").observations.review, "pending");
-      const review = last("session_pr_review_observe");
+      const review = last("session_pr_review_content_observe");
       assert.equal(review.outcome, "completed"); assert.equal(review.effect_status, "no_effect");
       assert.deepEqual(review.facts, { session_pr_review_evidence_available: true, session_pr_triage_required: true });
       assert.equal(review.observations.head_oid, pushedHead);

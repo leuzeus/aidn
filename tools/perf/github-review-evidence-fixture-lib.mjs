@@ -2,12 +2,12 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createGithubReviewEvidenceAdapter } from '../../src/adapters/git-provider/github-review-evidence.mjs';
-import { createGithubWorkflowAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
+import { createGithubReviewEvidenceAdapter, createGithubReviewContentAsyncAdapter } from '../../src/adapters/git-provider/github-review-evidence.mjs';
+import { createGithubWorkflowAdapter, createGithubPrContentAsyncAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
 export function createGithubReviewFixture({ workingDirectory, pullRequest }) {
   const date = '2026-11-03T00:00:00Z', calls = [];
   const actor = { id: 'U_fixture', login: 'fixture-reviewer', __typename: 'User' };
-  const state = { pullRequest: structuredClone(pullRequest), reviews: [{ id: 'REVIEW_fixture', state: 'APPROVED', submittedAt: date, updatedAt: date,
+  const state = { pullRequest: structuredClone(pullRequest), reviews: [{ id: 'REVIEW_fixture', state: 'APPROVED', body: 'Complete fixture review evidence.', submittedAt: date, updatedAt: date,
     author: actor, commit: { oid: pullRequest.head_oid } }], checks: [{ __typename: 'CheckRun', id: 'CHECK_fixture', name: 'Governance Admission', status: 'COMPLETED', conclusion: 'SUCCESS',
     startedAt: date, completedAt: date, checkSuite: { id: 'SUITE_fixture', app: { id: 'APP_fixture', slug: 'github-actions' }, commit: { oid: pullRequest.head_oid } } }],
     threads: [], beforeCall: null };
@@ -26,7 +26,9 @@ export function createGithubReviewFixture({ workingDirectory, pullRequest }) {
     return { status: 0, signal: null, stdout: JSON.stringify({ data: { repository } }) };
   };
   const review = createGithubReviewEvidenceAdapter(host, { run }), threads = createGithubWorkflowAdapter(host, { run });
-  return { state, calls, port: { observeReviewEvidence: review.observeReviewEvidence, observePullRequest: threads.observePullRequest } };
+  const content = createGithubReviewContentAsyncAdapter(host, { run: async (...args) => run(...args) }), prContent = createGithubPrContentAsyncAdapter(host, { run: async (...args) => run(...args) });
+  return { state, calls, port: { observeReviewEvidence: review.observeReviewEvidence, observePullRequest: threads.observePullRequest,
+    observeReviewContent: content.observeReviewEvidence, observePrContent: prContent.observePullRequest } };
 }
 // Composed fixtures recover the actual fake-provider PR identity from its
 // durable store, then read the current refs from their real local bare remote.
@@ -43,5 +45,6 @@ export function createComposedGithubReviewFixture({ controlRoot, remoteRoot }) {
       node_id: row.node_id, number: row.number, head_oid: ref(row.head.ref), base_oid: ref(row.base.ref), head_branch: row.head.ref,
       base_branch: row.base.ref, state: row.state.toUpperCase(), draft: row.draft } }).port;
   }
-  return { observeReviewEvidence: input => port().observeReviewEvidence(input), observePullRequest: input => port().observePullRequest(input) };
+  return { observeReviewEvidence: input => port().observeReviewEvidence(input), observePullRequest: input => port().observePullRequest(input),
+    observeReviewContent: (input, options) => port().observeReviewContent(input, options), observePrContent: (input, options) => port().observePrContent(input, options) };
 }

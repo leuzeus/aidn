@@ -1,5 +1,5 @@
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
-import { createStandardSessionPrReviewObservation } from "./standard-session-pr-review-observe.mjs";
+import { createStandardSessionPrReviewObservation, createStandardSessionPrReviewContentObservation } from "./standard-session-pr-review-observe.mjs";
 import { createStandardSessionPrSuccessorAuthority } from "./standard-session-pr-successor-authority.mjs";
 import { createStandardSessionPrCheckpoint } from "./standard-session-pr-checkpoint.mjs";
 import { createStandardSessionPrUpdatePush } from "./standard-session-pr-update-push.mjs";
@@ -432,6 +432,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readAcceptedOperation: acceptedForPromotion, readCheckpoint: sessionPrSuccessor.readCheckpoint, inspectPush: branch => sessionPushPort.inspect(branch) }) : null;
   const sessionPrReview = sessionPrReviewAuthority ? createStandardSessionPrReviewObservation({ now, reviewPort: sessionReviewPort,
     readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
+  const sessionPrReviewContent = sessionPrReviewAuthority && model.nodes.some(node => node.binding_ref === "session_pr_review_content_observe")
+    ? createStandardSessionPrReviewContentObservation({ now, reviewPort: sessionReviewPort,
+    readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -801,6 +804,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_checkpoint" ? await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_observe" ? await sessionPrReview?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_record" ? await sessionPrRecord?.prepare(state.record, input) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_open" ? await sessionPrOpen?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_PR_OPEN_TRANSPORT_REQUIRED")
@@ -902,6 +906,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_push") output = await sessionPush.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "session_pr_review_content_observe") output = await sessionPrReviewContent.observe(state.record, record.preview.input);
         else if (record.intent.binding_ref === "session_pr_review_observe") output = await sessionPrReview.observe(state.record, record.preview.input);
         else if (record.intent.binding_ref === "session_branch_integrate") output = await sessionBranchIntegration.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

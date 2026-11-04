@@ -43,7 +43,7 @@ function committingSteps() {
 test("review evidence is a deterministic observation after confirmed update, with no merge or triage success", () => {
   const children = committingSteps(), binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_review_observe").binding;
   assert.equal(children.indexOf("session_pr_review_observe"), children.indexOf("session_pr_update_push") + 1);
-  assert.equal(binding.effect_class, "read-only"); assert.equal(binding.executor_kind, "deterministic"); assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
+  assert.equal(binding.id, "session_pr_review_content_observe"); assert.equal(binding.effect_class, "read-only"); assert.equal(binding.executor_kind, "deterministic"); assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_review_observe").fields.update_operation_id,
     { source: "operation_id", node_id: "session_pr_update_push" });
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
@@ -153,7 +153,10 @@ reject("duplicate native activity identities are rejected", x => { x.catalog.act
 reject("a domain implementation activity cannot acquire an invented governance skill", x => { x.catalog.activities[1].skill_sources.push(x.catalog.activities[0].skill_sources[0]); }, "STANDARD_ACTIVITY_BINDING_INVALID");
 reject("a native activity must reference actual current SPEC rules", x => { x.catalog.activities[0].rule_refs = ["SPEC-R99"]; }, "STANDARD_STARTUP_CATALOG_INVALID");
 reject("native skill bytes cannot be changed behind the source descriptor", x => { x.catalog.activities[0].skill_sources[0].sha256 = "0".repeat(64); }, "STANDARD_ACTIVITY_SKILL_CHANGED");
-reject("an operation's changed implementation is rejected rather than repaired", x => { x.bindings[0].implementation_sha256 = "0".repeat(64); }, "STANDARD_STARTUP_IMPLEMENTATION_CHANGED");
+reject("an operation's changed implementation is rejected rather than repaired", x => {
+  const selected = x.bindings.find(binding => binding.id === x.catalog.bindings[0].binding.id);
+  assert.ok(selected); selected.implementation_sha256 = "0".repeat(64);
+}, "STANDARD_STARTUP_IMPLEMENTATION_CHANGED");
 test("native configuration must use exactly the declared typed activity reports", () => {
   const outputs = Object.fromEntries(assets.catalog.activities.map(row => [row.node_id, row.output_contract]));
   assertStandardWorkflowActivityOutputs(assets.source, assets.model, outputs);

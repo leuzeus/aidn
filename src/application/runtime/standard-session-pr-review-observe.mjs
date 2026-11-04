@@ -1,15 +1,18 @@
 import { checkShadowJson, shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { validateJsonSchema } from '../../core/contracts/json-schema-validator.mjs';
-import { assertGithubReviewEvidence } from '../../adapters/git-provider/github-review-evidence.mjs';
-import { assertGithubPrObservation } from '../../adapters/git-provider/github-workflow-adapter.mjs';
+import { assertGithubReviewEvidence, assertGithubReviewContent } from '../../adapters/git-provider/github-review-evidence.mjs';
+import { assertGithubPrObservation, assertGithubPrContent } from '../../adapters/git-provider/github-workflow-adapter.mjs';
 import inputSchema from '../../core/contracts/workflow-definition/standard-session-pr-review-observe-input.v1.schema.json' with { type: 'json' };
 import outputSchema from '../../core/contracts/workflow-definition/standard-session-pr-review-observe-output.v1.schema.json' with { type: 'json' };
+import contentOutputSchema from '../../core/contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json' with { type: 'json' };
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length;
 // A deterministic read on the accepted successor push. It retains provider
 // evidence, not triage/approval, a completed skill or permission to merge.
-export function createStandardSessionPrReviewObservation({ readConfirmedHead, readCurrent, reviewPort, now = Date.now }) {
-  if (![readConfirmedHead, readCurrent, reviewPort?.observeReviewEvidence, reviewPort?.observePullRequest].every(fn => typeof fn === 'function'))
+function createObservation({ readConfirmedHead, readCurrent, reviewPort, now = Date.now }, includeContent = false) {
+  const observeEvidence = includeContent ? reviewPort?.observeReviewContent : reviewPort?.observeReviewEvidence;
+  const observeThreads = includeContent ? reviewPort?.observePrContent : reviewPort?.observePullRequest;
+  if (![readConfirmedHead, readCurrent, observeEvidence, observeThreads].every(fn => typeof fn === 'function'))
     fail('STANDARD_PR_REVIEW_AUTHORITY_REQUIRED');
   async function source(instance, input) {
     if (!valid(input, inputSchema)) fail('STANDARD_PR_REVIEW_INPUT_INVALID');
@@ -22,9 +25,9 @@ export function createStandardSessionPrReviewObservation({ readConfirmedHead, re
     expected_pull_request_id: value.pull_request.node_id, expected_head_oid: value.head, expected_base_oid: value.pull_request.base_oid,
     expected_head_ref: value.pull_request.head_branch, expected_base_ref: value.pull_request.base_branch });
   function emit(outcome, observations, facts = {}, evidence_refs = []) {
-    const value = { contract_version: 'standard-session-pr-review-observe-output.v1', operation_ref: 'session_pr_review_observe', outcome,
+    const value = { contract_version: includeContent ? 'standard-session-pr-review-content-output.v1' : 'standard-session-pr-review-observe-output.v1', operation_ref: includeContent ? 'session_pr_review_content_observe' : 'session_pr_review_observe', outcome,
       effect_status: 'no_effect', facts, observations, evidence_refs };
-    if (!valid(value, outputSchema)) fail('STANDARD_PR_REVIEW_OUTPUT_INVALID'); return value;
+    if (!valid(value, includeContent ? contentOutputSchema : outputSchema)) fail('STANDARD_PR_REVIEW_OUTPUT_INVALID'); return value;
   }
   return Object.freeze({
     async prepare(instance, input) {
@@ -34,12 +37,13 @@ export function createStandardSessionPrReviewObservation({ readConfirmedHead, re
     async observe(instance, input) {
       try {
         const before = await source(instance, input), request = requestFor(before), start = now();
-        const threadsRequest = { contract_version: 'github-pr-observation-request.v1', pull_request_number: request.pull_request_number,
+        const threadsRequest = { contract_version: includeContent ? 'github-pr-observation-request.v2' : 'github-pr-observation-request.v1',
+          ...(includeContent ? { expected_base_oid: request.expected_base_oid, expected_head_ref: request.expected_head_ref, expected_base_ref: request.expected_base_ref } : {}), pull_request_number: request.pull_request_number,
           expected_pull_request_id: request.expected_pull_request_id, expected_head_oid: request.expected_head_oid };
-        const evidence = assertGithubReviewEvidence(await reviewPort.observeReviewEvidence(request));
-        const threads = assertGithubPrObservation(await reviewPort.observePullRequest(threadsRequest));
-        const repeatedThreads = assertGithubPrObservation(await reviewPort.observePullRequest(threadsRequest));
-        const repeatedEvidence = assertGithubReviewEvidence(await reviewPort.observeReviewEvidence(request));
+        const evidence = (includeContent ? assertGithubReviewContent : assertGithubReviewEvidence)(await observeEvidence.call(reviewPort, request));
+        const threads = (includeContent ? assertGithubPrContent : assertGithubPrObservation)(await observeThreads.call(reviewPort, threadsRequest));
+        const repeatedThreads = (includeContent ? assertGithubPrContent : assertGithubPrObservation)(await observeThreads.call(reviewPort, threadsRequest));
+        const repeatedEvidence = (includeContent ? assertGithubReviewContent : assertGithubReviewEvidence)(await observeEvidence.call(reviewPort, request));
         const p = before.pull_request;
         for (const observed of [evidence, repeatedEvidence, threads, repeatedThreads]) {
           const from = Date.parse(observed.observed_from), until = Date.parse(observed.observed_until), currentTime = now();
@@ -48,6 +52,7 @@ export function createStandardSessionPrReviewObservation({ readConfirmedHead, re
           if (observed.repository.node_id !== p.repository_id || observed.pull_request.node_id !== p.node_id
             || observed.pull_request.number !== p.number || observed.pull_request.head_oid !== p.head_oid
             || observed.pull_request.head_ref !== p.head_branch || observed.pull_request.base_ref !== p.base_branch
+            || includeContent && observed.pull_request.base_oid !== p.base_oid
             || observed.pull_request.state !== 'OPEN' || observed.pull_request.is_draft) fail('STANDARD_PR_REVIEW_SOURCE_CHANGED');
         }
         if (evidence.pull_request.base_oid !== p.base_oid || repeatedEvidence.pull_request.base_oid !== p.base_oid
@@ -68,3 +73,6 @@ export function createStandardSessionPrReviewObservation({ readConfirmedHead, re
     },
   });
 }
+
+export const createStandardSessionPrReviewObservation = options => createObservation(options);
+export const createStandardSessionPrReviewContentObservation = options => createObservation(options, true);

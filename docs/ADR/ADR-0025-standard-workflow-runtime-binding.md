@@ -1870,3 +1870,32 @@ Direct observation subprocess closure does not qualify the general native
 process-tree reconciliation or long-wait reauthorization protocol. Provider
 authentication, durable PR-specific event delivery and actual triage remain
 separate requirements.
+
+### Complete PR review content prerequisite, 2026-11-03
+
+The explicit `github-review-evidence.v2` content reader retains complete review
+bodies in bounded Unicode chunks and checks their digests. Body bytes participate
+in the two identical complete collections, including when HEAD and provider
+timestamps stay unchanged. A body above64KiB, aggregate bodies above1MiB or a
+missing body refuses; evidence is never shortened to fit. The separate
+`github-pr-observation.v2` reader requires exact head/base/branch identities and
+retains comment actor node IDs alongside login/type, complete bodies and
+revisions. Deleted actors remain null. Historical v1 request/output schemas and
+reader envelopes retain their original shape and meaning.
+
+The new `session_pr_review_content_observe` deterministic binding reuses the
+accepted successor-push/checkpoint authority and the shared observation
+implementation. Its closed output embeds the explicit v2 reader contracts.
+The candidate common IR selects this binding at its existing observation leaf;
+the historical observation binding remains registered. The host supplies the
+content capabilities; IR data cannot substitute a reader or downgrade content
+to headers. No provider call occurs during preview. Complete text availability
+still establishes only evidence availability and pending triage. It neither
+accepts checks, classifies findings, replies to/resolves threads, finishes the
+skill nor grants merge authority. Durable PR-specific delivery and actual triage
+remain required before those outcomes can be claimed.
+
+
+Query-field reference: [GitHub GraphQL pull requests](https://docs.github.com/en/graphql/reference/pulls#pullrequestreview)
+for review body/author/revisions and PR base OID; this documentation lookup is
+not a live-provider qualification.

@@ -120,6 +120,17 @@ provider and exact installed-archive qualification remain separate.
 
 ## Structured agentic process
 
+`verify-github-review-content-fixtures.mjs` exercises the explicit v2 review
+content and thread observations. Complete bounded review bodies, their hashes,
+comment actor node IDs and exact base/ref identities are required; oversized,
+missing or changed content refuses. Historical v1 interfaces retain their own
+envelopes. `verify-standard-session-pr-review-fixtures.mjs --mode=files|dual|db-only
+--content` selects the distinct content binding over actual canonical/Git/bare
+successor ports with doubled accepted-history lookup and GitHub transport. The
+published model uses that content binding without changing the historical one.
+Full text availability still establishes neither triage nor policy acceptance,
+resolution, merge consent or a completed PR orchestration skill.
+
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as
 their historical synchronous interfaces. It compares complete typed outputs,

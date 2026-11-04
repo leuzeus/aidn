@@ -1,3 +1,4 @@
+import prReviewContentOutput from "../contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json" with { type: "json" };
 import prReviewInput from "../contracts/workflow-definition/standard-session-pr-review-observe-input.v1.schema.json" with { type: "json" };
 import prReviewOutput from "../contracts/workflow-definition/standard-session-pr-review-observe-output.v1.schema.json" with { type: "json" };
 import prCheckpointInput from "../contracts/workflow-definition/standard-session-pr-checkpoint-input.v1.schema.json" with { type: "json" };
@@ -97,7 +98,7 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
-  if (operation === "session_pr_review_observe") {
+  if (["session_pr_review_content_observe", "session_pr_review_observe"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, prReviewInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
@@ -118,6 +119,10 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-session-pr-review-content-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, prReviewContentOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-session-pr-review-observe-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, prReviewOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;

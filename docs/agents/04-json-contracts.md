@@ -285,3 +285,13 @@ baseline metadata from actual checkpoint confirmation. Input is an accepted
 record identity; plan paths are fixed to five canonical artifacts. Blocked and
 uncertain outcomes have no completion facts. Only confirmed checkpoint plus
 five postimages may emit completed promotion. No public CLI root is added.
+
+
+The private GitHub content readers add explicit github-review-evidence.v2 and
+github-pr-observation.v2 outputs, together with github-pr-observation-request.v2.
+Review bodies use complete
+bounded chunks with semantic byte/digest checks; comments retain actor node IDs
+and the observed exact base. Their historical v1 interfaces keep their original
+shape. The distinct standard-session-pr-review-content-output.v1 embeds these
+v2 observations under the existing pending-triage/no-merge semantics. It adds no
+public CLI root, conversion or provider credential.
