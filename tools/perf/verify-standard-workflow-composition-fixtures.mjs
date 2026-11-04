@@ -30,6 +30,8 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
     "correction_promotion_eligibility", "correction_session_preclose_checkpoint", "correction_session_close_admit", "correction_session_closure_drift", "correction_session_closure_decide", "correction_session_close_record", "correction_session_close_checkpoint", "correction_session_close_finalize", "correction_session_delivery_checkpoint", "correction_session_branch_integration_decide", "correction_session_branch_integrate", "correction_pr_redelivery"]);
   assert.equal(assets.model.nodes.find(row => row.id === "correction_initialize").binding_ref, "session_pr_correction_cycle_initialize");
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
+  for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
+    { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
   assert.equal(assets.catalog.bindings.length, 113); assert.equal(assets.catalog.activities.length, 17);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
@@ -132,7 +134,7 @@ test("ordinary correction request uses the human executor after its accepted che
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_correction_decide").binding;
   assert.equal(binding.executor_kind, "human"); assert.equal(binding.effect_class, "read-only"); assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_correction_decide").fields,
-    { contract_version: { source: "literal", value: "standard-pr-correction-review-input.v1" }, checkpoint_operation_id: { source: "operation_id", node_id: "session_pr_correction_checkpoint" } });
+    { contract_version: { source: "literal", value: "standard-pr-correction-review-input.v2" }, checkpoint_operation_id: { source: "operation_id", node_id: "session_pr_correction_checkpoint" }, candidate_cycle: { source: "parameter", key: "cycle", path: ["correction"] } });
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
 });
 

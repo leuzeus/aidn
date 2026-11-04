@@ -11,6 +11,8 @@ import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files', owned = [];
+const decisionV2 = process.argv.includes('--decision-v2');
+const candidate = { cycle_id: 'C001', title: 'review-correction', objective: 'Correct the reviewed boundary through an ordinary governed cycle.' };
 const lateMetadata = process.argv.find(x => x.startsWith('--late-metadata='))?.slice(16) ?? null;
 assert.ok(['files', 'dual', 'db-only'].includes(mode));
 assert.ok(lateMetadata === null || mode !== 'files' && ['provider', 'authorization'].includes(lateMetadata));
@@ -58,11 +60,12 @@ try {
   const cpOutput = await checkpoint.apply(f.instance, cp, { write: true, expectPlan: cp.plan_sha256, assertAuthorized() {} });
   assert.equal(cpOutput.outcome, 'completed');
   rows.set(op(2), { record: { operation_id: op(2), intent: { binding_ref: 'session_pr_correction_checkpoint' }, preview: { input, prepared: cp } }, output: cpOutput });
-  const reviewInput = { contract_version: 'standard-pr-correction-review-input.v1', checkpoint_operation_id: op(2) };
+  const reviewInput = { contract_version: decisionV2 ? 'standard-pr-correction-review-input.v2' : 'standard-pr-correction-review-input.v1',
+    ...(decisionV2 ? { candidate_cycle: candidate } : {}), checkpoint_operation_id: op(2) };
   const review = await createStandardPrCorrectionReview({ readCheckpoint: checkpoint.readCompleted }).prepare(f.instance, reviewInput, op(3));
   const human = { record: { operation_id: op(3), intent: { binding_ref: 'session_pr_correction_decision' }, preview: { input: reviewInput, prepared: review } },
-    output: { contract_version: 'standard-pr-correction-decision-output.v1', operation_ref: 'session_pr_correction_decision', outcome: 'completed', effect_status: 'no_effect',
-      facts: { session_pr_correction_cycle_requested: true }, observations: { question_sha256: H, choice: 'create-correction-cycle', review_sha256: shadowHash(review.plan.review),
+    output: { contract_version: decisionV2 ? 'standard-pr-correction-decision-output.v2' : 'standard-pr-correction-decision-output.v1', operation_ref: 'session_pr_correction_decision', outcome: 'completed', effect_status: 'no_effect',
+      facts: { session_pr_correction_cycle_requested: true }, observations: { ...(decisionV2 ? { candidate_cycle: candidate, cycle_sha256: shadowHash(candidate) } : {}), question_sha256: H, choice: 'create-correction-cycle', review_sha256: shadowHash(review.plan.review),
         source_sha256: H, inbox_id: 'decision_' + '1'.repeat(40), source_ref: 'fixture:human' }, evidence_refs: [] } };
   rows.set(op(3), human); assertStandardOperationOutput(human.output);
   let lateProbe = null;
@@ -81,6 +84,11 @@ try {
       const changed = structuredClone(saved); mutate(changed); rows.set(op(3), changed); await assert.rejects(make().prepare(f.instance, request));
     }
     rows.set(op(3), saved); assert.equal(git(f.root, 'rev-parse', 'HEAD'), head); assert.equal(f.artifacts.ownerPending(), false);
+  });
+  if (decisionV2) await test('changing any human-reviewed candidate field refuses before ownership or branch effects', async () => {
+    for (const [key, value] of [['cycle_id', 'C003'], ['title', 'changed-correction'], ['objective', 'A different governed correction objective.']])
+      await assert.rejects(make().prepare(f.instance, { ...request, [key]: value }), { code: 'STANDARD_PR_CORRECTION_CYCLE_CHOICE_CHANGED' });
+    assert.equal(git(f.root, 'rev-parse', 'HEAD'), head); assert.equal(f.artifacts.ownerPending(), false);
   });
   let prepared;
   await test('actual ordinary admission prepares the corrective branch with NOT_READY DoR', async () => {
@@ -148,6 +156,6 @@ try {
     const status = f.artifacts.cycles().find(row => row.cycle_id === 'C001'); assert.ok(status); assert.ok(status.content.includes('dor_state: NOT_READY'));
     assert.ok(status.content.includes('scope_frozen: false')); assert.equal(output.observations.implementation, 'not-authorized');
   });
-  console.log(JSON.stringify({ status: 'PASS', checks, mode, canonical_cas_git: 'ACTUAL', accepted_source_provider_human_authority: 'FIXTURE_DOUBLES',
+  console.log(JSON.stringify({ status: 'PASS', checks, mode, decision_version: decisionV2 ? 2 : 1, canonical_cas_git: 'ACTUAL', accepted_source_provider_human_authority: 'FIXTURE_DOUBLES',
     production_dispatcher: 'NOT_RUN', ordinary_plan_dor_implementation: 'NOT_RUN', genuine_human: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN', full_standard_workflow: false }));
 } finally { console.log(JSON.stringify({ fixture_cleanup: 'retained', roots: owned })); }

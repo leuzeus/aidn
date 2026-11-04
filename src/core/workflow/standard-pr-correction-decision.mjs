@@ -5,6 +5,9 @@ import outputSchema from '../contracts/workflow-definition/standard-pr-correctio
 import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash } from './shadow-json.mjs';
 import { prCorrectionReopenPaths } from './standard-pr-correction-reopen.mjs';
+import questionV2 from '../contracts/workflow-definition/standard-pr-correction-question.v2.schema.json' with { type: 'json' };
+import sourceV2 from '../contracts/workflow-definition/human-pr-correction-decision.v2.schema.json' with { type: 'json' };
+import outputV2 from '../contracts/workflow-definition/standard-pr-correction-decision-output.v2.schema.json' with { type: 'json' };
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length;
 export const prCorrectionChoices = Object.freeze(['create-correction-cycle', 'refused', 'deferred', 'cancelled']);
@@ -16,17 +19,20 @@ export function assertPrCorrectionReview(value) {
   return value;
 }
 export function assertPrCorrectionQuestion(value) {
-  if (!valid(value, questionSchema)) fail('STANDARD_PR_CORRECTION_QUESTION_INVALID');
+  if (!valid(value, value?.contract_version === 'standard-pr-correction-question.v2' ? questionV2 : questionSchema)) fail('STANDARD_PR_CORRECTION_QUESTION_INVALID');
   assertPrCorrectionReview(value.review);
   if (value.session_id !== value.review.session_id || shadowHash(value.choices) !== shadowHash(prCorrectionChoices))
     fail('STANDARD_PR_CORRECTION_QUESTION_INVALID');
   return value;
 }
 export function assertHumanPrCorrectionDecision(value, question) {
-  if (!valid(value, sourceSchema) || !value.rationale.trim() || new Set(value.evidence_refs.map(row => row.ref)).size !== value.evidence_refs.length)
+  if (!valid(value, value?.contract_version === 'human-pr-correction-decision.v2' ? sourceV2 : sourceSchema) || !value.rationale.trim() || new Set(value.evidence_refs.map(row => row.ref)).size !== value.evidence_refs.length)
     fail('STANDARD_PR_CORRECTION_DECISION_SOURCE_INVALID');
   if (question) {
     assertPrCorrectionQuestion(question);
+    const v2 = question.contract_version === 'standard-pr-correction-question.v2';
+    if ((value.contract_version === 'human-pr-correction-decision.v2') !== v2
+      || v2 && value.cycle_sha256 !== shadowHash(question.candidate_cycle)) fail('STANDARD_PR_CORRECTION_CYCLE_CHOICE_CHANGED');
     if (value.question_sha256 !== shadowHash(question) || value.subject_sha256 !== shadowHash(question.review)) fail('PROCESS_HUMAN_QUESTION_CHANGED');
     if (!question.choices.includes(value.choice)) fail('PROCESS_HUMAN_CHOICE_NOT_OFFERED');
   }
@@ -37,10 +43,13 @@ export function observeHumanPrCorrectionDecision({ question, decision }) {
   const accepted = decision.choice === 'create-correction-cycle';
   return { outcome: accepted ? 'completed' : decision.choice === 'refused' ? 'rejected' : decision.choice, effect_status: 'no_effect',
     facts: accepted ? { session_pr_correction_cycle_requested: true } : {},
-    observations: { question_sha256: shadowHash(question), choice: decision.choice, review_sha256: shadowHash(question.review), source_sha256: shadowHash(decision) } };
+    observations: { question_sha256: shadowHash(question), choice: decision.choice, review_sha256: shadowHash(question.review), source_sha256: shadowHash(decision),
+      ...(question.contract_version === 'standard-pr-correction-question.v2' ? { candidate_cycle: structuredClone(question.candidate_cycle), cycle_sha256: decision.cycle_sha256 } : {}) } };
 }
 export function assertPrCorrectionDecisionOutput(value) {
-  if (!valid(value, outputSchema)) fail('STANDARD_PR_CORRECTION_DECISION_OUTPUT_INVALID');
+  if (!valid(value, value?.contract_version === 'standard-pr-correction-decision-output.v2' ? outputV2 : outputSchema)) fail('STANDARD_PR_CORRECTION_DECISION_OUTPUT_INVALID');
+  if (value.contract_version === 'standard-pr-correction-decision-output.v2'
+    && value.observations.cycle_sha256 !== shadowHash(value.observations.candidate_cycle)) fail('STANDARD_PR_CORRECTION_CYCLE_CHOICE_CHANGED');
   const accepted = value.observations.choice === 'create-correction-cycle';
   if (value.outcome !== (accepted ? 'completed' : value.observations.choice === 'refused' ? 'rejected' : value.observations.choice)
     || shadowHash(value.facts) !== shadowHash(accepted ? { session_pr_correction_cycle_requested: true } : {}))

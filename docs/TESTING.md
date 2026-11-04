@@ -3429,3 +3429,22 @@ It removes its own checked temporary directory by default; `--retain-always`
 keeps the actual new repositories for local terminal capture. Three physical
 binding checks and 32 composition checks pass on the corrected source. The
 positive application-port run is a separate observation on its exact source.
+
+### Human-reviewed corrective cycle candidate, 2026-11-04
+
+Private correction review input/plan/question, human decision and decision output
+v2 bind the proposed cycle ID, title and objective to the current checkpoint
+subject. The signed decision inbox v8 retains the explicit v2 source. The
+initializer refuses substituted fields before ordinary admission or effects;
+the published IR derives them from the accepted human operation output.
+Historical v1/v7 readers remain explicit, without conversion. A proposal grants
+no product permission, DoR, IMPLEMENTING phase or success. Refusal, defer and
+cancellation retain empty positive facts. General mode/cycle/topology choices,
+repeated corrections and the complete C2 journey remain unqualified.
+
+The targeted decision/inbox and composition suites cover these boundaries. The
+real-port correction-cycle suite selects `--decision-v2` separately in each
+`--mode=files|dual|db-only` run. Its accepted-operation/provider/human capabilities
+remain doubles. Component evidence cannot establish the production dispatcher
+UNKNOWN chain, genuine human/native/provider/OS, configured PostgreSQL or exact
+installed archive. Exact-source results remain pending at this source change.

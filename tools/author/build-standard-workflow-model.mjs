@@ -74,7 +74,7 @@ op("correction_session_start_finalize", "session_start_finalize", {
   session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
 op("correction_initialize", "session_pr_correction_cycle_initialize", {
   ...operation("correction_initialize", "decision_operation_id", "session_pr_correction_decide"),
-  ...Object.fromEntries(["cycle_id", "title", "objective"].map(key => [key, { source: "parameter", key: "cycle", path: ["correction", key] }])) });
+  ...Object.fromEntries(["cycle_id", "title", "objective"].map(key => [key, { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] }])) });
 const correctionRef = { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] },
   cycle_id: { source: "operation_input", node_id: "correction_initialize", path: ["cycle_id"] } };
 op("correction_branch_audit", "branch_cycle_audit", correctionRef);
@@ -84,7 +84,9 @@ op("correction_plan_evaluate", "cycle_plan_evaluate", occurrence("correction_pla
 op("correction_plan_record", "cycle_plan_record", operation("correction_plan_record", "evaluation_operation_id", "correction_plan_evaluate"));
 op("correction_readiness", "cycle_readiness_evaluate", operation("correction_readiness", "record_operation_id", "correction_plan_record"));
 op("correction_implementation_enter", "cycle_implementation_enter", operation("correction_implementation_enter", "evaluation_operation_id", "correction_readiness"));
-op("session_pr_correction_decide", "session_pr_correction_decision", operation("session_pr_correction_decide", "checkpoint_operation_id", "session_pr_correction_checkpoint"));
+op("session_pr_correction_decide", "session_pr_correction_decision", {
+  ...operation("session_pr_correction_decide", "checkpoint_operation_id", "session_pr_correction_checkpoint"),
+  candidate_cycle: { source: "parameter", key: "cycle", path: ["correction"] } });
 op("session_pr_correction_checkpoint", "session_pr_correction_checkpoint", operation("session_pr_correction_checkpoint", "reopen_operation_id", "session_pr_correction_reopen"));
 op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("session_pr_correction_reopen", "triage_operation_id", "session_pr_triage_evaluate"));
 seq("session_pr_effects_pending", []);

@@ -8,17 +8,27 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 147/145 et le modèle composé candidat en 89
-(147 nœuds, 90 occurrences d’opération, 14 activités). Les preuves conservent
-leurs snapshots exacts : l’exécution du
-parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
-le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
-Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
-addenda et l’avancement distinguent les composants livrés des raccordements
-encore ouverts.
+Avancement courant au 4 novembre 2026 : les composants startup/cycle sont en
+156/154 et le modèle composé candidat en 98 (186 nœuds, 113 occurrences
+d’opération, 17 activités). Le snapshot SOURCE34 précédent était 155/153/97 ;
+le snapshot 147/145/89 (147/90/14) était une étape antérieure, pas les assets
+courants. Les preuves conservent chacune leur source exacte. Les raccordements
+SOURCE32 de promotion/reclôture avec histoire, puis SOURCE33 de redelivery et
+nouvelle observation/triage PR, sont codés. Leur parcours causal complet reste
+à qualifier. Le moteur v2 est le défaut global ; l’entrée ordinaire reste
+inchangée et `complete_standard_workflow=false`. Les constats initiaux restent
+datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
+
+- La continuation SOURCE35 présente l’identité, le titre et l’objectif du
+  cycle correctif dans la question humaine v2 liée au checkpoint courant.
+  La source v2 authentifiée et l’inbox signée v8 conservent l’empreinte de ce
+  candidat. L’initialiseur consomme ces valeurs depuis la sortie acceptée et
+  refuse leur substitution avant admission/effet. Les paramètres restent une
+  proposition présentée à la personne. Lecteurs v1/v7 conservés, sans conversion.
+  Qualification ciblée en attente ; ce raccord ne termine pas les choix généraux
+  de mode/cycle/topologie, les corrections répétables ou le parcours C2 complet.
 
 - Le modèle candidat raccorde désormais le cycle correctif après son entrée
   IMPLEMENTING aux tâches, à la validation de la nouvelle HEAD, à la progression,
@@ -26,9 +36,11 @@ encore ouverts.
   checkpoint terminal, à R05 et à la finalisation ordinaires. Chaque occurrence
   consomme les autorités du nouveau cycle. La capacité structurelle v2 passe à
   256 nœuds, avec refus au-delà et plafond historique v1 de 128 conservé.
-  Le modèle candidat compte 147 nœuds, 90 opérations et 14 activités. La preuve
-  de composition reste distincte du parcours exécuté. Reclôture de session avec
-  historique conservé et livraison causale restent à implémenter et qualifier.
+  Le modèle candidat compte maintenant 186 nœuds, 113 opérations et 17 activités.
+  La promotion optionnelle, la nouvelle clôture de session avec histoire
+  conservée, l’intégration et la redelivery suivie de revue/triage ont leurs
+  occurrences distinctes codées. La composition et les composants vérifiés
+  restent distincts de leur parcours causal exécuté, encore non qualifié.
 
 - Le contrôle final du créateur de cycle et du rafraîchissement de contexte
   revérifie les métadonnées après l'attente du guard, contre les empreintes

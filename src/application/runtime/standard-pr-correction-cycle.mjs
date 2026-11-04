@@ -38,6 +38,12 @@ export function createStandardPrCorrectionCycle({ targetRoot, operations, readAc
       || output.effect_status !== 'no_effect' || output.facts.session_pr_correction_cycle_requested !== true
       || output.observations.choice !== 'create-correction-cycle' || output.observations.review_sha256 !== shadowHash(review))
       fail('STANDARD_PR_CORRECTION_CYCLE_DECISION_REQUIRED');
+    if (plan.contract_version === 'standard-pr-correction-review-plan.v2') {
+      const candidate = { cycle_id: input.cycle_id, title: input.title, objective: input.objective };
+      if (output.contract_version !== 'standard-pr-correction-decision-output.v2'
+        || shadowHash(candidate) !== shadowHash(plan.candidate_cycle)
+        || shadowHash(output.observations.candidate_cycle) !== shadowHash(plan.candidate_cycle)) fail('STANDARD_PR_CORRECTION_CYCLE_CHOICE_CHANGED');
+    } else if (output.contract_version !== 'standard-pr-correction-decision-output.v1') fail('STANDARD_PR_CORRECTION_CYCLE_CHOICE_CHANGED');
     const checkpoint = readAcceptedOperation(instance, review.checkpoint_operation_id, 'session_pr_correction_checkpoint');
     if (shadowHash(checkpoint.output) !== review.checkpoint_output_sha256
       || shadowHash(checkpoint.record.preview.prepared.plan) !== review.checkpoint_plan_sha256) fail('STANDARD_PR_CORRECTION_CYCLE_SOURCE_CHANGED');
