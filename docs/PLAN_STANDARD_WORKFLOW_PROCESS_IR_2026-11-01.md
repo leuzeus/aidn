@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 136/134 et le modèle composé candidat en 77
-(107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
-63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 147/145 et le modèle composé candidat en 89
+(147 nœuds, 90 occurrences d’opération, 14 activités). Les preuves conservent
+leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -34,9 +34,13 @@ encore ouverts.
   revérifie les métadonnées après l'attente du guard, contre les empreintes
   renvoyées par les CAS effectifs. Une classification modifiée à contenu
   identique après écriture conserve UNKNOWN et son propriétaire. La qualification
-  ciblée doit atteindre cette frontière pendant les attentes fournisseur et
-  autorisation en DUAL/DB-only, avec code de refus spécifique, puis conserver le
-  parcours positif FILES. Ce correctif ne termine ni le raccord ordinaire ni L4.
+  ciblée atteint cette frontière pendant les attentes fournisseur et
+  autorisation en DUAL/DB-only, avec code de refus spécifique et parcours
+  positifs conservés dans les trois modes. Le rafraîchissement de contexte
+  possède aussi ses trois cas séparés. La
+  [preuve bornée](qualification/agentic-process/correction-cycle-metadata-and-work-route-2026-11-04.json)
+  distingue les sources exactes et les autorités doublées. Ce correctif ne
+  termine ni le raccord ordinaire ni L4.
 
 - Les trois catalogues ont été explicitement réépinglés après l'ajout des
   politiques des epochs natives. Le chargement refusait l'ancienne empreinte

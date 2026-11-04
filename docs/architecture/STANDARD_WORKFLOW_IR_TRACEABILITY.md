@@ -517,3 +517,8 @@ both schema and semantic validation and a boundary regression. The candidate
 model has 147 nodes, 90 operations and 14 activities. Source checks do not prove
 the native planning/product-work/cycle-closure journey. Session reclosure/history
 and causal redelivery remain open; ordinary entry and complete status stay as-is.
+
+The [focused qualification](../qualification/agentic-process/correction-cycle-metadata-and-work-route-2026-11-04.json)
+records the exact distinct sources for initializer late-metadata injections,
+context refresh, source composition and structural capacity. It does not
+promote any earlier fixture, retained UNKNOWN or source pin to a later source.
