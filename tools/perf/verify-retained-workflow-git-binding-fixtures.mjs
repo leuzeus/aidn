@@ -48,4 +48,11 @@ try {
   console.log('PASS an explicitly new port observes the distinct index; old ports remain refused');
   console.log(JSON.stringify({ status: 'PASS', checks: 3, roots: [base], model_calls: 0,
     scope: 'offline physical Git binding only; production dispatcher, full workflow and installed package NOT_RUN' }));
-} finally { console.log(JSON.stringify({ fixture_cleanup: 'retained', roots: [base] })); }
+ } finally {
+  if (process.argv.includes('--retain-always')) console.log(JSON.stringify({ fixture_cleanup: 'retained', roots: [base] }));
+  else {
+    const resolved = fs.realpathSync(base), temporary = fs.realpathSync(os.tmpdir());
+    assert.equal(path.dirname(resolved), temporary); assert.ok(path.basename(resolved).startsWith('aidn-git-binding-'));
+    fs.rmSync(resolved, { recursive: true, force: true }); console.log(JSON.stringify({ fixture_cleanup: 'completed' }));
+  }
+}
