@@ -32,9 +32,24 @@ stages a new identity and continues through deferred/THINKING decisions to
 exact replay. This is a source-installed fixture prefix, with no native model
 or exact installed-archive claim.
 
-These are session-initialization and published-prefix proofs. They do not exercise the
-mixed host's new wait branch or prove expired-plan continuation for every
-business operation. Only an accepted, authenticated deterministic
+These are session-initialization and fixed-host published-prefix proofs. The
+separate `node tools/perf/verify-standard-mixed-expired-prefix-fixtures.mjs
+--mode=<files|dual|db-only>` suite exercises the published revision-71 model and
+its actual data bindings through `createStandardWorkflowExecution` and mixed.step.
+Its 13 checks per mode cover an actual expired dispatch, accepted WAITING/no_effect,
+read-only cold wait calls with either write setting, explicit new-Node preparation,
+fresh authorization and a distinct successor intent. The original signed refusal
+and grant remain readable. Real deferred/THINKING decision ports, mode application,
+the startup hook, retained dispatch and exact replay/simulation complete the prefix.
+The test-process wall clock is injected; authorization and human identities are
+fixtures. A controller that rejects any native launch and an empty allocation
+journal establish zero native calls for this D/H prefix. Checkout fingerprints
+are unchanged during each suite. The files proof retained an earlier, stricter
+two-consultation assertion; the final test asserts fresh authorization and distinct
+grant/intent without prescribing the number of internal verification calls.
+
+These tests do not prove expired-plan continuation for every business operation.
+Only an accepted, authenticated deterministic
 `blocked/no_effect/STANDARD_PLAN_EXPIRED` receipt with a genuinely expired plan
 is eligible. Unreceipted dispatches, uncertain effects, confirmed results and
 changed subjects are excluded. Existing TTLs, native allocations and historical

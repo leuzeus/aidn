@@ -26,8 +26,9 @@ encore ouverts.
   en fichiers, dont cette reprise et la fin THINKING sans modèle. Le raccord
   conserve le refus et sa grant, prépare le même sujet dans un nouveau Node
   sans écriture ni appel modèle, puis exige une nouvelle intention/grant avant
-  effet. La reprise générale des opérations expirées et le parcours mixte
-  restent à qualifier ; voir la
+  effet. Le préfixe mixte a depuis passé 13 contrôles par mode sur files/dual/db-only ;
+  voir sa [preuve distincte](qualification/agentic-process/mixed-expired-prefix-2026-11-04.json).
+  La reprise générale des autres opérations expirées reste à qualifier ; voir aussi la
   [preuve bornée](qualification/agentic-process/expired-plan-reprepare-component-2026-11-04.json).
 - Le checkpoint de correction possède un premier cas de reprise positive hors
   ligne : commit exact déjà réalisé, propriétaire local libéré, dispatch signé
@@ -4026,3 +4027,33 @@ its exact source, grants and deadline. This component changes neither its
 evidence nor the remaining native epochs, unknown-owner reconciliation,
 correction-cycle admission, physical work or other L1-L8/A1-A10 requirements.
 Ordinary selection remains unchanged; complete_standard_workflow=false.
+
+### Addendum: published mixed startup expiry prefix, 2026-11-04
+
+The existing mixed facade and its operation_reprepare_required wait now have a
+positive execution proof on files/dual/db-only: 13 checks per mode, using the
+actual revision-71 standard JSON, data bindings, application ports, canonical
+stores, Git and startup hook. A genuinely expired initialization plan produces
+an accepted blocked/no_effect receipt. Cold mixed.step calls with either write
+setting preserve WAITING without consultation of authorization or replacement
+staging. Explicit preparation in a fresh Node remains read-only and keeps the
+same subject and occurrence. Separate staging consults authorization again and
+binds a distinct grant and intent to the accepted predecessor history.
+
+The prefix retains the original signed grant/refusal and continues through a
+deferred human choice, a separate THINKING decision, mode application and startup
+finalization. Exact replay and simulation reproduce the final state without
+effects. Every runtime-suite source fingerprint is unchanged. Native launch is
+forbidden by the fixture controller; no native allocation or model is used.
+The first files attempt failed after six passing checks on an incorrect fixture
+assertion about authorization-call count. It remains retained; a distinct files
+run passed with the stricter two-call assertion. The final test checks a fresh
+consultation plus the distinct grant/intent, rather than internal call cardinality.
+
+This is a source-installed fixture prefix with an injected test-process clock,
+fixture authorization and human source, not genuine native/provider/human or
+exact installed-archive qualification. Runtime/model bytes, ordinary entry and
+complete_standard_workflow=false are unchanged. General expired business
+operations, unknown-owner recovery, native epochs, ordinary admitted correction
+cycles and the remaining L1-L8/A1-A10 stay open. The separate frozen revision-70
+correction experiment retains its original source, authority and deadline.
