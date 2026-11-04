@@ -1,7 +1,103 @@
 {
-  "observed_utc": "2026-11-04T22:32:13.435438+00:00",
+  "observed_utc": "2026-11-04T22:38:59.902044+00:00",
   "scope": "SOURCE39 preflight and mixed read-only analysis, not complete A2 or STANDARD",
   "cases": [
+    {
+      "name": "source39-mode-docrefs-20261104",
+      "source_head": "6c6c439c1d7b635f6661f94b92dcd6b6aa359f40",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104\\tools\\verify\\verify-doc-references.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:33:37.679833+00:00",
+        "pid": 24108,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104\\tools\\verify\\verify-doc-references.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104",
+        "head": "6c6c439c1d7b635f6661f94b92dcd6b6aa359f40"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:33:37.679833+00:00",
+        "finished_utc": "2026-11-04T22:33:39.357225+00:00",
+        "pid": 24108,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source39-mode-docrefs-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104\\tools\\verify\\verify-doc-references.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104",
+        "head_before": "6c6c439c1d7b635f6661f94b92dcd6b6aa359f40",
+        "head_after": "6c6c439c1d7b635f6661f94b92dcd6b6aa359f40"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 638,
+          "sha256": "e068287cd2d3c4d28451d4b10907fc950bf512f77f7dc57882cc3623394a558d",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source39-mode-gate-catalog-20261104",
+      "source_head": "6c6c439c1d7b635f6661f94b92dcd6b6aa359f40",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:32:44.874404+00:00",
+        "pid": 716,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104",
+        "head": "6c6c439c1d7b635f6661f94b92dcd6b6aa359f40"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:32:44.874404+00:00",
+        "finished_utc": "2026-11-04T22:32:46.923906+00:00",
+        "pid": 716,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source39-mode-gate-catalog-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-gates-source39-20261104",
+        "head_before": "6c6c439c1d7b635f6661f94b92dcd6b6aa359f40",
+        "head_after": "6c6c439c1d7b635f6661f94b92dcd6b6aa359f40"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 15206,
+          "sha256": "a1212ea51c35db13b15f9ac1df7f4211760efd253c134c82b3ce785e03af665c",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
     {
       "name": "source39-mode-mixed-exploring-dual-20261104",
       "source_head": "f5fa0875b0f21a2f4c7d411c492274757f84c2d8",
@@ -31,8 +127,8 @@
       "original_logs": [
         {
           "name": "stdout.log",
-          "bytes": 163,
-          "sha256": "f48ec988e0742ee3c8573754611221e1c27af99a86581aed3611e9ced917af71",
+          "bytes": 593,
+          "sha256": "c5abf93d987c2f08e3990aca8637b27b54dfac5acc2cbf448c6b00e6362c9a2a",
           "scope": "dated prefix only, not terminal"
         },
         {
@@ -72,8 +168,8 @@
       "original_logs": [
         {
           "name": "stdout.log",
-          "bytes": 163,
-          "sha256": "f48ec988e0742ee3c8573754611221e1c27af99a86581aed3611e9ced917af71",
+          "bytes": 593,
+          "sha256": "c5abf93d987c2f08e3990aca8637b27b54dfac5acc2cbf448c6b00e6362c9a2a",
           "scope": "dated prefix only, not terminal"
         },
         {
@@ -113,8 +209,8 @@
       "original_logs": [
         {
           "name": "stdout.log",
-          "bytes": 163,
-          "sha256": "f48ec988e0742ee3c8573754611221e1c27af99a86581aed3611e9ced917af71",
+          "bytes": 593,
+          "sha256": "c5abf93d987c2f08e3990aca8637b27b54dfac5acc2cbf448c6b00e6362c9a2a",
           "scope": "dated prefix only, not terminal"
         },
         {
@@ -122,6 +218,105 @@
           "bytes": 0,
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "scope": "dated prefix only, not terminal"
+        }
+      ]
+    },
+    {
+      "name": "source39-mode-native-admission-20261104",
+      "source_head": "f5fa0875b0f21a2f4c7d411c492274757f84c2d8",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-mixed-source39-20261104\\tools\\perf\\verify-native-write-admission-fixtures.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:33:24.640526+00:00",
+        "pid": 68696,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-mixed-source39-20261104\\tools\\perf\\verify-native-write-admission-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-mixed-source39-20261104",
+        "head": "f5fa0875b0f21a2f4c7d411c492274757f84c2d8"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:33:24.640526+00:00",
+        "finished_utc": "2026-11-04T22:34:50.533505+00:00",
+        "pid": 68696,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2182,
+        "name": "source39-mode-native-admission-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-mixed-source39-20261104\\tools\\perf\\verify-native-write-admission-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-mixed-source39-20261104",
+        "head_before": "f5fa0875b0f21a2f4c7d411c492274757f84c2d8",
+        "head_after": "f5fa0875b0f21a2f4c7d411c492274757f84c2d8"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 494,
+          "sha256": "a710500bf03027e9b691b478ef4ac372653d818c9aa5d758e6798e1199192575",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source39-mode-native-admission-isolated-20261104",
+      "source_head": "314f03bfd05ae1628b81c776871f9963d27820de",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-admission-source39-20261104\\tools\\perf\\verify-native-write-admission-fixtures.mjs",
+        "--retain-always"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:35:21.008487+00:00",
+        "pid": 62952,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-admission-source39-20261104\\tools\\perf\\verify-native-write-admission-fixtures.mjs",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-admission-source39-20261104",
+        "head": "314f03bfd05ae1628b81c776871f9963d27820de"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:35:21.008487+00:00",
+        "finished_utc": "2026-11-04T22:36:51.820659+00:00",
+        "pid": 62952,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source39-mode-native-admission-isolated-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-admission-source39-20261104\\tools\\perf\\verify-native-write-admission-fixtures.mjs",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-admission-source39-20261104",
+        "head_before": "314f03bfd05ae1628b81c776871f9963d27820de",
+        "head_after": "314f03bfd05ae1628b81c776871f9963d27820de"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 576,
+          "sha256": "bc3683ffd65d908243dc461a3646971f5c7651533807030b4106ba9ea9e13322",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 97,
+          "sha256": "e89c5cee0dc9ec6abb25ce98c52542e88da2e644cb341e2acbe3ba9666c32aa6",
+          "scope": "terminal original"
         }
       ]
     },
@@ -174,7 +369,7 @@
       ]
     }
   ],
-  "pass": 1,
+  "pass": 5,
   "fail": 0,
   "pending": [
     "source39-mode-mixed-exploring-dual-20261104",
@@ -195,6 +390,7 @@
   },
   "limits": [
     "The 50-check a905347e preflight is synthetic; its actual model calls are zero and it plans one Native analysis for each mode.",
+    "The historical native-write-admission suite passes on f5fa0875 but its existing cleanup removed that fixture. This does not satisfy project preservation. On 314f03bf the augmented suite passes with an isolated THINKING mode refusal between COMMITTING positive controls and its project retained.",
     "Mixed cases use the published model 104 with real application/Git/SQLite ports and explicit Native/human fixture capabilities. A running case is not a PASS.",
     "Cold read-only polling does not prove continuation after a new event or decision. SPIKE conversion, effectful experiments, session closure and complete A2 remain open.",
     "All L1-L8/A1-A10, general L4, provider replies/resolutions/merge/sync, genuine Native/Human/Provider/OS, PostgreSQL and installed exact archive remain required. Ordinary entry unchanged, complete_standard_workflow=false."

@@ -38,7 +38,15 @@ datés de `dd1dbab`, distincts de cet avancement.
   conserve les sources, préconditions, verdicts et observations datées. Les quinze
   variantes mode/stockage rejoignent la chaîne Runtime et son autorité exacte,
   en conservant les 143 appels antérieurs dans le même ordre (158 au total).
-  La famille entière et Governance Admission restent non prouvées. La relecture d'une attente ne satisfait pas la reprise après
+  La famille entière et Governance Admission restent non prouvées.
+  Le catalogue et les références documentaires passent sur `6c6c439c`. La sonde
+  d'admission isolant le mode passe sur `314f03bf`, avec projet conservé :
+  cycle/branche/IMPLEMENTING/READY/tâche identiques, seul THINKING produit le
+  refus MODE_EXCLUDES_IMPLEMENTATION, puis COMMITTING redevient autorisé.
+  Le refus du cas mixte `f5fa0875` reste attribué à plusieurs préconditions
+  absentes, pas au seul mode. La suite historique sur cette source passe, mais
+  son nettoyage a supprimé son projet ; ce cas ne prouve pas sa conservation.
+  La relecture d'une attente ne satisfait pas la reprise après
   nouvel événement. Conversion SPIKE, expériences, clôture de session et A2
   entier restent ouverts, ainsi que l'ensemble L1–L8/A1–A10.
 

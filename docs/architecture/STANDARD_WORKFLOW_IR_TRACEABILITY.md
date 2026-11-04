@@ -13,6 +13,12 @@ authority; all 143 existing calls remain in order (158 total). Full Runtime and
 Governance Admission remain unproved. Cold polling does not establish continuation after a new event,
 SPIKE conversion, effectful experiments, session closure or complete A2.
 
+The 6c6c439c gate-catalog and docrefs checks pass. On 314f03bf the augmented
+native-write-admission suite passes an isolated THINKING-only refusal between
+COMMITTING positive controls, with its new project retained. The mixed f5fa0875
+product denial has multiple missing prerequisites and does not isolate mode.
+The older suite passes there, but its existing cleanup removed its project.
+
 SOURCE38 replaces the four empty THINKING/EXPLORING sequences with mode-specific
 preflight, read-only analysis and report evaluation nodes. `mode_work_preflight`
 authenticates the current session/mode and fresh admission. The native policy
