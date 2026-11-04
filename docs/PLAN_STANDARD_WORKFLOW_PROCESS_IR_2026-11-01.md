@@ -3814,3 +3814,36 @@ physical corrections or the remaining L1-L8/A1-A10 requirements. Runtime, IR,
 ordinary entry and complete_standard_workflow are unchanged. A new long trial
 requires its own frozen source, fixture and initial authorization; earlier trials
 retain their exact sources and original budgets.
+
+### Addendum: correction continuation boundaries and distinct failures, 2026-11-04
+
+The [boundary evidence](qualification/agentic-process/pr-correction-continuation-boundaries-2026-11-04.json)
+records 30 capture checks across files/dual/db-only, 18 synthetic preflight
+checks, 28 source-composition checks and eight files-mode reopening checks.
+The reopened context snapshot is outside the ordinary three-file session Git
+checkpoint. That port refuses without a commit and actual new-cycle admission
+stays blocked by the pending canonical changes. The following integration must
+derive its bounded checkpoint from the authenticated correction postimages,
+preserve source lineage across the Git effect, and then perform the ordinary
+new-cycle admission/continuity/plan/readiness/IMPLEMENTING route. Enlarging the
+ordinary checkpoint allow-list or treating reopening as product permission
+would not provide that integration.
+
+Four frozen trials terminated with exit 1 before their original deadlines.
+The body-checked source `7e0051cb` timed out on a read-only Git branch query
+after three confirmed startup operations, before native allocation or correction
+capture. Source `e00339b5` blocked at implementation entry on activation, before
+its known obsolete body assertion. Source `1a84bc01` blocked on an expired
+cycle-close plan in its cold child. Source `b39e5572` lost persistence activation
+authority in its cold child after session-closure drift; exhaustion of its
+eight-response budget was not the observed terminal cause. Their failed
+assertions and original budgets remain preserved separately. A later read-only
+activation check from each owning source reports all four active/authorized;
+this does not establish the earlier root causes or authorize a retry.
+
+The full authenticated correction composition remains unproven. No trial was
+renewed, resumed or cleaned here, and parent exit alone does not prove general
+resource extinction. L4 explicit native reauthorization remains unimplemented;
+current journals continue to enforce their original cumulative ceiling. The
+entire L1-L8/A1-A10 plan remains active, with ordinary entry unchanged and
+complete_standard_workflow=false.

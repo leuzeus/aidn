@@ -2859,6 +2859,13 @@ run in the ordinary control fixture suite. Accepted update/context and provider
 identity remain fixture capabilities, with no native calls. This short transfer
 check does not establish complete correction producer-to-writer composition.
 
+`verify-standard-pr-correction-reopen-fixtures.mjs --mode=files` also checks the
+next-cycle boundary: the reopened context snapshot is a foreign change for the
+ordinary three-file session Git checkpoint, which must refuse without a commit.
+The actual new-cycle admission remains blocked by the pending canonical changes.
+This negative component proof does not supply the missing authenticated correction
+checkpoint, new-cycle plan/IMPLEMENTING route or fresh delivery lineage.
+
 `verify-github-pr-open-fixtures.mjs` uses the actual pinned gh/REST adapter and
 closed request/plan/link contracts, with HTTP transport doubled. It covers
 creation followed by complete re-observation, exact existing PR recovery with no

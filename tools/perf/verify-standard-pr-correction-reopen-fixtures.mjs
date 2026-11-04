@@ -7,6 +7,7 @@ import { createFreshStandardWorkflowFixture } from './standard-workflow-fixture-
 import { createStandardWorkflowOperations } from '../../src/application/runtime/standard-workflow-operations.mjs';
 import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
 import { createStandardPrCorrectionReopen } from '../../src/application/runtime/standard-pr-correction-reopen.mjs';
+import { createLocalWorkflowGitCheckpoint } from '../../src/adapters/runtime/local-workflow-git-checkpoint.mjs';
 import { renderPrCorrectionReopen, prCorrectionReopenPaths } from '../../src/core/workflow/standard-pr-correction-reopen.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
@@ -57,7 +58,7 @@ async function fixture(selectedMode) {
     return { origin_source_sha256: shadowHash(source), proof_class: 'fixture-source-double' };
   } };
   const port = createStandardPrCorrectionReopen({ targetRoot: root, authority, readCurrent: () => instance });
-  return { root, artifacts, source, instance, input, port, head, names, state };
+  return { root, artifacts, source, instance, input, port, head, names, state, ops };
 }
 try {
   await test('three private schemas validate with supported keywords', () => {
@@ -125,6 +126,20 @@ try {
     const broken = structuredClone(original); broken[0].content = broken[0].content.replace('## Process session closure completion', '## Missing completion');
     broken[0].sha256 = artifactContentHash(broken[0].content);
     assert.throws(() => renderPrCorrectionReopen({ source: f.source, documents: broken, preparedAt: Date.now() }), { code: 'STANDARD_PR_CORRECTION_CLOSURE_HISTORY_REQUIRED' });
+  });
+  if (mode === 'files') await test('reopened snapshot cannot be hidden in the ordinary session checkpoint or bypass new-cycle admission', async () => {
+    const checkpoint = createLocalWorkflowGitCheckpoint({ targetRoot: f.root }), before = checkpoint.inspect();
+    assert.ok(before.changes.some(row => row.path === 'docs/audit/snapshots/context-snapshot.md'));
+    const ordinary = new Set(['docs/audit/CURRENT-STATE.md', 'docs/audit/RUNTIME-STATE.md', 'docs/audit/sessions/S001.md']);
+    const plan = { operation_id: 'op_' + '2'.repeat(40), plan_sha256: H, prepared_at_ms: Date.now(), observed: before,
+      files: before.changes.filter(row => ordinary.has(row.path)).map(row => ({ path: row.path,
+        sha256: f.artifacts.read(row.path.slice('docs/audit/'.length), { required: true }).sha256 })) };
+    await assert.rejects(checkpoint.commit(plan, { assertAuthorized() {} }), { code: 'WORKFLOW_GIT_FOREIGN_CHANGES', effect_status: 'no_effect' });
+    const admitted = await f.ops.admitCycle();
+    assert.equal(admitted.outcome, 'blocked', JSON.stringify(admitted)); assert.deepEqual(admitted.facts, {});
+    assert.equal(git(f.root, 'rev-parse', 'HEAD'), f.head);
+    assert.deepEqual(checkpoint.inspect().changes, before.changes);
+    assert.match(f.artifacts.read('CURRENT-STATE.md', { required: true }).content, /^active_cycle: none$/m);
   });
   if (mode === 'files') await test('authority lost after the first CAS retains unknown state and owner without retry', async () => {
     const partial = await fixture('files'), p = await partial.port.prepare(partial.instance, partial.input); let grants = 0;
