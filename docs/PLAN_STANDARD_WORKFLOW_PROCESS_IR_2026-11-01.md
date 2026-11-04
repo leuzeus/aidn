@@ -39,9 +39,11 @@ datés de `dd1dbab`, distincts de cet avancement.
   n'est pas établie. Les projets incertains restent sur place, sans copie comme
   quiescents ni droit de retry. L'évaluation du rapport et la relecture froide
   ne sont pas atteintes. Un quatrième cas THINKING FILES sur `62619943`, lancé
-  avant ces verdicts pour les assertions de motifs affinées, reste distinct et
-  en cours. Son autorité initiale n'est pas modifiée. Le diagnostic de l'entrée
-  Native est la prochaine action nécessaire ; A2 reste ouvert.
+  avant ces verdicts pour les assertions de motifs affinées, a également terminé
+  FAIL le 4 novembre à 22:47:17 UTC, à la même entrée Native. Les quatre cas sont
+  terminaux ; leurs autorités, sources et reçus restent inchangés. SOURCE40 ajoute
+  un code/stade de diagnostic borné puis ouvre un nouveau cas indépendant sur
+  `28c1deff`. Aucun résultat d'analyse n'est encore prouvé ; A2 reste ouvert.
   La [preuve courante](qualification/standard-workflow/mode-analysis-mixed-2026-11-04.json)
   conserve les sources, préconditions, verdicts et observations datées. Les quinze
   variantes mode/stockage rejoignent la chaîne Runtime et son autorité exacte,

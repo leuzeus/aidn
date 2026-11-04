@@ -12,8 +12,10 @@ The retained result is PROCESS_EXECUTION_FAILED with zero observed responses;
 the internal cause is not established. No report evaluation or cold poll was
 reached. Uncertain projects stay in place and are not copied as quiescent.
 A separate 62619943 THINKING FILES case, started before these verdicts to test
-the refined admission diagnostics, is still running under its original authority.
-Native-entry diagnosis is the next required action. The [current record](../qualification/standard-workflow/mode-analysis-mixed-2026-11-04.json)
+the refined admission diagnostics, also terminated FAIL at Native entry on
+4 November at 22:47:17 UTC. All four cases are terminal, with their original
+authorities and receipts unchanged. SOURCE40 adds bounded host code/stage evidence
+and starts a new independent diagnostic case on 28c1deff; analysis is not yet proved. The [current record](../qualification/standard-workflow/mode-analysis-mixed-2026-11-04.json)
 separates their scopes. Fifteen new case invocations join the exact Runtime
 authority; all 143 existing calls remain in order (158 total). Full Runtime and
 Governance Admission remain unproved. Cold polling does not establish continuation after a new event,
