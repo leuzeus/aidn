@@ -3529,3 +3529,20 @@ Their LF successor preserves parsed JSON exactly but changes implementation
 hashes, so components/model advance explicitly to111/109/53. Source52's
 application proofs remain attributed to52. No live instance is converted or
 repaired, and no verdict is transferred to a different runtime pin.
+
+The [LF successor evidence](qualification/agentic-process/pr-review-content-lf-successor-2026-11-03.json)
+records independent source4a15540/model53 tests:12 content controls,10 application
+controls in each of files/dual/db-only with cleanup confirmed, composition25,
+startup22,43 input boundaries and focused governance/policy/catalog/docs checks
+PASS. Model52's async/historical-reader/contract results remain attributed to
+source48106fa. Full runtime/Governance Admission, composed53, native human/provider,
+PostgreSQL and exact installed archive remain NOT_RUN; no SKIP is reported.
+
+The [composed46 refusal](qualification/agentic-process/composed-model46-authorization-refusal-2026-11-03.json)
+is FAIL/code1 on72fd5b8 at2026-11-04T00:57:33.3668290Z. After104 accepted events,
+session_close_admit completed and native entry refused explicit authorization
+with no_effect. The original deadline00:57:17.399Z was not renewed. Its captured
+journal has seven closed/tree_closed generations, no eighth reservation and no
+owner at capture. Independent replay/simulation reproduce104/105 exactly without
+constructing effect ports. Fixtures are retained; cleanup and independent
+all-resource extinction are not claimed. This verdict does not qualify53 or49.
