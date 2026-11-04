@@ -106,16 +106,23 @@ if (process.argv[2] === "--prepare") {
           active_signals: drift.payload?.levels?.level2?.active_signals })); assert.equal(drift.payload.result, "ok");
         pass("external real R05 hook supplies the component checkpoint precondition without a native/model call");
       }
+      const expires = ["refresh_before", "initialize", ...(expireCheckpoint ? ["checkpoint"] : []), "refresh_after"].includes(nodeId);
+      // Prepare the original expiring intent in the past, then observe its
+      // expiry at the present. The accepted refusal therefore remains expired
+      // when cold preparation returns to the real hook's progressing clock.
+      // No original plan, journal or accepted event is edited or renewed.
+      if (expires) fs.writeFileSync(clockFile, JSON.stringify(actualNow() - 300001));
       const bytes = snapshot(target), grants = counters.grants;
       let preview = await host.preview({ instanceId: "cycle-expiry", expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id });
       assert.deepEqual(snapshot(target), bytes); assert.equal(counters.grants, grants); assert.ok(preview.input_resolution);
       assert.equal(preview.prepared?.can_apply ?? true, true, JSON.stringify(preview.prepared));
       let staged = await host.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
       const id = staged.operation_id;
-      if (["cycle_context_refresh", "cycle_initialize", ...(expireCheckpoint ? ["cycle_checkpoint_finalize"] : [])].includes(preview.binding.id)) {
+      if (expires) {
         const before = businessState(), head = git(target, "rev-parse", "HEAD"), branch = git(target, "branch", "--show-current");
         const runtimeBefore = mode === "files" ? snapshot(path.join(target, ".aidn/runtime")) : null;
         fs.writeFileSync(clockFile, JSON.stringify(preview.prepared.plan.prepared_at_ms + 300001));
+        assert.equal(clockNow() - preview.prepared.plan.prepared_at_ms, 300001);
         if (nodeId === "checkpoint") {
           // Observe the real adapter separately from the dispatch journal's
           // intentional writes. This includes physical SQLite/runtime bytes in
