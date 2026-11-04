@@ -357,4 +357,5 @@ reads. The real initializer suite selects `--decision-v3` separately per mode,
 with accepted-operation/provider/human fixture capabilities. Source wiring and
 these components do not establish repeated correction, the full C2 journey,
 genuine human/native/provider/OS, configured PostgreSQL or exact installed
-archive behavior. Exact-source qualification is pending at this edit.
+archive behavior. The qualification record separates terminal component results
+from pending business journeys.
