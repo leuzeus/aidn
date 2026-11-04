@@ -3423,3 +3423,9 @@ redirection to a different index for both checkpoint and branch ports, repeated
 refusal and a separately constructed fresh port. Earlier component/timing
 results on `2c3171de` do not qualify this correction. Its retained projects and
 any terminal PASS remain scoped to that earlier source.
+
+The physical-binding fixture is included in `perf:verify-agentic-process`.
+It removes its own checked temporary directory by default; `--retain-always`
+keeps the actual new repositories for local terminal capture. Three physical
+binding checks and 32 composition checks pass on the corrected source. The
+positive application-port run is a separate observation on its exact source.
