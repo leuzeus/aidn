@@ -22,6 +22,11 @@ The final `c3499752` contract/docref checks pass, while its gate-catalog check
 fails on the immutable Runtime fixture command. The matching command authority
 now receives the same four additional invocations; historical argv/order stay
 intact. A new frozen-source catalog check is required, preserving that failure.
+The repeated `2cbdca0d` failure led to an exact command comparison: 18 existing
+npm invocations were also missing from the authority. The unchanged inherited
+`474032b4` catalog check fails on the same condition. The first four-call fix
+was incomplete. The authority now matches all 143 invocations, preserving
+historical argv/order. These are gate-coherence failures, not business execution.
 
 The separate `composed-correction.v3.json` fixture targets both cycles in model
 101, including the accepted human-selected cycle fields, ordinary planning and

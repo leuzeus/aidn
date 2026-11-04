@@ -52,6 +52,13 @@ datés de `dd1dbab`, distincts de cet avancement.
   exacte n'avait pas été actualisée. La politique de cette chaîne reçoit donc
   les mêmes quatre ajouts, en conservant tous les appels historiques ; son
   contrôle exige une nouvelle source gelée. Ce FAIL reste conservé séparément.
+  Le refus identique sur `2cbdca0d` a déclenché un audit ciblé : la comparaison
+  exacte des chaînes révèle aussi 18 appels déjà présents dans npm et absents
+  de son autorité. Le même gate échoue sur la source héritée `474032b4`, restée
+  inchangée. La première correction limitée aux quatre nouveaux appels était
+  donc incomplète. L'autorité est alignée sur les 143 appels actuels, en conservant
+  chaque appel/argument/ordre historique. Les trois FAIL de catalogue restent
+  distincts ; aucun n'est une exécution ou un échec du parcours métier.
   Les tests d'attente/rejeu du réducteur n'exécutent pas de redémarrage à froid
   de l'hôte mixte ; l'intitulé initial trop large a été corrigé.
   La conversion SPIKE admise, les expériences avec effets,
