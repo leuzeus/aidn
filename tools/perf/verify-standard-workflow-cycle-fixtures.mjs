@@ -19,6 +19,7 @@ import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { runSkillHookUseCase } from "../../src/application/runtime/skill-hook-use-case.mjs";
 import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
+import { verifyStandardCycleCheckpointExpiryGuards } from "./verify-standard-cycle-checkpoint-expiry-guards-fixtures.mjs";
 
 const H = "a".repeat(64), grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
 const here = fileURLToPath(import.meta.url), owned = [], temporary = fs.realpathSync(os.tmpdir());
@@ -40,6 +41,7 @@ if (process.argv[2] === "--accept") {
   assert.equal(host.readJournal(id).intent.binding_ref, "cycle_checkpoint_finalize");
   console.log(JSON.stringify(await host.dispatch(id, { write: true })));
 } else try {
+  checks += await verifyStandardCycleCheckpointExpiryGuards();
   const assets = loadStandardWorkflowCycleAssets();
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
   assert.equal(assets.catalog.scope.kind, "new_cycle_scaffold_component");

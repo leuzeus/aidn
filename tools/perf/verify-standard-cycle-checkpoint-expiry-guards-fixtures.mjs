@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createStandardCycleCheckpoint } from "../../src/application/runtime/standard-cycle-checkpoint.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
@@ -12,6 +14,7 @@ const plan = { contract_version: "standard-cycle-checkpoint-plan.v1", operation_
   documents: Array.from({ length: 15 }, (_, index) => ({ path: `document-${index}.md`, sha256: H, metadata_sha256: null })),
   event_log: { bytes: 0, sha256: H }, effects: ["checkpoint", "runtime_index", "checkpoint_events"] };
 const prepared = { can_apply: true, plan, plan_sha256: shadowHash(plan) };
+export async function verifyStandardCycleCheckpointExpiryGuards() {
 let checks = 0;
 const pass = message => { checks++; console.log("PASS checkpoint expiry guard: " + message); };
 const explicit = { write: true, expectPlan: prepared.plan_sha256, assertAuthorized: async () => {}, assertCurrent: async () => {} };
@@ -47,4 +50,9 @@ for (const age of [0, 300000]) {
   await assert.rejects(checkpoint.finalizeCycleCheckpoint(prepared, explicit), { code: "FIXTURE_OWNER_BOUNDARY" });
   assert.deepEqual(state, { owners: 1, callbacks: 0 }); pass("valid age " + age + " reaches owner boundary without granting an effect");
 }
-console.log(JSON.stringify({ status: "PASS", checks, scope: "checkpoint-pre-owner-guards", application: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+return checks;
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const checks = await verifyStandardCycleCheckpointExpiryGuards();
+  console.log(JSON.stringify({ status: "PASS", checks, scope: "checkpoint-pre-owner-guards", application: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN" }));
+}
