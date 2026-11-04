@@ -63,6 +63,20 @@ try {
     for (const key of ['authorized', 'can_merge', 'approved', 'triaged']) assert.equal(Object.hasOwn(value, key), false);
     assert.deepEqual(fs.readdirSync(root), []);
   });
+  check('signed-content receiver and both contracts are direct pins with byte-sensitive launch fingerprints', () => {
+    const before = agenticProcessImplementationPins(), read = fs.readFileSync;
+    const required = ['src/application/runtime/standard-session-pr-review-receive.mjs',
+      ...['input', 'output'].map(kind => 'src/core/contracts/workflow-definition/standard-session-pr-review-receive-' + kind + '.v1.schema.json')];
+    for (const name of required) {
+      assert.equal(before.files.filter(row => row.path === name).length, 1, name);
+      try {
+        fs.readFileSync = (file, ...args) => String(file).endsWith('/' + name)
+          ? Buffer.concat([read(file, ...args), Buffer.from('\n')]) : read(file, ...args);
+        assert.notEqual(agenticProcessImplementationPins().sha256, before.sha256, name);
+      } finally { fs.readFileSync = read; }
+    }
+    assert.deepEqual(agenticProcessImplementationPins(), before);
+  });
   check('polling time does not change content identity', () => {
     const a = fixture(null, { now: () => 1793664000000 }).instance.observeReviewEvidence(request);
     const b = fixture(null, { now: () => 1793665000000 }).instance.observeReviewEvidence(request);

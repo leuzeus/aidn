@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 120/118 et le modèle composé candidat en 61
+les composants startup/cycle en 121/119 et le modèle composé candidat en 62
 (99 nœuds, 61 occurrences d’opération, 51 identifiants de liaison mobilisés parmi
 59 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -3647,3 +3647,25 @@ Des contrôles négatifs refusent une autre version rendue, une version de snaps
 non épinglée et tout ajout hors de ce scalaire. Les 17 assertions passent sur
 la nouvelle source de gate. La fixture et le renderer restent inchangés ; les
 FAIL observés sur 54/58 sont conservés et ne deviennent pas des PASS rétroactifs.
+
+### Fermeture des empreintes directes du consommateur, 2026-11-03
+
+Le relevé final de la source 61 comptait encore 334 dépendances directes : le
+nouveau consommateur et ses deux schémas étaient dans l'empreinte du binding
+standard, mais absents de la liste directe du lanceur natif. La source 62 les
+ajoute explicitement (337 fichiers) ; un contrôle vérifie leur présence unique
+et la variation de l'empreinte pour un changement de chacun de leurs octets,
+sans modifier physiquement les fichiers. Quinze cas du lecteur GitHub et de
+ces empreintes passent, ainsi que 26 de composition et 22 de démarrage.
+Le modèle et les bindings sont révisés explicitement, sans réparation d'instance.
+
+Le composé 61 continue sur son checkout figé `fa243d9`, sans modification de ses
+sources ou dépendances et sans renouvellement de son budget. Sa future issue
+ne qualifiera pas la source 62. Les composants capture/receiver sur 61 passent
+9 files, 9 dual et 10 db-only, avec nettoyage ; les transports/identités et lookup
+d'update y sont doublés. La suite historique de contrôle sur 61 est encore active
+au point de relais. Le composé 62, le triage natif et les effets suivants restent
+NOT_RUN. Le début de triage (schémas, validateur de rapport/contexte et support du
+type de réponse native) est conservé dans un patch de travail séparé, non appliqué
+et non qualifié. Il lui manque le raccord hôte/autorité/IR, la sélection et la
+fraîcheur des sources, les tests, bindings/pins et la documentation alignée.

@@ -5,7 +5,9 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // Bounded direct implementation closure. Existing runtime dependencies retain
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
-const files = ["src/application/runtime/standard-session-pr-review-authority.mjs", "src/application/runtime/standard-session-pr-review-observe.mjs",
+const files = ["src/application/runtime/standard-session-pr-review-receive.mjs",
+  ...["input", "output"].map(kind => `src/core/contracts/workflow-definition/standard-session-pr-review-receive-${kind}.v1.schema.json`),
+  "src/application/runtime/standard-session-pr-review-authority.mjs", "src/application/runtime/standard-session-pr-review-observe.mjs",
   "src/adapters/git-provider/github-observation-transport.mjs", "src/adapters/git-provider/github-review-evidence.mjs", "src/adapters/git-provider/github-workflow-adapter.mjs", "src/core/workflow/standard-operation-contracts.mjs",
   ...["github-review-evidence.v2", "github-pr-observation-request.v2", "github-pr-observation-output.v2", "standard-session-pr-review-content-output.v1", "github-review-evidence-request.v1", "github-review-evidence.v1", "github-pr-observation-request.v1", "github-pr-observation-output.v1", "standard-session-pr-review-observe-input.v1", "standard-session-pr-review-observe-output.v1"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/core/contracts/workflow-definition/github-push-preparation.v1.schema.json", "src/adapters/git-provider/github-session-push.mjs", "src/application/runtime/standard-session-pr-successor-authority.mjs", "src/application/runtime/standard-session-pr-checkpoint.mjs", "src/application/runtime/standard-session-pr-update-push.mjs",
