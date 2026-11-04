@@ -1,12 +1,15 @@
 # Testing Guide
 
-PR correction continuation has two internal component suites, currently outside
-the standard graph and operation host. `verify-standard-pr-correction-authority-fixtures.mjs`
+PR correction continuation has separate internal component suites. The candidate
+standard graph and signed operation host select the reopening operation, but
+these suites do not prove that complete composition.
+`verify-standard-pr-correction-authority-fixtures.mjs`
 uses actual complete-content adapter/observer code with accepted-receipt,
 triage reevaluation, event, product, Git and transport capabilities doubled.
 It checks changed content at the same HEAD, changed head/base/source/product,
 event races, lost authority, remote divergence and cancellation. It does not
-authenticate a canonical native producer. The source factory is not host-bound.
+authenticate a canonical native producer. The candidate host binds the source
+factory separately.
 `verify-standard-pr-correction-reopen-fixtures.mjs --mode=files|dual|db-only`
 uses actual canonical CAS, metadata, projection, local Git and pre-write admission,
 with a doubled source/continuation authority. It reopens the CLOSED owner,
@@ -14,8 +17,25 @@ preserves closure report/completion bodies, resets closure gates and leaves
 active_cycle none. A forged exact-plan payload is refused. Lost authority after
 the first CAS retains unknown state/owner; re-dispatch is refused. Product writes
 remain denied by ordinary native admission. Source-install fixture preparation
-is not exact installed-archive qualification. Host/registry/schema dispatch/IR
-binding, ordinary cycle continuation and actual correction work remain open.
+is not exact installed-archive qualification. Authenticated producer-to-writer
+execution, ordinary cycle continuation and actual correction work remain open.
+
+`verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`
+checks a separate internal checkpoint component, not yet selected by the host
+or IR. It derives its finite scope from an accepted reopening plan and output,
+checks canonical metadata and physical projections, then uses the existing Git
+objects/ref/index port. A new Node process applies the same exact plan. Files
+and dual commit only the three reopening postimages; db-only creates no export
+or commit. Untrusted accepted receipts, changed postimages, foreign dirty paths,
+expiry and provider loss refuse before effect. A second dispatch after a
+confirmed commit refuses without another commit. Authority loss after Git and
+an unrelated concurrent commit retain unknown state and ownership, blocking
+retry. Native product admission remains denied without a correction cycle.
+Accepted-source authentication, native triage, provider and event capabilities
+are doubled here. The source-authority suite separately checks that its new
+provider-only observation still rejects external changes and explicitly requires
+a local checkpoint proof. These separate checks do not establish the complete
+authenticated composition, subsequent cycle admission or installed behavior.
 
 `node tools/perf/verify-standard-composed-preflight-fixtures.mjs` checks the
 composed fixture's initial cumulative response allowance before a long run.

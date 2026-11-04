@@ -38,12 +38,12 @@ export function createStandardPrCorrectionAuthority({ readAcceptedOperation, ree
       payload_sha256: o.payload_sha256, product_sha256: o.product_sha256, pull_request: p,
       corrections: o.corrections, source_material_sha256: shadowHash([triage.output, selection.output, received.output, update.output, capture]) }, capture, payload, triage };
   }
-  async function verifySource(instance, expected, { signal } = {}) {
+  async function verify(instance, expected, { signal } = {}, localHeadRequired = true) {
     active(signal); const before = immutable(instance, { triage_operation_id: expected.triage_operation_id });
     if (shadowHash(before.source) !== shadowHash(expected)) fail('STANDARD_PR_CORRECTION_SOURCE_CHANGED');
     await verifyEvent(before.capture, { signal }); active(signal);
     const gitBefore = await inspectPush(expected.pull_request.head_branch, { signal }); active(signal);
-    if (gitBefore.head !== expected.pull_request.head_oid || gitBefore.remote_head !== expected.pull_request.head_oid)
+    if (localHeadRequired && gitBefore.head !== expected.pull_request.head_oid || gitBefore.remote_head !== expected.pull_request.head_oid)
       fail('STANDARD_PR_CORRECTION_REMOTE_CHANGED');
     const observer = createStandardSessionPrReviewContentObservation({ now, reviewPort, readCurrent,
       readConfirmedHead(current, input) {
@@ -59,14 +59,19 @@ export function createStandardPrCorrectionAuthority({ readAcceptedOperation, ree
       fail('STANDARD_PR_CORRECTION_PROVIDER_CHANGED');
     await verifyEvent(before.capture, { signal }); active(signal);
     const gitAfter = await inspectPush(expected.pull_request.head_branch, { signal }); active(signal);
-    if (gitAfter.head !== expected.pull_request.head_oid || gitAfter.remote_head !== expected.pull_request.head_oid)
+    if (localHeadRequired && gitAfter.head !== expected.pull_request.head_oid || gitAfter.remote_head !== expected.pull_request.head_oid)
       fail('STANDARD_PR_CORRECTION_REMOTE_CHANGED');
     if (shadowHash(immutable(instance, { triage_operation_id: expected.triage_operation_id }).source) !== shadowHash(expected)) fail('STANDARD_PR_CORRECTION_SOURCE_CHANGED');
     return { origin_source_sha256: shadowHash(expected), event_sha256: shadowHash(before.payload.event),
       fresh_observation_sha256: shadowHash(fresh), git_before_sha256: shadowHash(gitBefore), git_after_sha256: shadowHash(gitAfter),
-      canonical_transition: 'verified-separately-by-exact-plan-postimages' };
+      canonical_transition: localHeadRequired ? 'verified-separately-by-exact-plan-postimages' : 'local-checkpoint-proof-required' };
   }
-  return Object.freeze({ verifySource, async readSource(instance, input, { signal } = {}) {
+  const verifySource = (instance, expected, options) => verify(instance, expected, options);
+  return Object.freeze({ verifySource,
+    // This narrower observation grants no local continuation authority. Its
+    // consumer must separately prove the exact authenticated checkpoint commit.
+    verifyProviderSource: (instance, expected, options) => verify(instance, expected, options, false),
+    async readSource(instance, input, { signal } = {}) {
     active(signal); const selected = immutable(instance, input);
     const fresh = await reevaluateTriage(instance, selected.triage.record.preview.input, { signal }); active(signal);
     if (shadowHash(fresh) !== selected.source.triage_output_sha256) fail('STANDARD_PR_CORRECTION_TRIAGE_STALE');

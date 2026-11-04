@@ -29,13 +29,13 @@ async function fixture() {
       observations: { received_operation_id: op(3), payload, payload_sha256: shadowHash(payload), product_sha256: H } }, 'session_pr_triage_select'),
     [op(3)]: record(op(3), {}, { outcome: 'completed', facts: { session_pr_review_event_received: true }, observations: { inbox_id: 'captured', payload } }, 'session_pr_review_receive'),
     [op(4)]: record(op(4), {}, { outcome: 'completed', facts: { session_pr_head_confirmed: true }, observations: { pull_request: p } }, 'session_pr_update_push') };
-  const state = { authenticated: true, eventCurrent: true, product: H, remoteHead: p.head_oid, reevalChanged: false, eventCalls: 0 };
+  const state = { authenticated: true, eventCurrent: true, product: H, localHead: p.head_oid, remoteHead: p.head_oid, reevalChanged: false, eventCalls: 0 };
   const capture = { phase: 'delivered', payload };
   const authority = createStandardPrCorrectionAuthority({ reviewPort: provider.port, readCurrent: () => instance,
     readAcceptedOperation(_instance, id, binding) { assert.ok(state.authenticated, 'fixture accepted authority refused'); assert.equal(rows[id]?.record.intent.binding_ref, binding); return structuredClone(rows[id]); },
     reevaluateTriage: async () => state.reevalChanged ? { ...triage, outcome: 'blocked', facts: {} } : structuredClone(triage),
     readControl: id => { assert.equal(id, 'captured'); return structuredClone(capture); }, observeProduct: () => state.product,
-    inspectPush: async () => ({ head: p.head_oid, remote_head: state.remoteHead }),
+    inspectPush: async () => ({ head: state.localHead, remote_head: state.remoteHead }),
     async verifyEvent() { state.eventCalls++; if (!state.eventCurrent) throw Error('fixture event refused'); } });
   return { authority, state, rows, provider, triage, input: { triage_operation_id: op(1) } };
 }
@@ -76,6 +76,24 @@ await test('base/head/product/source changes cannot inherit the prior classifica
 await test('cancellation refuses before observing a late source', async () => {
   const f = await fixture(), controller = new AbortController(); controller.abort();
   await assert.rejects(f.authority.readSource(instance, f.input, { signal: controller.signal }), { code: 'STANDARD_PR_CORRECTION_ABORTED' });
+});
+await test('provider-only observation never substitutes for proof of a changed local HEAD', async () => {
+  const f = await fixture(), source = await f.authority.readSource(instance, f.input);
+  f.state.localHead = 'c'.repeat(40);
+  await assert.rejects(f.authority.verifySource(instance, source), { code: 'STANDARD_PR_CORRECTION_REMOTE_CHANGED' });
+  const observation = await f.authority.verifyProviderSource(instance, source);
+  assert.equal(observation.origin_source_sha256, shadowHash(source));
+  assert.equal(observation.canonical_transition, 'local-checkpoint-proof-required');
+  f.state.remoteHead = 'c'.repeat(40);
+  await assert.rejects(f.authority.verifyProviderSource(instance, source), { code: 'STANDARD_PR_CORRECTION_REMOTE_CHANGED' });
+});
+for (const change of ['event', 'product', 'provider']) await test('provider-only observation still refuses changed ' + change, async () => {
+  const f = await fixture(), source = await f.authority.readSource(instance, f.input);
+  f.state.localHead = 'c'.repeat(40);
+  if (change === 'event') f.state.eventCurrent = false;
+  if (change === 'product') f.state.product = 'c'.repeat(64);
+  if (change === 'provider') f.provider.state.reviews[0].body += ' New finding.';
+  await assert.rejects(f.authority.verifyProviderSource(instance, source));
 });
 console.log(JSON.stringify({ status: 'PASS', checks, proof_class: 'component-capability-doubles', review_content_adapters: 'ACTUAL',
   accepted_receipts_native_event_and_transport: 'DOUBLED', canonical_writes: 'NOT_RUN', host_ir_binding: 'NOT_EXERCISED_BY_THIS_SUITE', full_standard: false }));

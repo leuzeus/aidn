@@ -3847,3 +3847,39 @@ resource extinction. L4 explicit native reauthorization remains unimplemented;
 current journals continue to enforce their original cumulative ceiling. The
 entire L1-L8/A1-A10 plan remains active, with ordinary entry unchanged and
 complete_standard_workflow=false.
+
+### Addendum: finite correction checkpoint component, 2026-11-04
+
+The [component evidence](qualification/agentic-process/pr-correction-checkpoint-2026-11-04.json)
+records 8 files, 6 dual and 6 db-only checks. The checkpoint consumes an accepted
+canonical reopening identity, checks the exact plan/output/postimages and
+metadata, and commits only those physical postimages through the existing Git
+port. A fresh Node process applies the retained exact plan. DB-only exports
+nothing and leaves HEAD unchanged. The ordinary three-file session checkpoint
+allow-list is unchanged.
+
+The exact local commit is checked before and after a fresh provider-only source
+observation. That observation retains the original remote HEAD, complete review
+content, event, product and accepted source; it explicitly grants no local
+continuation authority. Only the separate real parent/path/blob/clean-worktree
+proof bridges this bounded metadata commit. Changed product/provider/remote
+source still refuses. A lost acknowledgement does not produce a second commit.
+Authority loss after Git or an unrelated concurrent commit retains unknown
+state and its owner, preventing retry. Reopening and checkpointing still create
+no cycle and grant no product, provider mutation or merge permission.
+
+This is a separately tested internal component with accepted-source, native,
+provider and event capabilities doubled. It is not yet host-bound or selected
+by the common IR. Actual authenticated composition, ordinary cycle continuity,
+new-cycle admission, frozen plan/readiness/IMPLEMENTING, physical corrections
+and their fresh validation/delivery remain required. The first component run
+was invalidated by editing fingerprint bytes during execution; the stable
+source runs above replace that incomplete attempt.
+
+A read-only diagnostic reauthenticated the original 65-budget9 operation record
+and preview with that frozen source and its fixture key. The retained result is
+blocked/no_effect/STANDARD_PLAN_EXPIRED. Plan preparation at 05:20:59.741 UTC and
+preview sealing at 05:23:06.835 UTC already span 127.094 seconds. The precise
+effect clock and cause of elapsed cost were not retained. This does not explain
+the other distinct failures, extend the five-minute TTL or authorize any retry.
+The entire L1-L8/A1-A10 objective remains active and incomplete.
