@@ -9,6 +9,8 @@ import { createStandardPrCorrectionCheckpoint } from '../../src/application/runt
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
+import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardPrCorrectionCheckpointPlan } from '../../src/core/workflow/standard-operation-contracts.mjs';
+import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
 const H = 'a'.repeat(64), op = n => 'op_' + String(n).repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const input = { contract_version: 'standard-pr-correction-checkpoint-input.v1', reopen_operation_id: op(1) };
@@ -59,10 +61,23 @@ try {
     for (const kind of ['input', 'plan', 'output']) assert.deepEqual(validateJsonSchemaDefinition(JSON.parse(fs.readFileSync(
       new URL('../../src/core/contracts/workflow-definition/standard-pr-correction-checkpoint-' + kind + '.v1.schema.json', import.meta.url))), '#', { contractKind: 'workflow-definition' }), []);
   });
+  await test('registered contracts and direct byte pins reject missing completion facts and authored paths', () => {
+    assertStandardOperationInput('session_pr_correction_checkpoint', input);
+    assert.throws(() => assertStandardOperationInput('session_pr_correction_checkpoint', { ...input, approved_paths: [] }));
+    assert.throws(() => assertStandardOperationOutput({ contract_version: 'standard-pr-correction-checkpoint-output.v1', operation_ref: 'session_pr_correction_checkpoint',
+      outcome: 'completed', effect_status: 'confirmed', facts: {}, observations: {}, evidence_refs: [] }));
+    const pins = agenticProcessImplementationPins();
+    for (const name of ['src/application/runtime/standard-pr-correction-checkpoint.mjs', ...['input', 'plan', 'output'].map(kind =>
+      'src/core/contracts/workflow-definition/standard-pr-correction-checkpoint-' + kind + '.v1.schema.json')])
+      assert.equal(pins.files.filter(row => row.path === name).length, 1);
+  });
   const f = await fixture(mode), before = git(f.root, 'status', '--porcelain'), count = git(f.root, 'rev-list', '--count', 'HEAD');
   let prepared;
   await test('preview binds only accepted reopening postimages and changes nothing', async () => {
     prepared = await f.checkpoint.prepare(f.instance, input, op(2));
+    assertStandardPrCorrectionCheckpointPlan(prepared.plan);
+    const forged = structuredClone(prepared.plan); forged.git.files = [{ path: 'product/app.mjs', sha256: H }];
+    assert.throws(() => assertStandardPrCorrectionCheckpointPlan(forged));
     assert.equal(prepared.can_apply, true);
     assert.equal(git(f.root, 'status', '--porcelain'), before);
     assert.equal(prepared.plan.git.observed.head, f.head); assert.equal(f.artifacts.ownerPending(), false);
@@ -139,7 +154,7 @@ try {
     assert.equal((await foreign.checkpoint.prepare(foreign.instance, input, op(4))).can_apply, false);
   });
   console.log(JSON.stringify({ status: 'PASS', checks, mode, git_cas_projection_admission: 'ACTUAL', accepted_source_native_provider_event: 'DOUBLED',
-    host_ir_binding: 'NOT_IMPLEMENTED', cycle_creation: 'NOT_RUN', native_models: 0, full_standard: false, installed_archive: 'NOT_RUN' }));
+    host_ir_binding: 'SOURCE_BOUND_NOT_EXECUTED_BY_THIS_SUITE', cycle_creation: 'NOT_RUN', native_models: 0, full_standard: false, installed_archive: 'NOT_RUN' }));
 } finally {
   for (const root of owned.reverse()) {
     const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary);

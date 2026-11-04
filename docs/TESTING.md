@@ -21,8 +21,9 @@ is not exact installed-archive qualification. Authenticated producer-to-writer
 execution, ordinary cycle continuation and actual correction work remain open.
 
 `verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`
-checks a separate internal checkpoint component, not yet selected by the host
-or IR. It derives its finite scope from an accepted reopening plan and output,
+checks the internal checkpoint component now selected after reopening by the
+candidate host and IR. This suite does not execute that host route. It derives
+its finite scope from an accepted reopening plan and output,
 checks canonical metadata and physical projections, then uses the existing Git
 objects/ref/index port. A new Node process applies the same exact plan. Files
 and dual commit only the three reopening postimages; db-only creates no export
@@ -36,6 +37,11 @@ are doubled here. The source-authority suite separately checks that its new
 provider-only observation still rejects external changes and explicitly requires
 a local checkpoint proof. These separate checks do not establish the complete
 authenticated composition, subsequent cycle admission or installed behavior.
+Registered private input/output/plan dispatch and the finite plan path guard
+are checked here; the source composition and synthetic preflight suites check
+the new ordered IR branch separately. The long driver's checkpoint assertions
+are conditional on reaching that branch and are not execution evidence by
+themselves. It still denies product writes without the next admitted cycle.
 
 `node tools/perf/verify-standard-composed-preflight-fixtures.mjs` checks the
 composed fixture's initial cumulative response allowance before a long run.

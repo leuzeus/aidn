@@ -24,7 +24,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 64); assert.equal(assets.catalog.activities.length, 9);
+  assert.equal(assets.catalog.bindings.length, 65); assert.equal(assets.catalog.activities.length, 9);
 });
 test("authored literal/operation-only inputs satisfy their actual closed operation contracts", () => {
   for (const spec of assets.model.data_bindings.inputs) {
@@ -76,13 +76,18 @@ test("native PR triage consumes a selected accepted source before host evaluatio
 test("valid findings select an explicit granted canonical reopen with an accepted triage identity only", () => {
   const route = assets.model.nodes.find(row => row.id === "session_pr_after_triage");
   assert.deepEqual(route.branches, [
-    { flow_id: "corrections", node_id: "session_pr_correction_reopen", condition: "session_pr_corrections_required" },
+    { flow_id: "corrections", node_id: "session_pr_correction", condition: "session_pr_corrections_required" },
     { flow_id: "effects_pending", node_id: "session_pr_effects_pending", condition: null }]);
   const binding = assets.catalog.bindings.find(row => row.node_id === "session_pr_correction_reopen").binding;
   assert.equal(binding.effect_class, "mutating"); assert.equal(binding.executor_kind, "deterministic");
   assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_correction_reopen").fields,
     { contract_version: { source: "literal", value: "standard-pr-correction-reopen-input.v1" }, triage_operation_id: { source: "operation_id", node_id: "session_pr_triage_evaluate" } });
+  assert.deepEqual(assets.model.nodes.find(row => row.id === "session_pr_correction").children, ["session_pr_correction_reopen", "session_pr_correction_checkpoint"]);
+  const checkpoint = assets.catalog.bindings.find(row => row.node_id === "session_pr_correction_checkpoint").binding;
+  assert.equal(checkpoint.effect_class, "mutating"); assert.equal(checkpoint.executor_kind, "deterministic"); assert.deepEqual(checkpoint.allowed_modes, ["COMMITTING"]);
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_correction_checkpoint").fields,
+    { contract_version: { source: "literal", value: "standard-pr-correction-checkpoint-input.v1" }, reopen_operation_id: { source: "operation_id", node_id: "session_pr_correction_reopen" } });
   assert.deepEqual(assets.model.nodes.find(row => row.id === "session_pr_effects_pending").children, []);
 });
 

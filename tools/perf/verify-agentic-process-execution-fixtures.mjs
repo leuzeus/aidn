@@ -1050,11 +1050,24 @@ if (process.argv[2] === "--mixed-continue") {
         }
         assert.equal(reopened.observations.implementation_admission, "not-established");
         assert.equal(reopened.observations.merge_authorization, "not-established");
+        const checkpointed = last("session_pr_correction_checkpoint"), oldHead = last("session_pr_update_push").observations.pull_request.head_oid;
+        assert.equal(checkpointed.outcome, "completed", JSON.stringify(checkpointed));
+        assert.equal(checkpointed.facts.session_pr_correction_checkpoint_completed, true);
+        assert.equal(checkpointed.observations.remote_head, oldHead);
+        assert.equal(checkpointed.observations.product_admission, "not-established");
+        assert.equal(checkpointed.observations.cycle, "not-created");
+        const localHead = execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true, timeout: 10000 }).trim();
+        if (mode === "db-only") {
+          assert.equal(checkpointed.effect_status, "no_effect"); assert.equal(localHead, oldHead);
+        } else {
+          assert.equal(checkpointed.effect_status, "confirmed");
+          assert.equal(checkpointed.observations.git.parent_sha, oldHead); assert.equal(checkpointed.observations.git.commit_sha, localHead);
+        }
         const denied = await preWriteAdmit({ targetRoot: f.configuration.target_root, skill: "start-session", nativeRequest: {
           tool_name: "apply_patch", cwd: f.configuration.target_root, tool_input: { command: "*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = 2;\n+export const value = 3;\n*** End Patch" } } });
         assert.equal(denied.write_decision.outcome, "deny");
         console.log(JSON.stringify({ standard_correction_host_proof: true, canonical_writes: "confirmed", received_and_triage_producers: "authenticated-host-and-native-fixture",
-          product_write_admission: "denied-no-new-cycle", provider_transport: "fixture", native_transport: "fixture", full_standard: false }));
+          correction_checkpoint: "confirmed-or-db-only-no-effect", product_write_admission: "denied-no-new-cycle", provider_transport: "fixture", native_transport: "fixture", full_standard: false }));
       }
       assert.equal(final.record.events.filter(row => row.kind === "control").length, 1);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);

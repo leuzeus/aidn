@@ -1,3 +1,4 @@
+import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
 import { createStandardPrTriageSource } from "./standard-pr-triage-source.mjs";
 import { createStandardPrCorrectionAuthority } from "./standard-pr-correction-authority.mjs";
@@ -68,7 +69,7 @@ import { createAgenticProcess, advanceAgenticProcess } from "../../core/workflow
 import { assertAgenticProcessModel, agenticPolicyPins, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash, freezeShadow } from "../../core/workflow/shadow-json.mjs";
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from "../../core/workflow/process-operation-journal.mjs";
-import { assertStandardOperationInput, assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardPrCorrectionCheckpointPlan } from "../../core/workflow/standard-operation-contracts.mjs";
 import { assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
 import { assertStandardWorkflowModelSource } from "../../core/workflow/standard-workflow-model-catalog.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
@@ -494,6 +495,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readCurrent: id => current(id).record, reviewPort: sessionReviewPort, now }) : null;
   const prCorrectionReopen = prCorrectionAuthority ? createStandardPrCorrectionReopen({ targetRoot, now,
     authority: prCorrectionAuthority, readCurrent: id => current(id).record }) : null;
+  const prCorrectionCheckpoint = prCorrectionAuthority ? createStandardPrCorrectionCheckpoint({ targetRoot, now,
+    authority: prCorrectionAuthority, readAcceptedOperation: acceptedForPromotion, readCurrent: id => current(id).record }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -599,6 +602,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     signer.verify(preview); assertProcessOperationBinding(preview.binding); assertStandardOperationInput(preview.binding.id, preview.input);
     if (preview.binding.id === "session_pr_correction_reopen" && preview.prepared?.can_apply) {
       assertStandardPrCorrectionPlan(preview.prepared.plan);
+      if (shadowHash(preview.prepared.plan) !== preview.prepared.plan_sha256
+        || shadowHash(preview.input) !== shadowHash(preview.prepared.plan.input)) fail("STANDARD_HOST_PREVIEW_INVALID");
+    }
+    if (preview.binding.id === "session_pr_correction_checkpoint" && preview.prepared?.can_apply) {
+      assertStandardPrCorrectionCheckpointPlan(preview.prepared.plan);
       if (shadowHash(preview.prepared.plan) !== preview.prepared.plan_sha256
         || shadowHash(preview.input) !== shadowHash(preview.prepared.plan.input)) fail("STANDARD_HOST_PREVIEW_INVALID");
     }
@@ -873,6 +881,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_triage_select" ? await prTriage?.select(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_triage_evaluate" ? await prTriage?.evaluate(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_correction_checkpoint" ? await prCorrectionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_reopen" ? await prCorrectionReopen?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
@@ -979,6 +988,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
         else if (record.intent.binding_ref === "session_pr_triage_select") output = await prTriage.select(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_triage_evaluate") output = await prTriage.evaluate(state.record, record.preview.input, { signal });
+        else if (record.intent.binding_ref === "session_pr_correction_checkpoint") output = await prCorrectionCheckpoint.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record), signal });
         else if (record.intent.binding_ref === "session_pr_correction_reopen") output = await prCorrectionReopen.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
         else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });

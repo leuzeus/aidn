@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 121/119 et le modèle composé candidat en 62
-(99 nœuds, 61 occurrences d’opération, 51 identifiants de liaison mobilisés parmi
-59 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 127/125 et le modèle composé candidat en 68
+(107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
+63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3883,3 +3883,47 @@ preview sealing at 05:23:06.835 UTC already span 127.094 seconds. The precise
 effect clock and cause of elapsed cost were not retained. This does not explain
 the other distinct failures, extend the five-minute TTL or authorize any retry.
 The entire L1-L8/A1-A10 objective remains active and incomplete.
+
+### Addendum: candidate correction checkpoint host binding, 2026-11-04
+
+The next source revision selects a sequence of session_pr_correction_reopen
+and session_pr_correction_checkpoint when triage requires corrections. The
+checkpoint input is only an accepted reopening operation identity. The fixed
+host supplies the HMAC-verified latest accepted journal reader and existing
+correction source authority. Exact private plan/input/output dispatch, direct
+implementation pins and COMMITTING-only mutating binding cover the component.
+No authored file list, caller result flag, widened ordinary checkpoint scope or
+product admission is introduced.
+
+The checkpoint's accepted source checks the canonical reopening plan and output
+and all three postimages. After Git, exact local parent/path/blob/clean-worktree
+proof surrounds the provider-only observation of the original remote HEAD.
+That observation alone grants no local continuation authority. Unknown effects
+retain their owner; the component has no automatic retry or reconciliation.
+
+The composition suite checks the ordered branch and closed inputs. Synthetic
+preflight selects the same extra deterministic operation with nine initial
+native responses; it creates no authorization or model call. The long driver
+now asserts checkpoint facts and the actual local HEAD if that route is reached.
+Those unexecuted assertions do not prove the authenticated producer-to-writer
+composition. Earlier failed trials remain tied to their frozen sources.
+
+A new admitted correction cycle, continuity choice, frozen plan/readiness and
+IMPLEMENTING branch still precede any physical product correction. Fresh
+validation/delivery, replies/resolutions, human merge consent and postmerge sync
+and the rest of L1-L8/A1-A10 remain required. Ordinary entry is unchanged and
+complete_standard_workflow remains false.
+
+The [binding evidence](qualification/agentic-process/pr-correction-checkpoint-binding-2026-11-04.json)
+records 9 files, 7 dual and 7 db-only component checks, 28 source composition
+checks, 18 synthetic preflight checks and 20 generic signed-host regressions.
+The generic host checks real HMAC journals, receipts, stores, new Node processes
+and retained unknown SQLite effects, but does not execute the correction route.
+Component cleanup covered eight owned roots; an independent process inventory
+was not captured. Full runtime/Governance Admission, genuine native/provider/
+human and exact installed-archive qualification were not run. No new SKIP.
+The model is revision 68; native/schema byte pins changed, so historical trials
+retain their original source-specific evidence. A future deterministic reprepare
+after an expired plan must preserve the prior refusal/authority and recheck
+current admissions without raising TTL or adding a model call. That continuation
+and L4's new native authorization epoch remain unimplemented.

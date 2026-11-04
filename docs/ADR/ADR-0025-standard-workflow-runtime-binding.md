@@ -72,11 +72,25 @@ partial writes retain unknown state and ownership. This bridge covers only
 these canonical writes. It is not permission to reuse triage after a provider
 mutation, product correction or a new HEAD.
 
-This component is not yet registered in the operation host, contracts dispatcher,
-direct implementation pins or shipped IR. Its source and canonical suites test
-separate capability boundaries. The composition, cycle continuation, repeated
-closure/delivery lineage, genuine producer/provider qualification and complete
-correction lifecycle remain to be implemented and verified before ordinary use.
+The candidate operation host, private contracts dispatcher, direct implementation
+pins and partial shipped IR now select this reopening and its following finite
+metadata checkpoint. The checkpoint derives its paths from the authenticated
+accepted reopening plan/output and canonical postimages. It uses the existing
+Git objects/ref/index port without widening the ordinary session checkpoint.
+Only an exact local commit with the original parent, approved paths and blobs,
+unchanged canonical metadata and a clean worktree can bridge that local metadata
+HEAD. This proof surrounds a fresh observation of the original provider HEAD,
+complete content, event and product. The provider-only observation grants no
+local continuation authority by itself. It cannot carry triage across a product
+correction or changed provider HEAD, accept checks, push or authorize merge.
+
+The component suites test separate capability boundaries; registry/IR checks
+and a generic signed-host regression do not prove their complete authenticated
+execution. Lost acknowledgement refuses a second commit; result reconciliation
+is still required. An unknown effect or unrelated commit retains ownership and
+blocks retry. The composition, admitted cycle continuation, repeated closure/
+delivery lineage, genuine producer/provider qualification and complete correction
+lifecycle remain to be implemented and verified before ordinary use.
 
 The composed offline fixture preflights its versioned deterministic scenario
 through this same model and reducer before fixture creation and initial

@@ -33,6 +33,7 @@ test("versioned correction route selects canonical reopening without another nat
   const correction = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-correction.v2.json", import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction });
   assert.equal(result.responses_required, 9); assert.ok(result.operations.includes("session_pr_correction_reopen"));
+  assert.ok(result.operations.includes("session_pr_correction_checkpoint"));
   assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
   assert.ok(!plan().operations.includes("session_pr_correction_reopen"));
   assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, review_disposition: "unknown" } }), { code: "STANDARD_FIXTURE_SCENARIO_INVALID" });
