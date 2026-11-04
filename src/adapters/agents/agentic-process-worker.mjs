@@ -14,10 +14,15 @@ try {
   }
   specification = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(input));
   const { configuration, authorization, persistenceBinding } = specification;
-  const allocationAuthority = specification.allocation === undefined ? undefined : createNativeAllocationWorkerAuthority({ configuration, authorization, admission: specification.allocation });
+  let execution;
+  // The worker authority observes the current protected product through this
+  // executor on every call, as in the parent mixed host. No retained hash or
+  // caller-supplied snapshot substitutes for a fresh product observation.
+  const allocationAuthority = specification.allocation === undefined ? undefined : createNativeAllocationWorkerAuthority({ configuration, authorization,
+    admission: specification.allocation, readProductSha256: () => execution.preview().product_sha256 });
   if (specification.allocation) delete specification.allocation;
   input.fill(0);
-  const execution = createProjectAgenticProcessExecution(configuration, { allocationAuthority, processAuthority: allocationAuthority?.processAuthority });
+  execution = createProjectAgenticProcessExecution(configuration, { allocationAuthority, processAuthority: allocationAuthority?.processAuthority });
   const result = await execution.run({ execute: true, authorization, persistenceBinding });
   process.stdout.write(JSON.stringify(result) + "\n");
 } catch (error) {

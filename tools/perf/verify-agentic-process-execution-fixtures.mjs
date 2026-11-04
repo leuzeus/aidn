@@ -420,9 +420,10 @@ function journalController(f, t, options = {}) {
         await onEvent({ type: "stdout", bytes: Buffer.from(child.stdout) });
         return { outcome: "completed", termination_state: "confirmed", termination_proof: { active_processes: 0 } };
       }
+      let native;
       const allocationAuthority = createNativeAllocationWorkerAuthority({ configuration: f.configuration, authorization: sent.authorization, admission: sent.allocation,
-        ...(f.environment ? { environment: f.environment } : {}) });
-      const native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority: allocationAuthority.processAuthority, ...(f.environment ? { environment: f.environment } : {}) });
+        readProductSha256: () => native.preview().product_sha256, ...(f.environment ? { environment: f.environment } : {}) });
+      native = createProjectAgenticProcessExecution(f.configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority: allocationAuthority.processAuthority, ...(f.environment ? { environment: f.environment } : {}) });
       const result = await native.run({ execute: true, authorization: sent.authorization });
       await options.afterWorker?.(f, result);
       await onEvent({ type: "stdout", bytes: Buffer.from(JSON.stringify(result)) });

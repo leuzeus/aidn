@@ -841,7 +841,9 @@ missing usage, protected rejection, original deadlines, closure and partial
 storage/timeout stops. The real RPC parser uses in-memory pipes. These are not
 native identity, provider reception or OS-isolation evidence; all remain NOT_RUN.
 Host execution failures retain a bounded safe code, including STANDARD_MODE_WORK_,
-and a host-selected stage in owned execution-failure evidence. Raw exception
+and a host-selected stage in owned execution-failure evidence. The private worker
+authority reads current product hashes through its actual executor preview on
+every observation, including typed mode preparation; it does not cache them. Raw exception
 messages/stacks are not retained; a failed entry remains failed.
 See [the execution profile](AGENTIC_PROCESS.md) for the exact support boundaries.
 The suites also cover the exact 256-character occurrence boundary and oversized

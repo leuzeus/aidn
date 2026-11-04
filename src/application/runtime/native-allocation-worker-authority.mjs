@@ -15,7 +15,7 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 // Private, byte-pinned worker IPC. Never a field of authored configuration or a
 // native prompt/environment. The trusted worker already owns canonical DB access;
 // its ephemeral key capability verifies the parent's reservation, not user claims.
-export function createNativeAllocationWorkerAuthority({ configuration, authorization, admission, environment = process.env }) {
+export function createNativeAllocationWorkerAuthority({ configuration, authorization, admission, environment = process.env, readProductSha256 }) {
   const mixed = admission?.contract_version === "native-allocation-worker.v2";
   const fields = ["contract_version", "journal_id", "generation", "owner_id", "key_base64", ...(mixed ? ["model_source"] : [])];
   if (checkShadowJson(admission) || !admission || Object.keys(admission).length !== fields.length || fields.some(key => !Object.hasOwn(admission, key))
@@ -25,7 +25,7 @@ export function createNativeAllocationWorkerAuthority({ configuration, authoriza
   const options = { targetRoot: configuration.target_root, stateMode: project.stateMode, env: environment };
   const store = createNativeAllocationJournalStore(options), controls = createProcessControlInboxStore(options);
   const processAuthority = mixed ? createStandardProcessAuthority({ configuration, model: readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value,
-    modelSource: admission.model_source, readSigningKey: () => key, environment, nativeReservation: admission }) : undefined;
+    modelSource: admission.model_source, readSigningKey: () => key, environment, nativeReservation: admission, readProductSha256 }) : undefined;
   return Object.freeze({
     processAuthority,
     admit({ creation, retained, scopeId, modelSha256, productSha256 }) {
