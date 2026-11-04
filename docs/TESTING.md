@@ -1,5 +1,18 @@
 # Testing Guide
 
+The published candidate standard now selects `session_pr_review_wait` after its
+accepted complete-content observation and `session_pr_review_receive` afterwards.
+The composed execution fixture (`--standard-composed-mode=<mode>
+--standard-composed-stop=component_complete`) exercises that actual graph with
+real local operations, a bare Git remote, signed journals and fixture identity/
+provider/native transports. At this wait it checks a missing event, refusal of
+claim-only delivery and denied authentication, persists the complete payload,
+then delivers and consumes it in a fresh Node process without native allocation.
+The receiver preserves pending triage and no merge authorization. The component
+suite below also checks same-head edits, a changed event after delivery,
+cancellation and false success facts at this new application boundary. Results
+from the component model alone do not qualify the composed standard path.
+
 `node tools/perf/verify-standard-pr-review-control-fixtures.mjs` selects complete
 PR event/content capture on files, dual and db-only; `--mode=<mode>` selects one.
 The actual canonical inbox, host/service, SQLite CAS and common reducer are used.

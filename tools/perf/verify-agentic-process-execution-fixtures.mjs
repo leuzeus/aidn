@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
 import { attachCycleCloseRecordModel } from "./cycle-close-record-fixture-lib.mjs";
@@ -558,6 +559,7 @@ function mixedFixture(stateMode = "files", options = {}) {
     authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: projectRoot, remoteRoot: f.sessionPushRemoteRoot }) : null,
     sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
+    sessionReviewEventPort: f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null,
     sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
   // The human path also qualifies a retained common host. Authority/evidence
   // reads remain inside its methods; acceptance still restarts in a cold Node.
@@ -577,6 +579,7 @@ function restoreComposedFixture(data, options) {
     authorize: async () => grant, humanSource: options.humanSource, validationProfile: f.validationProfile,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: f.configuration.target_root, remoteRoot: f.sessionPushRemoteRoot }) : null,
     sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
+    sessionReviewEventPort: f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null,
     sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null },
     { controllerFactory, ...(f.validationProfile ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) });
   return Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model });
@@ -775,6 +778,39 @@ if (process.argv[2] === "--mixed-continue") {
       if (runsPromotion && state.cursor.status === "COMPLETED") break;
       const frame = state.cursor.occurrences.find(row => row.status === "READY")
         ?? state.cursor.occurrences.find(row => row.status === "WAITING" && row.operation?.receipt?.outcome === "deferred");
+      const reviewWait = state.cursor.occurrences.find(row => row.node_id === "session_pr_review_wait" && row.status === "WAITING");
+      if (reviewWait) {
+        const control = { instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: reviewWait.occurrence_id };
+        const request = f.open().prepareControl(control), capture = () => f.open().captureControl({ ...control, sourceRef: "fixture:standard-review", write: true });
+        assert.equal((await f.open().step({ write: false })).kind, "wait");
+        assert.equal((await capture()).status, "waiting_for_control");
+        assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
+        await assert.rejects(f.open().captureControl({ ...control, sourceRef: "fixture:claim", captureKind: "claim", write: true }), { code: "PROCESS_CONTROL_CAPTURE_KIND_INVALID" });
+        const intent = state.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_pr_update_push").at(-1).intent;
+        const p = f.open().readOperation(intent.operation_id).results.at(-1).output.observations.pull_request;
+        const event = { contract_version: "github-pr-review-event.v1", authority_id: "fixture_provider", source_event_id: "standard-review-event-1",
+          repository_id: p.repository_id, pull_request_id: p.node_id, pull_request_number: p.number, head_oid: p.head_oid, base_oid: p.base_oid,
+          head_ref: p.head_branch, base_ref: p.base_branch, event_key: "review_snapshot", revision: "fixture-review-revision-1",
+          occurred_at: new Date().toISOString(), actor: { node_id: "U_fixture", login: "fixture-reviewer", type: "User" } };
+        const file = path.join(f.configuration.control_root, "standard-pr-review-event.json");
+        fs.writeFileSync(file, JSON.stringify({ event, authorized: false, current: true }));
+        await assert.rejects(capture(), { code: "PROCESS_CONTROL_PR_NOT_AUTHENTICATED" });
+        fs.writeFileSync(file, JSON.stringify({ event, authorized: true, current: true }));
+        const reserved = await capture(); assert.equal(reserved.status, "reserved");
+        const captured = f.open().readControl(reserved.inbox_id);
+        assert.equal(captured.request.instance_sha256, request.instance_sha256);
+        assert.equal(captured.payload.observation.observations.update_operation_id, intent.operation_id);
+        assert.equal(captured.payload.observation.observations.evidence.reviews[0].body_chunks.join(""), "Complete fixture review evidence.");
+        assert.equal(captured.phase, "reserved"); assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
+        const allocations = f.open().inspectAllocations();
+        const child = JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL("standard-pr-review-control-resume-fixture.mjs", import.meta.url)), resumeFile, reserved.inbox_id],
+          { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true, timeout: 600000, maxBuffer: 1048576 }));
+        assert.equal(child.new_native_allocations, 0); assert.equal(child.signed_payload_consumed, true);
+        assert.equal(f.reopen().inspect().record.instance_sha256, child.instance_sha256);
+        assert.deepEqual(f.open().inspectAllocations(), allocations);
+        console.log(JSON.stringify({ standard_pr_wait_selected: true, signed_payload_consumed: true, fresh_process_resume: true, new_native_allocations: 0 }));
+        continue;
+      }
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
       const result = await f.open().step({ write: true, authorization: auth });
@@ -940,6 +976,11 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(review.observations.head_oid, pushedHead);
       assert.equal(review.observations.merge_authorization, "not-established");
       assert.equal(review.observations.evidence.pull_request.head_oid, pushedHead);
+      const received = last("session_pr_review_receive");
+      assert.equal(received.outcome, "completed"); assert.equal(received.effect_status, "no_effect");
+      assert.deepEqual(received.facts, { session_pr_review_event_received: true, session_pr_triage_required: true });
+      assert.equal(received.observations.payload.observation.observations.head_oid, pushedHead);
+      assert.equal(final.record.events.filter(row => row.kind === "control").length, 1);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }
     let replayLast, replaySteps = 0;

@@ -10,6 +10,8 @@ import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.
 import { createStandardWorkflowOperationHost } from '../../src/application/runtime/standard-workflow-operation-host.mjs';
 import { createStandardSessionPrReviewContentObservation } from '../../src/application/runtime/standard-session-pr-review-observe.mjs';
 import { createStandardPrReviewControlSource } from '../../src/application/runtime/standard-session-pr-review-control-source.mjs';
+import { createStandardPrReviewReceiver } from '../../src/application/runtime/standard-session-pr-review-receive.mjs';
+import { assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { createProcessControlInboxStore } from '../../src/adapters/runtime/process-control-inbox-store.mjs';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 import { assertControlInbox, assertControlReviewPayload, controlInboxPath } from '../../src/core/workflow/process-control-inbox.mjs';
@@ -50,7 +52,7 @@ function open(root, privateRoot) {
   host = createStandardWorkflowOperationHost({ targetRoot: root, model, controlSource: source,
     readSigningKey: () => fs.readFileSync(path.join(privateRoot, 'host.key')),
     authorize: async () => ({ authorized: true, authority_id: 'fixture_operator', principal_sha256: H, grant_sha256: H }) });
-  return { host, provider };
+  return { host, provider, source, observer };
 }
 if (process.argv[2] === '--deliver') {
   const { host, provider } = open(process.argv[3], process.argv[4]);
@@ -75,7 +77,7 @@ if (process.argv[2] === '--deliver') {
         head_branch: git(root, 'branch', '--show-current'), base_branch: 'main', state: 'OPEN', draft: false };
       const state = { pull_request: p, event: null, authorized: true, current: true };
       const persist = () => fs.writeFileSync(stateFile(privateRoot), JSON.stringify(state)); persist();
-      const { host, provider } = open(root, privateRoot);
+      const { host, provider, source, observer } = open(root, privateRoot);
       const initial = host.initialize({ instanceId: 'waiting' }); host.initialize({ instanceId: 'waiting', write: true, expectedResultSha256: initial.record.instance_sha256 });
       const before = host.inspect('waiting'), frame = before.cursor.occurrences.find(row => row.wait_reason === 'event');
       const input = { instanceId: 'waiting', expectedSha256: before.record.instance_sha256, occurrenceId: frame.occurrence_id };
@@ -162,6 +164,34 @@ if (process.argv[2] === '--deliver') {
         assert.equal(shadowHash(store.read(saved.inbox_id).record.payload), shadowHash(saved.payload));
         createOperationJournalSigner(() => fs.readFileSync(path.join(privateRoot, 'host.key'))).verify(saved);
         assert.equal(fs.existsSync(path.join(root, 'docs/audit', controlInboxPath(saved.inbox_id))), mode !== 'db-only');
+      });
+      await test(mode + ': receiver consumes the exact durable payload with fresh event authentication and complete content', async () => {
+        state.event = event; persist();
+        const receivedInput = { contract_version: 'standard-session-pr-review-receive-input.v1', update_operation_id: updateId };
+        const receiver = createStandardPrReviewReceiver({ observer, verifyEvent: source.verifyCapturedEvent,
+          readDelivered(_instance, input) {
+            const capture = host.readControl(reserved.inbox_id);
+            assert.equal(capture.phase, 'delivered');
+            assert.equal(input.update_operation_id, capture.payload.observation.observations.update_operation_id);
+            return capture;
+          } });
+        const instance = host.inspect('waiting').record, received = await receiver.observe(instance, receivedInput);
+        assert.equal(received.outcome, 'completed', JSON.stringify(received));
+        assert.deepEqual(received.observations.payload, host.readControl(reserved.inbox_id).payload);
+        assert.deepEqual(received.facts, { session_pr_review_event_received: true, session_pr_triage_required: true });
+        assert.equal(received.observations.merge_authorization, 'not-established');
+        assert.throws(() => assertStandardOperationOutput({ ...received, outcome: 'blocked' }));
+        assert.throws(() => assertStandardOperationOutput({ ...received, facts: {} }));
+        provider.state.reviews[0].body = 'A same-head edit must invalidate consumption.';
+        const changed = await receiver.observe(instance, receivedInput); assert.equal(changed.outcome, 'blocked'); assert.deepEqual(changed.facts, {});
+        provider.state.reviews[0].body = 'Complete fixture review evidence.';
+        event.revision = 'changed-after-delivery'; persist();
+        const revised = await receiver.observe(instance, receivedInput); assert.equal(revised.outcome, 'blocked'); assert.deepEqual(revised.facts, {});
+        event.revision = 'provider-revision-1'; persist();
+        const stop = new AbortController(); stop.abort();
+        const cancelled = await receiver.observe(instance, receivedInput, { signal: stop.signal });
+        assert.equal(cancelled.outcome, 'blocked'); assert.equal(cancelled.observations.reason_code, 'STANDARD_PR_RECEIVE_ABORTED');
+        assert.equal(host.inspect('waiting').record.events.length, 1);
       });
     }
     console.log(JSON.stringify({ status: 'PASS', checks, provider_and_event_identity: 'fixture-capabilities', accepted_update_authority: 'fixture',

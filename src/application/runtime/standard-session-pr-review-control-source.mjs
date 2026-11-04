@@ -1,5 +1,6 @@
 import { assertControlRequest, assertControlReviewEvent, assertControlReviewPayload } from '../../core/workflow/process-control-inbox.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
+import { standardPrReviewMaterial } from './standard-session-pr-review-receive.mjs';
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 
 // Event authentication and canonical context lookup are trusted host ports.
@@ -46,12 +47,12 @@ export function createStandardPrReviewControlSource({ readEvent, verifyEvent, re
     request_sha256: shadowHash(request), event_key: event.event_key, payload_sha256: shadowHash(payload),
     evidence_refs: [{ ref: 'github:review-event/' + event.source_event_id, sha256: shadowHash(event) },
       { ref: 'github:review-content/' + event.pull_request_id + '/' + event.head_oid, sha256: shadowHash(payload) }] });
-  const material = output => {
-    const { update_operation_id, source_sha256, head_oid, base_oid, evidence, threads } = output.observations;
-    return shadowHash({ update_operation_id, source_sha256, head_oid, base_oid,
-      evidence_sha256: evidence.evidence_sha256, observation_sha256: threads.observation_sha256 });
-  };
   return Object.freeze({
+    async verifyCapturedEvent({ source, payload, request, source_ref: sourceRef }, { signal } = {}) {
+      assertControlReviewPayload(payload, source, request);
+      const event = await eventFor(request, sourceRef, signal, true);
+      if (event === null || shadowHash(event) !== shadowHash(payload.event)) fail('PROCESS_CONTROL_PR_EVENT_CHANGED');
+    },
     async readReview({ request, sourceRef, signal }) {
       const event = await eventFor(request, sourceRef, signal);
       if (event === null) return null;
@@ -69,7 +70,7 @@ export function createStandardPrReviewControlSource({ readEvent, verifyEvent, re
       if (event === null || shadowHash(event) !== shadowHash(payload.event) || shadowHash(claimFor(event, request, payload)) !== shadowHash(source))
         fail('PROCESS_CONTROL_PR_EVENT_CHANGED');
       const output = await observe(request, signal);
-      if (material(output) !== material(payload.observation)) fail('PROCESS_CONTROL_PR_COLLECTION_CHANGED');
+      if (standardPrReviewMaterial(output) !== standardPrReviewMaterial(payload.observation)) fail('PROCESS_CONTROL_PR_COLLECTION_CHANGED');
       // A source revision/actor may change while the collections are read.
       const repeated = await eventFor(request, sourceRef, signal, true);
       if (repeated === null || shadowHash(repeated) !== shadowHash(event)) fail('PROCESS_CONTROL_PR_EVENT_CHANGED');

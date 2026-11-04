@@ -1952,3 +1952,28 @@ its fixture event authentication does not qualify a live webhook/provider or
 native human identity. The candidate standard graph still needs its PR wait and
 triage route. Persisted content alone neither resolves findings nor accepts
 checks, finishes the skill or authorizes merge.
+
+### Standard PR wait and signed-content consumption, 2026-11-03
+
+The next candidate standard revision explicitly selects an external event after
+the accepted full-content observation. The host composes its review control
+source from provider event capabilities and its own accepted operation lookup,
+current request, successor authority and application observer. A supplied IR or
+event port cannot provide canonical context, an update receipt or an observer.
+Claim-only capture cannot wake this standard occurrence. Other historical
+control models retain their version-specific readers and explicit capture kind.
+
+After canonical delivery, a deterministic read-only consumer identifies the
+unique accepted event for the exact accepted update operation. It verifies the
+signed v2 inbox and its retained delivery checkpoint, authenticates the current
+event around a fresh complete application observation, then retains the exact
+payload as the input to triage. A changed head, base, content or event revision
+blocks consumption with empty facts. The existing operation journal authenticates
+the resulting output; no new governed concept, table, implicit projection or
+migration is introduced. Cancellation is propagated through mixed dispatch too.
+Synchronous Git readers retain the previously documented preemption limitation.
+
+This consumer does not classify findings, accept checks, reply, resolve a thread,
+complete a skill or authorize merge. The partial catalog remains incomplete and
+ordinary standard selection is still outstanding. Fixture grants and event
+principals remain fixture evidence, separately from live provider identities.

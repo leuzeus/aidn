@@ -9,9 +9,9 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 117/115 et le modèle composé candidat en 59
-(95 nœuds, 60 occurrences d’opération, 50 identifiants de liaison mobilisés parmi
-58 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
+les composants startup/cycle en 120/118 et le modèle composé candidat en 61
+(99 nœuds, 61 occurrences d’opération, 51 identifiants de liaison mobilisés parmi
+59 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
 le défaut global ; cette sélection ne vaut pas intégration du workflow standard.
 Les constats initiaux ci-dessous restent datés de `dd1dbab` ; les
@@ -3604,3 +3604,34 @@ Ses huit allocations sont fermées dans le journal et les PID relevés au relais
 sont absents ; extinction générale NOT_PROVEN, nettoyage NOT_DONE. Les fixtures,
 sources figées et dépendances sont conservées. Le parcours composé corrigé,
 le fournisseur réel et l'archive exacte restent NOT_RUN sur cette source.
+
+### Attente PR standard et consommation de la capture signée, 2026-11-03
+
+Le candidat 61 sélectionne `session_pr_review_wait` après l'observation complète
+acceptée, puis `session_pr_review_receive`. Le contexte de capture est composé
+dans l'hôte depuis la requête courante et les opérations d'observation/push
+acceptées ; le port d'événement n'apporte que lecture et authentification.
+Une capture claim-only ne peut pas réveiller cette occurrence standard.
+L'opération de réception contrôle l'unique événement accepté, l'inbox v2 signée,
+son checkpoint de livraison, l'identité/révision d'événement courante et une
+observation complète fraîche. Elle conserve le payload exact pour le triage ;
+elle n'en produit aucune disposition, réponse, résolution ni autorisation de
+fusion. Les changements au même HEAD, de base ou de révision refusent le succès.
+
+Le contrôle de composition passe 26 cas et le résolveur 44 frontières publiées
+en trois cas ; les 27 contrôles de contrats/réducteur/service et 22 de démarrage
+passent. La suite inbox/receiver files passe neuf cas, avec nettoyage de ses
+deux racines ; les capacités d'identité, fournisseur et lookup d'update restent
+doublées dans cette suite de composant. Source-of-truth 35, metadata 37 et
+governance-completeness passent. Une première exécution de la nouvelle assertion
+receiver avait révélé un schéma copié conservant les champs d'observation ;
+cette tentative reste FAIL et son nettoyage passe. Le nouveau schéma décrit
+explicitement la réception et son payload complet, sans modifier l'ancien.
+
+La fixture composée utilise le graphe publié et les vrais ports locaux, puis
+une livraison et consommation dans un nouveau Node sans allocation native.
+Son résultat sur cette source reste à observer ; la présence de ces assertions
+ne vaut pas PASS. Dual/db-only, contrôles historiques et gate générale doivent
+être requalifiés. Le défaut golden documentaire reste à diagnostiquer. Triage,
+fusion/synchronisation, autres variantes A1–A10, entrée ordinaire, réautorisation
+native et archive exacte restent ouverts. `complete_standard_workflow=false`.

@@ -56,6 +56,9 @@ import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
 import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
 import { createStandardControlInbox } from "./standard-workflow-control-inbox.mjs";
+import { createStandardPrReviewControlSource } from "./standard-session-pr-review-control-source.mjs";
+import { createStandardPrReviewReceiver } from "./standard-session-pr-review-receive.mjs";
+import { inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { assertControlRequest } from "../../core/workflow/process-control-inbox.mjs";
 import { createAgenticProcess, advanceAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, processId } from "../../core/workflow/agentic-process-model.mjs";
@@ -83,7 +86,7 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null }, { validationBoundaryFactory } = {}) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null }, { validationBoundaryFactory } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
@@ -430,12 +433,49 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readCheckpoint: (instance, input) => sessionPrSuccessor.readCheckpoint(instance, input), readCurrent: id => current(id).record,
     pushPort: sessionPushPort, pullRequestPort: sessionPullRequestPort }) : null;
   const sessionPrReviewAuthority = sessionPrSuccessor && sessionReviewPort ? createStandardSessionPrReviewAuthority({
-    readAcceptedOperation: acceptedForPromotion, readCheckpoint: sessionPrSuccessor.readCheckpoint, inspectPush: branch => sessionPushPort.inspect(branch) }) : null;
+    readAcceptedOperation: acceptedForPromotion, readCheckpoint: sessionPrSuccessor.readCheckpoint, inspectPush: (branch, options) => sessionPushPort.inspect(branch, options) }) : null;
   const sessionPrReview = sessionPrReviewAuthority ? createStandardSessionPrReviewObservation({ now, reviewPort: sessionReviewPort,
     readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
   const sessionPrReviewContent = sessionPrReviewAuthority && model.nodes.some(node => node.binding_ref === "session_pr_review_content_observe")
     ? createStandardSessionPrReviewContentObservation({ now, reviewPort: sessionReviewPort,
     readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
+  if (sessionReviewEventPort !== null && (!sessionPrReviewContent
+    || ![sessionReviewEventPort.readEvent, sessionReviewEventPort.verifyEvent].every(fn => typeof fn === "function")))
+    fail("STANDARD_HOST_REVIEW_EVENT_CONFIGURATION_INVALID");
+  const reviewControlSource = sessionReviewEventPort && createStandardPrReviewControlSource({ now, observer: sessionPrReviewContent,
+    readEvent: input => sessionReviewEventPort.readEvent(input), verifyEvent: input => sessionReviewEventPort.verifyEvent(input),
+    async readContext({ request, signal }) {
+      if (signal?.aborted) fail("PROCESS_CONTROL_PR_ABORTED");
+      const actual = controlRequest({ instanceId: request.instance_id, expectedSha256: request.instance_sha256, occurrenceId: request.occurrence_id });
+      const state = current(request.instance_id), frame = state.cursor.occurrences.find(row => row.occurrence_id === request.occurrence_id);
+      if (frame?.node_id !== "session_pr_review_wait" || shadowHash(actual) !== shadowHash(request)) fail("PROCESS_CONTROL_PR_CONTEXT_CHANGED");
+      const latest = state.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_pr_review_content_observe").at(-1);
+      const accepted = acceptedForPromotion(state.record, latest?.intent.operation_id, "session_pr_review_content_observe", "PROCESS_CONTROL_PR_OBSERVATION_REQUIRED");
+      const input = accepted.record.preview.input;
+      if (accepted.output.facts.session_pr_review_evidence_available !== true
+        || accepted.output.observations.update_operation_id !== input.update_operation_id) fail("PROCESS_CONTROL_PR_OBSERVATION_REQUIRED");
+      return { instance: state.record, request_sha256: shadowHash(actual), input };
+    } });
+  const activeControlSource = reviewControlSource ? { ...controlSource, ...reviewControlSource } : controlSource;
+  const sessionPrReviewReceiver = sessionPrReviewContent && createStandardPrReviewReceiver({ observer: sessionPrReviewContent,
+    verifyEvent: (capture, options) => reviewControlSource?.verifyCapturedEvent(capture, options) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED"),
+    readDelivered(instance, input) {
+      assertStandardOperationInput("session_pr_review_receive", input);
+      const frames = inspectAgenticProcess(instance).occurrences;
+      const candidates = instance.events.filter(row => row.kind === "control")
+        .map(event => ({ event, frame: frames.find(row => row.occurrence_id === event.occurrence_id), capture: controls.read(event.delivery.delivery_id) }))
+        .filter(row => row.frame?.node_id === "session_pr_review_wait" && row.capture.contract_version === "process-control-inbox.v2"
+          && row.capture.payload.observation.observations.update_operation_id === input.update_operation_id);
+      if (candidates.length !== 1 || candidates[0].frame.status !== "COMPLETED") fail("STANDARD_PR_RECEIVE_EVENT_REQUIRED");
+      const { event, capture } = candidates[0];
+      if (capture.contract_version !== "process-control-inbox.v2" || capture.phase !== "delivered"
+        || shadowHash(capture.delivery) !== shadowHash(event.delivery) || capture.request.occurrence_id !== event.occurrence_id
+        || capture.request.scope_id !== instance.scope_id || capture.request.model_sha256 !== instance.model_sha256
+        || capture.request.instance_id !== instance.instance_id || capture.delivered_instance_sha256 !== controlCheckpoint(instance, event.event_id))
+        fail("STANDARD_PR_RECEIVE_EVENT_REQUIRED");
+      acceptedForPromotion(instance, capture.payload.observation.observations.update_operation_id, "session_pr_update_push", "STANDARD_PR_RECEIVE_UPDATE_REQUIRED");
+      return capture;
+    } });
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -516,7 +556,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && agenticProcessPersistence({ targetRoot }).backend === "postgres";
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource,
     projectionRequired });
-  const controls = createStandardControlInbox({ store: createProcessControlInboxStore(options), signer, source: controlSource,
+  const controls = createStandardControlInbox({ store: createProcessControlInboxStore(options), signer, source: activeControlSource,
     projectionRequired });
   function readAuthority() {
     if (processAuthority) return processAuthority.read();
@@ -524,7 +564,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     if (project.stateMode !== initial.stateMode) fail("STANDARD_HOST_STATE_MODE_CHANGED");
     return { scope_id: shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
       operation_host: { version: 1, state_mode: project.stateMode, key_id: signer.keyId, ...(source ? { model_source_sha256: shadowHash(source) } : {}),
-        ...(controlSource ? { control_inbox_version: 1 } : {}) } }), model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
+        ...(activeControlSource ? { control_inbox_version: 1 } : {}) } }), model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
   }
   function scope(instance) {
     const authority = readAuthority();
@@ -603,7 +643,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
     },
   };
-  const controlAuthority = controlSource ? {
+  const controlAuthority = activeControlSource ? {
     read({ delivery_id }) { return controls.read(delivery_id).delivery; },
     async verify({ delivery, signal }) {
       const capture = controls.read(delivery.delivery_id);
@@ -640,7 +680,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   };
   function requireWrite(write, expected, actual) { if (write !== true || expected !== actual) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED"); }
   function controlRequest({ instanceId, expectedSha256, occurrenceId }) {
-    if (!controlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
+    if (!activeControlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
     const state = current(instanceId);
     if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
     const frame = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = frame && model.nodes.find(row => row.id === frame.node_id);
@@ -754,11 +794,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     inspect: id => current(id),
     prepareControl: input => structuredClone(controlRequest(input)),
-    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, captureKind = "claim", write = false }) {
+    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, captureKind = null, write = false }) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
-      if (!["claim", "pr-review-content"].includes(captureKind)) fail("PROCESS_CONTROL_CAPTURE_KIND_INVALID");
       const request = controlRequest({ instanceId, expectedSha256, occurrenceId });
-      const capture = await (captureKind === "pr-review-content" ? controls.reserveReview : controls.reserve)(request, sourceRef, { signal });
+      const standardReview = current(instanceId).cursor.occurrences.some(row => row.occurrence_id === occurrenceId && row.node_id === "session_pr_review_wait");
+      const kind = captureKind ?? (standardReview ? "pr-review-content" : "claim");
+      if (!["claim", "pr-review-content"].includes(kind) || standardReview && (kind !== "pr-review-content" || !reviewControlSource)) fail("PROCESS_CONTROL_CAPTURE_KIND_INVALID");
+      const capture = await (kind === "pr-review-content" ? controls.reserveReview : controls.reserve)(request, sourceRef, { signal });
       if (!capture) return { status: "waiting_for_control", request };
       // A retained capture survives races/crashes, but may not wake a changed
       // instance or business context. Such a capture needs explicit reconciliation.
@@ -768,7 +810,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     async deliverControl(id, { write = false } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
-      if (!controlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
+      if (!activeControlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
       const capture = controls.read(id), state = current(capture.request.instance_id), eventId = "control_" + id.slice(8);
       const retainedEvent = state.record.events.find(row => row.event_id === eventId);
       if (retainedEvent) {
@@ -806,6 +848,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_checkpoint" ? await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_observe" ? await sessionPrReview?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_record" ? await sessionPrRecord?.prepare(state.record, input) ?? fail("STANDARD_PR_RECORD_AUTHORITY_REQUIRED")
@@ -908,6 +951,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_push") output = await sessionPush.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_content_observe") output = await sessionPrReviewContent.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_observe") output = await sessionPrReview.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_branch_integrate") output = await sessionBranchIntegration.apply(state.record, record.preview.prepared,

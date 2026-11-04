@@ -24,7 +24,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 60); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 61); assert.equal(assets.catalog.activities.length, 8);
 });
 test("authored literal/operation-only inputs satisfy their actual closed operation contracts", () => {
   for (const spec of assets.model.data_bindings.inputs) {
@@ -47,6 +47,17 @@ test("review evidence is a deterministic observation after confirmed update, wit
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_review_observe").fields.update_operation_id,
     { source: "operation_id", node_id: "session_pr_update_push" });
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
+});
+test("published standard selects an external PR wait before the deterministic signed-content consumer", () => {
+  const children = committingSteps(), wait = assets.model.nodes.find(row => row.id === "session_pr_review_wait");
+  assert.equal(children.indexOf(wait.id), children.indexOf("session_pr_review_observe") + 1);
+  assert.equal(children.indexOf("session_pr_review_receive"), children.indexOf(wait.id) + 1);
+  assert.equal(wait.kind, "event");
+  assert.deepEqual(wait.branches.map(row => row.event_key), ["review_snapshot", "checks_snapshot"]);
+  const consumer = assets.catalog.bindings.find(row => row.node_id === "session_pr_review_receive").binding;
+  assert.equal(consumer.effect_class, "read-only"); assert.equal(consumer.executor_kind, "deterministic");
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_review_receive").fields.update_operation_id,
+    { source: "operation_id", node_id: "session_pr_update_push" });
 });
 
 test("successor checkpoint and update follow the accepted canonical PR record with explicit inputs", () => {

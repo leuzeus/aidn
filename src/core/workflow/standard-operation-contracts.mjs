@@ -1,3 +1,5 @@
+import prReceiveInput from "../contracts/workflow-definition/standard-session-pr-review-receive-input.v1.schema.json" with { type: "json" };
+import prReceiveOutput from "../contracts/workflow-definition/standard-session-pr-review-receive-output.v1.schema.json" with { type: "json" };
 import prReviewContentOutput from "../contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json" with { type: "json" };
 import prReviewInput from "../contracts/workflow-definition/standard-session-pr-review-observe-input.v1.schema.json" with { type: "json" };
 import prReviewOutput from "../contracts/workflow-definition/standard-session-pr-review-observe-output.v1.schema.json" with { type: "json" };
@@ -98,6 +100,10 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === "session_pr_review_receive") {
+    if (checkShadowJson(value) || validateJsonSchema(value, prReceiveInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (["session_pr_review_content_observe", "session_pr_review_observe"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, prReviewInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -119,6 +125,13 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-session-pr-review-receive-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, prReceiveOutput, "$", { contractKind: "workflow-definition" }).length
+      || (value.outcome === "completed" ? value.facts.session_pr_review_event_received !== true || value.facts.session_pr_triage_required !== true
+        || value.observations.acceptance !== "pending-triage-and-policy-evaluation" || value.observations.merge_authorization !== "not-established"
+        : Object.keys(value.facts).length !== 0)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-session-pr-review-content-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, prReviewContentOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
