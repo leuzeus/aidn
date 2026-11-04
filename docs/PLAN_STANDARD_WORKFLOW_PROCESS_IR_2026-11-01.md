@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Avancement courant au 4 novembre 2026 : les composants startup/cycle sont en
-156/154 et le modèle composé candidat en 98 (186 nœuds, 113 occurrences
+157/155 et le modèle composé candidat en 99 (186 nœuds, 113 occurrences
 d’opération, 17 activités). Le snapshot SOURCE34 précédent était 155/153/97 ;
 le snapshot 147/145/89 (147/90/14) était une étape antérieure, pas les assets
 courants. Les preuves conservent chacune leur source exacte. Les raccordements
