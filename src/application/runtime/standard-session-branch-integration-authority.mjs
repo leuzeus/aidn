@@ -1,5 +1,5 @@
 import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.mjs';
-import { analyzeStructuredArtifact } from '../../lib/workflow/structured-artifact-parser-lib.mjs';
+import { analyzeStructuredArtifact, extractStructuredField } from '../../lib/workflow/structured-artifact-parser-lib.mjs';
 import { agentRunPhysicalPath, readAgentRunFile } from './agent-run-configuration-service.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import path from 'node:path';
@@ -40,11 +40,15 @@ export function createStandardSessionBranchIntegrationAuthority({ targetRoot, re
       || event.mode !== 'COMMITTING' || event.branch !== final.branch || event.run_id !== 'process_close_' + closed.record.operation_id.slice(3))
       fail('STANDARD_SESSION_INTEGRATION_CLOSURE_EVENT_CHANGED');
     const sessionRow = artifacts.read(final.session_path, { required: true }), session = fields(sessionRow);
+    // The distributed session template declares continuity in a Markdown list.
+    // key_values deliberately covers only top-level fields; use the owning
+    // structured scalar reader for the canonical branch in either syntax.
+    const sessionBranch = extractStructuredField(sessionRow.content, 'session_branch');
     const owned = artifacts.cycles().filter(row => fields(row).session_owner === final.session_id);
     const cycleRow = owned.find(row => row.cycle_id === closePlan.scope.cycle_id), cycle = cycleRow && fields(cycleRow);
     if (owned.length !== 1 || !cycleRow || cycle.state !== 'DONE'
       || cycle.branch_name !== final.branch || session.state !== 'CLOSED' || session.session_closure_status !== 'completed'
-      || session.mode !== 'COMMITTING' || !session.session_branch || session.session_branch === final.branch)
+      || session.mode !== 'COMMITTING' || !sessionBranch || sessionBranch === final.branch)
       fail('STANDARD_SESSION_INTEGRATION_CANONICAL_OWNER_CHANGED');
     let expectedStatus = null;
     for (const entry of instance.events.filter(row => row.kind === 'operation_result' && row.receipt.outcome === 'completed')) {
@@ -61,7 +65,7 @@ export function createStandardSessionBranchIntegrationAuthority({ targetRoot, re
     if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(deliveryHead ?? '')) fail('STANDARD_SESSION_INTEGRATION_DELIVERY_REQUIRED');
     const names = [final.session_path, cycleRow.path, 'CURRENT-STATE.md', 'snapshots/context-snapshot.md'];
     return { session_id: final.session_id, session_path: final.session_path, cycle_id: cycleRow.cycle_id, cycle_path: cycleRow.path,
-      source_branch: final.branch, target_branch: session.session_branch, delivery_head: deliveryHead,
+      source_branch: final.branch, target_branch: sessionBranch, delivery_head: deliveryHead,
       delivery_operation_id: input.delivery_operation_id, delivery_output_sha256: shadowHash(deliveryOutput),
       closure_operation_id: input.closure_operation_id, closure_output_sha256: shadowHash(closeOutput),
       material_sha256: shadowHash({ delivery: final, closure: closeOutput, terminal: terminal.output, decision: decision.output }),

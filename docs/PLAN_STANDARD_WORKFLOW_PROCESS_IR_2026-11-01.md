@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 116/114 et le modèle composé candidat en 58
+les composants startup/cycle en 117/115 et le modèle composé candidat en 59
 (95 nœuds, 60 occurrences d’opération, 50 identifiants de liaison mobilisés parmi
 58 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -3589,3 +3589,18 @@ wait/triage route, accepted native triage/dispositions, actual responses/resolut
 merge consent/effect, post-merge synchronization and the remaining A1–A10/L4–L8
 work remain required. Ordinary selection and `complete_standard_workflow` stay
 unchanged. No live remote effect, installed archive or native identity is claimed.
+
+### Correction du lecteur de continuité de session, 2026-11-03
+
+L'essai composé 49 a terminé avec FAIL, code 1,
+`STANDARD_SESSION_INTEGRATION_CANONICAL_OWNER_CHANGED`, après 120 événements.
+La session canonique conservée porte `- session_branch:` conformément au template
+distribué ; le contrôle d'intégration utilisait seulement les champs de premier
+niveau. Le lecteur de scalaire structuré existant remplace cette lecture pour
+la branche cible. Les autres contrôles de propriété, de clôture et de preuve
+restent requis. Huit cas de l'autorité passent, dont la syntaxe de liste.
+Cette correction sur la révision 59 ne requalifie ni ne relance l'essai 49.
+Ses huit allocations sont fermées dans le journal et les PID relevés au relais
+sont absents ; extinction générale NOT_PROVEN, nettoyage NOT_DONE. Les fixtures,
+sources figées et dépendances sont conservées. Le parcours composé corrigé,
+le fournisseur réel et l'archive exacte restent NOT_RUN sur cette source.

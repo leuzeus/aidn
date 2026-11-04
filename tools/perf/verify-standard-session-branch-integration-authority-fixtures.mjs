@@ -41,6 +41,12 @@ try {
   await test('CLOSED and DONE markers cannot replace a confirmed delivery and closure receipt', async () => {
     for (const id of [op('a'), op('b')]) { reset(); records.get(id).output.effect_status = 'unknown'; await assert.rejects(service.readSource(instance, input)); }
   });
+  await test('distributed session continuity list resolves the same canonical integration target', async () => {
+    put('docs/audit/' + sessionPath, sessionText.replace('session_branch:', '- session_branch:'));
+    const result = await service.readSource(instance, input);
+    assert.equal(result.target_branch, 'S001-example');
+    assert.equal(result.source_branch, sourceBranch);
+  });
   await test('NO_GO, DROPPED, report and non-retain decisions cannot authorize integration', async () => {
     for (const state of ['NO_GO', 'DROPPED']) { reset(); records.get(op('b')).output.observations.target_state = state; await assert.rejects(service.readSource(instance, input), { code: 'STANDARD_SESSION_INTEGRATION_RETAINED_CLOSURE_REQUIRED' }); }
     reset(); records.get(op('d')).output.observations.choice = 'report'; await assert.rejects(service.readSource(instance, input), { code: 'STANDARD_SESSION_INTEGRATION_RETAINED_CLOSURE_REQUIRED' });
