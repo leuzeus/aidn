@@ -4193,6 +4193,9 @@ route and v2 request, retaining the original authorization and an empty
 allocation prefix. A scope inventory still requires independent authenticated
 discovery/closure of every resource and fresh explicit consent. Its focused
 qualification remains separate from actual native/human/provider evidence.
+The [bounded initial-entry record](qualification/agentic-process/native-initial-authorization-epochs-2026-11-04.json)
+retains four passing offline scenario groups across files/dual/db-only, including
+the first mixed native boundary, and all three original fixture assertion failures.
 Genuine human/native/provider resource closure, general positive unknown-effect
 recovery, retained owners, admitted correction cycles, physical work, fresh
 validation/reclosure, review/resolution/consent/merge/sync, all remaining
