@@ -1,6 +1,6 @@
 {
   "status": "PARTIAL_COMPONENT_EVIDENCE_ENTIRE_PLAN_INCOMPLETE",
-  "as_of_utc": "2026-11-04T20:47:41.230922+00:00",
+  "as_of_utc": "2026-11-04T20:51:09.361615+00:00",
   "models": [
     {
       "kind": "startup",
@@ -34,6 +34,20 @@
       "exit_code": 0,
       "source_unchanged": true,
       "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-composition-20261104\\exit.json"
+    },
+    {
+      "name": "source36-human-selected-cycle-db-only-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-db-only-20261104\\exit.json"
+    },
+    {
+      "name": "source36-human-selected-cycle-db-only-r2-20261104",
+      "source_commit": "c4d890418e32677ef44d3e4a21b13363731f1f1a",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-db-only-r2-20261104\\exit.json"
     },
     {
       "name": "source36-human-selected-cycle-decision-20261104",
@@ -92,8 +106,8 @@
     ]
   },
   "business_case_sources": {
-    "2ebe32c3": "actual initializer using accepted human output fixture capability; each new files/dual/db-only project still pending",
-    "c4d89041": "actual signed v9 inbox with fixture human identity feeding initializer; accepted-operation/provider capabilities still doubled; each new files/dual/db-only project pending"
+    "2ebe32c3": "actual initializer using accepted human output fixture capability; separate files/dual/db-only projects; see per-case states",
+    "c4d89041": "actual signed v9 inbox with fixture human identity feeding initializer; accepted-operation/provider capabilities still doubled; separate files/dual/db-only projects; see per-case states"
   },
   "ordinary_entry": "UNCHANGED",
   "complete_standard_workflow": false,
@@ -106,5 +120,69 @@
   "exact_installed_archive": "NOT_RUN",
   "runtime_family": "NOT_PROVEN",
   "governance_admission": "NOT_PROVEN",
-  "original_case_retry": false
+  "original_case_retry": false,
+  "business_cases": [
+    {
+      "name": "source36-human-selected-cycle-db-only-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "terminal_exit": 0,
+      "terminal_summary": {
+        "status": "PASS",
+        "checks": 6,
+        "mode": "db-only",
+        "decision_version": 3,
+        "canonical_cas_git": "ACTUAL",
+        "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+        "production_dispatcher": "NOT_RUN",
+        "ordinary_plan_dor_implementation": "NOT_RUN",
+        "genuine_human": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": false
+      }
+    },
+    {
+      "name": "source36-human-selected-cycle-db-only-r2-20261104",
+      "source_commit": "c4d890418e32677ef44d3e4a21b13363731f1f1a",
+      "terminal_exit": 0,
+      "terminal_summary": {
+        "status": "PASS",
+        "checks": 6,
+        "mode": "db-only",
+        "decision_version": 3,
+        "canonical_cas_git": "ACTUAL",
+        "accepted_source_provider_human_authority": "FIXTURE_DOUBLES",
+        "production_dispatcher": "NOT_RUN",
+        "ordinary_plan_dor_implementation": "NOT_RUN",
+        "genuine_human": "NOT_RUN",
+        "native": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": false
+      }
+    },
+    {
+      "name": "source36-human-selected-cycle-dual-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "terminal_exit": null,
+      "terminal_summary": null
+    },
+    {
+      "name": "source36-human-selected-cycle-dual-r2-20261104",
+      "source_commit": "c4d890418e32677ef44d3e4a21b13363731f1f1a",
+      "terminal_exit": null,
+      "terminal_summary": null
+    },
+    {
+      "name": "source36-human-selected-cycle-files-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "terminal_exit": null,
+      "terminal_summary": null
+    },
+    {
+      "name": "source36-human-selected-cycle-files-r2-20261104",
+      "source_commit": "c4d890418e32677ef44d3e4a21b13363731f1f1a",
+      "terminal_exit": null,
+      "terminal_summary": null
+    }
+  ]
 }

@@ -28,8 +28,9 @@ datés de `dd1dbab`, distincts de cet avancement.
   conserve la source et son empreinte ; l’IR consomme la sortie acceptée. Les
   lecteurs historiques sont conservés. Décision/inbox 27 PASS, composition 32
   PASS, modèle 22 PASS et politiques/docrefs PASS sur 2ebe32c3 ; opérations/
-  réducteur 27 PASS sur c4d89041. Les six nouveaux essais métier sur deux
-  sources restent en cours, avec leurs projets distincts et autorités doublées.
+  réducteur 27 PASS sur c4d89041. Le premier essai DB-only
+  2ebe32c3 est terminal PASS (six contrôles) ; les cinq autres cas métier sont
+  encore en cours à ce relevé, avec leurs projets distincts et autorités doublées.
   La [preuve ciblée](qualification/standard-workflow/human-selected-correction-cycle-components-2026-11-04.json)
   conserve les sources exactes et les limites.
   Le choix général d’un cycle existant au démarrage, les corrections répétées,
