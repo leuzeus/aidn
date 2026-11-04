@@ -953,13 +953,19 @@ if (process.argv[2] === "--mixed-continue") {
             event_prefix_count: waiting.record.events.length, event_prefix_sha256: shadowHash(waiting.record.events),
             operation_journals: retained, native_results_prior: beforeNative }));
           console.log(JSON.stringify({ composed_human_deferred: true, cursor: waiting.cursor.status, native_sessions: beforeNative, cold_resume_starting: true }));
+          const childStartedAt = Date.now(), childTimeoutMs = Math.max(1, auth.global_deadline_ms - childStartedAt + 60000);
           const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--standard-composed-mode=" + mode, "--standard-composed-stop=" + standardComposedStop,
             "--standard-composed-resume=" + resumeFile, "--standard-composed-budget-ms=" + standardComposedBudgetMs,
             "--standard-composed-scenario=" + standardScenarioName,
             "--standard-composed-max-responses=" + standardScenario.max_responses, "--retain-on-failure",
             ...(standardHostTrace ? ['--standard-composed-host-trace'] : []), ...(standardCheckpointAckLoss ? ['--standard-composed-checkpoint-ack-loss'] : [])],
-          { encoding: "utf8", shell: false, windowsHide: true, timeout: Math.max(1, auth.global_deadline_ms - Date.now() + 60000), maxBuffer: 262144 });
-          assert.equal(child.status, 0, (child.stdout + child.stderr).slice(-16384)); process.stdout.write(child.stdout);
+          { encoding: "utf8", shell: false, windowsHide: true, timeout: childTimeoutMs, maxBuffer: 262144 });
+          // Keep the subprocess failure distinct from the parent assertion.
+          // These observations neither renew authority nor prove tree closure.
+          console.error(JSON.stringify({ composed_cold_child: true, pid: child.pid ?? null, status: child.status, signal: child.signal,
+            error_code: child.error?.code ?? null, timeout_ms: childTimeoutMs, elapsed_ms: Date.now() - childStartedAt,
+            stdout_bytes: Buffer.byteLength(child.stdout ?? ''), stderr_bytes: Buffer.byteLength(child.stderr ?? '') }));
+          assert.equal(child.status, 0, ((child.stdout ?? "") + (child.stderr ?? "")).slice(-16384)); process.stdout.write(child.stdout);
           const reports = child.stdout.split(/\r?\n/).filter(line => line.startsWith("{")).map(line => JSON.parse(line));
           const proof = reports.find(row => row.standard_composed_proof === true);
           assert.ok(proof); assert.equal(proof.native_prior_results, beforeNative); assert.equal(proof.cold_resume, true);
