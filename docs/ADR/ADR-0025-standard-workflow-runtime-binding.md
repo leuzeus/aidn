@@ -2176,3 +2176,17 @@ The source-installed real-port fixture preflight uses a synthetic authenticated
 triage and fixture provider transport, and cannot establish the production native
 producer/dispatcher or whole standard workflow. See the current plan and testing
 guide for its required three-mode matrix and remaining qualification.
+
+### Correction business-plan expiry
+
+The reopen and correction-checkpoint adapters now distinguish a well-formed,
+explicit expired intention from an invalid request before owner acquisition:
+`STANDARD_PLAN_EXPIRED` carries `no_effect`. No intent, plan timestamp, grant,
+deadline or counter is rewritten. Missing intent or authorization callbacks,
+bad hashes and invalid clocks retain their original refusal. Expiry before the
+first canonical write may return a no-effect refusal; any attempted partial
+canonical or Git effect keeps the existing UNKNOWN handling and retained owner.
+Only an accepted authenticated expired no-effect receipt can enter the host's
+existing explicit same-subject repreparation. This correction adds no automatic
+retry, new authority, ordinary workflow selection or migration. Direct fixture
+guard proof remains separate from signed dispatcher/mixed-host continuation.

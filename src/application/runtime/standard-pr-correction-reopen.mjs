@@ -68,8 +68,9 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
       active(signal); const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
       if (!prepared?.can_apply || !valid(plan, planSchema) || write !== true || typeof assertAuthorized !== 'function'
         || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || shadowHash(plan.source) !== plan.source_sha256
-        || !Number.isSafeInteger(age) || age < 0 || age > 300000 || plan.changes.some(row => artifactContentHash(text(row)) !== row.after_sha256))
+        || !Number.isSafeInteger(age) || age < 0 || plan.changes.some(row => artifactContentHash(text(row)) !== row.after_sha256))
         fail('STANDARD_PR_CORRECTION_EXPLICIT_WRITE_REQUIRED');
+      if (age > 300000) fail('STANDARD_PLAN_EXPIRED');
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
           active(signal); await assertAuthorized();
@@ -80,8 +81,10 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
         function local(localView) {
           active(signal); artifacts.assertLocalEffectOwner(expectPlan);
           if (artifacts.describe().state_mode !== plan.state_mode) fail('STANDARD_PR_CORRECTION_DOCUMENT_CHANGED');
-          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || now() - plan.prepared_at_ms > 300000)
-            fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
+          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
+          const currentAge = now() - plan.prepared_at_ms;
+          if (!Number.isSafeInteger(currentAge) || currentAge < 0) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
+          if (currentAge > 300000) fail('STANDARD_PLAN_EXPIRED');
           assertDocuments(plan.changes, committed); projections(plan.changes, committed);
           const view = git(plan.source).inspect();
           const expected = plan.state_mode === 'db-only' ? [] : committed.map(row => 'docs/audit/' + row.path).sort();

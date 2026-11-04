@@ -4273,3 +4273,19 @@ and zero checkpoint commits. These are harness changes, with no production or
 catalog update and no new authority. Original protected matrices keep their
 source; only distinct guarded cases may qualify the corrected harness. The
 complete preflight and all later L1-L8/A1-A10 acceptance remain pending.
+
+### Correction business expiry guards, 2026-11-04
+
+The isolated successor also fixes generic expiry refusals in reopen and its
+checkpoint: otherwise-valid explicit plans older than 300000 ms now refuse
+with `STANDARD_PLAN_EXPIRED/no_effect` before owner acquisition. Reopen checks
+age after provider observation as well. Existing invalid-intent precedence and
+partial UNKNOWN semantics are preserved. Fresh prepare creates a new plan;
+no original timestamp or authorization budget is changed. Direct three-mode
+application/physical-byte/cold-read guard qualification is pending. Signed-host
+accepted expired receipts and fresh-grant continuation remain separate work,
+as do the ordinary human correction-cycle choice/admission, branch continuity,
+plan/DoR/readiness/IMPLEMENTING, new-HEAD work/validation/reclosure and causal
+delivery. The protected earlier preflights qualify only their exact source;
+these new production edits need distinct validation. Ordinary entry remains
+unchanged and complete_standard_workflow remains false.

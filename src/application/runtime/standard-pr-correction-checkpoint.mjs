@@ -154,8 +154,9 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
       const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
       active(signal);
       if (!prepared?.can_apply || !valid(plan, planSchema) || write !== true || typeof assertAuthorized !== 'function'
-        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000)
+        || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan || !Number.isSafeInteger(age) || age < 0)
         fail('STANDARD_PR_CORRECTION_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED');
+      if (age > 300000) fail('STANDARD_PLAN_EXPIRED');
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         let result = null, attempted = false;
         try {
@@ -167,8 +168,9 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
           const unchanged = () => {
             current(instance, signal);
             const age = now() - plan.prepared_at_ms;
-            if (!Number.isSafeInteger(age) || age < 0 || age > 300000 || shadowHash(source(instance, plan.input)) !== plan.source_sha256)
+            if (!Number.isSafeInteger(age) || age < 0 || shadowHash(source(instance, plan.input)) !== plan.source_sha256)
               fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+            if (age > 300000) fail('STANDARD_PLAN_EXPIRED');
           };
           unchanged(); attempted = true;
           result = await git.commit(gitPlan, { async assertAuthorized() { unchanged(); await assertAuthorized(); unchanged(); } });

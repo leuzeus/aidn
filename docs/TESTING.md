@@ -3270,3 +3270,24 @@ standard graph. Separate composed producer/triage/checkpoint/ack-loss recovery,
 real native/human/provider, configured PostgreSQL and exact installed archive
 qualification remain required. `--retain-always` leaves projects and raw outcomes
 for terminal capture; it is not a resource-closure assertion.
+
+`node tools/perf/verify-standard-pr-correction-expiry-fixtures.mjs
+--mode=files|dual|db-only` isolates the two correction business adapters' expiry
+guards. Each case prepares its own original using an injected past adapter
+clock and observes present time without rewriting any plan, grant or budget.
+A valid expired explicit intent refuses as `STANDARD_PLAN_EXPIRED/no_effect`
+before acquiring an owner or consulting authorization. Missing intent/callbacks
+and a wrong digest preserve their specific refusal. Every physical project and
+remote file/directory is compared around those direct refusals, including DB
+bytes. Reopen expiry during provider verification before its first CAS returns
+blocked/no_effect and releases the owner. Cold fresh preparation reads the same
+subject without writes; it never executes a successor.
+
+These are direct application-port guards with a signed synthetic accepted
+source and fixture provider. They do not prove an accepted expired dispatcher
+receipt, signed-host repréparation, a fresh human grant or the full correction
+workflow. Partial effects remain UNKNOWN and cannot use expired-no-effect
+repreparation. The existing host requires an accepted authenticated no-effect
+receipt, exact waiting occurrence and unchanged original history before making
+a read-only successor preview; staging still requires explicit intent and a
+fresh grant. Qualification results remain pending until terminal capture.
