@@ -4120,3 +4120,32 @@ This extends three startup bindings only; other expiries and general unknown
 recovery remain open. The separate frozen composed checkpoint case is running,
 with no terminal reconciliation verdict. Ordinary selection and complete status
 remain unchanged/false; the entire L1-L8/A1-A10 objective remains incomplete.
+
+
+### Expired cycle component bindings, 2026-11-04
+
+The published cycle-130 component now has a FILES proof with 20 checks through
+its actual six-operation sequence, including the normal real checkpoint and
+refresh_after. Context refresh expires both before and after the checkpoint;
+cycle initialization also expires. Each refusal precedes business effects,
+retains its original grant/receipt/event, and requires read-only cold preparation
+of the same subject plus a distinct explicit grant/intent before continuation.
+Common-reducer replay/simulation is exact. See the
+[bounded record](qualification/agentic-process/expired-cycle-bindings-2026-11-04.json).
+
+The reference transfer required an actual external Git checkpoint before admission
+and stable session/cycle objectives before the actual R05 hook. Failed attempts
+and their exact sources remain retained, including the real objective_delta
+refusal and a successful pre-checkpoint prefix that did not close this delivery.
+The targeted read-only session audit changed the fixture method, without changing
+a rule or gate. Isolated TTL probes do not renew native authority or counters;
+the normal checkpoint uses real wall time. Its expiry recovery is still due.
+
+This is two bindings at three occurrences on one source-installed FILES component,
+not the mixed standard facade, DUAL/db-only or the standard drift path. Runtime,
+models, ordinary selection and complete_standard_workflow=false are unchanged.
+The separate frozen composed checkpoint case is still pending terminal collection.
+General unknown-owner recovery, native epochs, actual admitted correction cycles,
+physical corrections/reclosure/review/merge/sync, the remaining business expiries,
+all L1-L8/A1-A10 and genuine native/provider/human/PG/exact installed archive
+qualification remain required.

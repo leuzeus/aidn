@@ -3125,3 +3125,26 @@ qualified. Each cold preparation preserves the accepted refusal and requires a
 new explicit grant/intent before execution. See the
 [bounded results](qualification/agentic-process/expired-startup-bindings-2026-11-04.json).
 The initial CAS-list fixture failure and its source remain retained separately.
+
+
+### Expired cycle bindings through the complete component
+
+`node tools/perf/verify-standard-cycle-expired-prefix-fixtures.mjs --mode=files --retain-always`
+passes 20 checks using the actual published cycle-130 component. It follows
+refresh_before, admission, initialization, branch audit, the real fixed checkpoint
+hook and refresh_after. Both context refreshes and initialization expire before
+effects. Accepted no-effect refusals survive cold same-subject preparation, fresh
+explicit grants/intents, retained redispatch and exact common-reducer simulation.
+FILES checks canonical business state, Git and every hidden runtime byte/directory
+around expired dispatch. DUAL and db-only have not run this new suite.
+
+The component receives an actual external session Git checkpoint and an actual
+R05 hook on a stable session/cycle objective. The checkpoint itself is not expired.
+TTL probes use an isolated host clock; the normal hook uses real wall time. No
+native authority, budget or response counter is renewed. Earlier failed fixtures
+and the intermediate pre-checkpoint success remain retained. Their diagnostics
+cover missing clean Git, wrong graph order and a real objective_delta refusal.
+The [bounded evidence](qualification/agentic-process/expired-cycle-bindings-2026-11-04.json)
+distinguishes these attempts from full component success. This is source-installed
+fixture proof, with no mixed facade, model call, genuine native/provider/human or
+exact installed archive qualification. General expiry and L1-L8/A1-A10 remain open.

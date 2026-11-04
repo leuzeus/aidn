@@ -1,0 +1,95 @@
+{
+  "format": "aidn-expired-cycle-component-evidence.v1",
+  "date": "2026-11-04",
+  "scope": "source-installed-published-cycle-component",
+  "status": "PARTIAL_ENTIRE_OBJECTIVE_INCOMPLETE",
+  "results": {
+    "files": {
+      "status": "PASS",
+      "checks": 20,
+      "state_mode": "files",
+      "model_revision": 130,
+      "model_sha256": "b6a74f7bacb936a769da6657ee552a6f0a69815bbd2b822bfa600fe95f25fcbe",
+      "scope": "source-installed-published-cycle-component",
+      "expired_nodes": [
+        "refresh_before",
+        "initialize",
+        "refresh_after"
+      ],
+      "expired_bindings": [
+        "cycle_context_refresh",
+        "cycle_initialize"
+      ],
+      "physical_runtime_bytes": "all-bytes-and-directories-unchanged-on-expiry",
+      "clock": "isolated-host-operation-TTL-probes; real-wall-time-for-hook",
+      "authorization": "fixture-capability",
+      "native_allocations": 0,
+      "model_calls": 0,
+      "checkpoint": "actual-fixed-hook-completed-not-expired",
+      "external_r05_precondition": "actual-fixed-drift-hook",
+      "external_session_git_checkpoint": "actual-Git-before-cycle-admission",
+      "mixed_facade": "NOT_USED",
+      "native": "NOT_RUN",
+      "installed_archive": "NOT_RUN",
+      "full_standard_workflow": "NOT_COMPLETE"
+    },
+    "dual": "NOT_RUN",
+    "db-only": "NOT_RUN"
+  },
+  "evidence": {
+    "case_label": "source22-expired-cycle-component-files-r2-20261104",
+    "source_head": "f3f0bc121d5f8b119281f34de67066acdf7407b4",
+    "source_file_sha256": "a51a8a8aca0e080a4205f06e9898b9211a17ddbdc1211b86c7521368da6ac18b",
+    "source_files_compared": 2101,
+    "source_initial_equals_terminal": true,
+    "stdout_sha256": "f81e592a1196753915044d568c376141b5c8a5e493964662c619aecdd5d1f5f4",
+    "exit": 0,
+    "started_utc": "2026-11-04T12:05:19.114092+00:00",
+    "terminal_utc": "2026-11-04T12:09:10.363895+00:00"
+  },
+  "retained_attempts": [
+    {
+      "label": "source22-expired-cycle-prefix-files-20261104",
+      "exit": 1,
+      "passing_checks": 5,
+      "observation": "Actual cycle admission refused dirty RUNTIME-STATE after context projection; missing explicit external Git checkpoint in fixture."
+    },
+    {
+      "label": "source22-expired-cycle-prefix-files-r2-20261104",
+      "exit": 1,
+      "passing_checks": 12,
+      "observation": "Fixture assumed refresh_after preceded checkpoint. Actual model order requires checkpoint first."
+    },
+    {
+      "label": "source22-expired-cycle-prefix-files-r3-20261104",
+      "exit": 0,
+      "passing_checks": 13,
+      "observation": "Intermediate pre-checkpoint prefix only; not full cycle component acceptance."
+    },
+    {
+      "label": "source22-expired-cycle-component-files-20261104",
+      "exit": 1,
+      "passing_checks": 12,
+      "observation": "Real strict R05 hook refused objective_delta because session and cycle objectives differed. Preserved as genuine gate refusal, not product failure."
+    }
+  ],
+  "diagnosis": {
+    "skill": "audit-session-progress",
+    "mode": "targeted read-only reference transfer",
+    "conclusion": "Transfer the actual Git, graph-order and stable-objective preconditions. Do not weaken R05 or accept the shorter prefix as the full component.",
+    "governance_rule_changed": false
+  },
+  "limits": [
+    "Source-installed fixture using the published cycle130 component, not the mixed standard facade or full standard workflow.",
+    "Two bindings expire at three occurrences. The actual cycle checkpoint runs normally; expired checkpoint continuation is not qualified.",
+    "Only FILES is executed here; DUAL/db-only continuation and physical DB/runtime byte proof remain due.",
+    "Isolated host TTL clocks are test capabilities; normal hooks use real wall time. No native authorization, deadline or counter is renewed.",
+    "Actual Git and fixed hooks supply external component preconditions. Stable-objective case does not qualify the standard drift path.",
+    "Fixture authorization, zero native allocation/model calls; no genuine native/provider/human/PG/exact installed archive qualification.",
+    "Frozen composed source21 case remains separate; no terminal checkpoint reconciliation verdict established by this component."
+  ],
+  "full_standard_workflow": false,
+  "ordinary_selection_changed": false,
+  "runtime_or_model_changed": false,
+  "adr_change_required": false
+}
