@@ -12,12 +12,13 @@ The new admitted correction cycle, actual correction, fresh delivery, technical
 responses/resolutions and explicit merge consent remain separate requirements.
 After the accepted checkpoint, `session_pr_correction_decide` resolves to the
 read-only human binding `session_pr_correction_decision` under these same rules
-and skill. V2 presents the checkpoint identity and the proposed corrective
-cycle ID/title/objective in one authenticated human question. The fixed checkpoint
-observer binds the current product/provider/Git subject; the signed v8 inbox
-retains the v2 source and candidate hash. The initializer obtains these fields
-from the accepted operation output and refuses substitution. V1/v7 readers stay
-explicit and unchanged. This source wiring awaits exact-source qualification. The
+and skill. The current v3 question binds the checkpoint and canonical cycle
+inventory, including metadata in database modes. The authenticated human source
+chooses a new cycle ID/title/objective; signed inbox v9 retains those fields and
+their hash. IR initializer fields come only from the accepted output and cannot
+be substituted. V2 candidate approval and v1 remain explicit historical readers,
+with inbox v7/v8 unchanged. Exact-source component results and pending business
+cases are retained in the human-selected-cycle qualification record. The
 positive result requests a correction cycle only. Ordinary cycle admission,
 branch continuity, plan freeze, DoR/readiness and IMPLEMENTING still precede
 all future product work and remain outstanding for this continuation.

@@ -1,0 +1,110 @@
+{
+  "status": "PARTIAL_COMPONENT_EVIDENCE_ENTIRE_PLAN_INCOMPLETE",
+  "as_of_utc": "2026-11-04T20:47:41.230922+00:00",
+  "models": [
+    {
+      "kind": "startup",
+      "revision": 159,
+      "nodes": 7,
+      "operation_occurrences": 6,
+      "native_activities": 0,
+      "byte_sha256": "6cafbbe77a00af41fb069189c5d99caaa34d7cb29f8f356ae8ffe414dcfbb820"
+    },
+    {
+      "kind": "cycle-create",
+      "revision": 157,
+      "nodes": 7,
+      "operation_occurrences": 6,
+      "native_activities": 0,
+      "byte_sha256": "ca95606ffba207e1fe372ce38a819a1a68773e2dca5cb7aadd5e63e5225f1c69"
+    },
+    {
+      "kind": "standard",
+      "revision": 101,
+      "nodes": 186,
+      "operation_occurrences": 113,
+      "native_activities": 17,
+      "byte_sha256": "efbce0869c671e02f018a0dd161b03982daaf6f6b8a338458a449ceb49daf08f"
+    }
+  ],
+  "terminal_guards": [
+    {
+      "name": "source36-human-selected-cycle-composition-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-composition-20261104\\exit.json"
+    },
+    {
+      "name": "source36-human-selected-cycle-decision-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-decision-20261104\\exit.json"
+    },
+    {
+      "name": "source36-human-selected-cycle-docrefs-r2-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-docrefs-r2-20261104\\exit.json"
+    },
+    {
+      "name": "source36-human-selected-cycle-metadata-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-metadata-20261104\\exit.json"
+    },
+    {
+      "name": "source36-human-selected-cycle-model-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-model-20261104\\exit.json"
+    },
+    {
+      "name": "source36-human-selected-cycle-operations-r2-20261104",
+      "source_commit": "c4d890418e32677ef44d3e4a21b13363731f1f1a",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-operations-r2-20261104\\exit.json"
+    },
+    {
+      "name": "source36-human-selected-cycle-source-policy-20261104",
+      "source_commit": "2ebe32c3010a3701ee66ad43ddd49ef58379a09f",
+      "exit_code": 0,
+      "source_unchanged": true,
+      "guard_result": "G:\\aidn-plans\\source36-human-selected-cycle-source-policy-20261104\\exit.json"
+    }
+  ],
+  "results": {
+    "source_2ebe32c3": [
+      "decision/inbox 27 PASS including historical v1/v2 and v3, cold files/dual/db-only",
+      "composition 32 PASS",
+      "startup model/pins 22 PASS",
+      "metadata policy PASS",
+      "source-of-truth policy PASS",
+      "doc references PASS"
+    ],
+    "source_c4d89041": [
+      "operation/reducer 27 PASS (capacity/history nested suites separate)"
+    ]
+  },
+  "business_case_sources": {
+    "2ebe32c3": "actual initializer using accepted human output fixture capability; each new files/dual/db-only project still pending",
+    "c4d89041": "actual signed v9 inbox with fixture human identity feeding initializer; accepted-operation/provider capabilities still doubled; each new files/dual/db-only project pending"
+  },
+  "ordinary_entry": "UNCHANGED",
+  "complete_standard_workflow": false,
+  "model_calls_on_D_H": 0,
+  "static_comparison": "source36-production-byte-comparison-20261104.json",
+  "remaining_entire_plan": "L1-L8/A1-A10 all outstanding integration requirements retained in plan; general startup/reload/session/cycle/topology, existing cycle selection, A2, repeated correction/full C2, technical PR replies/resolutions/fresh genuine human merge consent/postmerge sync, general L4 expiry/UNKNOWN/resource closure/cumulative debits, FILES/DUAL/DB-only journey, configured PG, genuine native/human/provider/OS and exact installed archive",
+  "native_resume_existing": "Authenticated composition admission and retainedState path exist; direct unadmitted start refusing prior events is not a statement about all routes. General recovery and expired authority remain unqualified. See ROOT targeted read-only observation.",
+  "native_human_provider_os": "NOT_RUN",
+  "configured_postgresql": "NOT_RUN",
+  "exact_installed_archive": "NOT_RUN",
+  "runtime_family": "NOT_PROVEN",
+  "governance_admission": "NOT_PROVEN",
+  "original_case_retry": false
+}

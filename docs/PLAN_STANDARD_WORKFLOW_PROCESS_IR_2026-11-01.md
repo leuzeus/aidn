@@ -26,7 +26,12 @@ datés de `dd1dbab`, distincts de cet avancement.
   un candidat fourni par les paramètres. La question lie le checkpoint et
   l’inventaire canonique courant, métadonnées comprises en modes DB. L’inbox v9
   conserve la source et son empreinte ; l’IR consomme la sortie acceptée. Les
-  lecteurs historiques sont conservés. Qualification exacte en préparation.
+  lecteurs historiques sont conservés. Décision/inbox 27 PASS, composition 32
+  PASS, modèle 22 PASS et politiques/docrefs PASS sur 2ebe32c3 ; opérations/
+  réducteur 27 PASS sur c4d89041. Les six nouveaux essais métier sur deux
+  sources restent en cours, avec leurs projets distincts et autorités doublées.
+  La [preuve ciblée](qualification/standard-workflow/human-selected-correction-cycle-components-2026-11-04.json)
+  conserve les sources exactes et les limites.
   Le choix général d’un cycle existant au démarrage, les corrections répétées,
   A2, le parcours C2 et l’ensemble L1–L8/A1–A10 restent ouverts.
 
