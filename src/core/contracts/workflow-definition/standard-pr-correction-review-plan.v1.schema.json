@@ -148,7 +148,10 @@
                 "pattern": "^[a-f0-9]{64}$"
               },
               "metadata_sha256": {
-                "type": "string",
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "minLength": 1,
                 "maxLength": 64,
                 "pattern": "^[a-f0-9]{64}$"
