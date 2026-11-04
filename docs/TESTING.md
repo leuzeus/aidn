@@ -3108,3 +3108,8 @@ This option is prepared but NOT_RUN. Existing host/history checks and syntax
 checks do not qualify its composed execution. Provider, human and native
 identities remain fixture capabilities. Retained-owner closure, fresh recovery
 authority and positive db-only reconciliation require separate implementation.
+Use `--retain-always` to preserve the owned corpus after either success or
+failure; it propagates to the composed cold continuation. The cold continuation
+and checkpoint recovery child leave separate stdout, stderr and exit observations
+in the control root before their status assertions. Retention changes no scenario,
+authorization ceiling or deadline and does not establish resource-tree closure.

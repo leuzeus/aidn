@@ -92,6 +92,7 @@ const selectedStandardComposedMode = process.argv.find(value => value.startsWith
 const standardHostTrace = process.argv.includes('--standard-composed-host-trace');
 const standardCheckpointAckLoss = process.argv.includes('--standard-composed-checkpoint-ack-loss');
 const standardCheckpointOwnerAckLoss = process.argv.includes('--standard-composed-checkpoint-owner-ack-loss');
+const retainAlways = process.argv.includes('--retain-always');
 if ((standardHostTrace || standardCheckpointAckLoss || standardCheckpointOwnerAckLoss) && !selectedStandardComposedMode) throw Error('STANDARD_FIXTURE_EXPERIMENT_MODE_REQUIRED');
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
 const standardComposedBudgetText = process.argv.find(value => value.startsWith("--standard-composed-budget-ms="))?.slice("--standard-composed-budget-ms=".length);
@@ -151,6 +152,15 @@ if (process.argv.includes("--standard-composed-preflight-only")) {
 }
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-agentic-execution-")), checks = [];
 const businessRoots = [];
+function retainComposedChild(controlRoot, label, child) {
+  fs.writeFileSync(path.join(controlRoot, label + '.stdout.log'), child.stdout ?? '');
+  fs.writeFileSync(path.join(controlRoot, label + '.stderr.log'), child.stderr ?? '');
+  fs.writeFileSync(path.join(controlRoot, label + '.exit.json'), JSON.stringify({
+    observed_at_utc: new Date().toISOString(), pid: child.pid ?? null, status: child.status, signal: child.signal,
+    error_code: child.error?.code ?? null, stdout_bytes: Buffer.byteLength(child.stdout ?? ''),
+    stderr_bytes: Buffer.byteLength(child.stderr ?? ''), resource_tree_closure: 'NOT_ESTABLISHED'
+  }));
+}
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
@@ -882,6 +892,7 @@ if (process.argv[2] === "--mixed-continue") {
         assert.ok(f.open().inspect().record.events.some(row => row.kind === 'operation_result' && shadowHash(row.receipt) === shadowHash(original.results[0].receipt)));
         const child = spawnSync(process.execPath, [fileURLToPath(new URL('standard-pr-correction-checkpoint-host-resume-fixture.mjs', import.meta.url)), resumeFile, lost.operation_id],
           { encoding: 'utf8', windowsHide: true, timeout: 600000, maxBuffer: 1048576 });
+        retainComposedChild(f.configuration.control_root, 'checkpoint-recovery-child', child);
         console.error(JSON.stringify({ checkpoint_recovery_child: true, pid: child.pid ?? null, status: child.status, signal: child.signal,
           error_code: child.error?.code ?? null, stdout_bytes: Buffer.byteLength(child.stdout ?? ''), stderr_bytes: Buffer.byteLength(child.stderr ?? '') }));
         assert.equal(child.status, 0, ((child.stdout ?? '') + (child.stderr ?? '')).slice(-16384));
@@ -979,8 +990,10 @@ if (process.argv[2] === "--mixed-continue") {
             "--standard-composed-scenario=" + standardScenarioName,
             "--standard-composed-max-responses=" + standardScenario.max_responses, "--retain-on-failure",
             ...(standardHostTrace ? ['--standard-composed-host-trace'] : []), ...(standardCheckpointAckLoss ? ['--standard-composed-checkpoint-ack-loss'] : []),
+            ...(retainAlways ? ['--retain-always'] : []),
             ...(standardCheckpointOwnerAckLoss ? ['--standard-composed-checkpoint-owner-ack-loss'] : [])],
           { encoding: "utf8", shell: false, windowsHide: true, timeout: childTimeoutMs, maxBuffer: 262144 });
+          retainComposedChild(f.configuration.control_root, 'composed-cold-child', child);
           // Keep the subprocess failure distinct from the parent assertion.
           // These observations neither renew authority nor prove tree closure.
           console.error(JSON.stringify({ composed_cold_child: true, pid: child.pid ?? null, status: child.status, signal: child.signal,
@@ -2497,9 +2510,10 @@ if (process.argv[2] === "--mixed-continue") {
   completed = true;
   console.log(JSON.stringify({ ok: true, checks, proof_class: "offline-production-composition-with-fake-native-wire", model_calls: 0, native_client: "NOT_RUN", native_process_tree: "NOT_RUN" }));
 } finally {
-  if (!completed && process.argv.includes("--retain-on-failure")) {
+  if (retainAlways || !completed && process.argv.includes("--retain-on-failure")) {
     const report = path.join(root, "retained-fixture.json");
-    fs.writeFileSync(report, JSON.stringify({ proof_class: "offline-diagnostic-only", root, business_roots: businessRoots }, null, 2));
+    fs.writeFileSync(report, JSON.stringify({ proof_class: "offline-diagnostic-only", completed, pid: process.pid,
+      observed_at_utc: new Date().toISOString(), root, business_roots: businessRoots }, null, 2));
     console.error("Fixture retained for diagnosis/restart: " + report);
   } else {
     const physicalRoot = fs.realpathSync(root);
