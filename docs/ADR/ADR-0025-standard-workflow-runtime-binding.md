@@ -2201,3 +2201,21 @@ Only an accepted authenticated expired no-effect receipt can enter the host's
 existing explicit same-subject repreparation. This correction adds no automatic
 retry, new authority, ordinary workflow selection or migration. Direct fixture
 guard proof remains separate from signed dispatcher/mixed-host continuation.
+
+
+### Accepted correction-cycle continuation
+
+The accepted human correction request can enter the ordinary cycle initializer.
+A fixed private input selects only the decision and a new corrective cycle.
+The host authenticates the decision/checkpoint/source and proves the current
+checkpoint, ordinary admission and continuity before changing its branch.
+Provider, signed event, product and actual remote-ref observations remain fresh
+through the transition. The initializer passes a lexical capability to verify
+its own held owner; JSON cannot supply this capability. The remote-only reader
+retains configured transport/authentication/ref validation and never pushes.
+Local branch changes require separate exact HEAD/index/postimage checks.
+UNKNOWN preserves its owner and has no positive fact. Initialization leaves
+DoR NOT_READY and scope unfrozen; the published subsequent planning, readiness
+and IMPLEMENTING entries retain their original authorities. Their source
+connection does not qualify the whole journey, authentic human/native execution,
+correction work, new-HEAD validation/reclosure or causal delivery.

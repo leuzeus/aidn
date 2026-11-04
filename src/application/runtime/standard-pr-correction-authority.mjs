@@ -6,7 +6,7 @@ const fail = code => { throw Object.assign(Error(code), { code, effect_status: '
 // This component has no caller-supplied report, provider or self-authenticated
 // payload. Its capabilities must be bound by the trusted operation host.
 export function createStandardPrCorrectionAuthority({ readAcceptedOperation, reevaluateTriage, readControl, verifyEvent,
-  observeProduct, inspectPush, observeOwnedPush, readCurrent, reviewPort, now = Date.now }) {
+  observeProduct, inspectPush, observeOwnedPush, observeRemote, readCurrent, reviewPort, now = Date.now }) {
   if (![readAcceptedOperation, reevaluateTriage, readControl, verifyEvent, observeProduct, inspectPush, readCurrent].every(fn => typeof fn === 'function'))
     fail('STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED');
   const active = signal => { if (signal?.aborted) fail('STANDARD_PR_CORRECTION_ABORTED'); };
@@ -38,12 +38,13 @@ export function createStandardPrCorrectionAuthority({ readAcceptedOperation, ree
       payload_sha256: o.payload_sha256, product_sha256: o.product_sha256, pull_request: p,
       corrections: o.corrections, source_material_sha256: shadowHash([triage.output, selection.output, received.output, update.output, capture]) }, capture, payload, triage };
   }
-  async function verify(instance, expected, { signal, assertLocal } = {}, localHeadRequired = true) {
+  async function verify(instance, expected, { signal, assertLocal } = {}, localHeadRequired = true, continuation = false) {
     // Only a trusted component can supply this function. IR inputs remain
     // closed operation identities and never carry local cleanliness claims.
-    if (assertLocal !== undefined && (typeof assertLocal !== 'function' || typeof observeOwnedPush !== 'function'))
+    if (assertLocal !== undefined && (typeof assertLocal !== 'function' || !continuation && typeof observeOwnedPush !== 'function'))
       fail('STANDARD_PR_CORRECTION_OWNED_OBSERVATION_REQUIRED');
-    const inspect = assertLocal ? branch => observeOwnedPush(branch, { signal, assertLocal }) : branch => inspectPush(branch, { signal });
+    if (continuation && (typeof assertLocal !== 'function' || typeof observeRemote !== 'function')) fail('STANDARD_PR_CORRECTION_OWNED_OBSERVATION_REQUIRED');
+    const inspect = continuation ? branch => observeRemote(branch, { signal, assertLocal }) : assertLocal ? branch => observeOwnedPush(branch, { signal, assertLocal }) : branch => inspectPush(branch, { signal });
     active(signal); const before = immutable(instance, { triage_operation_id: expected.triage_operation_id });
     if (shadowHash(before.source) !== shadowHash(expected)) fail('STANDARD_PR_CORRECTION_SOURCE_CHANGED');
     await verifyEvent(before.capture, { signal }); active(signal);
@@ -69,10 +70,13 @@ export function createStandardPrCorrectionAuthority({ readAcceptedOperation, ree
     if (shadowHash(immutable(instance, { triage_operation_id: expected.triage_operation_id }).source) !== shadowHash(expected)) fail('STANDARD_PR_CORRECTION_SOURCE_CHANGED');
     return { origin_source_sha256: shadowHash(expected), event_sha256: shadowHash(before.payload.event),
       fresh_observation_sha256: shadowHash(fresh), git_before_sha256: shadowHash(gitBefore), git_after_sha256: shadowHash(gitAfter),
-      canonical_transition: localHeadRequired ? 'verified-separately-by-exact-plan-postimages' : 'local-checkpoint-proof-required' };
+      canonical_transition: continuation ? 'local-cycle-owner-verified-separately' : localHeadRequired ? 'verified-separately-by-exact-plan-postimages' : 'local-checkpoint-proof-required' };
   }
   const verifySource = (instance, expected, options) => verify(instance, expected, options);
   return Object.freeze({ verifySource,
+    // Local current-cycle invariants are supplied by the trusted owner capability;
+    // unchanged provider/event/product evidence is still fully reauthenticated.
+    verifyContinuationSource: (instance, expected, options) => verify(instance, expected, options, false, true),
     // This narrower observation grants no local continuation authority. Its
     // consumer must separately prove the exact authenticated checkpoint commit.
     verifyProviderSource: (instance, expected, options) => verify(instance, expected, options, false),

@@ -158,6 +158,21 @@ try {
     const racing = u.port({ runRemoteGit(...args) { const result = u.seams.runRemoteGit(...args); fs.writeFileSync(file, 'foreign postimage\n'); return result; } });
     assert.throws(() => racing.observeOwned('S001-host', { assertLocal })); assert.equal(u.state.pushes, 0);
   });
+  await test('remote-only observation retains real remote refs across an owned local branch change', async () => {
+    const u = fixture(), port = u.port();
+    const initial = port.inspect('S001-host');
+    git(u.root, 'switch', '-c', 'corrective/C001-review');
+    fs.writeFileSync(path.join(u.root, 'app.txt'), 'planned correction metadata fixture\n');
+    let calls = 0;
+    const assertLocal = () => { calls++; assert.equal(git(u.root, 'branch', '--show-current'), 'corrective/C001-review'); assert.equal(git(u.root, 'rev-parse', 'HEAD'), initial.head); };
+    assert.throws(() => port.observeRemote('S001-host', {}));
+    const result = port.observeRemote('S001-host', { assertLocal });
+    assert.equal(calls, 2); assert.equal(result.remote_head, initial.remote_head); assert.equal(result.ref, 'refs/heads/S001-host');
+    assert.equal(result.remote_identity_sha256, initial.remote_identity_sha256); assert.equal(u.state.pushes, 0);
+    const other = git(u.root, 'commit-tree', git(u.root, 'rev-parse', u.initial + '^{tree}'), '-p', u.initial, '-m', 'fixture remote successor');
+    git(u.root, 'push', u.remote, other + ':refs/heads/S001-host');
+    assert.equal(port.observeRemote('S001-host', { assertLocal }).remote_head, other); assert.equal(u.state.pushes, 0);
+  });
   console.log(JSON.stringify({ status: 'PASS', checks, git_local_ancestry_lease_remote_and_application: 'ACTUAL', http_and_https_transports: 'DOUBLED',
     authenticated_actor_repository_responses: 'FIXTURE', admission_source: 'INJECTED_FIXTURE', real_github_network: 'NOT_RUN', full_standard_chain: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN' }));
 } finally {

@@ -35,6 +35,7 @@ async function fixture() {
     readAcceptedOperation(_instance, id, binding) { assert.ok(state.authenticated, 'fixture accepted authority refused'); assert.equal(rows[id]?.record.intent.binding_ref, binding); return structuredClone(rows[id]); },
     reevaluateTriage: async () => state.reevalChanged ? { ...triage, outcome: 'blocked', facts: {} } : structuredClone(triage),
     readControl: id => { assert.equal(id, 'captured'); return structuredClone(capture); }, observeProduct: () => state.product,
+    observeRemote: async (_branch, { assertLocal }) => { assertLocal(); const remote_head = state.remoteHead; assertLocal(); return { remote_head }; },
     inspectPush: async () => ({ head: state.localHead, remote_head: state.remoteHead }),
     async verifyEvent() { state.eventCalls++; if (!state.eventCurrent) throw Error('fixture event refused'); } });
   return { authority, state, rows, provider, triage, input: { triage_operation_id: op(1) } };
@@ -44,6 +45,19 @@ await test('fresh complete provider content is reobserved while accepted triage/
   assert.equal(source.corrections.length, 1); assert.equal(source.session_id, 'S001'); assert.ok(f.state.eventCalls >= 2);
   const proof = await f.authority.verifySource(instance, source); assert.equal(proof.origin_source_sha256, shadowHash(source));
   assert.equal(proof.canonical_transition, 'verified-separately-by-exact-plan-postimages');
+});
+await test('owned cycle continuation requires a local capability and reauthenticates provider and event evidence', async () => {
+  const f = await fixture(), source = await f.authority.readSource(instance, f.input);
+  await assert.rejects(f.authority.verifyContinuationSource(instance, source), { code: 'STANDARD_PR_CORRECTION_OWNED_OBSERVATION_REQUIRED' });
+  let calls = 0;
+  const proof = await f.authority.verifyContinuationSource(instance, source, { assertLocal() { calls++; } });
+  assert.equal(proof.origin_source_sha256, shadowHash(source)); assert.equal(calls, 4);
+  await assert.rejects(f.authority.verifyContinuationSource(instance, source, { assertLocal() { throw Error('fixture owner refused'); } }), /fixture owner refused/);
+  f.state.remoteHead = 'f'.repeat(40);
+  await assert.rejects(f.authority.verifyContinuationSource(instance, source, { assertLocal() {} }), { code: 'STANDARD_PR_CORRECTION_REMOTE_CHANGED' });
+  f.state.remoteHead = p.head_oid;
+  f.provider.state.reviews[0].body += ' Changed during cycle continuation.';
+  await assert.rejects(f.authority.verifyContinuationSource(instance, source, { assertLocal() {} }), { code: 'STANDARD_PR_CORRECTION_PROVIDER_CHANGED' });
 });
 for (const change of ['accepted', 'event', 'product', 'reevaluation', 'remote']) await test(change + ' refusal cannot reopen the canonical owner', async () => {
   const f = await fixture();

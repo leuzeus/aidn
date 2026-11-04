@@ -4319,3 +4319,31 @@ A1-A10 alternatives, actual PR responses/resolutions/fresh merge consent and
 post-merge sync, native/human/provider/OS/configured-PostgreSQL/exact-installed
 qualification remain open. Ordinary entry and complete_standard_workflow=false
 remain unchanged. Earlier failures and uncertain effects stay immutable.
+
+
+### Ordinary correction-cycle admission and planning entry, 2026-11-04
+
+The accepted correction decision now feeds the fixed
+`session_pr_correction_cycle_initialize` port. It authenticates the accepted
+decision/checkpoint/reopening source, reobserves the exact current checkpoint,
+and uses the ordinary cycle admission and initializer with a corrective branch.
+The existing initializer supplies a lexical capability that verifies its own
+currently held owner before and after the provider observation. The continuation
+authority still reauthenticates the original signed event, full provider content
+and unchanged product; it does not borrow a push capability for a different
+current branch. Only the planned canonical postimages and their projections
+may change. Partial writes retain UNKNOWN and their owner. No earlier case is
+retried, released or reauthorized. A new cycle starts OPEN/NOT_READY/unfrozen;
+its initialized fact grants no product work and creates no Git witness.
+
+The published correction branch subsequently uses the existing branch audit,
+R05 drift/checkpoint, native planning, frozen-plan recording, readiness and
+IMPLEMENTING entry ports. A separate `correction_cycle` parameter selects the
+new cycle identity and objective. This source connection is a candidate until
+its exact guarded component and composition checks pass. The new three-mode
+port suite uses actual ordinary admissions, canonical CAS, Git and SQLite, but
+accepted/human/provider capabilities remain doubles. Production dispatcher,
+ordinary native plan/DoR/implementation, correction work/validation/reclosure,
+causal delivery, general recovery and full L1-L8/A1-A10 acceptance remain due.
+No complete-workflow or installed/native/human/PostgreSQL claim follows.
+Ordinary entry and `complete_standard_workflow=false` remain unchanged.

@@ -193,7 +193,7 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
           const fresh = await prepare(prepared.plan.input, prepared.plan.prepared_at_ms, true); if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
-          await effectGuard?.before(); projectionFiles(prepared.plan.changes);
+          await effectGuard?.before({ assertOwner: () => artifacts.assertLocalEffectOwner(expectPlan) }); projectionFiles(prepared.plan.changes);
         }
         catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], afterMetadata = [];
@@ -205,7 +205,7 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
           const projection = artifacts.project(committed);
           for (const [index, file] of projectionFiles(prepared.plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== prepared.plan.changes[index].after_sha256) fail("STANDARD_CYCLE_PROJECTION_UNCONFIRMED");
           if (shadowHash(committed.map(name => artifacts.metadataHash(name))) !== shadowHash(afterMetadata)) fail("STANDARD_CYCLE_METADATA_UNCONFIRMED");
-          const guarded = await effectGuard?.after();
+          const guarded = await effectGuard?.after({ assertOwner: () => artifacts.assertLocalEffectOwner(expectPlan) });
           return emit("cycle_initialize", "completed", "confirmed", { committed, audit: checked, projection, ...(guarded ? { guarded_transition: guarded } : {}) }, { cycle_initialized: true, cycle_dor_ready: false },
             prepared.plan.changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 })));
         } catch (cause) { return emit("cycle_initialize", "reconciliation_required", "unknown", { committed, reason_code: cause.code ?? "STANDARD_CYCLE_EFFECT_UNCONFIRMED" }); }

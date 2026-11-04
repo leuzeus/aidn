@@ -58,10 +58,26 @@ inputs.push({ node_id: "session_pr_triage", fields: operation("session_pr_triage
 op("session_pr_triage_evaluate", "session_pr_triage_evaluate", occurrence("session_pr_triage"));
 // A classified finding selects only the explicit canonical owner transition.
 // Human continuation is bound to the accepted checkpoint. The subsequent
-// admitted correction cycle and fresh delivery remain outstanding.
+// admission and initial implementation entry are connected below; fresh
+// physical work, reclosure and causal delivery remain outstanding.
 xor("session_pr_after_triage", [["corrections", "session_pr_correction", "session_pr_corrections_required"],
   ["effects_pending", "session_pr_effects_pending", null]]);
-seq("session_pr_correction", ["session_pr_correction_reopen", "session_pr_correction_checkpoint", "session_pr_correction_decide"]);
+seq("session_pr_correction", ["session_pr_correction_reopen", "session_pr_correction_checkpoint", "session_pr_correction_decide", "session_pr_correction_requested"]);
+xor("session_pr_correction_requested", [["requested", "correction_cycle", "session_pr_correction_cycle_requested"], ["not_requested", "correction_not_requested", null]]);
+seq("correction_not_requested", []);
+seq("correction_cycle", ["correction_initialize", "correction_branch_audit", "correction_cycle_checkpoint", "correction_plan", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"]);
+op("correction_initialize", "session_pr_correction_cycle_initialize", {
+  ...operation("correction_initialize", "decision_operation_id", "session_pr_correction_decide"),
+  ...Object.fromEntries(["cycle_id", "title", "objective"].map(key => [key, { source: "parameter", key: "correction_cycle", path: [key] }])) });
+const correctionRef = { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] },
+  cycle_id: { source: "operation_input", node_id: "correction_initialize", path: ["cycle_id"] } };
+op("correction_branch_audit", "branch_cycle_audit", correctionRef);
+op("correction_cycle_checkpoint", "cycle_checkpoint_finalize", correctionRef);
+native("correction_plan", "planner", "planning", "standard-cycle-plan-proposal.v1", ["cycle-create"], ["SPEC-R03", "SPEC-R04"]);
+op("correction_plan_evaluate", "cycle_plan_evaluate", occurrence("correction_plan"));
+op("correction_plan_record", "cycle_plan_record", operation("correction_plan_record", "evaluation_operation_id", "correction_plan_evaluate"));
+op("correction_readiness", "cycle_readiness_evaluate", operation("correction_readiness", "record_operation_id", "correction_plan_record"));
+op("correction_implementation_enter", "cycle_implementation_enter", operation("correction_implementation_enter", "evaluation_operation_id", "correction_readiness"));
 op("session_pr_correction_decide", "session_pr_correction_decision", operation("session_pr_correction_decide", "checkpoint_operation_id", "session_pr_correction_checkpoint"));
 op("session_pr_correction_checkpoint", "session_pr_correction_checkpoint", operation("session_pr_correction_checkpoint", "reopen_operation_id", "session_pr_correction_reopen"));
 op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("session_pr_correction_reopen", "triage_operation_id", "session_pr_triage_evaluate"));
@@ -161,6 +177,7 @@ function checkpointDrift(id, parent, before) {
 }
 checkpointDrift("startup_drift", null, null);
 checkpointDrift("cycle_drift", "cycle_create", "cycle_checkpoint");
+checkpointDrift("correction_cycle_drift", "correction_cycle", "correction_cycle_checkpoint");
 checkpointDrift("closure_drift", "committing", "close_finalize");
 checkpointDrift("promotion_drift", "promotion", "promotion_finalize");
 checkpointDrift("session_closure_drift", null, null);
@@ -177,7 +194,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
   policies: [policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
-  data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: ["session", "cycle"], inputs } };
+  data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: ["session", "cycle", "correction_cycle"], inputs } };
 const modelPath = "package/catalogs/process-models/aidn-standard.v1.json";
 const existing = fs.existsSync(new URL(modelPath, root)) ? json(modelPath) : null;
 if (existing) {

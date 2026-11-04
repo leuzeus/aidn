@@ -157,12 +157,18 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
     if (typeof assertLocal !== 'function') fail('GITHUB_PUSH_OWNED_OBSERVATION_REQUIRED');
     return inspectInternal(branch, assertLocal);
   }
+  function observeRemote(branch, { assertLocal } = {}) {
+    if (typeof assertLocal !== 'function') fail('GITHUB_PUSH_OWNED_OBSERVATION_REQUIRED');
+    const state = budget(); configuration(state); const target = ref(branch, state);
+    assertLocal(); const credentials = credential(state), head = remoteHead(branch, state, credentials); assertLocal();
+    return { profile: 'github-https-git.v1', remote_identity_sha256: context, branch, ref: target, remote_head: head };
+  }
   pinned();
   // Read-only network commands must also be outside any checkout. Git push
   // receives a dedicated host-owned bare configuration only after a grant.
   const outside = spawnSync(gitBinary, ['-C', transportCwd, 'rev-parse', '--absolute-git-dir'], { env: localEnv, encoding: 'utf8', shell: false, windowsHide: true, timeout: 10000, stdio: 'pipe' });
   if (outside.status !== 128 || outside.error || outside.signal) fail('GITHUB_PUSH_TRANSPORT_CWD_REQUIRED');
-  return Object.freeze({ inspect, observeOwned,
+  return Object.freeze({ inspect, observeOwned, observeRemote,
     async push(observed, { write = false, assertAuthorized } = {}) {
       let attempted = false, confirmed = false, preparation = null;
       try {

@@ -24,7 +24,11 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 66); assert.equal(assets.catalog.activities.length, 9);
+  const correctionSequence = assets.model.nodes.find(row => row.id === "correction_cycle").children;
+  assert.deepEqual(correctionSequence, ["correction_initialize", "correction_branch_audit", "correction_cycle_drift", "correction_cycle_checkpoint", "correction_plan", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"]);
+  assert.equal(assets.model.nodes.find(row => row.id === "correction_initialize").binding_ref, "session_pr_correction_cycle_initialize");
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
+  assert.equal(assets.catalog.bindings.length, 75); assert.equal(assets.catalog.activities.length, 11);
 });
 test("authored literal/operation-only inputs satisfy their actual closed operation contracts", () => {
   for (const spec of assets.model.data_bindings.inputs) {

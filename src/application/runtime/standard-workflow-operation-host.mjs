@@ -1,3 +1,4 @@
+import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.mjs";
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
@@ -248,7 +249,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || owner.session_closure_status !== "checkpoint_pending") fail("STANDARD_SESSION_CHECKPOINT_OWNER_CHANGED");
     const ownedPaths = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === review.session_id).map(row => row.path.slice(0, -10));
     const fixed = [review.session_path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
-    const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
+    const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "session_pr_correction_cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
       "cycle_task_advance", "cycle_verification_enter", "cycle_close_record", "cycle_close_finalize", "baseline_promotion_record", "baseline_promotion_finalize", "session_close_record"]);
     const approved = new Map(), journals = [];
     for (const event of instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")) {
@@ -306,7 +307,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       fail("STANDARD_SESSION_PRECLOSE_CLOSURE_EVIDENCE_CHANGED");
     const fixed = [selected[0].path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
     const ownedPaths = owned.map(row => row.path.slice(0, -10));
-    const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
+    const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "session_pr_correction_cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
       "cycle_task_advance", "cycle_verification_enter", "cycle_close_record", "cycle_close_finalize", "baseline_promotion_record", "baseline_promotion_finalize"]);
     const approved = new Map(), journals = [];
     for (const event of instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")) {
@@ -493,6 +494,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     verifyEvent: (capture, options) => reviewControlSource.verifyCapturedEvent(capture, options),
     observeProduct: () => processAuthority.observeProduct(),
     inspectPush: (branch, options) => sessionPushPort.inspect(branch, options),
+    observeRemote: (branch, options) => {
+      if (typeof sessionPushPort?.observeRemote !== 'function') fail('STANDARD_PR_CORRECTION_REMOTE_OBSERVATION_REQUIRED');
+      return sessionPushPort.observeRemote(branch, options);
+    },
     observeOwnedPush: (branch, options) => {
       if (typeof sessionPushPort?.observeOwned !== 'function') fail('STANDARD_PR_CORRECTION_OWNED_OBSERVATION_REQUIRED');
       return sessionPushPort.observeOwned(branch, options);
@@ -502,6 +507,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     authority: prCorrectionAuthority, readCurrent: id => current(id).record }) : null;
   const prCorrectionCheckpoint = prCorrectionAuthority ? createStandardPrCorrectionCheckpoint({ targetRoot, now,
     authority: prCorrectionAuthority, readAcceptedOperation: acceptedForPromotion, readDispatchedOperation: readDispatchedCheckpoint,
+    readCurrent: id => current(id).record }) : null;
+  const prCorrectionCycle = prCorrectionCheckpoint ? createStandardPrCorrectionCycle({ targetRoot, now, operations,
+    readAcceptedOperation: acceptedForPromotion, readCheckpoint: prCorrectionCheckpoint.readCompleted,
+    verifyContinuationSource: prCorrectionAuthority.verifyContinuationSource, observeProduct: () => processAuthority.observeProduct(),
     readCurrent: id => current(id).record }) : null;
   const prCorrectionReview = prCorrectionCheckpoint ? createStandardPrCorrectionReview({ readCheckpoint: prCorrectionCheckpoint.readCompleted }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
@@ -905,6 +914,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_triage_select" ? await prTriage?.select(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_triage_evaluate" ? await prTriage?.evaluate(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_correction_cycle_initialize" ? await prCorrectionCycle?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_decision" ? await prCorrectionReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_checkpoint" ? await prCorrectionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_reopen" ? await prCorrectionReopen?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
@@ -1047,6 +1057,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
         else if (record.intent.binding_ref === "session_pr_triage_select") output = await prTriage.select(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_triage_evaluate") output = await prTriage.evaluate(state.record, record.preview.input, { signal });
+        else if (record.intent.binding_ref === "session_pr_correction_cycle_initialize") output = await prCorrectionCycle.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
         else if (record.intent.binding_ref === "session_pr_correction_checkpoint") output = await prCorrectionCheckpoint.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record), signal });
         else if (record.intent.binding_ref === "session_pr_correction_reopen") output = await prCorrectionReopen.apply(state.record, record.preview.prepared,

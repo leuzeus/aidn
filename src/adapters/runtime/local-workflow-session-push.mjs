@@ -83,6 +83,11 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
     if (typeof assertLocal !== 'function') fail('WORKFLOW_PUSH_OWNED_OBSERVATION_REQUIRED');
     return inspectInternal(branch, assertLocal);
   }
+  function observeRemote(branch, { assertLocal } = {}) {
+    if (typeof assertLocal !== 'function') fail('WORKFLOW_PUSH_OWNED_OBSERVATION_REQUIRED');
+    config(); const target = ref(branch); assertLocal(); const head = remoteHead(branch); assertLocal(); config();
+    return { profile: 'local-bare-remote.v1', remote_identity_sha256: remoteIdentity, branch, ref: target, remote_head: head };
+  }
   async function push(observed, { write = false, assertAuthorized } = {}) {
     let attempted = false;
     try {
@@ -107,5 +112,5 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
         { code: attempted ? 'WORKFLOW_PUSH_RECONCILIATION_REQUIRED' : cause.code ?? 'WORKFLOW_PUSH_CONTEXT_UNAVAILABLE', effect_status: attempted ? 'unknown' : 'no_effect' });
     }
   }
-  return Object.freeze({ inspect, observeOwned, push });
+  return Object.freeze({ inspect, observeOwned, observeRemote, push });
 }

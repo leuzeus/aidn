@@ -3304,3 +3304,25 @@ repreparation. The existing host requires an accepted authenticated no-effect
 receipt, exact waiting occurrence and unchanged original history before making
 a read-only successor preview; staging still requires explicit intent and a
 fresh grant. Qualification results remain pending until terminal capture.
+
+
+### Accepted correction-cycle creation and planning entry
+
+`verify-standard-pr-correction-cycle-ports-fixtures.mjs --mode=files|dual|db-only`
+checks the new cycle port on a newly source-installed disposable project, with
+retained terminal projects. It uses the actual accepted checkpoint reader and
+ordinary cycle admissions/initializer/CAS/Git/SQLite. Accepted journal, human
+and provider capabilities are explicitly doubled. It checks closed contracts,
+refusal/corruption, initial continuity and NOT_READY plan state, expiry, provider
+refusal, cancellation and revoked grants before a positive ordinary creation.
+The runtime family selects each mode once. Absence of a terminal PASS footer
+leaves the suite unqualified; old failures and owners remain retained.
+
+The companion correction-authority and GitHub push-port checks retain real
+remote-ref observation across an owned local branch transition; HTTPS/provider
+transport remains doubled. Published composition checks cover the correction
+route through R05, plan, frozen record, readiness and IMPLEMENTING. These are
+source/component checks. The full ordinary native planning/DoR/implementation
+journey, product correction/validation/reclosure/causal delivery, production
+dispatcher, authentic human/provider/native/OS, configured PostgreSQL and exact
+installed archive remain separate NOT_RUN evidence.
