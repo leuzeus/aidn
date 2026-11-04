@@ -279,8 +279,10 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
           if (responseIds.size > authorization.max_responses) { requestStop("PROCESS_EXECUTION_RESPONSE_LIMIT"); fail("PROCESS_EXECUTION_RESPONSE_LIMIT"); }
         },
       };
+      let executionStage = "initialization";
       const inputs = {
         async prepare({ instance, frame, role, policy }) {
+          executionStage = "activity_input";
           readAuthority(); const snapshot = productSnapshot(), artifact = shadowHash(snapshot);
           const input = { before: artifact, output: null, review_root: null,
             binding: { revision: artifact, artifact_sha256: artifact, criteria_sha256: config.criteria.sha256 } };
@@ -325,6 +327,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
           input.instruction = `Activity ${frame.node_id}; role ${role.role}/${role.action}.\n${config.instructions[frame.node_id] ?? "Complete this activity against the acceptance criteria."}\nReturn the required JSON outcome and a concise factual summary.`;
           const outputContract = config.activity_outputs?.[frame.node_id];
           if (outputContract) {
+            executionStage = "activity_output_context";
             const diagnostic = await processAuthority.prepareActivityOutput({ contractRef: outputContract, productSha256: artifact,
               ...((isStandardCycleWorkContract(outputContract) || [CYCLE_AUDIT_CONTRACT, PR_TRIAGE_CONTRACT].includes(outputContract)) ? { instance, occurrenceId: frame.occurrence_id, productSnapshot: snapshot } : {}) });
             input.output_contract = outputContract; input.output_context_sha256 = diagnostic.context_sha256;
@@ -406,12 +409,16 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
           if (responseIds.size >= authorization.max_responses) fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
           const frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = model.nodes.find(row => row.id === frame.node_id);
           const role = model.roles.find(row => row.id === node.role_ref), policy = model.policies.find(row => row.id === node.policy_ref);
+          executionStage = "activity_prepare";
           await host.prepare({ instance: current.record, frame, node, role, policy });
+          executionStage = "activity_assignment";
           current = await service.assign({ instanceId: config.instance_id, expectedSha256: current.record.instance_sha256, occurrenceId,
             eventId: `assign-${current.record.revision}`, write: true });
           requireProjection();
           if (current.status === "WAITING_FOR_ELIGIBLE_EXECUTOR") break;
+          executionStage = "activity_execution";
           const executed = await host.execute({ instance: current.record, occurrenceId, signal: stop.signal });
+          executionStage = "activity_acceptance";
           current = await service.accept({ instanceId: config.instance_id, expectedSha256: current.record.instance_sha256, occurrenceId,
             eventId: `result-${current.record.revision}`, resultId: executed.resultId, write: true });
           requireProjection();
@@ -422,7 +429,13 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         if (current?.cursor.status === "COMPLETED" && controlIndex < controlScenario.events.length) fail("PROCESS_EXECUTION_CONTROL_EVENTS_PENDING");
       } catch (error) {
         const code = error.code ?? error.message;
-        requestStop(/^(PROCESS_|STANDARD_PROCESS_|STANDARD_DRIFT_|NATIVE_ALLOCATION_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(code ?? "") ? code : "PROCESS_EXECUTION_FAILED");
+        const safeCode = typeof code === "string" && code.length <= 128
+          && /^(PROCESS_|STANDARD_PROCESS_|STANDARD_DRIFT_|STANDARD_MODE_WORK_|NATIVE_ALLOCATION_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(code)
+          ? code : "PROCESS_EXECUTION_FAILED";
+        requestStop(safeCode);
+        // Host-selected stage and closed, bounded code only. Never retain the
+        // exception message/stack or a caller-supplied diagnostic payload.
+        try { await evidence.retain("execution-failure", { code: safeCode, stage: executionStage }); } catch { /* Preserve the original failure. */ }
       }
       finally {
         try { closure = await host.close(); } catch { firstFailure ??= "PROCESS_HOST_CLOSE_UNCONFIRMED"; }

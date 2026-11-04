@@ -85,7 +85,7 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
       if (record.intent.binding_ref === "mode_work_evaluate") { evaluation = output; break; }
       assert.equal(output?.outcome, "completed");
     } else {
-      assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed");
+      assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed", JSON.stringify({ phase: result.journal_phase, status: result.status, failure: result.first_failure }));
       assert.equal(f.t.sessions.length, before + 1); f.reopen();
     }
   }
