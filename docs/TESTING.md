@@ -212,6 +212,12 @@ allocate no Native, then tests read-only polling in a new Node and common-reduce
 replay/simulation with canonical/product/Git/allocation/journal witnesses.
 Read-only cold polling is not continuation after a new decision, SPIKE admission,
 session closure, installed behavior or genuine Native/Human qualification.
+The mixed THINKING fixture's product refusal also lacks a cycle and implementation
+phase; its diagnostic is not an isolated proof of the mode invariant. The native
+write-admission suite separately holds an admitted cycle, IMPLEMENTING, READY,
+branch and task scope fixed, switches only COMMITTING to THINKING and requires
+the sole refusal `MODE_EXCLUDES_IMPLEMENTATION`, then restores an allowed control.
+Its `--retain-always` option preserves the new project for diagnosis.
 
 The candidate standard also selects deterministic `session_pr_triage_select`,
 the read-only independent `session_pr_triage` native activity, then deterministic

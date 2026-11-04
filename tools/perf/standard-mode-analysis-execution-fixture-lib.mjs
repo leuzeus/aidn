@@ -104,7 +104,15 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
       tool_name: "apply_patch", cwd: f.configuration.target_root,
       tool_input: { command: "*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = 1;\n+export const value = 99;\n*** End Patch" },
     } });
-    assert.notEqual(admitted.write_decision.outcome, "allow");
+    assert.equal(admitted.context.mode, "THINKING");
+    assert.deepEqual(admitted.write_decision.operations, [{ operation: "update", path: "product/app.mjs", classification: "product" }]);
+    assert.equal(admitted.write_decision.outcome, "deny");
+    const reasons = admitted.write_decision.reasons.map(row => row.code);
+    assert.ok(reasons.includes("ACTIVE_CYCLE_REQUIRED"));
+    assert.ok(reasons.includes("PHASE_EXCLUDES_IMPLEMENTATION"));
+    console.log(JSON.stringify({ mode_analysis_product_admission: "denied-with-multiple-missing-prerequisites",
+      observed_mode: admitted.context.mode, operations: admitted.write_decision.operations, reasons,
+      isolated_mode_invariant: "NOT_ESTABLISHED_BY_THIS_CASE" }));
   }
   const requestFile = path.join(f.base, "mode-analysis-cold-request.json");
   fs.writeFileSync(requestFile, JSON.stringify({ configuration: f.configuration, key_hex: f.key.toString("hex"), human_source_file: sourceFile,
