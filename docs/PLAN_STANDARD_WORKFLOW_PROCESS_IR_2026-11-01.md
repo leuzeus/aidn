@@ -3425,6 +3425,10 @@ complete_standard_workflow=false.
 
 ### Direct launch pins for review dependencies, model50
 
+Evidence: [observation components on source73240f7](qualification/agentic-process/pr-review-observation-components-2026-11-03.json),
+[direct-pin successor on source20e3743](qualification/agentic-process/pr-review-direct-launch-pins-2026-11-03.json),
+and [model41 authorization refusal](qualification/agentic-process/composed-model41-authorization-refusal-2026-11-03.json).
+
 Source73240f7/model49 pinned the new review readers in operation implementation
 hashes, but omitted them from the separate native launcher's direct file list.
 The direct-pin successor explicitly adds both GitHub readers, their contracts,
