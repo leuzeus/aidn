@@ -32,7 +32,7 @@ function fixture(makeInbox, v2 = false) {
   if (v2) Object.assign(record.preview.prepared.plan, { contract_version: 'standard-pr-correction-review-plan.v2', candidate_cycle: candidate() });
   const claim = (choice = 'create-correction-cycle') => { const question = human().question(record); return { contract_version: v2 ? 'human-pr-correction-decision.v2' : 'human-pr-correction-decision.v1',
     ...(v2 ? { cycle_sha256: shadowHash(question.candidate_cycle) } : {}), source_kind: 'human', authority_id: 'fixture_operator',
-    source_event_id: 'correction:1', question_sha256: shadowHash(question), subject_sha256: shadowHash(question.review), choice, rationale: 'Request an ordinary admitted correction cycle', evidence_refs: [{ ref: 'fixture/selection', sha256: H }] }; };
+    source_event_id: v2 ? 'correction:v2:1' : 'correction:1', question_sha256: shadowHash(question), subject_sha256: shadowHash(question.review), choice, rationale: 'Request an ordinary admitted correction cycle', evidence_refs: [{ ref: 'fixture/selection', sha256: H }] }; };
   return { rows, sources, inbox, human, record, claim, deny: () => { verified = false; } };
 }
 let checks = 0;
