@@ -1,5 +1,18 @@
 # Standard workflow IR traceability
 
+SOURCE40's independent 28c1deff diagnostic case is terminal FAIL with the retained
+host stage `activity_output_context`, PROCESS_EXECUTION_FAILED and zero observed
+responses. The inner exception type was not retained. Owning source excludes the
+mode contract from both native-input and evidence predicates: instance, occurrence
+and product snapshot are omitted, then context/output evidence is omitted.
+463b342c corrects both predicates and gives missing/malformed snapshots a typed
+refusal, preserving authentication. Its first two checks failed at stale pinned
+implementation admission and never tested the native correction. Official source
+generators then produce startup/cycle/standard revisions 163/161/105 on f2d45317,
+with unchanged graph/permissions. Composition 32 and model 22 pass there; the new
+THINKING FILES mixed case is pending. The [bounded record](../qualification/standard-workflow/mode-native-entry-2026-11-04.json)
+keeps these separate. No old allocation is retried, repaired or declared quiescent.
+
 SOURCE39 adds a targeted mixed execution fixture for the published model 104
 mode paths, separate from synthetic planning and canonical-context components.
 It uses doubled Native/human capabilities with real application, Git and SQLite

@@ -1,0 +1,313 @@
+{
+  "observed_utc": "2026-11-04T23:15:58.077253+00:00",
+  "scope": "SOURCE40 bounded native-entry diagnosis and mixed fixture requalification; not entire STANDARD",
+  "diagnostic": {
+    "utc": "2026-11-04T23:11:55.588716+00:00",
+    "diagnostic_source": "28c1deff4494ff4bc2e8f77ac3d7b5f48571e9f9",
+    "case": "source40-mode-native-entry-diagnostic-20261104",
+    "actual_host_diagnostic": {
+      "code": "PROCESS_EXECUTION_FAILED",
+      "stage": "activity_output_context"
+    },
+    "origin": "C:\\Users\\leuz9\\AppData\\Local\\Temp\\aidn-agentic-execution-mA8cI9\\case-1\\control\\case\\00001-execution-failure.json",
+    "retained": "G:\\aidn-plans\\source40-native-entry-original-execution-failure.json",
+    "bytes": 70,
+    "sha256": "9b95febdc268dd6a75eb8d5451662818dd627974682ec5ce3f3878655fb01e4b",
+    "observed": "Terminal FAIL before any observed Native response; source before/after equal.",
+    "static_cause": "MODE_WORK_CONTRACT excluded by both predicates: missing instance/occurrenceId/productSnapshot at preparation, missing occurrence/context/output evidence at completion. First evaluation hashes undefined productSnapshot before authenticate(instance).",
+    "limits": [
+      "The Node exception type was not retained by 28c1deff; do not claim a directly observed TypeError code.",
+      "Stage plus owning source identifies the omitted context; positive post-fix mixed execution is still required.",
+      "Uncertain old project/control/store remain on place; this individual diagnostic byte capture is not a quiescent snapshot, global closure or retry authority."
+    ]
+  },
+  "current_model": {
+    "startup": 163,
+    "cycle_create": 161,
+    "standard": 105,
+    "nodes": 192,
+    "operation_occurrences": 117,
+    "activities": 19,
+    "ordinary_entry": "UNCHANGED",
+    "complete_standard_workflow": false
+  },
+  "cases": [
+    {
+      "name": "source40-mode-composition-20261104",
+      "source_head": "463b342c6451803f476c374eccff1f253e272de0",
+      "started": {
+        "started_utc": "2026-11-04T23:12:28.384133+00:00",
+        "pid": 32048,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-fixed-source40-20261104\\tools\\perf\\verify-standard-workflow-composition-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-fixed-source40-20261104",
+        "head": "463b342c6451803f476c374eccff1f253e272de0"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T23:12:28.384133+00:00",
+        "finished_utc": "2026-11-04T23:12:29.938659+00:00",
+        "pid": 32048,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source40-mode-composition-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-fixed-source40-20261104\\tools\\perf\\verify-standard-workflow-composition-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-fixed-source40-20261104",
+        "head_before": "463b342c6451803f476c374eccff1f253e272de0",
+        "head_after": "463b342c6451803f476c374eccff1f253e272de0"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 1226,
+          "sha256": "15803ab2fede76dd23834281417c621375a69b0564566289dcf4810dc775b2af",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source40-mode-composition-r2-20261104",
+      "source_head": "f2d45317a753780f823310c2127363947506d549",
+      "started": {
+        "started_utc": "2026-11-04T23:14:23.305811+00:00",
+        "pid": 62340,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104\\tools\\perf\\verify-standard-workflow-composition-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
+        "head": "f2d45317a753780f823310c2127363947506d549"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T23:14:23.305811+00:00",
+        "finished_utc": "2026-11-04T23:14:26.229741+00:00",
+        "pid": 62340,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source40-mode-composition-r2-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104\\tools\\perf\\verify-standard-workflow-composition-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
+        "head_before": "f2d45317a753780f823310c2127363947506d549",
+        "head_after": "f2d45317a753780f823310c2127363947506d549"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 2985,
+          "sha256": "863eaeae94d15d8a7f05e0130c5a4c942df8661cf8ce6ab171d140d344c51dea",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source40-mode-mixed-thinking-files-20261104",
+      "source_head": "463b342c6451803f476c374eccff1f253e272de0",
+      "started": {
+        "started_utc": "2026-11-04T23:12:28.308561+00:00",
+        "pid": 3556,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-fixed-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--standard-mode-work-mode=files",
+          "--standard-mode-work-session=THINKING",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-fixed-source40-20261104",
+        "head": "463b342c6451803f476c374eccff1f253e272de0"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T23:12:28.308561+00:00",
+        "finished_utc": "2026-11-04T23:12:36.920613+00:00",
+        "pid": 3556,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source40-mode-mixed-thinking-files-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-fixed-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--standard-mode-work-mode=files",
+          "--standard-mode-work-session=THINKING",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-fixed-source40-20261104",
+        "head_before": "463b342c6451803f476c374eccff1f253e272de0",
+        "head_after": "463b342c6451803f476c374eccff1f253e272de0"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 1863,
+          "sha256": "653aafd38b5fa004ddabd2a67d06902c9e7c6619580f6bf2f16a8edd61000e0c",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source40-mode-mixed-thinking-files-r2-20261104",
+      "source_head": "f2d45317a753780f823310c2127363947506d549",
+      "started": {
+        "started_utc": "2026-11-04T23:14:23.220257+00:00",
+        "pid": 64636,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--standard-mode-work-mode=files",
+          "--standard-mode-work-session=THINKING",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
+        "head": "f2d45317a753780f823310c2127363947506d549"
+      },
+      "terminal": null,
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 82,
+          "sha256": "5f46ac0d0c45223e6bdf9aeacbf5434137f884adabfd348926d9e74950f5fe15",
+          "scope": "dated prefix, may grow"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "dated prefix, may grow"
+        }
+      ]
+    },
+    {
+      "name": "source40-mode-model-r2-20261104",
+      "source_head": "f2d45317a753780f823310c2127363947506d549",
+      "started": {
+        "started_utc": "2026-11-04T23:14:23.650181+00:00",
+        "pid": 43412,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104\\tools\\perf\\verify-standard-workflow-model-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
+        "head": "f2d45317a753780f823310c2127363947506d549"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T23:14:23.650181+00:00",
+        "finished_utc": "2026-11-04T23:14:26.830455+00:00",
+        "pid": 43412,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source40-mode-model-r2-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104\\tools\\perf\\verify-standard-workflow-model-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-pinned-source40-20261104",
+        "head_before": "f2d45317a753780f823310c2127363947506d549",
+        "head_after": "f2d45317a753780f823310c2127363947506d549"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 1701,
+          "sha256": "90a1622927d5acbc3d3af629c31771fa1ae52dd2401ff8ace275544dae8ceb55",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source40-mode-native-entry-diagnostic-20261104",
+      "source_head": "28c1deff4494ff4bc2e8f77ac3d7b5f48571e9f9",
+      "started": {
+        "started_utc": "2026-11-04T23:02:09.886759+00:00",
+        "pid": 60848,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-native-diagnostic-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--standard-mode-work-mode=files",
+          "--standard-mode-work-session=THINKING",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-native-diagnostic-source40-20261104",
+        "head": "28c1deff4494ff4bc2e8f77ac3d7b5f48571e9f9"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T23:02:09.886759+00:00",
+        "finished_utc": "2026-11-04T23:09:45.341908+00:00",
+        "pid": 60848,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "protected_files": 2183,
+        "name": "source40-mode-native-entry-diagnostic-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-native-diagnostic-source40-20261104\\tools\\perf\\verify-agentic-process-execution-fixtures.mjs",
+          "--standard-mode-work-mode=files",
+          "--standard-mode-work-session=THINKING",
+          "--retain-always"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-native-diagnostic-source40-20261104",
+        "head_before": "28c1deff4494ff4bc2e8f77ac3d7b5f48571e9f9",
+        "head_after": "28c1deff4494ff4bc2e8f77ac3d7b5f48571e9f9"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 593,
+          "sha256": "c5abf93d987c2f08e3990aca8637b27b54dfac5acc2cbf448c6b00e6362c9a2a",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 985,
+          "sha256": "f62f8866baf80f00eac780ee23cbe287524baaed3fefd53fa12c86474a1c8be3",
+          "scope": "terminal original"
+        }
+      ]
+    }
+  ],
+  "pass": 2,
+  "fail": 3,
+  "pending": [
+    "source40-mode-mixed-thinking-files-r2-20261104"
+  ],
+  "limits": [
+    "Actual inner Node exception code was not retained; the host stage and source establish the omitted input defect, pending positive mixed proof.",
+    "SOURCE39 remains 7 PASS/4 FAIL; originals unchanged. New cases have independent original authority.",
+    "Synthetic/static model and composition checks are not Native execution. Native/human capabilities remain fixtures.",
+    "No uncertain physical project/control/store is copied as quiescent or granted retry.",
+    "Entire L1-L8/A1-A10 remains incomplete; mode resumes, SPIKE/experiments/closure, ordinary choices, general L4, real provider/review/merge, genuine Native/Human/OS/PG and installed exact archive remain due.",
+    "Full current Runtime/GovernanceAdmission not established."
+  ]
+}

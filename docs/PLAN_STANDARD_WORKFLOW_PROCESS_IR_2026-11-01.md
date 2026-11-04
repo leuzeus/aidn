@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Avancement courant au 4 novembre 2026 : les composants startup/cycle sont en
-162/160 avec SOURCE38 et le modèle composé 104 reçoit les routes
+163/161 avec SOURCE40 et le modèle composé 105 conserve les routes
 d'analyse THINKING/EXPLORING (192 nœuds, 117 occurrences d’opération,
 19 activités). Les sources exactes et les verdicts terminaux sont conservés
 dans la preuve bornée de chaque qualification. Le snapshot SOURCE37 était 159/157/101 (186/113/17),
@@ -23,6 +23,24 @@ inchangée et `complete_standard_workflow=false`. Les constats initiaux restent
 datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
+
+- SOURCE40 localise l'échec Native dans le préparateur de contexte du rapport,
+  sur une nouvelle source gelée `28c1deff` : le stade retenu est
+  `activity_output_context`, avec PROCESS_EXECUTION_FAILED et zéro réponse.
+  Le type d'exception interne n'a pas été retenu. Le code propriétaire excluait
+  le contrat de mode des deux raccords qui fournissent instance, occurrence,
+  snapshot produit, puis preuves de contexte et d'artefact. La correction
+  `463b342c` transmet ces données et conserve l'authentification ; un snapshot
+  absent ou mal formé est refusé par un code typé. Ses deux essais ont échoué
+  au chargement des pins d'implémentation, avant l'analyse : ils restent FAIL.
+  Les générateurs officiels actualisent ensuite startup/cycle/standard en
+  163/161/105 sur `f2d45317`, sans changer le graphe ni ses permissions.
+  Composition 32 et modèle 22 passent sur cette source ; le nouveau parcours
+  mixte THINKING FILES est encore en cours. Il doit atteindre une analyse,
+  l'évaluation authentifiée avec toutes ses preuves, la sonde froide et le même
+  réducteur avec témoins d'effets inchangés. Les échecs et projets incertains
+  sont conservés. La [preuve bornée](qualification/standard-workflow/mode-native-entry-2026-11-04.json)
+  sépare diagnostic, pins et exécution ; elle ne ferme ni A2 ni le plan entier.
 
 - SOURCE39 ajoute un driver mixte ciblé pour les analyses des modes du modèle
   publié 104, avec choix humain et transport Native doublés, ports applicatifs,
