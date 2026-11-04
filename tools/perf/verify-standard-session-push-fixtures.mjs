@@ -47,6 +47,12 @@ try {
     plan = await service().prepare(instance, input, op('2')); assert.equal(plan.can_apply, true); assert.equal(plan.plan.git.remote_head, null);
     assert.equal(readRemote(), null); assert.equal(artifacts.ownerPending(), false); assert.equal(git(root, 'status', '--porcelain'), '');
   });
+  await test('reused local capability refuses changed effective filters on its next observation', () => {
+    git(root, 'config', 'filter.fixture.clean', 'echo forbidden');
+    try { assert.throws(() => port.inspect('S001-push'), { code: 'WORKFLOW_BRANCH_FILTER_CONTEXT_CHANGED' }); }
+    finally { git(root, 'config', '--remove-section', 'filter.fixture'); }
+    assert.equal(readRemote(), null); assert.equal(fs.existsSync(path.join(root, 'forbidden')), false);
+  });
   await test('missing exact intent, lost permission and changed admission refuse before remote effect', async () => {
     await assert.rejects(service().apply(instance, plan, { write: true, expectPlan: H, assertAuthorized() {} }), { code: 'STANDARD_SESSION_PUSH_EXPLICIT_EFFECT_REQUIRED' });
     await assert.rejects(service().apply(instance, plan, { write: true, expectPlan: plan.plan_sha256, assertAuthorized() { throw Error('denied'); } }));

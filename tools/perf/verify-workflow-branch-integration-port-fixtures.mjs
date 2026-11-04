@@ -41,6 +41,21 @@ try {
     assert.deepEqual(fs.readFileSync(path.join(f.root, ".git/index")), index); assert.deepEqual(fs.readFileSync(path.join(f.root, "product/app.mjs")), bytes);
     assert.equal(f.port.inspectIntegration(f.plan).status, "not_confirmed");
   });
+  await check("equal source/target observations remain fresh for refs, locks and symbolic targets", () => {
+    const f = fixture(), equal = { source_branch: scope.source_branch, target_branch: scope.source_branch };
+    const initial = f.port.inspect(equal);
+    assert.equal(initial.source_head, initial.target_head); assert.equal(initial.source_symbolic, false);
+    assert.equal(initial.target_symbolic, false); assert.equal(initial.fast_forward, true);
+    git(f.root, "update-ref", initial.source_ref, f.plan.observed.target_head);
+    const moved = f.port.inspect(equal);
+    assert.equal(moved.source_head, f.plan.observed.target_head); assert.equal(moved.target_head, moved.source_head);
+    const lock = path.join(f.root, ".git", initial.source_ref + ".lock");
+    put(f.root, ".git/" + initial.source_ref + ".lock", "foreign owner");
+    assert.equal(f.port.inspect(equal).source_lock_present, true); fs.unlinkSync(lock);
+    git(f.root, "symbolic-ref", initial.source_ref, f.plan.observed.target_ref);
+    const symbolic = f.port.inspect(equal);
+    assert.equal(symbolic.source_symbolic, true); assert.equal(symbolic.target_symbolic, true);
+  });
   await check("FF transaction binds reflogs and preserves source, index and product", async () => {
     const f = fixture(), index = fs.readFileSync(path.join(f.root, ".git/index")), bytes = fs.readFileSync(path.join(f.root, "product/app.mjs"));
     let grants = 0; const output = await f.port.integrate(f.plan, { write: true, assertAuthorized() { grants++; } });

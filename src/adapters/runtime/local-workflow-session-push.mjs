@@ -47,14 +47,16 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
     const [head, name] = rows[0].split('\t');
     if (!oid(head) || name !== target) fail('WORKFLOW_PUSH_REMOTE_REF_INVALID'); return head;
   }
+  let localPort;
+  const localIntegration = () => localPort ??= createLocalWorkflowBranchIntegration({ targetRoot: root, environment });
   function inspectLocal(branch) {
     for (const name of ['HEAD.lock', 'packed-refs.lock', 'config.lock'])
       if (fs.existsSync(agentRunPhysicalPath(path.resolve(root, git(['rev-parse', '--git-path', name])), { missing: true })))
         fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
-    return createLocalWorkflowBranchIntegration({ targetRoot: root, environment }).inspect({ source_branch: branch, target_branch: branch });
+    return localIntegration().inspect({ source_branch: branch, target_branch: branch });
   }
   function inspectInternal(branch, assertLocal = null) {
-    config(); const local = assertLocal ? inspectLocal(branch) : createLocalWorkflowBranchIntegration({ targetRoot: root, environment }).inspect({ source_branch: branch, target_branch: branch });
+    config(); const local = assertLocal ? inspectLocal(branch) : localIntegration().inspect({ source_branch: branch, target_branch: branch });
     if ((!assertLocal && !local.clean) || local.current_ref !== ref(branch) || local.head !== local.source_head || local.source_symbolic || local.target_symbolic
       || local.lock_present || local.source_lock_present) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
     if (assertLocal) assertLocal(structuredClone(local));

@@ -2283,3 +2283,13 @@ The shared initial/corrective push port rechecks its source, current instance an
 plan age after the final awaited authorization. A changed context after an actual
 push retains UNKNOWN, empty positive facts and the effect owner. This component
 refusal is separate from the production dispatcher acknowledgement-loss chain.
+
+The correction reopening and local push adapters may retain a scope-bound Git
+capability while repeating its fresh inspection at every existing guard. They
+retain no observed ref, status, metadata or authorization across an await. An
+effective filter change is refused against the original capability context,
+including before an effect. Equal source/target references may share a read
+inside a single synchronous inspection. The five-minute plan TTL and all effect
+ownership, postimage, grant and UNKNOWN semantics remain unchanged. This cost
+reduction requires separate qualification; a timed fixture is not the composed
+production-dispatcher recovery or entire standard acceptance.

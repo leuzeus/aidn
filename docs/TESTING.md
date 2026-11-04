@@ -3401,3 +3401,15 @@ option still available. Preflight uses the same reducer and proves this stopping
 point without inventing a decline, approval or positive routing fact. A requested
 `component_complete` correction that lacks a decision fails preflight as an
 unplanned wait. The bounded prefix does not qualify admitted C2 or reclosure.
+
+### Reopening observation cost and retained Git capabilities
+
+`verify-workflow-branch-integration-port-fixtures.mjs` checks equal source/target
+refs after a real ref move, a foreign lock and a symbolic target. Each inspection
+must observe those changes. `verify-standard-session-push-fixtures.mjs` checks
+that a retained integration capability refuses effective filters changed after
+its first observation. Restoring the original configuration is a fixture action,
+not authority to retry an uncertain business effect. No observation or result is
+cached across guards. The existing real-port reopening suite remains required
+for the canonical/provider/authorization boundaries. Timings are separate
+diagnostics and do not replace the negative matrix or full composed recovery.

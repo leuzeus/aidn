@@ -64,17 +64,24 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
       { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
     if (![0, 1].includes(currentFilters.status) || hash(currentFilters.stdout) !== filterContextSha256) fail("WORKFLOW_BRANCH_FILTER_CONTEXT_CHANGED");
     if (git(["ls-files", "--stage", "-z"]).split("\0").some(row => row.startsWith("160000 "))) fail("WORKFLOW_BRANCH_SUBMODULE_SCOPE_UNSUPPORTED");
-    const sourceRef = branch(source_branch), targetRef = branch(target_branch), currentRef = git(["symbolic-ref", "--quiet", "HEAD"]).trim();
-    const sourceHead = git(["rev-parse", "--verify", sourceRef]).trim(), targetHead = git(["rev-parse", "--verify", targetRef]).trim();
+    // Equal references share one observation inside this synchronous inspect;
+    // nothing is reused across calls or an awaited authorization/provider.
+    const sourceRef = branch(source_branch), targetRef = source_branch === target_branch ? sourceRef : branch(target_branch);
+    const currentRef = git(["symbolic-ref", "--quiet", "HEAD"]).trim();
+    const sourceHead = git(["rev-parse", "--verify", sourceRef]).trim();
+    const targetHead = targetRef === sourceRef ? sourceHead : git(["rev-parse", "--verify", targetRef]).trim();
     const ancestor = spawnSync("git", [...fixed, "merge-base", "--is-ancestor", targetHead, sourceHead], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
     if (![0, 1].includes(ancestor.status)) fail("WORKFLOW_BRANCH_ANCESTRY_UNAVAILABLE");
     const rows = worktrees(), status = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+    const sourceSymbolic = spawnSync("git", [...fixed, "symbolic-ref", "--quiet", sourceRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
+    const targetSymbolic = targetRef === sourceRef ? sourceSymbolic
+      : spawnSync("git", [...fixed, "symbolic-ref", "--quiet", targetRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
     return { source_branch, target_branch, source_ref: sourceRef, target_ref: targetRef, source_head: sourceHead, target_head: targetHead,
       current_ref: currentRef, head: git(["rev-parse", "HEAD"]).trim(), index_sha256: indexHash(), clean: status === "", lock_present: fs.existsSync(lock),
       filter_context_sha256: filterContextSha256,
       source_lock_present: fs.existsSync(gitPath(sourceRef + ".lock")),
-      source_symbolic: spawnSync("git", [...fixed, "symbolic-ref", "--quiet", sourceRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1,
-      target_symbolic: spawnSync("git", [...fixed, "symbolic-ref", "--quiet", targetRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1,
+      source_symbolic: sourceSymbolic,
+      target_symbolic: targetSymbolic,
       head_reflog: logState("HEAD"), target_reflog: logState(targetRef),
       fast_forward: ancestor.status === 0, target_checked_out_elsewhere: rows.some(row => row.branch === targetRef && key(row.root) !== key(root)),
       worktree_bindings_sha256: shadowHash(rows.filter(row => key(row.root) !== key(root)).map(row => ({ root_sha256: hash(key(row.root)), branch: row.branch }))) };

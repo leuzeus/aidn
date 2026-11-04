@@ -20,8 +20,15 @@ const text = row => row.text_chunks.join('');
 export function createStandardPrCorrectionReopen({ targetRoot, authority, readCurrent, now = Date.now }) {
   if (![authority?.readSource, authority?.verifySource, readCurrent].every(fn => typeof fn === 'function')) fail('STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED');
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
-  const git = source => createLocalWorkflowGitCheckpoint({ targetRoot: artifacts.root }, { profile: 'cycle-terminal',
-    approvedPaths: prCorrectionReopenPaths(source.session_id).map(name => 'docs/audit/' + name) });
+  const gitScopes = new Map();
+  const git = source => {
+    if (!gitScopes.has(source.session_id)) gitScopes.set(source.session_id,
+      createLocalWorkflowGitCheckpoint({ targetRoot: artifacts.root }, { profile: 'cycle-terminal',
+        approvedPaths: prCorrectionReopenPaths(source.session_id).map(name => 'docs/audit/' + name) }));
+    // Retain the capability, never an observation. inspect() rechecks filters,
+    // refs, index, locks and documents at every existing guard boundary.
+    return gitScopes.get(source.session_id);
+  };
   const identity = view => shadowHash({ ...view, changes: [] });
   const active = signal => { if (signal?.aborted) fail('STANDARD_PR_CORRECTION_ABORTED'); };
   async function admission() {

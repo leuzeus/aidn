@@ -4441,3 +4441,23 @@ PostgreSQL and the exact installed package remain separate NOT_RUN evidence.
 The dated `qualification/standard-workflow/correction-redelivery-components-2026-11-04.json`
 records distinct sources, retained failures and jobs still active at observation.
 It does not promote component or synthetic preflight results to whole acceptance.
+
+### Correction observation cost, 2026-11-04
+
+A new FILES diagnostic on frozen source `0d51c497` completed all three reopening
+postimages with a 287,377 ms plan age and 261,001 ms in application. Preparation
+itself consumed 26,374 ms; application executed 744 subprocess commands. This
+single observed run leaves little margin within the unchanged 300,000 ms TTL. It
+does not establish the cause or exact expiry point of an older retained failure.
+
+The next increment retains Git capabilities while repeating every existing
+fresh observation, and shares identical source/target ref reads only inside one
+synchronous inspection. Changed filters must refuse rather than become a new
+context preimage. Targeted ref/lock/filter checks and a new frozen-source timing
+case are required before claiming this increment validated. The graph and
+ordinary entry remain unchanged. See
+`qualification/standard-workflow/correction-observation-cost-2026-11-04.json`.
+The composed production-dispatcher acknowledgement-loss case runs independently
+on its original `0d51c497` source. It cannot qualify a future revision. The
+entire L1-L8/A1-A10 plan, full C2, general L4, native/provider/human, PostgreSQL
+and exact installed-archive qualification remain incomplete.

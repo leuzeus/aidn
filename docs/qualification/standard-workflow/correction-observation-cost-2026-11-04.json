@@ -1,0 +1,53 @@
+{
+  "status": "BASELINE_MEASURED_CANDIDATE_VALIDATION_PENDING",
+  "date": "2026-11-04",
+  "lane": "ASSURED",
+  "baseline": {
+    "source_head": "0d51c49780440de2799cfd1b7af97bd2c8f5b750",
+    "mode": "files",
+    "outcome": "completed",
+    "effect_status": "confirmed",
+    "postimages": 3,
+    "owner_pending": false,
+    "prepared_age_ms": 26374,
+    "apply_ms": 261001.263,
+    "final_age_ms": 287377,
+    "ttl_ms": 300000,
+    "commands": {
+      "fixture": 61,
+      "prepare": 70,
+      "apply": 744
+    },
+    "subprocess_ms": {
+      "fixture": 26073.4,
+      "prepare": 23917.1,
+      "apply": 251512.3
+    }
+  },
+  "implementation": [
+    "Retain one checkpoint capability per authenticated session scope; every existing inspect boundary remains fresh.",
+    "Retain the local push integration capability; each observation rechecks effective filters rather than accepting a newly constructed context.",
+    "Read an equal source/target ref once inside one synchronous inspection; do not reuse observations across calls or awaits."
+  ],
+  "validation": {
+    "branch_integration": "PENDING",
+    "local_push": "PENDING",
+    "candidate_timing": "PENDING"
+  },
+  "scope": {
+    "source_kind": "frozen-source diagnostic using real application and Git ports",
+    "accepted_sources": "authenticated synthetic fixture",
+    "provider": "fixture",
+    "production_dispatcher": "NOT_RUN",
+    "genuine_human_native_provider_os": "NOT_RUN",
+    "postgres": "NOT_RUN",
+    "installed_archive": "NOT_RUN",
+    "entire_L1_L8_A1_A10": "INCOMPLETE"
+  },
+  "limits": [
+    "One baseline run under current machine load is descriptive, not a causal performance estimate.",
+    "The baseline completed; it does not locate expiration in an older immutable failed case.",
+    "TTL, grants, plans, budgets and existing effects are unchanged.",
+    "Frozen baseline and composed acknowledgement-loss runs retain their exact source; future source is separately qualified."
+  ]
+}
