@@ -3796,3 +3796,21 @@ cycle, frozen plan, readiness/IMPLEMENTING branch, physical corrections, new-HEA
 checks and causal delivery, replies/resolutions or documented exception, fresh
 review loops, explicit fresh human merge consent and postmerge reconciliation
 remain required. Ordinary entry is unchanged; complete_standard_workflow=false.
+
+### Addendum: short composed review-body transfer, 2026-11-04
+
+The [short transfer check](qualification/agentic-process/pr-review-body-transfer-2026-11-04.json)
+passes four named checks before another long correction trial. Both positive and
+correction scenarios use the composed driver's shared arrangement and exact-body
+assertion, the durable fake provider store, actual bare Git refs, complete content
+reader and signed host capture. Independent declared expectations reject the
+wrong scenario and altered body. Unauthenticated events and altered signatures
+also refuse. Six owned roots were cleaned; no native model was allocated.
+
+This closes the fixture-transfer check requested after the prior driver mismatch.
+Accepted update/context and provider/event identity remain fixture capabilities.
+It does not prove complete correction producer-to-canonical-writer composition,
+physical corrections or the remaining L1-L8/A1-A10 requirements. Runtime, IR,
+ordinary entry and complete_standard_workflow are unchanged. A new long trial
+requires its own frozen source, fixture and initial authorization; earlier trials
+retain their exact sources and original budgets.

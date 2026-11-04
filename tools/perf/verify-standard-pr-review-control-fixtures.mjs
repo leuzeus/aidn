@@ -6,7 +6,8 @@ import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
-import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
+import { createGithubReviewFixture, createComposedGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
+import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario } from './standard-pr-review-scenario-fixture-lib.mjs';
 import { createStandardWorkflowOperationHost } from '../../src/application/runtime/standard-workflow-operation-host.mjs';
 import { createStandardSessionPrReviewContentObservation } from '../../src/application/runtime/standard-session-pr-review-observe.mjs';
 import { createStandardPrReviewControlSource } from '../../src/application/runtime/standard-session-pr-review-control-source.mjs';
@@ -31,7 +32,9 @@ const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { enco
 const stateFile = root => path.join(root, 'event.json');
 function open(root, privateRoot) {
   const initial = JSON.parse(fs.readFileSync(stateFile(privateRoot), 'utf8'));
-  const provider = createGithubReviewFixture({ workingDirectory: privateRoot, pullRequest: initial.pull_request });
+  const provider = initial.body_transfer_scenario
+    ? { port: createComposedGithubReviewFixture({ controlRoot: privateRoot, remoteRoot: initial.remote_root }) }
+    : createGithubReviewFixture({ workingDirectory: privateRoot, pullRequest: initial.pull_request });
   let host;
   const observer = createStandardSessionPrReviewContentObservation({ readCurrent: id => host.inspect(id).record, reviewPort: provider.port,
     readConfirmedHead: async () => ({ update_operation_id: updateId, session_id: 'S001', head: initial.pull_request.head_oid,
@@ -64,6 +67,56 @@ if (process.argv[2] === '--deliver') {
   const selected = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7);
   if (selected && !['files', 'dual', 'db-only'].includes(selected)) throw Error('FIXTURE_MODE_INVALID');
   try {
+    // Exercise the composed driver's real arrangement -> durable provider store
+    // -> local Git refs -> content reader -> authenticated signed inbox path.
+    // Expected text below is an independent scenario oracle, not observed data.
+    for (const [scenario, expected] of [
+      ['positive', 'Complete fixture review evidence.'],
+      ['correction', 'The exported product value needs a bounded correction in a new admitted cycle, followed by impacted validation and fresh delivery.'],
+    ]) {
+      const root = createStandardWorkflowFixture('files', owned), privateRoot = fs.mkdtempSync(path.join(parent, 'aidn-standard-body-control-'));
+      owned.push(privateRoot);
+      const remote = fs.mkdtempSync(path.join(parent, 'aidn-standard-body-remote-')); owned.push(remote);
+      git(root, 'branch', 'main');
+      execFileSync('git', ['clone', '--bare', root, remote], { windowsHide: true, stdio: 'pipe' });
+      fs.writeFileSync(path.join(privateRoot, 'host.key'), randomBytes(32));
+      const p = { repository_id: 'R_fixture', node_id: 'PR_fixture', number: 7, head_oid: git(root, 'rev-parse', 'HEAD'),
+        base_oid: git(root, 'rev-parse', 'main'), head_branch: git(root, 'branch', '--show-current'), base_branch: 'main', state: 'OPEN', draft: false };
+      fs.writeFileSync(path.join(privateRoot, 'pr-open-provider-fixture.json'), JSON.stringify({ posts: 1, pulls: [{
+        node_id: p.node_id, number: p.number, state: 'open', draft: false,
+        head: { ref: p.head_branch, repo: { node_id: p.repository_id } }, base: { ref: p.base_branch, repo: { node_id: p.repository_id } },
+      }] }));
+      arrangeStandardReviewScenario(privateRoot, scenario);
+      const event = { contract_version: 'github-pr-review-event.v1', authority_id: 'fixture_provider', source_event_id: 'body-transfer-' + scenario,
+        repository_id: p.repository_id, pull_request_id: p.node_id, pull_request_number: p.number, head_oid: p.head_oid, base_oid: p.base_oid,
+        head_ref: p.head_branch, base_ref: p.base_branch, event_key: 'review_snapshot', revision: 'provider-revision-1',
+        occurred_at: new Date().toISOString(), actor: { node_id: 'U_fixture', login: 'fixture-reviewer', type: 'User' } };
+      const state = { pull_request: p, event, authorized: false, current: true, body_transfer_scenario: scenario, remote_root: remote };
+      const persist = () => fs.writeFileSync(stateFile(privateRoot), JSON.stringify(state)); persist();
+      const { host } = open(root, privateRoot), initial = host.initialize({ instanceId: 'body_transfer' });
+      host.initialize({ instanceId: 'body_transfer', write: true, expectedResultSha256: initial.record.instance_sha256 });
+      const before = host.inspect('body_transfer'), frame = before.cursor.occurrences.find(row => row.wait_reason === 'event');
+      const input = { instanceId: 'body_transfer', expectedSha256: before.record.instance_sha256, occurrenceId: frame.occurrence_id };
+      const capture = () => host.captureControl({ ...input, captureKind: 'pr-review-content', sourceRef: 'fixture:event', write: true });
+      await test(scenario + ': body transfer still requires event authentication', async () => {
+        await assert.rejects(capture(), { code: 'PROCESS_CONTROL_PR_NOT_AUTHENTICATED' });
+        assert.equal(host.inspect('body_transfer').record.instance_sha256, before.record.instance_sha256);
+      });
+      state.authorized = true; persist();
+      await test(scenario + ': actual composed body construction and signed capture match the declared scenario', async () => {
+        const reserved = await capture(); assert.equal(reserved.status, 'reserved');
+        const captured = host.readControl(reserved.inbox_id); assertControlInbox(captured);
+        createOperationJournalSigner(() => fs.readFileSync(path.join(privateRoot, 'host.key'))).verify(captured);
+        assert.equal(captured.payload.observation.observations.evidence.reviews[0].body_chunks.join(''), expected);
+        assertCapturedStandardReviewScenario(captured, scenario);
+        assert.throws(() => assertCapturedStandardReviewScenario(captured, scenario === 'positive' ? 'correction' : 'positive'), { code: 'ERR_ASSERTION' });
+        const altered = structuredClone(captured); altered.payload.observation.observations.evidence.reviews[0].body_chunks = [expected + ' altered'];
+        assert.throws(() => assertCapturedStandardReviewScenario(altered, scenario), { code: 'ERR_ASSERTION' });
+        assert.throws(() => createOperationJournalSigner(() => fs.readFileSync(path.join(privateRoot, 'host.key'))).verify(altered));
+        assert.equal(host.inspect('body_transfer').record.events.length, 0);
+      });
+    }
+    if (!process.argv.includes('--body-transfer-only')) {
     await test('explicit v2 inbox, event and payload schemas use only supported contract keywords', () => {
       for (const name of ['process-control-inbox.v2', 'github-pr-review-event.v1', 'process-pr-review-payload.v1']) {
         const schema = JSON.parse(fs.readFileSync(new URL('../../src/core/contracts/workflow-definition/' + name + '.schema.json', import.meta.url)));
@@ -194,7 +247,8 @@ if (process.argv[2] === '--deliver') {
         assert.equal(host.inspect('waiting').record.events.length, 1);
       });
     }
-    console.log(JSON.stringify({ status: 'PASS', checks, provider_and_event_identity: 'fixture-capabilities', accepted_update_authority: 'fixture',
+    }
+    console.log(JSON.stringify({ status: 'PASS', checks, body_transfer: 'positive-and-correction-signed-capture', provider_and_event_identity: 'fixture-capabilities', accepted_update_authority: 'fixture',
       storage_and_host: 'actual-files-SQLite-CAS-and-common-service', models: 0, ordinary_standard_route: 'NOT_RUN', triage: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN' }));
   } finally {
     for (const root of owned.reverse()) { const actual = fs.realpathSync(root); assert.equal(path.dirname(actual), parent); assert.ok(path.basename(actual).startsWith('aidn-standard-')); fs.rmSync(actual, { recursive: true, force: true }); }

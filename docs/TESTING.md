@@ -2848,6 +2848,17 @@ qualification remain NOT_RUN.
 
 ### Session PR creation and recovery
 
+Before a long composed PR trial, run
+`node tools/perf/verify-standard-pr-review-control-fixtures.mjs --body-transfer-only`.
+It exercises the same positive/correction scenario arrangement and exact-body
+assertion used by the composed driver, through the durable fake provider,
+actual local bare Git refs, content reader and signed host capture. Independent
+declared expectations reject a wrong-scenario or altered body; event
+authentication and signature verification remain required. These checks also
+run in the ordinary control fixture suite. Accepted update/context and provider
+identity remain fixture capabilities, with no native calls. This short transfer
+check does not establish complete correction producer-to-writer composition.
+
 `verify-github-pr-open-fixtures.mjs` uses the actual pinned gh/REST adapter and
 closed request/plan/link contracts, with HTTP transport doubled. It covers
 creation followed by complete re-observation, exact existing PR recovery with no

@@ -1,0 +1,35 @@
+{
+  "recorded_at_utc": "2026-11-04T05:19:47.8185892Z",
+  "parent_commit": "59e89a4c7f7c2e85493b0fd355332e4eae194e7c",
+  "scope": "Short scenario construction and signed-capture body transfer before a long composed correction trial",
+  "command": "node tools/perf/verify-standard-pr-review-control-fixtures.mjs --body-transfer-only",
+  "started_at_utc": "2026-11-04T05:17:04.1403514Z",
+  "ended_at_utc": "2026-11-04T05:18:47.7519004Z",
+  "duration_seconds": 103.0,
+  "exit_code": 0,
+  "pass_checks": 4,
+  "cleanup": {
+    "owned_roots": 6,
+    "status": "PASS"
+  },
+  "pass": [
+    "positive exact declared body through composed provider and signed host capture",
+    "correction exact declared body through composed provider and signed host capture",
+    "unauthenticated event refused for each scenario without reducer mutation",
+    "wrong scenario and altered bodies refused by exact driver assertion; altered signature refused"
+  ],
+  "models": 0,
+  "authority_boundary": "Event/provider identity and accepted update/context are fixture capabilities; actual local bare Git refs, content reader, signed host inbox and common service",
+  "not_run": [
+    "complete authenticated correction producer-to-writer composition",
+    "real native/human/provider",
+    "exact installed archive",
+    "full runtime family",
+    "Governance Admission"
+  ],
+  "skip": [],
+  "runtime_or_ir_changed": false,
+  "ordinary_entry_changed": false,
+  "complete_standard_workflow": false,
+  "log_sha256": "8501b702df1df7346c039fe9d2fedf485b95e26eeb62fec21a873bd9a9a14ba3"
+}

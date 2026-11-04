@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
+import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
 import { standardPrTriageItems } from "../../src/core/workflow/standard-pr-triage.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
@@ -778,8 +779,7 @@ if (process.argv[2] === "--mixed-continue") {
         recommendation: "continue", rationale: "Fake native wire diagnostic; no recovery or completion claim", evidence_refs: observed.evidence_refs } };
     } });
     sourceFile = resumed?.fixture.human_source_file ?? path.join(f.configuration.control_root, "standard-human-sources.json");
-    if (!resumed && standardScenarioName === "correction") fs.writeFileSync(path.join(f.configuration.control_root, "standard-pr-correction-fixture.json"), JSON.stringify({
-      review_body: "The exported product value needs a bounded correction in a new admitted cycle, followed by impacted validation and fresh delivery." }));
+    if (!resumed) arrangeStandardReviewScenario(f.configuration.control_root, standardScenarioName);
     if (!resumed) fs.writeFileSync(sourceFile, "{}");
     if (!fs.existsSync(sourceFile)) throw Error("STANDARD_FIXTURE_HUMAN_SOURCE_HISTORY_REQUIRED");
     const publish = (ref, claim) => {
@@ -846,9 +846,7 @@ if (process.argv[2] === "--mixed-continue") {
         const captured = f.open().readControl(reserved.inbox_id);
         assert.equal(captured.request.instance_sha256, request.instance_sha256);
         assert.equal(captured.payload.observation.observations.update_operation_id, intent.operation_id);
-        assert.equal(captured.payload.observation.observations.evidence.reviews[0].body_chunks.join(""), standardScenarioName === "correction"
-          ? "The exported product value needs a bounded correction in a new admitted cycle, followed by impacted validation and fresh delivery."
-          : "Complete fixture review evidence.");
+        assertCapturedStandardReviewScenario(captured, standardScenarioName);
         assert.equal(captured.phase, "reserved"); assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
         const allocations = f.open().inspectAllocations();
         const child = JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL("standard-pr-review-control-resume-fixture.mjs", import.meta.url)), resumeFile, reserved.inbox_id],
