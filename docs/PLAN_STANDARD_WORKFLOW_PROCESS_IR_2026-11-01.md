@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 130/128 et le modèle composé candidat en 71
+les composants startup/cycle en 131/129 et le modèle composé candidat en 72
 (107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
 63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -20,6 +20,28 @@ encore ouverts.
 
 ### Avancement d’exécution
 
+- Le journal conserve désormais les identifiants historiques du premier reçu
+  et distingue les suivants par leur index ; la lecture d'un ancien reçu et
+  son événement accepté restent possibles. Les 38 contrôles d'hôte passent
+  sur les trois modes, avec historiques signés construits par la fixture.
+  Le composant checkpoint observe aussi un inconnu déjà reçu sur fichiers et
+  dual, avec vrai témoin Git et propriétaire absent. Cette observation directe
+  et les tests de frontières ne prouvent pas encore la branche composée
+  hôte → réconciliation → ajout/CAS après un inconnu produit par le vrai
+  dispatcher. Propriétaire conservé, autorité expirée et reprise positive
+  DB-only restent ouverts. Voir la
+  [preuve bornée](qualification/agentic-process/operation-result-history-2026-11-04.json).
+- L'essai composé figé sur `a447a674`, modèle 70, s'est terminé avec le code 1
+  du parent et un statut enfant nul. Le dernier préfixe accepté atteint la mise
+  à jour de la PR, avec 136 événements ; l'observation suivante reste staged.
+  Le watchdog calculé et l'heure de sortie sont cohérents avec l'expiration de
+  l'attente, mais l'ancien driver ne conservait ni erreur ni signal enfant.
+  Il n'a pas atteint triage, réouverture ou récupération. Les checkpoints et
+  fermetures des huit allocations de fixture sont conservés et le préfixe
+  RUNNING se rejoue exactement. L'autorisation, les cumuls et l'échéance
+  d'origine sont inchangés. Le driver courant conserve désormais les
+  diagnostics du sous-processus avant son assertion ; aucun nouvel essai long
+  n'a été lancé pour cette modification.
 - Le premier raccord explicite de préparation après un refus accepté
   `STANDARD_PLAN_EXPIRED` passe ses 15 contrôles de composant files/dual/db-only.
   Le préfixe du modèle distribué avec ses liaisons réelles passe aussi 10 contrôles

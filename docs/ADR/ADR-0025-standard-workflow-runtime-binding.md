@@ -136,6 +136,19 @@ intent may establish the actual outcome; every earlier receipt stays in the
 journal. Operation and receipt identities cannot be reused across occurrences.
 The protocol does not promise exactly-once effects in an external system.
 
+The fixed operation host retains the first receipt/output/event identifiers and
+uses distinct indexes for later reconciliation results within the existing
+32-result journal bound. Receipt lookup authenticates the exact selected
+historical result; it is not restricted to the last result. Appending a result
+preserves the original preview, intent, grant, dispatch owner and earlier results
+through canonical CAS. Duplicate receipt identities are rejected before storage.
+The checkpoint observer may examine an already-receipted unknown only under its
+existing exact-commit, current-authorization and absent-local-owner requirements.
+This adds no recovery authority, owner takeover, TTL extension or historical
+instance conversion. Signed fixture boundary checks and direct component
+observation do not establish composed host recovery after a real unknown result;
+retained-owner, expired-authority and positive DB-only recovery remain open.
+
 V2 exposes aggregate WAITING when no leaf is ready or executing and retained waits
 remain. The v1 cursor semantics remain unchanged. The service rejects raw v2
 facts/messages through its generic control method: human/external authority

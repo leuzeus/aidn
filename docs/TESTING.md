@@ -103,9 +103,21 @@ separate future recovery while preserving the historical grant and results.
 Db-only has no operation-specific commit witness and cannot use this recovery.
 The generic signed-host suite checks explicit-write and wrong-binding refusal;
 positive correction-host recovery remains unexecuted by these component suites.
-Already receipted unknown/refused results are immutable. An unknown effect with
-a retained owner still requires authenticated resource closure and recovery
-authority, which this first missing-acknowledgement case does not implement.
+Earlier results remain immutable. The checkpoint component can also inspect a
+signed, already-receipted unknown when its exact Git witness exists and its local
+owner is absent. The files and dual suites construct that signed unknown with a
+public fixture key, invoke the real observer in a new Node process, and verify
+that Git and the prior journal remain unchanged. This is component evidence.
+The fixed host now appends distinct receipt/output indexes and result event IDs;
+index zero retains its historical identifiers. Its 38-check suite constructs
+signed result histories to exercise exact old-receipt lookup, acceptance and
+common-reducer replay/simulation in all three modes. These separate suites do
+not execute the host's reconciliation/append/CAS path after an unknown produced
+by its actual business dispatcher. That composed positive proof remains open.
+An unknown effect with a retained owner still requires authenticated resource
+closure and recovery authority. Expired original authorization and positive
+DB-only recovery also remain unimplemented. See the
+[bounded result-history record](qualification/agentic-process/operation-result-history-2026-11-04.json).
 Accepted-source authentication, native triage, provider and event capabilities
 are doubled here. The source-authority suite separately checks that its new
 provider-only observation still rejects external changes and explicitly requires
@@ -341,6 +353,20 @@ and passes it. General retained-owner or already-receipted unknown recovery,
 expired authority and positive db-only recovery remain outside this experiment.
 The fixture's native-session expectation now uses selected preflight occurrences
 instead of the obsolete eight-session constant that omitted PR triage.
+
+The frozen source experiment ended with parent exit 1. The retained child status
+was null; its last accepted prefix contained 136 events through PR update/push,
+with a staged review-content observation outside that prefix. The original
+watchdog expired about one minute after the native authorization deadline. Its
+code and timing support a watchdog explanation, but the old assertion did not
+retain `child.error` or `signal`, so the exact child termination cause is unknown.
+It did not reach the correction/recovery proof. Snapshot-only replay and streaming
+simulation reproduce the retained RUNNING prefix exactly; eight signed fixture
+allocation entries retain their cumulative consumption and checkpoint/closure
+bytes. This does not qualify the current model or general OS resource closure.
+The current driver emits bounded child status, signal, error code, PID, timeout,
+elapsed time and output sizes before its assertion. That diagnostic change does
+not extend any deadline, renew authority or rerun the frozen experiment.
 
 `verify-github-review-content-fixtures.mjs` exercises the explicit v2 review
 content and thread observations. Complete bounded review bodies, their hashes,
