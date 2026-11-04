@@ -74,7 +74,7 @@ test("current and archived v2 completions require the exact record, decision and
 });
 test("missing, reordered, duplicated or changed historical completion cannot be silently repaired", () => {
   const opened = reopen(complete(record(docs()))), pending = record(opened, "f");
-  for (const [label, content] of [["changed ancestor", pending[0].content.replace('"Verified current correction"', '"tampered"')],
+  for (const [label, content] of [["changed ancestor", pending[0].content.replace('"summary": "Verified current correction"', '"summary": "tampered"')],
     ["invalid completion", pending[0].content.replace('"record_sha256":', '"foreign":')],
     ["missing completion", opened[0].content.replace(/^## Historical Process session closure completion[^\n]*\n[\s\S]*?(?=^## )/m, "")]]) {
     assert.throws(() => readSessionClosureHistory(content), { code: "STANDARD_SESSION_CLOSURE_HISTORY_INVALID" }, label);
@@ -99,7 +99,7 @@ test("unknown versions and excessive or duplicate history refuse", () => {
 test("each archived v2 report authenticates its own historical prefix even without a current pending record", () => {
   const once = reopen(complete(record(docs()))), twice = reopen(complete(record(once, "f")), "a");
   const old = readSessionClosureHistory(twice[0].content); assert.equal(old.history.length, 2); assert.equal(old.pending, null);
-  const changedAncestor = twice[0].content.replace('"Verified current correction"', '"changed ancestor"');
+  const changedAncestor = twice[0].content.replace('"summary": "Verified current correction"', '"summary": "changed ancestor"');
   assert.throws(() => readSessionClosureHistory(changedAncestor), { code: "STANDARD_SESSION_CLOSURE_HISTORY_INVALID" });
 });
 console.log(JSON.stringify({ status: "PASS", checks, evidence: "pure-versioned-closure-history", human: "fixture", canonical_writes: "NOT_RUN", actual_hook: "NOT_RUN", native: "NOT_RUN", installed: "NOT_RUN" }));
