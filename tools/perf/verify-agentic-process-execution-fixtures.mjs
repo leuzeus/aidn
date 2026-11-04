@@ -27,7 +27,7 @@ import { fileURLToPath } from "node:url";
 import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
 import { runOwnedAgenticProcess } from "../../src/application/runtime/agentic-process-owned-run.mjs";
 import { createJournaledNativeAllocation } from "../../src/application/runtime/journaled-native-allocation.mjs";
-import { verifyNativeAuthorizationEpochs } from "./native-authorization-epoch-fixture-lib.mjs";
+import { verifyNativeAuthorizationEpochs, verifyInitialNativeAuthorizationEpochs } from "./native-authorization-epoch-fixture-lib.mjs";
 import { loadStandardWorkflowAssets, createStandardWorkflowExecution } from "../../src/application/runtime/standard-workflow-composition.mjs";
 import { createGithubPrOpenTransportFixture } from "./github-pr-open-fixture-lib.mjs";
 import { createLocalWorkflowSessionPush } from "../../src/adapters/runtime/local-workflow-session-push.mjs";
@@ -167,6 +167,9 @@ async function check(name, callback) { if (selectedStandardComposedMode && !name
   const epochMode = process.argv.find(value => value.startsWith("--native-epoch-mode="))?.slice("--native-epoch-mode=".length);
   if (epochMode && !["files", "dual", "db-only"].includes(epochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
   if (epochMode && !name.startsWith(`native epoch ${epochMode}:`)) return;
+  const initialEpochMode = process.argv.find(value => value.startsWith("--native-initial-epoch-mode="))?.slice("--native-initial-epoch-mode=".length);
+  if (initialEpochMode && !["files", "dual", "db-only"].includes(initialEpochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
+  if (initialEpochMode && !name.startsWith(`native initial epoch ${initialEpochMode}:`)) return;
   if (selectedCyclePlanMode && !name.startsWith(`cycle plan ${selectedCyclePlanMode}`)) return;
   if (selectedCycleReadinessMode && !name.startsWith(`cycle readiness ${selectedCycleReadinessMode}:`)) return;
   if (selectedCycleWorkMode && !name.startsWith(`cycle work ${selectedCycleWorkMode}:`)) return;
@@ -1206,6 +1209,7 @@ if (process.argv[2] === "--mixed-continue") {
   });
   if (selectedCycleCloseFinalizeMode) await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true, validation: true, taskProgress: true, audit: true, closure: true, closeRecord: true, closeFinalize: true });
   await verifyNativeAuthorizationEpochs(check, { readyResumeFixture, mixedFixture, bootstrapMixed });
+  await verifyInitialNativeAuthorizationEpochs(check, { journalFixture, mixedFixture, bootstrapMixed });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url) });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true });
   await verifyCyclePlanExecution(check, { mixedFixture, bootstrapMixed, script: fileURLToPath(import.meta.url), readiness: true, work: true });

@@ -71,9 +71,21 @@ The FILES variant also exercises the mixed host across deterministic work,
 an external wait and resumed native work. Native/provider/approval identities
 and process-tree control in these checks are doubles.
 
-Activation before any initial native allocation is not supported by this API;
-an expired unused initial authorization requires a separate explicitly supported
-entry route. Native generation count remains bounded to 32. Failed/unknown
+An expired unused initial authorization has a separate explicit entry route.
+The v2 request binds an empty allocation prefix, original authorization, exact
+current instance/product/configuration and a `native_scope` inventory member.
+The same out-of-band source must authenticate fresh consent and discover and
+close every resource in that scope, including resources absent from an inventory.
+No allocation, PID absence or signed claim can stand in for that source.
+Activation CAS-creates a v3 journal with the original authorization, signed
+request/grant history, zero allocations and a null original journal. It does
+not fabricate a v1 journal or claim a previously persisted origin. Subsequent
+unused epochs retain the same next generation; all allocations then subtract
+the complete cumulative debits as before. Current instance/authority is
+reobserved after asynchronous verification before the same canonical CAS.
+Reads preserve v1/v2 and never create or migrate the initial route. A first
+allocation requires the exact latest authenticated grant through the existing
+worker and common reducer. Native generation count remains bounded to 32. Failed/unknown
 allocation reconciliation, retained uncertain effect owners, admitted correction
 cycles and genuine native/human/provider/installed-archive acceptance remain
 separate requirements. Reverting new selection must retain both journal readers

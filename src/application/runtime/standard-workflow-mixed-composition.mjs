@@ -79,7 +79,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
       if (cursor.occurrences.some(frame => frame.operation?.receipt?.outcome === "reconciliation_required")) return { kind: "reconciliation", status: "WAITING", written: false };
       if (ready.some(frame => nodeFor(frame).kind === "activity")) {
         if (!write) return { kind: "native_preview", status: cursor.status, ...native.preview() };
-        return { kind: "native", ...await native.run({ execute: true, authorization, signal, resume: native.inspect() !== null }) };
+        return { kind: "native", ...await native.run({ execute: true, authorization, signal, resume: (native.inspect()?.allocations.length ?? 0) > 0 }) };
       }
       if (pending.length) {
         if (!write) return { kind: "human_wait", written: false, status: "WAITING", operation_id: pending[0].operation.intent.operation_id };

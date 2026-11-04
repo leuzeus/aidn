@@ -1,5 +1,6 @@
 import schema from "../contracts/workflow-definition/native-allocation-journal.v1.schema.json" with { type: "json" };
 import schemaV2 from "../contracts/workflow-definition/native-allocation-journal.v2.schema.json" with { type: "json" };
+import schemaV3 from "../contracts/workflow-definition/native-allocation-journal.v3.schema.json" with { type: "json" };
 import { assertNativeEpochHistory, nativeEpochForGeneration, nativeAllocationTotals, nativeLimitsOf } from "./native-authorization-epoch.mjs";
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
@@ -14,7 +15,9 @@ export function nativeJournalPath(id) {
 }
 export function assertNativeAllocationJournal(value) {
   const epochs = value?.contract_version === "native-allocation-journal.v2";
-  if (checkShadowJson(value) || validateJsonSchema(value, epochs ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
+  const initialEpoch = value?.contract_version === "native-allocation-journal.v3";
+  if (checkShadowJson(value) || validateJsonSchema(value, initialEpoch ? schemaV3 : epochs ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length) fail("NATIVE_ALLOCATION_JOURNAL_INVALID");
+  if (initialEpoch) assertNativeEpochHistory(value);
   if (epochs) {
     const { initial_authorization, origin_journal, epochs: history, ...legacy } = value;
     // Same allocation schema, without changing the historical v1 revision cap.

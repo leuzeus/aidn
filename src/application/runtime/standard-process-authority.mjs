@@ -80,7 +80,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     let native = null, covered = 0;
     if (journal) {
       signer.verify(journal); const latest = journal.allocations.at(-1);
-      if (latest.phase !== "closed") {
+      if (latest && latest.phase !== "closed") {
         if (!reservation || latest.phase !== "reserved" || latest.owner_id !== reservation.owner_id || latest.generation !== reservation.generation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE");
       } else if (reservation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
       const entry = reservation ? journal.allocations.at(-2) : latest;

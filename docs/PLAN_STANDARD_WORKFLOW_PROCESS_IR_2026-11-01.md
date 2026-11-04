@@ -9,7 +9,7 @@ restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
 Base intégrée avant les présents lots : `9fdc597`. Les assets courants révisent
-les composants startup/cycle en 134/132 et le modèle composé candidat en 75
+les composants startup/cycle en 136/134 et le modèle composé candidat en 77
 (107 nœuds, 65 occurrences d’opération, 55 identifiants de liaison mobilisés parmi
 63 liaisons enregistrées). Les preuves conservent leurs snapshots exacts : l’exécution du
 parcours composé complet de cette révision reste à qualifier. Le moteur v2 est
@@ -4188,7 +4188,11 @@ superseded at the same next native generation while retaining their history.
 The focused mode/mixed-host results remain separate evidence; source/schema
 availability alone is not the complete L4 deliverable.
 
-Initial unused authorization before any allocation still has no epoch route.
+An expired unused initial authorization now has a separate explicit v3 journal
+route and v2 request, retaining the original authorization and an empty
+allocation prefix. A scope inventory still requires independent authenticated
+discovery/closure of every resource and fresh explicit consent. Its focused
+qualification remains separate from actual native/human/provider evidence.
 Genuine human/native/provider resource closure, general positive unknown-effect
 recovery, retained owners, admitted correction cycles, physical work, fresh
 validation/reclosure, review/resolution/consent/merge/sync, all remaining

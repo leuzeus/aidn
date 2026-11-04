@@ -68,6 +68,14 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       ...(checkContext ? { controlContext: () => readNativeControlContext(config, executor.preview().product_sha256) } : {}) });
     return current;
   }
+  function initialCurrent() {
+    const current = instances.read(config.instance_id).record, actual = executor.preview();
+    const creation = { instanceId: config.instance_id, model, scopeId: actual.scope_id, policyPins: agenticPolicyPins(model), facts: {}, ...processParameterOptions(current ?? {}) };
+    const result = current ?? createAgenticProcess(creation);
+    if (processAuthority) processAuthority.authenticate(result, { productSha256: actual.product_sha256, checkControlContext: true, forNative: true });
+    else assertAgenticProcessStart(current, creation);
+    return result;
+  }
   const controls = createNativeAllocationControls({ configuration: config, signer, options, projectionRequired, source: controlSource, store: instances,
     readCurrent: authenticatedCurrent, readAuthority: () => ({ scope_id: executor.preview().scope_id, model_sha256: preview.model_sha256, policy_pins: agenticPolicyPins(model) }),
     preview: () => executor.preview() });
@@ -77,7 +85,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     return { known: true, responses: entries.reduce((sum, entry) => sum + entry.consumption.responses_observed, 0),
       bytes: entries.reduce((sum, entry) => sum + entry.consumption.storage_debit_bytes, 0) };
   }
-  const epochs = createNativeAuthorizationEpochs({ configuration: config, signer, read, write, checkpoint, authenticatedCurrent,
+  const epochs = createNativeAuthorizationEpochs({ configuration: config, signer, read, write, checkpoint, authenticatedCurrent, initialCurrent, journalId,
     preview: () => executor.preview(), source: nativeAuthorizationSource, processAuthority,
     materialize: () => { if (projectionRequired) store.materialize(journalId, { write: true }); } });
   return Object.freeze({
@@ -116,7 +124,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       if (before.record?.allocations.length >= 32) fail("NATIVE_ALLOCATION_GENERATION_LIMIT");
       let auth = structuredClone(authorization);
       if (checkShadowJson(auth) || auth?.approved !== true || auth.model_allowed !== true || auth.configuration_sha256 !== configurationSha) fail("PROCESS_EXECUTION_EXPLICIT_AUTHORIZATION_REQUIRED");
-      if (before.record?.contract_version === "native-allocation-journal.v2") auth = effectiveNativeEpochAuthorization(before.record, auth);
+      if (before.record?.epochs) auth = effectiveNativeEpochAuthorization(before.record, auth);
       else if (previous) {
         const ceiling = before.record.allocations[0].limits;
         if (["max_responses", "max_bytes", "max_turn_ms", "global_deadline_ms", "workflow_deadline_ms"].some(key => auth[key] > ceiling[key])) fail("NATIVE_ALLOCATION_LIMIT_INCREASE_UNAUTHORIZED");

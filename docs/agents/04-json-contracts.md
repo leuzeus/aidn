@@ -7,6 +7,12 @@ explicit activation. Historical instance/checkpoint/v1 journal readers remain
 unchanged; reads never activate an epoch. These internal contracts add no public
 CLI output case. See ADR-0026.
 
+The separate initial-entry route uses `native-allocation-journal.v3` and
+`native-authorization-epoch-request.v2`. It preserves an expired unused original
+authorization and an authenticated empty allocation prefix. A native-scope
+inventory still requires independent complete resource discovery and closure;
+absence of allocations is not a termination proof. V1/v2 schemas are unchanged.
+
 
 ## Purpose
 

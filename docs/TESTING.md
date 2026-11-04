@@ -16,7 +16,11 @@ must preserve every original accepted event and checkpoint.
 Approval, native transport and process control are doubles. Genuine human,
 provider and native all-resource closure, general unknown-effect reconciliation,
 correction-cycle admission and exact installed archive qualification remain
-separate. The initial unused grant before any allocation has no epoch route.
+separate. `--native-initial-epoch-mode=files|dual|db-only` selects the separate
+expired-unused-initial-grant route. It checks the explicit v3 journal's empty
+origin, scope-bound authenticated closure, no launch during preparation or
+activation, exact new grant at generation one, cold readers and common replay.
+Its approval, resource discovery and native transport remain fixture doubles.
 Existing `--journal-only`, `--resume-only` and `--mixed-only` remain separate
 regression checks. See ADR-0026 for the source and persistence contract.
 

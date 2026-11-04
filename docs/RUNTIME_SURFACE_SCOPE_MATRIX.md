@@ -7,6 +7,11 @@ It adds no table, shared synchronization, backend fallback or db-only export.
 The trusted approval/resource-closure source is composed outside process JSON;
 fixture evidence cannot establish actual human/provider/native termination.
 Historical process instances and v1 journals retain their readers.
+An explicitly activated v3 journal may begin with no native allocation after
+the original unused authorization expires. Its v2 request binds the current
+native scope; the trusted source must discover and close all resources even
+when no allocation is retained. It uses the same artifact CAS/projections,
+preserves the original authorization and creates no synthetic v1 origin.
 
 
 PR triage selection and evaluation use the existing authenticated operation

@@ -1,0 +1,403 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/native-allocation-journal.v3",
+  "x-aidn-contract-version": "native-allocation-journal.v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "journal_id",
+    "instance_id",
+    "scope_id",
+    "model_sha256",
+    "revision",
+    "allocations",
+    "key_id",
+    "authentication",
+    "initial_authorization",
+    "epochs",
+    "origin_journal"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "native-allocation-journal.v3"
+    },
+    "journal_id": {
+      "type": "string",
+      "pattern": "^native_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "model_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 96
+    },
+    "allocations": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation",
+          "owner_id",
+          "configuration_sha256",
+          "authorization_sha256",
+          "initial_instance_sha256",
+          "limits",
+          "phase",
+          "owned_result_sha256",
+          "tree_proof_sha256",
+          "tree_closed",
+          "owned_status",
+          "first_failure",
+          "checkpoint",
+          "consumption",
+          "closure_ref"
+        ],
+        "properties": {
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32
+          },
+          "owner_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "configuration_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "authorization_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "initial_instance_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "limits": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "configuration_sha256",
+              "authorized_at_ms",
+              "global_deadline_ms",
+              "workflow_deadline_ms",
+              "max_turn_ms",
+              "max_responses",
+              "max_bytes"
+            ],
+            "properties": {
+              "configuration_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "authorized_at_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "global_deadline_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "workflow_deadline_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "max_turn_ms": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2700000
+              },
+              "max_responses": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120
+              },
+              "max_bytes": {
+                "type": "integer",
+                "minimum": 1048576,
+                "maximum": 471859200
+              }
+            }
+          },
+          "phase": {
+            "enum": [
+              "reserved",
+              "closed",
+              "failed",
+              "unresolved"
+            ]
+          },
+          "owned_result_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "tree_proof_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "tree_closed": {
+            "type": "boolean"
+          },
+          "owned_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_failure": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checkpoint": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "sha256",
+                  "state_sha256",
+                  "instance_sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "state_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "instance_sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "consumption": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "responses_observed",
+                  "response_sha256",
+                  "storage_debit_bytes",
+                  "native_usage_sha256"
+                ],
+                "properties": {
+                  "responses_observed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120
+                  },
+                  "response_sha256": {
+                    "type": "array",
+                    "maxItems": 120,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "storage_debit_bytes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "native_usage_sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closure_ref": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "initial_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved",
+        "model_allowed",
+        "configuration_sha256",
+        "authorized_at_ms",
+        "global_deadline_ms",
+        "workflow_deadline_ms",
+        "max_turn_ms",
+        "max_responses",
+        "max_bytes"
+      ],
+      "properties": {
+        "approved": {
+          "const": true
+        },
+        "model_allowed": {
+          "const": true
+        },
+        "configuration_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "authorized_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "global_deadline_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "workflow_deadline_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "max_turn_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2700000
+        },
+        "max_responses": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 471859200
+        }
+      }
+    },
+    "epochs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 31,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "epoch",
+          "start_generation",
+          "request",
+          "grant"
+        ],
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 32
+          },
+          "start_generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32
+          },
+          "request": {
+            "type": "object"
+          },
+          "grant": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "origin_journal": {
+      "type": "null"
+    }
+  }
+}

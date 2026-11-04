@@ -7,6 +7,94 @@ import { assertNativeAllocationJournal } from "../../src/core/workflow/native-al
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 
+export async function verifyInitialNativeAuthorizationEpochs(check, { journalFixture, mixedFixture, bootstrapMixed }) {
+  for (const mode of ["files", "dual", "db-only"]) await check(`native initial epoch ${mode}: expired unused original grant retains zero-allocation origin and requires authenticated scope closure`, async () => {
+    const f = journalFixture({ stateMode: mode, git: true }), original = f.authorize(), realNow = Date.now;
+    assert.throws(() => f.open().prepareAuthorizationEpoch({ originalAuthorization: original }), /INITIAL_AUTHORIZATION_NOT_EXPIRED/);
+    const offset = original.global_deadline_ms + 1 - realNow(); Date.now = () => realNow() + offset;
+    let lastGrant, mutation, verified = 0;
+    const source = { async read({ request }) {
+      lastGrant = { contract_version: "native-authorization-epoch-grant.v1", authority_id: "fixture_initial_consent", source_event_id: `initial-${request.epoch}`,
+        request_sha256: shadowHash(request), authorization: { ...original, authorized_at_ms: Date.now(), global_deadline_ms: Date.now() + 600000,
+          workflow_deadline_ms: Date.now() + 600000, max_responses: 10 },
+        closure: { contract_version: "native-resource-closure.v1", request_sha256: shadowHash(request), inventory_sha256: shadowHash(request.resources),
+          observed_at_ms: Date.now(), complete: true, active_resources: 0, evidence_class: "fixture",
+          resources: request.resources.map(resource => ({ resource_sha256: shadowHash(resource), state: "closed", evidence_refs: [{ ref: "fixture:scope-resource-discovery", sha256: shadowHash(resource) }] })) },
+        evidence_refs: [{ ref: "fixture:fresh-explicit-initial-consent", sha256: "c".repeat(64) }] };
+      mutation?.(lastGrant); return lastGrant;
+    }, async verify({ grant }) { verified++; return { outcome: "verified", authority_id: grant.authority_id, grant_sha256: shadowHash(grant), evidence_class: "fixture" }; } };
+    const actor = () => f.open(() => f.key, source);
+    try {
+      await assert.rejects(f.open().run({ execute: true, authorization: original }), /AUTHORIZATION_EXPIRED/);
+      assert.equal(actor().inspect(), null); assert.equal(f.launches ?? 0, 0);
+      const request = actor().prepareAuthorizationEpoch({ originalAuthorization: original });
+      assert.equal(request.contract_version, "native-authorization-epoch-request.v2"); assert.equal(request.next_generation, 1);
+      assert.equal(request.journal_sha256, shadowHash(null)); assert.deepEqual(request.consumption, { known: true, responses: 0, bytes: 0 });
+      assert.equal(request.resources.length, 1); assert.equal(request.resources[0].kind, "native_scope");
+      assert.equal(actor().inspect(), null); assert.equal((await actor().activateAuthorizationEpoch(request)).status, "preview");
+      await assert.rejects(f.open().activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" }), /AUTHENTICATED_SOURCE_REQUIRED/);
+      for (mutation of [grant => { grant.closure.resources = []; }, grant => { grant.closure.active_resources = 1; }, grant => { grant.authorization.approved = false; }]) {
+        await assert.rejects(actor().activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" }), /NATIVE_EPOCH_/);
+        assert.equal(actor().inspect(), null);
+      }
+      mutation = null;
+      const unverified = f.open(() => f.key, { read: source.read, async verify() { return { outcome: "denied" }; } });
+      await assert.rejects(unverified.activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" }), /SOURCE_NOT_AUTHENTICATED/);
+      assert.equal((await actor().activateAuthorizationEpoch(request, { write: true, sourceRef: "fresh" })).journal_phase, "absent");
+      const active = actor().inspect(); assertNativeAllocationJournal(active);
+      assert.equal(active.contract_version, "native-allocation-journal.v3"); assert.equal(active.origin_journal, null);
+      assert.deepEqual(active.initial_authorization, original); assert.deepEqual(active.allocations, []); assert.equal(f.launches ?? 0, 0);
+      const verifiedBefore = verified; assert.equal((await actor().activateAuthorizationEpoch(request)).authorization_status, "active"); assert.equal(verified, verifiedBefore);
+      const bad = structuredClone(active); bad.epochs[0].request.journal_sha256 = "f".repeat(64);
+      assert.throws(() => assertNativeAllocationJournal(bad), /NATIVE_EPOCH_/);
+      await assert.rejects(actor().run({ execute: true, authorization: original }), /EXACT_GRANT_REQUIRED/);
+      const grant = active.epochs[0].grant.authorization;
+      const result = await actor().run({ execute: true, authorization: grant }); assert.equal(result.status, "COMPLETED", JSON.stringify(result));
+      const final = actor().inspect(), checkpoint = actor().readCheckpoint(1); assertNativeAllocationJournal(final);
+      assert.deepEqual(final.initial_authorization, original); assert.deepEqual(final.epochs, active.epochs); assert.equal(final.allocations.length, 1);
+      assert.equal(final.allocations[0].authorization_sha256, shadowHash(grant)); assert.equal(f.launches, 1);
+      const instance = checkpoint.state.instance;
+      assert.equal(simulateAgenticProcess({ instanceId: instance.instance_id, model: instance.model, scopeId: instance.scope_id,
+        policyPins: instance.policy_pins, events: instance.events }).trace.at(-1).instance_sha256, instance.instance_sha256);
+      const input = path.join(f.base, "initial-epoch-cold.json"); fs.writeFileSync(input, JSON.stringify({ configuration: f.configuration, key: f.key.toString("hex"), environment: f.environment }));
+      const module = new URL("../../src/application/runtime/journaled-native-allocation.mjs", import.meta.url).href;
+      const script = `import fs from 'node:fs';import{createJournaledNativeAllocation}from ${JSON.stringify(module)};const c=JSON.parse(fs.readFileSync(process.argv[1]));const h=createJournaledNativeAllocation({configuration:c.configuration,readSigningKey:()=>Buffer.from(c.key,'hex'),environment:c.environment});console.log(JSON.stringify({journal:h.inspect(),checkpoint:h.readCheckpoint(1)}));`;
+      const cold = spawnSync(process.execPath, ["--input-type=module", "-e", script, input], { encoding: "utf8", shell: false, timeout: 120000, maxBuffer: 1048576 });
+      assert.equal(cold.status, 0, cold.stderr); assert.deepEqual(JSON.parse(cold.stdout), { journal: final, checkpoint });
+    } finally { Date.now = realNow; }
+  });
+  await check("native initial epoch files: mixed IR consumes the fresh initial grant at its first native boundary", async () => {
+    let grant, reads = 0;
+    const source = { async read({ request }) {
+      reads++;
+      grant = { contract_version: "native-authorization-epoch-grant.v1", authority_id: "fixture_initial_consent", source_event_id: "mixed-initial-epoch",
+        request_sha256: shadowHash(request), authorization: { ...request.initial_authorization, authorized_at_ms: Date.now(),
+          global_deadline_ms: Date.now() + 600000, workflow_deadline_ms: Date.now() + 600000 },
+        closure: { contract_version: "native-resource-closure.v1", request_sha256: shadowHash(request), inventory_sha256: shadowHash(request.resources),
+          observed_at_ms: Date.now(), complete: true, active_resources: 0, evidence_class: "fixture",
+          resources: request.resources.map(resource => ({ resource_sha256: shadowHash(resource), state: "closed", evidence_refs: [{ ref: "fixture:scope-discovery", sha256: shadowHash(resource) }] })) },
+        evidence_refs: [{ ref: "fixture:explicit-human-consent", sha256: "e".repeat(64) }] }; return grant;
+    }, async verify({ grant: supplied }) { assert.deepEqual(supplied, grant); return { outcome: "verified", authority_id: grant.authority_id, grant_sha256: shadowHash(grant), evidence_class: "fixture" }; } };
+    const f = mixedFixture("files", { nativeAuthorizationSource: source }), original = await bootstrapMixed(f), realNow = Date.now;
+    const offset = original.global_deadline_ms + 1 - realNow(); Date.now = () => realNow() + offset;
+    try {
+      const before = f.open().inspect().record;
+      const request = f.open().prepareNativeAuthorizationEpoch({ originalAuthorization: original });
+      assert.equal(request.instance_sha256, before.instance_sha256); assert.equal(request.next_generation, 1);
+      assert.equal((await f.open().activateNativeAuthorizationEpoch(request, { write: true, sourceRef: "fresh" })).journal_phase, "absent");
+      assert.equal(f.t.sessions.length, 0); assert.equal(reads, 1); assert.equal(f.open().inspect().record.instance_sha256, before.instance_sha256);
+      const first = await f.open().step({ write: true, authorization: grant.authorization });
+      assert.equal(first.kind, "native"); assert.equal(first.journal_phase, "closed", JSON.stringify(first));
+      const checkpoint = f.open().readCheckpoint(1), journal = f.open().inspectAllocations();
+      assert.equal(journal.contract_version, "native-allocation-journal.v3"); assert.deepEqual(journal.initial_authorization, original);
+      assert.deepEqual(checkpoint.state.instance.events.slice(0, before.events.length), before.events);
+      const instance = checkpoint.state.instance;
+      assert.equal(simulateAgenticProcess({ instanceId: instance.instance_id, model: instance.model, scopeId: instance.scope_id,
+        policyPins: instance.policy_pins, events: instance.events }).trace.at(-1).instance_sha256, instance.instance_sha256);
+    } finally { Date.now = realNow; }
+  });
+}
+
 export async function verifyNativeAuthorizationEpochs(check, { readyResumeFixture, mixedFixture, bootstrapMixed }) {
   for (const mode of ["files", "dual", "db-only"]) await check(`native epoch ${mode}: fresh verified closure authorizes a new cumulative grant without replaying historical work`, async () => {
     let duringReservation = async () => {};

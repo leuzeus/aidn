@@ -1,23 +1,25 @@
 import { randomUUID } from "node:crypto";
-import { assertNativeAuthorization, assertNativeEpochRequest, assertNativeEpochGrant, nativeAllocationTotals } from "../../core/workflow/native-authorization-epoch.mjs";
+import { assertNativeAuthorization, assertNativeEpochRequest, assertNativeEpochGrant, nativeAllocationTotals, nativeInitialScope } from "../../core/workflow/native-authorization-epoch.mjs";
 import { inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { shadowHash, freezeShadow } from "../../core/workflow/shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // The embedding supplies an authenticated approval/closure source out of band.
 // Neither authored JSON nor the host MAC establishes a human or OS observation.
-export function createNativeAuthorizationEpochs({ configuration, signer, read, write, checkpoint, authenticatedCurrent, preview, source, processAuthority, materialize }) {
+export function createNativeAuthorizationEpochs({ configuration, signer, read, write, checkpoint, authenticatedCurrent, initialCurrent, journalId, preview, source, processAuthority, materialize }) {
   const configSha = shadowHash(configuration);
   function snapshot(original) {
     const before = read(), journal = before.record;
-    if (!journal?.allocations.length || journal.allocations.length >= 32) fail("NATIVE_EPOCH_HISTORY_REQUIRED");
-    const consumed = nativeAllocationTotals(journal.allocations);
+    if ((journal?.allocations.length ?? 0) >= 32 || (journal?.epochs?.length ?? 0) >= 31) fail("NATIVE_EPOCH_HISTORY_REQUIRED");
+    const allocations = journal?.allocations ?? [], consumed = nativeAllocationTotals(allocations);
     if (!consumed.known) fail("NATIVE_EPOCH_RESOURCE_RECONCILIATION_REQUIRED");
-    const initial = journal.initial_authorization ?? assertNativeAuthorization(structuredClone(original));
+    const initial = journal?.initial_authorization ?? assertNativeAuthorization(structuredClone(original));
     if (original && shadowHash(original) !== shadowHash(initial)) fail("NATIVE_EPOCH_ORIGINAL_AUTHORIZATION_CHANGED");
-    if (shadowHash(initial) !== journal.allocations[0].authorization_sha256) fail("NATIVE_EPOCH_ORIGINAL_AUTHORIZATION_CHANGED");
+    if (initial.configuration_sha256 !== configSha || journal?.contract_version === "native-allocation-journal.v1"
+      && shadowHash(initial) !== allocations[0].authorization_sha256) fail("NATIVE_EPOCH_ORIGINAL_AUTHORIZATION_CHANGED");
+    if (!journal && Date.now() < Math.min(initial.global_deadline_ms, initial.workflow_deadline_ms)) fail("NATIVE_EPOCH_INITIAL_AUTHORIZATION_NOT_EXPIRED");
     const resources = new Map();
-    for (const entry of journal.allocations) {
+    for (const entry of allocations) {
       const evidence = checkpoint(entry);
       if (!evidence.state.parent_closed) fail("NATIVE_EPOCH_RESOURCE_RECONCILIATION_REQUIRED");
       const allocation = { kind: "allocation", generation: entry.generation, owner_id: entry.owner_id,
@@ -28,18 +30,19 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
         resources.set(shadowHash(resource), resource);
       }
     }
-    const current = authenticatedCurrent(true), cursor = inspectAgenticProcess(current), actual = preview();
+    const current = allocations.length ? authenticatedCurrent(true) : initialCurrent(), cursor = inspectAgenticProcess(current), actual = preview();
     if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) fail("NATIVE_EPOCH_TERMINAL_INSTANCE");
-    return { before, body: { instance_id: configuration.instance_id, scope_id: journal.scope_id, model_sha256: journal.model_sha256,
+    if (!allocations.length) { const resource = nativeInitialScope({ instance_id: configuration.instance_id, scope_id: actual.scope_id, configuration_sha256: configSha }); resources.set(shadowHash(resource), resource); }
+    return { before, body: { instance_id: configuration.instance_id, scope_id: actual.scope_id, model_sha256: actual.model_sha256,
       configuration_sha256: configSha, instance_sha256: current.instance_sha256, product_sha256: actual.product_sha256,
-      journal_sha256: shadowHash(journal), allocations_sha256: shadowHash(journal.allocations),
-      previous_epoch_sha256: journal.epochs?.length ? shadowHash(journal.epochs.at(-1)) : null,
-      epoch: (journal.epochs?.length ?? 0) + 2, next_generation: journal.allocations.length + 1,
+      journal_sha256: shadowHash(journal), allocations_sha256: shadowHash(allocations),
+      previous_epoch_sha256: journal?.epochs?.length ? shadowHash(journal.epochs.at(-1)) : null,
+      epoch: (journal?.epochs?.length ?? 0) + 2, next_generation: allocations.length + 1,
       initial_authorization: initial, consumption: consumed, resources: [...resources.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, resource]) => resource) } };
   }
   function prepare({ originalAuthorization } = {}) {
     const { body } = snapshot(originalAuthorization), now = Date.now();
-    return freezeShadow(signer.seal({ contract_version: "native-authorization-epoch-request.v1", request_id: randomUUID(),
+    return freezeShadow(signer.seal({ contract_version: body.next_generation === 1 ? "native-authorization-epoch-request.v2" : "native-authorization-epoch-request.v1", request_id: randomUUID(),
       ...body, issued_at_ms: now, expires_at_ms: now + 300000 }));
   }
   function current(request) {
@@ -63,9 +66,9 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
       const latest = observed.allocations.at(-1), grant = retained.grant.authorization;
       const authorizationStatus = retained !== observed.epochs.at(-1) ? "superseded"
         : Date.now() >= Math.min(grant.global_deadline_ms, grant.workflow_deadline_ms) ? "expired"
-          : latest.phase !== "closed" ? "resources_unresolved" : "active";
+          : latest && latest.phase !== "closed" ? "resources_unresolved" : "active";
       return { status: "retained", authorization_status: authorizationStatus, epoch: retained.epoch, retained: true,
-        written: false, native_started: false, journal_phase: latest.phase };
+        written: false, native_started: false, journal_phase: latest?.phase ?? "absent" };
     }
     current(request);
     if (!explicit) return { status: "preview", written: false, native_started: false, request };
@@ -76,7 +79,7 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
       try {
         current(request);
         const value = await source.read({ request, sourceRef });
-        if (value === null) return { status: "WAITING", written: false, native_started: false, journal_phase: "closed" };
+        if (value === null) return { status: "WAITING", written: false, native_started: false, journal_phase: request.next_generation === 1 ? "absent" : "closed" };
         const grant = freezeShadow(structuredClone(value)); assertNativeEpochGrant(grant, request);
         const verified = await source.verify({ request, grant, sourceRef });
         if (verified?.outcome !== "verified" || verified.authority_id !== grant.authority_id || verified.grant_sha256 !== shadowHash(grant)
@@ -85,16 +88,17 @@ export function createNativeAuthorizationEpochs({ configuration, signer, read, w
         if (grant.closure.observed_at_ms > now || now - grant.closure.observed_at_ms > 60000
           || grant.authorization.global_deadline_ms <= now + 30000 || grant.authorization.workflow_deadline_ms <= now + 30000) fail("NATIVE_EPOCH_FRESH_CLOSURE_REQUIRED");
         const before = current(request), journal = before.record;
-        if (journal.epochs?.some(row => row.grant.authority_id === grant.authority_id && row.grant.source_event_id === grant.source_event_id)) fail("NATIVE_EPOCH_SOURCE_REUSED");
-        const { authentication, key_id, ...body } = journal;
+        if (journal?.epochs?.some(row => row.grant.authority_id === grant.authority_id && row.grant.source_event_id === grant.source_event_id)) fail("NATIVE_EPOCH_SOURCE_REUSED");
+        const { authentication, key_id, ...body } = journal ?? { journal_id: journalId, instance_id: configuration.instance_id,
+          scope_id: request.scope_id, model_sha256: request.model_sha256, revision: 0, allocations: [] };
         const epoch = { epoch: request.epoch, start_generation: request.next_generation, request, grant };
         // CAS is the only activation point. All old allocations and grants are
         // retained verbatim; a competing reservation invalidates this prefix.
         committing = true;
-        write({ ...body, contract_version: "native-allocation-journal.v2", revision: body.revision + 1,
-          initial_authorization: request.initial_authorization, origin_journal: body.origin_journal ?? journal,
+        write({ ...body, contract_version: !journal || journal.contract_version === "native-allocation-journal.v3" ? "native-allocation-journal.v3" : "native-allocation-journal.v2", revision: body.revision + 1,
+          initial_authorization: request.initial_authorization, origin_journal: Object.hasOwn(body, "origin_journal") ? body.origin_journal : journal,
           epochs: [...(body.epochs ?? []), epoch] }, before.content_sha256);
-        return { status: "authorized", epoch: epoch.epoch, retained: false, written: true, native_started: false, journal_phase: "closed" };
+        return { status: "authorized", epoch: epoch.epoch, retained: false, written: true, native_started: false, journal_phase: request.next_generation === 1 ? "absent" : "closed" };
       } catch (error) { if (!committing) error.effect_status = "no_effect"; throw error; }
     };
     return processAuthority ? processAuthority.withNativeOwner({ instance_id: configuration.instance_id, epoch_request_sha256: shadowHash(request) }, commit) : commit();
