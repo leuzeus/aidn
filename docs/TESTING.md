@@ -352,6 +352,19 @@ provider and exact installed-archive qualification remain separate.
 
 ## Structured agentic process
 
+The separate `--standard-composed-scenario=correction-full` selects
+`composed-correction.v3.json`. With `--standard-composed-stop=component_complete`,
+it targets the published model's full corrective cycle, fresh session closure,
+integration, redelivery and a second authenticated review delivery. The new
+scenario declares 17 responses before its own authorization. It cannot be
+substituted into an older cold prefix. The fixture person selects fresh cycle
+fields in the actual v3 question; the initializer and Native fixture consume
+accepted output and host-supplied context. The first and corrective plans select
+different checks expecting exactly 2 and 3. Native transport and human/provider
+identities remain doubles; Git/bare, canonical storage and application ports
+remain real. Adding this scenario or passing preflight does not qualify it.
+The final review still does not establish provider replies/resolutions or merge.
+
 The candidate correction-host route is selected by
 `verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files
 --standard-composed-stop=component_complete --standard-composed-scenario=correction`.

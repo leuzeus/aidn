@@ -1,5 +1,17 @@
 # Standard workflow IR traceability
 
+The separate `composed-correction.v3.json` fixture targets both cycles in model
+101, including the accepted human-selected cycle fields, ordinary planning and
+readiness, actual admitted work, independent audit, retained closure, optional
+promotion, fresh session closure/history, integration, redelivery and new review.
+The driver reads the cycle from authenticated host contexts and accepted
+initializer output. Its two planned checks independently expect values 2 and 3;
+neither check accepts both values. This driver preparation and its synthetic
+budget preflight are not evidence of a successful causal execution. The earlier
+v2 nine-response prefix and all its original authorities remain separate.
+General startup/session/mode/cycle choices, repeated corrections, A2, general L4,
+provider responses/resolutions, merge and full L1–L8/A1–A10 remain outstanding.
+
 The candidate PR continuation includes `session_pr_correction_reopen` under
 SPEC R03/R04/R07/R08/R11 and packaged `pr-orchestrate`. The deterministic mutating
 binding resolves only the prior accepted triage identity. Its fixed host composes

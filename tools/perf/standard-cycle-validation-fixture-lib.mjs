@@ -30,7 +30,8 @@ export function fixtureValidationBoundary({ configuration }) {
     async requestStop({ invocationId }) { return finished.get(invocationId) ?? new Promise(() => {}); },
   };
 }
-export function createValidationProfileFixture(base, { status = "passed", mode = "normal", duration = 600000, testRef = "TEST:VALUE", writableControl = false } = {}) {
+export function createValidationProfileFixture(base, { status = "passed", mode = "normal", duration = 600000, testRef = "TEST:VALUE", writableControl = false, expectedValue = 2 } = {}) {
+  assert.ok(Number.isSafeInteger(expectedValue));
   const control = path.join(base, "validation-control"); fs.mkdirSync(control, { recursive: true });
   const snapshots = path.join(control, "snapshots"), evidence = path.join(control, "evidence"); fs.mkdirSync(snapshots); fs.mkdirSync(evidence);
   const write = (name, data) => { const file = path.join(control, name), bytes = Buffer.from(typeof data === "string" ? data : JSON.stringify(data)); fs.writeFileSync(file, bytes); return { path: file, sha256: hash(bytes) }; };
@@ -38,7 +39,7 @@ export function createValidationProfileFixture(base, { status = "passed", mode =
   const counter = path.join(control, "calls.jsonl"); fs.writeFileSync(counter, "");
   const configuration = { roots: { snapshots }, environment_sha256: shadowHash(environment), runner: { executable: process.execPath, sha256: hash(fs.readFileSync(process.execPath)) }, fixture_counter: counter, fixture_mode: mode };
   if (writableControl) configuration.roots.scratch = evidence;
-  const script = write("check.mjs", mode === "node-timeout" ? "setInterval(()=>{},1000);\n" : `import fs from "node:fs";\nimport path from "node:path";\nimport { pathToFileURL } from "node:url";\nconst subject=await import(pathToFileURL(path.resolve("app.mjs")).href);\n${mode === "mutate" ? 'fs.writeFileSync("app.mjs", "changed");' : ""}\nprocess.stdout.write(${mode === "malformed" ? '"no verdict"' : 'JSON.stringify({contract_version:"agent-verification-check.v1",validation_id:'+JSON.stringify(testRef)+',status:subject.value===2 && Object.keys(subject).join() === "value"?process.argv[2]:"failed"})'});\n`);
+  const script = write("check.mjs", mode === "node-timeout" ? "setInterval(()=>{},1000);\n" : `import fs from "node:fs";\nimport path from "node:path";\nimport { pathToFileURL } from "node:url";\nconst subject=await import(pathToFileURL(path.resolve("app.mjs")).href);\n${mode === "mutate" ? 'fs.writeFileSync("app.mjs", "changed");' : ""}\nprocess.stdout.write(${mode === "malformed" ? '"no verdict"' : 'JSON.stringify({contract_version:"agent-verification-check.v1",validation_id:'+JSON.stringify(testRef)+',status:subject.value==='+expectedValue+' && Object.keys(subject).join() === "value"?process.argv[2]:"failed"})'});\n`);
   const profile = { contract_version: "standard-cycle-validation-profile.v1", id: "fixture_checks", boundary_configuration: write("boundary.json", configuration),
     qualification: write("qualification.json", {}), public_key: write("public.pem", "fixture-only"), evidence_root: evidence, snapshot_root: snapshots, environment,
     checks: [{ test_ref: testRef, script, snapshot_path: "_aidn_checks/check.mjs", args: [status] }],

@@ -21,6 +21,21 @@ datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
 
+- SOURCE37 prépare un scénario composé v3 distinct pour le parcours C2 complet
+  du modèle 101 : choix humain libre, initialisation, planification depuis le
+  contexte authentifié, admission du travail, vérificateur propre au cycle,
+  audit, clôture, promotion, reclôture et redelivery suivie d'une nouvelle revue.
+  Le driver consomme l'identité renvoyée par la décision acceptée, plutôt qu'un
+  identifiant C2 dans ses paramètres. Le préflight prévoit 17 réponses pour ce
+  nouveau scénario ; ce nombre reste à vérifier sur source gelée et ne modifie
+  aucun ancien plafond. Fichiers : driver composé, helper de cycle, scénario
+  `composed-correction.v3.json` et vérification de préflight. Dépendances : ports
+  SOURCE30–33 et décision v3 SOURCE36. Critère : parcours causal sur projet
+  distinct, puis replay/simulation du même modèle sans répéter les effets.
+  À ce stade la préparation du driver n'est pas sa qualification. Les choix
+  généraux de démarrage/session/mode/cycle/topologie, A2, L4 et l'ensemble
+  L1–L8/A1–A10 restent ouverts ; entrée ordinaire et marqueur inchangés.
+
 - SOURCE36 ajoute la décision corrective v3 : la personne choisit elle-même
   l’identifiant, le titre et l’objectif du nouveau cycle, plutôt que valider
   un candidat fourni par les paramètres. La question lie le checkpoint et
@@ -28,10 +43,10 @@ datés de `dd1dbab`, distincts de cet avancement.
   conserve la source et son empreinte ; l’IR consomme la sortie acceptée. Les
   lecteurs historiques sont conservés. Décision/inbox 27 PASS, composition 32
   PASS, modèle 22 PASS et politiques/docrefs PASS sur 2ebe32c3 ; opérations/
-  réducteur 27 PASS sur c4d89041. Les deux essais DB-only
-  2ebe32c3/c4d89041 sont terminaux PASS (six contrôles chacun) ; les quatre cas
-  FILES/DUAL sont encore en cours à ce relevé, avec leurs projets distincts et
-  autorités doublées.
+  réducteur 27 PASS sur c4d89041. Les deux essais DB-only et les quatre essais
+  FILES/DUAL 2ebe32c3/c4d89041 ont depuis terminé PASS (six contrôles chacun),
+  avec leurs projets distincts et autorités doublées. Les 13 cas SOURCE36 sont
+  terminaux ; principal et supplément tardif conservent les observations datées.
   La [preuve ciblée](qualification/standard-workflow/human-selected-correction-cycle-components-2026-11-04.json)
   conserve les sources exactes et les limites.
   Le choix général d’un cycle existant au démarrage, les corrections répétées,

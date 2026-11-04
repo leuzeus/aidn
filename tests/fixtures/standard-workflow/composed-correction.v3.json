@@ -1,0 +1,11 @@
+{
+  "contract_version": "fixture-standard-composed-scenario.v3",
+  "mode": "COMMITTING",
+  "closure": "retain",
+  "promotion": "promote",
+  "task_iterations": 1,
+  "cold_resume": true,
+  "max_responses": 17,
+  "interruption": null,
+  "review_disposition": "valid_finding"
+}

@@ -48,6 +48,24 @@ test("versioned correction route selects canonical reopening without another nat
   assert.ok(!plan().operations.includes("session_pr_correction_reopen"));
   assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, review_disposition: "unknown" } }), { code: "STANDARD_FIXTURE_SCENARIO_INVALID" });
 });
+test('v3 plans both cycles through the same published model, new closure, redelivery and review', () => {
+  const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
+  const result = preflightStandardComposedFixture({ model, scenario: correction });
+  assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'COMPLETED');
+  assert.ok(result.operations.includes('correction_initialize'));
+  assert.ok(result.operations.includes('correction_session_branch_integrate'));
+  assert.ok(result.operations.includes('correction_pr_redelivery_push'));
+  assert.ok(result.operations.includes('correction_pr_triage_evaluate'));
+  assert.equal(result.native_occurrences.filter(row => row.node_id === 'correction_implement').length, 1);
+  assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
+  assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, max_responses: 16 } }), { code: 'STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT' });
+  for (const outcome of ['blocked', 'deferred', 'rejected', 'failed', 'cancelled']) {
+    const stopped = preflightStandardComposedFixture({ model, scenario: { ...correction, interruption: { node_id: 'session_pr_correction_decide', outcome } } });
+    assert.equal(stopped.responses_required, 9); assert.equal(stopped.interrupted, true);
+    assert.ok(!stopped.operations.includes('correction_initialize'));
+    assert.notEqual(stopped.planned_status, 'COMPLETED');
+  }
+});
 test("skipped promotion selects eight turns despite nine catalog activities", () => {
   const result = plan({ promotion: "skip", max_responses: 8 }); assert.equal(result.responses_required, 8);
   assert.ok(!result.native_occurrences.some(n => n.node_id === "promotion_drift_report"));

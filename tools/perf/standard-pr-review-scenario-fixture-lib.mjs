@@ -7,6 +7,7 @@ import { assertNativeActivityAnswer } from '../../src/core/workflow/native-activ
 const expectedBodies = Object.freeze({
   positive: 'Complete fixture review evidence.',
   correction: 'The exported product value needs a bounded correction in a new admitted cycle, followed by impacted validation and fresh delivery.',
+  corrected: 'The exported product value needs a bounded correction in a new admitted cycle, followed by impacted validation and fresh delivery.',
 });
 
 function scenarioBody(scenario) {
@@ -30,17 +31,19 @@ export function assertCapturedStandardReviewScenario(captured, scenario) {
 // A fixture must not prepend the checkout's product directory a second time.
 export function standardReviewScenarioAnswer(observed, scenario) {
   scenarioBody(scenario);
-  const context = observed.context, correction = scenario === 'correction';
-  const productEvidence = correction ? context.product_files.filter(row => row.present).map(row => {
+  const context = observed.context, correction = scenario === 'correction', corrected = scenario === 'corrected';
+  const productEvidence = correction || corrected ? context.product_files.filter(row => row.present).map(row => {
     const ref = context.evidence_refs.find(ref => ref.ref === `product:${row.path}` && ref.sha256 === row.sha256);
     assert.ok(ref, 'STANDARD_FIXTURE_PRODUCT_EVIDENCE_REQUIRED'); return ref;
   }) : [];
-  if (correction) assert.ok(productEvidence.length, 'STANDARD_FIXTURE_PRODUCT_EVIDENCE_REQUIRED');
+  if (correction || corrected) assert.ok(productEvidence.length, 'STANDARD_FIXTURE_PRODUCT_EVIDENCE_REQUIRED');
   const answer = { outcome: 'completed', summary: 'Fixture-only review classification, effects pending', report: {
     contract_version: PR_TRIAGE_CONTRACT, context_sha256: observed.context_sha256,
     items: standardPrTriageItems(context.payload).map(row => ({ kind: row.kind, node_id: row.node_id, thread_id: row.thread_id,
-      body_sha256: row.body_sha256, disposition: correction ? 'valid' : 'not_a_finding',
-      rationale: correction ? 'Fixture finding on the selected exported product value requires a new admitted cycle.' : 'The complete fixture body contains only a review acknowledgement.',
+      body_sha256: row.body_sha256, disposition: correction ? 'valid' : corrected ? 'invalid' : 'not_a_finding',
+      rationale: correction ? 'Fixture finding on the selected exported product value requires a new admitted cycle.' : corrected
+        ? 'Fresh fixture classification of the retained finding against the corrected product snapshot and new PR HEAD; provider responses and resolution remain separate.'
+        : 'The complete fixture body contains only a review acknowledgement.',
       proposed_response: '', correction: correction ? 'Correct the selected product value through a new admitted cycle and run impacted checks.' : '',
       evidence_refs: [{ ref: 'github:' + row.kind + '/' + row.node_id, sha256: row.body_sha256 }, ...productEvidence] })) } };
   assertNativeActivityAnswer(answer, PR_TRIAGE_CONTRACT, observed.context_sha256);

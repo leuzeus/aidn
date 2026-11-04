@@ -2,6 +2,7 @@
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario, standardReviewScenarioAnswer } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
+import { composedCyclePlan, composedCycleValidationProfile, composedCorrectionChoice } from "./standard-composed-cycle-fixture-lib.mjs";
 import { observeComposedHost, loseCheckpointReceipt, loseCheckpointOwnerReleaseAck } from "./standard-composed-observation-fixture-lib.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
@@ -118,13 +119,14 @@ const standardResponseText = process.argv.find(value => value.startsWith("--stan
 if (standardResponseText !== undefined && (!selectedStandardComposedMode || !/^[1-9][0-9]*$/.test(standardResponseText)
   || !Number.isSafeInteger(Number(standardResponseText)))) throw Error("STANDARD_FIXTURE_RESPONSE_LIMIT_INVALID");
 const standardScenarioName = process.argv.find(value => value.startsWith("--standard-composed-scenario="))?.slice("--standard-composed-scenario=".length) ?? "positive";
-if (!["positive", "correction"].includes(standardScenarioName) || standardScenarioName !== "positive" && !selectedStandardComposedMode) throw Error("STANDARD_FIXTURE_SCENARIO_INVALID");
+if (!["positive", "correction", "correction-full"].includes(standardScenarioName) || standardScenarioName !== "positive" && !selectedStandardComposedMode) throw Error("STANDARD_FIXTURE_SCENARIO_INVALID");
+const fullCorrection = standardScenarioName === 'correction-full';
 if (standardCheckpointAckLoss && (selectedStandardComposedMode !== 'files' || standardScenarioName !== 'correction' || !['component_complete', 'session_pr_correction_decide'].includes(standardComposedStop)))
   throw Error('STANDARD_FIXTURE_CHECKPOINT_ACK_LOSS_SCOPE_INVALID');
 if (standardCheckpointOwnerAckLoss && (standardCheckpointAckLoss || !['files', 'dual'].includes(selectedStandardComposedMode)
   || standardScenarioName !== 'correction' || !['component_complete', 'session_pr_correction_decide'].includes(standardComposedStop))) throw Error('STANDARD_FIXTURE_CHECKPOINT_OWNER_ACK_LOSS_SCOPE_INVALID');
 const standardScenario = selectedStandardComposedMode ? JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-" +
-  (standardScenarioName === "correction" ? "correction.v2" : "positive.v1") + ".json", import.meta.url), "utf8")) : null;
+  (fullCorrection ? "correction.v3" : standardScenarioName === "correction" ? "correction.v2" : "positive.v1") + ".json", import.meta.url), "utf8")) : null;
 if (standardResponseText !== undefined) standardScenario.max_responses = Number(standardResponseText);
 if (standardScenario && (standardScenario.mode !== "COMMITTING" || standardScenario.closure !== "retain" || standardScenario.promotion !== "promote"
   || standardScenario.task_iterations !== 1 || standardScenario.cold_resume !== true || standardScenario.interruption !== null))
@@ -776,17 +778,31 @@ if (process.argv[2] === "--mixed-continue") {
     const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       if (observed.context.contract_version === "standard-cycle-plan-context.v1")
-        return { outcome: "completed", summary: "Scoped read-only plan proposal", report: cyclePlanProposal(observed) };
+        return { outcome: "completed", summary: "Scoped read-only plan proposal", report: fullCorrection ? composedCyclePlan(observed) : cyclePlanProposal(observed) };
       if (observed.context.contract_version === "standard-cycle-audit-context.v1")
         return { outcome: "completed", summary: "Scoped read-only audit proposal", report: cycleAuditProposal(observed) };
-      if (observed.context.contract_version === "standard-pr-triage-context.v1") return standardReviewScenarioAnswer(observed, standardScenarioName);
+      if (observed.context.contract_version === "standard-pr-triage-context.v1") {
+        const corrected = fullCorrection && f.open().inspect().record.events.some(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_pr_redelivery_push');
+        return standardReviewScenarioAnswer(observed, corrected ? 'corrected' : fullCorrection ? 'correction' : standardScenarioName);
+      }
       if (observed.context.contract_version === "standard-cycle-task-work-context.v1") {
         const context = observed.context;
+        const cycleId = context.source_context.cycle_id;
+        const corrected = fullCorrection && cycleId !== parameters.cycle.cycle_id;
+        const from = corrected ? 2 : 1, to = corrected ? 3 : 2;
+        assert.ok(cycleId);
+        if (corrected) {
+          const state = f.open().inspect(), selected = state.record.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_pr_correction_cycle_initialize').at(-1);
+          const initialized = f.open().readOperation(selected.intent.operation_id);
+          assert.equal(initialized.preview.input.cycle_id, cycleId);
+          assert.equal(initialized.results.at(-1).output.outcome, 'completed');
+        }
         const request = { tool_name: "apply_patch", cwd: f.configuration.target_root,
-          tool_input: { command: "*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = 1;\n+export const value = 2;\n*** End Patch" } };
+          tool_input: { command: `*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = ${from};\n+export const value = ${to};\n*** End Patch` } };
         const admission = await preWriteAdmit({ targetRoot: f.configuration.target_root, skill: "start-session", nativeRequest: request });
         assert.equal(admission.write_decision.outcome, "allow", JSON.stringify(admission.write_decision));
-        fs.writeFileSync(path.join(f.configuration.product_root, "app.mjs"), "export const value = 2;\n");
+        assert.equal(fs.readFileSync(path.join(f.configuration.product_root, 'app.mjs'), 'utf8'), `export const value = ${from};\n`);
+        fs.writeFileSync(path.join(f.configuration.product_root, "app.mjs"), `export const value = ${to};\n`);
         return { outcome: "completed", summary: "Admitted fixture product change; host verification remains separate", report: {
           contract_version: CYCLE_TASK_WORK_CONTRACT, context_sha256: observed.context_sha256, task_id: context.task.id, task: context.task.task,
           work_outcome: "changed", changes: [{ path: "product/app.mjs", operation: "update" }], notes: ["Host verification remains separate"] } };
@@ -800,7 +816,7 @@ if (process.argv[2] === "--mixed-continue") {
         recommendation: "continue", rationale: "Fake native wire diagnostic; no recovery or completion claim", evidence_refs: observed.evidence_refs } };
     } });
     sourceFile = resumed?.fixture.human_source_file ?? path.join(f.configuration.control_root, "standard-human-sources.json");
-    if (!resumed) arrangeStandardReviewScenario(f.configuration.control_root, standardScenarioName);
+    if (!resumed) arrangeStandardReviewScenario(f.configuration.control_root, fullCorrection ? 'correction' : standardScenarioName);
     if (!resumed) fs.writeFileSync(sourceFile, "{}");
     if (!fs.existsSync(sourceFile)) throw Error("STANDARD_FIXTURE_HUMAN_SOURCE_HISTORY_REQUIRED");
     const publish = (ref, claim) => {
@@ -813,8 +829,9 @@ if (process.argv[2] === "--mixed-continue") {
     const parameters = { session: { session_id: "S001", session_branch: "S001-standard", objective },
       cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective } };
     if (runsCycle && !resumed) {
-      f.validationProfile = createValidationProfileFixture(f.base, { testRef: "TEST-001" }).profileRef;
-      const criteria = "The admitted local value becomes 2 while preserving its exported interface; host verification remains separate.";
+      f.validationProfile = fullCorrection ? composedCycleValidationProfile(f.base) : createValidationProfileFixture(f.base, { testRef: "TEST-001" }).profileRef;
+      const criteria = fullCorrection ? 'Follow the host-selected cycle task: first value 2, corrective value 3; preserve the exported interface and use the separate planned verifier.'
+        : "The admitted local value becomes 2 while preserving its exported interface; host verification remains separate.";
       fs.writeFileSync(f.configuration.criteria.path, criteria); f.configuration.criteria.sha256 = sha(criteria);
       f.configuration.instructions.implement = "Implement only the host-selected task. Host validation, progression and governance writes remain separate.";
     }
@@ -841,12 +858,12 @@ if (process.argv[2] === "--mixed-continue") {
     }
     const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
     let childNativeSessions = 0, coldContinuation = false;
-    for (let step = 0; step < 80; step++) {
+    for (let step = 0; step < (fullCorrection ? 160 : 80); step++) {
       const state = f.open().inspect();
       if (runsPromotion && state.cursor.status === "COMPLETED") break;
       const frame = state.cursor.occurrences.find(row => row.status === "READY")
         ?? state.cursor.occurrences.find(row => row.status === "WAITING" && row.operation?.receipt?.outcome === "deferred");
-      const reviewWait = state.cursor.occurrences.find(row => row.node_id === "session_pr_review_wait" && row.status === "WAITING");
+      const reviewWait = state.cursor.occurrences.find(row => ['session_pr_review_wait', 'correction_pr_review_wait'].includes(row.node_id) && row.status === "WAITING");
       if (reviewWait) {
         const control = { instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: reviewWait.occurrence_id };
         const request = f.open().prepareControl(control), capture = () => f.open().captureControl({ ...control, sourceRef: "fixture:standard-review", write: true });
@@ -854,11 +871,12 @@ if (process.argv[2] === "--mixed-continue") {
         assert.equal((await capture()).status, "waiting_for_control");
         assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
         await assert.rejects(f.open().captureControl({ ...control, sourceRef: "fixture:claim", captureKind: "claim", write: true }), { code: "PROCESS_CONTROL_CAPTURE_KIND_INVALID" });
-        const intent = state.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_pr_update_push").at(-1).intent;
+        const redelivery = reviewWait.node_id === 'correction_pr_review_wait';
+        const intent = state.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === (redelivery ? 'session_pr_redelivery_push' : 'session_pr_update_push')).at(-1).intent;
         const p = f.open().readOperation(intent.operation_id).results.at(-1).output.observations.pull_request;
-        const event = { contract_version: "github-pr-review-event.v1", authority_id: "fixture_provider", source_event_id: "standard-review-event-1",
+        const event = { contract_version: "github-pr-review-event.v1", authority_id: "fixture_provider", source_event_id: redelivery ? 'standard-review-event-2' : "standard-review-event-1",
           repository_id: p.repository_id, pull_request_id: p.node_id, pull_request_number: p.number, head_oid: p.head_oid, base_oid: p.base_oid,
-          head_ref: p.head_branch, base_ref: p.base_branch, event_key: "review_snapshot", revision: "fixture-review-revision-1",
+          head_ref: p.head_branch, base_ref: p.base_branch, event_key: "review_snapshot", revision: redelivery ? 'fixture-review-revision-2' : "fixture-review-revision-1",
           occurred_at: new Date().toISOString(), actor: { node_id: "U_fixture", login: "fixture-reviewer", type: "User" } };
         const file = path.join(f.configuration.control_root, "standard-pr-review-event.json");
         fs.writeFileSync(file, JSON.stringify({ event, authorized: false, current: true }));
@@ -868,7 +886,7 @@ if (process.argv[2] === "--mixed-continue") {
         const captured = f.open().readControl(reserved.inbox_id);
         assert.equal(captured.request.instance_sha256, request.instance_sha256);
         assert.equal(captured.payload.observation.observations.update_operation_id, intent.operation_id);
-        assertCapturedStandardReviewScenario(captured, standardScenarioName);
+        assertCapturedStandardReviewScenario(captured, fullCorrection ? 'correction' : standardScenarioName);
         assert.equal(captured.phase, "reserved"); assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
         const allocations = f.open().inspectAllocations();
         const child = JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL("standard-pr-review-control-resume-fixture.mjs", import.meta.url)), resumeFile, reserved.inbox_id],
@@ -922,6 +940,13 @@ if (process.argv[2] === "--mixed-continue") {
             ref = "standard-mode";
             claim = { contract_version: "human-mode-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "standard-mode-committing",
               subject_sha256: "a".repeat(64), question_sha256: shadowHash(result.question), choice: "COMMITTING", evidence_refs: [{ ref: "fixture:operator-mode", sha256: "a".repeat(64) }] };
+          } else if (binding === 'session_pr_correction_decision') {
+            assert.equal(fullCorrection, true);
+            ref = 'correction_' + result.operation_id;
+            const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
+            assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: 'missing-correction', write: true })).status, 'waiting_for_human');
+            assert.equal(f.open().inspect().record.instance_sha256, beforeWait); assert.equal(f.t.sessions.length, nativeCount);
+            claim = composedCorrectionChoice(result.question, result.operation_id);
           } else if (binding === "session_branch_integration_decision") {
             assert.ok(runsPromotion); assert.ok(result.question.choices.includes("integrate-to-session"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -950,7 +975,7 @@ if (process.argv[2] === "--mixed-continue") {
             ref = "promotion_" + result.operation_id;
             claim = { contract_version: "human-baseline-promotion-decision.v1", source_kind: "human", authority_id: "fixture_operator",
               source_event_id: "standard:" + ref, subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice: "promote",
-              rationale: "Explicit fixture choice after confirmed retained closure", promotion: { version: "v0.3", summary: "Retain the verified fixture outcome" },
+              rationale: "Explicit fixture choice after confirmed retained closure", promotion: { version: frame.node_id.startsWith('correction_') ? 'v0.4' : "v0.3", summary: "Retain the verified fixture outcome" },
               evidence_refs: [{ ref: "fixture:operator-promotion", sha256: "a".repeat(64) }] };
           } else {
             assert.equal(binding, "cycle_closure_decision"); assert.ok(runsClosure);
@@ -1019,7 +1044,9 @@ if (process.argv[2] === "--mixed-continue") {
     else assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
     const acceptedOperations = final.record.events.filter(event => event.kind === "operation_intent").map(event => f.open().readOperation(event.intent.operation_id));
-    const last = binding => acceptedOperations.filter(row => row.intent.binding_ref === binding).at(-1)?.results.at(-1)?.output;
+    const correctionStart = acceptedOperations.findIndex(row => row.intent.binding_ref === 'session_pr_correction_decision');
+    const firstCycleOperations = fullCorrection && correctionStart >= 0 ? acceptedOperations.slice(0, correctionStart) : acceptedOperations;
+    const last = binding => firstCycleOperations.filter(row => row.intent.binding_ref === binding).at(-1)?.results.at(-1)?.output;
     assert.equal(last("drift_check_finalize").facts.drift_check_completed, true);
     if (standardComposedStop !== "cycle_admit") assert.equal(last("cycle_checkpoint_finalize").outcome, "completed");
     const expectedNative = standardPreflight.responses_required;
@@ -1062,7 +1089,7 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(last("session_pr_admit").observations.reload.cache_written, false);
       assert.equal(last("session_push").outcome, "completed"); assert.equal(last("session_push").effect_status, "confirmed");
       assert.equal(last("session_push").facts.session_remote_head_confirmed, true);
-      const pushedHead = execFileSync("git", ["--git-dir=" + f.sessionPushRemoteRoot, "rev-parse", "refs/heads/S001-standard"],
+      const pushedHead = fullCorrection ? last('session_pr_update_push').observations.git.remote_head : execFileSync("git", ["--git-dir=" + f.sessionPushRemoteRoot, "rev-parse", "refs/heads/S001-standard"],
         { encoding: "utf8", stdio: "pipe", windowsHide: true, timeout: 10000 }).trim();
       assert.equal(pushedHead, last("session_pr_update_push").observations.git.remote_head);
       assert.equal(last("session_push").observations.git.remote_head, last("session_pr_admit").observations.head);
@@ -1095,11 +1122,11 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(received.observations.payload.observation.observations.head_oid, pushedHead);
       const classified = last("session_pr_triage_evaluate");
       assert.equal(classified.outcome, "completed"); assert.equal(classified.effect_status, "no_effect");
-      const correction = standardScenarioName === "correction";
+      const correction = fullCorrection || standardScenarioName === "correction";
       assert.deepEqual(classified.facts, { session_pr_findings_classified: true, session_pr_corrections_required: correction, session_pr_responses_required: correction });
       assert.equal(classified.observations.triage_completion, "pending-effects-and-verification");
       assert.equal(classified.observations.merge_authorization, "not-established");
-      if (correction) {
+      if (correction && !fullCorrection) {
         const reopened = last("session_pr_correction_reopen");
         assert.equal(reopened.outcome, "completed", JSON.stringify(reopened)); assert.equal(reopened.effect_status, "confirmed");
         assert.deepEqual(reopened.facts, { session_pr_correction_context_open: true, session_pr_correction_cycle_required: true });
@@ -1133,8 +1160,52 @@ if (process.argv[2] === "--mixed-continue") {
         console.log(JSON.stringify({ standard_correction_host_proof: true, canonical_writes: "confirmed", received_and_triage_producers: "authenticated-host-and-native-fixture",
           correction_checkpoint: "confirmed-or-db-only-no-effect", product_write_admission: "denied-no-new-cycle", provider_transport: "fixture", native_transport: "fixture", full_standard: false }));
       }
-      assert.equal(final.record.events.filter(row => row.kind === "control").length, 1);
+      assert.equal(final.record.events.filter(row => row.kind === "control").length, fullCorrection ? 2 : 1);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
+    }
+    if (fullCorrection && !stopsBeforeCorrectionChoice) {
+      const rows = acceptedOperations.slice(correctionStart), get = binding => rows.filter(row => row.intent.binding_ref === binding).at(-1);
+      const selected = get('session_pr_correction_decision'), initialized = get('session_pr_correction_cycle_initialize');
+      const candidate = selected.results.at(-1).output.observations.candidate_cycle;
+      assert.deepEqual(Object.fromEntries(['cycle_id', 'title', 'objective'].map(key => [key, initialized.preview.input[key]])), candidate);
+      assert.notEqual(candidate.cycle_id, parameters.cycle.cycle_id);
+      assert.equal(Object.hasOwn(selected.preview.input, 'candidate_cycle'), false);
+      assert.equal(selected.preview.input.contract_version, 'standard-pr-correction-review-input.v3');
+      assert.equal(initialized.results.at(-1).output.facts.cycle_dor_ready, false);
+      const required = ['session_pr_correction_cycle_initialize', 'branch_cycle_audit', 'cycle_checkpoint_finalize', 'session_start_finalize',
+        'cycle_plan_evaluate', 'cycle_plan_record', 'cycle_readiness_evaluate', 'cycle_implementation_enter', 'cycle_task_work_evaluate',
+        'cycle_validation_execute', 'cycle_task_advance', 'cycle_verification_enter', 'cycle_audit_evaluate', 'cycle_closure_decision',
+        'cycle_terminal_checkpoint', 'cycle_close_finalize', 'baseline_promotion_finalize', 'session_close_admit', 'session_closure_decision',
+        'session_close_record', 'session_close_finalize', 'session_branch_integrate', 'session_pr_redelivery_push', 'session_pr_review_receive', 'session_pr_triage_evaluate'];
+      let prior = -1;
+      for (const binding of required) {
+        const record = get(binding); assert.ok(record, binding);
+        assert.equal(record.results.at(-1).output.outcome, 'completed', binding);
+        const at = rows.indexOf(record); assert.ok(at > prior, binding); prior = at;
+      }
+      const evaluated = get('cycle_plan_evaluate').results.at(-1).output.observations.proposal;
+      assert.equal(evaluated.cycle_id, candidate.cycle_id); assert.equal(evaluated.objective, candidate.objective);
+      assert.equal(evaluated.cycle_type, 'corrective'); assert.deepEqual(evaluated.tasks[0].test_refs, ['TEST-002']);
+      assert.equal(get('cycle_readiness_evaluate').results.at(-1).output.facts.cycle_readiness_satisfied, true);
+      assert.equal(get('cycle_validation_execute').results.at(-1).output.observations.checks[0].test_ref, 'TEST-002');
+      assert.equal(get('cycle_close_finalize').results.at(-1).output.facts.cycle_retained, true);
+      assert.equal(get('session_close_finalize').results.at(-1).output.facts.session_close_completed, true);
+      const delivered = get('session_pr_redelivery_push').results.at(-1).output;
+      assert.equal(delivered.facts.session_pr_head_confirmed, true);
+      assert.notEqual(delivered.observations.pull_request.head_oid, last('session_pr_update_push').observations.pull_request.head_oid);
+      const remote = execFileSync('git', ['--git-dir=' + f.sessionPushRemoteRoot, 'rev-parse', 'refs/heads/S001-standard'], { encoding: 'utf8', windowsHide: true }).trim();
+      assert.equal(remote, delivered.observations.pull_request.head_oid);
+      const triage = get('session_pr_triage_evaluate').results.at(-1).output;
+      assert.equal(triage.facts.session_pr_corrections_required, false);
+      assert.equal(triage.observations.merge_authorization, 'not-established');
+      assert.equal(fs.readFileSync(path.join(f.configuration.product_root, 'app.mjs'), 'utf8'), 'export const value = 3;\n');
+      const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+      const session = artifacts.read('sessions/S001.md', { required: true }).content;
+      assert.match(session, /^## Historical Process session closure before op_/m);
+      assert.match(session, /^## Historical Process session closure completion before op_/m);
+      console.log(JSON.stringify({ standard_corrective_cycle_journey: true, selected_cycle: candidate, new_head: remote,
+        causal_operations: required, provider_review_deliveries: 2, final_product_value: 3, same_published_model: true,
+        human_native_provider: 'fixture', provider_replies_and_merge: 'NOT_RUN', full_standard_workflow: false }));
     }
     let replayLast, replaySteps = 0;
     for (const row of iterateAgenticProcessSimulation({ instanceId: final.record.instance_id, model: final.record.model, policyPins: final.record.policy_pins,
