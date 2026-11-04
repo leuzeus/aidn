@@ -3,7 +3,7 @@ import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.m
 import { agentRunPhysicalPath, readAgentRunFile } from './agent-run-configuration-service.mjs';
 import { createLocalWorkflowGitCheckpoint } from '../../adapters/runtime/local-workflow-git-checkpoint.mjs';
 import { prCorrectionReopenPaths } from '../../core/workflow/standard-pr-correction-reopen.mjs';
-import { assertStandardPrCorrectionPlan, assertStandardOperationOutput } from '../../core/workflow/standard-operation-contracts.mjs';
+import { assertStandardPrCorrectionPlan, assertStandardPrCorrectionCheckpointPlan, assertStandardOperationOutput } from '../../core/workflow/standard-operation-contracts.mjs';
 import { artifactContentHash } from '../../core/workflow/artifact-compare-swap.mjs';
 import { checkShadowJson, shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { validateJsonSchema } from '../../core/contracts/json-schema-validator.mjs';
@@ -16,7 +16,7 @@ const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(
 // Internal component: accepted operation identities are resolved by a trusted
 // signed-journal reader, never by a process-authored list of paths or hashes.
 // This commits metadata only. It does not push, create a cycle or admit product.
-export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedOperation, authority, readCurrent, now = Date.now }) {
+export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedOperation, readDispatchedOperation, authority, readCurrent, now = Date.now }) {
   if (![readAcceptedOperation, authority?.verifySource, authority?.verifyProviderSource, readCurrent].every(fn => typeof fn === 'function'))
     fail('STANDARD_PR_CORRECTION_CHECKPOINT_AUTHORITY_REQUIRED');
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
@@ -79,7 +79,61 @@ export function createStandardPrCorrectionCheckpoint({ targetRoot, readAcceptedO
       outcome, effect_status, observations, facts, evidence_refs };
     if (!valid(value, outputSchema)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_OUTPUT_INVALID'); return value;
   }
-  return Object.freeze({ prepare: (instance, input, id, { signal } = {}) => prepare(instance, input, id, now(), false, signal),
+  // Retrospective observation only: no commit, index repair, owner takeover or
+  // TTL extension. The host must authenticate the unreplied dispatch and keep
+  // its original intent/grant. A retained uncertain owner is never removed.
+  async function reconcile(instance, operationId, { assertAuthorized, signal } = {}) {
+    active(signal);
+    if (typeof readDispatchedOperation !== 'function' || typeof assertAuthorized !== 'function')
+      fail('STANDARD_PR_CORRECTION_CHECKPOINT_RECOVERY_AUTHORITY_REQUIRED');
+    const selected = readDispatchedOperation(instance, operationId), prepared = selected.preview.prepared;
+    const plan = assertStandardPrCorrectionCheckpointPlan(prepared?.plan);
+    if (selected.phase !== 'dispatching' || selected.results.length || selected.operation_id !== operationId
+      || selected.intent.binding_ref !== 'session_pr_correction_checkpoint' || plan.operation_id !== operationId
+      || prepared.can_apply !== true || shadowHash(plan) !== prepared.plan_sha256
+      || shadowHash(selected.preview.input) !== shadowHash(plan.input)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');
+    const selectedHash = shadowHash(selected);
+    const unchanged = () => {
+      current(instance, signal);
+      if (artifacts.ownerPending()) fail('STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED');
+      if (shadowHash(readDispatchedOperation(instance, operationId)) !== selectedHash)
+        fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_CHANGED');
+      const value = source(instance, plan.input);
+      if (shadowHash(value) !== plan.source_sha256 || plan.session_id !== value.correction_source.session_id
+        || plan.state_mode !== value.state_mode || plan.git.observed.head !== value.correction_source.pull_request.head_oid
+        || plan.git.observed.branch !== value.correction_source.pull_request.head_branch
+        || !plan.git.observed.index_clean || plan.git.observed.lock_present) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+      // Zero-effect plans have no operation-specific Git witness. Never infer
+      // that their historical dispatch finished just because HEAD is unchanged.
+      if (!plan.git.files.length) fail('STANDARD_PR_CORRECTION_CHECKPOINT_COMMIT_WITNESS_REQUIRED');
+      const files = plan.git.observed.changes.map(row => {
+        const postimage = value.postimages.find(file => 'docs/audit/' + file.path === row.path);
+        if (!postimage || row.status !== ' M') fail('STANDARD_PR_CORRECTION_CHECKPOINT_FOREIGN_CHANGE');
+        return { path: row.path, sha256: postimage.sha256 };
+      });
+      if (shadowHash(files) !== shadowHash(plan.git.files)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+      const git = port(value), gitPlan = { ...plan.git, operation_id: operationId,
+        prepared_at_ms: plan.prepared_at_ms, plan_sha256: prepared.plan_sha256 }, view = git.inspect(), proof = git.inspectCommit(gitPlan);
+      if (view.branch !== plan.git.observed.branch || view.ref !== plan.git.observed.ref || !view.index_clean || view.lock_present || view.changes.length
+        || proof.status !== 'confirmed' || proof.commit_sha !== view.head || proof.parent_sha !== plan.git.observed.head
+        || shadowHash(view.identity) !== shadowHash(plan.git.observed.identity) || view.signing !== plan.git.observed.signing)
+        fail('STANDARD_PR_CORRECTION_CHECKPOINT_UNCONFIRMED');
+      return { value, proof };
+    };
+    const before = unchanged(); await assertAuthorized(); unchanged();
+    const external = await authority.verifyProviderSource(instance, before.value.correction_source, { signal });
+    if (external?.origin_source_sha256 !== shadowHash(before.value.correction_source)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_SOURCE_CHANGED');
+    const after = unchanged(); await assertAuthorized(); const final = unchanged();
+    if (shadowHash(before) !== shadowHash(after) || shadowHash(before) !== shadowHash(final)) fail('STANDARD_PR_CORRECTION_CHECKPOINT_UNCONFIRMED');
+    const result = { ...final.proof, effect_status: 'confirmed' };
+    return emit('completed', 'confirmed', { reopen_operation_id: plan.input.reopen_operation_id, source_sha256: plan.source_sha256,
+      git: result, external, reconciliation: 'observed-existing-commit', dispatch_sha256: selectedHash,
+      product_admission: 'not-established', cycle: 'not-created', remote_head: final.value.correction_source.pull_request.head_oid },
+    { session_pr_correction_checkpoint_completed: true },
+    [{ ref: 'git:pr-correction-checkpoint/' + operationId, sha256: shadowHash(result) },
+      { ref: 'aidn:pr-correction-reopen/' + plan.input.reopen_operation_id, sha256: plan.source_sha256 }]);
+  }
+  return Object.freeze({ reconcile, prepare: (instance, input, id, { signal } = {}) => prepare(instance, input, id, now(), false, signal),
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized, signal } = {}) {
       const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
       active(signal);

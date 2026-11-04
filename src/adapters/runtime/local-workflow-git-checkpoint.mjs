@@ -123,8 +123,12 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
     const paths = run(["diff-tree", "--no-commit-id", "--name-only", "-r", "-z", head]).split("\0").filter(Boolean).sort();
     if (parent.length !== 2 || parent[1] !== plan.observed.head || body.trimEnd() !== message(plan).trimEnd()
       || exact(paths) !== exact(plan.files.map(row => row.path).sort())) return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_AMBIGUOUS" };
-    for (const row of plan.files) if (hash(run(["show", `${head}:${row.path}`], { binary: true })) !== row.sha256)
-      return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_POSTIMAGE_MISMATCH" };
+    for (const row of plan.files) {
+      if (hash(run(["show", `${head}:${row.path}`], { binary: true })) !== row.sha256)
+        return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_POSTIMAGE_MISMATCH" };
+      if (run(["ls-tree", "--format=%(objectmode)", head, "--", row.path]).trim() !== gitMode(plan, row.path))
+        return { status: "not_confirmed", reason_code: "WORKFLOW_GIT_COMMIT_MODE_MISMATCH" };
+    }
     const workspace = inspect(), ready = workspace.ref === plan.observed.ref && workspace.head === head && workspace.index_clean && workspace.changes.length === 0;
     return { status: ready ? "confirmed" : "commit_observed", commit_sha: head, parent_sha: parent[1],
       index_reconciled: workspace.index_clean, working_tree_clean: workspace.changes.length === 0, lock_present: workspace.lock_present };

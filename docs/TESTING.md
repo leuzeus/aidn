@@ -32,6 +32,24 @@ expiry and provider loss refuse before effect. A second dispatch after a
 confirmed commit refuses without another commit. Authority loss after Git and
 an unrelated concurrent commit retain unknown state and ownership, blocking
 retry. Native product admission remains denied without a correction cycle.
+The same suite separately authenticates a fixture dispatch journal with its
+public fixture HMAC key and observes a completed checkpoint from a new Node
+process after its local effect owner was released but before a receipt exists.
+Actual Git parent, operation/plan trailers, exact paths/blobs/modes, clean index/tree,
+canonical postimages and fresh provider observation are required. Tampered
+dispatches, absent witnesses, missing authority, changed provider/postimages and
+foreign successors refuse. This read-only observation neither dispatches Git nor
+changes the original journal; the host alone may append its missing signed
+receipt through CAS under the original intent and currently verified grant.
+An expired effect preview is only historical evidence here; no TTL is extended.
+An expired original authority still refuses receipt finalization. It requires
+separate future recovery while preserving the historical grant and results.
+Db-only has no operation-specific commit witness and cannot use this recovery.
+The generic signed-host suite checks explicit-write and wrong-binding refusal;
+positive correction-host recovery remains unexecuted by these component suites.
+Already receipted unknown/refused results are immutable. An unknown effect with
+a retained owner still requires authenticated resource closure and recovery
+authority, which this first missing-acknowledgement case does not implement.
 Accepted-source authentication, native triage, provider and event capabilities
 are doubled here. The source-authority suite separately checks that its new
 provider-only observation still rejects external changes and explicitly requires

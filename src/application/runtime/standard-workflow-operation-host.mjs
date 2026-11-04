@@ -496,7 +496,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const prCorrectionReopen = prCorrectionAuthority ? createStandardPrCorrectionReopen({ targetRoot, now,
     authority: prCorrectionAuthority, readCurrent: id => current(id).record }) : null;
   const prCorrectionCheckpoint = prCorrectionAuthority ? createStandardPrCorrectionCheckpoint({ targetRoot, now,
-    authority: prCorrectionAuthority, readAcceptedOperation: acceptedForPromotion, readCurrent: id => current(id).record }) : null;
+    authority: prCorrectionAuthority, readAcceptedOperation: acceptedForPromotion, readDispatchedOperation: readDispatchedCheckpoint,
+    readCurrent: id => current(id).record }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -620,6 +621,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     signer.verify(value.record); validatePreview(value.record.preview);
     if (value.record.preview.binding.executor_kind === "human" && value.record.results.length) human.captured(value.record);
     return value;
+  }
+  function readDispatchedCheckpoint(instance, id) {
+    const record = retained(id).record, state = current(instance.instance_id);
+    const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
+    if (record.intent.binding_ref !== 'session_pr_correction_checkpoint' || record.phase !== 'dispatching' || record.results.length
+      || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id
+      || state.record.instance_sha256 !== instance.instance_sha256 || frame?.status !== 'WAITING'
+      || !frame.operation || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent))
+      fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');
+    return record;
   }
   function persist(body, expected) {
     const record = signer.seal(body), result = journal.compareAndSwap(record, expected);
@@ -1079,6 +1090,26 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const { authentication: oldMac, key_id: oldKey, ...claimedBody } = claimed;
       persist({ ...claimedBody, phase: "receipted", revision: claimed.revision + 1, results: [{ output, receipt }] }, retainedClaim.content_sha256);
       return { status: "receipted", receipt };
+    },
+    async reconcileCorrectionCheckpoint(id, { write = false, signal } = {}) {
+      if (write !== true) fail('STANDARD_HOST_EXPLICIT_WRITE_REQUIRED');
+      const before = retained(id), record = before.record;
+      if (record.intent.binding_ref !== 'session_pr_correction_checkpoint') fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');
+      // Existing results, including unknown/refused ones, are immutable. This
+      // path only fills an absent receipt for an authenticated original intent.
+      if (record.phase === 'receipted') return { status: 'retained_result', receipt: record.results.at(-1).receipt };
+      const state = current(record.intent.instance_id);
+      readDispatchedCheckpoint(state.record, id);
+      if (!prCorrectionCheckpoint) fail('STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED');
+      const output = await prCorrectionCheckpoint.reconcile(state.record, id,
+        { assertAuthorized: () => verifyGrant(record, signal), signal });
+      if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
+        || shadowHash(retained(id).record) !== shadowHash(record)) fail('PROCESS_JOURNAL_OWNER_CHANGED');
+      const receipt = resultReceipt(record, output), { authentication, key_id, ...body } = record;
+      // Preserve the original dispatch owner, preview, intent and grant. The
+      // CAS gives competing observers one result without another Git dispatch.
+      persist({ ...body, phase: 'receipted', revision: record.revision + 1, results: [{ output, receipt }] }, before.content_sha256);
+      return { status: 'receipted', receipt };
     },
     async receiveDecision(id, { sourceRef, write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");

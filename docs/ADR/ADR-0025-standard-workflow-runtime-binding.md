@@ -2090,3 +2090,31 @@ weakened. Component tests and synthetic routing do not qualify the composed
 host path; the versioned correction driver must establish signed producer and
 canonical writer composition separately. Ordinary entry remains unchanged and
 `complete_standard_workflow` stays false.
+
+### Missing checkpoint acknowledgement, released local owner, 2026-11-04
+
+The checkpoint component has a retrospective observation path selected by the
+fixed host's `reconcileCorrectionCheckpoint` method. The caller selects only an
+operation identity and explicit receipt write. The host authenticates the saved
+dispatch and preview, requires its unchanged canonical waiting intent, verifies
+the original grant again and uses CAS to fill a missing signed receipt. It
+preserves the original preview, intent, grant and dispatch owner. A competing
+receipt wins through CAS; the observer never invokes commit or repairs an index.
+
+The witness is the existing exact metadata commit: original parent, operation
+and plan trailers, finite changed paths, exact blob hashes and file modes, clean current
+index/tree and unchanged accepted reopening postimages/metadata. A fresh
+provider observation still binds the original remote head. Current process,
+dispatch and source are checked around asynchronous authority observations.
+The effect preview's age is historical evidence, not permission to dispatch an
+expired plan. The original grant must still be authorized; no grant, native
+budget or TTL is renewed. A zero-effect/db-only plan has no operation-specific
+commit witness and is not recoverable through this path.
+
+This first case requires no pending local effect owner. It cannot clear an
+uncertain owner's lock or replace a receipted unknown/refused result. General
+unknown-effect recovery remains required, including authenticated proof that
+the prior owner and resources closed before any finalization; missing proof
+retains waiting/refusal. Component fixture HMAC/Git observation and negative
+generic-host tests do not prove positive recovery through the full correction
+producer/host chain. Ordinary entry and complete-workflow status stay unchanged.

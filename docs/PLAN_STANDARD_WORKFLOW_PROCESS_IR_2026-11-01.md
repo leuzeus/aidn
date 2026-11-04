@@ -3927,3 +3927,24 @@ retain their original source-specific evidence. A future deterministic reprepare
 after an expired plan must preserve the prior refusal/authority and recheck
 current admissions without raising TTL or adding a model call. That continuation
 and L4's new native authorization epoch remain unimplemented.
+
+### Addendum: missing correction checkpoint acknowledgement, 2026-11-04
+
+The candidate component can positively observe the exact already completed Git
+checkpoint when its effect owner was released and the authenticated dispatch
+still has no receipt. The fixed host authenticates that dispatch, its canonical
+waiting intent and original current grant, then CAS-appends only the missing
+receipt. No Git commit, index repair, owner takeover, TTL or native budget change
+is performed. Exact parent/trailers/paths/blobs, current postimages/metadata,
+clean checkout and fresh provider evidence remain mandatory.
+
+This is one A6 subcase, not general reconciliation. A retained uncertain owner
+still requires authenticated resource-closure proof and recovery authority;
+already receipted unknown/refused outcomes cannot be rewritten. Db-only has no
+operation-specific commit witness for this method. The component's fixture
+HMAC authority is not the full producer-to-reopen-to-checkpoint host chain.
+Positive composed recovery and general unknown-owner recovery remain required,
+along with new-cycle admission, physical corrections, L4 native epochs and
+expired-plan reprepare, all other L1-L8/A1-A10, actual native/human/provider and
+the exact installed archive. Ordinary selection is unchanged and
+complete_standard_workflow remains false.

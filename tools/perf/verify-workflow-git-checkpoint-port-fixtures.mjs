@@ -53,6 +53,22 @@ try {
     assert.equal((await f.port.commit(plan, { assertAuthorized() {} })).status, "no_change");
     assert.equal(git(f.root, "rev-parse", "HEAD"), plan.observed.head); assert.equal(fs.existsSync(path.join(f.root, ".git/index.lock")), false);
   });
+  await test("an exact-parent commit with matching trailers and bytes cannot substitute a changed file mode", async () => {
+    const f = fixture(); await f.port.commit(f.plan, { assertAuthorized() {} });
+    git(f.root, 'config', 'core.filemode', 'false');
+    const body = git(f.root, 'show', '-s', '--format=%B', 'HEAD');
+    git(f.root, 'update-index', '--chmod=+x', metadata[0]);
+    const tree = git(f.root, 'write-tree');
+    const replacement = execFileSync('git', ['-C', f.root, '-c', 'core.hooksPath=NUL', 'commit-tree', tree, '-p', f.plan.observed.head],
+      { input: body + '\n', encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
+    git(f.root, 'update-ref', f.plan.observed.ref, replacement);
+    assert.equal(git(f.root, 'status', '--porcelain'), '');
+    assert.equal(git(f.root, 'rev-parse', 'HEAD^'), f.plan.observed.head);
+    assert.equal(git(f.root, 'show', 'HEAD:' + metadata[0]), 'governed session');
+    assert.deepEqual(f.port.inspectCommit(f.plan), { status: 'not_confirmed', reason_code: 'WORKFLOW_GIT_COMMIT_MODE_MISMATCH' });
+    const cold = createLocalWorkflowGitCheckpoint({ targetRoot: f.root });
+    assert.deepEqual(cold.inspectCommit(f.plan), { status: 'not_confirmed', reason_code: 'WORKFLOW_GIT_COMMIT_MODE_MISMATCH' });
+  });
   await test("foreign dirty files refuse before any approved-branch commit", async () => {
     const f = fixture(); write(f.root, "app.mjs", "foreign\n");
     await assert.rejects(f.port.commit(f.plan, { assertAuthorized() {} }), { code: "WORKFLOW_GIT_FOREIGN_CHANGES", effect_status: "no_effect" });

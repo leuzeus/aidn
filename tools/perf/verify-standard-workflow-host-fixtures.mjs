@@ -136,6 +136,11 @@ if (process.argv[2] === "--accept") {
     const signed = createOperationJournalSigner(() => fs.readFileSync(keyFile));
     journal.compareAndSwap(signed.seal({ ...body, phase: "dispatching", revision: 2, owner: { generation: "00000000-0000-0000-0000-000000000001", pid: 1 } }), original.content_sha256);
     assert.equal((await host(root, keyFile).dispatch(staged.operation_id, { write: true })).status, "reconciliation_required");
+    await assert.rejects(host(root, keyFile).reconcileCorrectionCheckpoint(staged.operation_id), { code: 'STANDARD_HOST_EXPLICIT_WRITE_REQUIRED' });
+    await assert.rejects(host(root, keyFile).reconcileCorrectionCheckpoint(staged.operation_id, { write: true }),
+      { code: 'STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED' });
+    assert.deepEqual(journal.read(staged.operation_id).record, signed.seal({ ...body, phase: 'dispatching', revision: 2,
+      owner: { generation: '00000000-0000-0000-0000-000000000001', pid: 1 } }));
     pass("stopped dispatch state refuses automatic replay or PID takeover");
     const partialRoot = createStandardWorkflowFixture("dual", owned), one = model();
     one.entry = "initialize"; one.nodes = one.nodes.filter(node => node.id === "initialize");
