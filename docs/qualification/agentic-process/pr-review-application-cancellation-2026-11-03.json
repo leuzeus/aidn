@@ -1,6 +1,6 @@
 {
   "observed_at_utc": "2026-11-04T01:33:32.317Z",
-  "source_commit": "c0fe873",
+  "source_commit": "c0fe873c9ff1acb3c8efaeb6aa44c0c7c30bddd9",
   "lane": "ASSURED",
   "model": {
     "revision": 54,

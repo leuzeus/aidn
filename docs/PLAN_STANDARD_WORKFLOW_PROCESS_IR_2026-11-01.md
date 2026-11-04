@@ -3573,10 +3573,18 @@ survive its initial event-age window only with current authentication and fresh
 content; no native budget or effect grant is renewed.
 
 The dedicated PR-control component fixture belongs to the required runtime gate;
-its omission is rejected by the governed command policy. The files case passes
-eight controls including cold-process delivery and exact common-reducer
-simulation. Other mode results and failures remain separately attributed to
-their exact source. This is still a component: the candidate standard graph's PR
+its omission is rejected by the governed command policy. The
+[model58 durable-capture evidence](qualification/agentic-process/pr-review-durable-capture-2026-11-03.json)
+records8/8/9 controls in files/dual/db-only with cleanup, including cold-process
+delivery and exact common-reducer simulation, and27 historical inbox controls.
+The DB-only case preserves the accepted event through an acknowledgement failure
+and repairs it without a provider read or duplicate event. Intermediate55/56
+failures and57 positive results remain separately attributed; the diagnostics
+use the common service's preserved PROCESS_CONTROL namespace. No source57 result
+is transferred to58. The broader generated-document golden check is FAIL on58
+and the preceding54 source: the unchanged fixture records workflow_version0.12.0
+while rendering uses0.19.0. The historical fixture was not rewritten. Full
+runtime/Governance Admission remain NOT_RUN. This is still a component: the candidate standard graph's PR
 wait/triage route, accepted native triage/dispositions, actual responses/resolutions,
 merge consent/effect, post-merge synchronization and the remaining A1–A10/L4–L8
 work remain required. Ordinary selection and `complete_standard_workflow` stay
