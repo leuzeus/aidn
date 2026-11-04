@@ -59,6 +59,29 @@ try {
     assert.deepEqual(accepted.facts, { session_pr_review_evidence_available: true, session_pr_triage_required: true });
     assert.equal(provider.calls.length, 12); assert.equal(f.artifacts.ownerPending(), false);
   });
+  await test('caller abort fences every collection and the source reread without accepting late content', async () => {
+    for (let abortAt = 0; abortAt <= 5; abortAt++) {
+      const stop = new AbortController(); let collections = 0, sources = 0;
+      const port = Object.fromEntries(['observeReviewEvidence', 'observePullRequest', 'observeReviewContent', 'observePrContent'].map(method => [method, async (request, options) => {
+        assert.equal(options.signal, stop.signal); collections++;
+        const value = await provider.port[method](request);
+        if (collections === abortAt) stop.abort();
+        return value;
+      }]));
+      const selected = createObservation({ readCurrent: () => f.instance, reviewPort: port,
+        readConfirmedHead: async (instance, input, options) => {
+          assert.equal(options.signal, stop.signal); sources++;
+          const value = await authority.readConfirmedHead(instance, input, options);
+          if (sources === 2 && abortAt === 5) stop.abort();
+          return value;
+        } });
+      if (!abortAt) stop.abort();
+      const result = await selected.observe(f.instance, input, { signal: stop.signal });
+      assert.equal(result.outcome, 'blocked'); assert.deepEqual(result.facts, {});
+      assert.equal(result.observations.reason_code, 'STANDARD_PR_REVIEW_ABORTED');
+      assert.equal(collections, Math.min(abortAt, 4)); assert.equal(sources, abortAt === 0 ? 0 : abortAt === 5 ? 2 : 1);
+    }
+  });
   await test('new request base/head, wrong repository and changed same-head check evidence are refused', async () => {
     for (const key of ['head_oid', 'base_oid', 'repository_id']) {
       const old = provider.state.pullRequest[key]; provider.state.pullRequest[key] = key === 'repository_id' ? 'R_other' : 'c'.repeat(40);

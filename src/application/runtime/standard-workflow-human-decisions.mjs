@@ -44,13 +44,20 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
   }
   async function bounded(method, input, signal) {
     if (typeof source?.[method] !== "function") fail("PROCESS_HUMAN_AUTHORITY_UNAVAILABLE");
-    const stop = new AbortController(); let timer;
-    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { stop.abort(); reject(Object.assign(new Error("PROCESS_HUMAN_AUTHORITY_TIMEOUT"), { code: "PROCESS_HUMAN_AUTHORITY_TIMEOUT" })); }, 5000); });
+    const stop = new AbortController(), combined = signal ? AbortSignal.any([signal, stop.signal]) : stop.signal;
+    if (combined.aborted) fail("PROCESS_HUMAN_AUTHORITY_ABORTED");
+    let timer, onAbort;
+    const aborted = new Promise((_, reject) => {
+      onAbort = () => reject(Object.assign(new Error("PROCESS_HUMAN_AUTHORITY_ABORTED"), { code: "PROCESS_HUMAN_AUTHORITY_ABORTED" }));
+      combined.addEventListener("abort", onAbort, { once: true });
+    });
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { reject(Object.assign(new Error("PROCESS_HUMAN_AUTHORITY_TIMEOUT"), { code: "PROCESS_HUMAN_AUTHORITY_TIMEOUT" })); stop.abort(); }, 5000); });
     try {
-      const value = await Promise.race([Promise.resolve().then(() => source[method]({ ...structuredClone(input), signal: signal ?? stop.signal })), timeout]);
+      const value = await Promise.race([Promise.resolve().then(() => source[method]({ ...structuredClone(input), signal: combined })), timeout, aborted]);
+      if (combined.aborted) fail("PROCESS_HUMAN_AUTHORITY_ABORTED");
       if (value !== null && checkShadowJson(value)) fail("PROCESS_HUMAN_AUTHORITY_INVALID");
       return structuredClone(value);
-    } finally { clearTimeout(timer); stop.abort(); }
+    } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
   async function verify(claim, sourceRef, request, signal) {
     if (request.contract_version === "standard-session-branch-integration-question.v1") assertHumanSessionBranchIntegrationDecision(claim, request);
@@ -78,11 +85,11 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       if (!match) fail("PROCESS_HUMAN_SOURCE_REF_INVALID");
       return structuredClone(read(match[1]).record.source);
     },
-    async reserve(record, sourceRef) {
+    async reserve(record, sourceRef, { signal } = {}) {
       if (typeof sourceRef !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(sourceRef)) fail("PROCESS_HUMAN_SOURCE_REF_INVALID");
-      const request = question(record), claim = await bounded("read", { sourceRef, question: request });
+      const request = question(record), claim = await bounded("read", { sourceRef, question: request }, signal);
       if (claim === null) return null;
-      await verify(claim, sourceRef, request);
+      await verify(claim, sourceRef, request, signal);
       const id = decisionInboxId(claim), before = inbox.read(id);
       if (before.record) {
         signer.verify(before.record);

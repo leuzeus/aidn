@@ -867,7 +867,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { ...result, operation_id: id };
     },
     commitIntent,
-    async dispatch(id, { write = false } = {}) {
+    async dispatch(id, { write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
       if (record.phase === "receipted") return { status: "retained_result", receipt: record.results.at(-1).receipt };
@@ -906,8 +906,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_push") output = await sessionPush.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "session_pr_review_content_observe") output = await sessionPrReviewContent.observe(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "session_pr_review_observe") output = await sessionPrReview.observe(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "session_pr_review_content_observe") output = await sessionPrReviewContent.observe(state.record, record.preview.input, { signal });
+        else if (record.intent.binding_ref === "session_pr_review_observe") output = await sessionPrReview.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_branch_integrate") output = await sessionBranchIntegration.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_delivery_checkpoint") output = await sessionDeliveryCheckpoint.apply(state.record, record.preview.prepared,
@@ -993,7 +993,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       persist({ ...claimedBody, phase: "receipted", revision: claimed.revision + 1, results: [{ output, receipt }] }, retainedClaim.content_sha256);
       return { status: "receipted", receipt };
     },
-    async receiveDecision(id, { sourceRef, write = false } = {}) {
+    async receiveDecision(id, { sourceRef, write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
       if (record.preview.binding.executor_kind !== "human" || !["session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
@@ -1011,7 +1011,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
-      const capture = await human.reserve(record, sourceRef);
+      const capture = await human.reserve(record, sourceRef, { signal });
       if (!capture) return { status: "waiting_for_human", question: human.question(record) };
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);

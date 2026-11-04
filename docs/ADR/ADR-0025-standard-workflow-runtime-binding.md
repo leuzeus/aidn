@@ -1899,3 +1899,21 @@ remain required before those outcomes can be claimed.
 Query-field reference: [GitHub GraphQL pull requests](https://docs.github.com/en/graphql/reference/pulls#pullrequestreview)
 for review body/author/revisions and PR base OID; this documentation lookup is
 not a live-provider qualification.
+
+### Application observation cancellation, 2026-11-03
+
+The application PR observer forwards its caller's AbortSignal to all four
+provider collections and both confirmed-head reads. It checks cancellation
+before and after those reads, so a source that returns after cancellation
+cannot publish evidence availability. The review authority also forwards the
+signal to its checkpoint and push inspectors. The operation host exposes this
+signal for review dispatch and human capture. A blocked observation retains no
+success facts. No historical contract or reader is converted.
+
+Human decision capture combines its internal five-second timeout with the caller
+signal for both read and verification. Caller abort and timeout retain distinct
+reason codes; neither can persist a late decision. These callbacks remain host
+capabilities, not authored executable data. Synchronous Git/checkpoint readers
+cannot be interrupted while they occupy the JavaScript thread. Propagation is
+therefore not proof of an end-to-end inbox deadline or general process-tree
+closure. The subprocess transport's independent close evidence stays separate.

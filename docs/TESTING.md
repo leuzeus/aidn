@@ -1,5 +1,15 @@
 # Testing Guide
 
+`node tools/perf/verify-github-observation-async-fixtures.mjs` includes cancellation
+through the external inbox, application PR observer and actual direct subprocess.
+It observes that subprocess's close separately from the inbox return. Human
+capture cases exercise caller abort and the internal five-second timeout in both
+read and verification while a caller signal is present. Provider/human identities
+remain fixture capabilities. These checks do not bound synchronous Git readers,
+qualify general native process-tree closure or establish durable PR event delivery.
+The focused PR-review component suite checks cancellation at each collection and
+the final source reread, with empty facts and no accepted late content.
+
 `--cycle-task-mode=contract|files|db-only|unchanged|partial|projection` selects
 ordered two-task execution in the existing agentic execution corpus. The pure
 contract covers cursor/progress integrity, versioned task parsing and explicitly

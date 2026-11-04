@@ -14,9 +14,12 @@ function createObservation({ readConfirmedHead, readCurrent, reviewPort, now = D
   const observeThreads = includeContent ? reviewPort?.observePrContent : reviewPort?.observePullRequest;
   if (![readConfirmedHead, readCurrent, observeEvidence, observeThreads].every(fn => typeof fn === 'function'))
     fail('STANDARD_PR_REVIEW_AUTHORITY_REQUIRED');
-  async function source(instance, input) {
+  const active = signal => { if (signal?.aborted) fail('STANDARD_PR_REVIEW_ABORTED'); };
+  async function source(instance, input, signal) {
+    active(signal);
     if (!valid(input, inputSchema)) fail('STANDARD_PR_REVIEW_INPUT_INVALID');
-    const value = await readConfirmedHead(instance, input), p = value?.pull_request;
+    const value = await readConfirmedHead(instance, input, { signal }), p = value?.pull_request;
+    active(signal);
     if (value?.update_operation_id !== input.update_operation_id || p?.state !== 'OPEN' || p.draft
       || value.head !== p.head_oid || !/^[a-f0-9]{64}$/.test(value.material_sha256 ?? '')) fail('STANDARD_PR_REVIEW_CONFIRMED_HEAD_REQUIRED');
     return value;
@@ -34,16 +37,23 @@ function createObservation({ readConfirmedHead, readCurrent, reviewPort, now = D
       const confirmed = await source(instance, input);
       return { can_apply: true, input, source_sha256: shadowHash(confirmed), request: requestFor(confirmed) };
     },
-    async observe(instance, input) {
+    async observe(instance, input, { signal } = {}) {
       try {
-        const before = await source(instance, input), request = requestFor(before), start = now();
+        if (signal !== undefined && !(signal instanceof AbortSignal)) fail('STANDARD_PR_REVIEW_SIGNAL_INVALID');
+        const before = await source(instance, input, signal), request = requestFor(before), start = now();
         const threadsRequest = { contract_version: includeContent ? 'github-pr-observation-request.v2' : 'github-pr-observation-request.v1',
           ...(includeContent ? { expected_base_oid: request.expected_base_oid, expected_head_ref: request.expected_head_ref, expected_base_ref: request.expected_base_ref } : {}), pull_request_number: request.pull_request_number,
           expected_pull_request_id: request.expected_pull_request_id, expected_head_oid: request.expected_head_oid };
-        const evidence = (includeContent ? assertGithubReviewContent : assertGithubReviewEvidence)(await observeEvidence.call(reviewPort, request));
-        const threads = (includeContent ? assertGithubPrContent : assertGithubPrObservation)(await observeThreads.call(reviewPort, threadsRequest));
-        const repeatedThreads = (includeContent ? assertGithubPrContent : assertGithubPrObservation)(await observeThreads.call(reviewPort, threadsRequest));
-        const repeatedEvidence = (includeContent ? assertGithubReviewContent : assertGithubReviewEvidence)(await observeEvidence.call(reviewPort, request));
+        const collect = async (method, request, assert) => {
+          active(signal);
+          const value = await method.call(reviewPort, request, { signal });
+          active(signal);
+          return assert(value);
+        };
+        const evidence = await collect(observeEvidence, request, includeContent ? assertGithubReviewContent : assertGithubReviewEvidence);
+        const threads = await collect(observeThreads, threadsRequest, includeContent ? assertGithubPrContent : assertGithubPrObservation);
+        const repeatedThreads = await collect(observeThreads, threadsRequest, includeContent ? assertGithubPrContent : assertGithubPrObservation);
+        const repeatedEvidence = await collect(observeEvidence, request, includeContent ? assertGithubReviewContent : assertGithubReviewEvidence);
         const p = before.pull_request;
         for (const observed of [evidence, repeatedEvidence, threads, repeatedThreads]) {
           const from = Date.parse(observed.observed_from), until = Date.parse(observed.observed_until), currentTime = now();
@@ -58,7 +68,7 @@ function createObservation({ readConfirmedHead, readCurrent, reviewPort, now = D
         if (evidence.pull_request.base_oid !== p.base_oid || repeatedEvidence.pull_request.base_oid !== p.base_oid
           || evidence.evidence_sha256 !== repeatedEvidence.evidence_sha256 || threads.observation_sha256 !== repeatedThreads.observation_sha256)
           fail('STANDARD_PR_REVIEW_COLLECTION_CHANGED');
-        if (shadowHash(await source(instance, input)) !== shadowHash(before) || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
+        if (shadowHash(await source(instance, input, signal)) !== shadowHash(before) || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
           || !Number.isSafeInteger(start) || now() < start || now() - start > 300000) fail('STANDARD_PR_REVIEW_CONTEXT_CHANGED');
         return emit('completed', { update_operation_id: input.update_operation_id, session_id: before.session_id, head_oid: before.head,
           base_oid: p.base_oid, source_sha256: shadowHash(before), evidence: repeatedEvidence, threads: repeatedThreads,

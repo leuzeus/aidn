@@ -8,6 +8,8 @@ import { createGithubReviewEvidenceAdapter, createGithubReviewEvidenceAsyncAdapt
 import { createGithubWorkflowAdapter, createGithubWorkflowAsyncAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
 import { runGithubObservationCommand } from '../../src/adapters/git-provider/github-observation-transport.mjs';
 import { createStandardControlInbox } from '../../src/application/runtime/standard-workflow-control-inbox.mjs';
+import { createStandardHumanDecisions } from '../../src/application/runtime/standard-workflow-human-decisions.mjs';
+import { createStandardSessionPrReviewObservation } from '../../src/application/runtime/standard-session-pr-review-observe.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
 
@@ -125,6 +127,49 @@ try {
       const inbox = createStandardControlInbox({ store: { compareAndSwap() { writes++; } }, signer: {}, source, projectionRequired: false });
       const pending = inbox.reserve(request, 'fixture-pr', { signal: stop.signal }); await delay(5); stop.abort();
       await assert.rejects(pending, { code: 'PROCESS_CONTROL_AUTHORITY_ABORTED' }); assert.equal(received.aborted, true); assert.equal(writes, 0);
+    }
+  });
+  await check('external inbox cancellation traverses the application observer into a real provider subprocess', async () => {
+    const file = path.join(root, 'observer.pid'), stop = new AbortController(); let writes = 0, calls = 0, closed = false;
+    const reader = createGithubReviewEvidenceAsyncAdapter(configuration, { run: async (_exe, _args, options) => {
+      calls++;
+      try { return await command("require('fs').writeFileSync(" + JSON.stringify(file) + ",String(process.pid));setInterval(()=>{},1000);", { signal: options.signal }); }
+      finally { closed = true; }
+    } });
+    const instance = { instance_id: 'waiting', instance_sha256: H };
+    const app = createStandardSessionPrReviewObservation({ readCurrent: () => instance,
+      readConfirmedHead: async (_instance, _input, { signal }) => {
+        assert.equal(signal.aborted, false);
+        return { update_operation_id: 'op_' + 'a'.repeat(40), material_sha256: H, head, pull_request: {
+          state: 'OPEN', draft: false, head_oid: head, base_oid: 'b'.repeat(40), node_id: 'PR_fixture', number: 7,
+          repository_id: 'R_fixture', head_branch: 'S001-example', base_branch: 'dev' } };
+      }, reviewPort: { observeReviewEvidence: reader.observeReviewEvidence, observePullRequest() { throw Error('MUST_NOT_COLLECT_THREADS'); } } });
+    const request = { contract_version: 'process-control-request.v1', scope_id: 'fixture', instance_id: 'waiting', instance_sha256: H, model_sha256: H,
+      instance_revision: 1, occurrence_id: 'root', correlation_id: 'fixture:root', event_keys: ['review_snapshot', 'checks_snapshot'], context_sha256: H, branch: 'S001-example', head };
+    const inbox = createStandardControlInbox({ store: { compareAndSwap() { writes++; } }, signer: {}, projectionRequired: false,
+      source: { read: ({ signal }) => app.observe(instance, { contract_version: 'standard-session-pr-review-observe-input.v1', update_operation_id: 'op_' + 'a'.repeat(40) }, { signal }),
+        verify() { throw Error('MUST_NOT_VERIFY'); } } });
+    const pending = inbox.reserve(request, 'fixture-observer', { signal: stop.signal });
+    const rejected = assert.rejects(pending, { code: 'PROCESS_CONTROL_AUTHORITY_ABORTED' });
+    const pid = await pidFrom(file); stop.abort(); await rejected;
+    const until = Date.now() + 2000; while (!closed && Date.now() < until) await delay(10);
+    assert.equal(closed, true); assert.equal(alive(pid), false); assert.equal(calls, 1); assert.equal(writes, 0);
+  });
+  await check('human capture combines caller abort and its internal timeout through read and verify', async () => {
+    const record = { operation_id: 'op_' + 'a'.repeat(40), intent: { binding_ref: 'mode_decision', instance_id: 'waiting', scope_id: 'fixture', occurrence_id: 'root' },
+      preview: { input: { session_id: 'S001' } } };
+    for (const phase of ['read', 'verify']) for (const cancel of [true, false]) {
+      let writes = 0, entered, observedSignal;
+      const stop = new AbortController(), started = new Promise(resolve => { entered = resolve; });
+      const source = { read: async ({ question }) => ({ contract_version: 'human-mode-decision.v1', source_kind: 'human', authority_id: 'fixture_human',
+        source_event_id: 'fixture1', subject_sha256: H, question_sha256: shadowHash(question), choice: 'COMMITTING', evidence_refs: [{ ref: 'fixture:human', sha256: H }] }),
+        verify: async () => { throw Error('MUST_NOT_FINISH'); } };
+      source[phase] = ({ signal }) => { observedSignal = signal; entered(); return new Promise(() => {}); };
+      const human = createStandardHumanDecisions({ inbox: { compareAndSwap() { writes++; } }, signer: {}, projectionRequired: false, source });
+      const pending = human.reserve(record, 'fixture:human', { signal: stop.signal });
+      const rejected = assert.rejects(pending, { code: cancel ? 'PROCESS_HUMAN_AUTHORITY_ABORTED' : 'PROCESS_HUMAN_AUTHORITY_TIMEOUT' });
+      await started; if (cancel) stop.abort(); await rejected;
+      assert.equal(observedSignal.aborted, true); assert.equal(writes, 0);
     }
   });
   await check('new transport is a direct native launch pin', async () => {
