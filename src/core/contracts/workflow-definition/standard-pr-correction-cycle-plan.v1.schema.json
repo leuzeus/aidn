@@ -22,9 +22,6 @@
       "const": "session_pr_correction_cycle_initialize"
     },
     "input": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$id": "aidn://contracts/workflow-definition/standard-pr-correction-cycle-input.v1",
-      "x-aidn-contract-version": "standard-pr-correction-cycle-input.v1",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -201,10 +198,7 @@
             }
           }
         }
-      },
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$id": "aidn://contracts/workflow-definition/standard-pr-correction-review.v1",
-      "x-aidn-contract-version": "standard-pr-correction-review.v1"
+      }
     },
     "origin": {
       "type": "object",
@@ -391,9 +385,6 @@
       }
     },
     "inner": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$id": "aidn://contracts/workflow-definition/standard-pr-correction-cycle-inner.v1",
-      "x-aidn-contract-version": "standard-pr-correction-cycle-inner.v1",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -613,10 +604,7 @@
                 }
               }
             }
-          },
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "$id": "aidn://contracts/workflow-definition/standard-cycle-initialize-plan.v2",
-          "x-aidn-contract-version": "standard-cycle-initialize-plan.v2"
+          }
         },
         "plan_sha256": {
           "type": "string",

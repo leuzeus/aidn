@@ -87,7 +87,7 @@ test("valid findings select an explicit granted canonical reopen with an accepte
   assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_correction_reopen").fields,
     { contract_version: { source: "literal", value: "standard-pr-correction-reopen-input.v1" }, triage_operation_id: { source: "operation_id", node_id: "session_pr_triage_evaluate" } });
-  assert.deepEqual(assets.model.nodes.find(row => row.id === "session_pr_correction").children, ["session_pr_correction_reopen", "session_pr_correction_checkpoint", "session_pr_correction_decide"]);
+  assert.deepEqual(assets.model.nodes.find(row => row.id === "session_pr_correction").children, ["session_pr_correction_reopen", "session_pr_correction_checkpoint", "session_pr_correction_decide", "session_pr_correction_requested"]);
   const checkpoint = assets.catalog.bindings.find(row => row.node_id === "session_pr_correction_checkpoint").binding;
   assert.equal(checkpoint.effect_class, "mutating"); assert.equal(checkpoint.executor_kind, "deterministic"); assert.deepEqual(checkpoint.allowed_modes, ["COMMITTING"]);
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_correction_checkpoint").fields,
