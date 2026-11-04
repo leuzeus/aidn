@@ -3168,3 +3168,17 @@ The [bounded evidence](qualification/agentic-process/expired-cycle-bindings-2026
 distinguishes these attempts from full component success. This is source-installed
 fixture proof, with no mixed facade, model call, genuine native/provider/human or
 exact installed archive qualification. General expiry and L1-L8/A1-A10 remain open.
+
+The opt-in `--expire-checkpoint` probe extends this same component to expiry of
+`cycle_checkpoint_finalize`. Its first files/dual/db-only runs are retained FAIL,
+after 13 passing checks each: the initial hook guard returns
+`blocked/no_effect/STANDARD_CYCLE_CHECKPOINT_EXPLICIT_EFFECT_REQUIRED` for expired
+age, before the later specific `STANDARD_PLAN_EXPIRED` check. The explicit
+reprepare path cannot accept that generic reason. The
+[gap record](qualification/agentic-process/cycle-checkpoint-expiry-gap-2026-11-04.json)
+pins all three failed sources/logs. It remains a failing opt-in requirement test;
+no successful checkpoint expiry, physical byte invariance after that refusal,
+fresh continuation or complete-component acceptance is claimed. The next change
+must distinguish initial expiry without weakening explicit intent or effect
+ownership, then rerun the same probe. Earlier 20-check results remain tied to
+their exact pre-option snapshots.

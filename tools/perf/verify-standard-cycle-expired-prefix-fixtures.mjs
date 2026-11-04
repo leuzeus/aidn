@@ -51,6 +51,7 @@ if (process.argv[2] === "--prepare") {
   console.log(JSON.stringify({ preview, counters }));
 } else {
   const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
+  const expireCheckpoint = process.argv.includes("--expire-checkpoint");
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("CYCLE_EXPIRED_PREFIX_MODE_INVALID");
   const owned = [], counters = { grants: 0 }, assets = loadStandardWorkflowCycleAssets();
   let checks = 0, success = false;
@@ -111,7 +112,7 @@ if (process.argv[2] === "--prepare") {
       assert.equal(preview.prepared?.can_apply ?? true, true, JSON.stringify(preview.prepared));
       let staged = await host.stage(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });
       const id = staged.operation_id;
-      if (["cycle_context_refresh", "cycle_initialize"].includes(preview.binding.id)) {
+      if (["cycle_context_refresh", "cycle_initialize", ...(expireCheckpoint ? ["cycle_checkpoint_finalize"] : [])].includes(preview.binding.id)) {
         const before = businessState(), head = git(target, "rev-parse", "HEAD"), branch = git(target, "branch", "--show-current");
         const runtimeBefore = mode === "files" ? snapshot(path.join(target, ".aidn/runtime")) : null;
         fs.writeFileSync(clockFile, JSON.stringify(preview.prepared.plan.prepared_at_ms + 300001));
@@ -155,7 +156,7 @@ if (process.argv[2] === "--prepare") {
     }
     const final = host.inspect("cycle-expiry"), bytes = snapshot(target);
     assert.equal(final.cursor.status, "COMPLETED");
-    assert.deepEqual(expiredNodes, ["refresh_before", "initialize", "refresh_after"]);
+    assert.deepEqual(expiredNodes, ["refresh_before", "initialize", ...(expireCheckpoint ? ["checkpoint"] : []), "refresh_after"]);
     const checkpointIntent = final.record.events.find(row => row.kind === "operation_intent" && row.intent.binding_ref === "cycle_checkpoint_finalize");
     assert.ok(checkpointIntent);
     assert.equal(host.readJournal(checkpointIntent.intent.operation_id).results.at(-1).output.facts.cycle_checkpoint_completed, true);
@@ -165,13 +166,15 @@ if (process.argv[2] === "--prepare") {
       policyPins: final.record.policy_pins, scopeId: final.record.scope_id, events: final.record.events });
     assert.equal(simulation.trace.at(-1).instance_sha256, final.record.instance_sha256); assert.deepEqual(simulation.trace.at(-1).cursor, final.cursor);
     assert.deepEqual(snapshot(target), bytes);
-    pass("same shipped cycle IR/reducer replay and simulation preserve all three refusals, real checkpoint and final refresh");
+    pass(`same shipped cycle IR/reducer replay and simulation preserve all ${expiredNodes.length} refusals, real checkpoint and final refresh`);
     success = true;
     console.log(JSON.stringify({ status: "PASS", checks, state_mode: mode, model_revision: assets.model.revision, model_sha256: assets.source.model_sha256,
-      scope: "source-installed-published-cycle-component", expired_nodes: expiredNodes, expired_bindings: ["cycle_context_refresh", "cycle_initialize"],
+      scope: "source-installed-published-cycle-component", expired_nodes: expiredNodes,
+      expired_bindings: ["cycle_context_refresh", "cycle_initialize", ...(expireCheckpoint ? ["cycle_checkpoint_finalize"] : [])],
       physical_runtime_bytes: mode === "files" ? "all-bytes-and-directories-unchanged-on-expiry" : "NOT_QUALIFIED",
       clock: "isolated-host-operation-TTL-probes; real-wall-time-for-hook", authorization: "fixture-capability", native_allocations: 0, model_calls: 0,
-      checkpoint: "actual-fixed-hook-completed-not-expired", external_r05_precondition: "actual-fixed-drift-hook", external_session_git_checkpoint: "actual-Git-before-cycle-admission",
+      checkpoint: expireCheckpoint ? "actual-fixed-hook-after-accepted-expired-no-effect-and-fresh-grant" : "actual-fixed-hook-completed-not-expired",
+      external_r05_precondition: "actual-fixed-drift-hook", external_session_git_checkpoint: "actual-Git-before-cycle-admission",
       mixed_facade: "NOT_USED", native: "NOT_RUN", installed_archive: "NOT_RUN", full_standard_workflow: "NOT_COMPLETE" }));
   } finally {
     clockFile = null;
