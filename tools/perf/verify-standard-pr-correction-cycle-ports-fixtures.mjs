@@ -8,8 +8,12 @@ import { createStandardPrCorrectionCycle } from '../../src/application/runtime/s
 import { assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
+import { artifactMetadataHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files', owned = [];
+const lateMetadata = process.argv.find(x => x.startsWith('--late-metadata='))?.slice(16) ?? null;
 assert.ok(['files', 'dual', 'db-only'].includes(mode));
+assert.ok(lateMetadata === null || mode !== 'files' && ['provider', 'authorization'].includes(lateMetadata));
 const op = n => 'op_' + String(n).repeat(40), H = 'a'.repeat(64);
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe', windowsHide: true }).trim();
 let checks = 0;
@@ -61,9 +65,12 @@ try {
       facts: { session_pr_correction_cycle_requested: true }, observations: { question_sha256: H, choice: 'create-correction-cycle', review_sha256: shadowHash(review.plan.review),
         source_sha256: H, inbox_id: 'decision_' + '1'.repeat(40), source_ref: 'fixture:human' }, evidence_refs: [] } };
   rows.set(op(3), human); assertStandardOperationOutput(human.output);
+  let lateProbe = null;
   const make = (options = {}) => createStandardPrCorrectionCycle({ targetRoot: f.root, operations: f.ops, readAcceptedOperation,
     readCheckpoint: checkpoint.readCompleted, observeProduct: () => product, readCurrent: () => f.instance,
-    async verifyContinuationSource(instance, source, { assertLocal }) { assertLocal(); const result = await authority.verifyProviderSource(instance, source); assertLocal(); return result; }, ...options });
+    async verifyContinuationSource(instance, source, { assertLocal }) { assertLocal(); const result = await authority.verifyProviderSource(instance, source);
+      if (lateMetadata === 'provider' && lateProbe) await lateProbe();
+      assertLocal(); return result; }, ...options });
   const request = { contract_version: 'standard-pr-correction-cycle-input.v1', decision_operation_id: op(3), cycle_id: 'C001', title: 'review-correction', objective: 'Correct the reviewed boundary through an ordinary governed cycle.' };
   const head = git(f.root, 'rev-parse', 'HEAD'), commits = git(f.root, 'rev-list', '--count', 'HEAD');
   await test('unaccepted, refused and corrupted requests cannot create a cycle', async () => {
@@ -92,9 +99,47 @@ try {
     await assert.rejects(make().apply(f.instance, prepared, { ...options, assertAuthorized() { throw Object.assign(Error('grant refused'), { code: 'FIXTURE_GRANT_REFUSED' }); } }), { code: 'FIXTURE_GRANT_REFUSED' });
     assert.equal(f.artifacts.ownerPending(), false); assert.equal(git(f.root, 'branch', '--show-current'), review.plan.review.head_branch);
   });
-  await test('actual ordinary initializer creates one mapped correction cycle without product or Git commit', async () => {
+  await test(lateMetadata ? 'metadata-only change during post-CAS ' + lateMetadata + ' wait retains UNKNOWN and owner'
+    : 'actual ordinary initializer creates one mapped correction cycle without product or Git commit', async () => {
     const fresh = await make().prepare(f.instance, request);
-    const output = await make().apply(f.instance, fresh, { write: true, expectPlan: fresh.plan_sha256, assertAuthorized() {} });
+    let reached = false, before, after;
+    lateProbe = async () => {
+      // Enter only after every real initializer CAS and the branch transition.
+      // The competing writer runs across an actual asynchronous boundary.
+      if (reached || git(f.root, 'branch', '--show-current') !== fresh.plan.inner.plan.branch_name) return;
+      assert.equal(f.artifacts.ownerPending(), true);
+      for (const row of fresh.plan.inner.plan.changes) assert.equal(f.artifacts.read(row.path).sha256, row.after_sha256);
+      await new Promise(resolve => setImmediate(resolve));
+      const store = createProjectArtifactStore({ targetRoot: f.root, existingOnly: true });
+      try {
+        const name = fresh.plan.inner.plan.changes.at(-1).path;
+        before = store.getArtifact(name); assert.ok(before);
+        store.compareAndSwapArtifact({ artifact: { ...before, classification_reason: before.classification_reason + '-competing-writer' },
+          expectedSha256: before.sha256, expectedMetadataSha256: artifactMetadataHash(before) });
+        after = store.getArtifact(name);
+        assert.equal(after.content, before.content); assert.equal(after.sha256, before.sha256);
+        assert.notEqual(artifactMetadataHash(after), artifactMetadataHash(before)); reached = true;
+      } finally { store.close(); }
+    };
+    const output = await make().apply(f.instance, fresh, { write: true, expectPlan: fresh.plan_sha256,
+      async assertAuthorized() { if (lateMetadata === 'authorization') await lateProbe(); } });
+    if (lateMetadata) {
+      assert.equal(reached, true, 'must reach the post-CAS asynchronous boundary');
+      assert.equal(output.outcome, 'reconciliation_required', JSON.stringify(output)); assert.equal(output.effect_status, 'unknown');
+      assert.equal(output.observations.reason_code, 'STANDARD_CYCLE_METADATA_UNCONFIRMED'); assert.deepEqual(output.facts, {});
+      assert.equal(f.artifacts.ownerPending(), true);
+      assert.deepEqual(output.observations.committed, fresh.plan.inner.plan.changes.map(row => row.path));
+      for (const row of fresh.plan.inner.plan.changes) assert.equal(f.artifacts.read(row.path).sha256, row.after_sha256);
+      assert.equal(git(f.root, 'rev-parse', 'HEAD'), head); assert.equal(git(f.root, 'rev-list', '--count', 'HEAD'), commits);
+      assert.equal(git(f.root, 'branch', '--show-current'), fresh.plan.inner.plan.branch_name);
+      // A new admission observes the retained owner. Do not retry the effect,
+      // restore the foreign row, or remove the owner to make this fixture green.
+      const admission = await f.ops.admitCycle(); assert.equal(admission.outcome, 'blocked');
+      console.log(JSON.stringify({ late_metadata_boundary: lateMetadata, reached, content_sha256: before.sha256,
+        before_metadata_sha256: artifactMetadataHash(before), after_metadata_sha256: artifactMetadataHash(after),
+        outcome: output.outcome, effect_status: output.effect_status, owner_retained: true, retry: 'NOT_RUN' }));
+      return;
+    }
     assert.equal(output.outcome, 'completed', JSON.stringify(output)); assert.equal(output.effect_status, 'confirmed');
     assert.equal(output.facts.session_pr_correction_cycle_initialized, true); assert.equal(output.facts.cycle_dor_ready, false);
     assert.equal(git(f.root, 'branch', '--show-current'), 'corrective/C001-review-correction');

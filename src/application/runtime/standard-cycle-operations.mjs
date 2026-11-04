@@ -173,6 +173,7 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
           for (const file of projectionFiles([change])) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== change.after_sha256) fail("STANDARD_CYCLE_PROJECTION_UNCONFIRMED");
           if (artifacts.metadataHash(change.path) !== committed.metadata_sha256) fail("STANDARD_CYCLE_METADATA_UNCONFIRMED");
           const guarded = await effectGuard?.after();
+          if (artifacts.metadataHash(change.path) !== committed.metadata_sha256) fail("STANDARD_CYCLE_METADATA_UNCONFIRMED");
           const fields = analyzeStructuredArtifact(after).key_values;
           return emit("cycle_context_refresh", "completed", "confirmed", { digest_sha256: shadowHash(computed.digest), consistency: computed.consistency,
             projection, repair_layer_status: fields.repair_layer_status, current_state_freshness: fields.current_state_freshness,
@@ -206,6 +207,9 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
           for (const [index, file] of projectionFiles(prepared.plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== prepared.plan.changes[index].after_sha256) fail("STANDARD_CYCLE_PROJECTION_UNCONFIRMED");
           if (shadowHash(committed.map(name => artifacts.metadataHash(name))) !== shadowHash(afterMetadata)) fail("STANDARD_CYCLE_METADATA_UNCONFIRMED");
           const guarded = await effectGuard?.after({ assertOwner: () => artifacts.assertLocalEffectOwner(expectPlan) });
+          // The guard can await provider/authorization observations. Compare
+          // with the CAS results, never a new baseline read after that wait.
+          if (shadowHash(committed.map(name => artifacts.metadataHash(name))) !== shadowHash(afterMetadata)) fail("STANDARD_CYCLE_METADATA_UNCONFIRMED");
           return emit("cycle_initialize", "completed", "confirmed", { committed, audit: checked, projection, ...(guarded ? { guarded_transition: guarded } : {}) }, { cycle_initialized: true, cycle_dor_ready: false },
             prepared.plan.changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 })));
         } catch (cause) { return emit("cycle_initialize", "reconciliation_required", "unknown", { committed, reason_code: cause.code ?? "STANDARD_CYCLE_EFFECT_UNCONFIRMED" }); }

@@ -20,6 +20,14 @@ encore ouverts.
 
 ### Avancement d’exécution
 
+- Le contrôle final du créateur de cycle et du rafraîchissement de contexte
+  revérifie les métadonnées après l'attente du guard, contre les empreintes
+  renvoyées par les CAS effectifs. Une classification modifiée à contenu
+  identique après écriture conserve UNKNOWN et son propriétaire. La qualification
+  ciblée doit atteindre cette frontière pendant les attentes fournisseur et
+  autorisation en DUAL/DB-only, avec code de refus spécifique, puis conserver le
+  parcours positif FILES. Ce correctif ne termine ni le raccord ordinaire ni L4.
+
 - Les trois catalogues ont été explicitement réépinglés après l'ajout des
   politiques des epochs natives. Le chargement refusait l'ancienne empreinte
   d'implémentation ; le helper d'édition des sources actualise les bindings et

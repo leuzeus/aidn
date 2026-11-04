@@ -500,3 +500,10 @@ ordinary native plan/DoR/implementation, correction work/validation/reclosure,
 causal delivery, general recovery and full L1-L8/A1-A10 acceptance remain due.
 No complete-workflow or installed/native/human/PostgreSQL claim follows.
 Ordinary entry and `complete_standard_workflow=false` remain unchanged.
+
+The cycle initializer and runtime-context refresh recheck canonical metadata
+after their awaited final effect guards. Their comparison uses the metadata
+hashes returned by the actual CAS writes, preserving UNKNOWN and the held owner
+if a competing classification update occurs while provider or authorization
+observations are pending. The targeted component matrix remains separate from
+production dispatcher, native and whole-workflow qualification.

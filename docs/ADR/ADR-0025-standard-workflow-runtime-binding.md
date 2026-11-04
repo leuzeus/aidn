@@ -2214,7 +2214,11 @@ through the transition. The initializer passes a lexical capability to verify
 its own held owner; JSON cannot supply this capability. The remote-only reader
 retains configured transport/authentication/ref validation and never pushes.
 Local branch changes require separate exact HEAD/index/postimage checks.
-UNKNOWN preserves its owner and has no positive fact. Initialization leaves
+UNKNOWN preserves its owner and has no positive fact. The final metadata fence
+runs after awaited provider/authorization guards, compared
+against the hashes returned by the actual CAS writes. Context refresh uses the
+same final fence. Competing classification changes cannot confirm an effect
+merely because artifact content is unchanged. Initialization leaves
 DoR NOT_READY and scope unfrozen; the published subsequent planning, readiness
 and IMPLEMENTING entries retain their original authorities. Their source
 connection does not qualify the whole journey, authentic human/native execution,

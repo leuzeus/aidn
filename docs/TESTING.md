@@ -3336,3 +3336,14 @@ their runtime through the real projector before selecting the source/checkpoint;
 no clear marker is fabricated and the admission policy is unchanged. The
 ordinary parameter interface retains `session` and `cycle`, with correction
 values read only from `cycle.correction` when that branch is selected.
+
+The same suite accepts `--late-metadata=provider|authorization` in DUAL and
+DB-only. Each invocation creates a new retained case and changes only canonical
+classification during an asynchronous guard observation after every initializer
+CAS. It requires unchanged content, a changed metadata hash, the exact
+`STANDARD_CYCLE_METADATA_UNCONFIRMED` reason, UNKNOWN with no positive facts,
+and a retained owner. HEAD and commit count remain unchanged; admission stays
+blocked and the effect is never retried. The initializer compares metadata again
+after the awaited guard against the values returned by its original CAS writes.
+Runtime context refresh applies the same final metadata fence. The ordinary
+FILES positive case remains separate from these injected competing-writer cases.
