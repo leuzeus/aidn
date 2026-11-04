@@ -64,10 +64,17 @@ try {
     acceptedCheckpoint = saved;
   });
   await test('pending effect ownership blocks review before provider observation', async () => {
-    const before = calls;
-    await f.artifacts.withLocalEffectOwner('f'.repeat(64), async () => {
+    const before = calls, beforeRows = f.names.map(name => ({ ...f.artifacts.read(name), metadata: f.artifacts.metadataHash(name) }));
+    const released = await f.artifacts.withLocalEffectOwner('f'.repeat(64), async () => {
       await assert.rejects(review.prepare(f.instance, input, op(3)), { code: 'STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED' });
+      assert.equal(calls, before);
+      assert.equal(git(f.root, 'rev-parse', 'HEAD'), head);
+      assert.equal(git(f.root, 'rev-list', '--count', 'HEAD'), count);
+      assert.deepEqual(f.names.map(name => ({ ...f.artifacts.read(name), metadata: f.artifacts.metadataHash(name) })), beforeRows);
+      return { effect_status: 'no_effect' };
     });
+    assert.equal(released.effect_status, 'no_effect');
+    assert.equal(f.artifacts.ownerPending(), false);
     assert.equal(calls, before);
   });
   await test('a foreign new HEAD cannot reuse the old checkpoint subject', async () => {
@@ -79,6 +86,6 @@ try {
     production_dispatcher: 'NOT_RUN', genuine_human: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN', full_standard_workflow: false }));
   completed = true;
 } finally {
-  if (completed) for (const root of owned.reverse()) { const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary); assert.ok(path.basename(real).startsWith('aidn-standard-fresh-')); fs.rmSync(real, { recursive: true, force: true }); }
+  if (completed && !process.argv.includes('--retain-always')) for (const root of owned.reverse()) { const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary); assert.ok(path.basename(real).startsWith('aidn-standard-fresh-')); fs.rmSync(real, { recursive: true, force: true }); }
   else console.log(JSON.stringify({ fixture_cleanup: 'retained', roots: owned }));
 }
