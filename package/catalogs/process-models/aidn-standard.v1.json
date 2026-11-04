@@ -1,7 +1,7 @@
 {
   "contract_version": "agentic-process-model.v2",
   "model_id": "aidn-standard",
-  "revision": 86,
+  "revision": 87,
   "participants": [
     {
       "id": "project"
@@ -1141,8 +1141,7 @@
     "contract_version": "process-data-bindings.v2",
     "parameter_keys": [
       "session",
-      "cycle",
-      "correction_cycle"
+      "cycle"
     ],
     "inputs": [
       {
@@ -1286,22 +1285,25 @@
           },
           "cycle_id": {
             "source": "parameter",
-            "key": "correction_cycle",
+            "key": "cycle",
             "path": [
+              "correction",
               "cycle_id"
             ]
           },
           "title": {
             "source": "parameter",
-            "key": "correction_cycle",
+            "key": "cycle",
             "path": [
+              "correction",
               "title"
             ]
           },
           "objective": {
             "source": "parameter",
-            "key": "correction_cycle",
+            "key": "cycle",
             "path": [
+              "correction",
               "objective"
             ]
           }

@@ -1,7 +1,7 @@
 {
   "contract_version": "standard-workflow-catalog.v1",
   "component_id": "aidn-standard",
-  "revision": 86,
+  "revision": 87,
   "scope": {
     "kind": "composed_committing_cycle_component",
     "complete_standard_workflow": false,
@@ -25,9 +25,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard.v1.json",
-    "sha256": "e3c4a383320851f12474843da96f1a0f959d6b4023765b2b0d87573048576fb7",
+    "sha256": "fd3a3afad9bc612d8718950f7f902352aec9ce6115b01d02aa427a4a62e22cbe",
     "model_id": "aidn-standard",
-    "revision": 86
+    "revision": 87
   },
   "specification": {
     "path": "docs/SPEC.md",

@@ -4338,7 +4338,7 @@ its initialized fact grants no product work and creates no Git witness.
 
 The published correction branch subsequently uses the existing branch audit,
 R05 drift/checkpoint, native planning, frozen-plan recording, readiness and
-IMPLEMENTING entry ports. A separate `correction_cycle` parameter selects the
+IMPLEMENTING entry ports. A separate `cycle.correction` parameter object selects the
 new cycle identity and objective. This source connection is a candidate until
 its exact guarded component and composition checks pass. The new three-mode
 port suite uses actual ordinary admissions, canonical CAS, Git and SQLite, but

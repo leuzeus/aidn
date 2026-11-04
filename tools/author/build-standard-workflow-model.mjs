@@ -68,7 +68,7 @@ seq("correction_not_requested", []);
 seq("correction_cycle", ["correction_initialize", "correction_branch_audit", "correction_cycle_checkpoint", "correction_plan", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"]);
 op("correction_initialize", "session_pr_correction_cycle_initialize", {
   ...operation("correction_initialize", "decision_operation_id", "session_pr_correction_decide"),
-  ...Object.fromEntries(["cycle_id", "title", "objective"].map(key => [key, { source: "parameter", key: "correction_cycle", path: [key] }])) });
+  ...Object.fromEntries(["cycle_id", "title", "objective"].map(key => [key, { source: "parameter", key: "cycle", path: ["correction", key] }])) });
 const correctionRef = { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] },
   cycle_id: { source: "operation_input", node_id: "correction_initialize", path: ["cycle_id"] } };
 op("correction_branch_audit", "branch_cycle_audit", correctionRef);
@@ -194,7 +194,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
   policies: [policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
-  data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: ["session", "cycle", "correction_cycle"], inputs } };
+  data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: ["session", "cycle"], inputs } };
 const modelPath = "package/catalogs/process-models/aidn-standard.v1.json";
 const existing = fs.existsSync(new URL(modelPath, root)) ? json(modelPath) : null;
 if (existing) {
