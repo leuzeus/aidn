@@ -11,8 +11,8 @@ qualification de son parcours complet.
 Avancement courant au 4 novembre 2026 : les composants startup/cycle sont en
 162/160 avec SOURCE38 et le modèle composé 104 reçoit les routes
 d'analyse THINKING/EXPLORING (192 nœuds, 117 occurrences d’opération,
-19 activités). La source exacte sera conservée avec les résultats de
-qualification. Le snapshot SOURCE37 était 159/157/101 (186/113/17),
+19 activités). Les sources exactes et les verdicts terminaux sont conservés
+dans la preuve bornée de chaque qualification. Le snapshot SOURCE37 était 159/157/101 (186/113/17),
 et SOURCE34 était 155/153/97 ;
 le snapshot 147/145/89 (147/90/14) était une étape antérieure, pas les assets
 courants. Les preuves conservent chacune leur source exacte. Les raccordements
@@ -37,9 +37,14 @@ datés de `dd1dbab`, distincts de cet avancement.
   13, composition 32, modèle 22, opérations/réducteur 27, politiques et docrefs
   passent. Les ports de contexte FILES/DUAL/DB-only passent chacun six contrôles
   avec deux projets distincts conservés ; ils ne sont pas une exécution mixte
-  native. Le préflight composé reste en cours sur cette source au relevé.
+  native. Le préflight composé sur `ca2fa2af` est terminal FAIL, exit 1 le
+  4 novembre à 22:00:50 UTC, après huit contrôles : son assertion attend encore
+  zéro réponse pour THINKING alors que le modèle prévoit une analyse.
+  SOURCE39 corrige cette attente pour les deux modes et ajoute des assertions
+  de zéro réponse supplémentaire pour D/H, refus, report, annulation et attente.
+  Cette correction attend son propre contrôle sur une nouvelle source gelée.
   La [preuve bornée](qualification/standard-workflow/mode-analysis-components-2026-11-04.json)
-  conserve dix cas PASS, trois FAIL et ce cas encore sans verdict terminal.
+  conserve les 22 cas SOURCE38 terminaux : 15 PASS et 7 FAIL sur six sources.
   Les trois premiers cas sur `5ccf1ae7` ont terminé FAIL :
   le catalogue refusait le nouveau type de rapport et le test négatif de mode
   omettait l'owner d'effet requis pour son écriture de fixture. Les originaux
@@ -57,7 +62,8 @@ datés de `dd1dbab`, distincts de cet avancement.
   de son autorité. Le même gate échoue sur la source héritée `474032b4`, restée
   inchangée. La première correction limitée aux quatre nouveaux appels était
   donc incomplète. L'autorité est alignée sur les 143 appels actuels, en conservant
-  chaque appel/argument/ordre historique. Les trois FAIL de catalogue restent
+  chaque appel/argument/ordre historique. Le catalogue passe sur `99c7e4c3` ;
+  ce résultat prouve cette cohérence seule. Les trois FAIL de catalogue restent
   distincts ; aucun n'est une exécution ou un échec du parcours métier.
   Les tests d'attente/rejeu du réducteur n'exécutent pas de redémarrage à froid
   de l'hôte mixte ; l'intitulé initial trop large a été corrigé.

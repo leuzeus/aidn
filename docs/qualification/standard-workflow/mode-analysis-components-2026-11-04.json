@@ -1,11 +1,159 @@
 {
-  "observed_utc": "2026-11-04T21:59:57.842248+00:00",
+  "observed_utc": "2026-11-04T22:22:29.981328+00:00",
   "scope": "mode analysis component, not complete A2 or STANDARD",
   "execution_sources": [
+    "2cbdca0d2b5cddac47de435caad45f0a07eb9969",
+    "474032b4b75e339dfe74b09c86e7ca2a21362aff",
     "5ccf1ae7a1e68ec2f51983eaebcc25977d0740ee",
+    "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf",
+    "c34997525a070e178c8ea586b1d360b0abb75177",
     "ca2fa2af0e4ec7216ce4215a5bb32cdfda4fea08"
   ],
   "cases": [
+    {
+      "name": "source38-inherited-catalog-4740-20261104",
+      "source_head": "474032b4b75e339dfe74b09c86e7ca2a21362aff",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-full-c2-source37-final-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:03:59.887353+00:00",
+        "pid": 22320,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-full-c2-source37-final-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-full-c2-source37-final-20261104",
+        "head": "474032b4b75e339dfe74b09c86e7ca2a21362aff"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:03:59.887353+00:00",
+        "finished_utc": "2026-11-04T22:04:01.766685+00:00",
+        "pid": 22320,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "protected_files": 2171,
+        "name": "source38-inherited-catalog-4740-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-full-c2-source37-final-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-full-c2-source37-final-20261104",
+        "head_before": "474032b4b75e339dfe74b09c86e7ca2a21362aff",
+        "head_after": "474032b4b75e339dfe74b09c86e7ca2a21362aff"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 15267,
+          "sha256": "831cbcd83caa8f1afe260a7dcc87ca471bbd3f6d29fa860cf453693b06ab9c54",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source38-mode-catalog-r3-20261104",
+      "source_head": "2cbdca0d2b5cddac47de435caad45f0a07eb9969",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:02:24.063039+00:00",
+        "pid": 19492,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104",
+        "head": "2cbdca0d2b5cddac47de435caad45f0a07eb9969"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:02:24.063039+00:00",
+        "finished_utc": "2026-11-04T22:02:25.971786+00:00",
+        "pid": 19492,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "protected_files": 2180,
+        "name": "source38-mode-catalog-r3-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104",
+        "head_before": "2cbdca0d2b5cddac47de435caad45f0a07eb9969",
+        "head_after": "2cbdca0d2b5cddac47de435caad45f0a07eb9969"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 15267,
+          "sha256": "831cbcd83caa8f1afe260a7dcc87ca471bbd3f6d29fa860cf453693b06ab9c54",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source38-mode-catalog-r4-20261104",
+      "source_head": "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:05:07.349363+00:00",
+        "pid": 51144,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104",
+        "head": "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:05:07.349363+00:00",
+        "finished_utc": "2026-11-04T22:05:09.358469+00:00",
+        "pid": 51144,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2180,
+        "name": "source38-mode-catalog-r4-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104",
+        "head_before": "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf",
+        "head_after": "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 15206,
+          "sha256": "a1212ea51c35db13b15f9ac1df7f4211760efd253c134c82b3ce785e03af665c",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
     {
       "name": "source38-mode-composition-20261104",
       "source_head": "5ccf1ae7a1e68ec2f51983eaebcc25977d0740ee",
@@ -355,6 +503,246 @@
       ]
     },
     {
+      "name": "source38-mode-docrefs-r3-20261104",
+      "source_head": "2cbdca0d2b5cddac47de435caad45f0a07eb9969",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104\\tools\\verify\\verify-doc-references.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:02:24.097054+00:00",
+        "pid": 25324,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104\\tools\\verify\\verify-doc-references.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104",
+        "head": "2cbdca0d2b5cddac47de435caad45f0a07eb9969"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:02:24.097054+00:00",
+        "finished_utc": "2026-11-04T22:02:25.444468+00:00",
+        "pid": 25324,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2180,
+        "name": "source38-mode-docrefs-r3-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104\\tools\\verify\\verify-doc-references.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r3-20261104",
+        "head_before": "2cbdca0d2b5cddac47de435caad45f0a07eb9969",
+        "head_after": "2cbdca0d2b5cddac47de435caad45f0a07eb9969"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 638,
+          "sha256": "0abe0dfee068c03a10e03a6bf3e0637c7f50e782ac915095a1341cf149db919f",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source38-mode-docrefs-r4-20261104",
+      "source_head": "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104\\tools\\verify\\verify-doc-references.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:05:07.451473+00:00",
+        "pid": 34328,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104\\tools\\verify\\verify-doc-references.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104",
+        "head": "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:05:07.451473+00:00",
+        "finished_utc": "2026-11-04T22:05:08.853062+00:00",
+        "pid": 34328,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2180,
+        "name": "source38-mode-docrefs-r4-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104\\tools\\verify\\verify-doc-references.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r4-20261104",
+        "head_before": "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf",
+        "head_after": "99c7e4c30bd0f4f37b1ff0fa1690a6cefcb9fdaf"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 638,
+          "sha256": "0abe0dfee068c03a10e03a6bf3e0637c7f50e782ac915095a1341cf149db919f",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source38-mode-final-catalog-20261104",
+      "source_head": "c34997525a070e178c8ea586b1d360b0abb75177",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:00:46.916981+00:00",
+        "pid": 42720,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104",
+        "head": "c34997525a070e178c8ea586b1d360b0abb75177"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:00:46.916981+00:00",
+        "finished_utc": "2026-11-04T22:00:49.013584+00:00",
+        "pid": 42720,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "protected_files": 2180,
+        "name": "source38-mode-final-catalog-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\verify\\verify-gate-catalog.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104",
+        "head_before": "c34997525a070e178c8ea586b1d360b0abb75177",
+        "head_after": "c34997525a070e178c8ea586b1d360b0abb75177"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 15267,
+          "sha256": "831cbcd83caa8f1afe260a7dcc87ca471bbd3f6d29fa860cf453693b06ab9c54",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source38-mode-final-contracts-20261104",
+      "source_head": "c34997525a070e178c8ea586b1d360b0abb75177",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\perf\\verify-standard-mode-work-fixtures.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:00:45.874774+00:00",
+        "pid": 62588,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\perf\\verify-standard-mode-work-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104",
+        "head": "c34997525a070e178c8ea586b1d360b0abb75177"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:00:45.874774+00:00",
+        "finished_utc": "2026-11-04T22:00:51.363023+00:00",
+        "pid": 62588,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2180,
+        "name": "source38-mode-final-contracts-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\perf\\verify-standard-mode-work-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104",
+        "head_before": "c34997525a070e178c8ea586b1d360b0abb75177",
+        "head_after": "c34997525a070e178c8ea586b1d360b0abb75177"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 1362,
+          "sha256": "bd148173500329581511578d17f13d6fb476c51bf818e700c4a3366d91c61343",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
+      "name": "source38-mode-final-docrefs-20261104",
+      "source_head": "c34997525a070e178c8ea586b1d360b0abb75177",
+      "argv": [
+        "node",
+        "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\verify\\verify-doc-references.mjs"
+      ],
+      "started": {
+        "started_utc": "2026-11-04T22:00:46.901963+00:00",
+        "pid": 47168,
+        "command": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\verify\\verify-doc-references.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104",
+        "head": "c34997525a070e178c8ea586b1d360b0abb75177"
+      },
+      "terminal": {
+        "started_utc": "2026-11-04T22:00:46.901963+00:00",
+        "finished_utc": "2026-11-04T22:00:48.333450+00:00",
+        "pid": 47168,
+        "exit_code": 0,
+        "source_unchanged": true,
+        "protected_files": 2180,
+        "name": "source38-mode-final-docrefs-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104\\tools\\verify\\verify-doc-references.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-final-20261104",
+        "head_before": "c34997525a070e178c8ea586b1d360b0abb75177",
+        "head_after": "c34997525a070e178c8ea586b1d360b0abb75177"
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 638,
+          "sha256": "0abe0dfee068c03a10e03a6bf3e0637c7f50e782ac915095a1341cf149db919f",
+          "scope": "terminal original"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "scope": "terminal original"
+        }
+      ]
+    },
+    {
       "name": "source38-mode-metadata-r2-20261104",
       "source_head": "ca2fa2af0e4ec7216ce4215a5bb32cdfda4fea08",
       "argv": [
@@ -515,19 +903,34 @@
         "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r2-20261104",
         "head": "ca2fa2af0e4ec7216ce4215a5bb32cdfda4fea08"
       },
-      "terminal": null,
+      "terminal": {
+        "started_utc": "2026-11-04T21:56:47.947278+00:00",
+        "finished_utc": "2026-11-04T22:00:50.673791+00:00",
+        "pid": 54468,
+        "exit_code": 1,
+        "source_unchanged": true,
+        "protected_files": 2179,
+        "name": "source38-mode-preflight-r2-20261104",
+        "args": [
+          "node",
+          "G:\\aidn-worktrees\\standard-mode-analysis-source38-r2-20261104\\tools\\perf\\verify-standard-composed-preflight-fixtures.mjs"
+        ],
+        "root": "G:\\aidn-worktrees\\standard-mode-analysis-source38-r2-20261104",
+        "head_before": "ca2fa2af0e4ec7216ce4215a5bb32cdfda4fea08",
+        "head_after": "ca2fa2af0e4ec7216ce4215a5bb32cdfda4fea08"
+      },
       "original_logs": [
         {
           "name": "stdout.log",
-          "bytes": 383,
-          "sha256": "34c472460877108176889f1dd540c4fb6e53ee296d52f1b50b97a0e5d1467adc",
-          "scope": "dated live prefix observation only"
+          "bytes": 678,
+          "sha256": "84ceba5b4be81e276e080fc68249688f4381dbdc905e82cad38a1691d8557ae8",
+          "scope": "terminal original"
         },
         {
           "name": "stderr.log",
-          "bytes": 0,
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "scope": "dated live prefix observation only"
+          "bytes": 991,
+          "sha256": "c31d6076446868ce21c8b4c7fd9027c65bd81397de3cb6f7e40b9468c6699e6b",
+          "scope": "terminal original"
         }
       ]
     },
@@ -676,19 +1079,25 @@
       ]
     }
   ],
-  "pass": 10,
-  "fail": 3,
-  "pending": [
-    "source38-mode-preflight-r2-20261104"
-  ],
+  "pass": 15,
+  "fail": 7,
+  "pending": [],
   "limits": [
-    "13 contract/reducer controls and 32 composition checks are offline; receipts and native assignments are synthetic.",
-    "Three mode-context suites use real canonical artifact, SQLite and Git ports, six controls and two preserved disposable projects each. Native report producer is a double.",
-    "Three initial FAILs are retained: catalog unsupported output contract (two cases), missing effect owner in negative fixture (one case after two checks).",
-    "The title claiming a cold prefix was corrected: mode wait/replay tests do not qualify a cold mixed-host restart.",
-    "The new regression suites are included in the Runtime npm chain. Full current Runtime family and Governance Admission have not run.",
-    "Preflight of the existing composed correction remains a separate running source case until its original guard reports a terminal result.",
-    "Mixed native mode execution, continuation after waiting/retention decision, admitted SPIKE conversion, effectful exploration and mode session closure remain outstanding.",
-    "General startup/reload/session/cycle/topology choices and all remaining L1-L8/A1-A10 remain outstanding. Ordinary entry unchanged, complete_standard_workflow false."
-  ]
+    "The 22 SOURCE38 cases are terminal: 15 PASS and 7 FAIL across six exact sources. Component scopes do not transfer between sources.",
+    "The ca2fa2af composed-preflight case is terminal FAIL after eight checks: obsolete zero-response expectation for THINKING. The current graph plans one read-only analysis per mode; its repaired assertion requires a new frozen-source case.",
+    "Initial unsupported-report and missing-fixture-owner failures and all three later/inherited gate-catalog failures remain immutable.",
+    "On 99c7e4c3 gate-catalog passes with all 143 command invocations aligned, preserving all 139 historical npm calls in order and adding four. This is gate coherence, not full Runtime or Governance Admission execution.",
+    "Report/reducer checks are synthetic. Real canonical/Git context-port checks retain six projects in FILES/DUAL/DB-only; they do not execute Native or the mixed composition.",
+    "Waiting/replay reducer checks do not qualify cold mixed-host continuation after a new decision.",
+    "Mixed mode execution, SPIKE admission, effectful exploration, session closure, remaining L1-L8/A1-A10, genuine Native/Human/Provider/OS, PostgreSQL and installed archive remain unqualified. Ordinary entry unchanged; complete_standard_workflow=false."
+  ],
+  "prior_observation": {
+    "observed_utc": "2026-11-04T21:59:57.842248+00:00",
+    "pass": 10,
+    "fail": 3,
+    "pending": [
+      "source38-mode-preflight-r2-20261104"
+    ],
+    "scope": "earlier dated observation retained in Git, superseded by terminal originals"
+  }
 }

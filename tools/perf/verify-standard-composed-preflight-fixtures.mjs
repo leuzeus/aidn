@@ -78,9 +78,34 @@ test("non-retained closure bypasses promotion", () => {
   const result = plan({ closure: "drop", max_responses: 8 }); assert.equal(result.responses_required, 8);
   assert.ok(!result.operations.includes("promotion_decide"));
 });
-for (const mode of ["THINKING", "EXPLORING"]) test(mode + " handoff consumes no native response in this partial graph", () => {
-  const result = plan({ mode, cold_resume: false, max_responses: 1 }); assert.equal(result.responses_required, 0);
-});
+for (const mode of ["THINKING", "EXPLORING"]) {
+  const prefix = mode.toLowerCase();
+  test(mode + " plans exactly one read-only analysis; deterministic and human operations add no response", () => {
+    const result = plan({ mode, cold_resume: false, max_responses: 1 });
+    assert.equal(result.responses_required, 1);
+    assert.deepEqual(result.native_occurrences.map(n => n.node_id), [prefix + "_analysis"]);
+    assert.ok(result.operations.includes("mode_decision"));
+    assert.ok(result.operations.includes(prefix + "_admit"));
+    assert.ok(result.operations.includes(prefix + "_evaluate"));
+    assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
+    assert.equal(result.product_qualification, "NOT_ESTABLISHED");
+    const analysis = model.nodes.find(n => n.id === prefix + "_analysis");
+    assert.deepEqual(model.policies.find(p => p.id === analysis.policy_ref).allowed_permissions, ["read:product"]);
+  });
+  for (const outcome of ["blocked", "deferred", "rejected", "failed", "cancelled"]) {
+    for (const nodeId of ["mode_decision", prefix + "_admit", prefix + "_evaluate"]) {
+      test(mode + " " + nodeId + " " + outcome + " adds no model response or successful completion", () => {
+        const result = plan({ mode, cold_resume: false, max_responses: 1, interruption: { node_id: nodeId, outcome } });
+        const expected = nodeId === prefix + "_evaluate" ? [prefix + "_analysis"] : [];
+        assert.equal(result.responses_required, expected.length);
+        assert.deepEqual(result.native_occurrences.map(n => n.node_id), expected);
+        assert.equal(result.interrupted, true);
+        assert.equal(result.planned_status, ["blocked", "deferred"].includes(outcome) ? "WAITING" : outcome === "cancelled" ? "CANCELLED" : "FAILED");
+        assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
+      });
+    }
+  }
+}
 for (const outcome of ["blocked", "deferred", "rejected", "failed", "cancelled"]) test(outcome + " never becomes a positive closure", () => {
   const result = plan({ interruption: { node_id: "closure_decide", outcome }, max_responses: 5 });
   assert.equal(result.responses_required, 5); assert.equal(result.interrupted, true);

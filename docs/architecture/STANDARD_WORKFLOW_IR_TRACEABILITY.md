@@ -13,8 +13,12 @@ The new suites distinguish offline typed reports/reducer simulation from real
 artifact/Git context reads; neither is mixed native execution. On frozen
 `ca2fa2af`, contracts/reducer 13, composition 32, startup model 22, operation
 contracts/reducer 27, policies and docrefs pass. Each real-context suite passes
-six checks and retains its two projects. The initial three failures and pending
-composed preflight remain in the [bounded record](../qualification/standard-workflow/mode-analysis-components-2026-11-04.json).
+six checks and retains its two projects. All 22 SOURCE38 cases are terminal:
+15 PASS and 7 FAIL on six separate sources. The ca2fa2af preflight failed after
+eight checks because its assertion still required zero mode-analysis responses.
+SOURCE39 expects exactly one read-only analysis and checks zero extra model
+responses for D/H and waiting/non-success paths; a new frozen-source execution
+is required. Original failures remain in the [bounded record](../qualification/standard-workflow/mode-analysis-components-2026-11-04.json).
 Wait/replay tests do not establish a cold mixed-host restart. New regression
 suites join the Runtime npm chain; its full current family and Governance
 Admission remain unproved. Ordinary entry and completion marker stay unchanged.
@@ -26,7 +30,8 @@ The repeated `2cbdca0d` failure led to an exact command comparison: 18 existing
 npm invocations were also missing from the authority. The unchanged inherited
 `474032b4` catalog check fails on the same condition. The first four-call fix
 was incomplete. The authority now matches all 143 invocations, preserving
-historical argv/order. These are gate-coherence failures, not business execution.
+historical argv/order. The 99c7e4c3 catalog check passes. These results establish
+gate coherence only; full current Runtime and Governance Admission remain unproved.
 
 The separate `composed-correction.v3.json` fixture targets both cycles in model
 101, including the accepted human-selected cycle fields, ordinary planning and

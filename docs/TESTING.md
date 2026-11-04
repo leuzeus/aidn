@@ -188,7 +188,11 @@ promotion, cold continuation and PR triage, with nine original responses.
 Synthetic receipts and choices drive the actual published model and common
 reducer. Task-loop occurrences, skipped promotion, non-retained closure,
 admission refusal, native failure and human non-success are checked separately;
-the catalog's activity count is not a consumption estimate. The fixture wire
+the catalog's activity count is not a consumption estimate. THINKING and EXPLORING each
+plan one read-only native analysis. Mode decisions and deterministic preflight/
+evaluation add no response; blocked, deferred, rejected, failed and cancelled
+operations preserve only the analysis responses already consumed. These are
+synthetic planning assertions, not mixed-host or genuine Native evidence. The fixture wire
 emits one completed response per successful native turn. This estimate is not
 a general model-response bound or live-provider qualification. A cold resume
 keeps the scenario, exact model and original allowance/deadline; production
