@@ -1,3 +1,7 @@
+import prTriageSelectInput from "../contracts/workflow-definition/standard-pr-triage-select-input.v1.schema.json" with { type: "json" };
+import prTriageEvaluateInput from "../contracts/workflow-definition/standard-pr-triage-evaluate-input.v1.schema.json" with { type: "json" };
+import prTriageSelectOutput from "../contracts/workflow-definition/standard-pr-triage-select-output.v1.schema.json" with { type: "json" };
+import prTriageOutput from "../contracts/workflow-definition/standard-pr-triage-output.v1.schema.json" with { type: "json" };
 import prReceiveInput from "../contracts/workflow-definition/standard-session-pr-review-receive-input.v1.schema.json" with { type: "json" };
 import prReceiveOutput from "../contracts/workflow-definition/standard-session-pr-review-receive-output.v1.schema.json" with { type: "json" };
 import prReviewContentOutput from "../contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json" with { type: "json" };
@@ -100,6 +104,10 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (["session_pr_triage_select", "session_pr_triage_evaluate"].includes(operation)) {
+    if (checkShadowJson(value) || validateJsonSchema(value, operation === "session_pr_triage_select" ? prTriageSelectInput : prTriageEvaluateInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === "session_pr_review_receive") {
     if (checkShadowJson(value) || validateJsonSchema(value, prReceiveInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -125,6 +133,16 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (["standard-pr-triage-select-output.v1", "standard-pr-triage-output.v1"].includes(value?.contract_version)) {
+    const selection = value.contract_version === "standard-pr-triage-select-output.v1";
+    if (checkShadowJson(value) || validateJsonSchema(value, selection ? prTriageSelectOutput : prTriageOutput, "$", { contractKind: "workflow-definition" }).length
+      || (value.outcome === "blocked" ? Object.keys(value.facts).length !== 0
+        : selection ? value.facts.session_pr_triage_source_selected !== true
+        : value.facts.session_pr_findings_classified !== true || !["session_pr_corrections_required", "session_pr_responses_required"].every(key => typeof value.facts[key] === "boolean")
+          || value.observations.triage_completion !== "pending-effects-and-verification" || value.observations.checks_acceptance !== "not-established"
+          || value.observations.merge_authorization !== "not-established")) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-session-pr-review-receive-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, prReceiveOutput, "$", { contractKind: "workflow-definition" }).length
       || (value.outcome === "completed" ? value.facts.session_pr_review_event_received !== true || value.facts.session_pr_triage_required !== true

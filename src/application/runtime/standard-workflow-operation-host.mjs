@@ -1,4 +1,5 @@
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
+import { createStandardPrTriageSource } from "./standard-pr-triage-source.mjs";
 import { createStandardSessionPrReviewObservation, createStandardSessionPrReviewContentObservation } from "./standard-session-pr-review-observe.mjs";
 import { createStandardSessionPrSuccessorAuthority } from "./standard-session-pr-successor-authority.mjs";
 import { createStandardSessionPrCheckpoint } from "./standard-session-pr-checkpoint.mjs";
@@ -476,6 +477,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       acceptedForPromotion(instance, capture.payload.observation.observations.update_operation_id, "session_pr_update_push", "STANDARD_PR_RECEIVE_UPDATE_REQUIRED");
       return capture;
     } });
+  const prTriage = processAuthority && sessionPrReviewReceiver ? createStandardPrTriageSource({
+    readReceived: (instance, id) => acceptedForPromotion(instance, id, "session_pr_review_receive", "STANDARD_PR_TRIAGE_RECEIVED_REQUIRED"),
+    observeReceived: (instance, input, options) => sessionPrReviewReceiver.observe(instance, input, options),
+    observeProduct: () => processAuthority.observeProduct(), readNative: (instance, input) => processAuthority.readPrTriageActivity(instance, input) }) : null;
   const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
@@ -848,6 +853,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_checkpoint" ? await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_update_push" ? await sessionPrUpdatePush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_triage_select" ? await prTriage?.select(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_triage_evaluate" ? await prTriage?.evaluate(state.record, input) ?? fail("STANDARD_PR_TRIAGE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_observe" ? await sessionPrReview?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
@@ -951,6 +958,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_push") output = await sessionPush.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "session_pr_admit") output = await sessionPrAdmission.observe(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "session_pr_triage_select") output = await prTriage.select(state.record, record.preview.input, { signal });
+        else if (record.intent.binding_ref === "session_pr_triage_evaluate") output = await prTriage.evaluate(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_content_observe") output = await sessionPrReviewContent.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_observe") output = await sessionPrReview.observe(state.record, record.preview.input, { signal });

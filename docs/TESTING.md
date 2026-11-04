@@ -1,5 +1,18 @@
 # Testing Guide
 
+The candidate standard also selects deterministic `session_pr_triage_select`,
+the read-only independent `session_pr_triage` native activity, then deterministic
+`session_pr_triage_evaluate`. `verify-standard-pr-triage-fixtures.mjs` checks full
+body coverage, dispositions, required corrections/replies, context/product pins,
+stale sources and cancellation through application capability doubles. Its direct
+launch-pin checks alter only returned read bytes. It does not authenticate a
+canonical receipt, real provider or native result. The composed fixture's typed
+triage answer classifies its synthetic acknowledgement only; it cannot qualify
+physical corrections, replies, resolutions or the full R08 lifecycle. Native
+results must bind the exact accepted selection and observed product; the actual
+host reauthenticates the event and collects complete current provider content
+after the result. Separate observations identify each executed model revision.
+
 The published candidate standard now selects `session_pr_review_wait` after its
 accepted complete-content observation and `session_pr_review_receive` afterwards.
 The composed execution fixture (`--standard-composed-mode=<mode>

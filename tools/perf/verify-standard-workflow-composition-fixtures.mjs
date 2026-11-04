@@ -24,7 +24,7 @@ const reject = (name, change, code) => test(name, () => {
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
   assert.deepEqual(verifyStandardWorkflowComponentAssets(fresh()), assets.source);
-  assert.equal(assets.catalog.bindings.length, 61); assert.equal(assets.catalog.activities.length, 8);
+  assert.equal(assets.catalog.bindings.length, 63); assert.equal(assets.catalog.activities.length, 9);
 });
 test("authored literal/operation-only inputs satisfy their actual closed operation contracts", () => {
   for (const spec of assets.model.data_bindings.inputs) {
@@ -60,6 +60,19 @@ test("published standard selects an external PR wait before the deterministic si
     { source: "operation_id", node_id: "session_pr_update_push" });
 });
 
+test("native PR triage consumes a selected accepted source before host evaluation", () => {
+  const children = committingSteps(), ids = ["session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate"];
+  for (let i = 1; i < ids.length; i++) assert.equal(children.indexOf(ids[i]), children.indexOf(ids[i - 1]) + 1);
+  const activity = assets.model.nodes.find(row => row.id === "session_pr_triage"), policy = assets.model.policies.find(row => row.id === activity.policy_ref);
+  assert.equal(activity.kind, "activity"); assert.equal(policy.independent_review, true); assert.deepEqual(policy.allowed_permissions, ["read:product"]);
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === activity.id).fields,
+    { selection_operation_id: { source: "operation_id", node_id: "session_pr_triage_select" } });
+  assert.equal(assets.catalog.activities.find(row => row.node_id === activity.id).output_contract, "standard-pr-triage-report.v1");
+  for (const id of ["session_pr_triage_select", "session_pr_triage_evaluate"]) {
+    const binding = assets.catalog.bindings.find(row => row.node_id === id).binding;
+    assert.equal(binding.executor_kind, "deterministic"); assert.equal(binding.effect_class, "read-only"); assert.deepEqual(binding.allowed_modes, ["COMMITTING"]);
+  }
+});
 test("successor checkpoint and update follow the accepted canonical PR record with explicit inputs", () => {
   const children = committingSteps();
   assert.equal(children.indexOf("session_pr_checkpoint"), children.indexOf("session_pr_record") + 1);

@@ -1977,3 +1977,39 @@ This consumer does not classify findings, accept checks, reply, resolve a thread
 complete a skill or authorize merge. The partial catalog remains incomplete and
 ordinary standard selection is still outstanding. Fixture grants and event
 principals remain fixture evidence, separately from live provider identities.
+
+### Authenticated source selection for native PR triage, 2026-11-03
+
+The candidate JSON now selects `session_pr_triage_select`, an independent
+read-only `session_pr_triage` activity and `session_pr_triage_evaluate` after
+signed-content consumption. Selection authenticates the latest accepted receive
+operation, reauthenticates its event around a fresh complete provider observation,
+then binds that exact retained payload and current product hash in its signed
+operation output. No caller or authored IR can supply a source body or provider
+capability. Deterministic selection/evaluation and external waiting allocate no
+model session themselves.
+
+The worker reconstructs its standard authority without a provider. It resolves
+the exact accepted selection from the common IR input binding, verifies the
+accepted receive output and current physical head/branch/product, and retains a
+complete typed context. The native result includes the report, context and
+observed post-turn product as authenticated owned evidence. Evaluation resolves
+the same input against the actual pre-assignment journal prefix with the common
+reducer, verifies native producer/configuration and exact context/product, then
+reexecutes source selection through the host's actual provider/event capabilities.
+Same-head content edits, changed event revision/base/head, foreign source and
+product changes refuse successful classification. Old instances retain their
+original model and pins; there is no pin repair or implicit conversion.
+
+Every supplied review and thread comment is covered exactly once, including
+outdated comments. An empty thread, missing actor or empty body remains uncertain.
+Each classified finding retains technical rationale, its exact body reference
+and supplied product evidence. Valid findings retain a required correction;
+invalid findings retain a proposed technical response. Review-level findings
+also retain response obligations. Uncertain results block with empty routing
+facts while preserving all dispositions and pending obligations. Successful
+classification records only findings/correction/response routing facts. It never
+confirms a reply, resolution, physical correction, fresh checks, skill completion
+or explicit human merge consent. Those subsequent operations and full R08
+qualification remain outstanding. This uses existing operation/native records
+and their concept policies, with no new table or shared coordination surface.

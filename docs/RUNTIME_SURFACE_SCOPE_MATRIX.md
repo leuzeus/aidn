@@ -1,5 +1,15 @@
 # Runtime Surface Scope Matrix
 
+PR triage selection and evaluation use the existing authenticated operation
+journal. The accepted selection retains the complete delivered review payload
+and product identity. The native worker reads that signed source without provider
+capabilities; its read-only context and result stay in owned native evidence.
+Afterwards the host reauthenticates the source event and reobserves complete
+provider content, current head/base and product. Classification preserves each
+correction/reply obligation and unresolved thread; no response, resolution, check
+acceptance or merge permission is inferred. There is no new table, shared sync,
+implicit export, historical conversion or native budget renewal.
+
 Task selection and progress reuse existing cycle/process records. Selection and
 work evaluation are read-only; advancement changes exactly the owning cycle
 plan/status and current entry point, preserving metadata and the frozen scope.

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
+import { standardPrTriageItems } from "../../src/core/workflow/standard-pr-triage.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
 import { attachCycleCloseRecordModel } from "./cycle-close-record-fixture-lib.mjs";
@@ -716,6 +717,14 @@ if (process.argv[2] === "--mixed-continue") {
         return { outcome: "completed", summary: "Scoped read-only plan proposal", report: cyclePlanProposal(observed) };
       if (observed.context.contract_version === "standard-cycle-audit-context.v1")
         return { outcome: "completed", summary: "Scoped read-only audit proposal", report: cycleAuditProposal(observed) };
+      if (observed.context.contract_version === "standard-pr-triage-context.v1") {
+        const context = observed.context;
+        return { outcome: "completed", summary: "Fixture-only review classification, effects pending", report: {
+          contract_version: "standard-pr-triage-report.v1", context_sha256: observed.context_sha256,
+          items: standardPrTriageItems(context.payload).map(row => ({ kind: row.kind, node_id: row.node_id, thread_id: row.thread_id,
+            body_sha256: row.body_sha256, disposition: "not_a_finding", rationale: "The complete fixture body contains only a review acknowledgement.",
+            proposed_response: "", correction: "", evidence_refs: [{ ref: "github:" + row.kind + "/" + row.node_id, sha256: row.body_sha256 }] })) } };
+      }
       if (observed.context.contract_version === "standard-cycle-task-work-context.v1") {
         const context = observed.context;
         const request = { tool_name: "apply_patch", cwd: f.configuration.target_root,
@@ -773,7 +782,7 @@ if (process.argv[2] === "--mixed-continue") {
     }
     const priorNativeResults = resumed ? f.open().inspect().record.events.filter(event => event.kind === "result").length : 0;
     let childNativeSessions = 0, coldContinuation = false;
-    for (let step = 0; step < 64; step++) {
+    for (let step = 0; step < 80; step++) {
       const state = f.open().inspect();
       if (runsPromotion && state.cursor.status === "COMPLETED") break;
       const frame = state.cursor.occurrences.find(row => row.status === "READY")
@@ -980,6 +989,11 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(received.outcome, "completed"); assert.equal(received.effect_status, "no_effect");
       assert.deepEqual(received.facts, { session_pr_review_event_received: true, session_pr_triage_required: true });
       assert.equal(received.observations.payload.observation.observations.head_oid, pushedHead);
+      const classified = last("session_pr_triage_evaluate");
+      assert.equal(classified.outcome, "completed"); assert.equal(classified.effect_status, "no_effect");
+      assert.deepEqual(classified.facts, { session_pr_findings_classified: true, session_pr_corrections_required: false, session_pr_responses_required: false });
+      assert.equal(classified.observations.triage_completion, "pending-effects-and-verification");
+      assert.equal(classified.observations.merge_authorization, "not-established");
       assert.equal(final.record.events.filter(row => row.kind === "control").length, 1);
       assert.equal(loadStandardWorkflowAssets().catalog.scope.complete_standard_workflow, false);
     }

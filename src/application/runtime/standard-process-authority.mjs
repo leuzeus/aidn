@@ -1,4 +1,6 @@
 import { readStandardCycleCloseContext } from "./standard-cycle-close-context.mjs";
+import { PR_TRIAGE_CONTRACT } from "../../core/workflow/standard-pr-triage.mjs";
+import { buildStandardPrTriageContext } from "./standard-pr-triage-context.mjs";
 import { CYCLE_AUDIT_CONTRACT } from "../../core/workflow/standard-cycle-audit.mjs";
 import { buildStandardCycleAuditContext } from "./standard-cycle-audit-context.mjs";
 import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
@@ -126,6 +128,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     return result.value;
   }
   async function prepareActivityOutput({ contractRef, productSha256, instance, occurrenceId, productSnapshot }) {
+    if (contractRef === PR_TRIAGE_CONTRACT) return preparePrTriageActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_AUDIT_CONTRACT) return prepareAuditActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_WORK_CONTRACT) return prepareWorkActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_TASK_WORK_CONTRACT) return prepareTaskWorkActivity({ instance, occurrenceId, productSha256, productSnapshot });
@@ -205,6 +208,50 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       || record.phase !== "receipted" || result?.receipt.outcome !== "completed"
       || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail("STANDARD_CYCLE_READINESS_AUTHENTICATED_RESULT_REQUIRED");
     return { record, output: result.output };
+  }
+  function prTriageSelection(instance, resolution, auth = {}) {
+    if (Object.keys(resolution.input).join(",") !== "selection_operation_id") fail("STANDARD_PR_TRIAGE_INPUT_INVALID");
+    const selection = acceptedOperation(instance, resolution.input.selection_operation_id, "session_pr_triage_select", auth);
+    const latest = instance.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_pr_triage_select").at(-1);
+    const received = acceptedOperation(instance, selection.record.preview.input.received_operation_id, "session_pr_review_receive", auth);
+    if (latest?.intent.operation_id !== selection.record.operation_id
+      || selection.output.observations.received_output_sha256 !== shadowHash(received.output)
+      || selection.output.observations.payload_sha256 !== shadowHash(received.output.observations.payload)) fail("STANDARD_PR_TRIAGE_SELECTION_CHANGED");
+    return selection;
+  }
+  function preparePrTriageActivity({ instance, occurrenceId, productSha256, productSnapshot }) {
+    const auth = nativeReservation ? { reservation: nativeReservation } : {};
+    authenticate(instance, auth);
+    const resolution = resolveProcessOperationInput({ instance, occurrenceId,
+      readOperation: id => { const record = operationStore.read(id).record; signer.verify(record); return record; } });
+    const selection = prTriageSelection(instance, resolution, auth);
+    return buildStandardPrTriageContext({ selection, resolution, productSha256, productSnapshot, scope: snapshot(productSha256) });
+  }
+  function readPrTriageActivity(instance, input) {
+    assertStandardOperationInput("session_pr_triage_evaluate", input);
+    const authenticated = readActivityOutput(instance, input.report_occurrence_id, PR_TRIAGE_CONTRACT);
+    const event = instance.events.find(row => row.kind === "result" && row.occurrence_id === input.report_occurrence_id);
+    const journal = allocations.read(nativeJournalId(instance)).record;
+    const get = suffix => {
+      const refs = event.result.evidence_refs.filter(row => row.ref.endsWith(suffix));
+      if (refs.length !== 1) fail("STANDARD_PR_TRIAGE_NATIVE_EVIDENCE_REQUIRED");
+      return { value: readAgentRunFile(nativeEvidenceFile(configuration, refs[0], journal.allocations.length),
+        { sha256: refs[0].sha256, maxBytes: 1048576 }).value, ref: refs[0] };
+    };
+    const retained = get("-activity-context.json"), observed = get("-artifact-output.json"), context = retained.value.context;
+    const index = instance.events.findIndex(row => row.kind === "assign" && row.occurrence_id === input.report_occurrence_id);
+    if (index < 0) fail("STANDARD_PR_TRIAGE_NATIVE_EVIDENCE_REQUIRED");
+    const prefix = { ...instance, revision: index + 1, events: instance.events.slice(0, index), instance_sha256: agenticProcessPrefixSha256(instance, index) };
+    const resolution = resolveProcessOperationInput({ instance: prefix, occurrenceId: input.report_occurrence_id,
+      readOperation: id => { const record = operationStore.read(id).record; signer.verify(record); return record; } });
+    const selection = prTriageSelection(instance, resolution);
+    const expected = buildStandardPrTriageContext({ selection, resolution, productSha256: readProductSha256?.(),
+      productSnapshot: observed.value.files, scope: snapshot() });
+    if (retained.value.occurrence_id !== input.report_occurrence_id || observed.value.occurrence_id !== input.report_occurrence_id
+      || observed.value.artifact_sha256 !== context.product_sha256 || observed.value.artifact_sha256 !== shadowHash(observed.value.files)
+      || retained.value.context_sha256 !== authenticated.report.context_sha256 || expected.context_sha256 !== authenticated.report.context_sha256
+      || shadowHash(context) !== expected.context_sha256) fail("STANDARD_PR_TRIAGE_NATIVE_SOURCE_CHANGED");
+    return { authenticated, context, selection, evidence_refs: [authenticated.reference, retained.ref, observed.ref] };
   }
   function readinessContext(observed) {
     const context = { ...observed.context, metadata_pins: observed.context.documents.map(row => ({ ref: row.ref, sha256: artifacts.metadataHash(row.ref.slice(6)) })) };
@@ -501,6 +548,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, evaluateDriftReport, readDriftEvaluation,
+  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation,
     evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

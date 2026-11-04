@@ -44,7 +44,7 @@ xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thi
 seq("thinking_preflight", []); seq("exploring_preflight", []);
 seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",
   "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
-seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_wait", "session_pr_review_receive"]);
+seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_wait", "session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate"]);
 op("session_pr_review_observe", "session_pr_review_content_observe", operation("session_pr_review_observe", "update_operation_id", "session_pr_update_push"));
 node("session_pr_review_wait", "event", { branches: [
   { flow_id: "review", node_id: "session_pr_review_arrived", event_key: "review_snapshot" },
@@ -52,6 +52,10 @@ node("session_pr_review_wait", "event", { branches: [
 ] });
 seq("session_pr_review_arrived", []); seq("session_pr_checks_arrived", []);
 op("session_pr_review_receive", "session_pr_review_receive", operation("session_pr_review_receive", "update_operation_id", "session_pr_update_push"));
+op("session_pr_triage_select", "session_pr_triage_select", operation("session_pr_triage_select", "received_operation_id", "session_pr_review_receive"));
+native("session_pr_triage", "pr_reviewer", "audit", "standard-pr-triage-report.v1", ["pr-orchestrate"], ["SPEC-R08", "SPEC-R11"]);
+inputs.push({ node_id: "session_pr_triage", fields: operation("session_pr_triage", "selection_operation_id", "session_pr_triage_select") });
+op("session_pr_triage_evaluate", "session_pr_triage_evaluate", occurrence("session_pr_triage"));
 op("session_pr_checkpoint", "session_pr_checkpoint", operation("session_pr_checkpoint", "record_operation_id", "session_pr_record"));
 op("session_pr_update_push", "session_pr_update_push", operation("session_pr_update_push", "checkpoint_operation_id", "session_pr_checkpoint"));
 op("session_pr_record", "session_pr_record", operation("session_pr_record", "open_operation_id", "session_pr_open"));
@@ -158,7 +162,8 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { id: "drift_auditor", role: "auditor", action: "analyze", skills: ["drift-check"] },
     { id: "planner", role: "auditor", action: "analyze", skills: ["cycle-create"] },
     { id: "implementer", role: "executor", action: "implement", skills: [] },
-    { id: "auditor", role: "auditor", action: "audit", skills: ["cycle-close"] }],
+    { id: "auditor", role: "auditor", action: "audit", skills: ["cycle-close"] },
+    { id: "pr_reviewer", role: "auditor", action: "audit", skills: ["pr-orchestrate"] }],
   policies: [policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
