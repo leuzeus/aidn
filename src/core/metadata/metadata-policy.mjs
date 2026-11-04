@@ -242,10 +242,10 @@ const METADATA_POLICIES = freezeDeep([
     label: "Session",
     required: ["session_id", "contract_version", "owner", "state", "updated_at", "source_of_truth", "lifecycle_status"],
     sourceOfTruthConcept: "session_state",
-    evidenceTargets: ["tools/perf/start-session-hook.mjs"],
-    recommended: ["steward", "privacy_classification", "retention_policy"],
+    evidenceTargets: ["tools/perf/start-session-hook.mjs", "src/core/workflow/standard-session-closure-history.mjs", "src/core/contracts/workflow-definition/standard-session-closure-record.v2.schema.json", "src/core/contracts/workflow-definition/standard-session-closure-completion.v2.schema.json"],
+    recommended: ["steward", "privacy_classification", "retention_policy", "session_closure_status"],
     legacyTolerated: ["owner", "source_of_truth", "lifecycle_status", "privacy_classification", "retention_policy"],
-    lifecycle: "draft -> active -> closing -> closed -> archived",
+    lifecycle: "draft -> active -> closing -> closed -> archived; explicit correction may reopen while retaining prior closure bodies and requiring fresh closure authority",
   }),
   policy({
     concept: "cycle_status",

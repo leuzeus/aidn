@@ -270,6 +270,7 @@ try {
   });
   await import('./verify-process-prefix-hashing-fixtures.mjs');
   await import('./verify-process-model-capacity-fixtures.mjs');
+  await import('./verify-standard-session-closure-history-fixtures.mjs');
   console.log(JSON.stringify({ status: "PASS", checks: count, proof: "offline-contracts-reducer-service", native_calls: 0, standard_workflow_integration: "NOT_YET_DELIVERED" }));
 } finally {
   const physical = fs.realpathSync(root), parent = fs.realpathSync(os.tmpdir());

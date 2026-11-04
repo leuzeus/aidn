@@ -4379,3 +4379,29 @@ their runtime through the real projector before selecting the source/checkpoint;
 no clear marker is fabricated and the admission policy is unchanged. The
 ordinary parameter interface retains `session` and `cycle`, with correction
 values read only from `cycle.correction` when that branch is selected.
+
+## Addendum — correction promotion and fresh session closure wiring
+
+The published partial IR now continues the corrective cycle through its own
+optional promotion, preclose checkpoint, new admission/R05/human decision, report,
+checkpoint, final hook, delivery and integration decision/effect. A fresh admitted
+start occurrence follows the correction cycle checkpoint, because the original
+start run was consumed. The graph has 175 nodes, 108 operations and 16 activities;
+its new references never borrow the first cycle's closure or consent.
+
+Private closure record/completion v2 bodies bind the exact current subject and
+HEAD, ordered historical block hashes and the current report/decision. Historical
+v2 reports check their own prior prefixes. Legacy bodies remain readable without
+conversion. The old pending-record refusal is preserved. Integration admits
+terminal sibling documents only under their own accepted closure/latest postimage,
+within the original 16-document subject bound; only the selected DONE cycle's
+fresh decision authorizes integration. Source/CAS policies and ADR-0025 agree.
+
+Qualification of this new source is pending at authoring. Pure history tests,
+static composition and injected accepted-journal authority checks are components,
+not the actual published corrective journey. Causal PR redelivery, real technical
+responses/resolutions, fresh human merge consent and post-merge observation/sync
+remain due, as do the production-dispatcher UNKNOWN chain, general L4 recovery,
+ordinary entry selection, all L1–L8/A1–A10 acceptance and genuine native, provider,
+human, PostgreSQL and exact installed archive evidence. No old failed or unknown
+case is retried. `complete_standard_workflow` remains false.

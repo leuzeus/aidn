@@ -28,8 +28,20 @@ const records = new Map([
 ]);
 const instance = { events: [{ kind: 'operation_intent', intent: { operation_id: op('b'), binding_ref: 'cycle_close_finalize' } }, { kind: 'operation_result', receipt: { operation_id: op('b'), outcome: 'completed' } }] };
 const initial = structuredClone([...records]);
+const initialEvents = structuredClone(instance.events), siblingPath = 'cycles/C002-feature-other/status.md';
 const service = createStandardSessionBranchIntegrationAuthority({ targetRoot: root, readAcceptedOperation: (_, id) => records.get(id), readDeliverySource: async () => structuredClone(final) });
-const reset = () => { records.clear(); for (const [id, row] of structuredClone(initial)) records.set(id, row); put(eventPath, eventBytes); put('docs/audit/' + sessionPath, sessionText); put('docs/audit/' + cyclePath, cycleText); };
+const reset = () => { records.clear(); for (const [id, row] of structuredClone(initial)) records.set(id, row); instance.events = structuredClone(initialEvents);
+  fs.rmSync(path.join(root, 'docs/audit/cycles/C002-feature-other'), { recursive: true, force: true });
+  put(eventPath, eventBytes); put('docs/audit/' + sessionPath, sessionText); put('docs/audit/' + cyclePath, cycleText); };
+function sibling(state = 'DONE') {
+  put('docs/audit/' + siblingPath, cycleText.replace('state: DONE', 'state: ' + state).replace(sourceBranch, 'C002-feature-other'));
+  const record = entry(op('e'), { scope: { session_id: 'S001', cycle_id: 'C002', branch: 'C002-feature-other' } }, {
+    effect_status: 'confirmed', facts: { cycle_close_completed: true }, observations: { target_state: state },
+    evidence_refs: [{ ref: 'docs/audit/' + siblingPath, sha256: artifacts.read(siblingPath).sha256 }] });
+  records.set(op('e'), record);
+  instance.events.push({ kind: 'operation_intent', intent: { operation_id: op('e'), binding_ref: 'cycle_close_finalize' } },
+    { kind: 'operation_result', receipt: { operation_id: op('e'), outcome: 'completed' } });
+}
 let checks = 0;
 const test = async (name, fn) => { reset(); await fn(); checks++; console.log('PASS ' + name); };
 try {
@@ -64,9 +76,25 @@ try {
   await test('a changed DONE postimage cannot authenticate itself through its lifecycle marker', async () => {
     put('docs/audit/' + cyclePath, cycleText + 'foreign: changed\n'); await assert.rejects(service.readSource(instance, input), { code: 'STANDARD_SESSION_INTEGRATION_POSTIMAGE_CHANGED' });
   });
-  await test('the current single-cycle binding refuses additional attached cycles explicitly', async () => {
+  await test('an attached lifecycle marker without its own accepted terminal source refuses', async () => {
     put('docs/audit/cycles/C002-feature-other/status.md', cycleText.replace(sourceBranch, 'C002-feature-other'));
-    await assert.rejects(service.readSource(instance, input), { code: 'STANDARD_SESSION_INTEGRATION_CANONICAL_OWNER_CHANGED' });
+    await assert.rejects(service.readSource(instance, input), { code: 'STANDARD_SESSION_INTEGRATION_POSTIMAGE_CHANGED' });
+  });
+  await test('authenticated terminal siblings enter the fresh subject without replacing the selected cycle authority', async () => {
+    for (const state of ['DONE', 'NO_GO', 'DROPPED']) {
+      reset(); sibling(state); const source = await service.readSource(instance, input);
+      assert.equal(source.cycle_id, 'C001'); assert.equal(source.closure_operation_id, op('b'));
+      assert.equal(source.documents.length, 5); assert.ok(source.documents.some(row => row.ref === 'audit:' + siblingPath));
+    }
+  });
+  await test('sibling status, owner, receipt and current postimage must all match its own original closure', async () => {
+    for (const edit of [() => put('docs/audit/' + siblingPath, cycleText.replace('DONE', 'OPEN').replace(sourceBranch, 'C002-feature-other')),
+      () => put('docs/audit/' + siblingPath, cycleText.replace('S001', 'S002').replace(sourceBranch, 'C002-feature-other')),
+      () => { records.get(op('e')).output.effect_status = 'unknown'; },
+      () => { records.get(op('e')).record.preview.prepared.plan.scope.cycle_id = 'C003'; },
+      () => put('docs/audit/' + siblingPath, artifacts.read(siblingPath).content + 'foreign: changed\n')]) {
+      reset(); sibling(); edit(); await assert.rejects(service.readSource(instance, input));
+    }
   });
   console.log(JSON.stringify({ status: 'PASS', checks, canonical_files: 'ACTUAL', accepted_journal_and_R07_capabilities: 'FIXTURE', actual_hook_or_git_integration: 'NOT_RUN', native: 'NOT_RUN', installed_archive: 'NOT_RUN' }));
 } finally { const real = fs.realpathSync(root); assert.equal(path.dirname(real), temporary); assert.ok(path.basename(real).startsWith('aidn-integration-authority-')); fs.rmSync(real, { recursive: true, force: true }); }

@@ -59,14 +59,19 @@ op("session_pr_triage_evaluate", "session_pr_triage_evaluate", occurrence("sessi
 // A classified finding selects only the explicit canonical owner transition.
 // Human continuation is bound to the accepted checkpoint. The subsequent
 // admission and initial implementation entry are connected below; fresh
-// physical work and cycle reclosure use the ordinary ports below. Session
-// reclosure/history and causal redelivery remain outstanding.
+// physical work, promotion and fresh session closure/delivery use ordinary
+// ports below. Causal redelivery and repeated correction choice remain due.
 xor("session_pr_after_triage", [["corrections", "session_pr_correction", "session_pr_corrections_required"],
   ["effects_pending", "session_pr_effects_pending", null]]);
 seq("session_pr_correction", ["session_pr_correction_reopen", "session_pr_correction_checkpoint", "session_pr_correction_decide", "session_pr_correction_requested"]);
 xor("session_pr_correction_requested", [["requested", "correction_cycle", "session_pr_correction_cycle_requested"], ["not_requested", "correction_not_requested", null]]);
 seq("correction_not_requested", []);
 seq("correction_cycle", ["correction_initialize", "correction_branch_audit", "correction_cycle_checkpoint", "correction_plan", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"]);
+// The first final hook consumed its start run. A new admitted occurrence must
+// establish a fresh physical run; no old start receipt authorizes reclosure.
+nodes.find(row => row.id === "correction_cycle").children.splice(3, 0, "correction_session_start_finalize");
+op("correction_session_start_finalize", "session_start_finalize", {
+  session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
 op("correction_initialize", "session_pr_correction_cycle_initialize", {
   ...operation("correction_initialize", "decision_operation_id", "session_pr_correction_decide"),
   ...Object.fromEntries(["cycle_id", "title", "objective"].map(key => [key, { source: "parameter", key: "cycle", path: ["correction", key] }])) });
@@ -187,7 +192,9 @@ checkpointDrift("session_closure_drift", null, null);
 // and closure subgraph with distinct occurrences and the new implementation
 // authority; never borrow the first cycle's accepted work or validation.
 const correctionRoots = ["task_loop", "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record",
-  "cycle_terminal_checkpoint", "closure_drift", "close_finalize"];
+  "cycle_terminal_checkpoint", "closure_drift", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit",
+  "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize",
+  "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate"];
 const correctionNodes = new Set();
 function collectCorrection(id) {
   if (correctionNodes.has(id)) return;

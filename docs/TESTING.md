@@ -2862,6 +2862,20 @@ transport and make no session-close, full-model or archive claim.
 
 ### Session closure decision and R05 physical authority
 
+`node tools/perf/verify-standard-session-closure-history-fixtures.mjs` checks the
+private v2 record/completion contracts, repeated pure reopen/reclosure, exact old
+body preservation, legacy compatibility, fresh question binding, current and
+historical completion links and every archived report's prior prefix. It is
+also selected once by the process-operation fixture suite. This is a pure source
+check; canonical writes, actual start/close hooks, native human/provider identity
+and the complete published correction journey need separate evidence.
+
+The branch integration authority fixture now also checks authenticated terminal
+siblings in the fresh subject and refuses marker-only, changed, open or unknown
+siblings. It still injects accepted journal capabilities. The composition fixture
+checks distinct new promotion/R05/human/closure/delivery/integration references;
+source structure does not prove that those effects ran.
+
 For final delivery postimages, append `--delivery-checkpoint` to
 `verify-standard-session-close-record-fixtures.mjs --mode=files --checkpoint --final-hook`.
 Repeat with dual/db-only. `--delivery-grant-after-git` (files/dual) checks unknown

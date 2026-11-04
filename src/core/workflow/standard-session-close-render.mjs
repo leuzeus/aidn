@@ -1,6 +1,7 @@
 import { assertHumanSessionClosureDecision } from "./standard-session-closure-decision.mjs";
 import { artifactContentHash } from "./artifact-compare-swap.mjs";
 import { shadowHash } from "./shadow-json.mjs";
+import { readSessionClosureHistory, assertSessionClosureRecord, assertSessionClosureCompletion } from "./standard-session-closure-history.mjs";
 const fail = code => { throw Object.assign(Error(code), { code }); };
 export function sessionClosePaths(sessionPath) {
   if (!/^sessions\/S[0-9]+(?:[-_.][^/]*)?\.md$/.test(sessionPath ?? "")) fail("STANDARD_SESSION_CLOSE_PATH_INVALID");
@@ -27,8 +28,10 @@ export function renderStandardSessionClose({ question, decision, documents, prep
     || documents.length !== 3 || names.some((name, i) => documents[i]?.path !== name)
     || documents.some(row => typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256 || Buffer.byteLength(row.content) > 1048576)) fail("STANDARD_SESSION_CLOSE_SOURCE_INVALID");
   let session = documents[0].content, snapshot = documents[1].content, current = documents[2].content;
+  const previous = readSessionClosureHistory(session);
   if (!/^state: OPEN$/m.test(session) || !new RegExp("^active_session: " + review.session_id + "\\s*$", "m").test(current)
-    || !/^active_cycle: none\s*$/m.test(current) || /^## Process session closure\s*$/m.test(session)) fail("STANDARD_SESSION_CLOSE_SOURCE_INVALID");
+    || !/^active_cycle: none\s*$/m.test(current) || previous.pending || previous.completion) fail("STANDARD_SESSION_CLOSE_SOURCE_INVALID");
+  if (previous.history.length && !/^session_closure_status: correction_pending$/m.test(session)) fail("STANDARD_SESSION_CLOSE_SOURCE_INVALID");
   session = section(session, 3, "Outputs", list([report.summary]));
   session = section(session, 3, "Open loops", list(report.open_loops));
   session = section(session, 3, "Blockers", list(report.blockers));
@@ -36,9 +39,11 @@ export function renderStandardSessionClose({ question, decision, documents, prep
   session = section(session, 3, "Next Entry Point", list([report.next_entry_point]));
   session = section(session, 3, "Session close gate satisfied", "- [ ] Yes\n- Pending governed checkpoint and authenticated final hook.");
   session = section(session, 3, "Snapshot updated", "- [ ] Yes\n- Snapshot prepared; final closure confirmation remains pending.");
-  const material = { decision_operation_id: question.operation_id, question_sha256: shadowHash(question), source_sha256: shadowHash(decision),
+  const material = assertSessionClosureRecord({ contract_version: "standard-session-closure-record.v2",
+    decision_operation_id: question.operation_id, question_sha256: shadowHash(question), source_sha256: shadowHash(decision),
     admission_operation_id: review.admission_operation_id, drift_evaluation_operation_id: review.drift_evaluation_operation_id,
-    drift_finalization_operation_id: review.drift_finalization_operation_id, session_close_completed: false, final_hook: "pending", report };
+    drift_finalization_operation_id: review.drift_finalization_operation_id, session_close_completed: false, final_hook: "pending", report,
+    subject_sha256: shadowHash(review), head: review.head, history: previous.history });
   session = session.trimEnd() + "\n\n## Process session closure\n\n```json\n" + JSON.stringify(material, null, 2) + "\n```\n";
   const at = new Date(preparedAt).toISOString();
   session = field(field(session, "updated_at", at), "session_closure_status", "checkpoint_pending", true);
@@ -59,11 +64,20 @@ export function renderStandardSessionCloseCompletion({ sessionPath, documents, r
     || documents.some(row => typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256)
     || !/^state: OPEN$/m.test(documents[0].content) || !/^session_closure_status: checkpoint_pending$/m.test(documents[0].content)) fail("STANDARD_SESSION_CLOSE_COMPLETION_INVALID");
   const at = new Date(completedAt).toISOString(), sessionId = /^sessions\/(S[0-9]+)/.exec(sessionPath)[1];
+  const selected = readSessionClosureHistory(documents[0].content);
+  if (!selected.pending || selected.completion) fail("STANDARD_SESSION_CLOSE_COMPLETION_INVALID");
   let session = field(field(field(documents[0].content, "state", "CLOSED"), "session_closure_status", "completed"), "updated_at", at);
   session = field(session, "lifecycle_status", "closed");
   session = section(session, 3, "Session close gate satisfied", "- [x] Yes\n- Authenticated final hook: aidn:session-close/" + runId);
   session = section(session, 3, "Snapshot updated", "- [x] Yes");
-  session += "\n## Process session closure completion\n\n```json\n" + JSON.stringify({ run_id: runId, event_sha256: eventSha256, session_close_completed: true, completed_at: at }, null, 2) + "\n```\n";
+  const completion = { run_id: runId, event_sha256: eventSha256, session_close_completed: true, completed_at: at };
+  // A legacy pending v1 is completed in its original representation. Only a
+  // freshly authored v2 record receives the new explicit completion binding.
+  if (selected.pending.value.contract_version === "standard-session-closure-record.v2") Object.assign(completion, {
+    contract_version: "standard-session-closure-completion.v2", decision_operation_id: selected.pending.value.decision_operation_id,
+    record_sha256: shadowHash(selected.pending.value) });
+  if (completion.contract_version) assertSessionClosureCompletion(completion);
+  session += "\n## Process session closure completion\n\n```json\n" + JSON.stringify(completion, null, 2) + "\n```\n";
   const snapshot = field(section(documents[1].content, 2, "Next entry point", "- Session selected: " + sessionId + " (CLOSED)\n- Active cycle: none\n- Next action: Review session branch integration and PR orchestration with explicit authorization."), "updated_at", at, true);
   let current = documents[2].content;
   for (const [key, value] of Object.entries({ updated_at: at, session_closure_status: "completed", first_plan_step: "Review session branch integration and PR orchestration with explicit authorization." })) current = field(current, key, value);

@@ -522,3 +522,25 @@ The [focused qualification](../qualification/agentic-process/correction-cycle-me
 records the exact distinct sources for initializer late-metadata injections,
 context refresh, source composition and structural capacity. It does not
 promote any earlier fixture, retained UNKNOWN or source pin to a later source.
+
+### Corrective promotion and session reclosure source continuation
+
+R06/R07 now have distinct correction occurrences for optional promotion, session
+preclose/admission/R05/human decision, report/checkpoint/final hook, delivery and
+branch integration. `correction_session_start_finalize` obtains a new admitted
+physical start run; no consumed original run is reused. Each operation input
+references the new correction operation or the unchanged owning session identity.
+The graph remains partial: 175 nodes, 108 operations, 16 activities.
+
+Session content uses closure record/completion v2 with explicit subject/HEAD,
+ordered history hashes and report/decision completion linkage. Legacy records
+stay unchanged. Each historical v2 prefix is validated. Sibling cycle statuses
+enter the new integration subject only through accepted terminal evidence and
+latest authenticated postimages; they grant no integration consent. See ADR-0025
+and the focused history/integration/composition fixtures in TESTING.
+
+This source continuation has no composed execution claim at authoring. R08/R11
+causal correction redelivery, review/resolution/fresh merge consent and R09 sync,
+general L4, the production dispatcher UNKNOWN chain, ordinary entry and complete
+L1–L8/A1–A10 remain open. Genuine native/human/provider/PG/installed evidence is
+NOT_RUN. Earlier evidence keeps its original source and scope.

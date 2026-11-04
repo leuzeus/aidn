@@ -46,24 +46,39 @@ export function createStandardSessionBranchIntegrationAuthority({ targetRoot, re
     const sessionBranch = extractStructuredField(sessionRow.content, 'session_branch');
     const owned = artifacts.cycles().filter(row => fields(row).session_owner === final.session_id);
     const cycleRow = owned.find(row => row.cycle_id === closePlan.scope.cycle_id), cycle = cycleRow && fields(cycleRow);
-    if (owned.length !== 1 || !cycleRow || cycle.state !== 'DONE'
+    if (!owned.length || owned.length > 13 || !cycleRow || cycle.state !== 'DONE'
       || cycle.branch_name !== final.branch || session.state !== 'CLOSED' || session.session_closure_status !== 'completed'
       || session.mode !== 'COMMITTING' || !sessionBranch || sessionBranch === final.branch)
       fail('STANDARD_SESSION_INTEGRATION_CANONICAL_OWNER_CHANGED');
-    let expectedStatus = null;
+    const latest = new Map(), terminalStates = new Map();
     for (const entry of instance.events.filter(row => row.kind === 'operation_result' && row.receipt.outcome === 'completed')) {
       const intent = instance.events.find(row => row.kind === 'operation_intent' && row.intent.operation_id === entry.receipt.operation_id)?.intent;
       if (!['cycle_close_finalize', 'baseline_promotion_record', 'baseline_promotion_finalize'].includes(intent?.binding_ref)) continue;
       const accepted = readAcceptedOperation(instance, intent.operation_id, intent.binding_ref);
-      for (const ref of accepted.output.evidence_refs) if (ref.ref === 'docs/audit/' + cycleRow.path) {
+      for (const ref of accepted.output.evidence_refs) if (owned.some(row => ref.ref === 'docs/audit/' + row.path)) {
         if (accepted.output.effect_status !== 'confirmed') fail('STANDARD_SESSION_INTEGRATION_POSTIMAGE_CHANGED');
-        expectedStatus = ref.sha256;
+        latest.set(ref.ref, ref.sha256);
+        if (intent.binding_ref === 'cycle_close_finalize') {
+          const scope = accepted.record.preview.prepared.plan.scope, target = accepted.output.observations.target_state;
+          if (scope.session_id !== final.session_id || !['DONE', 'NO_GO', 'DROPPED'].includes(target)
+            || accepted.output.facts.cycle_close_completed !== true || !owned.some(row => row.cycle_id === scope.cycle_id && ref.ref === 'docs/audit/' + row.path))
+            fail('STANDARD_SESSION_INTEGRATION_POSTIMAGE_CHANGED');
+          terminalStates.set(ref.ref, target);
+        }
       }
     }
-    if (!expectedStatus || cycleRow.sha256 !== expectedStatus) fail('STANDARD_SESSION_INTEGRATION_POSTIMAGE_CHANGED');
+    // A previous terminal sibling is not a new integration authority. Require
+    // its own accepted closure and latest authenticated status, and retain it
+    // in the fresh human subject alongside the selected corrective cycle.
+    for (const row of owned) {
+      const ref = 'docs/audit/' + row.path;
+      if (!['DONE', 'NO_GO', 'DROPPED'].includes(fields(row).state) || fields(row).state !== terminalStates.get(ref)
+        || row.sha256 !== latest.get(ref)) fail('STANDARD_SESSION_INTEGRATION_POSTIMAGE_CHANGED');
+    }
     const deliveryHead = deliveryOutput.observations.git?.commit_sha ?? deliveryOutput.observations.git?.head;
     if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(deliveryHead ?? '')) fail('STANDARD_SESSION_INTEGRATION_DELIVERY_REQUIRED');
-    const names = [final.session_path, cycleRow.path, 'CURRENT-STATE.md', 'snapshots/context-snapshot.md'];
+    const names = [final.session_path, cycleRow.path, 'CURRENT-STATE.md', 'snapshots/context-snapshot.md',
+      ...owned.filter(row => row.path !== cycleRow.path).map(row => row.path).sort()];
     return { session_id: final.session_id, session_path: final.session_path, cycle_id: cycleRow.cycle_id, cycle_path: cycleRow.path,
       source_branch: final.branch, target_branch: sessionBranch, delivery_head: deliveryHead,
       delivery_operation_id: input.delivery_operation_id, delivery_output_sha256: shadowHash(deliveryOutput),

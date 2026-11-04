@@ -2,6 +2,24 @@
 
 ## Status
 
+The correction continuation now has source wiring for a fresh start occurrence,
+optional promotion, new session R05 and human closure, final hook, delivery and
+branch integration. Each consumes the new cycle's operations. This wiring is
+not composed execution evidence and does not establish causal PR redelivery.
+
+New session closure bodies use private `standard-session-closure-record.v2`
+and `standard-session-closure-completion.v2`. The report pins its current human
+subject, HEAD and ordered historical record/completion block hashes. Completion
+pins that exact report and decision. Each archived v2 report also checks its
+own earlier prefix. Explicit reopen keeps the old bodies verbatim under their
+historical headings; legacy report/completion pairs remain readable and are
+never converted. A current pending record still prevents another report.
+
+Integration can now observe terminal sibling cycles only with their own accepted
+closure and latest authenticated status postimage. Their documents enter the
+fresh human subject; they never replace the selected DONE cycle's closure or
+authorize its integration. The existing 16-document subject bound is preserved.
+
 L1 contract foundation implemented under the
 [standard workflow plan](../PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md).
 Versioned operation contracts, reducer events and trusted service ports are

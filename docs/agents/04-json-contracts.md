@@ -100,6 +100,15 @@ is introduced.
 
 ## Internal Shadow Workflow Definition
 
+Session reports add private `standard-session-closure-record.v2` and
+`standard-session-closure-completion.v2` bodies in the workflow-definition
+namespace. New reports bind the human subject, HEAD and ordered historical block
+hashes; their completion binds the report and decision. Current and archived v2
+pairs require matching versions, and each archived report checks its historical
+prefix. Legacy pairs stay readable without conversion. These are session content
+records under existing canonical artifact CAS, not a new public CLI output or
+an independent authority. See ADR-0025.
+
 ADR-0022 adds closed `agentic-process-model.v1` and
 `agentic-process-instance.v1` contracts in the `workflow-definition` namespace.
 Nested models, assignment requests/decisions and typed events receive their own

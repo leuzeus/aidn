@@ -439,3 +439,10 @@ table or synchronization, authority, implicit native grant or db-only export.
 The deterministic preparation identity is retained after an unknown effect;
 confirmed completion removes only that exact checked directory. Recovery and
 reconciliation remain explicit. Preview observation creates no preparation.
+
+The private session closure record/completion v2 bodies remain content of the
+existing canonical session artifact. Explicit correction preserves historical
+bodies; new reports bind their ordered hashes and fresh current subject/HEAD,
+and completion binds the new report/decision. Legacy readers do not convert old
+records. No new shared table, public command or independent authority is added.
+See ADR-0025.
