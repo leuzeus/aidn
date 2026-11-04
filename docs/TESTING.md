@@ -1,5 +1,14 @@
 # Testing Guide
 
+The full correction fixture prepares its expected source identifiers before the
+mixed host reserves Native. Run `node tools/perf/verify-standard-composed-cycle-fixtures.mjs
+--retain-always` for accepted-source and new-review binding checks, and
+`node tools/perf/verify-standard-pr-triage-fixtures.mjs` for typed proposed replies
+against the corrected product. The callback consumes its authenticated activity
+context without reentering unreserved host inspection. Fixture expectations do
+not grant authority; the production reservation guard stays unchanged. These
+checks do not qualify the complete correction journey or actual provider effects.
+
 For the read-only THINKING/EXPLORING analysis component, run
 `node tools/perf/verify-standard-mode-work-fixtures.mjs` for typed reports,
 negative/wait outcomes and the published IR/common reducer simulation. Run

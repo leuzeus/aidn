@@ -88,7 +88,22 @@ await test('composed correction answer uses the actual product-root-relative evi
     }
   }
 });
-await test('valid corrections and invalid technical replies remain obligations after classification', async () => {
+await test('corrected fixture answer proposes a technical reply and preserves fresh triage obligations', () => {
+  const snapshot = [{ path: 'app.mjs', present: true, bytes: 24, sha256: sha('export const value = 3;\n') }];
+  const selected = structuredClone(selection); selected.output.observations.product_sha256 = shadowHash(snapshot);
+  const built = buildStandardPrTriageContext({ ...contextArgs, selection: selected, productSnapshot: snapshot, productSha256: shadowHash(snapshot) });
+  const answer = standardReviewScenarioAnswer(built, 'corrected');
+  assertNativeActivityAnswer(answer, PR_TRIAGE_CONTRACT, built.context_sha256);
+  assert.ok(answer.report.items.every(row => row.disposition === 'invalid' && row.proposed_response.trim()));
+  const output = run(answer.report, built.context);
+  assert.equal(output.facts.session_pr_corrections_required, false);
+  assert.equal(output.facts.session_pr_responses_required, true);
+  assert.ok(output.observations.responses.every(row => row.body.trim()));
+  assert.equal(output.observations.merge_authorization, 'not-established');
+  const stale = structuredClone(built); stale.context.product_files[0].sha256 = sha('export const value = 2;\n');
+  assert.throws(() => standardReviewScenarioAnswer(stale, 'corrected'), /STANDARD_FIXTURE_CORRECTED_PRODUCT_REQUIRED/);
+});
+await test('valid corrections and invalid technical replies remain obligations after classification' , async () => {
   const output = await source().evaluate({}, evaluateInput); assertStandardOperationOutput(output);
   assert.deepEqual(output.facts, { session_pr_findings_classified: true, session_pr_corrections_required: true, session_pr_responses_required: true });
   assert.equal(output.observations.responses.length, 2); assert.equal(output.observations.responses[0].status, 'required-after-correction');

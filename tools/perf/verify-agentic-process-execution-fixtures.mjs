@@ -3,7 +3,7 @@ import { createStandardReviewEventFixture } from "./standard-pr-review-event-fix
 import { verifyModeAnalysisExecution } from "./standard-mode-analysis-execution-fixture-lib.mjs";
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario, standardReviewScenarioAnswer } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
-import { composedCyclePlan, composedCycleValidationProfile, composedCorrectionChoice } from "./standard-composed-cycle-fixture-lib.mjs";
+import { composedCyclePlan, composedCycleValidationProfile, composedCorrectionChoice, prepareComposedNativeAnswer, composedTriageAnswer } from "./standard-composed-cycle-fixture-lib.mjs";
 import { observeComposedHost, loseCheckpointReceipt, loseCheckpointOwnerReleaseAck } from "./standard-composed-observation-fixture-lib.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
@@ -786,6 +786,7 @@ if (process.argv[2] === "--mixed-continue") {
     const runsPromotion = standardComposedStop === "component_complete" || stopsBeforeCorrectionChoice;
     const runsClosure = runsPromotion || standardComposedStop === "promotion_decide";
     const runsCycle = runsClosure || standardComposedStop === "closure_decide";
+    let nativeAnswerSource;
     const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       if (observed.context.contract_version === "standard-cycle-plan-context.v1")
@@ -793,8 +794,7 @@ if (process.argv[2] === "--mixed-continue") {
       if (observed.context.contract_version === "standard-cycle-audit-context.v1")
         return { outcome: "completed", summary: "Scoped read-only audit proposal", report: cycleAuditProposal(observed) };
       if (observed.context.contract_version === "standard-pr-triage-context.v1") {
-        const corrected = fullCorrection && f.open().inspect().record.events.some(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_pr_redelivery_push');
-        return standardReviewScenarioAnswer(observed, corrected ? 'corrected' : fullCorrection ? 'correction' : standardScenarioName);
+        return fullCorrection ? composedTriageAnswer(observed, nativeAnswerSource) : standardReviewScenarioAnswer(observed, standardScenarioName);
       }
       if (observed.context.contract_version === "standard-cycle-task-work-context.v1") {
         const context = observed.context;
@@ -803,10 +803,8 @@ if (process.argv[2] === "--mixed-continue") {
         const from = corrected ? 2 : 1, to = corrected ? 3 : 2;
         assert.ok(cycleId);
         if (corrected) {
-          const state = f.open().inspect(), selected = state.record.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === 'session_pr_correction_cycle_initialize').at(-1);
-          const initialized = f.open().readOperation(selected.intent.operation_id);
-          assert.equal(initialized.preview.input.cycle_id, cycleId);
-          assert.equal(initialized.results.at(-1).output.outcome, 'completed');
+          assert.equal(nativeAnswerSource?.kind, 'task');
+          assert.equal(nativeAnswerSource.cycle_id, cycleId);
         }
         const request = { tool_name: "apply_patch", cwd: f.configuration.target_root,
           tool_input: { command: `*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = ${from};\n+export const value = ${to};\n*** End Patch` } };
@@ -942,7 +940,11 @@ if (process.argv[2] === "--mixed-continue") {
         assert.equal(recovered.results[0].output.observations.git.commit_sha, lost.output.observations.git.commit_sha);
         console.log(JSON.stringify({ standard_checkpoint_ack_loss_proof: child, effect: 'actual Git commit; interrupted receipt rename; cold real-host recovery' }));
         result = { kind: 'operation', operation_id: lost.operation_id, status: child.workflow_status };
-      } else result = await f.open().step({ write: true, authorization: auth });
+      } else {
+        if (fullCorrection) nativeAnswerSource = prepareComposedNativeAnswer({ nodeId: frame?.node_id, instance: state.record,
+          readOperation: id => f.open().readOperation(id) });
+        result = await f.open().step({ write: true, authorization: auth });
+      }
       if (result.operation_id) {
         if (result.status === "waiting_for_human") {
           const binding = f.open().readOperation(result.operation_id).intent.binding_ref;

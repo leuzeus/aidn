@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { cyclePlanProposal } from './cycle-planning-fixture-lib.mjs';
 import { createValidationProfileFixture } from './standard-cycle-validation-fixture-lib.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
+import { standardReviewScenarioAnswer } from './standard-pr-review-scenario-fixture-lib.mjs';
 
 // Scenario answers use host-authenticated context, never initial cycle parameters.
 // These helpers remain fixture producers, not genuine Native/human authorities.
@@ -41,4 +42,42 @@ export function composedCorrectionChoice(question, operationId) {
     choice: 'create-correction-cycle', selected_cycle, cycle_sha256: shadowHash(selected_cycle),
     rationale: 'Fixture person selects a fresh cycle identity and objective for this exact current checkpoint.',
     evidence_refs: [{ ref: 'fixture:operator-correction', sha256: 'a'.repeat(64) }] };
+}
+
+// Fixture-only expectations are read before reserving Native. They never grant
+// production authority; the worker independently authenticates its activity input.
+export function prepareComposedNativeAnswer({ nodeId, instance, readOperation }) {
+  const accepted = binding => {
+    const event = instance.events.filter(row => row.kind === 'operation_intent' && row.intent.binding_ref === binding).at(-1);
+    assert.ok(event, 'STANDARD_FIXTURE_NATIVE_SOURCE_REQUIRED');
+    const record = readOperation(event.intent.operation_id), result = record.results.at(-1);
+    assert.equal(result?.output.outcome, 'completed');
+    assert.ok(instance.events.some(row => row.kind === 'operation_result'
+      && row.receipt.operation_id === record.operation_id && shadowHash(row.receipt) === shadowHash(result.receipt)),
+    'STANDARD_FIXTURE_NATIVE_ACCEPTED_SOURCE_REQUIRED');
+    return record;
+  };
+  if (['session_pr_triage', 'correction_pr_triage'].includes(nodeId)) {
+    const corrected = nodeId === 'correction_pr_triage';
+    const update = accepted(corrected ? 'session_pr_redelivery_push' : 'session_pr_update_push');
+    const received = accepted('session_pr_review_receive'), selection = accepted('session_pr_triage_select');
+    assert.equal(received.preview.input.update_operation_id, update.operation_id);
+    assert.equal(selection.preview.input.received_operation_id, received.operation_id);
+    return Object.freeze({ kind: 'triage', scenario: corrected ? 'corrected' : 'correction',
+      selection_operation_id: selection.operation_id, received_operation_id: received.operation_id,
+      update_operation_id: update.operation_id });
+  }
+  if (nodeId === 'correction_implement') {
+    const initialized = accepted('session_pr_correction_cycle_initialize');
+    return Object.freeze({ kind: 'task', cycle_id: initialized.preview.input.cycle_id });
+  }
+  return null;
+}
+
+export function composedTriageAnswer(observed, source) {
+  assert.equal(source?.kind, 'triage', 'STANDARD_FIXTURE_NATIVE_SOURCE_REQUIRED');
+  assert.equal(observed.context.selection_operation_id, source.selection_operation_id);
+  assert.equal(observed.context.received_operation_id, source.received_operation_id);
+  assert.equal(observed.context.payload.observation.observations.update_operation_id, source.update_operation_id);
+  return standardReviewScenarioAnswer(observed, source.scenario);
 }

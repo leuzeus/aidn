@@ -47,7 +47,7 @@ export function standardReviewScenarioAnswer(observed, scenario) {
       rationale: correction ? 'Fixture finding on the selected exported product value requires a new admitted cycle.' : corrected
         ? 'Fresh fixture classification of the retained finding against the corrected product snapshot and new PR HEAD; provider responses and resolution remain separate.'
         : 'The complete fixture body contains only a review acknowledgement.',
-      proposed_response: '', correction: correction ? 'Correct the selected product value through a new admitted cycle and run impacted checks.' : '',
+      proposed_response: corrected ? 'The fresh product snapshot exports value 3; the requested correction is present. This proposed reply still requires provider delivery and observation.' : '', correction: correction ? 'Correct the selected product value through a new admitted cycle and run impacted checks.' : '',
       evidence_refs: [{ ref: 'github:' + row.kind + '/' + row.node_id, sha256: row.body_sha256 }, ...productEvidence] })) } };
   assertNativeActivityAnswer(answer, PR_TRIAGE_CONTRACT, observed.context_sha256);
   return answer;
