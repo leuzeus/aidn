@@ -24,6 +24,7 @@ import { createOperationJournalSigner } from "../../src/core/workflow/process-op
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { createStandardObjectiveDisposition } from "../../src/application/runtime/standard-drift-objective-disposition.mjs";
+import { verifyObjectiveCompletion } from "./objective-completion-fixture-lib.mjs";
 
 const H = "a".repeat(64), id = "op_" + "a".repeat(40), key = Buffer.alloc(32, 7), signer = createOperationJournalSigner(() => key);
 const context = { session_id: "S001", cycle_id: null, documents: [{ ref: "audit:CURRENT-STATE.md", sha256: H, content: "before" }], git: {} };
@@ -164,6 +165,7 @@ for (const [name, mutate, reason] of [
     { encoding: "utf8", windowsHide: true, timeout: 70000, maxBuffer: 1048576 });
   process.stdout.write(fence);
 }
+await verifyObjectiveCompletion(pass);
 if (process.argv.includes("--objective-disposition-only")) {
   console.log(JSON.stringify({ status: "PASS", checks, proof: "synthetic-authenticated-disposition-and-human-component-with-production-effect-fences",
     event_append: "actual-temporary-fixture", canonical_effects: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));

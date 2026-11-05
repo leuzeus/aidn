@@ -1,5 +1,17 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE59 read-only completion evidence primitive, 2026-11-05
+
+A separate internal reader now requires an accepted confirmed v3 finalization,
+its current authenticated disposition, exact canonical-report bytes and the
+original completion-event line at its retained physical offset. It refuses
+changed evaluation/context/HEAD, unknown effects, expiry and process CAS drift.
+Its seventeen component checks use synthetic authority ports and actual
+temporary report/event bytes. This primitive has no production closure consumer
+yet. Read-only admission and the independently launched checkpoint hook still
+need the resolution capability and exact causal transitions. Published routing,
+actual cycle/session closure and the entire L1-L8/A1-A10 goal remain incomplete.
+
 ## SOURCE59 objective effect fences after observation, 2026-11-05
 
 The owned evaluator now reauthenticates the exact disposition after its final

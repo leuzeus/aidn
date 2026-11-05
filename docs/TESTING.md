@@ -1,5 +1,14 @@
 # Testing Guide
 
+The recovery fixture also runs seventeen read-only completion-reader checks.
+They distinguish the latest accepted v3 finalization from an opinion, historical
+finalizer or UNKNOWN result; bind current evaluation/context/HEAD and physical
+report/event bytes; and refuse substitution, wrong offset, revocation, expiry
+and process CAS changes. Operation/evaluation/disposition capabilities are
+synthetic. Temporary report/event bytes are real, and all reads leave them
+unchanged. The reader is not connected to closure admission, the checkpoint
+hook or the published route. These checks establish no successful closure.
+
 `node tools/perf/verify-gating-objective-fence-fixtures.mjs` runs twelve focused
 checks with the production evaluator, signal policies, finalizer and temporary
 event append. Delayed observation and artifact capabilities are doubles. A

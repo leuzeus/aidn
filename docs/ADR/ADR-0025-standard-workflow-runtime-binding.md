@@ -1,5 +1,24 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Read-only objective completion evidence candidate, 2026-11-05
+
+The internal completion reader distinguishes an accepted alignment opinion from
+an accepted v3 finalization. Its trusted ports read the latest signed operation,
+current evaluation/disposition, canonical report and original bounded physical
+event line at the retained offset. It requires the accepted confirmed receipt,
+exact report/subject/HEAD/context, current source authentication, five-minute
+opinion freshness and process CAS. Unknown/incomplete effects and historical
+finalizers supply no completion authority. Physical evidence readers are
+synchronous; the remaining source authentication occurs before those byte
+checks. This is an observation, not an atomic multi-store snapshot or a grant.
+
+This candidate primitive has no closure-hook or published-model consumer yet.
+It cannot open an admission, complete drift, emit a preview event, close a cycle
+or allocate Native. The focused component uses synthetic operation/evaluation
+capabilities and real temporary report/event bytes. Actual canonical adapters,
+causal transitions at later checkpoints, both closure boundaries and productive
+replay/SIM remain required before claiming a connected closure path.
+
 ## Objective effect fences after observation, 2026-11-05
 
 The owned finalization hook reauthenticates the exact disposition after its last
