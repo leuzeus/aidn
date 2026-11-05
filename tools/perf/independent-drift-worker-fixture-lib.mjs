@@ -1,16 +1,25 @@
 import assert from "node:assert/strict";
 import { fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { createWorkerHumanVerificationSource } from "../../src/application/runtime/native-human-verification-port.mjs";
 
 // A fixture controller, not OS confinement or a genuine Native adapter. The
 // enclosing qualification Job owns both processes. The child reconstructs the
 // production worker authority and executor; its H callbacks reach the live parent.
 export async function runIndependentDriftWorker({ request, sent, f, options, onEvent }) {
+  const capability = structuredClone(sent.allocation.human_verification);
+  f.assertWorkerChannelClosed = async ({ source, question }) => {
+    await assert.rejects(createWorkerHumanVerificationSource(capability).verify({ source, question }));
+  };
   const child = fork(fileURLToPath(new URL("independent-drift-worker-fixture.mjs", import.meta.url)), [], {
     env: request.env, cwd: request.cwd, stdio: ["pipe", "pipe", "pipe", "ipc"], execArgv: [], windowsHide: true,
   });
   let stdout = "", stderr = "", metrics = null, pending = Promise.resolve(), failure = null;
-  const stop = setTimeout(() => child.kill(), 30000);
+  // The phase Job is the independent OS deadline. This child ceiling is fixed
+  // before spawn and clipped to the original owned-run remaining duration.
+  const childTimeoutMs = Math.min(120000, request.maxDurationMs);
+  assert.ok(Number.isSafeInteger(childTimeoutMs) && childTimeoutMs > 0);
+  const stop = setTimeout(() => child.kill(), childTimeoutMs);
   const closed = new Promise((resolve, reject) => {
     child.once("error", reject);
     child.once("close", (code, signal) => resolve({ code, signal }));
@@ -38,7 +47,7 @@ export async function runIndependentDriftWorker({ request, sent, f, options, onE
   assert.equal(metrics.pid, child.pid); assert.notEqual(metrics.pid, process.pid);
   assert.equal(metrics.parent_pid, process.pid);
   assert.equal(metrics.sessions.every(row => row.closed && row.closeCalls === 1), true);
-  f.independentWorker = { ...metrics, exit, stderr, stdout };
+  f.independentWorker = { ...metrics, exit, stderr, stdout, child_timeout_ms: childTimeoutMs };
   await onEvent({ type: "stdout", bytes: Buffer.from(stdout) });
   return { outcome: "completed", termination_state: "confirmed", termination_proof: { active_processes: 0 } };
 }

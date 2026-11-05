@@ -3154,6 +3154,24 @@ required for OS closure; these fixtures do not qualify the fixed production entr
 genuine actors, published STANDARD execution or business ALLresources closure.
 These new selections require exact-source terminal evidence before any PASS claim.
 
+The independent worker's final observation is identified by two observations
+after the actual durable assignment, rather than an absolute RPC count. The
+`head-last-human-await` and `context-last-human-await` cases change only HEAD or
+a canonical context document during the following current H verification.
+Their signed source, TTL and separate Native grant remain current.
+
+`--drift-worker-phase=setup` stops after the first accepted diagnostic evaluation
+and emits a retained fixture-state path. `--drift-worker-phase=race` with
+`--drift-worker-state=<path>` reconstructs that successful fixture preparation,
+then obtains and accepts the current H request before spawning the independent
+child. The setup file is test arrangement, never production permission; the
+host and child still authenticate canonical histories, current H and the
+unchanged Native grant. Each phase requires its own predeclared OS deadline and
+receipt. Setup-only success is not race success. No interrupted or UNKNOWN arena
+may enter this successful-setup path. The monolithic SOURCE65 nominal attempt
+timed out before terminal worker evidence and remains UNKNOWN; this partition
+uses a new project and preserves that attempt separately.
+
 `verify-standard-cycle-close-hook-contract-fixtures.mjs` verifies the closed
 fixed input, supported schema vocabulary and correlation of confirmed, blocked
 and uncertain outcomes. `--cycle-close-finalize-mode=contract|files|db-only` in

@@ -2,6 +2,7 @@ import path from "node:path";
 import { transport } from "./agentic-native-rpc-fixture-lib.mjs";
 import { createNativeAllocationWorkerAuthority } from "../../src/application/runtime/native-allocation-worker-authority.mjs";
 import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
+import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
 
 // Static independent fixture entry. Only the native RPC actor is doubled. This
 // is not the fixed production entry and cannot qualify genuine Native behavior.
@@ -13,12 +14,15 @@ for await (const part of process.stdin) {
 const sent = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 const { configuration, authorization } = sent;
 const f = { configuration, dirs: { product: path.join(configuration.target_root, "product"), control: configuration.control_root } };
-let observations = 0;
+const instances = createAgenticProcessStore({ targetRoot: configuration.target_root, stateMode: "files" });
+let observations = 0, assignedObservations = 0;
 const t = transport(f, {
   async onConfigRead() {
-    // open() observes once, host selection once more, then run() performs the
-    // final awaited observation immediately before the production turn fence.
-    if (++observations !== 3) return;
+    observations++;
+    // After the durable assignment, execute() snapshots once and session.run()
+    // observes once more. This second observation is the last awaited RPC before
+    // beforeTurn. Earlier open/assignment observations cannot trigger this race.
+    if (instances.read(configuration.instance_id).record.events.at(-1)?.kind !== "assign" || ++assignedObservations !== 2) return;
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(Error("FIXTURE_PARENT_ACK_TIMEOUT")), 5000);
       process.once("message", message => {
@@ -46,7 +50,7 @@ delete sent.allocation; bytes.fill(0);
 execution = createProjectAgenticProcessExecution(configuration, { rpcFactory: t.rpcFactory, allocationAuthority, processAuthority: allocationAuthority.processAuthority });
 const result = await execution.run({ execute: true, authorization });
 process.stdout.write(JSON.stringify(result) + "\n");
-process.send({ kind: "fixture_metrics", pid: process.pid, parent_pid: process.ppid, observations,
+process.send({ kind: "fixture_metrics", pid: process.pid, parent_pid: process.ppid, observations, assignedObservations,
   sessions: t.sessions.map(({ turns, closed, closeCalls }) => ({ turns, closed, closeCalls })),
   rpc_calls: t.calls.length, turns: t.calls.filter(row => row.method === "turn/start").length,
   capability_in_native: JSON.stringify(t.sessions.map(row => row.configuration)).includes("human_verification")

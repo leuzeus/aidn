@@ -91,9 +91,13 @@ const selectedCycleWorkMode = process.argv.find(value => value.startsWith("--cyc
 const selectedCycleCloseFinalizeMode = process.argv.find(value => value.startsWith("--cycle-close-finalize-mode="))?.slice("--cycle-close-finalize-mode=".length);
 const driftWorkerMode = process.argv.find(value => value.startsWith("--drift-worker-mode="))?.split("=")[1];
 const independentDriftWorker = process.argv.includes("--drift-worker-process");
+const driftWorkerPhase = process.argv.find(value => value.startsWith("--drift-worker-phase="))?.split("=")[1];
+const driftWorkerState = process.argv.find(value => value.startsWith("--drift-worker-state="))?.slice("--drift-worker-state=".length);
+if (driftWorkerPhase && (!independentDriftWorker || !["setup", "race"].includes(driftWorkerPhase) || !process.argv.includes("--retain-always")
+  || driftWorkerPhase === "race" && !path.isAbsolute(driftWorkerState ?? ""))) throw Error("DRIFT_WORKER_PHASE_INVALID");
 if (independentDriftWorker && !driftWorkerMode) throw Error("DRIFT_WORKER_FIXTURE_MODE_REQUIRED");
-if (driftWorkerMode && !["nominal", "revoked", "expired", "wrong-authority", "wrong-subject", "revoked-after-observe", "expired-after-observe"].includes(driftWorkerMode)) throw Error("DRIFT_WORKER_FIXTURE_MODE_INVALID");
-if (driftWorkerMode?.endsWith("-after-observe") && !independentDriftWorker) throw Error("DRIFT_WORKER_INDEPENDENT_PROCESS_REQUIRED");
+if (driftWorkerMode && !["nominal", "revoked", "expired", "wrong-authority", "wrong-subject", "revoked-after-observe", "expired-after-observe", "head-last-human-await", "context-last-human-await"].includes(driftWorkerMode)) throw Error("DRIFT_WORKER_FIXTURE_MODE_INVALID");
+if ((driftWorkerMode?.endsWith("-after-observe") || driftWorkerMode?.endsWith("-last-human-await")) && !independentDriftWorker) throw Error("DRIFT_WORKER_INDEPENDENT_PROCESS_REQUIRED");
 if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseFinalizeMode)) throw Error("CYCLE_CLOSE_FINALIZE_FIXTURE_MODE_INVALID");
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
@@ -627,7 +631,7 @@ function mixedFixture(stateMode = "files", options = {}) {
   // The human path also qualifies a retained common host. Authority/evidence
   // reads remain inside its methods; acceptance still restarts in a cold Node.
   let sharedHost;
-  const open = () => options.closure || options.standardModel ? sharedHost ??= compose() : compose();
+  const open = () => options.closure || options.standardModel || options.retainHost ? sharedHost ??= compose() : compose();
   Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model, ...(options.recoveryCycle ? { cycleParameters: { cycle_id: options.changeRequest ? "C002" : "C001", cycle_type: "spike", title: "admitted-recovery" } } : {}) }); return f;
 }
 function restoreComposedFixture(data, options) {
@@ -768,18 +772,25 @@ if (process.argv[2] === "--mixed-continue") {
     console.log(JSON.stringify(await verifyNativeHumanVerificationPort()));
   });
   if (driftWorkerMode) await check("drift worker current human: " + driftWorkerMode, async () => {
-    const claims = new Map(); let f, review, live = true, expire = false, currentVerifications = 0;
+    const claims = new Map(); let f, review, live = true, expire = false, currentVerifications = 0, armed = false, mutation = null;
     const actualNow = Date.now;
-    const humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null, async verify({ source, sourceRef, question }) {
+    const humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null, async verify({ source, sourceRef, question, historical }) {
       await new Promise(resolve => setImmediate(resolve));
       currentVerifications++;
+      if (armed && !historical && !mutation && driftWorkerMode.endsWith("-last-human-await")) {
+        const head = () => execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true, timeout: 10000 }).trim();
+        mutation = { stage: "after-final-observation-during-current-H-await", head_before: head(), source_sha256: shadowHash(source), review_age_ms: Date.now() - review.prepared_at_ms };
+        if (driftWorkerMode === "head-last-human-await") execFileSync("git", ["-C", f.configuration.target_root, "-c", "core.hooksPath=NUL", "-c", "commit.gpgSign=false", "commit", "--allow-empty", "-m", "fixture current-H race"], { stdio: "pipe", windowsHide: true, timeout: 10000 });
+        else fs.appendFileSync(path.join(f.configuration.target_root, "docs/audit/parking-lot.md"), "\nFixture context changed during current H authentication.\n");
+        mutation.head_after = head();
+      }
       if (f?.launches >= 2 && (driftWorkerMode === "expired" || expire)) Date.now = () => review.prepared_at_ms + 300001;
       if (!live || shadowHash(claims.get(sourceRef)) !== shadowHash(source) || source.question_sha256 !== shadowHash(question)) return { outcome: "unverified" };
       return { outcome: "verified", authority_id: f?.launches >= 2 && driftWorkerMode === "wrong-authority" ? "another" : source.authority_id,
         source_sha256: f?.launches >= 2 && driftWorkerMode === "wrong-subject" ? "f".repeat(64) : shadowHash(source) };
     } };
     let beforeChild = null;
-    f = finalizationFixture("files", { recovery: true, finalize: false, rediagnosis: true, humanSource, independentDriftWorker,
+    const workerOptions = { recovery: true, finalize: false, rediagnosis: true, humanSource, independentDriftWorker, retainHost: true, hostTrace: true,
       beforeWorker() {
         if (f.launches < 2) return;
         beforeChild = { current_verifications: currentVerifications, review_age_ms: Date.now() - review.prepared_at_ms,
@@ -787,16 +798,41 @@ if (process.argv[2] === "--mixed-continue") {
         if (driftWorkerMode === "revoked") live = false;
       },
       afterWorkerObservation() {
+        armed = true;
         if (driftWorkerMode === "revoked-after-observe") live = false;
         if (driftWorkerMode === "expired-after-observe") expire = true;
-      } });
+      } };
+    const state = driftWorkerPhase === "race" ? JSON.parse(fs.readFileSync(driftWorkerState, "utf8")) : null;
+    if (state) {
+      assert.equal(state.proof_class, "independent-worker-fixture-setup.v1");
+      assert.equal(state.mode, driftWorkerMode);
+      assert.equal(shadowHash(state.fixture.configuration), state.authorization.configuration_sha256);
+      assert.equal(state.fixture.configuration.implementation_sha256, agenticProcessImplementationPins().sha256);
+      f = { ...state.fixture, launches: 1, key: Buffer.alloc(32, 91), t: transport(state.fixture, workerOptions) };
+      f.open = () => createStandardWorkflowMixedHost({ configuration: f.configuration, readSigningKey: () => f.key, humanSource,
+        authorize: async () => ({ authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }) },
+        { controllerFactory: journalController(f, f.t, workerOptions) });
+    } else f = finalizationFixture("files", workerOptions);
     f.sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
     f.cycleObjective = "Determine whether a bounded prototype is useful";
     try {
-      const authorization = await bootstrapMixed(f); await prepareCompletionCycle(f, "DONE");
-      const host = f.open(), first = await host.step({ write: true, authorization });
-      assert.equal(first.journal_phase, "closed", JSON.stringify(first));
-      await host.step({ write: true });
+      const authorization = state?.authorization ?? await bootstrapMixed(f);
+      const host = f.open();
+      if (!state) {
+        await prepareCompletionCycle(f, "DONE");
+        const first = await host.step({ write: true, authorization });
+        assert.equal(first.journal_phase, "closed", JSON.stringify(first));
+        await host.step({ write: true });
+        if (driftWorkerPhase === "setup") {
+          const file = path.join(f.base, "independent-worker-setup.json");
+          fs.writeFileSync(file, JSON.stringify({ proof_class: "independent-worker-fixture-setup.v1", mode: driftWorkerMode, authorization,
+            first_allocation: first, fixture: Object.fromEntries(["configuration", "dirs", "base", "model"].map(name => [name, f[name]])),
+            parent_sessions: f.t.sessions.map(({ turns, closed, closeCalls }) => ({ turns, closed, closeCalls })) }, null, 2), { flag: "wx" });
+          assert.ok(f.t.sessions.every(row => row.closed && row.closeCalls === 1));
+          console.log(JSON.stringify({ setup_state_file: file, mode: driftWorkerMode, status: "SETUP_ONLY", race: "NOT_RUN", published_process: "NOT_RUN" }));
+          return;
+        }
+      }
       const waiting = await host.step({ write: true }); assert.equal(waiting.status, "waiting_for_human");
       review = waiting.question.review; assert.equal(review.contract_version, "standard-drift-recovery-plan.v2");
       const claim = { contract_version: "human-drift-recovery-decision.v2", source_kind: "human", authority_id: "fixture_operator",
@@ -805,17 +841,17 @@ if (process.argv[2] === "--mixed-continue") {
         evidence_refs: [{ ref: "fixture:current-human", sha256: shadowHash(review) }] };
       claims.set("current", claim); await host.receiveDecision(waiting.operation_id, { write: true, sourceRef: "current" });
       await host.acceptOperation(waiting.operation_id, { write: true });
-      const before = host.inspect().record, count = f.t.calls.filter(row => row.method === "turn/start").length;
+      const before = host.inspect().record, count = f.t.calls.filter(row => row.method === "turn/start").length, beforeVerifications = currentVerifications, parentSessions = f.t.sessions.length;
       const result = await host.step({ write: true, authorization });
       const child = f.independentWorker;
       if (independentDriftWorker) {
         assert.ok(child, "The second Native request must reconstruct in a separate Node process");
-        assert.ok(beforeChild.current_verifications > 0);
+        assert.ok(beforeChild.current_verifications > beforeVerifications, "The parent must admit current H before reservation/worker start");
         assert.ok(beforeChild.review_age_ms >= 0 && beforeChild.review_age_ms <= 300000);
         assert.equal(child.capability_in_native, false);
         assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count);
-        if (driftWorkerMode.endsWith("-after-observe")) {
-          assert.equal(child.observations, 3); assert.equal(child.sessions.length, 1);
+        if (driftWorkerMode.endsWith("-after-observe") || driftWorkerMode.endsWith("-last-human-await")) {
+          assert.equal(child.assignedObservations, 2); assert.equal(child.sessions.length, 1);
         } else if (driftWorkerMode !== "nominal") {
           assert.equal(child.sessions.length, 0); assert.equal(child.rpc_calls, 0);
         }
@@ -823,16 +859,23 @@ if (process.argv[2] === "--mixed-continue") {
       if (driftWorkerMode === "nominal") { assert.equal(result.journal_phase, "closed", JSON.stringify(result));
         assert.equal(independentDriftWorker ? child.turns : f.t.calls.filter(row => row.method === "turn/start").length - count, 1);
       } else {
-        assert.equal(result.first_failure, driftWorkerMode.startsWith("expired") ? "STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED" : "PROCESS_HUMAN_NOT_AUTHENTICATED", JSON.stringify(result));
-        assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count); assert.equal(f.t.sessions.length, 1);
+        assert.equal(result.first_failure, driftWorkerMode.startsWith("expired") ? "STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED"
+          : driftWorkerMode.endsWith("-last-human-await") ? "STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE" : "PROCESS_HUMAN_NOT_AUTHENTICATED", JSON.stringify({ result, child, mutation }));
+        assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count); assert.equal(f.t.sessions.length, parentSessions);
         if (independentDriftWorker) assert.equal(child.turns, 0);
       }
       assert.ok(f.t.sessions.every(row => row.closed));
       assert.equal(shadowHash(host.inspect().record.events.slice(0, before.events.length)), shadowHash(before.events));
       assert.equal(JSON.stringify(f.t.calls).includes("human_verification"), false);
+      if (independentDriftWorker) {
+        const previous = currentVerifications;
+        await f.assertWorkerChannelClosed({ source: claim, question: waiting.question });
+        assert.equal(currentVerifications, previous, "Closed transport must not call H again");
+        assert.ok(Date.now() < authorization.global_deadline_ms, "The separate Native grant must remain current");
+      }
       console.log(JSON.stringify({ scope: "production-parent-worker-ports-with-fixture-actors", mode: driftWorkerMode, result,
         original_human_source_unchanged: shadowHash(claims.get("current")) === shadowHash(claim), published_process: "NOT_RUN",
-        independent_worker_process: independentDriftWorker ? { beforeChild, ...child, stdout: undefined } : "NOT_RUN", native: "fixture" }));
+        independent_worker_process: independentDriftWorker ? { beforeChild, mutation, ...child, stdout: undefined, channel_closed: true } : "NOT_RUN", native: "fixture" }));
     } finally { Date.now = actualNow; }
   });
   if (selectedSpikeMode) await check("standard spike: published model and real conversion wrapper", () => verifyStandardSpikeExecution({
