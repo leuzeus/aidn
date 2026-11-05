@@ -80,13 +80,16 @@ test("non-retained closure bypasses promotion", () => {
 });
 for (const mode of ["THINKING", "EXPLORING"]) {
   const prefix = mode.toLowerCase();
-  test(mode + " plans exactly one read-only analysis; deterministic and human operations add no response", () => {
-    const result = plan({ mode, cold_resume: false, max_responses: 1 });
-    assert.equal(result.responses_required, 1);
-    assert.deepEqual(result.native_occurrences.map(n => n.node_id), [prefix + "_analysis"]);
+  test(mode + " plans analysis and closure drift; deterministic and human operations add no response", () => {
+    const result = plan({ mode, cold_resume: false, max_responses: 2 });
+    assert.equal(result.responses_required, 2);
+    assert.deepEqual(result.native_occurrences.map(n => n.node_id), [prefix + "_analysis", prefix + "_session_closure_drift_report"]);
     assert.ok(result.operations.includes("mode_decision"));
     assert.ok(result.operations.includes(prefix + "_admit"));
     assert.ok(result.operations.includes(prefix + "_evaluate"));
+    assert.ok(result.operations.includes(prefix + "_session_close_finalize"));
+    assert.ok(!result.operations.includes("plan_select"));
+    assert.throws(() => plan({ mode, max_responses: 1 }), { code: "STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT" });
     assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
     assert.equal(result.product_qualification, "NOT_ESTABLISHED");
     const analysis = model.nodes.find(n => n.id === prefix + "_analysis");

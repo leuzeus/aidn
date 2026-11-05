@@ -1,5 +1,12 @@
 # Testing Guide
 
+The synthetic composed preflight follows `cycle_work_requested` from its modeled
+mode decision. THINKING and nonretained EXPLORING count two Native activities:
+analysis and session-closure drift. They terminate after their actual closure
+operations without inventing a cycle plan. The common reducer still waits when
+a routing fact is absent; the helper reports the waiting node and reason. These
+are synthetic planning checks, not authenticated application execution.
+
 The required `perf:verify-agentic-process` gate uses a shell-free Node dispatcher
 and the ordered argv cases in `package/catalogs/agentic-process-fixtures.v1.json`.
 Its first 187 cases preserve the previous command exactly; six appended cases

@@ -134,6 +134,8 @@ try {
       assert.equal((await runtime.dispatch(staged.operation_id, { write: true })).status, "retained_result");
       if (id === "mode_decision") {
         const proof = output.evidence_refs[0]; assert.equal(shadowHash(runtime.readDecisionSource(proof.ref)), proof.sha256);
+        if (output.outcome === "completed") assert.equal(output.facts.cycle_work_requested, output.observations.choice === "COMMITTING");
+        else assert.deepEqual(output.facts, {});
       }
       process.stdout.write(`PASS ${label}: ${id}${expectedGateRefusal ? ", nested gate refusal retained despite successful hook exit" : ""}\n`); passed++;
     }

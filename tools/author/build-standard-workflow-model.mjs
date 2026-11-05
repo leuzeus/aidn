@@ -34,7 +34,7 @@ const native = (id, role_ref, policy_ref, output_contract, skill_ids, rule_refs)
 const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, node_id, condition]) => ({ flow_id, node_id, condition })) });
 
 seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_route", "cycle_work_route"]);
-xor("cycle_work_route", [["planned", "cycle_work", "cycle_plan_recorded"], ["analysis", "cycle_work_inapplicable", null]]);
+xor("cycle_work_route", [["requested", "cycle_work", "cycle_work_requested"], ["analysis", "cycle_work_inapplicable", null]]);
 seq("cycle_work_inapplicable", []);
 nodes.push(...structuredClone(startup.nodes)); inputs.push(...structuredClone(startup.data_bindings.inputs));
 nodes.find(row => row.id === "startup").children = startup.nodes.find(row => row.id === "startup").children.filter(id => id !== "session_start_finalize");
@@ -53,7 +53,7 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   native(`${prefix}_analysis`, "mode_analyst", `${prefix}_analysis_policy`, "standard-mode-work-report.v1", ["context-reload"], ["SPEC-R01", "SPEC-R02"]);
   op(`${prefix}_evaluate`, "mode_work_evaluate", occurrence(`${prefix}_analysis`));
 }
-xor("exploring_after_analysis", [["spike", "spike_work_pending", "spike_conversion_completed"], ["analysis", "exploring_session_close", null]]);
+xor("exploring_after_analysis", [["spike", "spike_work_pending", "mode_work_spike_requested"], ["analysis", "exploring_session_close", null]]);
 seq("spike_work_pending", []);
 op("spike_admit", "spike_conversion_admit", operation(null, "review_operation_id", "exploring_observe"));
 seq("spike_conversion", ["spike_decide", "spike_initialize", "spike_finalize", "spike_experiment_admit", "spike_planning_route"]);

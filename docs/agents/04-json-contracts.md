@@ -181,6 +181,13 @@ refusals; a valid shadow envelope grants no authority to execute.
 
 ## Internal Agent Execution Contracts
 
+Private `standard-spike-experiment-admission-output.v3` adds an explicit
+`cycle_work_requested=true` only to a completed SPIKE execution admission.
+Blocked output carries no positive facts. V1/v2 outputs remain readable with
+their original semantics. The mode decision's existing extensible v2 facts
+carry the initial requested/not-requested value; this grants no product effect
+and cannot substitute for plan selection or DoR. See ADR-0025.
+
 Private task-selection/progression inputs, the advance plan and task output use
 versioned closed contracts. The distinct task-work report/output bind a selected
 task and explicit changed/unchanged result. Validation-evaluation input v2 adds

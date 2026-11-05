@@ -250,8 +250,8 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
         || plan.changes.some(row => artifacts.read(row.path, { required: true }).sha256 !== row.after_sha256)) fail("STANDARD_SPIKE_EXPERIMENT_PLAN_CHANGED");
       const allowed = selection.chosen_mode === "COMMITTING" && audit?.outcome === "completed" && prewrite.ok === true
         && prewrite.activation?.active === true && ["admitted", "admitted_with_warnings"].includes(prewrite.admission_status);
-      return assertStandardOperationOutput({ contract_version: "standard-spike-experiment-admission-output.v2", operation_ref: "spike_experiment_execution_admit",
-        outcome: allowed ? "completed" : "blocked", effect_status: "no_effect", facts: allowed ? { spike_experiment_execution_admitted: true } : {},
+      return assertStandardOperationOutput({ contract_version: "standard-spike-experiment-admission-output.v3", operation_ref: "spike_experiment_execution_admit",
+        outcome: allowed ? "completed" : "blocked", effect_status: "no_effect", facts: allowed ? { spike_experiment_execution_admitted: true, cycle_work_requested: true } : {},
         observations: { reason_code: allowed ? "STANDARD_SPIKE_COMMITTING_EXECUTION_ADMITTED" : selection.chosen_mode === "EXPLORING" ? "STANDARD_SPIKE_EXPLORING_EXECUTION_PORT_REQUIRED" : "STANDARD_SPIKE_EXPERIMENT_ADMISSION_BLOCKED",
           conversion_operation_id: input.conversion_operation_id, record_operation_id: input.record_operation_id,
           selected_mode: selection.chosen_mode, prewrite, audit, readiness: "required", product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false }, evidence_refs: recorded.output.evidence_refs });

@@ -2,6 +2,7 @@ import spikeReviewInput from "../contracts/workflow-definition/standard-spike-re
 import spikeExperimentInput from "../contracts/workflow-definition/standard-spike-experiment-input.v1.schema.json" with { type: "json" };
 import spikeExperimentOutput from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v1.schema.json" with { type: "json" };
 import spikeExperimentOutputV2 from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v2.schema.json" with { type: "json" };
+import spikeExperimentOutputV3 from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v3.schema.json" with { type: "json" };
 import planSelectionOutput from "../contracts/workflow-definition/standard-cycle-plan-selection-output.v1.schema.json" with { type: "json" };
 import spikeInitializeInput from "../contracts/workflow-definition/standard-spike-initialize-input.v1.schema.json" with { type: "json" };
 import spikeFinalizeInput from "../contracts/workflow-definition/standard-spike-finalize-input.v1.schema.json" with { type: "json" };
@@ -190,6 +191,11 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-spike-experiment-admission-output.v3") {
+    if (checkShadowJson(value) || validateJsonSchema(value, spikeExperimentOutputV3, "$", { contractKind: "workflow-definition" }).length
+      || shadowHash(value.facts) !== shadowHash(value.outcome === "completed" ? { spike_experiment_execution_admitted: true, cycle_work_requested: true } : {})) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-cycle-plan-selection-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, planSelectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;

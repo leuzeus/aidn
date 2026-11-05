@@ -17,11 +17,26 @@ const report = (mode, disposition) => ({ contract_version: MODE_WORK_CONTRACT, c
 const evaluate = value => evaluateStandardModeWork({ report: value, producer: { proof_class: "fixture" }, reference }, context(value.mode));
 let checks = 0;
 const test = (name, run) => { run(); checks++; console.log("PASS " + name); };
+test("cycle work routing uses authenticated intent without claiming a recorded plan", () => {
+  const route = model.nodes.find(row => row.id === "cycle_work_route");
+  assert.equal(route.branches[0].condition, "cycle_work_requested");
+  assert.equal(model.nodes.find(row => row.id === "exploring_after_analysis").branches[0].condition, "mode_work_spike_requested");
+  const execution = { contract_version: "standard-spike-experiment-admission-output.v3", operation_ref: "spike_experiment_execution_admit",
+    outcome: "completed", effect_status: "no_effect", observations: {}, facts: { spike_experiment_execution_admitted: true, cycle_work_requested: true }, evidence_refs: [] };
+  assertStandardOperationOutput(execution);
+  assertStandardOperationOutput({ ...execution, outcome: "blocked", facts: {} });
+  for (const facts of [{}, { cycle_work_requested: false }, { ...execution.facts, cycle_plan_recorded: true }])
+    assert.throws(() => assertStandardOperationOutput({ ...execution, facts }), { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
+  assert.throws(() => assertStandardOperationOutput({ ...execution, outcome: "blocked" }), { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
+  assertStandardOperationOutput({ ...execution, contract_version: "standard-spike-experiment-admission-output.v2", facts: { spike_experiment_execution_admitted: true } });
+});
 for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_complete"], ["exploring", "EXPLORING", "nonretained"]]) {
   test(`${mode} has real preflight, analysis and evaluation nodes with read-only permissions`, () => {
     const node = id => model.nodes.find(row => row.id === id);
     assert.deepEqual(node(prefix + "_preflight").children, [prefix + "_admit"]);
-    assert.deepEqual(node(prefix + "_handoff").children, [prefix + "_analysis_loop", prefix + "_session_close"]);
+    assert.deepEqual(node(prefix + "_handoff").children, prefix === "exploring"
+      ? ["exploring_context_refresh", "exploring_git_checkpoint", "exploring_analysis_loop", "exploring_after_analysis"]
+      : ["thinking_analysis_loop", "thinking_session_close"]);
     assert.deepEqual(node(prefix + "_session_close").children, ["session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"].map(id => prefix + "_" + id));
     assert.equal(model.policies.find(row => row.id === node(prefix + "_session_closure_drift_report").policy_ref).mode, mode);
     assert.deepEqual(node(prefix + "_analysis_iteration").children, [prefix + "_analysis", prefix + "_observe", ...(prefix === "exploring" ? ["spike_admit"] : []), prefix + "_after_report"]);

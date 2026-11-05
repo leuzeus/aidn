@@ -1,5 +1,23 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Explicit cycle-work routing, 2026-11-05
+
+The authenticated mode decision emits `cycle_work_requested`: COMMITTING requests
+the cycle path; THINKING and EXPLORING start without that request. A separately
+accepted SPIKE execution admission can set it to true using private output v3.
+This fact describes intent, not a recorded plan, readiness, write permission or
+retention. The existing plan selector and subsequent admissions still verify
+those conditions. V1/v2 admission readers and retained models remain unchanged.
+
+The final cycle-work selector consumes this fact rather than waiting for
+`cycle_plan_recorded` on an analysis path that never produces a plan. The
+EXPLORING post-analysis selector consumes its actual `mode_work_spike_requested`
+observation rather than awaiting an unrequested conversion. Missing routing facts
+still wait in the common reducer. No model node or human admission is removed.
+Synthetic budget planning follows these outputs and counts both analysis and
+session-closure drift activities. This source change requires fresh qualification;
+historical failures and `complete_standard_workflow=false` are preserved.
+
 ## Fresh authority observations, 2026-11-05
 
 Project and persistence descriptions in a single synchronous host observation

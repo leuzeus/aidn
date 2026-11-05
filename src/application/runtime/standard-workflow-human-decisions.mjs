@@ -187,7 +187,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         observations: { inbox_id: capture.inbox_id, source_ref: capture.source_ref, source_sha256: shadowHash(capture.source), choice },
         facts: !accepted ? {} : isRecovery ? { drift_recovery_chosen: true, drift_recovery_requirements_delta: choice === "requirements_delta",
           drift_recovery_new_cycle: choice === "new_cycle", drift_recovery_rollback: choice === "rollback", drift_recovery_required: true, drift_check_completed: false }
-          : { mode_thinking: choice === "THINKING", mode_exploring: choice === "EXPLORING", mode_committing: choice === "COMMITTING" },
+          : { mode_thinking: choice === "THINKING", mode_exploring: choice === "EXPLORING", mode_committing: choice === "COMMITTING",
+            cycle_work_requested: choice === "COMMITTING" },
         evidence_refs: [{ ref: `aidn:decision-source/${capture.inbox_id}`, sha256: shadowHash(capture.source) }, ...capture.source.evidence_refs] };
     },
   });

@@ -45,7 +45,8 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     const cursor = inspectAgenticProcess(state);
     if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) break;
     const frame = cursor.occurrences.find(f => f.status === "READY") ?? cursor.occurrences.find(f => f.wait_reason === "event");
-    if (!frame) fail("STANDARD_FIXTURE_PREFLIGHT_UNPLANNED_WAIT");
+    if (!frame) throw Object.assign(Error("STANDARD_FIXTURE_PREFLIGHT_UNPLANNED_WAIT"), { code: "STANDARD_FIXTURE_PREFLIGHT_UNPLANNED_WAIT",
+      waiting: cursor.occurrences.filter(row => row.status === "WAITING").map(row => ({ node_id: row.node_id, wait_reason: row.wait_reason })) });
     const node = model.nodes.find(n => n.id === frame.node_id);
     if (node.id === stops[stop]) break;
     if (node.kind === "operation") {
@@ -67,7 +68,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (node.binding_ref === "spike_conversion_admit") facts = { mode_work_spike_requested: false };
         if (node.binding_ref === "mode_work_observe") facts = { mode_work_report_complete: true, mode_analysis_completed: false };
         if (node.binding_ref === "mode_work_evaluate") facts = { mode_analysis_completed: true };
-        if (node.binding_ref === "session_mode_apply") facts = { mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING", mode_exploring: scenario.mode === "EXPLORING" };
+        if (node.binding_ref === "mode_decision") facts = { mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING", mode_exploring: scenario.mode === "EXPLORING", cycle_work_requested: scenario.mode === "COMMITTING" };
         if (node.binding_ref === "cycle_task_advance") facts = { cycle_tasks_finished: ++advanced >= scenario.task_iterations };
         if (fullCorrection && node.id === "session_pr_correction_decide") facts = { session_pr_correction_cycle_requested: true };
         if (node.binding_ref === "cycle_close_finalize") facts = { cycle_retained: scenario.closure === "retain" };
