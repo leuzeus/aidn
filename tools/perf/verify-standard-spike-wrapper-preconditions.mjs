@@ -31,7 +31,7 @@ assert.equal((await operations.initializeSession(prepared, { write: true, expect
 prepared = await operations.prepareMode({ session_id: "S001", mode: "EXPLORING" });
 assert.equal((await operations.applyMode(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
 const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", windowsHide: true }).trim();
-git("add", "."); git("-c", "core.hooksPath=NUL", "commit", "-m", "fixture admitted exploration");
+git("add", "."); git("-c", "core.hooksPath=NUL", "commit", ...(mode === "db-only" ? ["--allow-empty"] : []), "-m", "fixture admitted exploration");
 prepared = await operations.prepareStart({ session_id: "S001" });
 assert.equal(prepared.can_apply, true);
 const started = await operations.finalizeStart(prepared, { write: true, expectPlan: prepared.plan_sha256 });
