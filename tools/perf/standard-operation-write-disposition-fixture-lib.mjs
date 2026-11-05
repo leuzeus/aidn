@@ -100,15 +100,17 @@ if (process.argv.includes("--write-disposition-worker")) {
 export async function verifyStandardOperationWriteDisposition(mode, report, only = null) {
   const owned = [], retained = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-write-disposition-evidence-"));
   let checks = 0;
-  const phase = (name, extra = {}) => fs.appendFileSync(path.join(retained, "phases.jsonl"), JSON.stringify({ name, at_ms: Date.now(), ...extra }) + "\n");
+  const phase = (phase, extra = {}) => fs.appendFileSync(path.join(retained, "phases.jsonl"), JSON.stringify({ phase, at_ms: Date.now(), ...extra }) + "\n");
   async function setup(name) {
     phase("setup", { name });
     const config = { mode, root: createFreshStandardWorkflowFixture(mode, owned), key: randomBytes(32).toString("hex"), name };
+    phase("fixture_created", { name });
     const ops = createStandardWorkflowOperations({ targetRoot: config.root });
     let plan = await ops.prepareSession({ session_id: "S001", session_branch: "S001-write-recovery", objective: "Qualify original report recovery" });
     assert.equal((await ops.initializeSession(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, "completed");
     plan = await ops.prepareMode({ session_id: "S001", mode: "COMMITTING" });
     assert.equal((await ops.applyMode(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, "completed");
+    phase("session_prepared", { name });
     const context = await readStandardSessionClosureContext({ targetRoot: config.root, sessionId: "S001" });
     const { admission_allowed, ...base } = context, op = n => "op_" + String(n).repeat(40);
     const review = { ...base, admission_operation_id: op(1), admission_output_sha256: H, drift_evaluation_operation_id: op(2), drift_evaluation_output_sha256: H,
@@ -169,7 +171,7 @@ export async function verifyStandardOperationWriteDisposition(mode, report, only
       const before = h.readInstance("artifact_disposition");
       const accepted = await h.disposition.withReceiptAcceptance(config.operation_id, () => h.service.acceptOperation({ instanceId: before.instance_id,
         expectedSha256: before.instance_sha256, occurrenceId: "root", eventId: "original_result", receiptId: receipt.receipt_id, write: true }));
-      assert.equal(accepted.cursor.status, "COMPLETED"); assert.equal(accepted.cursor.facts.session_close_completed, false);
+      assert.equal(accepted.cursor.status, "COMPLETED"); assert.equal(accepted.record.events.at(-1).receipt.facts.session_close_completed, false);
       assert.equal(h.readOperation(config.operation_id).record.results.length, 1); assert.deepEqual(store.read(config.operation_id).record, original); assert.deepEqual(witnesses(), images);
       assert.match(h.artifacts.read("sessions/S001.md").content, /^state: OPEN$/m);
       assert.match(h.artifacts.read("sessions/S001.md").content, /^session_closure_status: checkpoint_pending$/m);
