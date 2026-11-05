@@ -1,5 +1,21 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Terminal diagnostic observation candidate, 2026-11-05
+
+The mixed host now exposes a distinct authenticated read-only diagnostic port
+for retained Native failures. Ordinary admission still refuses an outstanding
+failed allocation. The port retains the original phase, owner, first failure and
+debits, authenticates history/checkpoint evidence, and performs no effect or
+resource disposition. A separate resource reconciliation and current authority
+are still required before any legitimate resumption. The original failed arenas
+remain unchanged and their verdicts remain failures.
+
+Independent worker and canonical storage fixtures are extended to check safe
+post-refusal observation and mandatory optional-document absence-to-creation.
+Exact-source results must be recorded separately. This candidate does not
+complete the published STANDARD route, other R05 contexts, general L4,
+required193, genuine actors, installed execution or L1-L8/A1-A10.
+
 ## Last awaited H context correction candidate, 2026-11-05
 
 A new independent-worker nominal passed on the pre-fence source. Two separate

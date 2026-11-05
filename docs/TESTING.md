@@ -1,5 +1,22 @@
 # Testing Guide
 
+## Terminal refusal observation and optional creation candidate, 2026-11-05
+
+The independent drift-worker selector now requires authenticated diagnostic
+history after a failed allocation, unchanged signed allocation/debits, continued
+execution exclusion and a denied closed H channel without another H callback.
+The new internal diagnostic port is read-only and grants no reconciliation or
+resume authority. Native and human actors remain fixtures; this scenario does
+not establish published STANDARD execution or business-resource disposition.
+
+Run `verify-standard-drift-session-scope-fixtures.mjs --mode=files`, `--mode=dual`
+and `--mode=db-only` separately under recorded bounds. Each new disposable corpus
+explicitly starts with absent canonical baseline history, captures its fence,
+then creates it through the artifact CAS port during an await. The test requires
+the original fence to refuse. Database cases keep its projection absent until
+the later explicit projection; SQLite fixture setup is not a business delete.
+These controls are not a complete DB-only workflow or installed qualification.
+
 ## Pre-effect close expiry continuation, 2026-11-05
 
 The close-record component accepts --mode=files --final-hook

@@ -918,6 +918,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return service.initialize({ ...input, model, facts: {} });
     },
     inspect: id => current(id),
+    inspectDiagnostic(id) {
+      if (!processAuthority) fail("STANDARD_HOST_DIAGNOSTIC_AUTHORITY_REQUIRED");
+      const value = service.inspect(id); scope(value.record);
+      return { ...value, native: processAuthority.inspectDiagnostic(value.record) };
+    },
     prepareDecision: id => structuredClone(human.question(retained(id).record)),
     prepareControl: input => structuredClone(controlRequest(input)),
     async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, captureKind = null, write = false }) {

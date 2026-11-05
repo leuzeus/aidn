@@ -9,12 +9,29 @@ import { createStandardWorkflowOperations } from "../../src/application/runtime/
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { readStandardDriftContext, captureStandardDriftContextFence } from "../../src/application/runtime/standard-drift-report.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { getDatabaseSync, rebuildRuntimeHeads } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
+import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
 if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const owned = [], temporary = fs.realpathSync(os.tmpdir()); let complete = false, checks = 0;
 const pass = name => { checks++; console.log("PASS " + name); };
 try {
   const root = createFreshStandardWorkflowFixture(mode, owned), ops = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+  // Establish an absent optional artifact in this new disposable test corpus
+  // before any context observation. This is fixture setup, not a workflow delete.
+  const optionalName = "baseline/history.md", optionalVisible = path.join(root, "docs/audit", optionalName);
+  assert.ok(fs.realpathSync(root).startsWith(temporary + path.sep));
+  if (mode !== "files") {
+    const db = new (getDatabaseSync())(resolveRuntimeSqliteFile({ targetRoot: root }));
+    try {
+      db.exec("BEGIN IMMEDIATE");
+      db.prepare("DELETE FROM artifact_blobs WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE path = ?)").run(optionalName);
+      db.prepare("DELETE FROM artifacts WHERE path = ?").run(optionalName);
+      rebuildRuntimeHeads(db); db.exec("COMMIT");
+    } finally { db.close(); }
+  }
+  if (fs.existsSync(optionalVisible)) fs.unlinkSync(optionalVisible);
+  assert.equal(artifacts.read(optionalName).sha256, null);
   let plan = await ops.prepareSession({ session_id: "S001", session_branch: "S001-drift-close", objective: "Observe all canonical baseline completion changes before session closure" });
   assert.equal((await ops.initializeSession(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, "completed");
   plan = await ops.prepareMode({ session_id: "S001", mode: "COMMITTING" });
@@ -26,6 +43,21 @@ try {
   // is claimed by preparing these two legitimate baseline completion changes.
   const names = ["baseline/history.md", "index.md"];
   const args = { targetRoot: root, productRoot, productFiles: ["app.mjs"], productSha256: shadowHash({ product: fs.readFileSync(path.join(productRoot, "app.mjs"), "utf8") }) };
+  const productHash = () => shadowHash({ product: fs.readFileSync(path.join(productRoot, "app.mjs"), "utf8") });
+  const absentObserved = await readStandardDriftContext(args);
+  assert.equal(artifacts.read(optionalName).sha256, null);
+  assert.ok(!absentObserved.context.documents.some(row => row.ref === "audit:" + optionalName));
+  const absentFence = captureStandardDriftContextFence({ ...args, observed: absentObserved, readProductSha256: productHash });
+  assert.doesNotThrow(absentFence);
+  await artifacts.withLocalEffectOwner("c".repeat(64), async () => {
+    await new Promise(resolve => setImmediate(resolve));
+    artifacts.compareAndSwap({ path: optionalName, before_sha256: null, after: "# Baseline history\n\nCreated during the awaited fixture boundary.\n" });
+    return { effect_status: "confirmed" };
+  });
+  assert.notEqual(artifacts.read(optionalName).sha256, null);
+  assert.throws(absentFence, { code: "STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE" });
+  if (mode !== "files") assert.equal(fs.existsSync(optionalVisible), false);
+  pass("optional canonical artifact is absent at capture and created during the await; the original fence refuses without projection fallback");
   const missing = names.filter(name => artifacts.read(name).sha256 === null);
   if (missing.length) {
     const initial = await readStandardDriftContext(args);
@@ -52,7 +84,6 @@ try {
   pass("known canonical completion paths are covered without hiding unrelated changes");
   assert.deepEqual(names.map(name => ({ path: name, sha256: artifacts.read(name).sha256, metadata_sha256: artifacts.metadataHash(name) })), before);
   pass("context inspection preserves canonical content and metadata");
-  const productHash = () => shadowHash({ product: fs.readFileSync(path.join(productRoot, "app.mjs"), "utf8") });
   const fence = captureStandardDriftContextFence({ ...args, observed, readProductSha256: productHash });
   assert.doesNotThrow(fence);
   pass("fresh synchronous context fence accepts unchanged canonical and physical witnesses");

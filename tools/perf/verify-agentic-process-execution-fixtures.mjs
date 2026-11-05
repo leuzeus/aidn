@@ -867,7 +867,18 @@ if (process.argv[2] === "--mixed-continue") {
         if (independentDriftWorker) assert.equal(child.turns, 0);
       }
       assert.ok(f.t.sessions.every(row => row.closed));
-      assert.equal(shadowHash(host.inspect().record.events.slice(0, before.events.length)), shadowHash(before.events));
+      const journalBeforeDiagnostic = host.inspectAllocations(), diagnostic = host.inspectDiagnostic();
+      assert.equal(shadowHash(diagnostic.record.events.slice(0, before.events.length)), shadowHash(before.events));
+      assert.deepEqual(diagnostic.native.journal, journalBeforeDiagnostic);
+      assert.equal(diagnostic.native.written, false); assert.equal(diagnostic.native.native_started, false);
+      if (driftWorkerMode !== "nominal") {
+        assert.equal(diagnostic.native.journal.allocations.at(-1).phase, "failed");
+        assert.equal(diagnostic.native.journal.allocations.at(-1).first_failure, result.first_failure);
+        assert.throws(() => host.inspect(), { code: "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE" });
+        for (const write of [false, true]) await assert.rejects(host.step({ write, authorization }), { code: "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE" });
+      }
+      assert.deepEqual(host.inspectAllocations(), journalBeforeDiagnostic);
+      assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count + (driftWorkerMode === "nominal" && !independentDriftWorker ? 1 : 0));
       assert.equal(JSON.stringify(f.t.calls).includes("human_verification"), false);
       if (independentDriftWorker) {
         const previous = currentVerifications;
@@ -877,6 +888,7 @@ if (process.argv[2] === "--mixed-continue") {
       }
       console.log(JSON.stringify({ scope: "production-parent-worker-ports-with-fixture-actors", mode: driftWorkerMode, result,
         original_human_source_unchanged: shadowHash(claims.get("current")) === shadowHash(claim), published_process: "NOT_RUN",
+        diagnostic_history_authenticated: true, allocation_phase_preserved: diagnostic.native.journal.allocations.at(-1).phase,
         independent_worker_process: independentDriftWorker ? { beforeChild, mutation, ...child, stdout: undefined, channel_closed: true } : "NOT_RUN", native: "fixture" }));
     } finally { Date.now = actualNow; }
   });

@@ -78,7 +78,12 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         .map(path => ({ path, sha256: artifacts.read(path, { required: true }).sha256 })),
       native: { configuration_sha256: shadowHash(configuration), product_sha256: productSha256 } };
   }
-  function authenticate(instance, { reservation = null, productSha256, checkControlContext = false, forNative = false } = {}) {
+  function authenticate(instance, options = {}) {
+    return authenticateHistory(instance, options, false).native;
+  }
+  // Only the diagnostic port selects this private mode. Execution options,
+  // process JSON, grants and model facts cannot weaken allocation exclusion.
+  function authenticateHistory(instance, { reservation = null, productSha256, checkControlContext = false, forNative = false } = {}, diagnostic = false) {
     assertAgenticProcessInstance(instance); const authority = read();
     if (instance.scope_id !== authority.scope_id || instance.model_sha256 !== authority.model_sha256 || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)
       || Object.keys(instance.initial_facts).length) fail("STANDARD_PROCESS_AUTHORITY_CHANGED");
@@ -86,14 +91,16 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     let native = null, covered = 0;
     if (journal) {
       signer.verify(journal); const latest = journal.allocations.at(-1);
-      if (latest && latest.phase !== "closed") {
+      if (journal.instance_id !== instance.instance_id || journal.scope_id !== instance.scope_id || journal.model_sha256 !== instance.model_sha256)
+        fail("STANDARD_PROCESS_NATIVE_HISTORY_CHANGED");
+      if (!diagnostic && latest && latest.phase !== "closed") {
         if (!reservation || latest.phase !== "reserved" || latest.owner_id !== reservation.owner_id || latest.generation !== reservation.generation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE");
       } else if (reservation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
-      const entry = reservation ? journal.allocations.at(-2) : latest;
+      const entry = reservation || diagnostic && latest?.phase === "reserved" ? journal.allocations.at(-2) : latest;
       if (entry) {
-        if (entry.phase !== "closed") fail("STANDARD_PROCESS_NATIVE_RECONCILIATION_REQUIRED");
+        if (!diagnostic && entry.phase !== "closed") fail("STANDARD_PROCESS_NATIVE_RECONCILIATION_REQUIRED");
         native = readNativeAllocationCheckpoint(entry, configuration, { scopeId: authority.scope_id, modelSha256: authority.model_sha256 }).state;
-        if (!native.parent_closed) fail("STANDARD_PROCESS_NATIVE_RECONCILIATION_REQUIRED");
+        if (!diagnostic && !native.parent_closed) fail("STANDARD_PROCESS_NATIVE_RECONCILIATION_REQUIRED");
         covered = native.instance.events.length;
         if (instance.events.length < covered || shadowHash(instance.events.slice(0, covered)) !== shadowHash(native.instance.events)) fail("STANDARD_PROCESS_NATIVE_HISTORY_CHANGED");
       }
@@ -124,7 +131,13 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         if (capture.phase === "delivered" && capture.delivered_instance_sha256 !== agenticProcessPrefixSha256(instance, index + 1)) fail("STANDARD_PROCESS_CONTROL_NOT_AUTHENTICATED");
       } else fail("STANDARD_PROCESS_HISTORY_NOT_AUTHENTICATED");
     }
-    return native;
+    return { native, journal };
+  }
+  function inspectDiagnostic(instance) {
+    const { native, journal } = authenticateHistory(instance, {}, true);
+    // Failed observations stay failed even with a closed OS tree. Reading does
+    // not release an owner, reconcile resources or establish effect admission.
+    return structuredClone({ journal, checkpoint: native, written: false, native_started: false });
   }
   async function withNativeOwner(intent, action) {
     const result = await artifacts.withLocalEffectOwner(shadowHash({ authority: read(), ...intent }), async () => {
@@ -697,6 +710,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
+  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, inspectDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
     verifyNativeHumanSource, admitNativeActivity, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

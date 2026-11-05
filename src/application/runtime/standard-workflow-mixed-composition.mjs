@@ -32,6 +32,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   return Object.freeze({
     initialize: input => operations.initialize({ ...input, instanceId: configuration.instance_id }),
     inspect,
+    inspectDiagnostic: () => operations.inspectDiagnostic(configuration.instance_id),
     previewNative: () => native.preview(),
     inspectAllocations: () => native.inspect(),
     readCheckpoint: generation => native.readCheckpoint(generation),

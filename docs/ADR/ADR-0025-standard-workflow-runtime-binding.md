@@ -1,5 +1,23 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Authenticated terminal diagnostic observation candidate, 2026-11-05
+
+The mixed host has a separate internal `inspectDiagnostic` port. It authenticates
+the canonical instance, signed allocation and operation/control history, and
+retained Native checkpoint evidence. Its private observation mode can read a
+failed or unresolved checkpoint without admitting an effect. Missing or changed
+evidence still refuses. Execution authentication, allocation exclusion, owners,
+original failure, consumption and required reconciliation remain unchanged.
+A closed OS tree does not establish business-resource closure or successful
+disposition. This port neither releases an owner nor authorizes resumption.
+
+The worker fixture now uses this port after a refusal and separately requires
+ordinary execution to remain excluded. Exact-source independent qualification,
+resource disposition and productive published STANDARD remain due. The storage
+fixture explicitly creates an initially absent optional canonical document during
+an await; fixture setup removes only that document in its new disposable corpus.
+No public CLI/JSON surface, store, grant or historical conversion is introduced.
+
 ## Current-H diagnostic context fence, 2026-11-05
 
 Independent fixture workers on the previous implementation reached a Native
