@@ -95,6 +95,7 @@ export async function runCheckpointUseCase({ args, runtimeDir, targetRoot, compl
   const reloadStarted = Date.now();
   if (assertEffectAuthorized !== null) await assertEffectAuthorized();
   const reload = completionCycleId ? await runReloadCheckUseCase({ targetRoot, completionCycleId,
+    assertEffectAuthorized,
     args: { cache: cachePath, stateMode: args.stateMode, stateModeExplicit: true,
       indexFile: reloadIndex.indexFile, indexBackend: reloadIndex.indexBackend, writeCache: true },
   }) : runWorkflowReloadCheck({

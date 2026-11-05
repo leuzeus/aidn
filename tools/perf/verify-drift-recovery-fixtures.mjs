@@ -164,6 +164,9 @@ for (const [name, mutate, reason] of [
   const fence = execFileSync(process.execPath, [fileURLToPath(new URL("./verify-gating-objective-fence-fixtures.mjs", import.meta.url))],
     { encoding: "utf8", windowsHide: true, timeout: 70000, maxBuffer: 1048576 });
   process.stdout.write(fence);
+  const cacheFence = execFileSync(process.execPath, [fileURLToPath(new URL("./verify-reload-cache-fence-fixtures.mjs", import.meta.url))],
+    { encoding: "utf8", windowsHide: true, timeout: 70000, maxBuffer: 1048576 });
+  process.stdout.write(cacheFence);
 }
 await verifyObjectiveCompletion(pass);
 if (process.argv.includes("--objective-disposition-only")) {

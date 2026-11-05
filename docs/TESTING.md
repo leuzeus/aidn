@@ -1,5 +1,20 @@
 # Testing Guide
 
+## Reload cache authorization boundary, 2026-11-05
+
+`node tools/perf/verify-reload-cache-fence-fixtures.mjs` runs an isolated child
+with a delayed snapshot and clock/authority doubles. The real completion
+checkpoint, reload collector, Git adapter and cache writer must refuse revoked
+or expired authority after collection, preserving absent caches and exact prior
+bytes. Nominal authorized write, capability-free preview and actual CLI JSON
+preview/explicit cache write remain separate controls. The snapshot placeholder
+is not SQLite evidence. Failed arenas are retained; `--retain-always` also keeps
+a successful arena. The disposition-only recovery selector includes this small
+component without changing the ordered required gate cases or their obligations.
+Before the fix on SOURCE60, four controlled cache writes crossed revoked/expired
+authority; retain that result separately from corrected-source qualification.
+
+
 ## SOURCE60 completion admission selectors, 2026-11-05
 
 The objective fence component now has 24 controls: the prior finalization

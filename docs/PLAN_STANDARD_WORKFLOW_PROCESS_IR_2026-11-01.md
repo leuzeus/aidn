@@ -1,5 +1,26 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE61 reload cache effect fence candidate, 2026-11-05
+
+The completion checkpoint passes its private authorization callback into reload.
+Reload invokes it after state collection and cache comparison, immediately before
+its synchronous cache write. Preview and ordinary CLI callers receive no new
+capability or flag. A delayed snapshot/clock/authority component retains four
+SOURCE60 counterexamples (cache creation and exact-prefix replacement after
+revocation/expiry); the collector, checkpoint and cache writer are production.
+Its nominal and JSON/explicit-write controls are separate from canonical storage
+and actual actor qualification. The pre-correction nominal write succeeded but
+lacked the expected second fence; it is not a nominal business failure.
+
+The optional callback adds no public JSON contract, information concept, backend
+fallback, implicit sync or historical conversion. Gate/event and post-checkpoint
+metadata fences, TTL/context/process CAS and effect ownership remain required.
+A refusal after earlier effects remains UNKNOWN/reconciliation with no positive
+facts. Frozen-source outcomes must be recorded separately. This correction does
+not establish the published objective routes, full closure, required193, general
+L4, actual actors, installed behavior or the entire L1-L8/A1-A10 goal.
+
+
 ## SOURCE60 completion admission and closure candidate, 2026-11-05
 
 The operation host now binds the completion reader to signed operation and
@@ -8,8 +29,9 @@ physical event-log reader. Cycle-close admission consumes it independently in
 read-only gating. The existing CLI cycle-close hook and the owned in-process
 invocation share the production hook use case and checkpoint. No JSON supplies
 this capability; preview emits no completion event. Other signals and STOP
-remain blocking. Checkpoint and completion writes recheck operation authority,
-TTL and process CAS after asynchronous evidence reads. Effects already started
+remain blocking. The checkpoint entry and completion metadata writes recheck operation authority,
+TTL and process CAS. SOURCE60 left the reload cache write unfenced after its
+asynchronous collection; the SOURCE61 correction below closes that boundary. Effects already started
 retain UNKNOWN and the owner on subsequent refusal.
 
 This candidate requires the exact diagnostic/context/HEAD to remain current.
