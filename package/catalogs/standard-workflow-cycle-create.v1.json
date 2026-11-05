@@ -1,7 +1,7 @@
 {
   "contract_version": "standard-cycle-create-catalog.v1",
   "component_id": "aidn-standard-cycle-create",
-  "revision": 182,
+  "revision": 183,
   "scope": {
     "kind": "new_cycle_scaffold_component",
     "complete_standard_workflow": false,
@@ -29,9 +29,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard-cycle-create.v1.json",
-    "sha256": "324e8840e3110f73cbebdce23f30b9a3d5ecfb3da1bf8c3da0bfa1be2fca9647",
+    "sha256": "273a5e334ffab8493d04c350dc97e5ce8c9c32f64c63801afadd7816eccd2c1f",
     "model_id": "aidn-standard-cycle-create",
-    "revision": 182
+    "revision": 183
   },
   "specification": {
     "path": "docs/SPEC.md",
@@ -58,11 +58,11 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "a3cfa0c402bc90cf9fb1a1a1187efa15646df6e626bc6e2ca52340d06cce73ec"
+        "implementation_sha256": "582d3165042debeb9ade6e51fe4fe39b77fc9a5fe920a2e2aee78b661787d9af"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
-        "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+        "sha256": "9f9b57adb4a1682415b07b45b7c83cbefa91837395b3711adc1401b8f8f518ae"
       }
     },
     {
@@ -84,11 +84,11 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "a3cfa0c402bc90cf9fb1a1a1187efa15646df6e626bc6e2ca52340d06cce73ec"
+        "implementation_sha256": "582d3165042debeb9ade6e51fe4fe39b77fc9a5fe920a2e2aee78b661787d9af"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
-        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+        "sha256": "eb5c27dccfad7eba6b2cfc60327bdf79ab1dd68ba8ad30df71b412469b92edc0"
       }
     },
     {
@@ -110,11 +110,11 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "a3cfa0c402bc90cf9fb1a1a1187efa15646df6e626bc6e2ca52340d06cce73ec"
+        "implementation_sha256": "582d3165042debeb9ade6e51fe4fe39b77fc9a5fe920a2e2aee78b661787d9af"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
-        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+        "sha256": "eb5c27dccfad7eba6b2cfc60327bdf79ab1dd68ba8ad30df71b412469b92edc0"
       }
     },
     {
@@ -136,11 +136,11 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "a3cfa0c402bc90cf9fb1a1a1187efa15646df6e626bc6e2ca52340d06cce73ec"
+        "implementation_sha256": "582d3165042debeb9ade6e51fe4fe39b77fc9a5fe920a2e2aee78b661787d9af"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-branch-cycle-audit/SKILL.md",
-        "sha256": "a4e24737d7c4abd67c8c03be55f1577e42f733008c573668b5031c1c1ffa63b4"
+        "sha256": "1d9c87849c629c1148754a01d71e0e286f7af923933b88f1a59fa9f7e6e35fef"
       }
     },
     {
@@ -163,11 +163,11 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "a3cfa0c402bc90cf9fb1a1a1187efa15646df6e626bc6e2ca52340d06cce73ec"
+        "implementation_sha256": "582d3165042debeb9ade6e51fe4fe39b77fc9a5fe920a2e2aee78b661787d9af"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-context-reload/SKILL.md",
-        "sha256": "896b4d93d8b42fc1895a962f02dcd7ce4f32788461e0d77bac4c58009f9bc98b"
+        "sha256": "9f9b57adb4a1682415b07b45b7c83cbefa91837395b3711adc1401b8f8f518ae"
       }
     },
     {
@@ -191,11 +191,11 @@
           "EXPLORING",
           "COMMITTING"
         ],
-        "implementation_sha256": "a3cfa0c402bc90cf9fb1a1a1187efa15646df6e626bc6e2ca52340d06cce73ec"
+        "implementation_sha256": "582d3165042debeb9ade6e51fe4fe39b77fc9a5fe920a2e2aee78b661787d9af"
       },
       "skill_source": {
         "path": "scaffold/codex/aidn-cycle-create/SKILL.md",
-        "sha256": "65019897d1c145ada65b10f63bd9222a0113fbb0f601eea73f926d56ad00e052"
+        "sha256": "eb5c27dccfad7eba6b2cfc60327bdf79ab1dd68ba8ad30df71b412469b92edc0"
       }
     }
   ]
