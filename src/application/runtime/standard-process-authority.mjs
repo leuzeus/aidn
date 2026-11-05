@@ -43,7 +43,7 @@ import { assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // New mixed instances have one authority. Legacy operation/native scopes remain
 // unchanged; no caller-authored module, key, scope or history is accepted.
-export function createStandardProcessAuthority({ configuration: suppliedConfiguration, model: supplied, modelSource = null, readSigningKey, readProductSha256, environment = process.env, nativeReservation = null }) {
+export function createStandardProcessAuthority({ configuration: suppliedConfiguration, model: supplied, modelSource = null, readSigningKey, humanSource = null, readProductSha256, environment = process.env, nativeReservation = null }) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = freezeShadow(structuredClone(supplied)); assertAgenticProcessModel(model);
@@ -57,7 +57,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   for (const node of model.nodes.filter(row => row.kind === "operation")) if (!bindings.has(node.binding_ref)
     || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_PROCESS_BINDING_CHANGED");
   const operationStore = createProcessOperationJournalStore(options), controls = createProcessControlInboxStore(options), allocations = createNativeAllocationJournalStore(options);
-  const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, projectionRequired: false });
+  const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource, projectionRequired: false });
   function read() {
     return readExecutionAuthority().authority;
   }
@@ -132,6 +132,43 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     });
     return result.value;
   }
+  async function assertDriftDiagnosisRequest(instance, occurrenceId) {
+    const auth = nativeReservation ? { reservation: nativeReservation } : {};
+    authenticate(instance, auth);
+    const frames = inspectAgenticProcess(instance).occurrences;
+    const frame = frames.find(row => row.occurrence_id === occurrenceId);
+    if (!frame || frame.node_id !== "closure_drift_report") fail("STANDARD_DRIFT_DIAGNOSIS_OCCURRENCE_REQUIRED");
+    const previous = frames.filter(row => row.node_id === frame.node_id && row.occurrence_id !== occurrenceId);
+    // The first diagnostic still passes the ordinary fresh preWriteAdmit below.
+    // Only an accepted, authenticated request may admit a subsequent occurrence.
+    if (!previous.length) return;
+    const id = instance.events.filter(event => event.kind === "operation_intent" && ["drift_recovery_decision", "drift_completion_decision"].includes(event.intent.binding_ref)).at(-1)?.intent.operation_id;
+    if (!id) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_REQUIRED");
+    const binding = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id).intent.binding_ref;
+    const selected = acceptedOperation(instance, id, binding, auth);
+    const review = selected.record.preview.prepared.plan, capture = human.captured(selected.record);
+    if (review.contract_version === "standard-drift-recovery-plan.v1") fail("STANDARD_DRIFT_RECOVERY_EXECUTION_REQUIRED");
+    const evaluation = acceptedOperation(instance, review.evaluation_operation_id, "drift_report_evaluate", auth);
+    if (!["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(review.contract_version) || capture.source.choice !== "request_diagnosis"
+      || !previous.some(row => row.occurrence_id === evaluation.record.preview.input.report_occurrence_id)
+      || evaluation.record.preview.input.report_occurrence_id !== previous.at(-1).occurrence_id
+      || (binding === "drift_recovery_decision" ? selected.output.facts.drift_diagnosis_requested !== true : selected.output.facts.drift_completion_reviewed !== false)) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_REQUIRED");
+    const current = await prepareActivityOutput({ contractRef: DRIFT_REPORT_CONTRACT, productSha256: readProductSha256?.() });
+    if (current.context_sha256 !== review.context_sha256) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE");
+    // Current human authentication is separate from the unchanged Native grant,
+    // new allocation admission, and cumulative Native budget accounting.
+    if (!nativeReservation) await human.verifyCaptured(selected.record);
+    if (Date.now() < review.prepared_at_ms || Date.now() - review.prepared_at_ms > 300000) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED");
+    authenticate(instance, auth);
+  }
+  async function admitReadyDriftDiagnosis(instance) {
+    const cursor = inspectAgenticProcess(instance);
+    for (const id of cursor.ready) {
+      const frame = cursor.occurrences.find(row => row.occurrence_id === id);
+      if (frame?.node_id === "closure_drift_report" && model.nodes.some(row => row.id === "closure_drift_loop"))
+        await assertDriftDiagnosisRequest(instance, id);
+    }
+  }
   async function prepareActivityOutput({ contractRef, productSha256, instance, occurrenceId, productSnapshot }) {
     if (contractRef === MODE_WORK_CONTRACT) {
       if (!Array.isArray(productSnapshot) || shadowHash(productSnapshot) !== productSha256 || productSha256 !== readProductSha256?.()) fail("STANDARD_MODE_WORK_PRODUCT_CHANGED");
@@ -141,6 +178,9 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (contractRef === CYCLE_AUDIT_CONTRACT) return prepareAuditActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_WORK_CONTRACT) return prepareWorkActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_TASK_WORK_CONTRACT) return prepareTaskWorkActivity({ instance, occurrenceId, productSha256, productSnapshot });
+    if (contractRef === DRIFT_REPORT_CONTRACT && instance && occurrenceId
+      && inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId)?.node_id === "closure_drift_report"
+      && model.nodes.some(row => row.id === "closure_drift_loop" && row.kind === "loop")) await assertDriftDiagnosisRequest(instance, occurrenceId);
     const skill = nativeActivityOutputSkill(contractRef);
     if (!skill) fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
     // A proposal for an existing cycle is read-only. The whole cycle-create
@@ -622,6 +662,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation,
+  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
     evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

@@ -1,5 +1,38 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## SOURCE62 primary R05 routing candidate, 2026-11-05
+
+The published common IR now contains a bounded primary cycle-closure diagnostic
+loop, deterministic followup selection, optional human opinion, an ordered
+confirmed-findings recorder and a completion-review selector. Clean diagnostics
+finalize normally. A sole objective signal uses the authenticated human opinion;
+a diagnosis request selects a new occurrence with separate ordinary admission,
+explicit Native authorization and cumulative budgets. Confirmed findings enter
+the existing recorder and stop before another Native allocation until recovery
+execution is implemented. Refusal, deferral, cancellation, wait and UNKNOWN do
+not imply completion. No execution guard or capacity limit was raised.
+
+The selector reuses a still-current accepted opinion. Only expiry requests a
+fresh review. The new private recovery plan v3 embeds the accepted completion's
+operation, receipt, plan, output, original alignment, report and exact physical
+event/offset hashes. Existing v2 questions, human sources and inbox v12 retain
+that exact nested subject; historical plans and instances are not converted.
+A current confirm_alignment can admit a later closure without rewriting the
+original report or drift_check_completed event. Historical authentication never
+renews permission. Current H authentication follows awaited canonical/historical
+reads; synchronous TTL, process CAS and physical-witness checks follow it.
+
+This is a candidate source change. The 256-node/154-operation model retains
+complete_standard_workflow=false. Six inline sequence wrappers and two
+single-child preflight wrappers are normalized in this new revision only;
+startup/cycle catalog entrypoints, activities, operations and historical models
+remain. Composition and synthetic reader/H/selector checks do not establish
+productive execution of this route. Other R05 contexts, real host cycle closure,
+post-selector expiry recovery, cold productive published execution, general L4,
+required193, genuine actors and exact installed behavior remain unqualified.
+The entire L1-L8/A1-A10 objective remains incomplete.
+
+
 ## SOURCE61 reload cache effect fence candidate, 2026-11-05
 
 The completion checkpoint passes its private authorization callback into reload.

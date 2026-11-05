@@ -1,3 +1,4 @@
+import renewalSchema from "../contracts/workflow-definition/standard-drift-recovery-plan.v3.schema.json" with { type: "json" };
 import schema from "../contracts/workflow-definition/standard-drift-recovery-plan.v2.schema.json" with { type: "json" };
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { checkShadowJson, shadowHash } from "./shadow-json.mjs";
@@ -8,7 +9,7 @@ export const objectiveReviewChoices = Object.freeze(["confirm_alignment", "reque
 // This is a review of a suspect signal, not confirmed findings or permission
 // to discharge that signal. Finalization keeps its independent guard.
 export function assertObjectiveReview(plan) {
-  if (checkShadowJson(plan) || validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length
+  if (checkShadowJson(plan) || validateJsonSchema(plan, plan?.contract_version === "standard-drift-recovery-plan.v3" ? renewalSchema : schema, "$", { contractKind: "workflow-definition" }).length
     || Buffer.byteLength(JSON.stringify(plan)) > 98304) fail("STANDARD_OBJECTIVE_REVIEW_INVALID");
   const report = assertStandardDriftReport(plan.report), gate = plan.gate_constraints;
   const left = plan.session_objective.toLowerCase().trim(), right = plan.cycle_objective.toLowerCase().trim();

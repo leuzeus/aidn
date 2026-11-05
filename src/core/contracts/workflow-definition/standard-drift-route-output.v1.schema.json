@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-drift-route-output.v1",
+  "x-aidn-contract-version": "standard-drift-route-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-drift-route-output.v1"
+    },
+    "operation_ref": {
+      "enum": [
+        "drift_followup_select",
+        "drift_completion_select"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked"
+      ]
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "drift_route_ready": {
+          "type": "boolean"
+        },
+        "drift_followup_review_required": {
+          "type": "boolean"
+        },
+        "drift_diagnosis_requested": {
+          "type": "boolean"
+        },
+        "drift_recovery_chosen": {
+          "type": "boolean"
+        },
+        "drift_check_completed": {
+          "const": false
+        },
+        "drift_completion_review_required": {
+          "type": "boolean"
+        },
+        "drift_completion_reviewed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

@@ -15,7 +15,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   const model = readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value;
   if (!model.nodes.some(node => node.kind === "operation")) fail("STANDARD_PROCESS_MIXED_MODEL_REQUIRED");
   let native;
-  const processAuthority = createStandardProcessAuthority({ configuration, model, modelSource, readSigningKey, environment,
+  const processAuthority = createStandardProcessAuthority({ configuration, model, modelSource, readSigningKey, humanSource, environment,
     readProductSha256: () => native.preview().product_sha256 });
   native = createJournaledNativeAllocation({ configuration, readSigningKey, environment, processAuthority, nativeAuthorizationSource }, { controllerFactory });
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,

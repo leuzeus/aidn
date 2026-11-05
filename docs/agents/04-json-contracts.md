@@ -1,5 +1,10 @@
 # 04 JSON Contracts
 
+The private standard-drift-recovery-plan.v3 adds an exact accepted-completion
+anchor to a fresh objective review. V2 question/source and inbox v12 bind that
+nested subject without converting historical records. The private route-output
+v1 carries control facts only. See ADR-0025 for authority and proof limits.
+
 The private `standard-drift-objective-disposition.v1` is a derived view of an
 authenticated accepted opinion. `standard-drift-finalize-plan.v3` retains that
 view for exact effect-fence comparison. They reuse the governed decision inbox

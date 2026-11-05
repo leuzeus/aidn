@@ -314,6 +314,52 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
     ...operation(null, "checkpoint_operation_id", name("session_close_checkpoint")) });
 }
 
+// First published objective review route: the terminal cycle diagnostic.
+// Every retry is a new activity occurrence admitted before Native allocation.
+// A true drift can record its authenticated findings, then stops at explicit
+// recovery admission. It cannot loop into model work without recovery execution.
+{
+  const id = "closure_drift";
+  Object.assign(nodes.find(row => row.id === id), { kind: "loop", child: id + "_checkpoint_iteration", until: "drift_completion_reviewed", max_iterations: 32 });
+  delete nodes.find(row => row.id === id).children;
+  seq(id + "_checkpoint_iteration", [id + "_loop", id + "_completion_select", id + "_completion_route"]);
+  node(id + "_loop", "loop", { child: id + "_iteration", until: "drift_check_completed", max_iterations: 32 });
+  op(id + "_completion_select", "drift_completion_select");
+  xor(id + "_completion_route", [["review", id + "_completion_review", "drift_completion_review_required"], ["nominal", id + "_completion_nominal", null]]);
+  op(id + "_completion_review", "drift_completion_decision");
+  seq(id + "_completion_nominal", []);
+  seq(id + "_iteration", [id + "_report", id + "_evaluate", id + "_select", id + "_review_route", id + "_outcome_route"]);
+  op(id + "_select", "drift_followup_select", operation(null, "evaluation_operation_id", id + "_evaluate"));
+  xor(id + "_review_route", [["review", id + "_review_sequence", "drift_followup_review_required"], ["nominal", id + "_no_review", null]]);
+  seq(id + "_review_sequence", [id + "_review", id + "_recovery_route"]);
+  op(id + "_review", "drift_recovery_decision", operation(null, "evaluation_operation_id", id + "_evaluate"));
+  xor(id + "_recovery_route", [["recovery", id + "_recovery_record", "drift_recovery_chosen"], ["opinion", id + "_opinion_only", null]]);
+  seq(id + "_opinion_only", []);
+  seq(id + "_no_review", []);
+  xor(id + "_outcome_route", [["ready", id + "_finalize", "drift_route_ready"], ["diagnose", id + "_diagnosis_requested", null]]);
+  op(id + "_recovery_record", "drift_recovery_record", operation(null, "decision_operation_id", id + "_review"));
+  seq(id + "_diagnosis_requested", []);
+}
+// Eliminate two one-child control wrappers to retain the existing 256-node
+// bound. This changes occurrence paths in this new revision, not past models.
+for (const id of ["thinking_preflight", "exploring_preflight"]) {
+  const wrapper = nodes.find(row => row.id === id);
+  if (wrapper?.kind !== "sequence" || wrapper.children.length !== 1) throw Error("STANDARD_SINGLE_WRAPPER_REQUIRED");
+  for (const parent of nodes) {
+    if (parent.children) parent.children = parent.children.map(child => child === id ? wrapper.children[0] : child);
+    for (const branch of parent.branches ?? []) if (branch.node_id === id) branch.node_id = wrapper.children[0];
+  }
+  nodes.splice(nodes.indexOf(wrapper), 1);
+}
+
+for (const id of ["cycle_drift", "promotion_drift", "correction_promotion_drift", "session_closure_drift", "thinking_session_closure_drift", "exploring_session_closure_drift"]) {
+  const wrapper = nodes.find(row => row.id === id);
+  const parent = nodes.find(row => row.kind === "sequence" && row.children.includes(id));
+  if (wrapper?.kind !== "sequence" || !parent) throw Error("STANDARD_INLINE_SEQUENCE_REQUIRED");
+  parent.children.splice(parent.children.indexOf(id), 1, ...wrapper.children);
+  nodes.splice(nodes.indexOf(wrapper), 1);
+}
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,

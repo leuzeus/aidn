@@ -40,13 +40,17 @@ export async function verifyObjectiveCompletion(pass) {
       const instance = { instance_id: "fixture", scope_id: "fixture", instance_sha256: H, events: [
         { kind: "operation_intent", intent: record.intent = { ...record.intent, operation_id: id } }, { kind: "operation_result", receipt }] };
       const current = { context_sha256: H, evaluation_sha256: H, context: { branch: plan.branch, head: plan.head } };
-      let time = 100, live = true, journal = H;
-      const reader = createStandardObjectiveCompletion({ readOperation: () => record, readEvaluation: async () => structuredClone(current),
+      let time = 100, live = true, journal = H, renewal = null, onHistory = () => {}, onRenewal = () => {};
+      const reader = createStandardObjectiveCompletion({ readOperation: () => structuredClone(record), readEvaluation: async () => structuredClone(current),
         readDisposition: async () => { await new Promise(resolve => setImmediate(resolve)); assert.equal(live, true, "fixture retained source revoked"); return structuredClone(alignment); },
+        readHistoricalDisposition: async (_instance, _input, _current, selected) => { assert.equal(selected, alignment.decision_operation_id); await new Promise(resolve => setImmediate(resolve)); onHistory(); return structuredClone(alignment); },
+        readRenewedDisposition: async (_instance, _input, _current, anchor) => { await new Promise(resolve => setImmediate(resolve)); onRenewal(); assert.equal(live, true, "fixture current source revoked"); assert.deepEqual(anchor, renewal.anchor); return structuredClone(renewal.disposition); },
         readCurrent: () => ({ instance_sha256: journal }), now: () => time,
         readReport: selected => { assert.equal(selected, plan.report.path); const content = fs.readFileSync(reportFile, "utf8"); return { content, sha256: artifactContentHash(content) }; },
         readEvent: ({ file, offset }) => { assert.equal(file, output.observations.event_file); const bytes = fs.readFileSync(eventFile); return bytes.subarray(offset, bytes.indexOf(10, offset) + 1); } });
       return { plan, alignment, record, instance, output, receipt, current, reportFile, eventFile, prefix, reader,
+        renew(value, history = () => {}, current = () => {}) { renewal = value; onHistory = history; onRenewal = current;
+          instance.events.push({ kind: "operation_intent", intent: { binding_ref: "drift_completion_decision", operation_id: "op_" + "f".repeat(40) } }); },
         seal() { receipt.output_sha256 = shadowHash(output); }, time: value => { time = value; }, revoke: () => { live = false; }, move: () => { journal = "e".repeat(64); } };
     }
     {
@@ -79,6 +83,25 @@ export async function verifyObjectiveCompletion(pass) {
       await assert.rejects(f.reader.read(f.instance), reason);
       assert.deepEqual(fs.readFileSync(f.reportFile), beforeReport); assert.deepEqual(fs.readFileSync(f.eventFile), beforeEvent);
       pass(`completed objective reader refuses ${name} without effects`);
+    }
+    for (const fault of ["none", "history-revocation", "history-expiry", "report-after-auth", "event-after-auth", "receipt-after-auth", "CAS-after-auth", "wrong-link"]) {
+      const f = fixture(); f.time(300101);
+      await assert.rejects(f.reader.read(f.instance), /EXPIRED/);
+      const anchor = await f.reader.review(f.instance), report = fs.readFileSync(f.reportFile), event = fs.readFileSync(f.eventFile);
+      const disposition = { ...f.alignment, decision_operation_id: "op_" + "f".repeat(40), prepared_at_ms: 300100 };
+      const renewal = { anchor: fault === "wrong-link" ? { ...anchor, event_offset: anchor.event_offset + 1 } : anchor, disposition };
+      f.renew(renewal, () => { if (fault === "history-revocation") f.revoke(); if (fault === "history-expiry") f.time(600101); }, () => {
+        if (fault === "report-after-auth") fs.appendFileSync(f.reportFile, "changed");
+        if (fault === "event-after-auth") fs.appendFileSync(f.eventFile, "changed");
+        if (fault === "receipt-after-auth") f.record.results[0].receipt.outcome = "failed";
+        if (fault === "CAS-after-auth") f.move();
+      });
+      if (fault === "none" || fault === "event-after-auth") {
+        // Appending unrelated bytes cannot replace the original exact line.
+        assert.deepEqual(await f.reader.read(f.instance), disposition);
+      } else await assert.rejects(f.reader.read(f.instance), fault === "history-revocation" ? /current source revoked/ : fault === "history-expiry" ? /EXPIRED/ : fault === "report-after-auth" ? /REPORT_CHANGED/ : fault === "receipt-after-auth" ? /LINK_CHANGED/ : fault === "CAS-after-auth" ? /PROCESS_CHANGED/ : /deep-equal/);
+      if (!["report-after-auth", "event-after-auth"].includes(fault)) { assert.deepEqual(fs.readFileSync(f.reportFile), report); assert.deepEqual(fs.readFileSync(f.eventFile), event); }
+      pass(`completion renewal ${fault}: expired historical fact and current permission remain distinct, exact witnesses retained`);
     }
     completed = true;
   } finally {

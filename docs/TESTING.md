@@ -1,5 +1,29 @@
 # Testing Guide
 
+## Linked objective review component, 2026-11-05
+
+The scenario closure fixture now reuses one warm host while retaining a distinct
+new Node reconstruction and every method's fresh fences. Phase timing fields
+are prepared for its next new-arena run. This cost candidate is NOT_RUN on this
+source; no runtime speedup, closure success or causal performance claim follows.
+
+`node tools/perf/verify-drift-recovery-fixtures.mjs --objective-disposition-only`
+adds nine linked-review H checks and eight renewed-completion reader checks.
+They cover current source revocation/expiry during awaited context/history,
+wrong anchors, refusals, defer/cancel/wait, immutable original report/event
+witnesses and receipt/process changes after authentication. Source/evaluation/
+operation capabilities are doubles. Physical report/event bytes are temporary
+fixtures. The separate `verify-standard-drift-route-fixtures.mjs` adds eleven
+selector controls: nominal/fresh bypass a second H opinion; only recognized
+expiry selects historical completion and fresh H review. Invalid subjects,
+revoked sources, wrong witnesses, UNKNOWN and unaccepted effects refuse.
+
+The composition suite checks the published source and bindings, not productive
+route execution. Real host cycle closure, post-selector expiry, other R05
+contexts, cold productive published execution, required193, genuine actors,
+canonical persistence and exact installation remain separate obligations.
+
+
 ## Reload cache authorization boundary, 2026-11-05
 
 `node tools/perf/verify-reload-cache-fence-fixtures.mjs` runs an isolated child

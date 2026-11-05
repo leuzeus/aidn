@@ -37,7 +37,7 @@ export function assertHumanModeDecision(value) {
   return value;
 }
 export function assertRecoveryPlan(value) {
-  if (value?.contract_version === "standard-drift-recovery-plan.v2") return assertObjectiveReview(value);
+  if (["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(value?.contract_version)) return assertObjectiveReview(value);
   const jsonIssue = checkShadowJson(value);
   if (jsonIssue) throw Object.assign(new Error("PROCESS_RECOVERY_PLAN_INVALID"), { code: "PROCESS_RECOVERY_PLAN_INVALID", reason: "json", issue: jsonIssue });
   const issues = validateJsonSchema(value, recoveryPlan, "$", { contractKind: "workflow-definition" });
@@ -54,7 +54,7 @@ export function assertRecoveryQuestion(value) {
   const objective = value?.contract_version === "standard-drift-recovery-question.v2";
   if (checkShadowJson(value) || validateJsonSchema(value, objective ? recoveryQuestionV2 : recoveryQuestion, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_HUMAN_QUESTION_INVALID");
   assertRecoveryPlan(value.review);
-  if (objective !== (value.review.contract_version === "standard-drift-recovery-plan.v2")
+  if (objective !== (["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(value.review.contract_version))
     || value.review.review_operation_id !== value.operation_id || value.review.session_id !== value.session_id
     || shadowHash(value.choices) !== shadowHash([...(objective ? value.review.choices : value.review.options.map(row => row.choice)), "refused", "deferred", "cancelled"])) fail("PROCESS_HUMAN_QUESTION_INVALID");
   return value;

@@ -115,6 +115,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
           if (cursor.ready.some(id => model.nodes.find(node => node.id === cursor.occurrences.find(frame => frame.occurrence_id === id)?.node_id)?.kind === "operation"))
             return { status: "WAITING_FOR_OPERATION", written: false, native_started: false, retry: false };
           if (!cursor.ready.length || ["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) return { status: cursor.status, written: false, native_started: false, retry: false };
+          await processAuthority.admitReadyDriftDiagnosis(record);
         }
       }
       if (resume) {

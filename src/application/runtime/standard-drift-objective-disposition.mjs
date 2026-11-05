@@ -9,36 +9,40 @@ const fail = code => { throw Object.assign(Error(code), { code }); };
 export function createStandardObjectiveDisposition({ readOperation, human, assertFresh, now = Date.now }) {
   if (typeof readOperation !== "function" || typeof human?.verifyCaptured !== "function" || typeof assertFresh !== "function")
     fail("STANDARD_OBJECTIVE_DISPOSITION_AUTHORITY_REQUIRED");
-  return Object.freeze({
-    async read(instance, { evaluation_operation_id }, verified) {
+  async function read(instance, { evaluation_operation_id }, verified, { historicalId = null, previousCompletion = null } = {}) {
       const latest = binding => instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding).at(-1)?.intent.operation_id;
-      const id = latest("drift_recovery_decision");
+      const binding = previousCompletion ? "drift_completion_decision" : "drift_recovery_decision";
+      const id = historicalId ?? latest(binding);
       if (!id) return null;
       const record = readOperation(id), review = record.preview?.prepared?.plan;
-      if (review?.contract_version !== "standard-drift-recovery-plan.v2") return null;
+      if (!["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(review?.contract_version)) return null;
+      if ((review.contract_version === "standard-drift-recovery-plan.v3") !== Boolean(previousCompletion)
+        || previousCompletion && shadowHash(review.previous_completion) !== shadowHash(previousCompletion)) fail("STANDARD_OBJECTIVE_COMPLETION_LINK_CHANGED");
       assertObjectiveReview(review);
       const output = record.results.at(-1)?.output, receipt = record.results.at(-1)?.receipt;
-      if (record.operation_id !== id || record.intent.binding_ref !== "drift_recovery_decision"
+      if (record.operation_id !== id || record.intent.binding_ref !== binding
         || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id
         || record.phase !== "receipted" || receipt?.outcome !== "completed" || output?.effect_status !== "no_effect"
         || receipt.output_sha256 !== shadowHash(output)
         || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt)))
         fail("STANDARD_OBJECTIVE_DISPOSITION_NOT_ACCEPTED");
       if (latest("drift_report_evaluate") !== evaluation_operation_id || review.evaluation_operation_id !== evaluation_operation_id
-        || record.preview.input?.evaluation_operation_id !== evaluation_operation_id
+        || (binding === "drift_recovery_decision" ? record.preview.input?.evaluation_operation_id !== evaluation_operation_id : Object.keys(record.preview.input ?? {}).length !== 0)
         || review.evaluation_sha256 !== verified.evaluation_sha256 || review.context_sha256 !== verified.context_sha256
         || shadowHash(review.report) !== shadowHash(verified.output.observations.report)) fail("STANDARD_OBJECTIVE_DISPOSITION_SUBJECT_CHANGED");
       const age = now() - review.prepared_at_ms;
-      if (!Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_OBJECTIVE_DISPOSITION_EXPIRED");
+      if (!historicalId && (!Number.isSafeInteger(age) || age < 0 || age > 300000)) fail("STANDARD_OBJECTIVE_DISPOSITION_EXPIRED");
       const capture = human.captured(record), question = human.question(record);
       if (capture.phase !== "receipted" || capture.source.contract_version !== "human-drift-recovery-decision.v2"
         || capture.source.question_sha256 !== shadowHash(question) || capture.source.subject_sha256 !== shadowHash(review)
         || shadowHash(human.output(record, capture)) !== shadowHash(output)) fail("STANDARD_OBJECTIVE_DISPOSITION_CAPTURE_CHANGED");
       // Historical verification authenticates the retained source, without
       // relaxing this review's own current freshness or canonical CAS fences.
-      await human.verifyCaptured(record, undefined, { historical: true });
       await assertFresh(instance, review);
-      if (now() - review.prepared_at_ms > 300000 || now() < review.prepared_at_ms) fail("STANDARD_OBJECTIVE_DISPOSITION_EXPIRED");
+      // Authenticate current H permission AFTER every awaited canonical/historical
+      // observation. Only synchronous TTL/subject/output checks follow.
+      await human.verifyCaptured(record, undefined, { historical: Boolean(historicalId) || !previousCompletion });
+      if (!historicalId && (now() - review.prepared_at_ms > 300000 || now() < review.prepared_at_ms)) fail("STANDARD_OBJECTIVE_DISPOSITION_EXPIRED");
       if (capture.source.choice !== "confirm_alignment") fail("STANDARD_OBJECTIVE_ALIGNMENT_NOT_CONFIRMED");
       const disposition = {
         contract_version: "standard-drift-objective-disposition.v1",
@@ -51,6 +55,12 @@ export function createStandardObjectiveDisposition({ readOperation, human, asser
       };
       if (validateJsonSchema(disposition, schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OBJECTIVE_DISPOSITION_INVALID");
       return disposition;
-    },
+  }
+  return Object.freeze({
+    read: (instance, input, verified) => read(instance, input, verified),
+    // Private owning-host capabilities. No model/CLI JSON selects historical
+    // verification. This authenticates an old fact, never current permission.
+    readHistorical: (instance, input, verified, id) => read(instance, input, verified, { historicalId: id }),
+    readRenewed: (instance, input, verified, anchor) => read(instance, input, verified, { previousCompletion: anchor }),
   });
 }

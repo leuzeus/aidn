@@ -14,11 +14,11 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
   const correction = record => record.intent.binding_ref === "session_pr_correction_decision";
   const integration = record => record.intent.binding_ref === "session_branch_integration_decision";
   const sessionClosure = record => record.intent.binding_ref === "session_closure_decision";
-  const recovery = record => record.intent.binding_ref === "drift_recovery_decision";
+  const recovery = record => ["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref);
   const promotion = record => record.intent.binding_ref === "baseline_promotion_decision";
   const closure = record => record.intent.binding_ref === "cycle_closure_decision";
   const question = record => {
-    if (!["spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+    if (!["spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
     if (spike(record)) return assertSpikeQuestion({ contract_version: "standard-spike-question.v1", operation_id: record.operation_id,
       instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
       session_id: record.preview.prepared.review.analysis.session_id, review_operation_id: record.preview.input.review_operation_id,
@@ -44,7 +44,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     if (closure(record)) return assertCycleClosureQuestion({ contract_version: "standard-cycle-closure-question.v1", operation_id: record.operation_id,
       instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
       session_id: record.preview.prepared.plan.review.session_id, review: structuredClone(record.preview.prepared.plan.review), choices: [...record.preview.prepared.plan.choices] });
-    return recovery(record) ? assertRecoveryQuestion({ contract_version: record.preview.prepared.plan.contract_version === "standard-drift-recovery-plan.v2"
+    return recovery(record) ? assertRecoveryQuestion({ contract_version: ["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(record.preview.prepared.plan.contract_version)
       ? "standard-drift-recovery-question.v2" : "standard-drift-recovery-question.v1", operation_id: record.operation_id,
     instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, occurrence_id: record.intent.occurrence_id, intent_sha256: shadowHash(record.intent),
     session_id: record.preview.prepared.plan.session_id, review: structuredClone(record.preview.prepared.plan),
@@ -103,6 +103,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     return retained;
   }
   return Object.freeze({ question, captured,
+    verifyReserved: (record, capture, signal) => verify(capture.source, capture.source_ref, question(record), signal),
     readSource(ref) {
       const match = /^aidn:decision-source\/(decision_[a-f0-9]{40})$/.exec(ref);
       if (!match) fail("PROCESS_HUMAN_SOURCE_REF_INVALID");
@@ -181,14 +182,14 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
           evidence_refs: [{ ref: `aidn:decision-source/${capture.inbox_id}`, sha256: shadowHash(capture.source) }, ...capture.source.evidence_refs] };
       }
       const choice = capture.source.choice, isRecovery = recovery(record);
-      const objective = isRecovery && record.preview.prepared.plan.contract_version === "standard-drift-recovery-plan.v2";
+      const objective = isRecovery && ["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(record.preview.prepared.plan.contract_version);
       const accepted = (isRecovery ? (record.preview.prepared.plan.choices ?? record.preview.prepared.plan.options.map(row => row.choice)) : ["THINKING", "EXPLORING", "COMMITTING"]).includes(choice);
       const outcome = accepted ? "completed" : choice === "refused" ? "rejected" : choice;
       return { contract_version: isRecovery ? "standard-drift-recovery-output.v1" : "standard-operation-output.v3",
-        operation_ref: isRecovery ? "drift_recovery_decision" : "mode_decision", outcome, effect_status: "no_effect",
+        operation_ref: isRecovery ? record.intent.binding_ref : "mode_decision", outcome, effect_status: "no_effect",
         observations: { inbox_id: capture.inbox_id, source_ref: capture.source_ref, source_sha256: shadowHash(capture.source), choice,
           ...(objective ? { review_kind: "objective_signal_disagreement", review_resolution_pending: true, signal_discharged: false } : {}) },
-        facts: !accepted ? {} : objective ? { drift_check_completed: false } : isRecovery ? { drift_recovery_chosen: true, drift_recovery_requirements_delta: choice === "requirements_delta",
+        facts: !accepted ? {} : record.intent.binding_ref === "drift_completion_decision" ? { drift_completion_reviewed: choice === "confirm_alignment" } : objective ? { drift_check_completed: false, drift_route_ready: choice === "confirm_alignment", drift_diagnosis_requested: choice === "request_diagnosis" } : isRecovery ? { drift_route_ready: false, drift_diagnosis_requested: false, drift_recovery_chosen: true, drift_recovery_requirements_delta: choice === "requirements_delta",
           drift_recovery_new_cycle: choice === "new_cycle", drift_recovery_rollback: choice === "rollback", drift_recovery_required: true, drift_check_completed: false }
           : { mode_thinking: choice === "THINKING", mode_exploring: choice === "EXPLORING", mode_committing: choice === "COMMITTING",
             cycle_work_requested: choice === "COMMITTING" },

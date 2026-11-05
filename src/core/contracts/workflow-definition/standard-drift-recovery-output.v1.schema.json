@@ -20,7 +20,8 @@
     "operation_ref": {
       "enum": [
         "drift_recovery_decision",
-        "drift_recovery_record"
+        "drift_recovery_record",
+        "drift_completion_decision"
       ]
     },
     "outcome": {
@@ -65,6 +66,15 @@
         },
         "drift_check_completed": {
           "const": false
+        },
+        "drift_route_ready": {
+          "type": "boolean"
+        },
+        "drift_diagnosis_requested": {
+          "type": "boolean"
+        },
+        "drift_completion_reviewed": {
+          "type": "boolean"
         }
       }
     },

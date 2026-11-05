@@ -42,7 +42,7 @@ for (const change of [p => p.changes.reverse(), p => p.changes[0].path = "baseli
   const bad = structuredClone(plan); change(bad); assert.throws(() => assertRecoveryPlan(bad));
 }
 pass("closed recovery plans bind replacement post-images and bounded append text under a context hash and fixed two-document footprint");
-function humanFixture(operationId = id, withDelta = false, reviewPlan = plan) {
+function humanFixture(operationId = id, withDelta = false, reviewPlan = plan, binding = "drift_recovery_decision") {
   const records = new Map(), sources = new Map();
   const inbox = { read: id => ({ record: records.get(id) ?? null, content_sha256: records.has(id) ? shadowHash(records.get(id)) : null }),
     compareAndSwap(record, before) { assertDecisionInbox(record); assert.equal(before, records.has(record.inbox_id) ? shadowHash(records.get(record.inbox_id)) : null);
@@ -57,7 +57,7 @@ function humanFixture(operationId = id, withDelta = false, reviewPlan = plan) {
     p.cycle_id = "C001"; p.context_sha256 = shadowHash({ ...context, cycle_id: "C001" });
     p.options.unshift({ choice: "requirements_delta", actions: ["Record confirmed findings.", "Review the owning cycle's requirements delta.", "Re-evaluate drift."] });
   }
-  const record = { operation_id: operationId, intent: { binding_ref: "drift_recovery_decision", instance_id: "fixture", scope_id: "fixture", occurrence_id: "root/decide" },
+  const record = { operation_id: operationId, intent: { binding_ref: binding, instance_id: "fixture", scope_id: "fixture", occurrence_id: "root/decide" },
     preview: { prepared: { plan: p } }, results: [] };
   const question = human.question(record);
   const claim = choice => ({ contract_version: "human-drift-recovery-decision.v1", source_kind: "human", authority_id: "fixture_user", source_event_id: "event_" + choice,
@@ -99,7 +99,7 @@ for (const choice of ["confirm_alignment", "request_diagnosis", "refused", "defe
   f.sources.set("unverified", claim); await assert.rejects(f.human.reserve(f.record, "unverified"), /PROCESS_HUMAN_NOT_AUTHENTICATED/);
   f.sources.set("choice", claim); const capture = await f.human.reserve(f.record, "choice"), output = f.human.output(f.record, capture);
   assert.equal(capture.contract_version, "process-decision-inbox.v12"); assert.equal(output.effect_status, "no_effect");
-  assert.deepEqual(output.facts, ["confirm_alignment", "request_diagnosis"].includes(choice) ? { drift_check_completed: false } : {});
+  assert.deepEqual(output.facts, ["confirm_alignment", "request_diagnosis"].includes(choice) ? { drift_check_completed: false, drift_route_ready: choice === "confirm_alignment", drift_diagnosis_requested: choice === "request_diagnosis" } : {});
   assert.equal(output.outcome, choice === "refused" ? "rejected" : ["confirm_alignment", "request_diagnosis"].includes(choice) ? "completed" : choice);
   assert.equal(output.observations.signal_discharged, false); assert.equal(output.observations.review_resolution_pending, true);
   const receipt = { operation_id: id, output_sha256: shadowHash(output) }; f.record.results.push({ output, receipt });
@@ -160,6 +160,35 @@ for (const [name, mutate, reason] of [
   const absent = { ...f.instance, events: [] }; assert.equal(await f.reader.read(absent, { evaluation_operation_id: id }, f.verified), null);
   pass("diagnosis request and absent opinion cannot become alignment confirmation or a Native allocation");
 }
+// Current H authentication must follow the last awaited historical/context read.
+for (const fault of ["none", "context-revocation", "context-expiry", "wrong-link", "request_diagnosis", "refused", "deferred", "cancelled", "waiting"]) {
+  const anchor = { operation_id: "op_" + "e".repeat(40), receipt_sha256: H, plan_sha256: H, output_sha256: H,
+    alignment_sha256: H, report_sha256: H, event_sha256: H, event_offset: 17 };
+  const review = { ...objectivePlan, contract_version: "standard-drift-recovery-plan.v3", previous_completion: anchor };
+  const f = humanFixture("op_" + "f".repeat(40), false, review, "drift_completion_decision");
+  assert.equal(await f.human.reserve(f.record, "missing"), null);
+  if (fault === "waiting") { pass("fresh completion review retains human wait without permission or effects"); continue; }
+  const choice = ["request_diagnosis", "refused", "deferred", "cancelled"].includes(fault) ? fault : "confirm_alignment";
+  const claim = { ...f.claim(choice), contract_version: "human-drift-recovery-decision.v2", subject_sha256: shadowHash(f.question.review), rationale: "Fixture current review of exact accepted completion anchor" };
+  f.sources.set("renewal", claim); const capture = await f.human.reserve(f.record, "renewal"), output = f.human.output(f.record, capture);
+  const receipt = { operation_id: f.record.operation_id, outcome: output.outcome, output_sha256: shadowHash(output) };
+  f.record.preview.input = {}; f.record.phase = "receipted"; f.record.results.push({ output, receipt }); f.human.acknowledge(capture.inbox_id, receipt);
+  const instance = { instance_id: "fixture", scope_id: "fixture", events: [
+    { kind: "operation_intent", intent: { binding_ref: "drift_report_evaluate", operation_id: id } },
+    { kind: "operation_intent", intent: { binding_ref: "drift_completion_decision", operation_id: f.record.operation_id } }, { kind: "operation_result", receipt }] };
+  let time = 1;
+  const reader = createStandardObjectiveDisposition({ readOperation: () => f.record, human: f.human, now: () => time,
+    async assertFresh() { await new Promise(resolve => setImmediate(resolve));
+      if (fault === "context-revocation") f.sources.clear(); if (fault === "context-expiry") time = 300002; } });
+  const verified = { context_sha256: H, evaluation_sha256: H, output: { observations: { report: review.report } } };
+  const selected = fault === "wrong-link" ? { ...anchor, event_offset: 18 } : anchor;
+  const read = () => reader.readRenewed(instance, { evaluation_operation_id: id }, verified, selected);
+  if (fault === "none") {
+    const result = await read(); assert.equal(result.review_sha256, shadowHash(f.question.review));
+    assert.deepEqual(output.facts, { drift_completion_reviewed: true });
+  } else await assert.rejects(read(), fault === "context-revocation" ? /NOT_AUTHENTICATED/ : fault === "context-expiry" ? /EXPIRED/ : fault === "wrong-link" ? /LINK_CHANGED/ : fault === "request_diagnosis" ? /ALIGNMENT_NOT_CONFIRMED/ : /NOT_ACCEPTED/);
+  pass(`linked fresh completion review ${fault}: current authentication follows awaited context, no completion effect`);
+}
 {
   const fence = execFileSync(process.execPath, [fileURLToPath(new URL("./verify-gating-objective-fence-fixtures.mjs", import.meta.url))],
     { encoding: "utf8", windowsHide: true, timeout: 70000, maxBuffer: 1048576 });
@@ -169,6 +198,7 @@ for (const [name, mutate, reason] of [
   process.stdout.write(cacheFence);
 }
 await verifyObjectiveCompletion(pass);
+process.stdout.write(execFileSync(process.execPath, [fileURLToPath(new URL("./verify-standard-drift-route-fixtures.mjs", import.meta.url))], { encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 1048576 }));
 if (process.argv.includes("--objective-disposition-only")) {
   console.log(JSON.stringify({ status: "PASS", checks, proof: "synthetic-authenticated-disposition-and-human-component-with-production-effect-fences",
     event_append: "actual-temporary-fixture", canonical_effects: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));

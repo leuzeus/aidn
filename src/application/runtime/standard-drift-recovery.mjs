@@ -98,7 +98,7 @@ function documentBoundary({ root, context, environment = process.env }, controls
     git: { branch: branchTransition ? null : git(["branch", "--show-current"]).trim(), head: git(["rev-parse", "HEAD"]).trim(),
       outside_status_sha256: shadowHash(outside), outside_diff_sha256: artifactContentHash(outsideDiff), own_index_sha256: artifactContentHash(ownIndex) } });
 }
-export function createStandardDriftRecovery({ targetRoot, readEvaluation, observeContext, readCurrent, now = Date.now, environment = process.env }) {
+export function createStandardDriftRecovery({ targetRoot, readEvaluation, observeContext, readCurrent, readPreviousCompletion = null, now = Date.now, environment = process.env }) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot, env: environment });
   const open = readOnly => createProjectArtifactStore({ targetRoot: artifacts.root, readOnly, existingOnly: true, env: environment });
   function projectionFiles() {
@@ -176,11 +176,29 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
     if ((await observeContext()).context_sha256 !== verified.context_sha256) fail("STANDARD_RECOVERY_REVIEW_STALE");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
+  async function prepareRenewal(instance, operationId, at) {
+    if (typeof readPreviousCompletion !== "function") fail("STANDARD_OBJECTIVE_COMPLETION_AUTHORITY_REQUIRED");
+    const anchor = await readPreviousCompletion(instance);
+    const original = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === anchor.operation_id);
+    if (!original || original.intent.binding_ref !== "drift_check_finalize") fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
+    // The accepted completion reader authenticates its diagnostic and anchor.
+    // Resolve the evaluation through that accepted finalizer's signed source.
+    const completed = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_report_evaluate").at(-1);
+    if (!completed) fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
+    const fresh = await prepare(instance, { evaluation_operation_id: completed.intent.operation_id }, operationId, at);
+    if (!fresh.can_apply || fresh.plan.contract_version !== "standard-drift-recovery-plan.v2") fail("STANDARD_OBJECTIVE_COMPLETION_REVIEW_REQUIRED");
+    const plan = assertObjectiveReview({ ...fresh.plan, contract_version: "standard-drift-recovery-plan.v3", previous_completion: anchor });
+    if (shadowHash(await readPreviousCompletion(instance)) !== shadowHash(anchor)) fail("STANDARD_OBJECTIVE_COMPLETION_LINK_CHANGED");
+    return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
+  }
   return Object.freeze({
     prepare: (instance, input, operationId) => prepare(instance, input, operationId, now()),
+    prepareRenewal: (instance, operationId) => prepareRenewal(instance, operationId, now()),
     async assertFresh(instance, plan) {
       assertRecoveryPlan(plan);
-      const fresh = await prepare(instance, { evaluation_operation_id: plan.evaluation_operation_id }, plan.review_operation_id, plan.prepared_at_ms);
+      const fresh = plan.contract_version === "standard-drift-recovery-plan.v3"
+        ? await prepareRenewal(instance, plan.review_operation_id, plan.prepared_at_ms)
+        : await prepare(instance, { evaluation_operation_id: plan.evaluation_operation_id }, plan.review_operation_id, plan.prepared_at_ms);
       if (fresh.plan_sha256 !== shadowHash(plan)) fail("STANDARD_RECOVERY_REVIEW_STALE");
     },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
