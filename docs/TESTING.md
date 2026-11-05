@@ -37,6 +37,13 @@ reduces subprocess launches without caching an admission or changing CAS. The
 preserved source55 gate timings motivated this bounded change; no timing rerun or
 complete 193-case result is implied.
 
+The [dated component record](qualification/standard-workflow/console-and-branch-observation-2026-11-05.json)
+separates the actual 14-call public-console PASS on ancestor `f9899b41` from the
+33-check composition PASS on `4635836b`. Neither result qualifies the newer
+branch-integration port, unresolved R05 route, full console/contracts, complete
+required agentic gate or installed workflow. Pending observations retain their
+recorded date and require a later terminal supplement.
+
 The synthetic composed preflight follows `cycle_work_requested` from its modeled
 mode decision. THINKING and nonretained EXPLORING count two Native activities:
 analysis and session-closure drift. They terminate after their actual closure
