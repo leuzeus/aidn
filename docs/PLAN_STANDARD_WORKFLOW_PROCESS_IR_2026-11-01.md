@@ -1,5 +1,27 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE58 authenticated disposition consumer candidate, 2026-11-05
+
+Independent recovery/projection fixture projects now apply their explicit
+canonical mode before reading drift context. This corrects their preconditions,
+preserving the old mode-refusal result and the runtime guard.
+
+The candidate host consumes an exact accepted alignment opinion from the signed
+operation and durable human inbox, with current authentication, evaluation,
+question, context, freshness and process CAS fences. Finalization plan v3 retains
+the disposition and its gate constraints. The owned internal hook uses the
+production gate evaluator/event writer and independently verifies the same sole
+objective signal and exact objectives; JSON arguments supply no capability.
+Other signals/STOP, true drift, uncertainty, nonconfirmation and the findings
+writer's v2 refusal retain their boundaries. No diagnosis allocation is inferred.
+
+This source wiring needs its separate exact-source mixed qualification. It has
+not connected the published model's review/diagnosis routes or completed R05,
+cycle/session closure, full193/current contracts/Governance Admission, general
+L4, actual actors, installed proof or the entire L1-L8/A1-A10 objective.
+complete_standard_workflow remains false. Previous source results retain their
+own sources and scopes.
+
 ## SOURCE57 bounded objective review, 2026-11-05
 
 Two fixture construction defects are corrected independently: recovery has no

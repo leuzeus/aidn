@@ -1,5 +1,20 @@
 # Testing Guide
 
+`node tools/perf/verify-drift-recovery-fixtures.mjs --objective-disposition-only`
+checks the synthetic human/disposition boundary without Git or finalization
+effects. It refuses unaccepted receipts, wrong instance/evaluation/context,
+newer evaluation, expiry, unverified retained source and changed canonical
+review. A diagnosis request cannot become alignment or an allocation.
+
+The separate execution selector `--drift-objective-mismatch-only
+--drift-objective-finalize-accept --retain-always` prepares the exact objective
+pair on new projects and, after a valid v2 question and fixture-authenticated
+opinion, exercises candidate finalization plan v3, the owned in-process gate
+hook, correlated event/report and retained dispatch/replay/SIM. This distinct
+case must be qualified on its own exact source; the earlier question/capture
+case does not prove it. Neither case qualifies published-model routing, actual
+human/native actors, installed execution or the entire standard workflow.
+
 The console fixture includes a changing prepared-plan clock. It retains the exact
 STANDARD action in the returned request, rejects a missing prepared request,
 changed action and changed live authority before effects, and checks that the

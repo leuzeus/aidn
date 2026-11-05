@@ -1,5 +1,12 @@
 # 04 JSON Contracts
 
+The private `standard-drift-objective-disposition.v1` is a derived view of an
+authenticated accepted opinion. `standard-drift-finalize-plan.v3` retains that
+view for exact effect-fence comparison. They reuse the governed decision inbox
+and operation journal; they introduce no public CLI case, independent authority,
+table or historical conversion. Finalization plan v1/v2 readers remain. See
+ADR-0025 for the internal authenticated hook boundary and qualification limits.
+
 The private workflow-definition namespace adds `native-allocation-journal.v2`
 and explicit native authorization/request/grant/resource-closure v1 contracts.
 V2 retains the full signed v1 origin and is created only through an authenticated

@@ -1,5 +1,32 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Authenticated objective disposition consumption candidate, 2026-11-05
+
+An accepted v2 alignment opinion may be consumed by the owning host only from
+its authenticated decision journal and receipted inbox. The consumer rechecks
+the exact latest accepted evaluation, report, canonical context, question,
+review subject, principal, source and receipt, plus live source verification
+and the review's five-minute freshness bound. A request for diagnosis cannot
+be consumed as alignment or allocate Native. Historical source verification
+does not renew this bound. The disposition is a typed derived view of existing
+decision/inbox evidence, not a new canonical artifact or signing authority.
+
+Private finalization plan v3 retains this exact disposition and its original
+gate constraints. Every effect fence reauthenticates it and the current process
+CAS. Its owned in-process drift hook uses the same production gate evaluator
+and event writer as the ordinary hook, with a capability supplied outside CLI
+arguments. The evaluator independently reobserves the exact objectives and
+sole objective signal after verification. L1 STOP, L3 and every other signal
+remain blocking. The retained report and correlated completion event bind the
+disposition hash. Normal finalization and historical v1/v2 plan readers retain
+their paths; authored JSON cannot acquire the capability. Partial or uncertain
+effects retain UNKNOWN and their owner, and retained dispatch never repeats them.
+
+This is candidate source wiring pending exact-source execution qualification.
+The published model's review/diagnosis routes and full R05/cycle/session journeys
+remain due. It does not qualify real Human/Native, an installed client or the
+entire L1-L8/A1-A10 objective; complete_standard_workflow remains false.
+
 ## Review of a suspect objective signal, 2026-11-05
 
 The existing recovery decision port can prepare a separate v2 review when an

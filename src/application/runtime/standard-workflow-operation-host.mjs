@@ -65,6 +65,7 @@ import { createProcessOperationJournalStore } from "../../adapters/runtime/proce
 import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-decision-inbox-store.mjs";
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
 import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
+import { createStandardObjectiveDisposition } from "./standard-drift-objective-disposition.mjs";
 import { createStandardControlInbox } from "./standard-workflow-control-inbox.mjs";
 import { createStandardPrReviewControlSource } from "./standard-session-pr-review-control-source.mjs";
 import { createStandardPrReviewReceiver } from "./standard-session-pr-review-receive.mjs";
@@ -100,7 +101,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
-    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input), readCurrent: id => current(id).record }) : null;
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readObjectiveAlignment: (instance, input, verified) => objectiveDisposition.read(instance, input, verified),
+    readCurrent: id => current(id).record }) : null;
   const recovery = processAuthority ? createStandardDriftRecovery({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
@@ -597,6 +600,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && agenticProcessPersistence({ targetRoot }).backend === "postgres";
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource,
     projectionRequired });
+  const objectiveDisposition = createStandardObjectiveDisposition({ now, human,
+    readOperation: id => retained(id).record,
+    assertFresh: async (instance, review) => { processAuthority.authenticate(instance); await recovery.assertFresh(instance, review); } });
   function verifyHumanRecord(record, signal) {
     const accepted = current(record.intent.instance_id).record.events.some(event => event.kind === "operation_result"
       && event.receipt.operation_id === record.operation_id && record.results.some(result => shadowHash(result.receipt) === shadowHash(event.receipt)));

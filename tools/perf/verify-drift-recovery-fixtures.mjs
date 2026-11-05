@@ -22,6 +22,7 @@ import { assertRecoveryPlan, assertDecisionInbox } from "../../src/core/workflow
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { createStandardObjectiveDisposition } from "../../src/application/runtime/standard-drift-objective-disposition.mjs";
 
 const H = "a".repeat(64), id = "op_" + "a".repeat(40), key = Buffer.alloc(32, 7), signer = createOperationJournalSigner(() => key);
 const context = { session_id: "S001", cycle_id: null, documents: [{ ref: "audit:CURRENT-STATE.md", sha256: H, content: "before" }], git: {} };
@@ -110,6 +111,57 @@ f.sources.set("unverified", f.claim("new_cycle")); await assert.rejects(f.human.
 const old = { ...f.claim("new_cycle"), contract_version: "human-mode-decision.v1", choice: "THINKING" };
 f.sources.set("wrong", old); await assert.rejects(f.human.reserve(f.record, "wrong"), /PROCESS_HUMAN_SOURCE_INVALID/);
 pass("wrong questions, mode sources, unoffered choices and unverified identities cannot authorize recovery");
+async function dispositionFixture(choice = "confirm_alignment") {
+  const f = humanFixture("op_" + "b".repeat(40), false, objectivePlan);
+  f.record.preview.input = { evaluation_operation_id: id };
+  const claim = { ...f.claim(choice), contract_version: "human-drift-recovery-decision.v2", subject_sha256: shadowHash(f.question.review), rationale: "Fixture exact-subject opinion" };
+  f.sources.set("choice", claim);
+  const capture = await f.human.reserve(f.record, "choice"), output = f.human.output(f.record, capture);
+  const receipt = { operation_id: f.record.operation_id, outcome: "completed", output_sha256: shadowHash(output) };
+  f.record.results.push({ output, receipt }); f.record.phase = "receipted";
+  f.human.acknowledge(capture.inbox_id, receipt);
+  const instance = { instance_id: "fixture", scope_id: "fixture", events: [
+    { kind: "operation_intent", intent: { binding_ref: "drift_report_evaluate", operation_id: id } },
+    { kind: "operation_intent", intent: { binding_ref: "drift_recovery_decision", operation_id: f.record.operation_id } },
+    { kind: "operation_result", receipt }] };
+  const review = f.record.preview.prepared.plan;
+  const verified = { context_sha256: review.context_sha256, evaluation_sha256: review.evaluation_sha256, output: { observations: { report: review.report } } };
+  let time = 1, fresh = true, freshCalls = 0;
+  const reader = createStandardObjectiveDisposition({ readOperation: () => f.record, human: f.human, now: () => time,
+    async assertFresh(_instance, selected) { freshCalls++; assert.equal(fresh, true, "fixture current canonical review changed"); assert.deepEqual(selected, review); } });
+  return { ...f, instance, verified, review, reader, read: () => reader.read(instance, { evaluation_operation_id: id }, verified),
+    time: value => { time = value; }, stale: () => { fresh = false; }, freshCalls: () => freshCalls };
+}
+{
+  const f = await dispositionFixture(), value = await f.read();
+  assert.equal(value.contract_version, "standard-drift-objective-disposition.v1");
+  assert.equal(value.review_sha256, shadowHash(f.review)); assert.equal(value.authority_id, "fixture_user");
+  assert.equal(f.freshCalls(), 1); assert.equal(value.rationale, "Fixture exact-subject opinion");
+  assert.deepEqual(await f.reader.read(f.instance, { evaluation_operation_id: id }, f.verified), value);
+  pass("accepted objective opinion is consumed from its durable inbox with exact receipt, question, evaluation and live source verification");
+}
+for (const [name, mutate, reason] of [
+  ["unaccepted receipt", f => f.instance.events.pop(), /NOT_ACCEPTED/],
+  ["wrong instance", f => f.instance.instance_id = "another", /NOT_ACCEPTED/],
+  ["changed evaluation", f => f.verified.evaluation_sha256 = "b".repeat(64), /SUBJECT_CHANGED/],
+  ["changed context", f => f.verified.context_sha256 = "b".repeat(64), /SUBJECT_CHANGED/],
+  ["later evaluation", f => f.instance.events.push({ kind: "operation_intent", intent: { binding_ref: "drift_report_evaluate", operation_id: "op_" + "c".repeat(40) } }), /SUBJECT_CHANGED/],
+  ["expired review", f => f.time(300002), /EXPIRED/],
+  ["unverified retained source", f => f.sources.clear(), /NOT_AUTHENTICATED/],
+  ["canonical CAS change", f => f.stale(), /canonical review changed/],
+]) {
+  const f = await dispositionFixture(); mutate(f); await assert.rejects(f.read(), reason);
+  pass(`objective disposition refuses ${name} without granting an effect`);
+}
+{
+  const f = await dispositionFixture("request_diagnosis"); await assert.rejects(f.read(), /ALIGNMENT_NOT_CONFIRMED/);
+  const absent = { ...f.instance, events: [] }; assert.equal(await f.reader.read(absent, { evaluation_operation_id: id }, f.verified), null);
+  pass("diagnosis request and absent opinion cannot become alignment confirmation or a Native allocation");
+}
+if (process.argv.includes("--objective-disposition-only")) {
+  console.log(JSON.stringify({ status: "PASS", checks, proof: "synthetic-authenticated-disposition-and-human-component-only", effects: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));
+  process.exit(0);
+}
 const temp = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(temp, "aidn-recovery-boundary-"));
 try {
   const git = args => execFileSync("git", ["-C", root, "-c", "core.hooksPath=NUL", ...args], { encoding: "utf8", windowsHide: true, stdio: "pipe" });

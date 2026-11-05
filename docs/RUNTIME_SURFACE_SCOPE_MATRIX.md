@@ -1,5 +1,13 @@
 # Runtime Surface Scope Matrix
 
+An authenticated objective disposition is derived from the existing accepted
+operation journal and receipted decision inbox. Finalization plan v3 and its
+retained diagnostic bind this source; the internal hook reuses the production
+gate/event ports. It adds no canonical store, table, shared synchronization,
+backend fallback, implicit db-only export or historical conversion. Fixture
+authentication and source wiring remain distinct from actual actor, complete
+published-model and installed qualification.
+
 Native authorization epochs are versioned retained members of the existing
 native allocation journal. Explicit activation retains its signed v1 origin
 and uses the same canonical CAS, local mixed-host owner and required projection.

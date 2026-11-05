@@ -516,10 +516,10 @@ function mixedFixture(stateMode = "files", options = {}) {
       ] };
     }
     if (options.recovery) {
-      for (const id of ["drift_recovery_decision", "drift_recovery_record"]) model.operation_pins[id] = shadowHash(standardWorkflowOperationBindings().find(row => row.id === id));
+      for (const id of ["drift_recovery_decision", options.objectiveFinalize ? "drift_check_finalize" : "drift_recovery_record"]) model.operation_pins[id] = shadowHash(standardWorkflowOperationBindings().find(row => row.id === id));
       model.nodes = [{ id: "mixed", kind: "sequence", participant_ref: "delivery", children: ["reload", "admit", "initialize", "analyze", "evaluate", "decide", "record", "recovery_action_pending"] },
         ...model.nodes.filter(row => ["reload", "admit", "initialize", "analyze", "evaluate"].includes(row.id)),
-        op("decide", "drift_recovery_decision"), op("record", "drift_recovery_record"),
+        op("decide", "drift_recovery_decision"), op("record", options.objectiveFinalize ? "drift_check_finalize" : "drift_recovery_record"),
         { id: "recovery_action_pending", kind: "event", participant_ref: "delivery", branches: [
           { flow_id: "executed", node_id: "action_executed", event_key: "executed" }, { flow_id: "cancel", node_id: "action_cancelled", event_key: "cancelled" }] },
         op("action_executed", "context_reload"), op("action_cancelled", "context_reload")];
@@ -528,7 +528,8 @@ function mixedFixture(stateMode = "files", options = {}) {
         { node_id: "initialize", fields: Object.fromEntries(["session_id", "session_branch", "objective"].map(name => [name, { source: "parameter", key: "session", path: [name] }])) },
         { node_id: "evaluate", fields: { report_occurrence_id: { source: "occurrence_id", node_id: "analyze" } } },
         { node_id: "decide", fields: { evaluation_operation_id: { source: "operation_id", node_id: "evaluate" } } },
-        { node_id: "record", fields: { decision_operation_id: { source: "operation_id", node_id: "decide" } } },
+        { node_id: "record", fields: options.objectiveFinalize ? { evaluation_operation_id: { source: "operation_id", node_id: "evaluate" } }
+          : { decision_operation_id: { source: "operation_id", node_id: "decide" } } },
         { node_id: "action_executed", fields: {} }, { node_id: "action_cancelled", fields: {} },
       ] };
       if (options.changeRequest) {
@@ -1561,6 +1562,7 @@ if (process.argv[2] === "--mixed-continue") {
   });
   if (process.argv.includes("--drift-objective-mismatch-only")) await check(process.argv.includes("--drift-objective-construction-only")
     ? "drift objective mismatch: construction preflight builds both exact authorities without Native allocation"
+    : process.argv.includes("--drift-objective-finalize-accept") ? "drift objective mismatch: exact accepted opinion reaches authenticated finalization and retained replay"
     : "drift objective mismatch: exact goals retain finalization refusal and prepare an authenticated signal review", async () => {
     // New projects only. This is a diagnostic reproduction, not an admission or
     // a semantic verdict about either objective. Native/Human are fixture ports.
@@ -1569,7 +1571,8 @@ if (process.argv[2] === "--mixed-continue") {
     for (const route of ["finalize", "recovery"]) {
       let humanReads = 0;
       const humanClaims = new Map();
-      const options = route === "recovery" ? { finalize: false, recovery: true, humanSource: {
+      const finalizeOpinion = process.argv.includes("--drift-objective-finalize-accept"), acceptOpinion = finalizeOpinion || process.argv.includes("--drift-objective-human-accept");
+      const options = route === "recovery" ? { finalize: false, recovery: true, objectiveFinalize: finalizeOpinion, humanSource: {
         read({ sourceRef, question }) { humanReads++; assert.equal(question.contract_version, "standard-drift-recovery-question.v2"); return humanClaims.get(sourceRef) ?? null; },
         verify({ source, sourceRef }) { assert.deepEqual(source, humanClaims.get(sourceRef)); return { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) }; },
       } } : {};
@@ -1613,7 +1616,7 @@ if (process.argv[2] === "--mixed-continue") {
         assert.equal(waiting.question.review.cycle_objective, cycleObjective);
         assert.deepEqual(waiting.question.choices, ["confirm_alignment", "request_diagnosis", "refused", "deferred", "cancelled"]);
         const parked = c.artifacts.read("parking-lot.md").sha256, current = c.artifacts.read("CURRENT-STATE.md").sha256;
-        if (process.argv.includes("--drift-objective-human-accept")) {
+        if (acceptOpinion) {
           const claim = { contract_version: "human-drift-recovery-decision.v2", source_kind: "human", authority_id: "fixture_operator",
             source_event_id: "fixture-objective-alignment-1", subject_sha256: shadowHash(waiting.question.review), question_sha256: shadowHash(waiting.question),
             choice: "confirm_alignment", rationale: "Fixture operator reviews this exact disagreement; signal discharge remains pending.",
@@ -1623,7 +1626,19 @@ if (process.argv[2] === "--mixed-continue") {
           await f.open().acceptOperation(waiting.operation_id, { write: true });
           const decision = f.open().readOperation(waiting.operation_id).results.at(-1).output;
           assert.equal(decision.observations.signal_discharged, false); assert.deepEqual(decision.facts, { drift_check_completed: false });
-          await assert.rejects(f.open().step({ write: false }), /STANDARD_RECOVERY_CONFIRMED_FINDINGS_REQUIRED/);
+          if (finalizeOpinion) {
+            const closed = await f.open().step({ write: true }), finalized = f.open().readOperation(closed.operation_id).results.at(-1).output;
+            assert.equal(finalized.effect_status, "confirmed", JSON.stringify(finalized));
+            assert.equal(finalized.facts.drift_check_completed, true, JSON.stringify(finalized));
+            assert.equal(finalized.observations.hook.invocation, "in_process_authenticated_objective_alignment");
+            assert.equal(finalized.observations.hook.payload.objective_alignment.source_sha256, shadowHash(claim));
+            assert.equal(finalized.observations.observed_event.objective_alignment_sha256,
+              shadowHash(finalized.observations.hook.payload.objective_alignment));
+            const record = f.open().readOperation(closed.operation_id);
+            assert.equal(record.preview.prepared.plan.contract_version, "standard-drift-finalize-plan.v3");
+            assert.equal((await f.open().dispatchOperation(closed.operation_id, { write: true })).status, "retained_result");
+            assert.equal(f.open().readOperation(closed.operation_id).results.length, record.results.length);
+          } else await assert.rejects(f.open().step({ write: false }), /STANDARD_RECOVERY_CONFIRMED_FINDINGS_REQUIRED/);
           const after = f.open().inspect(), simulation = simulateAgenticProcess({ instanceId: after.record.instance_id, model: after.record.model,
             parameters: after.record.initial_parameters, scopeId: after.record.scope_id, policyPins: after.record.policy_pins, events: after.record.events });
           assert.equal(simulation.trace.at(-1).instance_sha256, after.record.instance_sha256);
@@ -1632,11 +1647,11 @@ if (process.argv[2] === "--mixed-continue") {
       }
       if (route === "finalize") assert.equal(f.open().inspect().record.instance_sha256, before);
       assert.equal(c.artifacts.ownerPending(), false);
-      assert.equal(humanReads, route === "recovery" && process.argv.includes("--drift-objective-human-accept") ? 1 : 0);
+      assert.equal(humanReads, route === "recovery" && acceptOpinion ? 1 : 0);
       assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
-      console.log(JSON.stringify({ diagnosis: "UNRESOLVED_SIGNAL_REPORT_DISAGREEMENT", route,
+      console.log(JSON.stringify({ diagnosis: route === "recovery" && finalizeOpinion ? "AUTHENTICATED_FIXTURE_ALIGNMENT_FINALIZED" : "UNRESOLVED_SIGNAL_REPORT_DISAGREEMENT", route,
         session_objective: sessionObjective, cycle_objective: cycleObjective, target: f.configuration.target_root,
-        status: route === "recovery" ? "REVIEW_AVAILABLE_RESOLUTION_PENDING" : "BLOCKED", human_question_available: route === "recovery", drift_check_completed: false,
+        status: route === "recovery" ? finalizeOpinion ? "FINALIZED_FIXTURE_ALIGNMENT" : "REVIEW_AVAILABLE_RESOLUTION_PENDING" : "BLOCKED", human_question_available: route === "recovery", drift_check_completed: route === "recovery" && finalizeOpinion,
         proof_class: "real-context-evaluation-finalization-and-recovery-ports-fixture-native", complete_standard: false }));
     }
   });
