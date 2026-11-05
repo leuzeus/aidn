@@ -15,8 +15,6 @@
       "const": "standard-cycle-close-renewal-plan.v1"
     },
     "input": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$id": "aidn://contracts/workflow-definition/standard-cycle-close-hook-input.v1",
       "x-aidn-contract-version": "standard-cycle-close-hook-input.v1",
       "type": "object",
       "additionalProperties": false,

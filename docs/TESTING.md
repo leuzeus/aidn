@@ -3123,6 +3123,12 @@ changed physical bytes and changed context. A plausible clean Git state alone
 cannot replace the captured reviewed evidence.
 
 
+`verify-standard-cycle-close-hook-contract-fixtures.mjs` also validates the
+renewal-plan, close-hook v2 and confirmed-close selection schemas with the
+production validator. Its pure controls check both exact expiry reasons, closed
+nested data, invalid identities/hashes/types and incompatible typed outputs.
+These contract checks do not execute a closure or qualify current human authority.
+
 `verify-standard-cycle-close-hook-contract-fixtures.mjs` verifies the closed
 fixed input, supported schema vocabulary and correlation of confirmed, blocked
 and uncertain outcomes. `--cycle-close-finalize-mode=contract|files|db-only` in

@@ -2,6 +2,11 @@
 
 ## Close expiry continuation contracts
 
+The renewal plan embeds the closed hook-input data shape and its contract-version
+annotation. `$schema` and `$id` remain on schema roots only. The pure close-hook
+contract fixture validates the renewal, v2 output and close-selection definitions,
+including invalid data paths and incompatible outcome combinations.
+
 Private standard-cycle-close-renewal-plan.v1 and close-hook-output.v2 distinguish
 a proved pre-effect expiry return from confirmed closure and UNKNOWN. A completed
 no-effect attempt must set cycle_close_completed=false and retain its historical
