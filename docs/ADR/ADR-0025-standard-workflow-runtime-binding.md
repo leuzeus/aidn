@@ -6,6 +6,9 @@ Nested wrapper inputs omit root-only schema declarations while retaining their
 input constraints. EXPLORING preflight now invokes the existing canonical
 context-refresh port before analysis; its repair and freshness observations
 come from the real projector and artifact CAS. Unknown values remain unknown.
+EXPLORING then uses the existing session Git checkpoint to reconcile only the
+verified session/current/digest projections before cycle-creation admission. It
+requires matching canonical and prepared modes and grants no product write.
 The final conversion hook validates the existing canonical SPIKE, its R2
 continuity and branch/session ownership using the private completion selector;
 it does not select continuity for another cycle. The host still authenticates

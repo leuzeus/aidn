@@ -39,10 +39,10 @@ export function createStandardWorkflowGitCheckpoint({ targetRoot, readContext, r
     });
     const fields = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
     const session = parseSessionMetadata(artifacts.read(sessionPath, { required: true }).content), observed = git.inspect();
-    if (fields.active_session !== sessionId || fields.active_cycle !== "none" || fields.mode !== "COMMITTING" || session.mode !== "COMMITTING"
+    if (fields.active_session !== sessionId || fields.active_cycle !== "none" || !["COMMITTING", "EXPLORING"].includes(fields.mode) || session.mode !== fields.mode || context.mode !== fields.mode
       || session.session_branch !== observed.branch || context.scope.branch !== observed.branch || context.scope.head !== observed.head)
       return { can_apply: false, reason_code: "STANDARD_GIT_SESSION_CONTEXT_REQUIRED" };
-    const admitted = await runStartSessionAdmitUseCase({ targetRoot: artifacts.root, mode: "COMMITTING" });
+    const admitted = await runStartSessionAdmitUseCase({ targetRoot: artifacts.root, mode: fields.mode });
     const prewrite = await preWriteAdmit({ targetRoot: artifacts.root, skill: "start-session" });
     if (admitted.result !== "ok" || admitted.action !== "resume_current_session" || !prewrite.ok)
       return { can_apply: false, reason_code: "STANDARD_GIT_SESSION_ADMISSION_BLOCKED" };
