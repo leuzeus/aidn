@@ -129,6 +129,14 @@ try {
   fs.rmSync(resolved, { recursive: true, force: true });
 }
 const owned = [];
+async function prepareFixtureMode(operations, label) {
+  // Session initialization alone leaves mode undecided. Drift context requires
+  // the same explicit canonical mode in the session and current state.
+  const prepared = await operations.prepareMode({ session_id: "S001", mode: "COMMITTING" });
+  assert.equal(prepared.can_apply, true, `${label}: mode precondition must be admitted`);
+  assert.equal((await operations.applyMode(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome,
+    "completed", `${label}: mode precondition must complete`);
+}
 const admissionMode = process.argv.find(arg => arg.startsWith("--cr-admission-mode="))?.slice("--cr-admission-mode=".length);
 const cycleMode = process.argv.find(arg => arg.startsWith("--cycle-port-mode="))?.slice("--cycle-port-mode=".length);
 if (cycleMode !== undefined && !["files", "dual", "db-only", "partial", "projection"].includes(cycleMode)) throw Error("RECOVERY_CYCLE_FIXTURE_MODE_INVALID");
@@ -140,10 +148,13 @@ try {
   const targetRoot = createFreshStandardWorkflowFixture("dual", owned), operations = createStandardWorkflowOperations({ targetRoot });
   const preparedSession = await operations.prepareSession({ session_id: "S001", session_branch: "S001-recovery", objective: "Verify authorized recovery documentation and exact effects" });
   assert.equal((await operations.initializeSession(preparedSession, { write: true, expectPlan: preparedSession.plan_sha256 })).outcome, "completed");
+  await prepareFixtureMode(operations, "canonical recovery");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), productRoot = path.join(targetRoot, "product"); fs.mkdirSync(productRoot); fs.writeFileSync(path.join(productRoot, "app.mjs"), "// fixture\n");
   const git = args => execFileSync("git", ["-C", targetRoot, "-c", "core.hooksPath=NUL", ...args], { encoding: "utf8", windowsHide: true, stdio: "pipe" });
   git(["add", "."]); git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture precondition"]);
   const observeContext = () => readStandardDriftContext({ targetRoot, productRoot, productFiles: ["app.mjs"], productSha256: artifactContentHash(fs.readFileSync(path.join(productRoot, "app.mjs"))) });
+  assert.equal((await observeContext()).context.mode, "COMMITTING");
+  pass("canonical recovery fixture explicitly admits and applies its mode before its first drift-context read");
   const classification = row => Object.fromEntries(["kind", "family", "subtype", "gate_relevance", "classification_reason", "session_id", "cycle_id", "source_mode", "entity_confidence", "legacy_origin"].map(k => [k, row[k]]));
   const metadataStore = createProjectArtifactStore({ targetRoot, existingOnly: true });
   let expectedParkingMetadata;
@@ -189,8 +200,6 @@ try {
   pass("a changed canonical context after review refuses before effects and releases the local owner");
   // An admitted real cycle is a fixture precondition. Only recovery provenance
   // is doubled in these focused fault tests; the mixed suite authenticates it.
-  let modePlan = await operations.prepareMode({ session_id: "S001", mode: "COMMITTING" });
-  assert.equal((await operations.applyMode(modePlan, { write: true, expectPlan: modePlan.plan_sha256 })).outcome, "completed");
   git(["add", "."]); git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture CR mode"]);
   const contextPlan = await operations.prepareCycleContext({ session_id: "S001" });
   assert.equal((await operations.refreshCycleContext(contextPlan, { write: true, expectPlan: contextPlan.plan_sha256 })).outcome, "completed");
@@ -249,11 +258,14 @@ try {
   // resetting the previous project's retained effect owner.
   const projectedRoot = createFreshStandardWorkflowFixture("dual", owned), projectOps = createStandardWorkflowOperations({ targetRoot: projectedRoot });
   const session = await projectOps.prepareSession({ session_id: "S001", session_branch: "S001-projection", objective: "Verify exact required recovery projection observations" });
-  await projectOps.initializeSession(session, { write: true, expectPlan: session.plan_sha256 });
+  assert.equal((await projectOps.initializeSession(session, { write: true, expectPlan: session.plan_sha256 })).outcome, "completed");
+  await prepareFixtureMode(projectOps, "required projection");
   const projectedProduct = path.join(projectedRoot, "product"); fs.mkdirSync(projectedProduct); fs.writeFileSync(path.join(projectedProduct, "app.mjs"), "// fixture\n");
   execFileSync("git", ["-C", projectedRoot, "add", "."], { windowsHide: true, stdio: "pipe" });
   execFileSync("git", ["-C", projectedRoot, "-c", "core.hooksPath=NUL", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture projection precondition"], { windowsHide: true, stdio: "pipe" });
   const observe = () => readStandardDriftContext({ targetRoot: projectedRoot, productRoot: projectedProduct, productFiles: ["app.mjs"], productSha256: H });
+  assert.equal((await observe()).context.mode, "COMMITTING");
+  pass("required projection fixture explicitly admits and applies its mode before its first drift-context read");
   const projected = createStandardDriftRecovery({ targetRoot: projectedRoot, observeContext: observe, readCurrent: () => instance,
     async readEvaluation() { const row = await observe(); return { ...row, evaluation_sha256: H, output: { facts: { drift_present: true, drift_context_complete: true },
       observations: { report: { changes: ["Projection fixture finding."] } } } }; } });

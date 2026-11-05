@@ -857,6 +857,11 @@ qualify native reauthorization after a long human wait.
 `verify-drift-recovery-fixtures.mjs` checks closed recovery questions/plans and
 typed human outcomes with a synthetic source/inbox, real Git boundary checks,
 and actual canonical CAS/projection ports under a doubled evaluation authority.
+Its independent canonical recovery and projection projects explicitly prepare
+and apply COMMITTING mode before the first drift-context read. These required
+fixture preconditions assert successful admission and the observed canonical
+mode; an unavailable precondition fails rather than becoming SKIP. The separate
+partial-CR and cycle-port setups already apply their mode before reading context.
 It separates MAC retention from live human verification, bounds long append
 text, refuses stale context/authorization, and injects a real partial SQLite
 write that must retain uncertainty and ownership. Seeded canonical annotations
