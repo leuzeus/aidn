@@ -10,6 +10,34 @@ import { AIDN_BRANCH_KIND } from "../../lib/workflow/branch-kind-lib.mjs";
 import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
+// A comparison preimage, never an admission or cached observation. Every fence
+// invocation rereads canonical artifacts/metadata, inventory, product and Git
+// synchronously. In particular, DB-only never substitutes a visible projection.
+export function captureStandardDriftContextFence({ targetRoot, observed, productRoot, productFiles,
+  readProductSha256, deniedRoots = [], environment = process.env }) {
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot, env: environment }), context = observed.context;
+  const optional = ["baseline/history.md", "index.md", "RUNTIME-STATE.md", "parking-lot.md"];
+  const names = [...new Set([...context.documents.map(row => row.ref.slice(6)), ...optional, "WORKFLOW-KERNEL.md"])].sort();
+  function witness() {
+    const project = readWorkflowProjectAuthority({ targetRoot });
+    const documents = names.map(name => ({ ...artifacts.read(name), metadata_sha256: artifacts.metadataHash(name) }));
+    for (const expected of context.documents) {
+      const actual = documents.find(row => "audit:" + row.path === expected.ref);
+      if (!actual || actual.sha256 !== expected.sha256 || actual.content !== expected.content)
+        fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE");
+    }
+    if (optional.some(name => !context.documents.some(row => row.ref === "audit:" + name)
+      && documents.find(row => row.path === name).sha256 !== null)) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE");
+    const git = readControlledDriftGit({ root: artifacts.root, productRoot, productFiles, deniedRoots, environment,
+      observedDocuments: context.documents.map(row => "docs/audit/" + row.ref.slice(6)) });
+    if (readProductSha256() !== context.product_sha256 || shadowHash(project.scope) !== context.project_scope_sha256
+      || shadowHash(git) !== shadowHash(context.git)) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE");
+    const inventory = rows => rows.map(row => ({ path: row.path, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(row.path) }));
+    return shadowHash({ project, documents, sessions: inventory(artifacts.sessions()), cycles: inventory(artifacts.cycles()), git });
+  }
+  const before = witness();
+  return () => { if (witness() !== before) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE"); };
+}
 // Read canonical business state. Visible projections are never a DB fallback.
 export async function readStandardDriftContext({ targetRoot, productSha256, productRoot, productFiles, deniedRoots = [], environment = process.env }) {
   if (!/^[a-f0-9]{64}$/.test(productSha256 ?? "")) fail("STANDARD_DRIFT_PRODUCT_REQUIRED");

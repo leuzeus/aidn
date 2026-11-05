@@ -1,5 +1,16 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Last awaited H context correction candidate, 2026-11-05
+
+A new independent-worker nominal passed on the pre-fence source. Two separate
+negative projects then retained a fixture Native response after changing only
+HEAD or a governed context document during the last H await. Their FAIL results
+are preserved separately. Current source adds a synchronous canonical/Git
+comparison after H and retains TTL, history, reservation and Native limits.
+The worker fixture persists terminal metrics before assertions. New-source
+qualification remains required; these changes do not complete the published
+STANDARD route or any remaining L1-L8/A1-A10 acceptance family.
+
 ## SOURCE63 pre-effect expiry continuation candidate, 2026-11-05
 
 The primary published closure now repeats a bounded review/close-attempt loop.

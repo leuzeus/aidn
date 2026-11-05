@@ -1,5 +1,25 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Current-H diagnostic context fence, 2026-11-05
+
+Independent fixture workers on the previous implementation reached a Native
+fixture turn after either an empty HEAD commit or a canonical parking-lot edit
+during the final current-H verification. Their original failed results remain
+retained; no genuine Native execution or billing effect is claimed.
+
+Each repeat-diagnosis admission now captures synchronous comparison witnesses
+after its fresh context read, authenticates current H, then rereads those
+witnesses before the existing TTL and history/reservation fences. Witnesses
+cover Git, product, project scope, canonical documents and metadata, optional
+document absence, and session/cycle inventory. They are comparison preimages,
+never cached admissions. DB-only uses its canonical store without projection
+fallback. No new concept, table, public JSON contract, grant or historical
+conversion is introduced. Limits and separate Native authorization remain.
+
+New exact-source worker and storage-mode evidence is required. Source wiring
+does not qualify productive published STANDARD closure, the other R05 contexts,
+recovery, genuine actors, installed behavior or the complete L1-L8/A1-A10 goal.
+
 ## SOURCE64 current-H worker boundary candidate, 2026-11-05
 
 The parent repeats current diagnosis-request admission before reservation. Mixed

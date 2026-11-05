@@ -3179,6 +3179,15 @@ after the actual durable assignment, rather than an absolute RPC count. The
 a canonical context document during the following current H verification.
 Their signed source, TTL and separate Native grant remain current.
 
+On the pre-fence source, both last-awaited-H selectors reached a fixture Native
+turn after the mutation; those failed arenas and original results remain
+separate. The current authority captures a fresh synchronous context fence
+before H verification and reobserves it after that await, followed by the
+existing TTL and history/reservation guards. The session-scope suite additionally
+checks unchanged witnesses, an empty HEAD commit and canonical-only parking-lot
+changes in each selected storage mode. These component checks do not replace
+new independent-worker cases or qualify genuine actors or published STANDARD.
+
 `--drift-worker-phase=setup` stops after the first accepted diagnostic evaluation
 and emits a retained fixture-state path. `--drift-worker-phase=race` with
 `--drift-worker-state=<path>` reconstructs that successful fixture preparation,

@@ -19,7 +19,7 @@ import { createStandardHumanDecisions } from "./standard-workflow-human-decision
 import { nativeJournalId } from "../../core/workflow/native-allocation-journal.mjs";
 import { readNativeAllocationCheckpoint, nativeEvidenceFile, nativeAllocationOutputId } from "./native-allocation-evidence.mjs";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
-import { readStandardDriftContext, evaluateStandardDriftReport } from "./standard-drift-report.mjs";
+import { readStandardDriftContext, evaluateStandardDriftReport, captureStandardDriftContextFence } from "./standard-drift-report.mjs";
 import { DRIFT_REPORT_CONTRACT, nativeActivityOutputSkill, assertNativeActivityAnswer } from "../../core/workflow/native-activity-output.mjs";
 import { CYCLE_PLAN_CONTRACT } from "../../core/workflow/standard-cycle-planning.mjs";
 import { evaluateStandardCycleReadiness } from "../../core/workflow/standard-cycle-readiness.mjs";
@@ -156,9 +156,13 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       || (binding === "drift_recovery_decision" ? selected.output.facts.drift_diagnosis_requested !== true : selected.output.facts.drift_completion_reviewed !== false)) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_REQUIRED");
     const current = await prepareActivityOutput({ contractRef: DRIFT_REPORT_CONTRACT, productSha256: readProductSha256?.() });
     if (current.context_sha256 !== review.context_sha256) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE");
+    const assertContextCurrent = captureStandardDriftContextFence({ targetRoot: configuration.target_root, observed: current,
+      productRoot: configuration.product_root, productFiles: configuration.product_files, readProductSha256,
+      deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
     // Current human authentication is separate from the unchanged Native grant,
     // new allocation admission, and cumulative Native budget accounting.
     await human.verifyCaptured(selected.record);
+    assertContextCurrent();
     if (Date.now() < review.prepared_at_ms || Date.now() - review.prepared_at_ms > 300000) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED");
     authenticate(instance, auth);
   }
