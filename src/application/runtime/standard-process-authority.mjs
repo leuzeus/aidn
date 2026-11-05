@@ -1,4 +1,5 @@
 import { MODE_WORK_CONTRACT, evaluateStandardModeWork } from "../../core/workflow/standard-mode-work.mjs";
+import { observeModeWorkReport, modeWorkContinuationChoices, assertModeWorkObservationOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
 import { readStandardModeWorkContext } from "./standard-mode-work-context.mjs";
 import { readStandardCycleCloseContext } from "./standard-cycle-close-context.mjs";
 import { PR_TRIAGE_CONTRACT } from "../../core/workflow/standard-pr-triage.mjs";
@@ -132,7 +133,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   async function prepareActivityOutput({ contractRef, productSha256, instance, occurrenceId, productSnapshot }) {
     if (contractRef === MODE_WORK_CONTRACT) {
       if (!Array.isArray(productSnapshot) || shadowHash(productSnapshot) !== productSha256 || productSha256 !== readProductSha256?.()) fail("STANDARD_MODE_WORK_PRODUCT_CHANGED");
-      return prepareModeWorkActivity(instance);
+      return prepareModeWorkActivity(instance, occurrenceId);
     }
     if (contractRef === PR_TRIAGE_CONTRACT) return preparePrTriageActivity({ instance, occurrenceId, productSha256, productSnapshot });
     if (contractRef === CYCLE_AUDIT_CONTRACT) return prepareAuditActivity({ instance, occurrenceId, productSha256, productSnapshot });
@@ -185,7 +186,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       facts: ready ? { mode_work_ready: true } : {}, observations: { session_id: input.session_id, mode: input.mode, context_sha256: fresh.context_sha256,
         admission_status: admission.admission_status, reason_code: ready ? "STANDARD_MODE_WORK_READY" : "STANDARD_MODE_WORK_ADMISSION_BLOCKED" }, evidence_refs: fresh.evidence_refs };
   }
-  function prepareModeWorkActivity(instance) {
+  function prepareModeWorkActivity(instance, occurrenceId) {
     const auth = nativeReservation ? { reservation: nativeReservation } : {};
     authenticate(instance, auth);
     const id = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "mode_work_preflight").at(-1)?.intent.operation_id;
@@ -193,12 +194,45 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const accepted = acceptedOperation(instance, id, "mode_work_preflight", auth), current = observeModeWorkContext();
     if (accepted.output.facts.mode_work_ready !== true || accepted.record.preview.input.session_id !== current.context.session_id
       || accepted.record.preview.input.mode !== current.context.mode) fail("STANDARD_MODE_WORK_PREFLIGHT_REQUIRED");
-    const context = { ...current.context, preflight_operation_id: id };
+    // Bind a followup to the NEW accepted human decision preceding this
+    // activity. Later decisions never change the context of an older result.
+    const assignment = instance.events.findIndex(event => event.kind === "assign" && event.occurrence_id === occurrenceId);
+    const prefix = assignment >= 0 ? instance.events.slice(0, assignment) : instance.events;
+    const decisionEvent = prefix.filter(event => event.kind === "operation_result").findLast(event => {
+      const intent = prefix.find(row => row.kind === "operation_intent" && row.intent.operation_id === event.receipt.operation_id);
+      return intent?.intent.binding_ref === "mode_work_continue_decision";
+    });
+    let continuation;
+    if (decisionEvent) {
+      const selected = acceptedOperation(instance, decisionEvent.receipt.operation_id, "mode_work_continue_decision", auth);
+      const capture = human.captured(selected.record);
+      if (capture.source.choice !== "continue_analysis" || selected.output.facts.mode_work_continue_requested !== true)
+        fail("STANDARD_MODE_WORK_CONTINUATION_REQUIRED");
+      continuation = { operation_id: selected.record.operation_id, source_sha256: shadowHash(capture.source), question_sha256: capture.source.question_sha256,
+        review_sha256: selected.output.observations.review_sha256, choice: capture.source.choice };
+    }
+    const context = { ...current.context, preflight_operation_id: id, ...(continuation ? { continuation } : {}) };
     return { ...current, context, context_sha256: shadowHash(context) };
   }
   async function evaluateModeWork(instance, input) {
     assertStandardOperationInput("mode_work_evaluate", input);
-    return evaluateStandardModeWork(readActivityOutput(instance, input.report_occurrence_id, MODE_WORK_CONTRACT), prepareModeWorkActivity(instance));
+    return evaluateStandardModeWork(readActivityOutput(instance, input.report_occurrence_id, MODE_WORK_CONTRACT), prepareModeWorkActivity(instance, input.report_occurrence_id));
+  }
+  function observeModeWork(instance, input) {
+    assertStandardOperationInput("mode_work_observe", input);
+    return observeModeWorkReport(readActivityOutput(instance, input.report_occurrence_id, MODE_WORK_CONTRACT), prepareModeWorkActivity(instance, input.report_occurrence_id));
+  }
+  function prepareModeWorkContinuation(instance, input) {
+    assertStandardOperationInput("mode_work_continue_decision", input);
+    const accepted = acceptedOperation(instance, input.review_operation_id, "mode_work_observe");
+    assertModeWorkObservationOutput(accepted.output);
+    const fresh = observeModeWork(instance, accepted.record.preview.input);
+    if (shadowHash(fresh) !== shadowHash(accepted.output)) fail("STANDARD_MODE_WORK_REVIEW_STALE");
+    if (!["waiting", "retain_requested"].includes(fresh.observations.review.report.disposition)) fail("STANDARD_MODE_WORK_CONTINUATION_NOT_REQUIRED");
+    return { review: fresh.observations.review, choices: [...modeWorkContinuationChoices] };
+  }
+  function assertModeWorkContinuationFresh(instance, input, prepared) {
+    if (shadowHash(prepareModeWorkContinuation(instance, input)) !== shadowHash(prepared)) fail("STANDARD_MODE_WORK_REVIEW_STALE");
   }
   async function evaluateDriftReport(instance, input) {
     assertStandardOperationInput("drift_report_evaluate", input);
@@ -582,6 +616,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation,
+  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation,
     evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

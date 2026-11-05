@@ -76,6 +76,13 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
       assert.equal(f.t.sessions.length, before, "D/H must not allocate Native");
       if (result.status === "waiting_for_human") {
         const record = f.open().readOperation(result.operation_id);
+        if (record.intent.binding_ref === "mode_work_continue_decision") {
+          evaluation = record.preview.prepared.review;
+          const observation = f.open().readOperation(record.preview.input.review_operation_id).results.at(-1).output;
+          evaluation = observation.observations.evaluation;
+          assert.equal(evaluation.outcome, "blocked"); assert.deepEqual(evaluation.facts, {});
+          break;
+        }
         assert.equal(record.intent.binding_ref, "mode_decision");
         const waitingSha = f.open().inspect().record.instance_sha256;
         for (let poll = 0; poll < 2; poll++) {

@@ -37,10 +37,16 @@ seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_ro
 nodes.push(...structuredClone(startup.nodes)); inputs.push(...structuredClone(startup.data_bindings.inputs));
 nodes.find(row => row.id === "startup").children = startup.nodes.find(row => row.id === "startup").children.filter(id => id !== "session_start_finalize");
 xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking", "thinking_handoff", "mode_thinking"], ["exploring", "exploring_handoff", "mode_exploring"]]);
-// Analysis routes have read-only native policies. Exploration retention remains
-// a durable blocked result until a separate explicit SPIKE admission exists.
+// Analysis reports retain their original outcomes. A received waiting report
+// reaches a durable human operation; continuation creates a new loop occurrence.
+// Retention still requires a separately admitted SPIKE conversion.
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
-  seq(`${prefix}_handoff`, [`${prefix}_analysis`, `${prefix}_evaluate`]);
+  seq(`${prefix}_handoff`, [`${prefix}_analysis_loop`]);
+  node(`${prefix}_analysis_loop`, "loop", { child: `${prefix}_analysis_iteration`, until: "mode_analysis_completed", max_iterations: 32 });
+  seq(`${prefix}_analysis_iteration`, [`${prefix}_analysis`, `${prefix}_observe`, `${prefix}_after_report`]);
+  op(`${prefix}_observe`, "mode_work_observe", occurrence(`${prefix}_analysis`));
+  xor(`${prefix}_after_report`, [["complete", `${prefix}_evaluate`, "mode_work_report_complete"], ["waiting", `${prefix}_continue_decide`, null]]);
+  op(`${prefix}_continue_decide`, "mode_work_continue_decision", { review_operation_id: { source: "operation_id", node_id: `${prefix}_observe` } });
   native(`${prefix}_analysis`, "mode_analyst", `${prefix}_analysis_policy`, "standard-mode-work-report.v1", ["context-reload"], ["SPEC-R01", "SPEC-R02"]);
   op(`${prefix}_evaluate`, "mode_work_evaluate", occurrence(`${prefix}_analysis`));
 }

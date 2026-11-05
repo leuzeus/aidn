@@ -2,18 +2,26 @@
 
 ## Status
 
-The candidate composed model now has explicit read-only THINKING and EXPLORING
-analysis routes. Each uses a deterministic mode preflight, a typed native
-analysis and a fresh deterministic evaluation. The report binds the session
-objective, canonical content and metadata, product hash and Git observation.
-An accepted preflight is authenticated by the same operation/native authority;
-it grants neither product effects nor exploration retention. THINKING reasoning
-and nonretained EXPLORING analysis may complete this component only. Missing
-information and retention requests retain blocked/no-effect results. An admitted
-SPIKE conversion, experiments with effects, session closure and resumed decisions
-remain separate outstanding routes. This is source wiring, not native or installed
-qualification. The context/report remains evidence of the existing process
-operation and native-result concepts, without a new persistence authority.
+New model revisions retain a mode report observation before routing its outcome.
+The observation completes receipt of evidence only: its nested v1 evaluation
+keeps `blocked/no_effect` and empty positive facts for waiting or retention.
+The IR then waits at a separate human continuation operation. A private v10
+inbox authenticates a new source event bound to the exact question, original
+report producer, current canonical context/product and Git HEAD. Refusal,
+deferral and cancellation keep their distinct outcomes. An accepted
+`continue_analysis` choice requests another read-only analysis occurrence in
+the same bounded loop; it neither completes analysis nor grants retention,
+product effects or a renewed Native authorization. The new activity context
+binds the accepted decision. Historical result contexts exclude later choices.
+Existing Native epoch admissions still require a genuinely fresh authorization
+and authenticated resource closure after expiry; a decision alone cannot renew
+a grant. Original reports, decisions, allocations and reducer events survive.
+
+These are source changes pending qualification. SPIKE conversion, retained
+experiments, real mode session closure, general business UNKNOWN reconciliation
+and genuine Native/Human/Provider/OS or installed qualification remain open.
+Historical model/instance and inbox v1-v9 readers are retained without conversion.
+No new persistence authority, shared table or public CLI command is introduced.
 
 The correction continuation now has source wiring for a fresh start occurrence,
 optional promotion, new session R05 and human closure, final hook, delivery and

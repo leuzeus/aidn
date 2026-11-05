@@ -1,6 +1,8 @@
 import modeWorkPreflight from "../contracts/workflow-definition/standard-mode-work-preflight-input.v1.schema.json" with { type: "json" };
 import modeWorkEvaluate from "../contracts/workflow-definition/standard-mode-work-evaluate-input.v1.schema.json" with { type: "json" };
 import modeWorkOutput from "../contracts/workflow-definition/standard-mode-work-output.v1.schema.json" with { type: "json" };
+import modeWorkDecisionInput from "../contracts/workflow-definition/standard-mode-work-decision-input.v1.schema.json" with { type: "json" };
+import { assertModeWorkObservationOutput, assertModeWorkDecisionOutput } from "./standard-mode-work-continuation.mjs";
 import prCorrectionReviewInputV2 from "../contracts/workflow-definition/standard-pr-correction-review-input.v2.schema.json" with { type: "json" };
 import prCorrectionReviewInputV3 from "../contracts/workflow-definition/standard-pr-correction-review-input.v3.schema.json" with { type: "json" };
 import prCorrectionCycleInput from '../contracts/workflow-definition/standard-pr-correction-cycle-input.v1.schema.json' with { type: 'json' };
@@ -121,8 +123,8 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
-  if (["mode_work_preflight", "mode_work_evaluate"].includes(operation)) {
-    if (checkShadowJson(value) || validateJsonSchema(value, operation === "mode_work_preflight" ? modeWorkPreflight : modeWorkEvaluate, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+  if (["mode_work_preflight", "mode_work_evaluate", "mode_work_observe", "mode_work_continue_decision"].includes(operation)) {
+    if (checkShadowJson(value) || validateJsonSchema(value, operation === "mode_work_continue_decision" ? modeWorkDecisionInput : operation === "mode_work_preflight" ? modeWorkPreflight : modeWorkEvaluate, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
   if (operation === 'session_pr_correction_cycle_initialize') {
@@ -166,6 +168,8 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-mode-work-observation-output.v1") return assertModeWorkObservationOutput(value);
+  if (value?.contract_version === "standard-mode-work-decision-output.v1") return assertModeWorkDecisionOutput(value);
   if (value?.contract_version === "standard-mode-work-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, modeWorkOutput, "$", { contractKind: "workflow-definition" }).length
       || (value.outcome === "blocked" ? Object.keys(value.facts).length !== 0

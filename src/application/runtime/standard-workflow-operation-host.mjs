@@ -710,11 +710,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async verifyReceipt({ receipt, intent, instance, signal }) {
       scope(instance); const record = retained(intent.operation_id).record; await verifyGrant(record, signal);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
       if (record.preview.binding.executor_kind === "human") await human.verifyCaptured(record, signal);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
@@ -924,6 +926,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "cycle_terminal_checkpoint" ? await terminalCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_TERMINAL_CHECKPOINT_AUTHORITY_REQUIRED")
         : binding.id === "session_git_checkpoint" ? await sessionGitCheckpoint.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "mode_work_preflight" ? await processAuthority?.preflightModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
+        : binding.id === "mode_work_observe" ? await processAuthority?.observeModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
+        : binding.id === "mode_work_continue_decision" ? await processAuthority?.prepareModeWorkContinuation(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_evaluate" ? await processAuthority?.evaluateModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
@@ -1045,6 +1049,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.preview.binding.executor_kind === "human") {
         if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(state.record, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(state.record, record.preview.prepared.plan, { signal });
@@ -1107,6 +1112,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_validation_evaluate") output = (await evaluateValidation(state.record, record.preview.input)).output;
         else if (record.intent.binding_ref === "cycle_audit_evaluate") output = await evaluateAudit(state.record, record.preview.input);
         else if (record.intent.binding_ref === "mode_work_preflight") output = await processAuthority.preflightModeWork(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "mode_work_observe") output = await processAuthority.observeModeWork(state.record, record.preview.input);
         else if (record.intent.binding_ref === "mode_work_evaluate") output = await processAuthority.evaluateModeWork(state.record, record.preview.input);
         else if (record.intent.binding_ref === "cycle_audit_select") output = await evaluateAuditSelection(state.record, record.preview.input);
         else if (record.intent.binding_ref === "cycle_task_select") output = await processAuthority.evaluateCycleTaskSelection(state.record, record.preview.input);
@@ -1200,7 +1206,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async receiveDecision(id, { sourceRef, write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.preview.binding.executor_kind !== "human" || !["session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.preview.binding.executor_kind !== "human" || !["mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
       if (record.phase === "receipted") {
         const capture = human.captured(record);
         if (capture.source_ref !== sourceRef) fail("PROCESS_HUMAN_DECISION_ALREADY_CAPTURED");
@@ -1212,6 +1218,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(state.record, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(state.record, record.preview.prepared.plan, { signal });
@@ -1221,6 +1228,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (record.intent.binding_ref === "drift_recovery_decision") await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
+      if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(state.record, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(state.record, record.preview.prepared.plan, { signal });

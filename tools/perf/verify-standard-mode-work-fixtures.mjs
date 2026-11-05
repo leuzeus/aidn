@@ -21,7 +21,10 @@ for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_co
   test(`${mode} has real preflight, analysis and evaluation nodes with read-only permissions`, () => {
     const node = id => model.nodes.find(row => row.id === id);
     assert.deepEqual(node(prefix + "_preflight").children, [prefix + "_admit"]);
-    assert.deepEqual(node(prefix + "_handoff").children, [prefix + "_analysis", prefix + "_evaluate"]);
+    assert.deepEqual(node(prefix + "_handoff").children, [prefix + "_analysis_loop"]);
+    assert.deepEqual(node(prefix + "_analysis_iteration").children, [prefix + "_analysis", prefix + "_observe", prefix + "_after_report"]);
+    assert.equal(node(prefix + "_analysis_loop").until, "mode_analysis_completed");
+    assert.equal(node(prefix + "_continue_decide").binding_ref, "mode_work_continue_decision");
     assert.equal(node(prefix + "_admit").binding_ref, "mode_work_preflight");
     assert.equal(node(prefix + "_evaluate").binding_ref, "mode_work_evaluate");
     const policy = model.policies.find(row => row.id === node(prefix + "_analysis").policy_ref);

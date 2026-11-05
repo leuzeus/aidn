@@ -64,6 +64,8 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         opResult(frame, next, "completed");
       } else {
         let facts = {};
+        if (node.binding_ref === "mode_work_observe") facts = { mode_work_report_complete: true, mode_analysis_completed: false };
+        if (node.binding_ref === "mode_work_evaluate") facts = { mode_analysis_completed: true };
         if (node.binding_ref === "session_mode_apply") facts = { mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING", mode_exploring: scenario.mode === "EXPLORING" };
         if (node.binding_ref === "cycle_task_advance") facts = { cycle_tasks_finished: ++advanced >= scenario.task_iterations };
         if (fullCorrection && node.id === "session_pr_correction_decide") facts = { session_pr_correction_cycle_requested: true };

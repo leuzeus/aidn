@@ -1,5 +1,19 @@
 # Testing Guide
 
+New mode continuation source wiring has a separate contract suite:
+`node tools/perf/verify-standard-mode-work-continuation-fixtures.mjs`.
+The mixed fixture selector is `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-mode-work-resume-mode=files --standard-mode-work-session=THINKING
+--retain-always` (also `dual` and `db-only`). It must use a NEW project and model,
+receive a NEW authenticated human fixture decision in a cold process after the
+original Native grant expires, activate a separately authenticated epoch with
+closed Native resources and retained cumulative consumption, and execute a
+second distinct read-only occurrence. The original report, allocation, grant
+and event prefix must remain immutable. Replay/simulation use the same reducer.
+These are fixture authorities with real local ports, not genuine human/provider,
+general UNKNOWN-effect recovery, SPIKE/experiment/closure or installed evidence.
+Full STANDARD and current Runtime/Governance Admission remain unproved.
+
 The full correction fixture prepares its expected source identifiers before the
 mixed host reserves Native. Run `node tools/perf/verify-standard-composed-cycle-fixtures.mjs
 --retain-always` for accepted-source and new-review binding checks, and

@@ -359,3 +359,11 @@ these components do not establish repeated correction, the full C2 journey,
 genuine human/native/provider/OS, configured PostgreSQL or exact installed
 archive behavior. The qualification record separates terminal component results
 from pending business journeys.
+
+Mode analysis continuation adds closed private review/question/human source,
+observation and decision-output v1 contracts and `process-decision-inbox.v10`.
+A report observation preserves its original evaluation; an authenticated human
+continuation requests a new occurrence without positive analysis or effect facts.
+Historical inbox v1-v9 and mode evaluation v1 keep their meaning. These records
+reuse the operation/native-result/decision-inbox authorities from ADR-0025;
+they introduce no public JSON command or automatic migration.
