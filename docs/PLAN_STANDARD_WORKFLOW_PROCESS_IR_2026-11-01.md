@@ -1,5 +1,19 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE47 SPIKE wrapper correction, 2026-11-04
+
+Nested wrapper inputs omit root-only schema declarations while retaining their
+input constraints. EXPLORING preflight now invokes the existing canonical
+context-refresh port before analysis; its repair and freshness observations
+come from the real projector and artifact CAS. Unknown values remain unknown.
+The final conversion hook validates the existing canonical SPIKE, its R2
+continuity and branch/session ownership using the private completion selector;
+it does not select continuity for another cycle. The host still authenticates
+the accepted decision and checks exact postimages, metadata and authorization.
+Exact-source qualification is required. Experiments and the entire L1-L8/A1-A10
+remain unfinished; ordinary entry and complete_standard_workflow are unchanged.
+
+
 ## SOURCE46 SPIKE planning continuation, 2026-11-04
 
 The published model now selects a read-only planning activity for the human's

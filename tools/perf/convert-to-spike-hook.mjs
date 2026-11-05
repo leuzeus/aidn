@@ -2,7 +2,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCheckpointUseCase } from "../../src/application/runtime/checkpoint-use-case.mjs";
-import { runConvertToSpikeAdmitUseCase } from "../../src/application/runtime/convert-to-spike-admit-use-case.mjs";
+import { runConvertToSpikeAdmitUseCase, runConvertToSpikeCompletionAdmitUseCase } from "../../src/application/runtime/convert-to-spike-admit-use-case.mjs";
 import { resolveDefaultIndexStore } from "../../src/core/state-mode/runtime-index-policy.mjs";
 
 const PERF_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +28,7 @@ function parseArgs(argv) {
     indexSyncCheckOut: ".aidn/runtime/index/index-sync-check.json",
     mode: "EXPLORING",
     runId: "",
+    completionCycleId: null,
     json: false,
     emitSummaryEvent: true,
     skipIndexOnIncremental: true,
@@ -40,6 +41,9 @@ function parseArgs(argv) {
     if (token === "--target") {
       args.target = String(argv[i + 1] ?? "").trim();
       i += 1;
+    } else if (token === "--completion-cycle") {
+      args.completionCycleId = String(argv[++i] ?? "");
+      if (!/^C[0-9]{3,6}$/.test(args.completionCycleId)) throw Error("SPIKE_COMPLETION_CYCLE_INVALID");
     } else if (token === "--mode") {
       args.mode = String(argv[i + 1] ?? "").trim().toUpperCase();
       i += 1;
@@ -136,7 +140,7 @@ function printUsage() {
 }
 
 function shouldRunCheckpoint(admission) {
-  return ["proceed_r2_session_base_with_import", "create_cycle_allowed"].includes(String(admission?.action ?? ""));
+  return ["proceed_r2_session_base_with_import", "create_cycle_allowed", "spike_conversion_completed"].includes(String(admission?.action ?? ""));
 }
 
 function buildSummary(result) {
@@ -163,7 +167,9 @@ function main() {
   Promise.resolve().then(async () => {
     const args = parseArgs(process.argv.slice(2));
     const targetRoot = path.resolve(process.cwd(), args.target);
-    const admission = await runConvertToSpikeAdmitUseCase({
+    const admission = args.completionCycleId
+      ? await runConvertToSpikeCompletionAdmitUseCase({ targetRoot, cycleId: args.completionCycleId })
+      : await runConvertToSpikeAdmitUseCase({
       targetRoot,
       mode: args.mode,
     });

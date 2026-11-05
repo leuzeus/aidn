@@ -146,7 +146,7 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
           if (postimages(initialized(instance, plan.input)) !== plan.postimages_sha256) fail("STANDARD_SPIKE_METADATA_CHANGED"); }
         catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         try {
-          hook = runSkillHookUseCase({ args: { skill: "convert-to-spike", mode: "EXPLORING", strict: true, noAutoSkipGate: true },
+          hook = runSkillHookUseCase({ args: { skill: "convert-to-spike", mode: "EXPLORING", completionCycleId: plan.selection.cycle_id, strict: true, noAutoSkipGate: true },
             perfDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), targetRoot: root, processAdapter: createLocalProcessAdapter() });
           const payload = hook.payload, checkpoint = payload?.checkpoint;
           if (hook.ok !== true || hook.strict !== true || payload?.ok !== true || payload.result !== "ok" || payload.skill !== "convert-to-spike"

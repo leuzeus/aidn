@@ -1,5 +1,19 @@
 # Testing Guide
 
+## SOURCE47 SPIKE wrapper correction, 2026-11-04
+
+Nested wrapper inputs omit root-only schema declarations while retaining their
+input constraints. EXPLORING preflight now invokes the existing canonical
+context-refresh port before analysis; its repair and freshness observations
+come from the real projector and artifact CAS. Unknown values remain unknown.
+The final conversion hook validates the existing canonical SPIKE, its R2
+continuity and branch/session ownership using the private completion selector;
+it does not select continuity for another cycle. The host still authenticates
+the accepted decision and checks exact postimages, metadata and authorization.
+Exact-source qualification is required. Experiments and the entire L1-L8/A1-A10
+remain unfinished; ordinary entry and complete_standard_workflow are unchanged.
+
+
 The 135 operation occurrences also exceed catalog v1's 128-entry bound.
 Explicit standard-workflow-catalog.v2 allows 256; v1 keeps its original bound.
 The first frozen SOURCE44 candidate failed catalog validation before dispatch;

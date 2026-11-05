@@ -27,6 +27,11 @@ prepared = await operations.prepareStart({ session_id: "S001" });
 assert.equal(prepared.can_apply, true);
 const started = await operations.finalizeStart(prepared, { write: true, expectPlan: prepared.plan_sha256 });
 assert.equal(started.outcome, "completed", JSON.stringify(started));
+// Establish real canonical repair observations; no freshness verdict is authored.
+prepared = await operations.prepareCycleContext({ session_id: "S001" });
+assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
+const refreshed = await operations.refreshCycleContext(prepared, { write: true, expectPlan: prepared.plan_sha256 });
+assert.equal(refreshed.effect_status, "confirmed", JSON.stringify(refreshed));
 const context = { session_id: "S001", mode: "EXPLORING", objective: "Verify real conversion wrapper fences", product_sha256: H,
   git: { head: git("rev-parse", "HEAD"), branch: git("branch", "--show-current") }, preflight_operation_id: "op_" + "b".repeat(40) };
 const observed = observeModeWorkReport({ report: { contract_version: "standard-mode-work-report.v1", context_sha256: shadowHash(context), mode: "EXPLORING",

@@ -67,7 +67,8 @@ for (const prefix of ["spike_committing", "spike_exploring"]) {
 }
 xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
-  seq(`${prefix}_preflight`, [`${prefix}_admit`]);
+  seq(`${prefix}_preflight`, [...(prefix === "exploring" ? ["exploring_context_refresh"] : []), `${prefix}_admit`]);
+  if (prefix === "exploring") op("exploring_context_refresh", "cycle_context_refresh", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
   op(`${prefix}_admit`, "mode_work_preflight", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, mode: { source: "literal", value: mode } });
 }
 seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",

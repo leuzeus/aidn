@@ -13,6 +13,7 @@ import { createOperationJournalSigner } from "../../src/core/workflow/process-op
 import { createProcessDecisionInboxStore } from "../../src/adapters/runtime/process-decision-inbox-store.mjs";
 import { assertDecisionInbox, decisionInboxId } from "../../src/core/workflow/process-decision-inbox.mjs";
 import { parseSessionMetadata } from "../../src/lib/workflow/session-context-lib.mjs";
+import { runConvertToSpikeCompletionAdmitUseCase } from "../../src/application/runtime/convert-to-spike-admit-use-case.mjs";
 import { loadStandardWorkflowAssets } from "../../src/application/runtime/standard-workflow-composition.mjs";
 
 const H = "a".repeat(64), ref = { ref: "fixture:spike-result", sha256: H }, roots = [];
@@ -64,6 +65,8 @@ try {
     await assert.rejects(operations.initializeCycle(prepared, { expectPlan: prepared.plan_sha256 }), { code: "STANDARD_EXPLICIT_EFFECT_REQUIRED" });
     const result = await operations.initializeCycle(prepared, { write: true, expectPlan: prepared.plan_sha256 });
     assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.equal(result.effect_status, "confirmed");
+    assert.equal((await runConvertToSpikeCompletionAdmitUseCase({ targetRoot: root, cycleId: choice.cycle_id })).ok, true);
+    assert.equal((await runConvertToSpikeCompletionAdmitUseCase({ targetRoot: root, cycleId: "C999" })).ok, false);
     assert.equal(git(root, "rev-parse", "HEAD"), head);
     assert.equal(git(root, "branch", "--show-current"), branch_action === "recommend" ? "S001-spike" : "spike/C007-bounded-learning");
     const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
