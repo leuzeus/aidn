@@ -3154,6 +3154,13 @@ required for OS closure; these fixtures do not qualify the fixed production entr
 genuine actors, published STANDARD execution or business ALLresources closure.
 These new selections require exact-source terminal evidence before any PASS claim.
 
+The shared RPC double follows production close idempotence. It retains both
+`closeCalls` and `confirmedClosures`; one resource may receive multiple close
+attempts while confirming its effective closure exactly once. SOURCE65's first
+partition setup retained two close attempts and failed an overstrict fixture
+assertion before any race started. That failure is retained separately; the
+corrected counter is not a production closure or genuine Native qualification.
+
 The independent worker's final observation is identified by two observations
 after the actual durable assignment, rather than an absolute RPC count. The
 `head-last-human-await` and `context-last-human-await` cases change only HEAD or

@@ -51,7 +51,7 @@ execution = createProjectAgenticProcessExecution(configuration, { rpcFactory: t.
 const result = await execution.run({ execute: true, authorization });
 process.stdout.write(JSON.stringify(result) + "\n");
 process.send({ kind: "fixture_metrics", pid: process.pid, parent_pid: process.ppid, observations, assignedObservations,
-  sessions: t.sessions.map(({ turns, closed, closeCalls }) => ({ turns, closed, closeCalls })),
+  sessions: t.sessions.map(({ turns, closed, closeCalls, confirmedClosures }) => ({ turns, closed, closeCalls, confirmedClosures })),
   rpc_calls: t.calls.length, turns: t.calls.filter(row => row.method === "turn/start").length,
   capability_in_native: JSON.stringify(t.sessions.map(row => row.configuration)).includes("human_verification")
     || JSON.stringify(t.calls).includes("human_verification"), native: "fixture" }, () => process.disconnect());

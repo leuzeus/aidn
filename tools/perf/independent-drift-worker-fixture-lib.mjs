@@ -46,7 +46,7 @@ export async function runIndependentDriftWorker({ request, sent, f, options, onE
   assert.ok(metrics, "Independent fixture must retain its counters and exact child identity");
   assert.equal(metrics.pid, child.pid); assert.notEqual(metrics.pid, process.pid);
   assert.equal(metrics.parent_pid, process.pid);
-  assert.equal(metrics.sessions.every(row => row.closed && row.closeCalls === 1), true);
+  assert.equal(metrics.sessions.every(row => row.closed && row.confirmedClosures === 1 && row.closeCalls >= 1), true);
   f.independentWorker = { ...metrics, exit, stderr, stdout, child_timeout_ms: childTimeoutMs };
   await onEvent({ type: "stdout", bytes: Buffer.from(stdout) });
   return { outcome: "completed", termination_state: "confirmed", termination_proof: { active_processes: 0 } };

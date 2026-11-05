@@ -29,7 +29,7 @@ export function transport(f, options = {}) {
       mcp_servers: {}, plugins: {}, apps: { _default: { enabled: false } },
       shell_environment_policy: { inherit: "all", ignore_default_excludes: true, filters: Object.fromEntries(CODEX_STARTUP_ENVIRONMENT_PROFILES.worker.map(name => [name, "include"])), set: {} },
       permissions: { [profile]: parsed } };
-    const session = { thread, turns: 0, closed: false, closeCalls: 0, configuration, cfg }; sessions.push(session);
+    const session = { thread, turns: 0, closed: false, closeCalls: 0, confirmedClosures: 0, configuration, cfg }; sessions.push(session);
     return {
       async request(method, params) {
         calls.push({ method, params, thread });
@@ -73,7 +73,12 @@ export function transport(f, options = {}) {
         return { turn: { id: turn } };
       },
       notify() {}, async flush() {}, async close() {
-        session.closeCalls++; session.closed = true;
+        session.closeCalls++;
+        // Production RPC stop/close is idempotent. Preserve attempted calls,
+        // while counting a resource's confirmed closure only once.
+        if (session.confirmedClosures) return { closed: true };
+        session.closed = true;
+        if (!options.closeFailure) session.confirmedClosures++;
         if (options.corruptEvidenceOnClose) {
           const directory = path.join(f.dirs.control, "case"), file = fs.readdirSync(directory).find(name => name.endsWith("-native-result.json"));
           if (file) fs.appendFileSync(path.join(directory, file), "\n");

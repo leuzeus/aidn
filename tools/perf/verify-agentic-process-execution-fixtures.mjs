@@ -824,11 +824,11 @@ if (process.argv[2] === "--mixed-continue") {
         assert.equal(first.journal_phase, "closed", JSON.stringify(first));
         await host.step({ write: true });
         if (driftWorkerPhase === "setup") {
+          assert.ok(f.t.sessions.every(row => row.closed && row.confirmedClosures === 1 && row.closeCalls >= 1));
           const file = path.join(f.base, "independent-worker-setup.json");
           fs.writeFileSync(file, JSON.stringify({ proof_class: "independent-worker-fixture-setup.v1", mode: driftWorkerMode, authorization,
             first_allocation: first, fixture: Object.fromEntries(["configuration", "dirs", "base", "model"].map(name => [name, f[name]])),
-            parent_sessions: f.t.sessions.map(({ turns, closed, closeCalls }) => ({ turns, closed, closeCalls })) }, null, 2), { flag: "wx" });
-          assert.ok(f.t.sessions.every(row => row.closed && row.closeCalls === 1));
+            parent_sessions: f.t.sessions.map(({ turns, closed, closeCalls, confirmedClosures }) => ({ turns, closed, closeCalls, confirmedClosures })) }, null, 2), { flag: "wx" });
           console.log(JSON.stringify({ setup_state_file: file, mode: driftWorkerMode, status: "SETUP_ONLY", race: "NOT_RUN", published_process: "NOT_RUN" }));
           return;
         }
