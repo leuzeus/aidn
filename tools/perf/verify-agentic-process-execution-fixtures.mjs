@@ -1566,12 +1566,20 @@ if (process.argv[2] === "--mixed-continue") {
     const cycleObjective = "Determine whether a bounded prototype is useful";
     for (const route of ["finalize", "recovery"]) {
       let humanReads = 0;
-      const options = route === "recovery" ? { recovery: true, humanSource: {
+      const options = route === "recovery" ? { finalize: false, recovery: true, humanSource: {
         read() { humanReads++; throw Error("UNEXPECTED_HUMAN_READ_WITHOUT_QUESTION"); },
         verify() { throw Error("UNEXPECTED_HUMAN_VERIFICATION"); },
       } } : {};
       const f = finalizationFixture("files", options);
       Object.assign(f, { sessionObjective, cycleObjective });
+      // Validate both exact authorities before allocating a Native fixture.
+      // The recovery model has no finalize node and must have no finalize pin.
+      f.open();
+      if (process.argv.includes("--drift-objective-construction-only")) {
+        assert.equal(f.t.sessions.length, 0);
+        console.log(JSON.stringify({ drift_objective_model_preflight: route, outcome: "constructed", native_allocations: 0 }));
+        continue;
+      }
       const auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, "DONE");
       assert.match(c.artifacts.sessions().find(row => row.session_id === "S001").content, new RegExp(sessionObjective));
       const observed = await c.context();
