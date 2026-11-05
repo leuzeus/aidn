@@ -104,11 +104,12 @@ export async function verifyStandardSpikeExecution({ mixedFixture, storageMode, 
         await assert.rejects(f.open().receiveDecision(result.operation_id, { sourceRef: "wrong", write: true }), { code: "PROCESS_HUMAN_QUESTION_CHANGED" });
         publish("unverified", source);
         await assert.rejects(f.open().receiveDecision(result.operation_id, { sourceRef: "unverified", write: true }), { code: "PROCESS_HUMAN_NOT_AUTHENTICATED" });
-        publish(mode ? "mode" : "spike", source);
-        await f.open().receiveDecision(result.operation_id, { sourceRef: mode ? "mode" : "spike", write: true });
+        const sourceRef = (mode ? "mode" : closure ? "closure" : "spike") + "_" + result.operation_id;
+        publish(sourceRef, source);
+        await f.open().receiveDecision(result.operation_id, { sourceRef, write: true });
         await f.open().acceptOperation(result.operation_id, { write: true });
         const accepted = shadowHash(f.open().readOperation(result.operation_id));
-        assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: mode ? "mode" : "spike", write: true })).status, "retained_result");
+        assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef, write: true })).status, "retained_result");
         assert.equal(shadowHash(f.open().readOperation(result.operation_id)), accepted);
         record = f.open().readOperation(result.operation_id);
       }
