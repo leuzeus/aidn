@@ -192,7 +192,7 @@ function retainComposedChild(controlRoot, label, child) {
 }
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
-async function check(name, callback) { if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+async function check(name, callback) { if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   const epochMode = process.argv.find(value => value.startsWith("--native-epoch-mode="))?.slice("--native-epoch-mode=".length);
   if (epochMode && !["files", "dual", "db-only"].includes(epochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
   if (epochMode && !name.startsWith(`native epoch ${epochMode}:`)) return;
@@ -677,7 +677,7 @@ function restoreComposedFixture(data, options) {
   return Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model });
 }
 async function bootstrapMixed(f) {
-  const input = { session_id: "S001", session_branch: "S001-mixed", objective: "Execute real mixed bootstrap" };
+  const input = { session_id: "S001", session_branch: "S001-mixed", objective: f.sessionObjective ?? "Execute real mixed bootstrap" };
   const parameters = f.model.data_bindings ? { parameters: { session: input, ...(f.cycleParameters ? { cycle: f.cycleParameters } : {}) } } : {};
   const h = f.open(), initial = h.initialize({ write: false, ...parameters });
   h.initialize({ write: true, expectedResultSha256: initial.record.instance_sha256, ...parameters });
@@ -714,7 +714,7 @@ async function prepareCompletionCycle(f, state, intermediate = false) {
   prepared = await operations.prepareCycleContext({ session_id: "S001" });
   assert.equal((await operations.refreshCycleContext(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
   git("add", "."); git("commit", "--allow-empty", "-m", "fixture prepared cycle context");
-  const objective = "Execute real mixed bootstrap with an admitted terminal cycle";
+  const objective = f.cycleObjective ?? "Execute real mixed bootstrap with an admitted terminal cycle";
   prepared = await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "completion-context", objective,
     continuity_rule: "R2_SESSION_BASE_WITH_IMPORT", base_branch: "S001-mixed" });
   assert.equal(prepared.can_apply, true, JSON.stringify({ reason: prepared.reason_code,
@@ -1558,6 +1558,51 @@ if (process.argv[2] === "--mixed-continue") {
       productFiles: f.configuration.product_files, productSha256: f.open().previewNative().product_sha256 });
     assert.equal(context.context.git.other_changes.count, 0); assert.ok(context.evidence_refs.some(row => row.ref === "audit:parking-lot.md"));
     assert.notEqual(beforeRecord.record.instance_sha256, after.record.instance_sha256);
+  });
+  if (process.argv.includes("--drift-objective-mismatch-only")) await check("drift objective mismatch: exact canonical goals retain the clean-report refusal and unavailable recovery question", async () => {
+    // New projects only. This is a diagnostic reproduction, not an admission or
+    // a semantic verdict about either objective. Native/Human are fixture ports.
+    const sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
+    const cycleObjective = "Determine whether a bounded prototype is useful";
+    for (const route of ["finalize", "recovery"]) {
+      let humanReads = 0;
+      const options = route === "recovery" ? { recovery: true, humanSource: {
+        read() { humanReads++; throw Error("UNEXPECTED_HUMAN_READ_WITHOUT_QUESTION"); },
+        verify() { throw Error("UNEXPECTED_HUMAN_VERIFICATION"); },
+      } } : {};
+      const f = finalizationFixture("files", options);
+      Object.assign(f, { sessionObjective, cycleObjective });
+      const auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, "DONE");
+      assert.match(c.artifacts.sessions().find(row => row.session_id === "S001").content, new RegExp(sessionObjective));
+      const observed = await c.context();
+      assert.equal(observed.context.original_objective, cycleObjective);
+      assert.equal(observed.context.context_use, "cycle_completion");
+      const native = await f.open().step({ write: true, authorization: auth });
+      assert.equal(native.journal_phase, "closed", JSON.stringify(native));
+      const occurrence = f.open().inspect().cursor.occurrences.find(row => row.node_id === "analyze").occurrence_id;
+      const evaluated = await f.open().step({ write: true, input: { report_occurrence_id: occurrence } });
+      const output = f.open().readOperation(evaluated.operation_id).results.at(-1).output;
+      assert.equal(output.facts.drift_present, false);
+      assert.equal(output.facts.drift_context_complete, true);
+      assert.equal(output.facts.drift_recovery_required, false);
+      const before = f.open().inspect().record.instance_sha256;
+      if (route === "finalize") {
+        const preview = await f.open().step({ write: false, input: { evaluation_operation_id: evaluated.operation_id } });
+        assert.equal(preview.preview.prepared.can_apply, false);
+        assert.equal(preview.preview.prepared.reason_code, "STANDARD_DRIFT_GATE_BLOCKED");
+        assert.ok(preview.preview.prepared.gate.levels.level2.active_signals.includes("objective_delta"));
+      } else {
+        await assert.rejects(f.open().step({ write: false }), /STANDARD_RECOVERY_COMPLETE_DIAGNOSIS_REQUIRED/);
+      }
+      assert.equal(f.open().inspect().record.instance_sha256, before);
+      assert.equal(c.artifacts.ownerPending(), false);
+      assert.equal(humanReads, 0);
+      assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
+      console.log(JSON.stringify({ diagnosis: "UNRESOLVED_SIGNAL_REPORT_DISAGREEMENT", route,
+        session_objective: sessionObjective, cycle_objective: cycleObjective, target: f.configuration.target_root,
+        status: "BLOCKED", human_question_available: false, drift_check_completed: false,
+        proof_class: "real-context-evaluation-finalization-and-recovery-ports-fixture-native", complete_standard: false }));
+    }
   });
   for (const [mode, state] of [["files", "DONE"], ["dual", "NO_GO"], ["db-only", "DROPPED"]]) await check(`drift completion ${mode}: terminal owning context drives the authenticated report and real hook without reopening the cycle`, async () => {
     const f = finalizationFixture(mode), auth = await bootstrapMixed(f), c = await prepareCompletionCycle(f, state, mode === "db-only");

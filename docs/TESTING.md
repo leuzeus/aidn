@@ -18,6 +18,16 @@ this case as well. No runner/controller double is passed to the entry; its Nativ
 configuration is deliberately unusable. This prefix does not qualify a session,
 other storage modes, genuine actors or an installed package.
 
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-objective-mismatch-only --retain-on-failure`
+reproduces the exact session/cycle objective pair from the preserved SPIKE failure
+on two new FILES projects. Real canonical creation/context, authenticated fixture
+Native output, evaluation, finalization and recovery preparation establish whether
+the clean report can obtain a human recovery question. The current expected result
+is an unresolved refusal: `objective_delta` blocks finalization, while recovery
+requires a confirmed diagnosis and never asks the human. A passing reproduction
+does not resolve that disagreement or complete R05. Terminal cycle status is an
+explicit fixture precondition; no original arena or authority is reused.
+
 The synthetic composed preflight follows `cycle_work_requested` from its modeled
 mode decision. THINKING and nonretained EXPLORING count two Native activities:
 analysis and session-closure drift. They terminate after their actual closure
