@@ -349,6 +349,12 @@ finalization; `--verify` retains its read-only verification behavior.
     not full STANDARD, genuine actor or installation qualification; absent
     provider/renewal capabilities remain blocking.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
+  - A STANDARD run preview returns `action.request` with its closed
+    `input.preparedAction`. Save this returned request and resubmit it with
+    `--execute --expect-plan <outer action_sha256>`. The browser retains the same
+    request under its explicit approval. The original operation plan is preserved;
+    current authority, freshness and CAS are still checked. A prepared action and
+    `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`
 - `aidn runtime agent-run-resume --configuration <file> --run <id> --json`

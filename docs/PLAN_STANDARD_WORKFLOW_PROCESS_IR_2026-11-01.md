@@ -1,5 +1,21 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE55 exact console action, 2026-11-05
+
+The console's prior apply path regenerated its operation preview, changing the
+timed plan and its consent subject. A focused changing-clock reproduction retains
+the original `WORKFLOW_CONSOLE_PREVIEW_CHANGED` refusal with zero effects. The
+candidate retains the existing closed prepared action in the returned
+`action.request`, which the CLI caller saves or the browser keeps for explicit
+approval. The ordinary host still checks schema, exact digest, current authority,
+freshness and CAS; legacy/custom configurations cannot consume this action.
+
+The isolated console/browser component passes on the working source. Exact-source
+public-console execution and the required gates still need separate qualification.
+This does not complete ordinary entry, full STANDARD or L1-L8/A1-A10. The separate
+SOURCE54 SPIKE keeps its own frozen source, authority, owners and dated results;
+no new fixture or source edit restarts that instance.
+
 ## SOURCE47 SPIKE wrapper correction, 2026-11-04
 
 Nested wrapper inputs omit root-only schema declarations while retaining their

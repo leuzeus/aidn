@@ -68,7 +68,7 @@ export function createProjectWorkflowConsole({ targetRoot }) {
   async function lifecycle(input, { apply = false, expectPlan = null, syncRelay = false } = {}) {
     if (input.command == null || input.command === "workflow-run") return runProjectWorkflow({ targetRoot: root,
       engine: input.engine, configuration: input.configuration, authorization: input.authorization, plan: input.plan,
-      actionFile: input.actionFile, decisionSource: input.decisionSource, controlSource: input.controlSource, observation: input.observation,
+      actionFile: input.actionFile, preparedAction: input.preparedAction, decisionSource: input.decisionSource, controlSource: input.controlSource, observation: input.observation,
       execute: apply, expectPlan, syncRelay: apply && syncRelay });
     const argv = ["--target", root, "--configuration", input.configuration, ...(input.plan ? ["--plan", input.plan] : []), ...(input.run ? ["--run", input.run] : []),
       ...(apply ? [input.command === "agent-run-cleanup" ? "--write" : "--execute", "--expect-plan", expectPlan, "--sync-relay"] : [])];

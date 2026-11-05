@@ -1,5 +1,23 @@
 # Testing Guide
 
+The console fixture includes a changing prepared-plan clock. It retains the exact
+STANDARD action in the returned request, rejects a missing prepared request,
+changed action and changed live authority before effects, and checks that the
+browser submits the retained consent subject. The isolated helper can run with
+`node --input-type=module -e "import { verifyStandardConsoleExactAction as verify } from './tools/perf/standard-console-action-test-lib.mjs'; console.log(await verify());"`.
+This is an offline application-port/browser boundary check, not a genuine human
+or complete published-model execution proof. Existing CLI action-file and
+closed-action validation still apply to the inline console form.
+
+`node tools/perf/verify-standard-console-entry-fixtures.mjs` uses a fresh activated
+FILES project and the real public `workflow-action` CLI. It checks immutable
+preview, separate host-key/instance actions, exact cold preservation of the first
+timed operation, absent/unknown action refusal, actual `context_reload` receipt,
+and same-reducer replay/SIM without effects. The existing console fixture invokes
+this case as well. No runner/controller double is passed to the entry; its Native
+configuration is deliberately unusable. This prefix does not qualify a session,
+other storage modes, genuine actors or an installed package.
+
 The synthetic composed preflight follows `cycle_work_requested` from its modeled
 mode decision. THINKING and nonretained EXPLORING count two Native activities:
 analysis and session-closure drift. They terminate after their actual closure

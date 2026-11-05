@@ -40,13 +40,15 @@ export function resolveStandardWorkflowConfiguration(request) {
   return { configuration, parameters: structuredClone(request.parameters), modelSource: assets.source, validationProfile: request.validation_profile ?? null };
 }
 
-export async function runStandardWorkflowEntry({ request, actionFile = null, decisionSource = null, controlSource = null, observation = null,
+export async function runStandardWorkflowEntry({ request, actionFile = null, preparedAction = null, decisionSource = null, controlSource = null, observation = null,
   authorization = null, execute = false, expectPlan = null, environment = process.env, signal } = {}) {
   const resolved = resolveStandardWorkflowConfiguration(request), { configuration, parameters, modelSource, validationProfile } = resolved;
   const authority = createStandardHostAuthority({ configuration, environment });
   if ([decisionSource, controlSource, observation].filter(value => value !== null).length > 1 || observation && !["replay", "simulate"].includes(observation)
     || execute && observation) fail("STANDARD_ENTRY_ACTION_CONFLICT");
-  const supplied = actionFile ? readAgentRunFile(path.resolve(actionFile), { maxBytes: 4194304 }).value : null;
+  if (actionFile && preparedAction !== null) fail("STANDARD_ENTRY_ACTION_CONFLICT");
+  const supplied = actionFile ? readAgentRunFile(path.resolve(actionFile), { maxBytes: 4194304 }).value : preparedAction;
+  if (preparedAction !== null && (!supplied || typeof supplied !== "object" || Array.isArray(supplied))) fail("STANDARD_ENTRY_ACTION_INVALID");
   if (supplied && (checkShadowJson(supplied) || validateJsonSchema(supplied, actionSchema, "$", { contractKind: "workflow-definition" }).length)) fail("STANDARD_ENTRY_ACTION_INVALID");
   if (execute && (!supplied || expectPlan !== shadowHash(supplied))) fail("STANDARD_ENTRY_EXACT_ACTION_REQUIRED");
   let permittedOperation = null;

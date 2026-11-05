@@ -1,5 +1,22 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Exact STANDARD action through the console, 2026-11-05
+
+The console preview retains the existing closed `standard-workflow-action.v1`
+object in `action.request.input.preparedAction`. A CLI caller saves and resubmits
+`action.request`; the browser retains that same request under its explicit consent.
+Both submit the outer console digest. The ordinary entry receives the original
+prepared object rather than regenerating an operation's timestamps during apply.
+It checks the same closed schema, exact inner digest, current context, plan age,
+authority and CAS as the action-file route. The two input forms are exclusive.
+Legacy and custom-native configurations cannot consume this STANDARD action.
+
+This reuses the existing action and operation authorities. It creates no new
+information concept, signature authority, effect permission or implicit write.
+Preview remains nonmutating. Component console/browser evidence is distinct from
+published-model execution, genuine human/Native/provider and installed evidence.
+The entire L1-L8/A1-A10 objective and complete STANDARD qualification remain open.
+
 ## Explicit cycle-work routing, 2026-11-05
 
 The authenticated mode decision's private output v3 emits `cycle_work_requested`: COMMITTING requests

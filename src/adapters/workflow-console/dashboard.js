@@ -65,7 +65,7 @@ $("preview").onclick = async () => {
   try { const request = JSON.parse(observed.text); const output = await call("action", { request }); $("preview-output").textContent = json(output);
     $("approve").checked = false; $("sync").checked = false;
     prepared = output.can_apply && generation === observed.generation && observed.text === $("request").value && observed.token === $("token").value
-      ? { request, output, text: observed.text, token: observed.token } : null;
+      ? { request: output.action?.request ?? request, output, text: observed.text, token: observed.token } : null;
   }
   catch (error) { $("preview-output").textContent = error.message; }
   finally { pending = false; }

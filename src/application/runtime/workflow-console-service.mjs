@@ -13,7 +13,7 @@ const operations = Object.freeze({
   propose: ["definition", "explanation", "baseInstanceId"],
   activate: ["definition", "explanation", "baseInstanceId", "expectedPreviewSha256", "review"],
   "initialize-selected": ["workflowId", "instanceId", "expectedSelectionSha256", "engine"],
-  run: ["command", "engine", "configuration", "authorization", "plan", "run", "actionFile", "decisionSource", "controlSource", "observation"],
+  run: ["command", "engine", "configuration", "authorization", "plan", "run", "actionFile", "preparedAction", "decisionSource", "controlSource", "observation"],
 });
 export const workflowConsoleCode = cause => {
   const value = cause?.code ?? cause?.message;
@@ -24,6 +24,9 @@ export function validateWorkflowConsoleRequest(request) {
     || !Object.hasOwn(operations, request.operation) || !request.input || Array.isArray(request.input) || typeof request.input !== "object"
     || Object.keys(request.input).some(k => !operations[request.operation].includes(k))) fail("WORKFLOW_CONSOLE_REQUEST_INVALID");
   if (request.operation === "run" && request.input.command != null && !["workflow-run", "agent-run", "agent-run-resume", "agent-run-cancel", "agent-run-cleanup"].includes(request.input.command)) fail("WORKFLOW_CONSOLE_REQUEST_INVALID");
+  if (request.operation === "run" && Object.hasOwn(request.input, "preparedAction")
+    && (request.input.command != null && request.input.command !== "workflow-run" || request.input.actionFile
+      || !request.input.preparedAction || typeof request.input.preparedAction !== "object" || Array.isArray(request.input.preparedAction))) fail("WORKFLOW_CONSOLE_REQUEST_INVALID");
   return structuredClone(request);
 }
 export function workflowConsoleEnvelope(name, effect = "read-only") {
@@ -112,6 +115,14 @@ export function createWorkflowConsoleService({ targetIdentity, readRecords, read
           || apply && (!/^[a-f0-9]{64}$/.test(expectPlan ?? "") || legacyRun && !syncRelay)
           || !apply && (syncRelay || expectPlan) || request.operation === "propose" && apply) fail("WORKFLOW_CONSOLE_EXPLICIT_EFFECT_REQUIRED");
         const preview = await invoke(request);
+        if (run && preview.preview?.contract_version === "standard-workflow-action.v1" && !request.input.actionFile && !Object.hasOwn(request.input, "preparedAction")) {
+          // Return the original closed action as part of the consent subject.
+          // Recreating its timed operation plan during apply changes that subject.
+          // Both transports resubmit action.request; the entry still rechecks the
+          // exact plan, live authority, freshness and CAS before any effect.
+          if (apply) fail("WORKFLOW_CONSOLE_STANDARD_PREPARED_ACTION_REQUIRED");
+          request.input.preparedAction = structuredClone(preview.preview);
+        }
         const needsSharedSync = legacyRun || run && preview.engine === "legacy";
         if (apply && needsSharedSync && !syncRelay) fail("WORKFLOW_CONSOLE_EXPLICIT_EFFECT_REQUIRED");
         const action = { request, target_sha256: targetIdentity, preview,

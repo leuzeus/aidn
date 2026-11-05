@@ -19,7 +19,7 @@ export function workflowRunEnvelope(effect = "preview") {
 // Common execution entry, independent of XML authoring. JSON/preview never
 // allocates a native session. Execution retains the owned host and its budgets.
 export async function runProjectWorkflow({ targetRoot, engine, configuration, authorization, plan,
-  actionFile = null, decisionSource = null, controlSource = null, observation = null,
+  actionFile = null, preparedAction = null, decisionSource = null, controlSource = null, observation = null,
   execute = false, syncRelay = false, expectPlan = null } = {}, { runOwned = runOwnedAgenticProcess, lifecycle = createPublicAgentRunLifecycle } = {}) {
   const output = workflowRunEnvelope(execute ? "executor" : "preview");
   try {
@@ -27,12 +27,13 @@ export async function runProjectWorkflow({ targetRoot, engine, configuration, au
     const root = agentRunPhysicalPath(path.resolve(targetRoot ?? "."), { directory: true });
     output.engine = resolveWorkflowEngine({ engine, config: readAidnProjectConfig(root).data });
     if (!configuration) {
+      if (preparedAction !== null) fail("WORKFLOW_RUN_STANDARD_CONFIGURATION_REQUIRED");
       output.requirements = ["WORKFLOW_CONFIGURATION_REQUIRED", "EXPLICIT_EXECUTION_AUTHORIZATION_REQUIRED"];
       if (execute) fail("WORKFLOW_RUN_CONFIGURATION_REQUIRED");
       return output;
     }
     if (output.engine === "legacy") {
-      if (actionFile || decisionSource || controlSource || observation) fail("WORKFLOW_RUN_LEGACY_ARGUMENT_CONFLICT");
+      if (actionFile || preparedAction !== null || decisionSource || controlSource || observation) fail("WORKFLOW_RUN_LEGACY_ARGUMENT_CONFLICT");
       if (authorization) fail("WORKFLOW_RUN_LEGACY_AUTHORIZATION_INVALID");
       const args = ["--target", root, "--configuration", path.resolve(configuration), ...(plan ? ["--plan", path.resolve(plan)] : []),
         ...(execute ? ["--execute", "--expect-plan", expectPlan ?? "", ...(syncRelay ? ["--sync-relay"] : [])] : [])];
@@ -50,14 +51,14 @@ export async function runProjectWorkflow({ targetRoot, engine, configuration, au
       if (agentRunPhysicalPath(config.execution?.target_root, { directory: true }) !== root) fail("WORKFLOW_RUN_TARGET_CHANGED");
       const consent = authorization ? readAgentRunFile(path.resolve(authorization), { maxBytes: 16384 }).value : null;
       if (execute) output.dry_run = false;
-      const result = await runStandardWorkflowEntry({ request: config, actionFile, decisionSource, controlSource, observation,
+      const result = await runStandardWorkflowEntry({ request: config, actionFile, preparedAction, decisionSource, controlSource, observation,
         authorization: consent, execute, expectPlan });
       output.preview = result.preview; output.action_sha256 = result.action_sha256; output.can_apply = result.can_apply;
       output.result = result.result; output.requirements = result.requirements;
       output.written = result.written; output.dry_run = !execute;
       return output;
     }
-    if (actionFile || decisionSource || controlSource || observation) fail("WORKFLOW_RUN_STANDARD_CONFIGURATION_REQUIRED");
+    if (actionFile || preparedAction !== null || decisionSource || controlSource || observation) fail("WORKFLOW_RUN_STANDARD_CONFIGURATION_REQUIRED");
     if (agentRunPhysicalPath(config.target_root, { directory: true }) !== root) fail("WORKFLOW_RUN_TARGET_CHANGED");
     const preview = await runOwned({ configuration: config, execute: false });
     const consent = authorization ? readAgentRunFile(path.resolve(authorization), { maxBytes: 16384 }).value : null;
