@@ -27,7 +27,8 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
   const active = instance => { if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_SPIKE_INSTANCE_CHANGED"); };
   const planValid = (plan, schema) => {
-    if (validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_SPIKE_PLAN_INVALID");
+    const issues = validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" });
+    if (issues.length) throw Object.assign(Error("STANDARD_SPIKE_PLAN_INVALID"), { code: "STANDARD_SPIKE_PLAN_INVALID", effect_status: "no_effect", issues });
     return plan;
   };
   const explicit = (prepared, write, expected) => {
