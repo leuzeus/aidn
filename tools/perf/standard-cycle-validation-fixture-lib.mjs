@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { execFile } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { assertStandardValidationProfile, selectStandardValidationChecks } from "../../src/core/workflow/standard-cycle-validation.mjs";
 const hash = value => createHash("sha256").update(value).digest("hex");
 // Executes a controlled Node fixture. No Codex sandbox qualification, native
 // provider, isolation, or general process-tree termination is established.
@@ -46,4 +47,34 @@ export function createValidationProfileFixture(base, { status = "passed", mode =
     limits: { max_duration_ms: duration, max_output_bytes: 65536, max_files: 64, max_snapshot_bytes: 1048576 } };
   const profileRef = write("profile.json", profile);
   return { profile, profileRef, counter, calls: () => fs.readFileSync(counter, "utf8").trim().split("\n").filter(Boolean).length };
+}
+
+// Setup evidence for a NEW fixture only. This does not qualify a native sandbox
+// or validate the product: the runtime must still execute the planned verifier.
+export async function preflightValidationProfileFixture(fixture, { testRefs, expectedValue = 2 }) {
+  const bytes = fs.readFileSync(fixture.profileRef.path);
+  assert.equal(hash(bytes), fixture.profileRef.sha256);
+  const profile = assertStandardValidationProfile(JSON.parse(bytes));
+  const checks = selectStandardValidationChecks(profile, { test_refs: testRefs });
+  const configurationBytes = fs.readFileSync(profile.boundary_configuration.path);
+  assert.equal(hash(configurationBytes), profile.boundary_configuration.sha256);
+  const boundary = fixtureValidationBoundary({ configuration: JSON.parse(configurationBytes) });
+  assert.deepEqual(await boundary.checkAvailability(), { available: true, native: false });
+  const results = [];
+  for (const [value, expected] of [[expectedValue, "passed"], [expectedValue - 1, "failed"]]) {
+    const cwd = path.join(path.dirname(fixture.profileRef.path), "preflight-" + expected);
+    fs.mkdirSync(cwd); fs.writeFileSync(path.join(cwd, "app.mjs"), `export const value = ${value};\n`);
+    for (const check of checks) {
+      assert.equal(hash(fs.readFileSync(check.script.path)), check.script.sha256);
+      const child = spawnSync(process.execPath, [check.script.path, ...check.args], { cwd, env: profile.environment,
+        windowsHide: true, timeout: 10000, maxBuffer: profile.limits.max_output_bytes, encoding: "utf8" });
+      assert.equal(child.status, 0, child.stderr);
+      const verdict = JSON.parse(child.stdout);
+      assert.equal(verdict.contract_version, "agent-verification-check.v1");
+      assert.equal(verdict.validation_id, check.test_ref); assert.equal(verdict.status, expected);
+      results.push({ test_ref: check.test_ref, value, status: verdict.status });
+    }
+  }
+  return { proof_class: "offline-controlled-node-fixture", profile_ref: fixture.profileRef, available: true, native: false,
+    descriptor: boundary.getDescriptor(), test_refs: checks.map(row => row.test_ref), results, product_validation: "NOT_RUN" };
 }

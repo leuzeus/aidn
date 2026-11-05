@@ -12,6 +12,8 @@ import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import { cycleAuditProposal } from "./cycle-audit-fixture-lib.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { modeAnalysisWitness } from "./standard-mode-analysis-execution-fixture-lib.mjs";
+import { createValidationProfileFixture, preflightValidationProfileFixture } from "./standard-cycle-validation-fixture-lib.mjs";
+import { selectStandardValidationChecks } from "../../src/core/workflow/standard-cycle-validation.mjs";
 
 export function standardSpikeWitness(host, configuration) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: configuration.target_root });
@@ -38,6 +40,8 @@ export async function verifyStandardSpikeExecution({ mixedFixture, storageMode, 
     const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
     if (experiment && observed.context.contract_version === "standard-cycle-plan-context.v1") {
       const report = cyclePlanProposal(observed);
+      selectStandardValidationChecks(verifier.profile, { test_refs: report.tests.map(row => row.id) });
+      for (const task of report.tasks) selectStandardValidationChecks(verifier.profile, task);
       report.spike = { learning_goal: observed.context.original_objective, timebox: "30 minutes", decision_target: "Retain or discard after measured validation" };
       return { outcome: "completed", summary: "Propose this human-selected SPIKE plan", report };
     }
@@ -67,6 +71,14 @@ export async function verifyStandardSpikeExecution({ mixedFixture, storageMode, 
       contract_version: "standard-mode-work-report.v1", context_sha256: observed.context_sha256, mode: "EXPLORING", objective: observed.context.objective,
       disposition: "retain_requested", findings: ["An explicitly scoped experiment is needed"], rationale: "Proposal only", evidence_refs: observed.evidence_refs } };
   } });
+  const verifier = experiment ? createValidationProfileFixture(f.base, { testRef: "TEST-001" }) : null;
+  if (verifier) {
+    const preflight = await preflightValidationProfileFixture(verifier, { testRefs: ["TEST-001"] });
+    f.validationProfile = verifier.profileRef;
+    fs.writeFileSync(path.join(f.base, "spike-validation-preflight.json"), JSON.stringify(preflight));
+    console.log(JSON.stringify({ spike_validation_preflight: preflight, native_allocations: f.t.sessions.length }));
+    assert.equal(f.t.sessions.length, 0);
+  }
   sourceFile = path.join(f.configuration.control_root, "spike-human-sources.json"); fs.writeFileSync(sourceFile, "{}");
   const publish = (ref, source) => fs.writeFileSync(sourceFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(sourceFile, "utf8")), [ref]: source }));
   const parameters = { session: { session_id: "S001", session_branch: "S001-analysis", objective: "Learn through an explicitly admitted bounded SPIKE" },
@@ -79,6 +91,7 @@ export async function verifyStandardSpikeExecution({ mixedFixture, storageMode, 
   // one-hour historical experiment cases and their arenas remain unchanged.
   authorization.global_deadline_ms = authorization.workflow_deadline_ms = authorization.authorized_at_ms + (closeSession ? 10800000 : 3600000);
   fs.writeFileSync(path.join(f.base, "spike-original-authority.json"), JSON.stringify({ configuration: f.configuration, parameters, authorization,
+    validation_profile: f.validationProfile ?? null,
     proof_class: "fixture-native-and-human-real-business-ports", storage_mode: storageMode, choice, experiment, close_session: closeSession }));
   const originalAuthorization = shadowHash(authorization), product = fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"));
   const git = (...args) => execFileSync("git", ["-C", f.configuration.target_root, ...args], { encoding: "utf8", windowsHide: true }).trim();

@@ -61,6 +61,17 @@ or external provider actions, then cold-polls the retained instance and replays 
 same model/reducer while comparing canonical bytes/metadata, projections, Git,
 product and journal evidence. It is not an observed merge or a genuine actor test.
 
+Before opening the mixed host, every new effectful SPIKE fixture creates its
+host-owned pinned `TEST-001` validation profile. A bounded setup preflight checks
+its schema, hashes, planned test availability and fixture boundary availability,
+then runs the actual check against separate value-2 and value-1 controls. The
+positive and negative verdicts prove this setup is usable and nonpermissive;
+they do not validate the product. The actual generated plan and each task must
+select those checks again. Runtime machine validation remains mandatory. The
+validation fixture suite retains the independent missing-profile refusal. These
+controlled Node checks and fixture boundary do not qualify genuine Native or
+its sandbox, and do not repair any prior failed SPIKE authority or arena.
+
 The new full-session case starts with its own three-hour, eight-response grant,
 10-MiB output cap and 300000-ms per-turn bound. The duration accounts for observed
 deterministic admission costs in the one-hour cases, which refused at the product

@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { createStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
-import { createValidationProfileFixture, fixtureValidationBoundary } from "./standard-cycle-validation-fixture-lib.mjs";
+import { createValidationProfileFixture, fixtureValidationBoundary, preflightValidationProfileFixture } from "./standard-cycle-validation-fixture-lib.mjs";
 import { createStandardCycleValidation } from "../../src/application/runtime/standard-cycle-validation.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { assertStandardValidationProfile, selectStandardValidationChecks, standardValidationStatus } from "../../src/core/workflow/standard-cycle-validation.mjs";
@@ -30,6 +30,11 @@ try {
       assert.equal(f.calls(), 0); assert.equal(createStandardWorkflowArtifacts({ targetRoot: root }).ownerPending(), false); pass(selected + ": no control data in writable sandbox scratch"); continue; }
     const plan = await adapter.prepare(instance, input); assert.equal(plan.can_apply, true);
     if (selected === "passed") {
+      const preflight = await preflightValidationProfileFixture(f, { testRefs: ["TEST:VALUE"] });
+      assert.equal(preflight.native, false); assert.equal(preflight.product_validation, "NOT_RUN");
+      assert.deepEqual(preflight.results.map(row => row.status), ["passed", "failed"]);
+      assert.equal(f.calls(), 0);
+      await assert.rejects(preflightValidationProfileFixture(f, { testRefs: ["UNKNOWN"] }), { code: "STANDARD_VALIDATION_CHECK_UNKNOWN" });
       const extra = structuredClone(f.profile); extra.command = "untrusted"; assert.throws(() => assertStandardValidationProfile(extra));
       assert.throws(() => selectStandardValidationChecks(f.profile, { test_refs: ["UNKNOWN"] }));
       assert.throws(() => selectStandardValidationChecks(f.profile, { test_refs: [] }));
