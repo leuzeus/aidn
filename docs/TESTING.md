@@ -23,6 +23,17 @@ and storage debits against the new grant. SOURCE42's missing-argument terminal
 failure remains historical evidence; a corrected run needs a new project and
 authority. This correction changes no application admission, TTL or ceiling.
 
+For the same cold authenticated receive/accept path, select
+`--standard-mode-work-resume-choice=refused|deferred|cancelled` separately to
+verify `FAILED`, `WAITING` and `CANCELLED` without another Native allocation or
+epoch. Repeated missing-source polls and duplicate receipt reads preserve the
+instance; replay/simulation and read-only host previews preserve it as well.
+For EXPLORING, `--standard-mode-work-resume-disposition=retain_requested`
+selects a blocked retention request before the new decision. Continuing still
+authorizes analysis only. These selectors are fixture inputs, not runtime CLI
+flags or new workflow permissions; their execution results must be reported
+separately from contract coverage.
+
 The full correction fixture prepares its expected source identifiers before the
 mixed host reserves Native. Run `node tools/perf/verify-standard-composed-cycle-fixtures.mjs
 --retain-always` for accepted-source and new-review binding checks, and

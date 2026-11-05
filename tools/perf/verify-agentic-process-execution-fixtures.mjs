@@ -96,6 +96,11 @@ const selectedModeWorkResumeMode = process.argv.find(value => value.startsWith("
 if (selectedModeWorkResumeMode && !["files", "dual", "db-only"].includes(selectedModeWorkResumeMode)) throw Error("STANDARD_MODE_RESUME_FIXTURE_ARGUMENTS_INVALID");
 const selectedModeWorkMode = process.argv.find(value => value.startsWith("--standard-mode-work-mode="))?.split("=")[1];
 const selectedModeWorkSession = process.argv.find(value => value.startsWith("--standard-mode-work-session="))?.split("=")[1] ?? "THINKING";
+const selectedModeWorkResumeChoice = process.argv.find(value => value.startsWith("--standard-mode-work-resume-choice="))?.split("=")[1] ?? "continue_analysis";
+const selectedModeWorkResumeDisposition = process.argv.find(value => value.startsWith("--standard-mode-work-resume-disposition="))?.split("=")[1] ?? "waiting";
+if (selectedModeWorkResumeMode && (!["THINKING", "EXPLORING"].includes(selectedModeWorkSession)
+  || !["continue_analysis", "refused", "deferred", "cancelled"].includes(selectedModeWorkResumeChoice)
+  || !(selectedModeWorkSession === "EXPLORING" ? ["waiting", "retain_requested"] : ["waiting"]).includes(selectedModeWorkResumeDisposition))) throw Error("STANDARD_MODE_RESUME_FIXTURE_ARGUMENTS_INVALID");
 const selectedModeWorkDisposition = process.argv.find(value => value.startsWith("--standard-mode-work-disposition="))?.split("=")[1] ?? (selectedModeWorkSession === "THINKING" ? "thinking_complete" : "nonretained");
 if (selectedModeWorkMode !== undefined && (selectedStandardComposedMode || !["files", "dual", "db-only"].includes(selectedModeWorkMode)
   || !["THINKING", "EXPLORING"].includes(selectedModeWorkSession)
@@ -776,7 +781,8 @@ if (process.argv[2] === "--mixed-continue") {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
   if (selectedModeWorkResumeMode) await check("standard mode resume: expired authority and new cold authenticated decision", () => verifyModeWorkContinuationExecution({
-    storageMode: selectedModeWorkResumeMode, sessionMode: selectedModeWorkSession, mixedFixture }));
+    storageMode: selectedModeWorkResumeMode, sessionMode: selectedModeWorkSession, choice: selectedModeWorkResumeChoice,
+    firstDisposition: selectedModeWorkResumeDisposition, mixedFixture }));
   if (selectedModeWorkMode) await check("standard mode analysis: published mixed execution and cold read-only polling", () => verifyModeAnalysisExecution({
     storageMode: selectedModeWorkMode, sessionMode: selectedModeWorkSession, disposition: selectedModeWorkDisposition, mixedFixture,
   }));

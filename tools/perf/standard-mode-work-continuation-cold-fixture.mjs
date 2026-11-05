@@ -13,13 +13,16 @@ try {
   { controllerFactory: () => { launches++; throw Error("COLD_DECISION_NATIVE_FORBIDDEN"); } });
   assert.equal(host.inspect().record.instance_sha256, data.expected_instance_sha256);
   const initial = host.inspectAllocations();
-  assert.equal((await host.receiveDecision(data.operation_id, { sourceRef: "missing", write: true })).status, "waiting_for_human");
+  for (let poll = 0; poll < 2; poll++) assert.equal((await host.receiveDecision(data.operation_id, { sourceRef: "missing", write: true })).status, "waiting_for_human");
   assert.equal(host.inspect().record.instance_sha256, data.expected_instance_sha256);
   const received = await host.receiveDecision(data.operation_id, { sourceRef: data.source_ref, write: true });
   assert.equal(received.status, "receipted");
   // A captured source survives restart and cannot be replaced by another ref.
   assert.equal((await host.receiveDecision(data.operation_id, { sourceRef: data.source_ref, write: true })).status, "retained_result");
   const accepted = await host.acceptOperation(data.operation_id, { write: true });
+  const output = host.readOperation(data.operation_id).results.at(-1).output;
+  assert.equal(output.observations.choice, data.expected_choice ?? "continue_analysis");
+  if (data.expected_choice && data.expected_choice !== "continue_analysis") assert.deepEqual(output.facts, {});
   assert.deepEqual(host.inspectAllocations(), initial); assert.equal(launches, 0);
   console.log(JSON.stringify({ status: "PASS", pid: process.pid, new_native_allocations: launches, clock_class: "injected-fixture-clock",
     original_authority_expired_on_fixture_clock: Date.now() > data.original_deadline_ms, wall_clock_expiry_qualification: "NOT_RUN",

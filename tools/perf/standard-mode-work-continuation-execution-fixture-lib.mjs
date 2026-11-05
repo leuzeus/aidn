@@ -10,7 +10,7 @@ import { modeAnalysisWitness } from "./standard-mode-analysis-execution-fixture-
 
 // New disposable projects and original grants only. Native/human/resource
 // authorities are fixture capabilities; business, Git and SQLite ports are real.
-export async function verifyModeWorkContinuationExecution({ storageMode, sessionMode, mixedFixture }) {
+export async function verifyModeWorkContinuationExecution({ storageMode, sessionMode, choice = "continue_analysis", firstDisposition = "waiting", mixedFixture }) {
   let sourceFile, grant, reads = 0, authorization;
   const newRationale = "Resolve the waiting comparison by confirming that the current product still exports value 1.";
   const humanSource = { read: input => closureHumanSource(sourceFile).read(input), verify: input => input.source.authority_id === "fixture_operator"
@@ -37,14 +37,14 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
         assert.equal(continuation.choice, "continue_analysis"); assert.equal(continuation.information_only, true);
         assert.equal(continuation.decision.rationale, newRationale); assert.equal(continuation.decision.source_event_id, "mode-resume-NEW-decision");
         assert.equal(continuation.source_sha256, shadowHash(continuation.decision));
-        assert.equal(continuation.prior_report.disposition, "waiting"); assert.equal(continuation.prior_report.objective, observed.context.objective);
+        assert.equal(continuation.prior_report.disposition, firstDisposition); assert.equal(continuation.prior_report.objective, observed.context.objective);
         assert.deepEqual(continuation.prior_report.findings, ["The first analysis needs an explicit new decision before further analysis."]);
         assert.ok(continuation.prior_reference.ref); assert.ok(continuation.prior_producer.occurrence_id);
         for (const field of ["product_effects_authorized", "retention_authorized", "native_authority_renewed"]) assert.equal(continuation[field], false);
       }
       return { outcome: "completed", summary: "Fixture analysis on a distinct authenticated occurrence", report: {
         contract_version: "standard-mode-work-report.v1", context_sha256: observed.context_sha256, mode: sessionMode,
-        objective: observed.context.objective, disposition: continuation ? sessionMode === "THINKING" ? "thinking_complete" : "nonretained" : "waiting",
+        objective: observed.context.objective, disposition: continuation ? sessionMode === "THINKING" ? "thinking_complete" : "nonretained" : firstDisposition,
         findings: continuation ? ["Authenticated followup request: " + continuation.decision.rationale, "Previous report: " + continuation.prior_report.findings[0]]
           : ["The first analysis needs an explicit new decision before further analysis."], rationale: "Fixture read-only mode continuation", evidence_refs: observed.evidence_refs } };
     } });
@@ -64,6 +64,8 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
       const beforeCount = f.t.sessions.length, state = f.open().inspect();
       if (state.cursor.status === "COMPLETED") break;
       const result = await f.open().step({ write: true, authorization: grant?.authorization ?? authorization });
+      console.log(JSON.stringify({ mode_resume_step: step, kind: result.kind, status: result.status, operation_id: result.operation_id ?? null,
+        journal_phase: result.journal_phase ?? null, native_sessions: f.t.sessions.length }));
       if (result.operation_id) {
         assert.equal(f.t.sessions.length, beforeCount, "D/H cannot allocate Native");
         const record = f.open().readOperation(result.operation_id);
@@ -76,11 +78,11 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
             assert.equal(record.intent.binding_ref, "mode_work_continue_decision"); assert.equal(waiting, undefined);
             waiting = f.open().inspect().record; originalAllocation = f.open().inspectAllocations().allocations[0];
             originalReport = record.preview.prepared.review.report;
-            assert.equal(originalReport.disposition, "waiting"); assert.equal(waiting.events.filter(row => row.kind === "result").length, 1);
+            assert.equal(originalReport.disposition, firstDisposition); assert.equal(waiting.events.filter(row => row.kind === "result").length, 1);
             const evaluation = f.open().readOperation(record.preview.input.review_operation_id).results.at(-1).output.observations.evaluation;
             assert.equal(evaluation.outcome, "blocked"); assert.deepEqual(evaluation.facts, {});
             const claim = { contract_version: "human-mode-work-decision.v1", source_kind: "human", authority_id: "fixture_operator", source_event_id: "mode-resume-NEW-decision",
-              subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice: "continue_analysis", rationale: newRationale,
+              subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice, rationale: newRationale,
               evidence_refs: [{ ref: "fixture:NEW-mode-decision", sha256: "c".repeat(64) }] };
             const witness = modeAnalysisWitness(f.open(), f.configuration);
             for (const [ref, change, code] of [["wrong-question", { question_sha256: "b".repeat(64) }, "PROCESS_HUMAN_QUESTION_CHANGED"],
@@ -94,7 +96,8 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
             offset = authorization.global_deadline_ms + 1 - realNow(); Date.now = () => realNow() + offset;
             const requestFile = path.join(f.base, "mode-resume-cold-request.json");
             fs.writeFileSync(requestFile, JSON.stringify({ configuration: f.configuration, key_hex: f.key.toString("hex"), human_source_file: sourceFile,
-              expected_instance_sha256: waiting.instance_sha256, operation_id: result.operation_id, source_ref: "new", clock_offset_ms: offset, original_deadline_ms: authorization.global_deadline_ms }));
+              expected_instance_sha256: waiting.instance_sha256, operation_id: result.operation_id, source_ref: "new", clock_offset_ms: offset, original_deadline_ms: authorization.global_deadline_ms,
+              expected_choice: choice }));
             const child = spawnSync(process.execPath, [fileURLToPath(new URL("./standard-mode-work-continuation-cold-fixture.mjs", import.meta.url)), requestFile],
               { encoding: "utf8", windowsHide: true, timeout: 600000, maxBuffer: 1048576 });
             fs.writeFileSync(path.join(f.base, "mode-resume-cold.stdout.log"), child.stdout ?? ""); fs.writeFileSync(path.join(f.base, "mode-resume-cold.stderr.log"), child.stderr ?? "");
@@ -105,6 +108,31 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
             assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "new", write: true })).status, "retained_result");
             assert.equal(f.open().inspect().record.events.length, count);
             assert.equal(decision.results[0].output.observations.native_authority_renewed, false);
+            if (choice !== "continue_analysis") {
+              const terminal = f.open().inspect(), journal = f.open().inspectAllocations();
+              const expectedStatus = { refused: "FAILED", deferred: "WAITING", cancelled: "CANCELLED" }[choice];
+              assert.equal(terminal.cursor.status, expectedStatus);
+              assert.equal(decision.results[0].output.outcome, choice === "refused" ? "rejected" : choice);
+              assert.deepEqual(decision.results[0].output.facts, {}); assert.deepEqual(journal.allocations, [originalAllocation]);
+              assert.equal(journal.contract_version, "native-allocation-journal.v1"); assert.equal(reads, 0); assert.equal(f.t.sessions.length, 1);
+              assert.ok(f.t.sessions.every(row => row.closed)); assert.deepEqual(authorization, original);
+              assert.deepEqual(terminal.record.events.slice(0, waiting.events.length), waiting.events);
+              const witness = modeAnalysisWitness(f.open(), f.configuration);
+              for (let poll = 0; poll < 2; poll++) await f.open().step({ write: false });
+              let replay;
+              for (const row of iterateAgenticProcessSimulation({ instanceId: terminal.record.instance_id, scopeId: terminal.record.scope_id, model: terminal.record.model,
+                parameters: terminal.record.initial_parameters, policyPins: terminal.record.policy_pins, facts: terminal.record.initial_facts, events: terminal.record.events })) replay = row;
+              assert.equal(replay.instance_sha256, terminal.record.instance_sha256);
+              assert.equal(modeAnalysisWitness(f.open(), f.configuration), witness);
+              console.log(JSON.stringify({ mode_resume_proof: true, storage_mode: storageMode, session_mode: sessionMode, first_disposition: firstDisposition, choice,
+                project: f.configuration.target_root, control: f.configuration.control_root, workflow_status: terminal.cursor.status,
+                instance_sha256: terminal.record.instance_sha256, model_sha256: terminal.record.model_sha256,
+                native_responses: 1, new_native_allocations: 0, new_epochs: 0, cold_receive_accept: true, positive_facts: {},
+                original_authority_and_prefix_preserved: true, replay_simulation_exact: true,
+                clock_class: "injected-fixture-clock", wall_clock_expiry_qualification: "NOT_RUN", native_human_resource_authorities: "fixture-capabilities",
+                spike_conversion: "NOT_RUN", general_business_unknown_reconciliation: "NOT_RUN", postgres: "NOT_RUN", installed_archive: "NOT_RUN", complete_standard_workflow: false }));
+              return;
+            }
             // A historical v1 journal retains limits and an authorization hash,
             // not the full original grant. Supply that exact retained object;
             // neither a human continuation nor a cold host may reconstruct it.
@@ -145,7 +173,7 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
     for (const row of iterateAgenticProcessSimulation({ instanceId: final.record.instance_id, scopeId: final.record.scope_id, model: final.record.model,
       parameters: final.record.initial_parameters, policyPins: final.record.policy_pins, facts: final.record.initial_facts, events: final.record.events })) last = row;
     assert.equal(last.instance_sha256, final.record.instance_sha256); assert.equal(modeAnalysisWitness(f.open(), f.configuration), beforeReplay);
-    console.log(JSON.stringify({ mode_resume_proof: true, storage_mode: storageMode, session_mode: sessionMode, project: f.configuration.target_root, control: f.configuration.control_root,
+    console.log(JSON.stringify({ mode_resume_proof: true, storage_mode: storageMode, session_mode: sessionMode, choice, first_disposition: firstDisposition, project: f.configuration.target_root, control: f.configuration.control_root,
       model_sha256: final.record.model_sha256, instance_sha256: final.record.instance_sha256, workflow_status: final.cursor.status, native_responses: 2,
       new_authenticated_decision_after_expiry_on_fixture_clock: true, clock_class: "injected-fixture-clock", wall_clock_expiry_qualification: "NOT_RUN",
       cold_receive_accept: true, distinct_occurrences_and_allocations: true, original_authority_and_prefix_preserved: true,
