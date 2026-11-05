@@ -3154,6 +3154,13 @@ required for OS closure; these fixtures do not qualify the fixed production entr
 genuine actors, published STANDARD execution or business ALLresources closure.
 These new selections require exact-source terminal evidence before any PASS claim.
 
+Independent-worker fixture termination now persists a bounded telemetry file in
+the owned fixture directory before assertions. It retains child/parent identity,
+exit, RPC/session/turn counters, limited transcripts and the scenario mutation.
+An early failed assertion therefore cannot hide the collected terminal counters.
+Missing counters remain missing; this file is neither a production receipt nor
+proof of a genuine Native actor, and it does not repair earlier failed cases.
+
 The shared RPC double follows production close idempotence. It retains both
 `closeCalls` and `confirmedClosures`; one resource may receive multiple close
 attempts while confirming its effective closure exactly once. SOURCE65's first

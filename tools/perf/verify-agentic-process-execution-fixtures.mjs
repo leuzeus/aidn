@@ -791,6 +791,8 @@ if (process.argv[2] === "--mixed-continue") {
     } };
     let beforeChild = null;
     const workerOptions = { recovery: true, finalize: false, rediagnosis: true, humanSource, independentDriftWorker, retainHost: true, hostTrace: true,
+      observeWorkerScenario: () => ({ mode: driftWorkerMode, beforeChild, mutation, current_verifications: currentVerifications,
+        current_human_source_sha256: claims.has("current") ? shadowHash(claims.get("current")) : null }),
       beforeWorker() {
         if (f.launches < 2) return;
         beforeChild = { current_verifications: currentVerifications, review_age_ms: Date.now() - review.prepared_at_ms,

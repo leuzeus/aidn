@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createWorkerHumanVerificationSource } from "../../src/application/runtime/native-human-verification-port.mjs";
@@ -40,6 +42,14 @@ export async function runIndependentDriftWorker({ request, sent, f, options, onE
   child.stdin.end(JSON.stringify(sent));
   let exit;
   try { exit = await closed; await pending; } finally { clearTimeout(stop); }
+  // Preserve terminal evidence before any assertion can reject this case. This
+  // is fixture telemetry, never a resource authority or production receipt.
+  const terminalFile = path.join(f.base, `independent-worker-terminal-${sent.allocation.generation}.json`);
+  fs.writeFileSync(terminalFile, JSON.stringify({ proof_class: "independent-worker-fixture-terminal.v1",
+    captured_at: new Date().toISOString(), child_pid: child.pid, parent_pid: process.pid,
+    exit, metrics, stdout, stderr, child_timeout_ms: childTimeoutMs,
+    callback_failed: failure !== null, scenario: options.observeWorkerScenario?.() ?? null,
+    native: "fixture", human: "fixture", published_process: "NOT_RUN" }, null, 2), { flag: "wx" });
   if (failure) throw failure;
   assert.equal(exit.signal, null, "Independent fixture must finish without forced termination");
   assert.equal(exit.code, 0, stderr);
@@ -47,7 +57,7 @@ export async function runIndependentDriftWorker({ request, sent, f, options, onE
   assert.equal(metrics.pid, child.pid); assert.notEqual(metrics.pid, process.pid);
   assert.equal(metrics.parent_pid, process.pid);
   assert.equal(metrics.sessions.every(row => row.closed && row.confirmedClosures === 1 && row.closeCalls >= 1), true);
-  f.independentWorker = { ...metrics, exit, stderr, stdout, child_timeout_ms: childTimeoutMs };
+  f.independentWorker = { ...metrics, exit, stderr, stdout, child_timeout_ms: childTimeoutMs, terminal_file: terminalFile };
   await onEvent({ type: "stdout", bytes: Buffer.from(stdout) });
   return { outcome: "completed", termination_state: "confirmed", termination_proof: { active_processes: 0 } };
 }
