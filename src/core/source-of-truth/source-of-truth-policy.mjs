@@ -63,7 +63,7 @@ const CONCEPT_GOVERNANCE = freezeDeep({
   },
   process_operation_journal: {
     owner: "trusted operation execution host",
-    lifecycle: "staged -> dispatching -> receipted; interrupted dispatch remains explicitly unresolved",
+    lifecycle: "staged -> dispatching -> receipted; interrupted dispatch remains explicitly unresolved; signed read-only inventories include canonical orphan records without disposing resources",
     scope: "one pinned process occurrence, physical project and canonical runtime authority; SPIKE port evidence stays local under .aidn/runtime/standard-workflow/evidence/spike-<plan-sha256>-{hook,sync}.json in every storage mode",
     retention: "retain signed previews, intent, dispatch owner, authenticated results and immutable referenced SPIKE port evidence without automatic purge; hook and canonical-projection sync bytes serialize their returned port objects; historical selective-import sync stdout stays unchanged",
     migration: "new versioned artifact records; no historical instance conversion or key rotation fallback",

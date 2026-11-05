@@ -1,5 +1,20 @@
 # Testing Guide
 
+## Retained-resource inventory foundation
+
+`node tools/perf/verify-standard-reconciliation-inventory-fixtures.mjs files`
+(or `dual` / `db-only`) exercises the actual internal operation-host inventory
+port, canonical files or SQLite, signed orphan journals absent from instance
+events, dispatching/no-receipt and receipted/UNKNOWN, retained owners/debits,
+unreferenced evidence, substituted grants, stale prefixes and db-only projection
+non-adoption. Bigint physical identities distinguish adjacent values above
+2**53 and roundtrip through JSON; actual files are reobserved before/after reads.
+The same checks join the existing required host fixture case; no previous gate
+case or argv is removed. Fault-injected journal/Native states are fixtures,
+not real crashes, external closure, a disposition or the full STANDARD model.
+No authorization callback or model call is expected. General reconciliation
+and the entire L1-L8/A1-A10 objective remain unqualified.
+
 ## Historical mixed diagnostic boundary, 2026-11-05
 
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --historical-diagnostic-only` selects the signed historical diagnostic regression in the existing execution gate. It calls the public mixed port and tests old implementation pins, expired retained previews, scope/instance/HMAC/binding/result/configuration substitution, missing or changed checkpoints, unchanged physical witnesses and current effect refusal despite untrusted diagnostic options. Its allocation/checkpoint corpus is synthetic and invokes no Native, human or provider. It supplies no resource closure, general reconciliation or productive-resume proof. Exact-source qualification and an unchanged read of a retained historical corpus are recorded separately; no old failure is reclassified.

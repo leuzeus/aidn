@@ -1,5 +1,19 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Retained-resource inventory foundation candidate, 2026-11-05
+
+General L4 now starts with an internal signed read-only inventory from the
+operation/mixed host. It includes canonical journals absent from instance events,
+reserved inboxes, historical owners/receipts, Native allocation caps/debits and
+local unreferenced evidence. Canonical DB content and metadata remain distinct
+from physical projections. Exact links are authenticated and repeated observations
+must match. Every external-discovery domain remains unresolved, with no closure,
+disposition, new admission, refund or effect permitted. The observation is not
+an atomic snapshot or a future CAS fence. Focused source qualification is still
+required. General disposition for both UNKNOWN states, all-resource closure,
+crash/concurrent recovery, productive full STANDARD, L5, required193 and the
+entire L1-L8/A1-A10 objective remain incomplete. See ADR-0026 and TESTING.
+
 ## Historical diagnostic boundary candidate, 2026-11-05
 
 The public mixed diagnostic port now separates signed historical binding authentication from current execution binding admission. It preserves the retained model, configuration, journals, checkpoints, results, grants and owners. No new effect or general resource disposition is authorized by a diagnostic read. Focused source qualification is required. The earlier cycle-component qualification timed out at its declared bound after partial successful assertions; that suite is not a PASS. Complete L1-L8/A1-A10, general L4 and productive full STANDARD remain active obligations.

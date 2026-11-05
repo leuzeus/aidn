@@ -5,7 +5,11 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 // Bounded direct implementation closure. Existing runtime dependencies retain
 // their separately retained build-lock/installed-version pins. npm distributions
 // exclude package-lock.json; direct code pins must use distributed assets only.
-const files = ["src/application/runtime/standard-workflow-entry.mjs", "src/adapters/runtime/standard-host-authority.mjs",
+const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
+  "src/lib/fs/exact-file-identity.mjs",
+  "src/core/workflow/process-reconciliation-inventory.mjs",
+  "src/core/contracts/workflow-definition/process-reconciliation-inventory.v1.schema.json",
+  "src/application/runtime/standard-workflow-entry.mjs", "src/adapters/runtime/standard-host-authority.mjs",
   ...["standard-workflow-execution.v1", "standard-workflow-action.v1", "standard-workflow-entry-result.v1"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/standard-pr-correction-checkpoint.mjs",
   ...["input", "plan", "output"].map(kind => `src/core/contracts/workflow-definition/standard-pr-correction-checkpoint-${kind}.v1.schema.json`), "src/application/runtime/standard-pr-correction-authority.mjs", "src/application/runtime/standard-pr-correction-reopen.mjs",

@@ -26,7 +26,8 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   if (model.nodes.filter(node => node.kind === "operation").every(node => bindings.has(node.binding_ref)
     && model.operation_pins[node.binding_ref] === shadowHash(bindings.get(node.binding_ref)))) nativeHost();
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
-    authorize, humanSource, controlSource, processAuthority, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort }, { validationBoundaryFactory });
+    authorize, humanSource, controlSource, processAuthority, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
+    reconciliationConfiguration: configuration }, { validationBoundaryFactory });
   const inspect = () => operations.inspect(configuration.instance_id);
   const nodeFor = frame => model.nodes.find(node => node.id === frame.node_id);
   async function finishOperation(id, signal) {
@@ -39,6 +40,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     initialize: input => operations.initialize({ ...input, instanceId: configuration.instance_id }),
     inspect,
     inspectDiagnostic: () => operations.inspectDiagnostic(configuration.instance_id),
+    prepareReconciliationInventory: input => operations.prepareReconciliationInventory(configuration.instance_id, input),
     previewNative: () => nativeHost().preview(),
     inspectAllocations: () => nativeHost().inspect(),
     readCheckpoint: generation => nativeHost().readCheckpoint(generation),

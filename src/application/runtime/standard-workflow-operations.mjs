@@ -20,7 +20,11 @@ import { createStandardSessionModeOperations } from "./standard-session-mode-ope
 import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
 import { readStandardGitHead } from "./standard-drift-git.mjs";
 
-const correctionFiles = ["native-human-verification-port.mjs", new URL("../../adapters/runtime/agent-admission-transport.mjs", import.meta.url), "standard-pr-correction-checkpoint.mjs",
+const correctionFiles = ["standard-reconciliation-inventory.mjs",
+  new URL("../../lib/fs/exact-file-identity.mjs", import.meta.url),
+  new URL("../../core/workflow/process-reconciliation-inventory.mjs", import.meta.url),
+  new URL("../../core/contracts/workflow-definition/process-reconciliation-inventory.v1.schema.json", import.meta.url),
+  "native-human-verification-port.mjs", new URL("../../adapters/runtime/agent-admission-transport.mjs", import.meta.url), "standard-pr-correction-checkpoint.mjs",
   ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-pr-correction-checkpoint-${kind}.v1.schema.json`, import.meta.url)), "standard-pr-correction-authority.mjs", "standard-pr-correction-reopen.mjs",
   new URL("../../core/workflow/standard-pr-correction-reopen.mjs", import.meta.url),
   ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-pr-correction-reopen-${kind}.v1.schema.json`, import.meta.url))];

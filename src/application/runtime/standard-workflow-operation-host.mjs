@@ -84,6 +84,7 @@ import { validateJsonSchema } from "../../core/contracts/json-schema-validator.m
 import previewSchema from "../../core/contracts/workflow-definition/standard-operation-preview.v1.schema.json" with { type: "json" };
 import { processParameterOptions } from "../../core/workflow/process-data-contracts.mjs";
 import { resolveStandardProcessInput, assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
+import { createStandardReconciliationInventory } from "./standard-reconciliation-inventory.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const receiptId = (id, index) => "receipt_" + id.slice(3) + (index ? "_" + index : "");
@@ -99,7 +100,7 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null }, { validationBoundaryFactory } = {}) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null }, { validationBoundaryFactory } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
@@ -915,12 +916,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return service.prepareOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
       occurrenceId: record.intent.occurrence_id, eventId: "intent_" + id.slice(3), write: true });
   }
+  const reconciliationInventory = createStandardReconciliationInventory({ targetRoot, signer, now,
+    configuration: reconciliationConfiguration, modelSource: source,
+    readInstance: id => current(id).record, readAuthority, readContext: snapshot });
   const operationHost = {
     initialize(input) {
       if (input.facts && Object.keys(input.facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
       return service.initialize({ ...input, model, facts: {} });
     },
     inspect: id => current(id),
+    prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
     inspectDiagnostic(id) {
       if (!processAuthority) fail("STANDARD_HOST_DIAGNOSTIC_AUTHORITY_REQUIRED");
       const value = service.inspect(id);

@@ -172,6 +172,33 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (new Set(names.map(name => process.platform === "win32" ? name.toLowerCase() : name)).size !== names.length) fail("STANDARD_ARTIFACT_INVENTORY_AMBIGUOUS");
     return { complete: true, source: selected.database ? selected.backend : "files", paths: names, sha256: shadowHash(names) };
   }
+  // A single canonical list statement supplies DB content and metadata together.
+  // Do not enumerate a projection and then import it as a recovery authority.
+  // This is an observation, not a transaction fence or an effect disposition.
+  function observeInventory() {
+    const selected = describe(); let rows;
+    if (selected.database) {
+      const store = open(true);
+      try { rows = store.listArtifacts(10000); }
+      finally { store.close(); }
+      if (rows.length >= 10000) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
+      rows = rows.map(row => {
+        if (row.content_format !== "utf8" || typeof row.content !== "string" || artifactContentHash(row.content) !== row.sha256)
+          fail("STANDARD_ARTIFACT_INTEGRITY_INVALID");
+        return { path: row.path, content: row.content, sha256: row.sha256, metadata_sha256: artifactMetadataHash(row) };
+      });
+    } else rows = inventory().paths.map(name => ({ ...read(name, { required: true }), metadata_sha256: null }));
+    let bytes = 0;
+    for (const row of rows) {
+      relative(row.path);
+      bytes += Buffer.byteLength(row.content);
+      if (bytes > 16777216) fail("STANDARD_ARTIFACT_INVENTORY_TRUNCATED");
+    }
+    rows.sort((a, b) => a.path.localeCompare(b.path, "en"));
+    if (new Set(rows.map(row => process.platform === "win32" ? row.path.toLowerCase() : row.path)).size !== rows.length)
+      fail("STANDARD_ARTIFACT_INVENTORY_AMBIGUOUS");
+    return { source: selected.database ? selected.backend : "files", binding_sha256: shadowHash(selected), rows };
+  }
   function sessions() {
     let names;
     if (describe().database) {
@@ -198,5 +225,5 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (new Set(result.map(row => BigInt(row.cycle_id.slice(1)).toString())).size !== result.length) fail("STANDARD_CYCLE_ID_AMBIGUOUS");
     return result;
   }
-  return Object.freeze({ root, describe, read, inventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
+  return Object.freeze({ root, describe, read, inventory, observeInventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
 }

@@ -19,6 +19,7 @@ import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { verifyStandardExpiredPlans } from "./verify-standard-expired-plan-fixtures.mjs";
+import { verifyStandardReconciliationInventory } from "./verify-standard-reconciliation-inventory-fixtures.mjs";
 
 const H = "a".repeat(64), grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: H, grant_sha256: H };
 const input = { session_id: "S001", session_branch: "S001-standard", objective: "Execute actual bootstrap ports through the common IR" };
@@ -47,6 +48,7 @@ if (process.argv[2] === "--accept") {
   const pass = name => { checks++; process.stdout.write(`PASS ${name}\n`); };
   try {
     for (const mode of ["files", "dual", "db-only"]) {
+      await verifyStandardReconciliationInventory(mode, pass);
       const root = createStandardWorkflowFixture(mode, owned), privateRoot = fs.mkdtempSync(path.join(temporary, "aidn-standard-key-")); owned.push(privateRoot);
       const keyFile = path.join(privateRoot, "host.key"); fs.writeFileSync(keyFile, randomBytes(32));
       let runtime = host(root, keyFile);

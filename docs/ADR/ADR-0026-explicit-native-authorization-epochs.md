@@ -1,5 +1,32 @@
 # ADR-0026 - Explicit native authorization epochs
 
+## Retained-resource inventory foundation, 2026-11-05
+
+The common operation/mixed host exposes the internal read-only
+`prepareReconciliationInventory` port. Canonical artifact enumeration discovers
+journals staged before their intent event, inbox captures reserved before
+delivery, every retained receipt and Native allocation, and local effect owners
+and unreferenced evidence. DB modes use canonical content and metadata from one
+list statement per observation; visible projections remain non-authoritative.
+Exact scope/model/prefix/binding/input/grant links and host MACs are checked.
+Physical file identities use bigint stats, exact decimal identifiers, bounded
+numeric size/mode/link counts and before/opened/after identity checks.
+Two unchanged observations detect drift; they are not an atomic multi-store
+snapshot, a CAS fence, anti-rollback storage or independent external discovery.
+Future disposition must revalidate versions and acquire its own fence.
+
+`process-reconciliation-inventory.v1` retains record hashes and accounting
+minima without changing the original grants, limits, deadlines or results.
+Unknown allocations keep unknown accounting even when a debit minimum is known.
+All seven discovery domains (deterministic, Native, human, control, process, Git
+and provider) still require independent observations. A signed inventory, an
+owner PID/UUID or a closed Native tree proves neither all-resource closure nor
+absence of a business effect. This port cannot release an owner, append a result,
+grant admission, renew authority or rerun an operation. Missing/changed records
+and unsupported/truncated local inventories fail without a partial success.
+General disposition and actual crash/concurrent recovery remain required.
+This foundation does not complete L4 or the standard workflow plan.
+
 ## Status
 
 Implemented in source as an internal allocation/host capability. Offline

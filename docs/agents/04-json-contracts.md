@@ -1,5 +1,13 @@
 # 04 JSON Contracts
 
+The private `process-reconciliation-inventory.v1` is a signed derived observation
+under the existing operation-journal concept. It binds the physical scope,
+canonical runtime, exact instance prefix, model/source/configuration, historical
+owners/results and observed accounting minima. All external-discovery domains
+remain unresolved; the envelope grants no closure, disposition, authority,
+budget refund or effect. It adds no public CLI output or durable record and does
+not convert historical journals. See ADR-0026.
+
 ## Close expiry continuation contracts
 
 The renewal plan embeds the closed hook-input data shape and its contract-version
