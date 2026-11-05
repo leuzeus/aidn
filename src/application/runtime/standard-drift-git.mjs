@@ -8,6 +8,16 @@ const inside = (root, file) => { const relative = path.relative(path.resolve(roo
 export function assertDiagnosticPathScope(file, deniedRoots = []) {
   if (deniedRoots.some(root => typeof root !== "string" || !path.isAbsolute(root) || inside(root, file))) fail("STANDARD_DRIFT_CONTEXT_SCOPE_DENIED");
 }
+// One fresh invocation, under the caller's existing Git environment and limits.
+// Options are ordered: the first HEAD emits its object ID, the second its full
+// symbolic name. Detached HEAD remains an empty branch, as with branch/show-current.
+// This observation is never retained for another call or an awaited boundary.
+export function readStandardGitHead(run) {
+  const rows = run(["rev-parse", "HEAD", "--symbolic-full-name", "HEAD"]).trimEnd().split(/\r?\n/);
+  if (rows.length !== 2 || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(rows[0])
+    || rows[1] !== "HEAD" && !rows[1].startsWith("refs/heads/")) fail("STANDARD_DRIFT_GIT_OBSERVATION_FAILED");
+  return { branch: rows[1] === "HEAD" ? "" : rows[1].slice(11), head: rows[0] };
+}
 // Only declared product contents enter a model prompt. The trusted host hashes
 // the other changes to detect staleness, without forwarding their paths/content.
 export function readControlledDriftGit({ root, productRoot, productFiles, observedDocuments = [], deniedRoots = [], environment = process.env }) {
@@ -34,7 +44,7 @@ export function readControlledDriftGit({ root, productRoot, productFiles, observ
     if (![file, ...(old ? [old] : [])].every(name => known.has(process.platform === "win32" ? name.toLowerCase() : name)))
       other.push({ status: state, path_sha256: artifactContentHash(file), previous_path_sha256: old ? artifactContentHash(old) : null });
   }
-  return { branch: git(["branch", "--show-current"]).trim(), head: git(["rev-parse", "HEAD"]).trim(), diff,
+  return { ...readStandardGitHead(git), diff,
     diff_scope: "configured-product-files-only", diff_sha256: artifactContentHash(diff), global_diff_sha256: artifactContentHash(globalDiff),
     status_sha256: artifactContentHash(status), other_changes: { count: other.length, sha256: shadowHash(other) } };
 }

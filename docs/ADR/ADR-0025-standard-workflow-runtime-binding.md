@@ -1,5 +1,15 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Fresh Git identity observation, 2026-11-05
+
+Standard scope and drift-context readers obtain HEAD and its symbolic branch in
+one ordered `rev-parse` invocation under their existing controlled environment,
+path restrictions, output bounds and deadline. Each invocation reads Git again;
+no result is shared with another method or across an awaited boundary. Detached
+HEAD still has an empty branch and an unborn HEAD still refuses. This changes
+neither effect admission nor historical records. It does not establish resource
+disposition, productive STANDARD closure or the remaining L1-L8/A1-A10 evidence.
+
 ## Authenticated terminal diagnostic observation candidate, 2026-11-05
 
 The mixed host has a separate internal `inspectDiagnostic` port. It authenticates

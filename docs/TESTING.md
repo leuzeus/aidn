@@ -1,5 +1,16 @@
 # Testing Guide
 
+## Fresh Git identity component, 2026-11-05
+
+`node tools/perf/verify-standard-drift-session-scope-fixtures.mjs --git-head-only`
+compares the combined HEAD/branch observation with the previous two Git commands
+on a disposable real repository: attached, changed HEAD, symbolic branch chain,
+detached, changed branch and unborn HEAD. It checks one invocation per read,
+complete file/identity witnesses around reads, and malformed-output refusal.
+The regular storage-mode selector also runs this component. Existing canonical
+context fences remain required separately; this component grants no effects and
+does not qualify the interrupted setup, general reconciliation or STANDARD.
+
 ## Terminal refusal observation and optional creation candidate, 2026-11-05
 
 The independent drift-worker selector now requires authenticated diagnostic

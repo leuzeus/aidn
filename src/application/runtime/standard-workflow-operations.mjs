@@ -18,6 +18,7 @@ import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { createStandardSessionModeOperations } from "./standard-session-mode-operations.mjs";
 import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
+import { readStandardGitHead } from "./standard-drift-git.mjs";
 
 const correctionFiles = ["native-human-verification-port.mjs", new URL("../../adapters/runtime/agent-admission-transport.mjs", import.meta.url), "standard-pr-correction-checkpoint.mjs",
   ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-pr-correction-checkpoint-${kind}.v1.schema.json`, import.meta.url)), "standard-pr-correction-authority.mjs", "standard-pr-correction-reopen.mjs",
@@ -256,7 +257,7 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
     // Do this before existing helpers: a missing canonical state must never
     // trigger their historical visible-file compatibility fallback.
     artifacts.read("CURRENT-STATE.md", { required: true });
-    return { project, persistence, branch: git(["branch", "--show-current"]), head: git(["rev-parse", "HEAD"]) };
+    return { project, persistence, ...readStandardGitHead(git) };
   }
   async function admission(mode = "UNKNOWN") {
     const prewrite = await preWriteAdmit({ targetRoot: root, skill: "start-session" });

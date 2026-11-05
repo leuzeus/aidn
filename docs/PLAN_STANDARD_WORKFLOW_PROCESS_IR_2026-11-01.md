@@ -1,5 +1,19 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Fresh Git identity cost candidate, 2026-11-05
+
+Read-only measurements of the interrupted setup distinguished a dispatching
+drift evaluation without a result from its preceding closed Native allocation.
+Neither a successful read nor OS closure disposes that operation or its owners.
+The original setup remains UNKNOWN and its race remains NOT_STARTED.
+
+Scope and drift readers now combine their two HEAD/branch subprocesses in one
+fresh Git invocation, preserving their caller's controls and later fences.
+There is no cache across calls or awaits, renewed grant or changed deadline.
+Exact-source qualification remains required. The measured component costs do
+not attribute the complete bootstrap or untraced preparation, and no overall
+speedup, completed setup, reconciliation or L1-L8/A1-A10 completion is claimed.
+
 ## Terminal diagnostic observation candidate, 2026-11-05
 
 The mixed host now exposes a distinct authenticated read-only diagnostic port

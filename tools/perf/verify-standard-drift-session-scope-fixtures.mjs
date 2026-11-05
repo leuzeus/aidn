@@ -9,11 +9,15 @@ import { createStandardWorkflowOperations } from "../../src/application/runtime/
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { readStandardDriftContext, captureStandardDriftContextFence } from "../../src/application/runtime/standard-drift-report.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { verifyStandardGitHead } from "./standard-git-head-fixture-lib.mjs";
 const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
 if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const owned = [], temporary = fs.realpathSync(os.tmpdir()); let complete = false, checks = 0;
 const pass = name => { checks++; console.log("PASS " + name); };
-try {
+if (process.argv.includes("--git-head-only")) {
+  console.log(JSON.stringify({ status: "PASS", ...verifyStandardGitHead(), scope: "git-head-identity-component", published_process: "NOT_RUN" }));
+} else try {
+  verifyStandardGitHead();
   const optionalName = "baseline/history.md";
   const root = createFreshStandardWorkflowFixture(mode, owned, { absentOptionalDocuments: [optionalName] });
   const ops = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
