@@ -140,6 +140,15 @@ function main() {
     initializeRepository(tempRoot);
     assertClean(tempRoot, "fixture repository should start clean");
 
+    const actualCommand = runGateFamily({ repoRoot: tempRoot, catalog: makeCatalog({ id: "actual-command" }),
+      packageJson: JSON.parse(fs.readFileSync(path.join(tempRoot, "package.json"), "utf8")),
+      requested: "synthetic", context: "dev", env: cleanEnvironment(), json: true });
+    assert(actualCommand.ok, JSON.stringify(actualCommand));
+    if (process.platform === "win32") {
+      assert(actualCommand.results[0].verification_process.cleanup.state === "confirmed", "Windows actual npm gate must prove full owned Job closure");
+      assert(actualCommand.results[0].verification_process.cleanup.proof.active_processes === 0, "no descendants after successful actual npm gate");
+    }
+
     const cleanGate = runFixtureGate(tempRoot, { id: "clean-pass" });
     assert(cleanGate.ok, "clean synthetic gate should pass");
     assert(cleanGate.results[0].worktree_guard.before_clean, "clean gate should record a clean before snapshot");

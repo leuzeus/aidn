@@ -30,6 +30,10 @@ A task is done only when:
 - every failed gate retains a bounded, redacted exit code, signal, and
   stdout/stderr tail; named fixture assertions and cleanup results must survive
   through both direct output and the family summary
+- Windows family execution confines the owned command tree before resume,
+  enforces the original execution deadline, and retains observed Job closure;
+  dispatcher case evidence preserves exact argv/order and interrupted results
+  separately from OS closure and business resource cleanup
 - required gate preconditions fail diagnostically when unavailable; they are not reported as `SKIP`
 - manual-only PostgreSQL smoke evidence remains outside pull-request admission
   and is reported separately as `PASS`, `SKIP`, or `UNAVAILABLE`

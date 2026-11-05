@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import manifest from "../../package/catalogs/agentic-process-fixtures.v1.json" with { type: "json" };
 import { runNodeFixtureCases } from "../verify/node-fixture-runner-lib.mjs";
+import { verifyWindowsVerificationTree } from "./verification-windows-tree-fixture-lib.mjs";
 
 // Historical e29b9aed argv, independently pinned before replacing the shell
 // body. A dropped, reordered, regrouped or changed argument breaks equivalence.
@@ -52,4 +53,5 @@ if (process.platform === "win32") {
   assert.equal((await terminal).signal, "SIGTERM");
 }
 console.log("PASS stop prevents subsequent launch and propagates the active-child signal");
+await verifyWindowsVerificationTree(base);
 console.log(JSON.stringify({ status: "PASS", platform: process.platform, native: "NOT_RUN", base }));

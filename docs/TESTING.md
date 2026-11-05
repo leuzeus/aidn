@@ -19,13 +19,41 @@ Its first 187 cases preserve the previous command exactly; six appended cases
 cover the dispatcher, host sources, combined authority and ordinary CLI in three
 storage modes. The independent private policy checks the complete argv/order,
 the exact npm wrapper, unique required placement and absence of lifecycle hooks.
-The dispatcher inherits output, waits for each child, fails at the first nonzero
-exit and forwards stop to its active child before allowing any next launch.
-It changes no gate or child timeout. `verify-node-fixture-runner-fixtures.mjs`
-checks literal argv and paths with spaces, ordered success, fail-fast exit 23,
-and stop propagation. Windows uses AbortSignal for the forwarding assertion;
-POSIX additionally observes a real parent SIGTERM. This is launcher evidence,
-not business, Native or ALLresources qualification.
+The dispatcher waits for each child, forwards its output and fails at the first
+nonzero exit. On Windows, both the family command (including npm descendants)
+and each dispatcher child use the existing process-tree controller. Job membership
+is established while suspended, before application execution; an independent
+helper enforces the original deadline and kills its Job on supervisor-pipe EOF.
+The supervisor also admits and retains a Windows handle to the synchronous
+family caller, checking its OS creation identity before any command starts.
+Caller death cancels the owned command tree. The watcher retains a supervisor
+handle too, so it exits when either lifetime ends; no numeric-PID kill is used.
+The family command keeps its 900000 ms bound. A separate bounded closure interval
+collects evidence after execution stops; it permits no new fixture allocation.
+The dispatcher checks the inherited absolute deadline before each launch and
+again before resuming a prepared Windows child. Standalone dispatch has the same
+900000 ms overall bound. POSIX retains direct-child signal forwarding.
+
+Every dispatcher invocation retains the complete ordered case list, per-child
+index/argv, PID and OS creation identity, start/end, result and Job closure proof
+in a separate temporary evidence directory. `AIDN_VERIFICATION_EVIDENCE_ROOT`
+can select an existing absolute directory outside the checkout for family evidence.
+Child stdout/stderr are bounded original logs; their digests are compared with the
+controller's observed digests. A partial transcript is explicitly incomplete.
+If the enclosing Job interrupts a child before it records its result, a separate
+enclosing-Job observation retains the exact case and OS closure proof without
+inventing that child's exit code. Original records are never overwritten.
+The directory survives failures and its reference appears in the family result.
+This supplies case coverage and measured wall times, without implying that an
+unexecuted suffix passed or that aggregate tails are full coverage.
+
+`verify-node-fixture-runner-fixtures.mjs` checks literal argv and paths with
+spaces, ordered success, fail-fast exit 23 and stop propagation. Windows also
+executes relative-argv dispatchers with real parents, children and grandchildren,
+observes their PID/parent/creation/executable/argv identities, expires the command
+or forcibly kills its supervisor or actual synchronous caller, and verifies no next allocation, owned-tree
+death and an unchanged foreign process identity. These are OS launcher fixtures;
+business resource closure, genuine Native actors and full STANDARD remain separate.
 
 `node tools/perf/verify-workflow-execution-authority-fixtures.mjs` checks that a
 combined synchronous project/persistence observation matches the separate
