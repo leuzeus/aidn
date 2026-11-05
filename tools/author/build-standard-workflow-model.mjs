@@ -41,7 +41,7 @@ xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking",
 // reaches a durable human operation; continuation creates a new loop occurrence.
 // Retention still requires a separately admitted SPIKE conversion.
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
-  seq(`${prefix}_handoff`, [...(prefix === "exploring" ? ["exploring_git_checkpoint"] : []), `${prefix}_analysis_loop`, `${prefix}_session_close`]);
+  seq(`${prefix}_handoff`, [...(prefix === "exploring" ? ["exploring_context_refresh", "exploring_git_checkpoint"] : []), `${prefix}_analysis_loop`, `${prefix}_session_close`]);
   if (prefix === "exploring") op("exploring_git_checkpoint", "session_git_checkpoint", operation(null, "context_operation_id", "exploring_context_refresh"));
   node(`${prefix}_analysis_loop`, "loop", { child: `${prefix}_analysis_iteration`, until: "mode_analysis_completed", max_iterations: 32 });
   seq(`${prefix}_analysis_iteration`, [`${prefix}_analysis`, `${prefix}_observe`, ...(prefix === "exploring" ? ["spike_admit"] : []), `${prefix}_after_report`]);
@@ -68,7 +68,7 @@ for (const prefix of ["spike_committing", "spike_exploring"]) {
 }
 xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
-  seq(`${prefix}_preflight`, [...(prefix === "exploring" ? ["exploring_context_refresh"] : []), `${prefix}_admit`]);
+  seq(`${prefix}_preflight`, [`${prefix}_admit`]);
   if (prefix === "exploring") op("exploring_context_refresh", "cycle_context_refresh", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
   op(`${prefix}_admit`, "mode_work_preflight", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, mode: { source: "literal", value: mode } });
 }
