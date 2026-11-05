@@ -85,7 +85,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   // process JSON, grants and model facts cannot weaken allocation exclusion.
   function authenticateHistory(instance, { reservation = null, productSha256, checkControlContext = false, forNative = false } = {}, diagnostic = false) {
     assertAgenticProcessInstance(instance); const authority = read();
-    if (instance.scope_id !== authority.scope_id || instance.model_sha256 !== authority.model_sha256 || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)
+    if (instance.instance_id !== configuration.instance_id || instance.scope_id !== authority.scope_id || instance.model_sha256 !== authority.model_sha256 || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)
       || Object.keys(instance.initial_facts).length) fail("STANDARD_PROCESS_AUTHORITY_CHANGED");
     const journal = allocations.read(nativeJournalId(instance)).record;
     let native = null, covered = 0;

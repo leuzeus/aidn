@@ -50,6 +50,7 @@ import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-
 import { createNativeAllocationWorkerAuthority } from "../../src/application/runtime/native-allocation-worker-authority.mjs";
 import { transport } from "./agentic-native-rpc-fixture-lib.mjs";
 import { runIndependentDriftWorker } from "./independent-drift-worker-fixture-lib.mjs";
+import { diagnosticFixtureWitness, verifyTerminalDiagnosticRefusals } from "./standard-terminal-diagnostic-fixture-lib.mjs";
 import { verifyNativeHumanVerificationPort } from "./native-human-verification-fixture-lib.mjs";
 import { assertNativeAllocationJournal, nativeJournalPath } from "../../src/core/workflow/native-allocation-journal.mjs";
 import { controlDelivery } from "../../src/core/workflow/process-control-inbox.mjs";
@@ -867,6 +868,7 @@ if (process.argv[2] === "--mixed-continue") {
         if (independentDriftWorker) assert.equal(child.turns, 0);
       }
       assert.ok(f.t.sessions.every(row => row.closed));
+      const witnessBeforeDiagnostic = diagnosticFixtureWitness(f.configuration);
       const journalBeforeDiagnostic = host.inspectAllocations(), diagnostic = host.inspectDiagnostic();
       assert.equal(shadowHash(diagnostic.record.events.slice(0, before.events.length)), shadowHash(before.events));
       assert.deepEqual(diagnostic.native.journal, journalBeforeDiagnostic);
@@ -878,6 +880,9 @@ if (process.argv[2] === "--mixed-continue") {
         for (const write of [false, true]) await assert.rejects(host.step({ write, authorization }), { code: "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE" });
       }
       assert.deepEqual(host.inspectAllocations(), journalBeforeDiagnostic);
+      assert.deepEqual(diagnosticFixtureWitness(f.configuration), witnessBeforeDiagnostic);
+      const diagnosticRefusals = driftWorkerMode === "nominal" ? "NOT_APPLICABLE" : verifyTerminalDiagnosticRefusals({
+        host, configuration: f.configuration, readSigningKey: () => f.key, humanSource, state: diagnostic });
       assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count + (driftWorkerMode === "nominal" && !independentDriftWorker ? 1 : 0));
       assert.equal(JSON.stringify(f.t.calls).includes("human_verification"), false);
       if (independentDriftWorker) {
@@ -889,6 +894,7 @@ if (process.argv[2] === "--mixed-continue") {
       console.log(JSON.stringify({ scope: "production-parent-worker-ports-with-fixture-actors", mode: driftWorkerMode, result,
         original_human_source_unchanged: shadowHash(claims.get("current")) === shadowHash(claim), published_process: "NOT_RUN",
         diagnostic_history_authenticated: true, allocation_phase_preserved: diagnostic.native.journal.allocations.at(-1).phase,
+        diagnostic_witness_sha256: shadowHash(witnessBeforeDiagnostic), diagnostic_refusals: diagnosticRefusals,
         independent_worker_process: independentDriftWorker ? { beforeChild, mutation, ...child, stdout: undefined, channel_closed: true } : "NOT_RUN", native: "fixture" }));
     } finally { Date.now = actualNow; }
   });
