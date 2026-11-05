@@ -3701,3 +3701,14 @@ from pending business journeys.
 
 Qualification with an injected fixture clock is offline expiry evidence only.
 Actual wall-clock expiry and genuine Native/Human/resource closure remain unproved.
+
+The [canonical projection component record](qualification/agentic-process/spike-canonical-projection-2026-11-05.json)
+retains ten PASS and one setup FAIL on their exact sources. Nominal DUAL and
+SQLite db-only preserve complete canonical rows; the before-authorization and
+after-hook metadata cases still refuse, with UNKNOWN/no positive facts after
+observed effects. The first db-only setup failed on an empty visible Git diff;
+a new fixture permits only that hidden-mode setup checkpoint to be empty.
+The original failure is retained. Runtime registration preserves all 185 prior
+invocations and appends two nominal cases (187); the full runtime family has
+started separately on d07e12d2 with its normal timeout. It is not yet qualified.
+Governance Admission and the entire L1-L8/A1-A10 plan remain unfinished.
