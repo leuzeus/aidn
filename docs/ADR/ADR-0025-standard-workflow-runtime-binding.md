@@ -38,6 +38,12 @@ This fixture duration grants no Native budget or production authorization.
 
 ## Explicit ordinary STANDARD entry, 2026-11-05
 
+The ordinary control selector recognizes the common IR's `event` occurrence,
+requiring exactly one WAITING/event cursor. It does not classify human or
+operation waits as external events. Selection prepares the existing authenticated
+control request; it neither delivers a provider event nor accepts unsigned data.
+Its focused reducer-cursor fixture is separate from full external-wait execution.
+
 `workflow-run` and the console run operation select the packaged model through
 the closed `standard-workflow-execution.v1` configuration. This selection is
 separate from the default agentic engine. The host supplies catalog/model/skill,

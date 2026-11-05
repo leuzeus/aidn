@@ -17,6 +17,13 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const pin = file => ({ path: file, sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") });
 
+export function standardWorkflowControlOccurrence(state) {
+  const frames = state.cursor.occurrences.filter(row => row.status === "WAITING" && row.wait_reason === "event"
+    && state.record.model.nodes.find(node => node.id === row.node_id)?.kind === "event");
+  if (frames.length !== 1) fail("STANDARD_ENTRY_CONTROL_WAIT_REQUIRED");
+  return frames[0].occurrence_id;
+}
+
 // Selecting STANDARD is distinct from selecting the agentic engine. User graphs
 // and historical instances keep their existing routes. Neither a model nor a
 // request can inject an actor, authority callback or controller implementation.
@@ -60,9 +67,8 @@ export async function runStandardWorkflowEntry({ request, actionFile = null, dec
     if (!state) return { kind: "initialize", payload: { instance_sha256: initial.record.instance_sha256 } };
     if (observation) return { kind: observation, payload: {} };
     if (controlSource) {
-      const frames = state.cursor.occurrences.filter(row => row.status === "WAITING" && state.record.model.nodes.find(node => node.id === row.node_id)?.kind === "wait");
-      if (frames.length !== 1) fail("STANDARD_ENTRY_CONTROL_WAIT_REQUIRED");
-      return { kind: "control", payload: { request: host.prepareControl({ expectedSha256: state.record.instance_sha256, occurrenceId: frames[0].occurrence_id }), source_ref: controlSource } };
+      return { kind: "control", payload: { request: host.prepareControl({ expectedSha256: state.record.instance_sha256,
+        occurrenceId: standardWorkflowControlOccurrence(state) }), source_ref: controlSource } };
     }
     const next = await host.step({ write: false });
     if (decisionSource) {

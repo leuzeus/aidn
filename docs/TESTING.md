@@ -7,6 +7,12 @@ operations without inventing a cycle plan. The common reducer still waits when
 a routing fact is absent; the helper reports the waiting node and reason. These
 are synthetic planning checks, not authenticated application execution.
 
+The composition fixture also feeds the ordinary-entry control selector an
+actual event-wait cursor from the common reducer. The selector requires exactly
+one WAITING/event occurrence and rejects absent, ambiguous, deferred and operation
+waits. The production entry then prepares its existing signed control request.
+This component check does not authenticate or deliver an external review.
+
 The required `perf:verify-agentic-process` gate uses a shell-free Node dispatcher
 and the ordered argv cases in `package/catalogs/agentic-process-fixtures.v1.json`.
 Its first 187 cases preserve the previous command exactly; six appended cases

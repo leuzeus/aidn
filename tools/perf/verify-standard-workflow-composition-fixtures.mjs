@@ -10,6 +10,7 @@ import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { assertStandardOperationInput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { standardWorkflowControlOccurrence } from "../../src/application/runtime/standard-workflow-entry.mjs";
 
 const root = new URL("../../", import.meta.url), read = name => fs.readFileSync(new URL(name, root));
 const assets = loadStandardWorkflowAssets();
@@ -20,6 +21,23 @@ let checks = 0;
 const test = (name, run) => { run(); checks++; console.log("PASS " + name); };
 const reject = (name, change, code) => test(name, () => {
   const input = fresh(); change(input); assert.throws(() => verifyStandardWorkflowComponentAssets(input), { code });
+});
+
+test("ordinary entry selects the common reducer's event wait and refuses absent or ambiguous waits", () => {
+  const model = { contract_version: "agentic-process-model.v2", model_id: "control-fixture", revision: 1,
+    participants: [{ id: "project" }], roles: [], policies: [], operation_pins: {}, entry: "wait_review",
+    nodes: [{ id: "wait_review", kind: "event", participant_ref: "project", branches: [
+      { flow_id: "review", node_id: "reviewed", event_key: "review_snapshot" }, { flow_id: "checks", node_id: "checked", event_key: "checks_snapshot" }] },
+      ...["reviewed", "checked"].map(id => ({ id, kind: "sequence", participant_ref: "project", children: [] }))] };
+  const record = createAgenticProcess({ instanceId: "control-fixture", scopeId: "fixture", model, policyPins: agenticPolicyPins(model) });
+  const state = { record, cursor: inspectAgenticProcess(record) };
+  assert.equal(standardWorkflowControlOccurrence(state), "root");
+  const rejected = { code: "STANDARD_ENTRY_CONTROL_WAIT_REQUIRED" };
+  assert.throws(() => standardWorkflowControlOccurrence({ ...state, cursor: { occurrences: [] } }), rejected);
+  assert.throws(() => standardWorkflowControlOccurrence({ ...state, cursor: { occurrences: [...state.cursor.occurrences, ...state.cursor.occurrences] } }), rejected);
+  for (const field of [{ status: "READY" }, { wait_reason: "deferred" }])
+    assert.throws(() => standardWorkflowControlOccurrence({ ...state, cursor: { occurrences: [{ ...state.cursor.occurrences[0], ...field }] } }), rejected);
+  assert.throws(() => standardWorkflowControlOccurrence({ ...state, record: { model: { nodes: [{ id: "wait_review", kind: "operation" }] } } }), rejected);
 });
 test("the published JSON is loaded as the exact common IR with fixed real operation bindings", () => {
   assert.equal(assets.model.model_id, "aidn-standard"); assert.equal(assets.model.contract_version, "agentic-process-model.v2");
