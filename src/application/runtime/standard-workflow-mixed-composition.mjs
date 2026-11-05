@@ -16,11 +16,17 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   if (!model.nodes.some(node => node.kind === "operation")) fail("STANDARD_PROCESS_MIXED_MODEL_REQUIRED");
   let native;
   const processAuthority = createStandardProcessAuthority({ configuration, model, modelSource, readSigningKey, humanSource, environment,
-    readProductSha256: () => native.preview().product_sha256 });
-  native = createJournaledNativeAllocation({ configuration, readSigningKey, environment, processAuthority, nativeAuthorizationSource }, { controllerFactory });
+    readProductSha256: () => nativeHost().preview().product_sha256 });
+  function nativeHost() {
+    return native ??= createJournaledNativeAllocation({ configuration, readSigningKey, environment, processAuthority, nativeAuthorizationSource }, { controllerFactory });
+  }
+  const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
+  // Preserve eager validation for current models. Historical diagnostic reads
+  // need no execution composition; any later native use still calls read().
+  if (model.nodes.filter(node => node.kind === "operation").every(node => bindings.has(node.binding_ref)
+    && model.operation_pins[node.binding_ref] === shadowHash(bindings.get(node.binding_ref)))) nativeHost();
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
     authorize, humanSource, controlSource, processAuthority, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort }, { validationBoundaryFactory });
-  const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
   const inspect = () => operations.inspect(configuration.instance_id);
   const nodeFor = frame => model.nodes.find(node => node.id === frame.node_id);
   async function finishOperation(id, signal) {
@@ -33,11 +39,11 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     initialize: input => operations.initialize({ ...input, instanceId: configuration.instance_id }),
     inspect,
     inspectDiagnostic: () => operations.inspectDiagnostic(configuration.instance_id),
-    previewNative: () => native.preview(),
-    inspectAllocations: () => native.inspect(),
-    readCheckpoint: generation => native.readCheckpoint(generation),
-    prepareNativeAuthorizationEpoch: input => native.prepareAuthorizationEpoch(input),
-    activateNativeAuthorizationEpoch: (request, input) => native.activateAuthorizationEpoch(request, input),
+    previewNative: () => nativeHost().preview(),
+    inspectAllocations: () => nativeHost().inspect(),
+    readCheckpoint: generation => nativeHost().readCheckpoint(generation),
+    prepareNativeAuthorizationEpoch: input => nativeHost().prepareAuthorizationEpoch(input),
+    activateNativeAuthorizationEpoch: (request, input) => nativeHost().activateAuthorizationEpoch(request, input),
     prepareOperation: input => operations.preview({ ...input, instanceId: configuration.instance_id }),
     reprepareExpiredOperation: (id, input) => operations.reprepareExpiredOperation(id, input),
     stageOperation: (preview, input) => operations.stage(preview, input),
@@ -80,8 +86,8 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
       }
       if (cursor.occurrences.some(frame => frame.operation?.receipt?.outcome === "reconciliation_required")) return { kind: "reconciliation", status: "WAITING", written: false };
       if (ready.some(frame => nodeFor(frame).kind === "activity")) {
-        if (!write) return { kind: "native_preview", status: cursor.status, ...native.preview() };
-        return { kind: "native", ...await native.run({ execute: true, authorization, signal, resume: (native.inspect()?.allocations.length ?? 0) > 0 }) };
+        if (!write) return { kind: "native_preview", status: cursor.status, ...nativeHost().preview() };
+        return { kind: "native", ...await nativeHost().run({ execute: true, authorization, signal, resume: (nativeHost().inspect()?.allocations.length ?? 0) > 0 }) };
       }
       if (pending.length) {
         if (!write) return { kind: "human_wait", written: false, status: "WAITING", operation_id: pending[0].operation.intent.operation_id };

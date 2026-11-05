@@ -51,6 +51,7 @@ import { createNativeAllocationWorkerAuthority } from "../../src/application/run
 import { transport } from "./agentic-native-rpc-fixture-lib.mjs";
 import { runIndependentDriftWorker } from "./independent-drift-worker-fixture-lib.mjs";
 import { diagnosticFixtureWitness, verifyTerminalDiagnosticRefusals } from "./standard-terminal-diagnostic-fixture-lib.mjs";
+import { verifyStandardHistoricalDiagnosticFixtures } from "./verify-standard-historical-diagnostic-fixtures.mjs";
 import { verifyNativeHumanVerificationPort } from "./native-human-verification-fixture-lib.mjs";
 import { assertNativeAllocationJournal, nativeJournalPath } from "../../src/core/workflow/native-allocation-journal.mjs";
 import { controlDelivery } from "../../src/core/workflow/process-control-inbox.mjs";
@@ -207,6 +208,7 @@ let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
+  if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
   if (driftWorkerMode && !name.startsWith("drift worker current human:")) return;
   const epochMode = process.argv.find(value => value.startsWith("--native-epoch-mode="))?.slice("--native-epoch-mode=".length);
@@ -2870,6 +2872,7 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal((await rpc.close()).closed, true);
     }
   });
+  await check("historical diagnostic: public mixed port preserves authenticated old bindings and current effect fences", verifyStandardHistoricalDiagnosticFixtures);
   completed = true;
   console.log(JSON.stringify({ ok: true, checks, proof_class: "offline-production-composition-with-fake-native-wire", model_calls: 0, native_client: "NOT_RUN", native_process_tree: "NOT_RUN" }));
 } finally {

@@ -1,5 +1,11 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Historical diagnostic authentication, 2026-11-05
+
+The mixed host's dedicated `inspectDiagnostic` port authenticates retained model, scope, configuration, signed journals, checkpoints and result references using historical binding pins. Retained versioned input schemas and their explicit v1 normalizations validate this history independently of the current operation mapping. Reads neither convert instances nor renew grants, append receipts, release owners or reconcile resources. Current models keep eager native composition validation; historical diagnostics do not construct an executor. Current authority, admission, dispatch and native allocation still require the current implementation bindings. Caller options cannot select the private historical mode.
+
+Focused public-port fixtures and a read-only historical corpus observation qualify this boundary separately. General resource disposition, productive recovery, all other historical readers, complete STANDARD and exact installed behavior remain separate obligations.
+
 ## Explicit published component refresh, 2026-11-05
 
 Implementation-covered source changes require explicit authoring of every affected published component before new instances can load it. Startup, cycle-create and composed STANDARD retain separate incremented revisions and exact current implementation pins. Runtime loading still refuses mismatches; no historical instance, pin, authorization or evidence is converted. Historical diagnostic compatibility is a separate unresolved authentication boundary, as are general reconciliation and productive STANDARD qualification.

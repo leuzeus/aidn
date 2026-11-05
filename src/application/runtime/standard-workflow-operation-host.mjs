@@ -617,8 +617,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readSource: (instance, operation, input) => cycleRecoverySource(instance, operation, input),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
-  for (const node of model.nodes.filter(node => node.kind === "operation"))
-    if (!bindings.has(node.binding_ref) || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_HOST_BINDING_CHANGED");
+  function assertCurrentBindings() {
+    for (const node of model.nodes.filter(node => node.kind === "operation"))
+      if (!bindings.has(node.binding_ref) || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_HOST_BINDING_CHANGED");
+  }
   const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID(), initial = readWorkflowProjectAuthority({ targetRoot });
   const options = { targetRoot, stateMode: initial.stateMode }, store = createAgenticProcessStore(options), journal = createProcessOperationJournalStore(options);
   const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && agenticProcessPersistence({ targetRoot }).backend === "postgres";
@@ -652,6 +654,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const controls = createStandardControlInbox({ store: createProcessControlInboxStore(options), signer, source: activeControlSource,
     projectionRequired });
   function readAuthority() {
+    assertCurrentBindings();
     if (processAuthority) return processAuthority.read();
     const project = readWorkflowProjectAuthority({ targetRoot }), persistence = agenticProcessPersistence({ targetRoot });
     if (project.stateMode !== initial.stateMode) fail("STANDARD_HOST_STATE_MODE_CHANGED");
@@ -920,7 +923,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     inspect: id => current(id),
     inspectDiagnostic(id) {
       if (!processAuthority) fail("STANDARD_HOST_DIAGNOSTIC_AUTHORITY_REQUIRED");
-      const value = service.inspect(id); scope(value.record);
+      const value = service.inspect(id);
+      // This dedicated historical port authenticates the complete retained
+      // scope/model/history. Current operation admission still uses scope().
       return { ...value, native: processAuthority.inspectDiagnostic(value.record) };
     },
     prepareDecision: id => structuredClone(human.question(retained(id).record)),

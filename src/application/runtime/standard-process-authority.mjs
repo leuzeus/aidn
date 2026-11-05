@@ -40,8 +40,26 @@ import { deriveStandardCycleTaskCursor, renderStandardTaskProgress } from "../..
 import { renderStandardCyclePlan } from "../../core/workflow/standard-cycle-planning.mjs";
 import { cycleWorkBoundary } from "./standard-drift-recovery.mjs";
 import { assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
+import { assertProcessOperationBinding } from "../../core/workflow/process-operation-contracts.mjs";
+import { assertResolvedProcessInput } from "../../core/workflow/process-data-contracts.mjs";
+import { fileURLToPath } from "node:url";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
+function assertHistoricalPreviewInput(preview, model) {
+  // Contract names select retained data schemas in this fixed namespace, never
+  // modules or paths from the process. Versioned v1 normalizations stay explicit.
+  const contract = preview.binding.input_contract;
+  if (!/^[a-z][a-z0-9_-]{0,110}\.v[1-9][0-9]*$/.test(contract)) fail("STANDARD_OPERATION_INPUT_INVALID");
+  const schema = readAgentRunFile(fileURLToPath(new URL(`../../core/contracts/workflow-definition/${contract}.schema.json`, import.meta.url))).value;
+  if (validateJsonSchema(preview.input, schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+  if (!model.data_bindings) { if (Object.hasOwn(preview, "input_resolution")) fail("PROCESS_RESOLVED_INPUT_UNDECLARED"); return; }
+  const value = assertResolvedProcessInput(preview.input_resolution);
+  let input = value.input;
+  if (contract === "standard-session-initialize-input.v1") input = { ...input, mode: input.mode ?? "UNKNOWN" };
+  if (contract === "standard-cycle-initialize-input.v1") input = { ...input, objective: input.objective.replace(/\s+/gu, " ").trim() };
+  if (value.instance_sha256 !== preview.instance_sha256 || value.occurrence_id !== preview.occurrence_id
+    || value.bindings_sha256 !== shadowHash(model.data_bindings) || shadowHash(input) !== shadowHash(preview.input)) fail("PROCESS_RESOLVED_INPUT_CHANGED");
+}
 // New mixed instances have one authority. Legacy operation/native scopes remain
 // unchanged; no caller-authored module, key, scope or history is accepted.
 export function createStandardProcessAuthority({ configuration: suppliedConfiguration, model: supplied, modelSource = null, readSigningKey, humanSource = null, readProductSha256, environment = process.env, nativeReservation = null }) {
@@ -55,14 +73,20 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const options = { targetRoot: configuration.target_root, stateMode: initial.stateMode, env: environment };
   const operations = createStandardWorkflowOperations({ targetRoot: configuration.target_root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: configuration.target_root });
   const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
-  for (const node of model.nodes.filter(row => row.kind === "operation")) if (!bindings.has(node.binding_ref)
-    || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_PROCESS_BINDING_CHANGED");
+  function assertCurrentBindings() {
+    for (const node of model.nodes.filter(row => row.kind === "operation")) if (!bindings.has(node.binding_ref)
+      || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_PROCESS_BINDING_CHANGED");
+  }
   const operationStore = createProcessOperationJournalStore(options), controls = createProcessControlInboxStore(options), allocations = createNativeAllocationJournalStore(options), instances = createAgenticProcessStore(options);
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource, projectionRequired: false });
   function read() {
     return readExecutionAuthority().authority;
   }
   function readExecutionAuthority() {
+    assertCurrentBindings();
+    return readAuthorityObservation();
+  }
+  function readAuthorityObservation() {
     assertStandardWorkflowImplementation();
     const { project, persistence } = readWorkflowProjectExecutionAuthority({ targetRoot: configuration.target_root, env: environment });
     if (project.stateMode !== initial.stateMode) fail("STANDARD_PROCESS_AUTHORITY_CHANGED");
@@ -84,7 +108,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   // Only the diagnostic port selects this private mode. Execution options,
   // process JSON, grants and model facts cannot weaken allocation exclusion.
   function authenticateHistory(instance, { reservation = null, productSha256, checkControlContext = false, forNative = false } = {}, diagnostic = false) {
-    assertAgenticProcessInstance(instance); const authority = read();
+    assertAgenticProcessInstance(instance);
+    // Diagnostic authentication uses the immutable model and signed historical
+    // bindings. Only execution requires that model's pins to match today's code.
+    // This private selection is never taken from caller options or process JSON.
+    const authority = diagnostic ? readAuthorityObservation().authority : read();
     if (instance.instance_id !== configuration.instance_id || instance.scope_id !== authority.scope_id || instance.model_sha256 !== authority.model_sha256 || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)
       || Object.keys(instance.initial_facts).length) fail("STANDARD_PROCESS_AUTHORITY_CHANGED");
     const journal = allocations.read(nativeJournalId(instance)).record;
@@ -93,6 +121,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       signer.verify(journal); const latest = journal.allocations.at(-1);
       if (journal.instance_id !== instance.instance_id || journal.scope_id !== instance.scope_id || journal.model_sha256 !== instance.model_sha256)
         fail("STANDARD_PROCESS_NATIVE_HISTORY_CHANGED");
+      if (diagnostic && journal.allocations.some(entry => entry.configuration_sha256 !== shadowHash(configuration))) fail("STANDARD_PROCESS_NATIVE_HISTORY_CHANGED");
       if (!diagnostic && latest && latest.phase !== "closed") {
         if (!reservation || latest.phase !== "reserved" || latest.owner_id !== reservation.owner_id || latest.generation !== reservation.generation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE");
       } else if (reservation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
@@ -113,10 +142,17 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         const id = event.intent?.operation_id ?? event.receipt.operation_id;
         if (!seen.has(id)) {
           const record = operationStore.read(id).record; signer.verify(record); signer.verify(record.preview);
+          assertProcessOperationBinding(record.preview.binding);
           if (validateJsonSchema(record.preview, previewSchema, "$", { contractKind: "workflow-definition" }).length
-            || shadowHash(bindings.get(record.intent.binding_ref)) !== shadowHash(record.preview.binding)) fail("STANDARD_PROCESS_OPERATION_NOT_AUTHENTICATED");
-          assertStandardOperationInput(record.intent.binding_ref, record.preview.input);
-          assertStandardResolvedPreview(record.preview, model);
+            || record.preview.binding.id !== record.intent.binding_ref
+            || shadowHash(record.preview.binding) !== model.operation_pins[record.intent.binding_ref]
+            || !diagnostic && shadowHash(bindings.get(record.intent.binding_ref)) !== shadowHash(record.preview.binding)
+            || ["instance_id", "instance_sha256", "scope_id", "model_sha256", "occurrence_id"].some(key => record.preview[key] !== record.intent[key])
+            || record.intent.binding_sha256 !== shadowHash(record.preview.binding)
+            || record.intent.input_sha256 !== shadowHash(record.preview.input)
+            || record.intent.preconditions_sha256 !== shadowHash({ snapshot: record.preview.snapshot, prepared: record.preview.prepared })) fail("STANDARD_PROCESS_OPERATION_NOT_AUTHENTICATED");
+          if (diagnostic) assertHistoricalPreviewInput(record.preview, model);
+          else { assertStandardOperationInput(record.intent.binding_ref, record.preview.input); assertStandardResolvedPreview(record.preview, model); }
           if (record.preview.binding.executor_kind === "human" && record.results.length) human.captured(record);
           seen.set(id, record);
         }

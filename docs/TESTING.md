@@ -1,5 +1,9 @@
 # Testing Guide
 
+## Historical mixed diagnostic boundary, 2026-11-05
+
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --historical-diagnostic-only` selects the signed historical diagnostic regression in the existing execution gate. It calls the public mixed port and tests old implementation pins, expired retained previews, scope/instance/HMAC/binding/result/configuration substitution, missing or changed checkpoints, unchanged physical witnesses and current effect refusal despite untrusted diagnostic options. Its allocation/checkpoint corpus is synthetic and invokes no Native, human or provider. It supplies no resource closure, general reconciliation or productive-resume proof. Exact-source qualification and an unchanged read of a retained historical corpus are recorded separately; no old failure is reclassified.
+
 ## Published binding alignment after implementation changes, 2026-11-05
 
 A component check does not load the published STANDARD assets. After changing an implementation-covered file, run the startup/model, cycle-component and composed-workflow fixture suites. Their real loaders compare every published binding to the current registry. Refresh only through explicit source authoring: `tools/verify/refresh-standard-startup-bindings.mjs --write`, the same command with `--cycle-create --write`, then `tools/author/build-standard-workflow-model.mjs --write`. Each changed component gets a new revision; runtime reads never refresh pins. This source alignment does not qualify historical diagnostic authentication, productive execution, resource disposition or L1-L8/A1-A10.

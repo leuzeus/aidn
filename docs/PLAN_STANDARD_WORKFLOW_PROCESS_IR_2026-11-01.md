@@ -1,5 +1,9 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Historical diagnostic boundary candidate, 2026-11-05
+
+The public mixed diagnostic port now separates signed historical binding authentication from current execution binding admission. It preserves the retained model, configuration, journals, checkpoints, results, grants and owners. No new effect or general resource disposition is authorized by a diagnostic read. Focused source qualification is required. The earlier cycle-component qualification timed out at its declared bound after partial successful assertions; that suite is not a PASS. Complete L1-L8/A1-A10, general L4 and productive full STANDARD remain active obligations.
+
 ## Published source alignment candidate, 2026-11-05
 
 The Git observation implementation change left the three published component pin sets stale. Explicit source authoring advances startup to revision 214, cycle-create to 211 and composed STANDARD to 159. Only component revisions, implementation pins and dependent hashes change; topology, authorities, skills and limits stay at their reviewed definitions. New-source loader qualification is required. Historical signed instances and their original pins are retained. This refresh does not restore the historical diagnostic reader or complete general L4, productive STANDARD, required193, genuine actors or exact installation.
