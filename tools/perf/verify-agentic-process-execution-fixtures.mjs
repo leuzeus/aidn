@@ -1,5 +1,5 @@
-import { verifyModeWorkContinuationExecution } from "./standard-mode-work-continuation-execution-fixture-lib.mjs";
 #!/usr/bin/env node
+import { verifyModeWorkContinuationExecution } from "./standard-mode-work-continuation-execution-fixture-lib.mjs";
 import { createStandardReviewEventFixture } from "./standard-pr-review-event-fixture-lib.mjs";
 import { verifyModeAnalysisExecution } from "./standard-mode-analysis-execution-fixture-lib.mjs";
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario, standardReviewScenarioAnswer } from "./standard-pr-review-scenario-fixture-lib.mjs";
