@@ -1,5 +1,19 @@
 # Testing Guide
 
+The required `perf:verify-agentic-process` gate uses a shell-free Node dispatcher
+and the ordered argv cases in `package/catalogs/agentic-process-fixtures.v1.json`.
+Its first 187 cases preserve the previous command exactly; six appended cases
+cover the dispatcher, host sources, combined authority and ordinary CLI in three
+storage modes. The independent private policy checks the complete argv/order,
+the exact npm wrapper, unique required placement and absence of lifecycle hooks.
+The dispatcher inherits output, waits for each child, fails at the first nonzero
+exit and forwards stop to its active child before allowing any next launch.
+It changes no gate or child timeout. `verify-node-fixture-runner-fixtures.mjs`
+checks literal argv and paths with spaces, ordered success, fail-fast exit 23,
+and stop propagation. Windows uses AbortSignal for the forwarding assertion;
+POSIX additionally observes a real parent SIGTERM. This is launcher evidence,
+not business, Native or ALLresources qualification.
+
 `node tools/perf/verify-workflow-execution-authority-fixtures.mjs` checks that a
 combined synchronous project/persistence observation matches the separate
 descriptions and reads one full activation receipt. A later call reads again;
