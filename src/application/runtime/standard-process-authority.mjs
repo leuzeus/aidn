@@ -14,6 +14,7 @@ import { createProcessOperationJournalStore } from "../../adapters/runtime/proce
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
 import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-decision-inbox-store.mjs";
 import { createNativeAllocationJournalStore } from "../../adapters/runtime/native-allocation-journal-store.mjs";
+import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
 import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
 import { nativeJournalId } from "../../core/workflow/native-allocation-journal.mjs";
 import { readNativeAllocationCheckpoint, nativeEvidenceFile, nativeAllocationOutputId } from "./native-allocation-evidence.mjs";
@@ -56,7 +57,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
   for (const node of model.nodes.filter(row => row.kind === "operation")) if (!bindings.has(node.binding_ref)
     || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_PROCESS_BINDING_CHANGED");
-  const operationStore = createProcessOperationJournalStore(options), controls = createProcessControlInboxStore(options), allocations = createNativeAllocationJournalStore(options);
+  const operationStore = createProcessOperationJournalStore(options), controls = createProcessControlInboxStore(options), allocations = createNativeAllocationJournalStore(options), instances = createAgenticProcessStore(options);
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource, projectionRequired: false });
   function read() {
     return readExecutionAuthority().authority;
@@ -157,7 +158,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     if (current.context_sha256 !== review.context_sha256) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE");
     // Current human authentication is separate from the unchanged Native grant,
     // new allocation admission, and cumulative Native budget accounting.
-    if (!nativeReservation) await human.verifyCaptured(selected.record);
+    await human.verifyCaptured(selected.record);
     if (Date.now() < review.prepared_at_ms || Date.now() - review.prepared_at_ms > 300000) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED");
     authenticate(instance, auth);
   }
@@ -168,6 +169,36 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       if (frame?.node_id === "closure_drift_report" && model.nodes.some(row => row.id === "closure_drift_loop"))
         await assertDriftDiagnosisRequest(instance, id);
     }
+  }
+  async function verifyNativeHumanSource(request, reservation, signal) {
+    const journal = allocations.read(reservation.journal_id).record; signer.verify(journal);
+    const latest = journal.allocations.at(-1);
+    if (latest?.phase !== "reserved" || latest.owner_id !== reservation.owner_id || latest.generation !== reservation.generation)
+      fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
+    const record = operationStore.read(request.operation_id).record; signer.verify(record); signer.verify(record.preview);
+    if (!["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref)) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_REQUIRED");
+    const capture = human.captured(record), review = record.preview.prepared.plan;
+    const instance = instances.read(journal.instance_id).record, result = record.results.at(-1);
+    const latestReview = instance?.events.filter(row => row.kind === "operation_intent"
+      && ["drift_recovery_decision", "drift_completion_decision"].includes(row.intent.binding_ref)).at(-1);
+    if (record.intent.instance_id !== journal.instance_id || record.intent.scope_id !== journal.scope_id || capture.source.choice !== "request_diagnosis"
+      || instance?.scope_id !== journal.scope_id || instance?.model_sha256 !== journal.model_sha256 || latestReview?.intent.operation_id !== record.operation_id
+      || shadowHash(latestReview.intent) !== shadowHash(record.intent) || result?.output.outcome !== "completed"
+      || !instance.events.some(row => row.kind === "operation_result" && row.receipt.operation_id === record.operation_id && shadowHash(row.receipt) === shadowHash(result.receipt))
+      || !["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(review.contract_version)
+      || shadowHash(capture.source) !== request.source_sha256 || shadowHash(human.question(record)) !== request.question_sha256)
+      fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_REQUIRED");
+    await human.verifyCaptured(record, signal);
+    const current = allocations.read(reservation.journal_id).record; signer.verify(current);
+    if (shadowHash(current) !== shadowHash(journal) || shadowHash(operationStore.read(request.operation_id).record) !== shadowHash(record)
+      || instances.read(journal.instance_id).record?.instance_sha256 !== instance.instance_sha256)
+      fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
+    if (Date.now() < review.prepared_at_ms || Date.now() - review.prepared_at_ms > 300000) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED");
+  }
+  async function admitNativeActivity(instance, occurrenceId) {
+    if (inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId)?.node_id === "closure_drift_report"
+      && model.nodes.some(row => row.id === "closure_drift_loop" && row.kind === "loop"))
+      await assertDriftDiagnosisRequest(instance, occurrenceId);
   }
   async function prepareActivityOutput({ contractRef, productSha256, instance, occurrenceId, productSnapshot }) {
     if (contractRef === MODE_WORK_CONTRACT) {
@@ -663,5 +694,5 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
   return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
-    evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
+    verifyNativeHumanSource, admitNativeActivity, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

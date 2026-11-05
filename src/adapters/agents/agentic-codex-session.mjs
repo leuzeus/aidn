@@ -149,9 +149,13 @@ export function createAgenticCodexSessions({ native, targetRoot, productRoot, co
         permissions: started.sandbox, profile: profileId, declared_guarantee_scope: "fresh thread, disabled memories and restricted native tool profile; not full-client OS confinement" });
     } catch (error) { await rpc.close(); throw error; }
     return Object.freeze({ observe,
-      async run({ instruction, request_sha256, signal, output_contract = null, output_context_sha256 = null }) {
+      async run({ instruction, request_sha256, signal, output_contract = null, output_context_sha256 = null, beforeTurn }) {
         if (active || closed || signal?.aborted) fail("PROCESS_SESSION_BUSY_OR_CANCELLED");
         await observe();
+        if (beforeTurn !== undefined) {
+          if (typeof beforeTurn !== "function") fail("PROCESS_SESSION_TURN_AUTHORITY_INVALID");
+          await beforeTurn();
+        }
         // Observation awaits RPC: an abort/close during it must prohibit the
         // next paid turn, even though no abort listener was installed yet.
         if (active || closed || signal?.aborted) fail("PROCESS_SESSION_BUSY_OR_CANCELLED");

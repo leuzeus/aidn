@@ -3129,6 +3129,19 @@ production validator. Its pure controls check both exact expiry reasons, closed
 nested data, invalid identities/hashes/types and incompatible typed outputs.
 These contract checks do not execute a closure or qualify current human authority.
 
+`verify-native-human-verification-port-fixtures.mjs` checks the actual private
+loopback transport with an explicit current-H double, including revocation,
+wrong subject/authority/reservation, expiry during an await, cancellation,
+closure and an exception carrying the reserved success code. It does not execute
+the production worker. `verify-agentic-process-execution-fixtures.mjs
+--native-human-turn-only` isolates the production session adapter's private
+pre-turn fence with doubled native RPC. `--drift-worker-mode=nominal|revoked|
+expired|wrong-authority|wrong-subject` selects a newly authored bounded diagnostic
+loop through parent/worker application ports, with fixture actors and unchanged
+signed historical opinions and separate Native grants. Terminal evidence is
+required for each case; none of these selectors alone qualifies the published
+STANDARD model or an independent worker process.
+
 `verify-standard-cycle-close-hook-contract-fixtures.mjs` verifies the closed
 fixed input, supported schema vocabulary and correlation of confirmed, blocked
 and uncertain outcomes. `--cycle-close-finalize-mode=contract|files|db-only` in

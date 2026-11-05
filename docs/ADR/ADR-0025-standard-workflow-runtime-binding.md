@@ -1,5 +1,29 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## SOURCE64 current-H worker boundary candidate, 2026-11-05
+
+The parent repeats current diagnosis-request admission before reservation. Mixed
+workers receive a private v3 admission containing a live, reservation-bound H
+verification capability over the existing authenticated loopback transport. The
+parent verifies the exact signed, accepted latest review, current H source, scope,
+reservation, process CAS and five-minute review fence. Historical authentication
+alone does not permit another diagnostic. V1/v2 readers remain; a v2 worker cannot
+authenticate a current-H request without the new capability. Every exception
+denies, including an exception carrying the reserved success diagnostic code.
+
+Drift report preparation now receives the actual instance/occurrence. Private
+host callbacks repeat its admission before creating a native session and after
+the final awaited native observation before turn/start. Neither callback nor
+transport capability enters native prompts, arguments or environment. Closing
+the parent transport is required before local ownership can be released; an
+unconfirmed close preserves reconciliation. No Native budget or grant is renewed.
+
+This worker change is a candidate. Real transport checks use doubled H sources;
+parent/worker races, independent worker execution, productive published closure,
+the ten other R05 contexts, recovery execution and full L1-L8/A1-A10 qualification
+remain separate obligations. The earlier schema-only commit and its successful
+component cases do not qualify this candidate.
+
 ## SOURCE63 pre-effect expiry continuation candidate, 2026-11-05
 
 The primary published closure now repeats a bounded review/close-attempt loop.

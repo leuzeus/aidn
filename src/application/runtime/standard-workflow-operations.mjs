@@ -19,7 +19,7 @@ import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-l
 import { createStandardSessionModeOperations } from "./standard-session-mode-operations.mjs";
 import { createStandardCycleOperations } from "./standard-cycle-operations.mjs";
 
-const correctionFiles = ["standard-pr-correction-checkpoint.mjs",
+const correctionFiles = ["native-human-verification-port.mjs", new URL("../../adapters/runtime/agent-admission-transport.mjs", import.meta.url), "standard-pr-correction-checkpoint.mjs",
   ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-pr-correction-checkpoint-${kind}.v1.schema.json`, import.meta.url)), "standard-pr-correction-authority.mjs", "standard-pr-correction-reopen.mjs",
   new URL("../../core/workflow/standard-pr-correction-reopen.mjs", import.meta.url),
   ...["input", "plan", "output"].map(kind => new URL(`../../core/contracts/workflow-definition/standard-pr-correction-reopen-${kind}.v1.schema.json`, import.meta.url))];

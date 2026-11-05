@@ -48,6 +48,7 @@ import { standardWorkflowOperationBindings, createStandardWorkflowOperations } f
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createNativeAllocationWorkerAuthority } from "../../src/application/runtime/native-allocation-worker-authority.mjs";
+import { verifyNativeHumanVerificationPort } from "./native-human-verification-fixture-lib.mjs";
 import { assertNativeAllocationJournal, nativeJournalPath } from "../../src/core/workflow/native-allocation-journal.mjs";
 import { controlDelivery } from "../../src/core/workflow/process-control-inbox.mjs";
 import { agenticProcessImplementationPins } from "../../src/application/runtime/agentic-process-implementation-pins.mjs";
@@ -86,6 +87,8 @@ const selectedCyclePlanMode = process.argv.find(value => value.startsWith("--cyc
 const selectedCycleReadinessMode = process.argv.find(value => value.startsWith("--cycle-readiness-mode="))?.slice("--cycle-readiness-mode=".length);
 const selectedCycleWorkMode = process.argv.find(value => value.startsWith("--cycle-work-mode="))?.slice("--cycle-work-mode=".length);
 const selectedCycleCloseFinalizeMode = process.argv.find(value => value.startsWith("--cycle-close-finalize-mode="))?.slice("--cycle-close-finalize-mode=".length);
+const driftWorkerMode = process.argv.find(value => value.startsWith("--drift-worker-mode="))?.split("=")[1];
+if (driftWorkerMode && !["nominal", "revoked", "expired", "wrong-authority", "wrong-subject"].includes(driftWorkerMode)) throw Error("DRIFT_WORKER_FIXTURE_MODE_INVALID");
 if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseFinalizeMode)) throw Error("CYCLE_CLOSE_FINALIZE_FIXTURE_MODE_INVALID");
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
@@ -193,6 +196,9 @@ function retainComposedChild(controlRoot, label, child) {
 let serial = 0, completed = false;
 const put = (base, name, text) => { const file = path.join(base, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); return file; };
 async function check(name, callback) { if (process.argv.includes("--drift-objective-mismatch-only") && !name.startsWith("drift objective mismatch:")) return; if (selectedSpikeMode && !name.startsWith("standard spike:")) return; if (selectedModeWorkResumeMode && !name.startsWith("standard mode resume:")) return; if (selectedModeWorkMode && !name.startsWith("standard mode analysis:")) return; if (selectedStandardComposedMode && !name.startsWith(`standard composed ${selectedStandardComposedMode}:`)) return; if (process.argv.includes("--v2-only") && !name.startsWith("v2 ")) return;
+  if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
+  if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
+  if (driftWorkerMode && !name.startsWith("drift worker current human:")) return;
   const epochMode = process.argv.find(value => value.startsWith("--native-epoch-mode="))?.slice("--native-epoch-mode=".length);
   if (epochMode && !["files", "dual", "db-only"].includes(epochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
   if (epochMode && !name.startsWith(`native epoch ${epochMode}:`)) return;
@@ -631,6 +637,20 @@ function mixedFixture(stateMode = "files", options = {}) {
     : { analyze: "Analyze without writing.", review: "Review without correcting." };
   if (options.audit) f.configuration.instructions.audit_review = "Audit the final product and supplied checklist read-only; report uncertainty and leave all decisions and writes to the host.";
   if (options.objectiveCompletion) f.configuration.instructions.objective_drift = "Diagnose the exact terminal context read-only; the host retains decisions and completion effects.";
+  if (options.rediagnosis) {
+    const report = { ...model.nodes.find(row => row.id === "analyze"), id: "closure_drift_report" };
+    model.nodes = [model.nodes.find(row => row.id === "mixed"), ...model.nodes.filter(row => ["reload", "admit", "initialize"].includes(row.id)),
+      { id: "closure_drift_loop", kind: "loop", participant_ref: "delivery", child: "closure_drift_iteration", until: "drift_check_completed", max_iterations: 2 },
+      { id: "closure_drift_iteration", kind: "sequence", participant_ref: "delivery", children: ["closure_drift_report", "evaluate", "decide"] },
+      report, op("evaluate", "drift_report_evaluate"), op("decide", "drift_recovery_decision")];
+    model.nodes[0].children = ["reload", "admit", "initialize", "closure_drift_loop"];
+    model.operation_pins = Object.fromEntries(standardWorkflowOperationBindings().filter(row => model.nodes.some(node => node.binding_ref === row.id)).map(row => [row.id, shadowHash(row)]));
+    model.data_bindings.inputs = model.data_bindings.inputs.filter(row => ["reload", "admit", "initialize", "evaluate", "decide"].includes(row.node_id));
+    model.data_bindings.inputs.find(row => row.node_id === "evaluate").fields.report_occurrence_id.node_id = "closure_drift_report";
+    f.configuration.activity_outputs = { closure_drift_report: "standard-drift-report.v1" };
+    f.configuration.instructions = { closure_drift_report: "Diagnose this exact context without writes. A diagnosis request is separate from Native permission." };
+    fs.writeFileSync(f.configuration.model.path, JSON.stringify(model)); f.configuration.model.sha256 = sha(JSON.stringify(model));
+  }
   if (options.work) f.configuration.instructions.implement = options.taskProgress ? "Implement only the host-selected task and its done criteria; host validation and progression remain separate." : "Implement the frozen first task only; leave deterministic validation to the host.";
   const criteriaText = options.taskProgress ? `Follow the selected task: intermediate value 2, final value ${options.taskFinalValue}, unchanged interface. Host checks remain separate.` : options.work ? "The admitted local value becomes 2; validation remains a separate host operation." : "Read the product without changing any bytes.";
   fs.writeFileSync(f.configuration.criteria.path, criteriaText); f.configuration.criteria.sha256 = sha(criteriaText);
@@ -813,6 +833,51 @@ if (process.argv[2] === "--mixed-continue") {
       closed: t.sessions.every(row => row.closed), leaked_key: JSON.stringify(t.sessions.map(row => row.configuration)).includes(key.toString("base64")) }) + "\n");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
+  await check("native human port: current source, subject, reservation and cancellation remain authenticated", async () => {
+    console.log(JSON.stringify(await verifyNativeHumanVerificationPort()));
+  });
+  if (driftWorkerMode) await check("drift worker current human: " + driftWorkerMode, async () => {
+    const claims = new Map(); let f, review, live = true;
+    const actualNow = Date.now;
+    const humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null, async verify({ source, sourceRef, question }) {
+      await new Promise(resolve => setImmediate(resolve));
+      if (f?.launches >= 2 && driftWorkerMode === "expired") Date.now = () => review.prepared_at_ms + 300001;
+      if (!live || shadowHash(claims.get(sourceRef)) !== shadowHash(source) || source.question_sha256 !== shadowHash(question)) return { outcome: "unverified" };
+      return { outcome: "verified", authority_id: f?.launches >= 2 && driftWorkerMode === "wrong-authority" ? "another" : source.authority_id,
+        source_sha256: f?.launches >= 2 && driftWorkerMode === "wrong-subject" ? "f".repeat(64) : shadowHash(source) };
+    } };
+    f = finalizationFixture("files", { recovery: true, finalize: false, rediagnosis: true, humanSource,
+      beforeWorker() { if (f.launches >= 2 && driftWorkerMode === "revoked") live = false; } });
+    f.sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
+    f.cycleObjective = "Determine whether a bounded prototype is useful";
+    try {
+      const authorization = await bootstrapMixed(f); await prepareCompletionCycle(f, "DONE");
+      const host = f.open(), first = await host.step({ write: true, authorization });
+      assert.equal(first.journal_phase, "closed", JSON.stringify(first));
+      await host.step({ write: true });
+      const waiting = await host.step({ write: true }); assert.equal(waiting.status, "waiting_for_human");
+      review = waiting.question.review; assert.equal(review.contract_version, "standard-drift-recovery-plan.v2");
+      const claim = { contract_version: "human-drift-recovery-decision.v2", source_kind: "human", authority_id: "fixture_operator",
+        source_event_id: "fixture-worker-diagnosis", subject_sha256: shadowHash(review), question_sha256: shadowHash(waiting.question),
+        choice: "request_diagnosis", rationale: "Fixture current request; the separate Native grant is still required.",
+        evidence_refs: [{ ref: "fixture:current-human", sha256: shadowHash(review) }] };
+      claims.set("current", claim); await host.receiveDecision(waiting.operation_id, { write: true, sourceRef: "current" });
+      await host.acceptOperation(waiting.operation_id, { write: true });
+      const before = host.inspect().record, count = f.t.calls.filter(row => row.method === "turn/start").length;
+      const result = await host.step({ write: true, authorization });
+      if (driftWorkerMode === "nominal") { assert.equal(result.journal_phase, "closed", JSON.stringify(result));
+        assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count + 1);
+      } else {
+        assert.equal(result.first_failure, driftWorkerMode === "expired" ? "STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED" : "PROCESS_HUMAN_NOT_AUTHENTICATED", JSON.stringify(result));
+        assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count); assert.equal(f.t.sessions.length, 1);
+      }
+      assert.ok(f.t.sessions.every(row => row.closed));
+      assert.equal(shadowHash(host.inspect().record.events.slice(0, before.events.length)), shadowHash(before.events));
+      assert.equal(JSON.stringify(f.t.calls).includes("human_verification"), false);
+      console.log(JSON.stringify({ scope: "production-parent-worker-ports-with-fixture-actors", mode: driftWorkerMode, result,
+        original_human_source_unchanged: shadowHash(claims.get("current")) === shadowHash(claim), published_process: "NOT_RUN", independent_worker_process: "NOT_RUN", native: "fixture" }));
+    } finally { Date.now = actualNow; }
+  });
   if (selectedSpikeMode) await check("standard spike: published model and real conversion wrapper", () => verifyStandardSpikeExecution({
     mixedFixture, storageMode: selectedSpikeMode, choice: selectedSpikeChoice, experiment: selectedSpikeExperiment, closeSession: selectedSpikeSessionClose }));
   if (selectedModeWorkResumeMode) await check("standard mode resume: expired authority and new cold authenticated decision", () => verifyModeWorkContinuationExecution({
@@ -2422,6 +2487,27 @@ if (process.argv[2] === "--mixed-continue") {
         await assert.rejects(() => session.run({ instruction: "Never start this turn.", request_sha256: "b".repeat(64), signal: controller.signal }),
           expired ? /PROCESS_SESSION_DEADLINE/ : /PROCESS_SESSION_BUSY_OR_CANCELLED/);
         assert.equal(t.calls.filter(row => row.method === "turn/start").length, 0);
+      } finally { assert.equal((await sessions.close()).closed, true); }
+    }
+  });
+  await check("worker private before-turn authority runs after awaited native observation and refuses a paid turn", async () => {
+    for (const fault of ["nominal", "revoked", "expired"]) {
+      const f = fixture(); let observed = false, checked = false;
+      const t = transport(f, { onConfigRead() { observed = true; } }), model = JSON.parse(fs.readFileSync(f.configuration.model.path));
+      const sessions = createAgenticCodexSessions({ native: f.configuration.native, targetRoot: f.configuration.target_root,
+        productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
+        evidence: { async retain() { return { ref: "fixture/native", sha256: "a".repeat(64) }; }, diagnostic() {} },
+        budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
+      try {
+        const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
+          input: { developer_instructions: "Common fixture authority." }, deadline: Date.now() + 60000 });
+        observed = false;
+        const execute = () => session.run({ instruction: "Fixture bounded turn.", request_sha256: "b".repeat(64), async beforeTurn() {
+          assert.equal(observed, true); checked = true; await new Promise(resolve => setImmediate(resolve));
+          if (fault !== "nominal") throw Object.assign(Error(), { code: fault === "revoked" ? "PROCESS_HUMAN_NOT_AUTHENTICATED" : "STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED" });
+        } });
+        if (fault === "nominal") await execute(); else await assert.rejects(execute());
+        assert.equal(checked, true); assert.equal(t.calls.filter(row => row.method === "turn/start").length, fault === "nominal" ? 1 : 0);
       } finally { assert.equal((await sessions.close()).closed, true); }
     }
   });

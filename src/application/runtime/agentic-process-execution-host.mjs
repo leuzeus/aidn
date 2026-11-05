@@ -50,6 +50,7 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
       || resource.role !== role.role && !evaluateAgentTransition({ mode: policy.mode, fromRole: resource.role,
         fromAction: resource.action, toRole: role.role, toAction: role.action }).allowed)) resource = null;
     if (!resource) {
+      await inputs.beforeNative?.(input);
       const session = await sessionFactory.open({ instance, frame, role, policy, input, deadline });
       const observed = checked(await session.observe());
       if (typeof observed.session_id !== "string" || !observed.session_id || !/^[a-f0-9]{64}$/.test(observed.binding_sha256)
@@ -128,6 +129,7 @@ export function createAgenticProcessExecutionHost({ sessionFactory, inputs, evid
       revision: frame.request.revision, activity_id: occurrenceId, artifact_sha256: frame.request.artifact_sha256, role: frame.request.role });
     const completion = checked(await resource.session.run({ instruction: task.input.instruction,
       request_sha256: shadowHash(frame.request), signal, deadline,
+      ...(inputs.beforeNative ? { beforeTurn: () => inputs.beforeNative(task.input) } : {}),
       ...(task.input.output_contract ? { output_contract: task.input.output_contract, output_context_sha256: task.input.output_context_sha256 } : {}) }));
     remaining();
     if (completion.session_id !== resource.sessionId || completion.binding_sha256 !== resource.binding

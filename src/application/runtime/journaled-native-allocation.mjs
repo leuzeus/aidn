@@ -18,6 +18,7 @@ import { readNativeAllocationCheckpoint, readNativeAllocationHistory, verifyNati
 import { createNativeAllocationControls, readNativeControlContext } from "./native-allocation-controls.mjs";
 import { createNativeAuthorizationEpochs } from "./native-authorization-epochs.mjs";
 import { effectiveNativeEpochAuthorization } from "../../core/workflow/native-authorization-epoch.mjs";
+import { startNativeHumanVerificationPort } from "./native-human-verification-port.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const limitKeys = ["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms", "max_turn_ms", "max_responses", "max_bytes"];
@@ -135,9 +136,11 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
         auth.max_responses -= consumed.responses; auth.max_bytes -= consumed.bytes;
       }
       if (!Number.isSafeInteger(auth.max_responses) || auth.max_responses < 1 || !Number.isSafeInteger(auth.max_bytes) || auth.max_bytes < 1048576) fail("NATIVE_ALLOCATION_BUDGET_EXHAUSTED");
-      let claim = null, observed = null;
+      let claim = null, observed = null, workerHuman = null;
       const observer = {
-        beforeLaunch({ preview: actual }) {
+        async beforeLaunch({ preview: actual }) {
+          const pending = instances.read(config.instance_id).record;
+          if (processAuthority && pending) await processAuthority.admitReadyDriftDiagnosis(pending);
           const now = read();
           if (now.content_sha256 !== before.content_sha256 || actual.scope_id !== preview.scope_id || actual.model_sha256 !== preview.model_sha256) fail("NATIVE_ALLOCATION_REVISION_CHANGED");
           const canonical = instances.read(config.instance_id).record;
@@ -159,11 +162,14 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
           write(body, now.content_sha256); claim = entry;
           return { generation: entry.generation, owner_id: entry.owner_id, output_id: nativeAllocationOutputId(config.instance_id, entry.generation) };
         },
-        workerInput(allocation) {
+        async workerInput(allocation) {
           const current = read().record; signer.verify(current);
           if (current.allocations.at(-1).owner_id !== allocation.owner_id) fail("NATIVE_ALLOCATION_OWNER_CHANGED");
-          return { contract_version: processAuthority ? "native-allocation-worker.v2" : "native-allocation-worker.v1", journal_id: journalId, generation: allocation.generation,
-            owner_id: allocation.owner_id, key_base64: readSigningKey().toString("base64"), ...(processAuthority ? { model_source: processAuthority.modelSource } : {}) };
+          const reservation = { journal_id: journalId, generation: allocation.generation, owner_id: allocation.owner_id };
+          if (processAuthority) workerHuman = await startNativeHumanVerificationPort({ reservation,
+            verify: (packet, signal) => processAuthority.verifyNativeHumanSource(packet, reservation, signal) });
+          return { contract_version: processAuthority ? "native-allocation-worker.v3" : "native-allocation-worker.v1", ...reservation,
+            key_base64: readSigningKey().toString("base64"), ...(processAuthority ? { model_source: processAuthority.modelSource, human_verification: workerHuman.capability } : {}) };
         },
         afterClosure({ allocation, result }) {
           observed = structuredClone(result);
@@ -205,6 +211,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       const executeAllocation = async () => { try {
         const result = await runOwnedAgenticProcess({ configuration: config, authorization: auth, execute: true, signal },
           { environment, allocationObserver: observer, processAuthority, ...(controllerFactory ? { controllerFactory } : {}) });
+        if (workerHuman) { await workerHuman.close(); workerHuman = null; }
         const record = read().record;
         const last = record?.allocations.at(-1), phase = last?.phase ?? "absent";
         return { contract_version: "journaled-native-allocation-result.v1", owned_result: result, journal_id: journalId,
@@ -212,6 +219,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
           status: phase === "closed" ? result.status : phase === "failed" ? "FAILED" : "WAITING_FOR_RECONCILIATION",
           first_failure: last?.first_failure ?? result.first_failure, retry: false };
       } catch (error) {
+        if (workerHuman) { try { await workerHuman.close(); workerHuman = null; } catch { error = Object.assign(Error("STANDARD_DRIFT_HUMAN_PORT_CLOSE_UNCONFIRMED"), { code: "STANDARD_DRIFT_HUMAN_PORT_CLOSE_UNCONFIRMED" }); } }
         if (!claim) { if (processAuthority) error.effect_status = "no_effect"; throw error; }
         return { contract_version: "journaled-native-allocation-result.v1", owned_result: observed, journal_id: journalId, generation: claim.generation,
           journal_phase: "reconciliation_required", status: "WAITING_FOR_RECONCILIATION", first_failure: error.code ?? "NATIVE_ALLOCATION_UNCONFIRMED", retry: false };

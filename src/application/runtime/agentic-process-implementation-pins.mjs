@@ -68,6 +68,7 @@ const files = ["src/application/runtime/standard-workflow-entry.mjs", "src/adapt
   "src/core/contracts/workflow-definition/native-allocation-journal.v3.schema.json", "src/core/contracts/workflow-definition/native-authorization-epoch-request.v2.schema.json",
   "src/application/runtime/native-allocation-evidence.mjs", "src/application/runtime/native-allocation-worker-authority.mjs", "src/application/runtime/native-allocation-controls.mjs",
   "src/application/runtime/standard-process-authority.mjs", "src/application/runtime/standard-workflow-mixed-composition.mjs",
+  "src/application/runtime/native-human-verification-port.mjs", "src/adapters/runtime/agent-admission-transport.mjs",
   "src/application/runtime/standard-mode-work-context.mjs", "src/core/workflow/standard-mode-work.mjs",
   ...["report", "preflight-input", "evaluate-input", "output"].map(kind => `src/core/contracts/workflow-definition/standard-mode-work-${kind}.v1.schema.json`),
   "src/application/runtime/standard-drift-report.mjs", "src/application/runtime/standard-drift-git.mjs", "src/core/workflow/native-activity-output.mjs",
