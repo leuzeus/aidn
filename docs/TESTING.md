@@ -3160,6 +3160,11 @@ attempts while confirming its effective closure exactly once. SOURCE65's first
 partition setup retained two close attempts and failed an overstrict fixture
 assertion before any race started. That failure is retained separately; the
 corrected counter is not a production closure or genuine Native qualification.
+The short `--native-human-turn-only` selection now exercises both production
+session close paths for nominal/revoked/expired turns and retains both attempt
+counts. Its separate production-RPC control uses a child-process double to prove
+that repeated close calls issue only one stop/kill. OS child/Job closure and
+independent worker authentication remain separate obligations.
 
 The independent worker's final observation is identified by two observations
 after the actual durable assignment, rather than an absolute RPC count. The

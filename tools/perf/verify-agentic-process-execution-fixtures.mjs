@@ -2498,9 +2498,11 @@ if (process.argv[2] === "--mixed-continue") {
         productRoot: f.dirs.product, controlRoot: path.join(f.dirs.control, "case"), rpcFactory: t.rpcFactory,
         evidence: { async retain() { return { ref: "fixture/native", sha256: "a".repeat(64) }; }, diagnostic() {} },
         budget: { maxTurnMs: 1000, remainingBytes: () => 1000000, response() {} } });
+      let opened;
       try {
         const session = await sessions.open({ role: model.roles[0], policy: model.policies.find(row => row.id === "work"),
           input: { developer_instructions: "Common fixture authority." }, deadline: Date.now() + 60000 });
+        opened = session;
         observed = false;
         const execute = () => session.run({ instruction: "Fixture bounded turn.", request_sha256: "b".repeat(64), async beforeTurn() {
           assert.equal(observed, true); checked = true; await new Promise(resolve => setImmediate(resolve));
@@ -2508,8 +2510,28 @@ if (process.argv[2] === "--mixed-continue") {
         } });
         if (fault === "nominal") await execute(); else await assert.rejects(execute());
         assert.equal(checked, true); assert.equal(t.calls.filter(row => row.method === "turn/start").length, fault === "nominal" ? 1 : 0);
-      } finally { assert.equal((await sessions.close()).closed, true); }
+      } finally {
+        // These are the two production host close paths: resource session,
+        // then the factory's retained clients. Keep both attempts observable.
+        if (opened) assert.equal((await opened.close()).closed, true);
+        assert.equal((await sessions.close()).closed, true);
+      }
+      assert.deepEqual(t.sessions.map(({ closeCalls, confirmedClosures }) => ({ closeCalls, confirmedClosures })), [{ closeCalls: 2, confirmedClosures: 1 }]);
+      console.log(JSON.stringify({ scope: "production-session-adapter-with-RPC-double", fault,
+        close_paths: ["resource.session.close", "sessionFactory.close"], close_attempts: 2, confirmed_fixture_closures: 1 }));
     }
+  });
+  await check("worker private before-turn close: production RPC stops its direct child once across repeated close calls", async () => {
+    const child = new EventEmitter(); child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough();
+    let kills = 0, failures = 0;
+    child.kill = () => { kills++; queueMicrotask(() => child.emit("close", 0, null)); return true; };
+    const rpc = createAgenticCodexRpc({ executable: process.execPath, sha256: sha(fs.readFileSync(process.execPath)), args: [], cwd: root, env: {},
+      deadline: Date.now() + 10000, onNotification() {}, onFailure() { failures++; }, spawnProcess() { return child; } });
+    assert.equal((await rpc.close()).closed, true);
+    assert.equal((await rpc.close()).closed, true);
+    assert.equal(kills, 1); assert.equal(failures, 1);
+    console.log(JSON.stringify({ scope: "production-RPC-with-child-process-double", close_calls: 2, child_kill_calls: kills,
+      stop_notifications: failures, actual_child_process: "NOT_RUN", native: "NOT_RUN" }));
   });
   await check("pre-aborted composition retains cancellation without canonical initialization or native allocation", async () => {
     const f = fixture(), { result, sessions, calls } = await run(f, { signal: AbortSignal.abort() });
