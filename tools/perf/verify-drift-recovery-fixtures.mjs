@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { createStandardHumanDecisions } from "../../src/application/runtime/standard-workflow-human-decisions.mjs";
 import { recoveryBoundary } from "../../src/application/runtime/standard-drift-recovery.mjs";
 import { createStandardDriftRecovery } from "../../src/application/runtime/standard-drift-recovery.mjs";
@@ -158,8 +159,14 @@ for (const [name, mutate, reason] of [
   const absent = { ...f.instance, events: [] }; assert.equal(await f.reader.read(absent, { evaluation_operation_id: id }, f.verified), null);
   pass("diagnosis request and absent opinion cannot become alignment confirmation or a Native allocation");
 }
+{
+  const fence = execFileSync(process.execPath, [fileURLToPath(new URL("./verify-gating-objective-fence-fixtures.mjs", import.meta.url))],
+    { encoding: "utf8", windowsHide: true, timeout: 70000, maxBuffer: 1048576 });
+  process.stdout.write(fence);
+}
 if (process.argv.includes("--objective-disposition-only")) {
-  console.log(JSON.stringify({ status: "PASS", checks, proof: "synthetic-authenticated-disposition-and-human-component-only", effects: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));
+  console.log(JSON.stringify({ status: "PASS", checks, proof: "synthetic-authenticated-disposition-and-human-component-with-production-effect-fences",
+    event_append: "actual-temporary-fixture", canonical_effects: "NOT_RUN", full_standard_workflow: "NOT_YET_DELIVERED" }));
   process.exit(0);
 }
 const temp = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(temp, "aidn-recovery-boundary-"));

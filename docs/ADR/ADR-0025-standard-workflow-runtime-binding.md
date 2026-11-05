@@ -1,5 +1,22 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Objective effect fences after observation, 2026-11-05
+
+The owned finalization hook reauthenticates the exact disposition after its last
+asynchronous signal collection and immediately before the synchronous event
+append. A replacement subject, revoked source or expired authority refuses
+without appending. The finalizer reads current context before its last
+authorization check, then checks the process CAS and plan age before report
+effects. The injected hook capability follows the same ordering and checks age
+again. No JSON field creates this capability. Partial effects still retain
+UNKNOWN and their existing owner.
+
+The focused fixture uses delayed observation and artifact doubles with the real
+evaluator/finalizer/event writer. It is separate from canonical execution and
+genuine actor qualification. Read-only closure admission and the published
+review/diagnosis routes remain unconnected; this correction does not establish
+cycle/session closure or complete L1-L8/A1-A10 acceptance.
+
 ## Authenticated objective disposition consumption candidate, 2026-11-05
 
 An accepted v2 alignment opinion may be consumed by the owning host only from

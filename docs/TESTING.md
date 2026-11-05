@@ -1,8 +1,20 @@
 # Testing Guide
 
+`node tools/perf/verify-gating-objective-fence-fixtures.mjs` runs twelve focused
+checks with the production evaluator, signal policies, finalizer and temporary
+event append. Delayed observation and artifact capabilities are doubles. A
+revocation, expiry or replacement during the final collection must leave the
+existing event prefix unchanged. Revocation or expiry during the finalizer's
+context read must refuse before report CAS, projection or hook. Goal/signal
+changes, STOP, preview and inert JSON claims retain their guards. This suite is
+also included in the existing recovery fixture command, without changing the
+required dispatcher's ordered case list. Failed component arenas are retained.
+These components do not qualify canonical storage, actual actors, closure,
+the published review route or the whole STANDARD workflow.
+
 `node tools/perf/verify-drift-recovery-fixtures.mjs --objective-disposition-only`
-checks the synthetic human/disposition boundary without Git or finalization
-effects. It refuses unaccepted receipts, wrong instance/evaluation/context,
+checks the synthetic human/disposition boundary and the focused effect fences
+above. It refuses unaccepted receipts, wrong instance/evaluation/context,
 newer evaluation, expiry, unverified retained source and changed canonical
 review. A diagnosis request cannot become alignment or an allocation.
 

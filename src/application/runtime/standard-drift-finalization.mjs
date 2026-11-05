@@ -88,8 +88,8 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
         try {
           const fresh = await prepare(instance, plan.input, plan.operation_id, plan.prepared_at_ms, true);
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_DRIFT_PREVIEW_CHANGED");
-          await assertAuthorized(); assertCurrent();
           await assertContext();
+          await assertAuthorized(); assertCurrent();
           if (now() - plan.prepared_at_ms > 300000) fail("STANDARD_DRIFT_PLAN_EXPIRED");
           file = eventPath(); beforeSize = fs.existsSync(file) ? fs.statSync(file).size : 0;
           if (fs.existsSync(file) && !fs.statSync(file).isFile()) fail("STANDARD_DRIFT_EVENT_LOG_INVALID");
@@ -114,7 +114,11 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
                 cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
                 stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
                 thresholdFiles: 3, thresholdMinutes: 45, mode: planMode(plan), runId, reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: true, completeDriftCheck: true },
-              verifyObjectiveAlignment: async () => { await assertAuthorized(); await assertContext(); return structuredClone(plan.objective_alignment); } });
+              verifyObjectiveAlignment: async () => {
+                await assertContext(); await assertAuthorized(); assertCurrent();
+                if (now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_DRIFT_PLAN_EXPIRED");
+                return structuredClone(plan.objective_alignment);
+              } });
             hook = { ok: payload.ok, skill: "drift-check", tool: "gating-evaluate.mjs", mode: planMode(plan), target: root,
               strict: true, invocation: "in_process_authenticated_objective_alignment", result: payload.result, payload };
           } else hook = runSkillHookUseCase({ args: { skill: "drift-check", mode: planMode(plan), runId, strict: true, noAutoSkipGate: false },

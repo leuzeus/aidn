@@ -1,5 +1,20 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE59 objective effect fences after observation, 2026-11-05
+
+The owned evaluator now reauthenticates the exact disposition after its final
+asynchronous collection, immediately before event append. Finalization checks
+context before its last authorization/CAS/age fence for the report and inside
+the injected hook capability. The focused delayed-observation fixture covers
+revocation, expiry, subject replacement and preserved event prefixes, plus
+report-effect refusal after context-read revocation/expiry. Observation and
+artifact authorities remain doubles; exact-source qualification is separate.
+
+Read-only cycle/session closure gates and published review/diagnosis routing
+remain due. This increment does not complete the standard, the full required
+gate, general L4 recovery, actual actors or exact installed-package acceptance.
+All prior failures and source-specific verdicts remain retained.
+
 ## SOURCE58 authenticated disposition consumer candidate, 2026-11-05
 
 Independent recovery/projection fixture projects now apply their explicit

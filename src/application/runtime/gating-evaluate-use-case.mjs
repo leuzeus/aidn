@@ -269,6 +269,15 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, c
       reason_code: decision.reason_code,
       trace_id: `tr-${crypto.randomBytes(4).toString("hex")}`,
     };
+    // The capability checked during signal derivation predates the final
+    // asynchronous collection. Reauthenticate its exact subject after that
+    // wait, immediately before the synchronous append. A revoked, expired or
+    // replaced disposition must leave even the existing log prefix unchanged.
+    if (objectiveAlignment !== null) {
+      const currentAlignment = await verifyObjectiveAlignment();
+      if (shadowHash(currentAlignment) !== shadowHash(objectiveAlignment))
+        throw Error("STANDARD_OBJECTIVE_ALIGNMENT_GATE_CHANGED");
+    }
     if (objectiveAlignment !== null) eventPayload.objective_alignment_sha256 = shadowHash(objectiveAlignment);
     result.event_file = appendRuntimeNdjsonEvent(args.eventFile, eventPayload);
   }
