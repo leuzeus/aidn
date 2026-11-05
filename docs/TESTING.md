@@ -26,6 +26,12 @@ short delayed-wrapper case, and append `--metadata-tamper` for a fresh real
 SQLite dual project with content-preserving metadata mutation. The latter must
 refuse before the conversion hook; actor sources remain synthetic. These two
 cases do not qualify the complete IR path, post-hook tampering or experiments.
+The separate `--metadata-stage=before-authorization` and
+`--metadata-stage=after-hook` cases inject during the first or second awaited
+authorization in a fresh real SQLite DUAL project. The first must refuse before
+the hook with no effect; the second must retain confirmed hook/sync observations
+and return reconciliation_required/unknown with no positive fact. Registration
+alone does not establish either result.
 
 
 The separate selector `node tools/perf/verify-agentic-process-execution-fixtures.mjs

@@ -13,7 +13,9 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 
 // This short precondition suite calls the actual wrapper with signed synthetic
 // accepted sources. It is separate from the published-model mixed qualification.
-const mode = process.argv.includes("--metadata-tamper") ? "dual" : "files", roots = [];
+const metadataStage = process.argv.find(arg => arg.startsWith("--metadata-stage="))?.split("=")[1] ?? null;
+if (metadataStage && !["before-authorization", "after-hook"].includes(metadataStage)) throw Error("SPIKE_METADATA_STAGE_INVALID");
+const mode = process.argv.includes("--metadata-tamper") || metadataStage ? "dual" : "files", roots = [];
 const root = createFreshStandardWorkflowFixture(mode, roots), operations = createStandardWorkflowOperations({ targetRoot: root });
 console.log(JSON.stringify({ root, mode, proof_class: "wrapper-precondition-synthetic-accepted-sources", native_calls: 0 }));
 const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), H = "a".repeat(64), evidence = [{ ref: "fixture:analysis", sha256: H }];
@@ -67,15 +69,36 @@ sources.set(initializeId, { record: { preview: { prepared: original } }, output:
 prepared = await wrapper.prepareFinalize(instance, { contract_version: "standard-spike-finalize-input.v1", initialize_operation_id: initializeId });
 let final;
 if (mode === "dual") {
-  const name = original.plan.inner.plan.changes[0].path, before = artifacts.read(name), metadata = artifacts.metadataHash(name), store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
-  try { const row = store.getArtifact(name); store.upsertArtifact({ ...row, gate_relevance: row.gate_relevance === 1 ? 0 : 1 }); } finally { store.close(); }
-  assert.equal(artifacts.read(name).sha256, before.sha256); assert.notEqual(artifacts.metadataHash(name), metadata);
+  const name = original.plan.inner.plan.changes[0].path, before = artifacts.read(name), metadata = artifacts.metadataHash(name);
+  let injections = 0, authorizations = 0;
+  const mutate = () => {
+    const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
+    try { const row = store.getArtifact(name); store.upsertArtifact({ ...row, gate_relevance: row.gate_relevance === 1 ? 0 : 1 }); } finally { store.close(); }
+    injections++;
+    assert.equal(artifacts.read(name).sha256, before.sha256); assert.notEqual(artifacts.metadataHash(name), metadata);
+  };
+  if (metadataStage) {
+    const assertAuthorized = async () => { authorizations++; if (authorizations === (metadataStage === "before-authorization" ? 1 : 2)) mutate(); };
+    if (metadataStage === "before-authorization") {
+      await assert.rejects(wrapper.finalize(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized }),
+        { code: "STANDARD_SPIKE_METADATA_CHANGED", effect_status: "no_effect" });
+      final = { metadata_only_tamper: "REJECTED_BEFORE_HOOK_AFTER_AUTHORIZATION_AWAIT", canonical_content_unchanged: true };
+    } else {
+      final = await wrapper.finalize(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized });
+      assert.equal(final.outcome, "reconciliation_required"); assert.equal(final.effect_status, "unknown"); assert.deepEqual(final.facts, {});
+      assert.equal(final.observations.hook.ok, true); assert.equal(final.observations.sync.ok, true);
+      assert.equal(final.observations.reason_code, "STANDARD_SPIKE_POSTIMAGE_CHANGED");
+    }
+    assert.equal(injections, 1); assert.equal(authorizations, metadataStage === "before-authorization" ? 1 : 2);
+  } else {
+  mutate();
   await assert.rejects(wrapper.finalize(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized: async () => {} }), { code: "STANDARD_SPIKE_PREVIEW_CHANGED" });
   final = { metadata_only_tamper: "REJECTED_BEFORE_HOOK", canonical_content_unchanged: true };
+  }
 } else {
   final = await wrapper.finalize(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized: async () => {} });
   assert.equal(final.effect_status, "confirmed", JSON.stringify(final)); assert.equal(final.facts.spike_conversion_completed, true);
 }
 assert.ok(verifications > 0);
 console.log(JSON.stringify({ ok: true, root, mode, final, prepared_at_ms: original.plan.prepared_at_ms,
-  delay_ms: Date.now() - original.plan.prepared_at_ms, same_dated_postimages: true, native_calls: 0, mixed_model: "NOT_RUN", genuine_human: "NOT_RUN" }));
+  metadata_stage: metadataStage, delay_ms: Date.now() - original.plan.prepared_at_ms, same_dated_postimages: true, native_calls: 0, mixed_model: "NOT_RUN", genuine_human: "NOT_RUN" }));
