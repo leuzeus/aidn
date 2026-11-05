@@ -1590,7 +1590,7 @@ if (process.argv[2] === "--mixed-continue") {
       const native = await f.open().step({ write: true, authorization: auth });
       assert.equal(native.journal_phase, "closed", JSON.stringify(native));
       const occurrence = f.open().inspect().cursor.occurrences.find(row => row.node_id === "analyze").occurrence_id;
-      const evaluated = await f.open().step({ write: true, input: { report_occurrence_id: occurrence } });
+      const evaluated = await f.open().step({ write: true, input: f.model.data_bindings ? {} : { report_occurrence_id: occurrence } });
       const output = f.open().readOperation(evaluated.operation_id).results.at(-1).output;
       assert.equal(output.facts.drift_present, false);
       assert.equal(output.facts.drift_context_complete, true);
