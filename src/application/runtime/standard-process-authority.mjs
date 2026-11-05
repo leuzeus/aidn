@@ -209,9 +209,13 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       if (capture.source.choice !== "continue_analysis" || selected.output.facts.mode_work_continue_requested !== true)
         fail("STANDARD_MODE_WORK_CONTINUATION_REQUIRED");
       continuation = { operation_id: selected.record.operation_id, source_sha256: shadowHash(capture.source), question_sha256: capture.source.question_sha256,
-        review_sha256: selected.output.observations.review_sha256, choice: capture.source.choice };
+        review_sha256: selected.output.observations.review_sha256, choice: capture.source.choice,
+        information_only: true, product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false,
+        decision: structuredClone(capture.source), prior_report: structuredClone(selected.record.preview.prepared.review.report),
+        prior_producer: structuredClone(selected.record.preview.prepared.review.producer), prior_reference: structuredClone(selected.record.preview.prepared.review.reference) };
     }
     const context = { ...current.context, preflight_operation_id: id, ...(continuation ? { continuation } : {}) };
+    if (Buffer.byteLength(JSON.stringify(context)) > 262144) fail("STANDARD_MODE_WORK_CONTEXT_TOO_LARGE");
     return { ...current, context, context_sha256: shadowHash(context) };
   }
   async function evaluateModeWork(instance, input) {

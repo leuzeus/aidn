@@ -6,7 +6,7 @@ The mixed fixture selector is `node tools/perf/verify-agentic-process-execution-
 --standard-mode-work-resume-mode=files --standard-mode-work-session=THINKING
 --retain-always` (also `dual` and `db-only`). It must use a NEW project and model,
 receive a NEW authenticated human fixture decision in a cold process after the
-original Native grant expires, activate a separately authenticated epoch with
+original Native grant expires under an injected fixture clock, activate a separately authenticated epoch with
 closed Native resources and retained cumulative consumption, and execute a
 second distinct read-only occurrence. The original report, allocation, grant
 and event prefix must remain immutable. Replay/simulation use the same reducer.
@@ -3552,3 +3552,6 @@ these components do not establish repeated correction, the full C2 journey,
 genuine human/native/provider/OS, configured PostgreSQL or exact installed
 archive behavior. The qualification record separates terminal component results
 from pending business journeys.
+
+Qualification with an injected fixture clock is offline expiry evidence only.
+Actual wall-clock expiry and genuine Native/Human/resource closure remain unproved.

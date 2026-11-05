@@ -12,7 +12,8 @@ deferral and cancellation keep their distinct outcomes. An accepted
 `continue_analysis` choice requests another read-only analysis occurrence in
 the same bounded loop; it neither completes analysis nor grants retention,
 product effects or a renewed Native authorization. The new activity context
-binds the accepted decision. Historical result contexts exclude later choices.
+binds the accepted decision and carries its bounded authenticated rationale,
+source evidence and previous report as information, without new permissions. Historical result contexts exclude later choices.
 Existing Native epoch admissions still require a genuinely fresh authorization
 and authenticated resource closure after expiry; a decision alone cannot renew
 a grant. Original reports, decisions, allocations and reducer events survive.
@@ -2365,3 +2366,6 @@ these components do not establish repeated correction, the full C2 journey,
 genuine human/native/provider/OS, configured PostgreSQL or exact installed
 archive behavior. The qualification record separates terminal component results
 from pending business journeys.
+
+Qualification with an injected fixture clock is offline expiry evidence only.
+Actual wall-clock expiry and genuine Native/Human/resource closure remain unproved.

@@ -21,6 +21,7 @@ try {
   assert.equal((await host.receiveDecision(data.operation_id, { sourceRef: data.source_ref, write: true })).status, "retained_result");
   const accepted = await host.acceptOperation(data.operation_id, { write: true });
   assert.deepEqual(host.inspectAllocations(), initial); assert.equal(launches, 0);
-  console.log(JSON.stringify({ status: "PASS", pid: process.pid, new_native_allocations: launches, original_authority_expired: Date.now() > data.original_deadline_ms,
+  console.log(JSON.stringify({ status: "PASS", pid: process.pid, new_native_allocations: launches, clock_class: "injected-fixture-clock",
+    original_authority_expired_on_fixture_clock: Date.now() > data.original_deadline_ms, wall_clock_expiry_qualification: "NOT_RUN",
     instance_sha256: accepted.record.instance_sha256, workflow_status: accepted.cursor.status }));
 } finally { Date.now = realNow; }
