@@ -14,6 +14,10 @@ import questionSchema from "../contracts/workflow-definition/standard-mode-quest
 import recoverySource from "../contracts/workflow-definition/human-drift-recovery-decision.v1.schema.json" with { type: "json" };
 import recoveryQuestion from "../contracts/workflow-definition/standard-drift-recovery-question.v1.schema.json" with { type: "json" };
 import recoveryPlan from "../contracts/workflow-definition/standard-drift-recovery-plan.v1.schema.json" with { type: "json" };
+import recoveryQuestionV2 from "../contracts/workflow-definition/standard-drift-recovery-question.v2.schema.json" with { type: "json" };
+import recoverySourceV2 from "../contracts/workflow-definition/human-drift-recovery-decision.v2.schema.json" with { type: "json" };
+import inboxV12 from "../contracts/workflow-definition/process-decision-inbox.v12.schema.json" with { type: "json" };
+import { assertObjectiveReview } from "./standard-drift-objective-review.mjs";
 import inboxV3 from "../contracts/workflow-definition/process-decision-inbox.v3.schema.json" with { type: "json" };
 import { assertHumanCycleClosureDecision } from "./standard-cycle-closure-decision.mjs";
 import inboxV2 from "../contracts/workflow-definition/process-decision-inbox.v2.schema.json" with { type: "json" };
@@ -33,6 +37,7 @@ export function assertHumanModeDecision(value) {
   return value;
 }
 export function assertRecoveryPlan(value) {
+  if (value?.contract_version === "standard-drift-recovery-plan.v2") return assertObjectiveReview(value);
   const jsonIssue = checkShadowJson(value);
   if (jsonIssue) throw Object.assign(new Error("PROCESS_RECOVERY_PLAN_INVALID"), { code: "PROCESS_RECOVERY_PLAN_INVALID", reason: "json", issue: jsonIssue });
   const issues = validateJsonSchema(value, recoveryPlan, "$", { contractKind: "workflow-definition" });
@@ -46,14 +51,20 @@ export function assertRecoveryPlan(value) {
   return value;
 }
 export function assertRecoveryQuestion(value) {
-  if (checkShadowJson(value) || validateJsonSchema(value, recoveryQuestion, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_HUMAN_QUESTION_INVALID");
+  const objective = value?.contract_version === "standard-drift-recovery-question.v2";
+  if (checkShadowJson(value) || validateJsonSchema(value, objective ? recoveryQuestionV2 : recoveryQuestion, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_HUMAN_QUESTION_INVALID");
   assertRecoveryPlan(value.review);
-  if (value.review.review_operation_id !== value.operation_id || value.review.session_id !== value.session_id
-    || shadowHash(value.choices) !== shadowHash([...value.review.options.map(row => row.choice), "refused", "deferred", "cancelled"])) fail("PROCESS_HUMAN_QUESTION_INVALID");
+  if (objective !== (value.review.contract_version === "standard-drift-recovery-plan.v2")
+    || value.review.review_operation_id !== value.operation_id || value.review.session_id !== value.session_id
+    || shadowHash(value.choices) !== shadowHash([...(objective ? value.review.choices : value.review.options.map(row => row.choice)), "refused", "deferred", "cancelled"])) fail("PROCESS_HUMAN_QUESTION_INVALID");
   return value;
 }
-export function assertHumanRecoveryDecision(value) {
-  if (checkShadowJson(value) || validateJsonSchema(value, recoverySource, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_HUMAN_SOURCE_INVALID");
+export function assertHumanRecoveryDecision(value, question) {
+  const objective = value?.contract_version === "human-drift-recovery-decision.v2";
+  if (checkShadowJson(value) || validateJsonSchema(value, objective ? recoverySourceV2 : recoverySource, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_HUMAN_SOURCE_INVALID");
+  if (objective && (!value.rationale.trim() || new Set(value.evidence_refs.map(row => row.ref)).size !== value.evidence_refs.length)) fail("PROCESS_HUMAN_SOURCE_INVALID");
+  if (question && (objective !== (question.contract_version === "standard-drift-recovery-question.v2")
+    || objective && (value.subject_sha256 !== shadowHash(question.review) || value.question_sha256 !== shadowHash(question)))) fail("PROCESS_HUMAN_QUESTION_CHANGED");
   return value;
 }
 export const decisionInboxId = source => "decision_" + shadowHash({ authority_id: source.authority_id, source_kind: source.source_kind, source_event_id: source.source_event_id }).slice(0, 40);
@@ -62,9 +73,13 @@ export function decisionInboxPath(id) {
   return `workflows/decision-inbox/${id}.json`;
 }
 export function assertDecisionInbox(value) {
-  const definition = value?.contract_version === "process-decision-inbox.v11" ? inboxV11 : value?.contract_version === "process-decision-inbox.v10" ? inboxV10 : value?.contract_version === "process-decision-inbox.v9" ? inboxV9 : value?.contract_version === "process-decision-inbox.v8" ? inboxV8 : value?.contract_version === "process-decision-inbox.v7" ? inboxV7 : value?.contract_version === "process-decision-inbox.v6" ? inboxV6 : value?.contract_version === "process-decision-inbox.v5" ? inboxV5 : value?.contract_version === "process-decision-inbox.v4" ? inboxV4 : value?.contract_version === "process-decision-inbox.v3" ? inboxV3 : value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
+  const definition = value?.contract_version === "process-decision-inbox.v12" ? inboxV12 : value?.contract_version === "process-decision-inbox.v11" ? inboxV11 : value?.contract_version === "process-decision-inbox.v10" ? inboxV10 : value?.contract_version === "process-decision-inbox.v9" ? inboxV9 : value?.contract_version === "process-decision-inbox.v8" ? inboxV8 : value?.contract_version === "process-decision-inbox.v7" ? inboxV7 : value?.contract_version === "process-decision-inbox.v6" ? inboxV6 : value?.contract_version === "process-decision-inbox.v5" ? inboxV5 : value?.contract_version === "process-decision-inbox.v4" ? inboxV4 : value?.contract_version === "process-decision-inbox.v3" ? inboxV3 : value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
   if (checkShadowJson(value) || validateJsonSchema(value, definition, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_DECISION_INBOX_INVALID");
-  if (value.contract_version === "process-decision-inbox.v11") assertHumanSpikeDecision(value.source);
+  if (value.contract_version === "process-decision-inbox.v12") {
+    if (value.source.contract_version !== "human-drift-recovery-decision.v2") fail("PROCESS_DECISION_INBOX_INVALID");
+    assertHumanRecoveryDecision(value.source);
+  }
+  else if (value.contract_version === "process-decision-inbox.v11") assertHumanSpikeDecision(value.source);
   else if (value.contract_version === "process-decision-inbox.v10") assertHumanModeWorkDecision(value.source);
   else if (["process-decision-inbox.v7", "process-decision-inbox.v8", "process-decision-inbox.v9"].includes(value.contract_version)) assertHumanPrCorrectionDecision(value.source);
   else if (value.contract_version === "process-decision-inbox.v6") assertHumanSessionBranchIntegrationDecision(value.source);

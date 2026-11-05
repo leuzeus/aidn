@@ -9,6 +9,9 @@ import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuratio
 import { assertRecoveryPlan } from "../../core/workflow/process-decision-inbox.mjs";
 import { artifactContentHash, artifactMetadataHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
+import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
+import { observeStandardDriftGate } from "./standard-drift-finalization.mjs";
+import { assertObjectiveReview, objectiveReviewChoices } from "../../core/workflow/standard-drift-objective-review.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const controls = ["parking-lot.md", "CURRENT-STATE.md"];
@@ -132,6 +135,20 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
   async function prepare(instance, input, operationId, at) {
     projectionFiles();
     const verified = await readEvaluation(instance, input), report = verified.output.observations.report;
+    if (verified.output.facts.drift_present === false && verified.output.facts.drift_context_complete === true
+      && verified.output.facts.drift_recovery_required === false) {
+      const context = verified.context, session = context.documents.find(row => /^audit:sessions\/S[0-9]{3,6}\.md$/.test(row.ref));
+      const sessionObjective = session && analyzeStructuredArtifact(session.content).key_values.session_objective;
+      const gate = await observeStandardDriftGate(artifacts, context.mode ?? "COMMITTING");
+      const constraints = { level1: gate.levels.level1, level3: gate.levels.level3,
+        other_signals: gate.levels.level2.active_signals.filter(value => value !== "time_since_last_drift_check") };
+      const plan = assertObjectiveReview({ contract_version: "standard-drift-recovery-plan.v2", review_kind: "objective_signal_disagreement",
+        review_operation_id: operationId, evaluation_operation_id: input.evaluation_operation_id, evaluation_sha256: verified.evaluation_sha256,
+        context_sha256: verified.context_sha256, prepared_at_ms: at, session_id: context.session_id, cycle_id: context.cycle_id,
+        session_objective: sessionObjective, cycle_objective: context.original_objective, report, gate_constraints: constraints, choices: [...objectiveReviewChoices] });
+      if ((await observeContext()).context_sha256 !== verified.context_sha256) fail("STANDARD_RECOVERY_REVIEW_STALE");
+      return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
+    }
     if (verified.output.facts.drift_present !== true || verified.output.facts.drift_context_complete !== true) fail("STANDARD_RECOVERY_COMPLETE_DIAGNOSIS_REQUIRED");
     const parking = artifacts.read(controls[0]), current = artifacts.read(controls[1], { required: true });
     const actions = choice => ["Record the confirmed findings and the selected recovery in their owning artifacts.",
@@ -170,7 +187,9 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
       const { review, choice, decision_operation_id, prepared_at_ms } = prepared ?? {}, age = now() - prepared_at_ms;
       if (write !== true || typeof assertAuthorized !== "function" || !prepared.can_apply || prepared.plan_sha256 !== expectPlan
         || shadowHash({ review, choice, decision_operation_id, prepared_at_ms }) !== expectPlan || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_RECOVERY_EXPLICIT_EFFECT_REQUIRED");
-      assertRecoveryPlan(review); if (!review.options.some(row => row.choice === choice)) fail("STANDARD_RECOVERY_CHOICE_REQUIRED");
+      assertRecoveryPlan(review);
+      if (review.contract_version !== "standard-drift-recovery-plan.v1") fail("STANDARD_RECOVERY_CONFIRMED_FINDINGS_REQUIRED");
+      if (!review.options.some(row => row.choice === choice)) fail("STANDARD_RECOVERY_CHOICE_REQUIRED");
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         let before;
         try {

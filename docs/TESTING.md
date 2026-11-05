@@ -19,14 +19,19 @@ configuration is deliberately unusable. This prefix does not qualify a session,
 other storage modes, genuine actors or an installed package.
 
 `node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-objective-mismatch-only --retain-on-failure`
-reproduces the exact session/cycle objective pair from the preserved SPIKE failure
-on two new FILES projects. Real canonical creation/context, authenticated fixture
-Native output, evaluation, finalization and recovery preparation establish whether
-the clean report can obtain a human recovery question. The current expected result
-is an unresolved refusal: `objective_delta` blocks finalization, while recovery
-requires a confirmed diagnosis and never asks the human. A passing reproduction
-does not resolve that disagreement or complete R05. Terminal cycle status is an
-explicit fixture precondition; no original arena or authority is reused.
+uses the exact session/cycle objective pair from the preserved SPIKE failure
+on two NEW FILES projects. Real canonical creation/context, authenticated fixture
+Native output and evaluation retain the finalizer's `objective_delta` refusal.
+The candidate recovery port prepares a v2 question for a separate suspect signal
+review. Add `--drift-objective-human-accept` to retain an authenticated fixture
+alignment opinion, then verify that findings remain refused and same-reducer
+simulation retains accepted events. This does not discharge the signal, integrate
+the published-model route or complete R05. Terminal status is a synthetic fixture
+precondition; no original authority is reused.
+Add `--drift-objective-construction-only` for the distinct construction preflight:
+it proves two authority constructions and zero Native allocations only, without
+diagnosis, finalization or human preparation. The preserved first SOURCE57
+preflight used an overbroad title; that evidence remains construction only.
 
 Branch-integration inspection resolves its source/target/HEAD object IDs in one
 fresh Git call and its finite lock/reflog paths in another. Every physical path,

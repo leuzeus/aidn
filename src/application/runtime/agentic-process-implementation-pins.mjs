@@ -50,6 +50,8 @@ const files = ["src/application/runtime/standard-workflow-entry.mjs", "src/adapt
   "src/core/workflow/process-data-contracts.mjs", "src/core/workflow/process-input-resolution.mjs", "src/application/runtime/standard-process-inputs.mjs",
   "src/core/contracts/workflow-definition/process-data-bindings.v1.schema.json", "src/core/contracts/workflow-definition/process-resolved-input.v1.schema.json",
   "src/application/runtime/standard-drift-recovery.mjs", "src/application/runtime/agent-run-configuration-service.mjs", "src/core/workflow/process-decision-inbox.mjs",
+  "src/core/workflow/standard-drift-objective-review.mjs",
+  ...["human-drift-recovery-decision.v2", "standard-drift-recovery-question.v2", "standard-drift-recovery-plan.v2", "process-decision-inbox.v12"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   ...["human-drift-recovery-decision.v1", "standard-drift-recovery-question.v1", "standard-drift-recovery-plan.v1", "standard-drift-recovery-output.v1", "standard-drift-recovery-record-input.v1", "process-decision-inbox.v2"].map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/agentic-process-implementation-pins.mjs",
   "src/application/runtime/agentic-process-persistence.mjs", "src/application/runtime/runtime-persistence-service.mjs",

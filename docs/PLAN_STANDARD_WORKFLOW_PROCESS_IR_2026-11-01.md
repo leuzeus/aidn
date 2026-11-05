@@ -1,5 +1,23 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE57 bounded objective review, 2026-11-05
+
+Two fixture construction defects are corrected independently: recovery has no
+finalization pin and consumes its declared evaluation input rather than a caller
+override. The original SOURCE56 failure, SOURCE57 construction-only evidence and
+later input-override failure retain their exact sources and arenas. The preflight
+now has a scope-correct title; no old stdout is edited.
+
+The candidate existing recovery decision port prepares a separate v2 question
+for a complete clean diagnosis opposed only by the suspect objective signal.
+It retains both exact goals and offers an authenticated alignment opinion or a
+request for diagnosis, plus refusal/defer/cancel. Inbox v12 retains that source
+separately. Acceptance supplies no signal discharge, findings, Native authority
+or R05 completion; the findings writer refuses v2 reviews. The finalizer guard
+remains intact. Published-model routing and authenticated disposition consumption
+are due. Refreshed model pins preserve topology; this source wiring is not full
+STANDARD or L1-L8/A1-A10 acceptance.
+
 ## SOURCE55 exact console action, 2026-11-05
 
 The console's prior apply path regenerated its operation preview, changing the

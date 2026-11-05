@@ -1,5 +1,31 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Review of a suspect objective signal, 2026-11-05
+
+The existing recovery decision port can prepare a separate v2 review when an
+authenticated complete clean diagnostic disagrees with the sole non-age
+`objective_delta` signal. It retains both canonical objectives, report, evaluation
+identity/hash, context hash and fresh gate constraints. L1 STOP, L3, other signals,
+incomplete coverage and confirmed drift cannot use this review. Confirmed-findings
+recovery retains its v1 contracts.
+
+The v2 question offers `confirm_alignment`, `request_diagnosis`, refused,
+deferred and cancelled. Its v2 human source binds the review subject and exact
+question and includes a rationale. Trusted source verification, freshness,
+instance CAS, durable capture and explicit intent retain the existing fences.
+Inbox v12 is separate; historical inboxes and sources are never converted.
+This is a record of the governed process decision inbox, not authority created
+from model JSON or a semantic conclusion supplied by the detector.
+
+Acceptance records only the human opinion. It does not discharge the signal,
+authorize findings, allocate Native or complete R05. The findings writer explicitly
+refuses this review type and the existing finalizer still blocks. The published
+model has refreshed implementation pins but routing is not connected to this
+review yet. Durable disposition consumption, published-model routing, fresh
+diagnosis where requested and full closure remain required. This candidate needs
+exact-source qualification. Fixture actors and synthetic terminal preconditions
+are not genuine actors or full STANDARD proof. L1-L8/A1-A10 remains incomplete.
+
 ## Exact STANDARD action through the console, 2026-11-05
 
 The console preview retains the existing closed `standard-workflow-action.v1`

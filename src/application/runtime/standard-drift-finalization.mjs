@@ -20,6 +20,13 @@ const schemaFor = plan => plan?.contract_version === "standard-drift-finalize-pl
 const planMode = plan => plan.contract_version === "standard-drift-finalize-plan.v2" ? plan.mode : "COMMITTING";
 const emit = (outcome, effect_status, observations, facts = {}, evidence_refs = []) => assertStandardOperationOutput({
   contract_version: "standard-drift-output.v1", operation_ref: "drift_check_finalize", outcome, effect_status, observations, facts, evidence_refs });
+export async function observeStandardDriftGate(artifacts, mode) {
+  return runGatingEvaluateUseCase({ targetRoot: artifacts.root, runtimeDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), args: {
+    cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
+    stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
+    thresholdFiles: 3, thresholdMinutes: 45, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: true,
+  } });
+}
 export function createStandardDriftFinalization({ targetRoot, readEvaluation, readCurrent, now = Date.now }) {
   if (typeof readEvaluation !== "function" || typeof readCurrent !== "function") fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
@@ -38,11 +45,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
       { encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
     if (ignored.status !== 0) return { can_apply: false, reason_code: "STANDARD_DRIFT_REPORT_PROJECTION_POLICY_REQUIRED" };
     if (artifacts.read(reportPath).sha256 !== null) return { can_apply: false, reason_code: "STANDARD_DRIFT_REPORT_RECONCILIATION_REQUIRED" };
-    const gate = await runGatingEvaluateUseCase({ targetRoot: root, runtimeDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), args: {
-      cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
-      stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
-      thresholdFiles: 3, thresholdMinutes: 45, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: true,
-    } });
+    const gate = await observeStandardDriftGate(artifacts, mode);
     const constraints = { level1: gate.levels.level1, level3: gate.levels.level3,
       other_signals: gate.levels.level2.active_signals.filter(value => value !== "time_since_last_drift_check") };
     if (gate.levels.level1.decision === "stop" || gate.levels.level3.required || constraints.other_signals.length)

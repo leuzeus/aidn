@@ -39,7 +39,7 @@ for (const change of [p => p.changes.reverse(), p => p.changes[0].path = "baseli
   const bad = structuredClone(plan); change(bad); assert.throws(() => assertRecoveryPlan(bad));
 }
 pass("closed recovery plans bind replacement post-images and bounded append text under a context hash and fixed two-document footprint");
-function humanFixture(operationId = id, withDelta = false) {
+function humanFixture(operationId = id, withDelta = false, reviewPlan = plan) {
   const records = new Map(), sources = new Map();
   const inbox = { read: id => ({ record: records.get(id) ?? null, content_sha256: records.has(id) ? shadowHash(records.get(id)) : null }),
     compareAndSwap(record, before) { assertDecisionInbox(record); assert.equal(before, records.has(record.inbox_id) ? shadowHash(records.get(record.inbox_id)) : null);
@@ -49,7 +49,7 @@ function humanFixture(operationId = id, withDelta = false) {
     verify: ({ source, sourceRef }) => sources.has(sourceRef) && sourceRef !== "unverified"
       ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" },
   } });
-  const p = structuredClone(plan); p.review_operation_id = operationId;
+  const p = structuredClone(reviewPlan); p.review_operation_id = operationId;
   if (withDelta) {
     p.cycle_id = "C001"; p.context_sha256 = shadowHash({ ...context, cycle_id: "C001" });
     p.options.unshift({ choice: "requirements_delta", actions: ["Record confirmed findings.", "Review the owning cycle's requirements delta.", "Re-evaluate drift."] });
@@ -73,6 +73,35 @@ for (const choice of ["requirements_delta", "new_cycle", "rollback", "refused", 
   assert.equal(f.human.captured(f.record).phase, "receipted"); assert.equal(f.human.readSource(output.evidence_refs[0].ref).choice, choice);
   await assert.rejects(f.human.verifyCaptured(f.record), /PROCESS_HUMAN_NOT_AUTHENTICATED/);
   pass(`typed ${choice} capture remains explicit and durable; MAC retention is distinct from live source verification`);
+}
+const objectivePlan = { contract_version: "standard-drift-recovery-plan.v2", review_kind: "objective_signal_disagreement", review_operation_id: id,
+  evaluation_operation_id: id, evaluation_sha256: H, context_sha256: H, prepared_at_ms: 1, session_id: "S001", cycle_id: "C001",
+  session_objective: "Learn through an explicitly admitted bounded SPIKE", cycle_objective: "Determine whether a bounded prototype is useful",
+  report: { contract_version: "standard-drift-report.v1", context_sha256: H, original_objective: "Determine whether a bounded prototype is useful",
+    current_objective: "Determine whether a bounded prototype is useful", drift_level: "none", objective_changed: false, changes: [], keep: [], discard: [],
+    split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" }, recommendation: "continue", rationale: "Fixture diagnostic", evidence_refs: [{ ref: "fixture:context", sha256: H }] },
+  gate_constraints: { level1: { decision: "incremental" }, level3: { required: false }, other_signals: ["objective_delta"] },
+  choices: ["confirm_alignment", "request_diagnosis"] };
+assertRecoveryPlan(objectivePlan);
+for (const mutate of [p => p.gate_constraints.other_signals.push("scope_growth"), p => p.gate_constraints.level3.required = true,
+  p => p.gate_constraints.level1.decision = "stop", p => p.report.drift_level = "mild", p => p.report.objective_changed = true,
+  p => p.report.changes.push("real drift"), p => p.session_objective = p.cycle_objective, p => p.choices.push("rollback"), p => p.changes = []]) {
+  const bad = structuredClone(objectivePlan); mutate(bad); assert.throws(() => assertRecoveryPlan(bad));
+}
+pass("objective review is closed to a clean complete diagnostic and its sole suspect objective signal; blockers and confirmed findings cannot use it");
+for (const choice of ["confirm_alignment", "request_diagnosis", "refused", "deferred", "cancelled"]) {
+  const f = humanFixture(id, false, objectivePlan);
+  const claim = { ...f.claim(choice), contract_version: "human-drift-recovery-decision.v2", subject_sha256: shadowHash(f.question.review), rationale: "Fixture review of this exact disagreement" };
+  f.sources.set("wrong", { ...claim, subject_sha256: H }); await assert.rejects(f.human.reserve(f.record, "wrong"), /PROCESS_HUMAN_QUESTION_CHANGED/);
+  f.sources.set("unverified", claim); await assert.rejects(f.human.reserve(f.record, "unverified"), /PROCESS_HUMAN_NOT_AUTHENTICATED/);
+  f.sources.set("choice", claim); const capture = await f.human.reserve(f.record, "choice"), output = f.human.output(f.record, capture);
+  assert.equal(capture.contract_version, "process-decision-inbox.v12"); assert.equal(output.effect_status, "no_effect");
+  assert.deepEqual(output.facts, ["confirm_alignment", "request_diagnosis"].includes(choice) ? { drift_check_completed: false } : {});
+  assert.equal(output.outcome, choice === "refused" ? "rejected" : ["confirm_alignment", "request_diagnosis"].includes(choice) ? "completed" : choice);
+  assert.equal(output.observations.signal_discharged, false); assert.equal(output.observations.review_resolution_pending, true);
+  const receipt = { operation_id: id, output_sha256: shadowHash(output) }; f.record.results.push({ output, receipt });
+  f.human.acknowledge(capture.inbox_id, receipt); assert.equal(f.human.captured(f.record).phase, "receipted");
+  pass(`objective ${choice} is authenticated against the exact question and retained without findings, signal discharge or R05 completion`);
 }
 const f = humanFixture(); f.sources.set("wrong", { ...f.claim("new_cycle"), question_sha256: H });
 await assert.rejects(f.human.reserve(f.record, "wrong"), /PROCESS_HUMAN_QUESTION_CHANGED/);

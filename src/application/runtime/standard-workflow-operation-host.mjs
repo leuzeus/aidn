@@ -794,6 +794,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const record = retained(input.decision_operation_id).record, receipt = record.results.at(-1)?.receipt;
     if (receipt?.outcome !== "completed" || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) fail("STANDARD_RECOVERY_DECISION_NOT_ACCEPTED");
     const choice = human.captured(record).source.choice, review = record.preview.prepared.plan;
+    if (review.contract_version !== "standard-drift-recovery-plan.v1") fail("STANDARD_RECOVERY_CONFIRMED_FINDINGS_REQUIRED");
     if (!review.options.some(row => row.choice === choice)) fail("STANDARD_RECOVERY_CHOICE_REQUIRED");
     await recovery.assertFresh(instance, review);
     return { review, choice, decision_operation_id: input.decision_operation_id };
