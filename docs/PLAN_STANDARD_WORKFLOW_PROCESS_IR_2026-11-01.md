@@ -8,19 +8,40 @@ La version initiale du plan (`6886132`) enregistrait le diagnostic et le travail
 restant. L’avancement ci-dessous ne vaut pas livraison du modèle standard ni
 qualification de son parcours complet.
 
-Avancement courant au 4 novembre 2026 : les composants startup/cycle sont en
-163/161 avec SOURCE40 et le modèle composé 105 conserve les routes
-d'analyse THINKING/EXPLORING (192 nœuds, 117 occurrences d’opération,
-19 activités). Les sources exactes et les verdicts terminaux sont conservés
-dans la preuve bornée de chaque qualification. Le snapshot SOURCE37 était 159/157/101 (186/113/17),
-et SOURCE34 était 155/153/97 ;
-le snapshot 147/145/89 (147/90/14) était une étape antérieure, pas les assets
-courants. Les preuves conservent chacune leur source exacte. Les raccordements
-SOURCE32 de promotion/reclôture avec histoire, puis SOURCE33 de redelivery et
-nouvelle observation/triage PR, sont codés. Leur parcours causal complet reste
-à qualifier. Le moteur v2 est le défaut global ; l’entrée ordinaire reste
-inchangée et `complete_standard_workflow=false`. Les constats initiaux restent
-datés de `dd1dbab`, distincts de cet avancement.
+Current source state, 4 November 2026: startup/cycle/standard revisions are
+167/165/109, with 202 nodes, 121 operation occurrences and 19 native activities.
+SOURCE42 adds a versioned report observation and a durable human continuation
+operation to the same bounded read-only analysis loop. The original waiting
+report retains blocked/no-effect/empty positive facts. A NEW authenticated
+`continue_analysis` source requests a distinct Native occurrence and carries
+its bounded rationale, evidence and prior report as information. It grants no
+product effects, retention, analysis completion or Native authority renewal.
+The existing epochs remain the authorization path after expiry. Historical
+readers and prior events are retained; ordinary entry is unchanged and
+`complete_standard_workflow=false`. Engine v2 remains the global default.
+
+SOURCE42 contract/shape checks passed on 759cbb96; the causal-context source is
+dab8f448 (canonical standard SHA
+`f6bbf6bd160bb8f79c1f95d22e84a59302fc694051bd417961874d611f6d56b7`).
+Its continuation contracts 16, mode shape 13, composition 32 and startup model
+22 checks pass independently on that exact source. Synthetic preflight and a
+NEW THINKING/FILES mixed resume are running at this dated source-edit snapshot.
+The resume uses fixture Native/human/resource authorities and an injected clock;
+actual wall-clock expiry and genuine authority/resource qualification remain
+unproved. A c0fe3129 fixture launch failed before execution because its shebang
+followed an import; dab8f448 corrects it. That failed source remains preserved.
+No PASS is transferred between sources and no mixed success is claimed here.
+All inherited 158 Runtime invocations remain, with four continuation checks
+appended (162 total). Full current Runtime/Governance Admission remain NOT_RUN.
+
+ROOT's late supplement established all three SOURCE41 mode cases as terminal
+PASS: the dated 9 PASS/3 pending seal now has a separate 12 PASS/0 pending
+observation, across seven frozen roots and three HEADs. It does not establish
+new decisions, SPIKE/experiments/closure or the complete workflow. All historical
+failures, UNKNOWN states, resources, authorities and closed seals remain intact.
+Entire L1-L8/A1-A10, including SPIKE admission, retained experiments, mode session
+closure, general UNKNOWN recovery, complete correction/redelivery, fresh exact
+HEAD merge consent, real provider/OS/PG and installed archive proof, remains due.
 
 ### Avancement d’exécution
 

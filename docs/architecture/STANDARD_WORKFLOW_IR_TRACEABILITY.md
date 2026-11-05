@@ -1,5 +1,32 @@
 # Standard workflow IR traceability
 
+SOURCE42's current candidate is startup/cycle/standard 167/165/109. The standard
+JSON has 202 nodes, 121 operation occurrences and 19 native activities, canonical
+SHA `f6bbf6bd160bb8f79c1f95d22e84a59302fc694051bd417961874d611f6d56b7`.
+`mode_work_observe` retains the authenticated report and original v1 evaluation.
+Its completed receipt acknowledges evidence only and sets analysis completion
+false; waiting/retention evaluation keeps blocked/no-effect/empty positive facts.
+The same IR routes that report to `mode_work_continue_decision`, an authenticated
+human wait backed by inbox v10. Its subject binds current canonical context,
+product/Git HEAD and the earlier report's exact producer. New accepted consent
+requests another read-only loop occurrence. Its bounded source content and prior
+report enter the new Native context as information with no new permissions.
+Later choices do not alter earlier result contexts. Old inbox/model/instance
+readers and the original evaluation contract remain readable without conversion.
+SPEC-R01/R02/R11 and context-reload are the existing authorities; existing
+operation/native-result/decision-inbox concepts own these records. No new table,
+public command or implicit migration/ordinary-entry activation is introduced.
+
+On exact dab8f448 source, continuation contracts 16, mode shape 13, composition
+32 and startup model 22 pass. Its synthetic preflight and NEW mixed FILES resume
+are pending at this dated snapshot. The latter uses an injected fixture clock
+and fixture Native/human/resource authentication; it cannot qualify actual wall
+clock expiry or genuine Native/Human/Provider/OS. The c0fe3129 pre-execution
+shebang failure is retained. Complete L1-L8/A1-A10 remains open, including admitted
+SPIKE/experiments, real mode closure, business UNKNOWN reconciliation and installed
+qualification. The following SOURCE41 pending snapshot is historical: ROOT's
+late terminal supplement established 12 PASS/0 pending, seven roots/three HEADs.
+
 SOURCE41's [focused record](../qualification/standard-workflow/mode-matrix-and-correction-fixture-2026-11-04.json)
 qualifies EXPLORING/nonretained DUAL and EXPLORING/waiting DB-only on b9113433,
 model 105, with real application/Git/SQLite ports and fixture Native/human
