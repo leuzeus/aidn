@@ -1,5 +1,23 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Fresh authority observations, 2026-11-05
+
+Project and persistence descriptions in a single synchronous host observation
+derive from one complete fresh activation read. The combined reader obtains the
+activation itself; callers cannot provide an activation claim. It retains all
+installed-asset, path, authorization, backend, scope and implementation checks.
+Separate calls and stage/dispatch/accept boundaries still observe authority anew.
+The native journal preview similarly returns the executor observation against
+which it just checked that journal, rather than immediately taking it twice.
+No authority, product, journal, cursor or filesystem observation is cached across
+calls. These changes add no effect, public payload or acceptance authority.
+
+Offline source-envelope tests isolate a fresh 64-byte forgery, malformed
+encoding/schema, expiry, subject, reference, kind and author. The ordinary CLI
+fixture declares a new ten-minute source validity interval to cover its two
+independent 180-second command bounds; expired original sources remain unchanged.
+This fixture duration grants no Native budget or production authorization.
+
 ## Explicit ordinary STANDARD entry, 2026-11-05
 
 `workflow-run` and the console run operation select the packaged model through

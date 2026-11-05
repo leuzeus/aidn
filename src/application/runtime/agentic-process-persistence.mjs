@@ -10,17 +10,24 @@ function selection(targetRoot, env) {
   if (!activation.active || activation.state !== "active") fail("PROCESS_EXECUTION_PERSISTENCE_AUTHORITY_UNAVAILABLE");
   const globalRuntime = activation.receipt?.global_runtime ?? null;
   const reference = selected.backend === "postgres" ? selected.connectionRef : null;
-  return { selected, globalRuntime, reference, binding: { backend: selected.backend, source: selected.source,
+  return { selected, activation, globalRuntime, reference, binding: { backend: selected.backend, source: selected.source,
     connection_ref: reference, hook_runtime: globalRuntime } };
 }
 
 // Backend authority is the existing resolver, not a second launcher setting.
 // This description never resolves or serializes a credential value.
 export function agenticProcessPersistence({ targetRoot, env = process.env }) {
-  const { selected, reference, binding } = selection(targetRoot, env);
+  return observeAgenticProcessPersistence({ targetRoot, env }).persistence;
+}
+
+// One fresh activation read may describe both project and persistence authority
+// in the same synchronous observation. No caller-supplied activation is accepted,
+// and no observation survives into a later admission or effect boundary.
+export function observeAgenticProcessPersistence({ targetRoot, env = process.env }) {
+  const { selected, activation, reference, binding } = selection(targetRoot, env);
   if (!["sqlite", "postgres"].includes(selected.backend)) fail("PROCESS_EXECUTION_PERSISTENCE_UNSUPPORTED");
   if (selected.backend === "postgres" && !/^env:[A-Za-z_][A-Za-z0-9_]*$/.test(reference ?? "")) fail("PROCESS_EXECUTION_PERSISTENCE_REFERENCE_REQUIRED");
-  return { backend: selected.backend, binding_sha256: shadowHash(binding) };
+  return { activation, persistence: { backend: selected.backend, binding_sha256: shadowHash(binding) } };
 }
 
 // Canonical credentials belong to trusted runtime/admission hosts, not model

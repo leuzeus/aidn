@@ -11,7 +11,7 @@ import { createAgenticProcessStore } from "../../adapters/runtime/agentic-proces
 import { createAgenticCodexSessions } from "../../adapters/agents/agentic-codex-session.mjs";
 import { nativeActivityOutputSkill, nativeActivityOutputInstructions, nativeActivityAnswerSchema } from "../../core/workflow/native-activity-output.mjs";
 import { CYCLE_WORK_CONTRACT, CYCLE_TASK_WORK_CONTRACT, isStandardCycleWorkContract } from "../../core/workflow/standard-cycle-work.mjs";
-import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
+import { readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { agenticPolicyPins, assertAgenticProcessModel, processId, processFail as fail } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { AGENT_ROLES, buildAgentProfile, canAgentRolePerform } from "../../core/agents/agent-role-model.mjs";
@@ -130,14 +130,16 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
   const authorities = Object.fromEntries(Object.entries(config.authorities).map(([id, ref]) => [id, pinned(ref, [productRoot, reviewRoot]).toString("utf8")]));
   const skills = Object.fromEntries(Object.entries(config.skills ?? {}).map(([id, ref]) => [id, pinned(ref, [productRoot, reviewRoot]).toString("utf8")]));
   for (const role of model.roles) if (role.skills.some(skill => !Object.hasOwn(skills, skill))) fail("PROCESS_EXECUTION_SKILL_MISSING");
-  const authorityAtCreation = readWorkflowProjectAuthority({ targetRoot });
-  const persistence = agenticProcessPersistence({ targetRoot, env: environment });
+  const { project: authorityAtCreation, persistence } = readWorkflowProjectExecutionAuthority({ targetRoot, env: environment });
   const scopeId = processAuthority ? processAuthority.read().scope_id : shadowHash({ project: authorityAtCreation.scope, persistence: persistence.binding_sha256 });
   function readAuthority() {
     // A mixed instance delegates project authority to its common host port.
     // Re-reading the same activation here would duplicate that live observation.
-    const observed = processAuthority ? null : readWorkflowProjectAuthority({ targetRoot });
-    if (agenticProcessPersistence({ targetRoot, env: environment }).binding_sha256 !== persistence.binding_sha256) fail("PROCESS_EXECUTION_PERSISTENCE_CHANGED");
+    const executionAuthority = processAuthority?.readExecutionAuthority?.();
+    const projectObservation = processAuthority ? null : readWorkflowProjectExecutionAuthority({ targetRoot, env: environment });
+    const observed = projectObservation?.project;
+    const currentPersistence = executionAuthority?.persistence ?? projectObservation?.persistence ?? agenticProcessPersistence({ targetRoot, env: environment });
+    if (currentPersistence.binding_sha256 !== persistence.binding_sha256) fail("PROCESS_EXECUTION_PERSISTENCE_CHANGED");
     if (!processAuthority && (observed.stateMode !== authorityAtCreation.stateMode || shadowHash(observed.scope) !== shadowHash(authorityAtCreation.scope)
       || observed.productVersion !== authorityAtCreation.productVersion)
       || config.implementation_sha256 !== agenticProcessImplementationPins().sha256
@@ -147,7 +149,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     for (const reference of Object.values(config.authorities)) pinned(reference, [productRoot, reviewRoot]);
     if (config.control_scenario) pinned(config.control_scenario, [productRoot, reviewRoot]);
     if (processAuthority) {
-      const authority = processAuthority.read();
+      const authority = executionAuthority?.authority ?? processAuthority.read();
       if (authority.scope_id !== scopeId || authority.model_sha256 !== shadowHash(model) || shadowHash(authority.policy_pins) !== shadowHash(agenticPolicyPins(model))) fail("PROCESS_EXECUTION_AUTHORITY_CHANGED");
       return authority;
     }

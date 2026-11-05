@@ -13,13 +13,25 @@ import { createWorkflowInstanceService } from "./workflow-instance-service.mjs";
 import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
 import { agenticPolicyPins, assertAgenticProcessModel } from "../../core/workflow/agentic-process-model.mjs";
-import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
+import { agenticProcessPersistence, observeAgenticProcessPersistence } from "./agentic-process-persistence.mjs";
 import { resolveWorkflowEngine } from "../../core/workflow/workflow-engine-policy.mjs";
 
 export function readWorkflowProjectAuthority({ targetRoot }) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
+  return projectAuthority(root, readActivation({ targetRoot: root }));
+}
+
+// Activation is obtained here, never supplied by a workflow/configuration.
+// Sharing its complete fresh observation avoids reading every installed asset
+// twice solely to derive two descriptions of the same synchronous boundary.
+export function readWorkflowProjectExecutionAuthority({ targetRoot, env = process.env }) {
+  const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
+  const { activation, persistence } = observeAgenticProcessPersistence({ targetRoot: root, env });
+  return { project: projectAuthority(root, activation), persistence };
+}
+
+function projectAuthority(root, activation) {
   const mode = () => resolveConfigStateMode(readAidnProjectConfig(root).data) ?? "files";
-  const activation = readActivation({ targetRoot: root });
   if (!activation.active || activation.state !== "active" || activation.authorization?.status !== "authorized") fail("WORKFLOW_INSTANCE_ACTIVATION_REQUIRED");
   const context = resolveRuntimeProjectContext({ targetRoot: root });
   return { stateMode: mode(), productVersion: readAgentRunFile(fileURLToPath(new URL("../../../VERSION", import.meta.url)), { json: false }).value.toString("utf8").trim(),

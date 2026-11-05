@@ -1,5 +1,15 @@
 # Testing Guide
 
+`node tools/perf/verify-workflow-execution-authority-fixtures.mjs` checks that a
+combined synchronous project/persistence observation matches the separate
+descriptions and reads one full activation receipt. A later call reads again;
+same-size changed skill bytes with restored mtime, missing activation and changed
+state mode remain freshly observed. It uses a new source-installed fixture.
+`node tools/perf/verify-standard-host-source-fixtures.mjs` isolates signature,
+encoding, closed-envelope schema, expiry, subject, source reference, source kind
+and payload-author boundaries with fixture Ed25519 principals. Its explicit
+historical-verification capability is not reducer acceptance evidence.
+
 `node tools/perf/verify-standard-ordinary-entry-fixtures.mjs --mode=files|dual|db-only`
 drives the public CLI's production STANDARD composition on a fresh activated
 fixture. It checks immutable preview, exact host-key preparation/initialization,
@@ -8,6 +18,10 @@ stale-question refusal, and same-model/reducer replay/SIM. It passes no controll
 or authorization doubles to the production entry. Its Native configuration is
 deliberately unlaunchable and its signed principals are fixtures. Report real
 Native/Human/Provider/OS, installed package and full STANDARD separately.
+Each new decision envelope declares ten minutes of validity, covering two
+180-second CLI calls without changing command limits or prior authorities. The
+forgery assertion independently requires the envelope still be fresh. Invocation
+timings are descriptive wall times under the reported concurrent load.
 
 The SPIKE wrapper-precondition suite also exercises both session checkpoint
 inventories with real initializer CAS postimages and synthetic signed writer

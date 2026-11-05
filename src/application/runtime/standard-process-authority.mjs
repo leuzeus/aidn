@@ -6,8 +6,7 @@ import { PR_TRIAGE_CONTRACT } from "../../core/workflow/standard-pr-triage.mjs";
 import { buildStandardPrTriageContext } from "./standard-pr-triage-context.mjs";
 import { CYCLE_AUDIT_CONTRACT } from "../../core/workflow/standard-cycle-audit.mjs";
 import { buildStandardCycleAuditContext } from "./standard-cycle-audit-context.mjs";
-import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
-import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
+import { readWorkflowProjectAuthority, readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { createStandardWorkflowOperations, standardWorkflowOperationBindings, assertStandardWorkflowImplementation } from "./standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { createOperationJournalSigner } from "../../core/workflow/process-operation-journal.mjs";
@@ -60,13 +59,16 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const operationStore = createProcessOperationJournalStore(options), controls = createProcessControlInboxStore(options), allocations = createNativeAllocationJournalStore(options);
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, projectionRequired: false });
   function read() {
+    return readExecutionAuthority().authority;
+  }
+  function readExecutionAuthority() {
     assertStandardWorkflowImplementation();
-    const project = readWorkflowProjectAuthority({ targetRoot: configuration.target_root }), persistence = agenticProcessPersistence({ targetRoot: configuration.target_root, env: environment });
+    const { project, persistence } = readWorkflowProjectExecutionAuthority({ targetRoot: configuration.target_root, env: environment });
     if (project.stateMode !== initial.stateMode) fail("STANDARD_PROCESS_AUTHORITY_CHANGED");
-    return { scope_id: shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
+    return { persistence, authority: { scope_id: shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
       process_host: { version: 1, profile: "standard-mixed.v1", state_mode: project.stateMode, key_id: signer.keyId,
         model_sha256: shadowHash(model), model_source_sha256: source === null ? null : shadowHash(source) } }),
-      model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) };
+      model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model) } };
   }
   function snapshot(productSha256 = readProductSha256?.()) {
     if (!/^[a-f0-9]{64}$/.test(productSha256 ?? "")) fail("STANDARD_PROCESS_PRODUCT_OBSERVATION_REQUIRED");
@@ -620,6 +622,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation,
+  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation,
     evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

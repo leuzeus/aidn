@@ -38,7 +38,7 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
   const controlRecords = createProcessControlInboxStore(options);
   const journalId = nativeJournalId({ instance_id: config.instance_id, scope_id: preview.scope_id });
   const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && preview.persistence.backend === "postgres";
-  function read() {
+  function observe() {
     const current = executor.preview();
     if (current.scope_id !== preview.scope_id || current.model_sha256 !== preview.model_sha256) fail("NATIVE_ALLOCATION_AUTHORITY_CHANGED");
     const value = store.read(journalId);
@@ -47,8 +47,9 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
       if (value.record.origin_journal) signer.verify(value.record.origin_journal);
       if (value.record.instance_id !== config.instance_id || value.record.scope_id !== current.scope_id || value.record.model_sha256 !== current.model_sha256) fail("NATIVE_ALLOCATION_SCOPE_CHANGED");
     }
-    return value;
+    return { value, current };
   }
+  const read = () => observe().value;
   function write(body, before) {
     const record = signer.seal(body); store.compareAndSwap(record, before);
     if (projectionRequired) store.materialize(journalId, { write: true });
@@ -89,7 +90,9 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
     preview: () => executor.preview(), source: nativeAuthorizationSource, processAuthority,
     materialize: () => { if (projectionRequired) store.materialize(journalId, { write: true }); } });
   return Object.freeze({
-    preview() { const value = read(); return { ...executor.preview(), journal_id: journalId, journal_sha256: value.record ? shadowHash(value.record) : null,
+    // Journal and description belong to the same fresh executor observation.
+    // Later calls still re-read activation, pins, product and signed journal.
+    preview() { const { value, current } = observe(); return { ...current, journal_id: journalId, journal_sha256: value.record ? shadowHash(value.record) : null,
       generation: value.record?.allocations.length ?? 0, phase: value.record?.allocations.at(-1)?.phase ?? "absent", consumption: totals(value.record), native_started: false, written: false }; },
     inspect() { const value = read(); return value.record ? structuredClone(value.record) : null; },
     prepareControl: controls.prepare, captureControl: controls.capture, deliverControl: controls.deliver, readControl: controls.read,

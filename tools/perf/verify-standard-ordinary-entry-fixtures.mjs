@@ -40,11 +40,13 @@ const cli = fileURLToPath(new URL("../../bin/aidn.mjs", import.meta.url));
 const environment = { ...process.env, AIDN_STANDARD_HOST_HOME: directories.authority };
 let calls = 0;
 function run(extra = [], env = environment) {
-  let bytes;
+  let bytes; const started = Date.now();
   try { bytes = execFileSync(process.execPath, [cli, "runtime", "workflow-run", "--target", target, "--configuration", config, "--json", ...extra],
     { env, windowsHide: true, timeout: 180000, maxBuffer: 8388608, stdio: ["ignore", "pipe", "pipe"] }); }
   catch (cause) { if (!cause.stdout?.length) throw cause; bytes = cause.stdout; }
-  const result = JSON.parse(bytes); fs.writeFileSync(path.join(base, `call-${++calls}.json`), bytes); return result;
+  const result = JSON.parse(bytes); fs.writeFileSync(path.join(base, `call-${++calls}.json`), bytes);
+  console.log(JSON.stringify({ call: calls, selectors: extra.filter(value => value.startsWith("--")), elapsed_ms: Date.now() - started, errors: result.errors }));
+  return result;
 }
 function apply(preview, selectors = []) {
   assert.deepEqual(preview.errors, [], JSON.stringify(preview)); fs.writeFileSync(actionFile, JSON.stringify(preview.preview));
@@ -74,7 +76,7 @@ for (let i = 0; i < 8; i++) {
   assert.equal(next.preview.context.native.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
   if (next.preview.kind === "dispatch" && next.preview.payload.question) { waiting = next; break; }
   assert.equal(next.preview.kind, "operation"); const binding = next.preview.payload.preview.binding.id;
-  const result = apply(next); console.log(`PASS ordinary CLI: ${binding} ${result.result.status}`);
+  const result = apply(next); console.log(`PASS ordinary CLI: ${binding} ${result.result.operation_outcome}`);
 }
 assert.ok(waiting, "published model must reach its actual durable H wait before Native");
 const question = waiting.preview.payload.question;
@@ -83,14 +85,19 @@ const claim = { contract_version: "human-mode-decision.v1", source_kind: "human"
 function signed(choice, ref, q = question) {
   const source = { ...claim, source_event_id: `ordinary-${ref}`, choice, question_sha256: shadowHash(q) };
   const body = { contract_version: "standard-host-source.v1", kind: "human", authority_id: "fixture_human", source_ref: ref, subject_sha256: shadowHash(q),
-    payload: source, issued_at_ms: Date.now() - 1, expires_at_ms: Date.now() + 60000 };
+    // This NEW fixture envelope must survive two independently bounded public
+    // invocations (2 * 180s). Expiry has its own isolated adapter test; never
+    // extend an existing authority to repair an already failed case.
+    payload: source, issued_at_ms: Date.now() - 1, expires_at_ms: Date.now() + 600000 };
   return { ...body, signature: sign(null, Buffer.from(shadowHash(body)), privateKey).toString("base64") };
 }
 const ref = "mode-defer", sourceFile = path.join(directories.authority, "inbox", ref + ".json");
-fs.writeFileSync(sourceFile, JSON.stringify({ ...signed("deferred", ref), signature: Buffer.alloc(64).toString("base64") }));
+const forgedEnvelope = { ...signed("deferred", ref), signature: Buffer.alloc(64).toString("base64") };
+fs.writeFileSync(sourceFile, JSON.stringify(forgedEnvelope));
 let decision = run(["--decision-source", ref]);
 fs.writeFileSync(actionFile, JSON.stringify(decision.preview));
 const forged = run(["--decision-source", ref, "--action-file", actionFile, "--execute", "--expect-plan", decision.action_sha256]);
+assert.ok(Date.now() < forgedEnvelope.expires_at_ms, "signature-only case must remain fresh through rejection");
 assert.equal(forged.errors[0], "STANDARD_HOST_SOURCE_NOT_AUTHENTICATED");
 fs.writeFileSync(sourceFile, JSON.stringify(signed("deferred", ref)));
 decision = run(["--decision-source", ref]); const deferred = apply(decision, ["--decision-source", ref]);
