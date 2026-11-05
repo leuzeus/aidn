@@ -33,7 +33,7 @@ test('versioned binding capacity preserves v1/v2 bounds and admits the larger st
   }
   for (const count of [141, 256]) assertProcessDataBindings({ contract_version: 'process-data-bindings.v3', parameter_keys: [], inputs: rows(count) }, nodes(count));
   assert.throws(() => assertProcessDataBindings({ contract_version: 'process-data-bindings.v3', parameter_keys: [], inputs: rows(257) }, nodes(257)), { code: 'PROCESS_DATA_BINDINGS_INVALID' });
-  const instance = createAgenticProcess({ instanceId: 'capacity-v3', scopeId: 'fixture', model: assets.model, policyPins: agenticPolicyPins(assets.model), facts: {}, parameters: {} });
+  const instance = createAgenticProcess({ instanceId: 'capacity-v3', scopeId: 'fixture', model: assets.model, policyPins: agenticPolicyPins(assets.model), facts: {}, parameters: { session: {}, cycle: {} } });
   const hash = instance.instance_sha256;
   const replay = inspectAgenticProcess(instance);
   assert.equal(replay.status, 'RUNNING'); assert.equal(instance.instance_sha256, hash);
