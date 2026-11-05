@@ -14,6 +14,15 @@ These are fixture authorities with real local ports, not genuine human/provider,
 general UNKNOWN-effect recovery, SPIKE/experiment/closure or installed evidence.
 Full STANDARD and current Runtime/Governance Admission remain unproved.
 
+The mode continuation fixture supplies the exact retained original authorization
+when preparing an epoch from a historical v1 allocation journal. That journal
+stores its hash and limits, so omission is refused before duration checks. The
+fixture checks missing and substituted authorization without mutation, preserves
+the signed origin journal and first allocation, and verifies cumulative response
+and storage debits against the new grant. SOURCE42's missing-argument terminal
+failure remains historical evidence; a corrected run needs a new project and
+authority. This correction changes no application admission, TTL or ceiling.
+
 The full correction fixture prepares its expected source identifiers before the
 mixed host reserves Native. Run `node tools/perf/verify-standard-composed-cycle-fixtures.mjs
 --retain-always` for accepted-source and new-review binding checks, and

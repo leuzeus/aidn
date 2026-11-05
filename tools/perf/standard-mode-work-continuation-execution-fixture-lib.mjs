@@ -105,11 +105,24 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
             assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "new", write: true })).status, "retained_result");
             assert.equal(f.open().inspect().record.events.length, count);
             assert.equal(decision.results[0].output.observations.native_authority_renewed, false);
-            const request = f.open().prepareNativeAuthorizationEpoch();
+            // A historical v1 journal retains limits and an authorization hash,
+            // not the full original grant. Supply that exact retained object;
+            // neither a human continuation nor a cold host may reconstruct it.
+            const oldJournal = f.open().inspectAllocations(), beforeEpoch = modeAnalysisWitness(f.open(), f.configuration);
+            assert.equal(oldJournal.contract_version, "native-allocation-journal.v1");
+            assert.throws(() => f.open().prepareNativeAuthorizationEpoch(), { code: "NATIVE_EPOCH_AUTHORIZATION_INVALID" });
+            assert.throws(() => f.open().prepareNativeAuthorizationEpoch({ originalAuthorization: { ...original, max_responses: 2 } }),
+              { code: "NATIVE_EPOCH_ORIGINAL_AUTHORIZATION_CHANGED" });
+            assert.equal(modeAnalysisWitness(f.open(), f.configuration), beforeEpoch);
+            const request = f.open().prepareNativeAuthorizationEpoch({ originalAuthorization: original });
             assert.ok(request.resources.length); assert.equal(request.consumption.known, true); assert.equal(request.consumption.responses, 1);
+            assert.deepEqual(request.initial_authorization, original); assert.equal(request.journal_sha256, shadowHash(oldJournal));
+            assert.equal(request.allocations_sha256, shadowHash(oldJournal.allocations));
+            assert.equal(request.consumption.bytes, originalAllocation.consumption.storage_debit_bytes);
             fs.writeFileSync(path.join(f.base, "mode-resume-expired-epoch-request.json"), JSON.stringify(request));
             await f.open().activateNativeAuthorizationEpoch(request, { write: true, sourceRef: "new-expired-mode-consent" });
             assert.equal(reads, 1); assert.deepEqual(f.open().inspectAllocations().initial_authorization, original);
+            assert.deepEqual(f.open().inspectAllocations().origin_journal, oldJournal);
           }
         } else assert.equal(record.results.at(-1)?.output.outcome, "completed");
       } else {
@@ -121,6 +134,11 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
     assert.ok(waiting); assert.equal(final.cursor.status, "COMPLETED"); assert.equal(f.t.sessions.length, 2); assert.ok(f.t.sessions.every(row => row.closed));
     assert.deepEqual(authorization, original); assert.deepEqual(journal.initial_authorization, original); assert.deepEqual(journal.allocations[0], originalAllocation);
     assert.equal(journal.allocations.length, 2); assert.notEqual(journal.allocations[0].authorization_sha256, journal.allocations[1].authorization_sha256);
+    assert.equal(journal.allocations.reduce((sum, row) => sum + row.consumption.responses_observed, 0), 2);
+    assert.equal(journal.allocations[1].limits.max_responses, grant.authorization.max_responses - journal.epochs[0].request.consumption.responses);
+    assert.equal(journal.allocations[1].limits.max_bytes, grant.authorization.max_bytes - journal.epochs[0].request.consumption.bytes);
+    const cumulativeBytes = journal.allocations.reduce((sum, row) => sum + row.consumption.storage_debit_bytes, 0);
+    assert.ok(cumulativeBytes <= grant.authorization.max_bytes);
     assert.deepEqual(final.record.events.slice(0, waiting.events.length), waiting.events);
     const results = final.record.events.filter(row => row.kind === "result"); assert.equal(results.length, 2); assert.notEqual(results[0].occurrence_id, results[1].occurrence_id);
     const beforeReplay = modeAnalysisWitness(f.open(), f.configuration); let last;
@@ -131,7 +149,8 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
       model_sha256: final.record.model_sha256, instance_sha256: final.record.instance_sha256, workflow_status: final.cursor.status, native_responses: 2,
       new_authenticated_decision_after_expiry_on_fixture_clock: true, clock_class: "injected-fixture-clock", wall_clock_expiry_qualification: "NOT_RUN",
       cold_receive_accept: true, distinct_occurrences_and_allocations: true, original_authority_and_prefix_preserved: true,
-      cumulative_responses: requestConsumption(journal), D_H_extra_native_allocations: 0, replay_simulation_exact: true, native_human_resource_authorities: "fixture-capabilities",
+      prior_epoch_responses: requestConsumption(journal), cumulative_responses: 2, cumulative_storage_debit_bytes: cumulativeBytes,
+      D_H_extra_native_allocations: 0, replay_simulation_exact: true, native_human_resource_authorities: "fixture-capabilities",
       spike_conversion: "NOT_RUN", general_business_unknown_reconciliation: "NOT_RUN", postgres: "NOT_RUN", installed_archive: "NOT_RUN", complete_standard_workflow: false }));
   } finally { Date.now = realNow; }
 }
