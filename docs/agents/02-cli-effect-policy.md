@@ -16,6 +16,10 @@ The classification keeps automation from confusing output format with write perm
 
 ## Rules
 
+- `convert-to-spike` creates a cycle from an active EXPLORING session. Its
+  generic pre-write admission uses the cycle-creation Git, continuity and
+  canonical initial-cycle freshness checks; it cannot require that new cycle
+  already exists. The separate specialized continuity admission remains required.
 - `--json` controls output format only and must never imply mutation.
 - `--help` and `-h` are always read-only, even when another selector is present.
 - `--dry-run` is always preview-only; parsers must reject contradictory write

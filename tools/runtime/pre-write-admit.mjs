@@ -729,7 +729,7 @@ export async function preWriteAdmit({
       warning: "configured canonical PostgreSQL backend did not provide a PostgreSQL snapshot" };
   }
   const dbSource = resolveDbArtifactSourceName(sqliteFallback.backend);
-  const preferDb = canonicalRequired || (nativeRequest !== undefined || skill === "cycle-create") && dbBackedMode;
+  const preferDb = canonicalRequired || (nativeRequest !== undefined || ["cycle-create", "convert-to-spike"].includes(skill)) && dbBackedMode;
   const canonicalResolutionErrors = [];
   const resolveSelection = resolve => {
     try {
@@ -920,13 +920,13 @@ export async function preWriteAdmit({
     parseListSection(runtimeStateText, "blocking_findings")
       .filter((item) => item.toLowerCase() !== "none"),
   );
-  const cycleCreateGitGate = skill === "cycle-create"
+  const cycleCreateGitGate = ["cycle-create", "convert-to-spike"].includes(skill)
     ? evaluateCycleCreateGitGate({
       git,
       targetRoot: absoluteTargetRoot,
     })
     : null;
-  const sessionIntegrationGate = skill === "cycle-create"
+  const sessionIntegrationGate = ["cycle-create", "convert-to-spike"].includes(skill)
     ? evaluateSessionIntegrationGate({
       git,
       targetRoot: absoluteTargetRoot,

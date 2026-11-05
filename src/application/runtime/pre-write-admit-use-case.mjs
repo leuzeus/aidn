@@ -79,9 +79,11 @@ const SKILL_POLICIES = Object.freeze({
     requireRuntimeClearInDbModes: true,
   },
   "convert-to-spike": {
-    requireActiveCycle: true,
-    requireCycleStatus: true,
+    // Conversion creates a cycle. The specialized continuity admission still
+    // decides its topology; an existing cycle cannot be its own prerequisite.
+    requireActiveSession: true,
     requireFreshCurrentState: true,
+    allowInitialCycleFreshness: true,
     requireRuntimeClearInDbModes: true,
   },
 });
@@ -484,7 +486,7 @@ export function verifyInitialCycleContext({
   skill, effectiveStateMode, currentMap, currentStateResolution,
   runtimeStateResolution, sessionResolution, currentBranch,
 } = {}) {
-  if (skill !== "cycle-create" || !["dual", "db-only"].includes(effectiveStateMode)) return false;
+  if (!["cycle-create", "convert-to-spike"].includes(skill) || !["dual", "db-only"].includes(effectiveStateMode)) return false;
   const source = currentStateResolution?.source;
   if (!["sqlite", "postgres"].includes(source)
       || ![currentStateResolution, runtimeStateResolution, sessionResolution]
@@ -682,7 +684,7 @@ export function evaluatePreWriteCycleCreateGates({
     && String(backlogStatus).toLowerCase() !== "closed"
     && String(backlogStatus).toLowerCase() !== "consumed_by_cycle";
   addCheck(checks, "shared_planning_scope_selected", !promotedSharedPlanning || (!canonicalNone(backlogSelectedExecutionScope) && !canonicalUnknown(backlogSelectedExecutionScope)), `backlog_selected_execution_scope=${backlogSelectedExecutionScope}`);
-  if (skill === "cycle-create" && promotedSharedPlanning) {
+  if (["cycle-create", "convert-to-spike"].includes(skill) && promotedSharedPlanning) {
     if (!isResolvedPlanningArbitrationStatusLocal(planningArbitrationStatus)) {
       blockingReasons.push(`shared planning arbitration remains unresolved: ${planningArbitrationStatus}`);
     }

@@ -35,7 +35,8 @@ let verifications = 0;
 const wrapper = createStandardSpikeConversion({ targetRoot: root, operations, readAcceptedOperation: (_instance, id) => { assert.ok(sources.has(id)); return sources.get(id); },
   observeModeWork: () => observed, verifyDecision: record => { signer.verify(record); verifications++; }, readCurrent: () => instance, observeProduct: () => H });
 const input = { contract_version: "standard-spike-review-input.v1", review_operation_id: analysisId };
-assert.equal((await wrapper.admit(instance, input)).outcome, "completed");
+const admitted = await wrapper.admit(instance, input);
+assert.equal(admitted.outcome, "completed", JSON.stringify(admitted));
 const review = await wrapper.prepareDecision(instance, input);
 const question = { contract_version: "standard-spike-question.v1", operation_id: decisionId, instance_id: "fixture", scope_id: "scope", occurrence_id: "decision",
   intent_sha256: H, session_id: "S001", review_operation_id: analysisId, ...review };
