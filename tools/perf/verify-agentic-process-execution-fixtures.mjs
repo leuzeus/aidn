@@ -1559,7 +1559,9 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(context.context.git.other_changes.count, 0); assert.ok(context.evidence_refs.some(row => row.ref === "audit:parking-lot.md"));
     assert.notEqual(beforeRecord.record.instance_sha256, after.record.instance_sha256);
   });
-  if (process.argv.includes("--drift-objective-mismatch-only")) await check("drift objective mismatch: exact canonical goals retain the clean-report refusal and unavailable recovery question", async () => {
+  if (process.argv.includes("--drift-objective-mismatch-only")) await check(process.argv.includes("--drift-objective-construction-only")
+    ? "drift objective mismatch: construction preflight builds both exact authorities without Native allocation"
+    : "drift objective mismatch: exact canonical goals retain the clean-report refusal and unavailable recovery question", async () => {
     // New projects only. This is a diagnostic reproduction, not an admission or
     // a semantic verdict about either objective. Native/Human are fixture ports.
     const sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
