@@ -55,6 +55,17 @@ or forcibly kills its supervisor or actual synchronous caller, and verifies no n
 death and an unchanged foreign process identity. These are OS launcher fixtures;
 business resource closure, genuine Native actors and full STANDARD remain separate.
 
+The required PostgreSQL execution fixture retains a separate `postgres-fixture.jsonl`
+outside the checkout. It records every executed check's start/end/failure, complete
+Git-inspection timings, and calls made by the real PostgreSQL scheduler scenario
+with their observed server/run dates and terminal child timings. Arguments,
+connection credentials and SQL payloads are excluded. The scheduler retains its
+original 120000 ms run and 60000 ms task ceilings; instrumentation supplies cost
+and failure evidence for the next required qualification, not a new success or
+a diagnosis of a previously expired run. A functional verdict and owned-cluster
+cleanup remain separate. The required default still executes the full suite;
+existing explicit partial selectors keep their partial qualification labels.
+
 `node tools/perf/verify-workflow-execution-authority-fixtures.mjs` checks that a
 combined synchronous project/persistence observation matches the separate
 descriptions and reads one full activation receipt. A later call reads again;
