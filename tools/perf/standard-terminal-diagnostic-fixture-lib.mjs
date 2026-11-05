@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { createAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { createAgenticProcess, assertAgenticProcessInstance } from "../../src/core/workflow/agentic-process.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
 import { nativeEvidenceFile } from "../../src/application/runtime/native-allocation-evidence.mjs";
@@ -32,14 +32,25 @@ export function diagnosticFixtureWitness(configuration) {
   return rows;
 }
 
+export function createDiagnosticFixtureCandidates(record) {
+  const model = record.model;
+  const candidate = (instanceId, scopeId) => createAgenticProcess({ instanceId, model, scopeId, policyPins: agenticPolicyPins(model), facts: {}, ...processParameterOptions(record) });
+  const instance = candidate("foreign", record.scope_id), scope = candidate(record.instance_id, "f".repeat(64));
+  // Construction and structural validity must succeed outside refusal asserts.
+  assertAgenticProcessInstance(instance); assertAgenticProcessInstance(scope);
+  assert.notEqual(instance.instance_id, record.instance_id); assert.equal(instance.scope_id, record.scope_id);
+  assert.equal(scope.instance_id, record.instance_id); assert.notEqual(scope.scope_id, record.scope_id);
+  return { instance, scope };
+}
+
 export function verifyTerminalDiagnosticRefusals({ host, configuration, readSigningKey, humanSource, state }) {
   const model = state.record.model;
   const authority = createStandardProcessAuthority({ configuration, model, readSigningKey, humanSource,
     readProductSha256: () => host.previewNative().product_sha256 });
   assert.throws(() => authority.authenticate(state.record, { diagnostic: true }), { code: "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE" });
-  const candidate = (instanceId, scopeId) => createAgenticProcess({ instanceId, model, scopeId, policyPins: agenticPolicyPins(model), facts: {}, ...processParameterOptions(state.record) });
-  assert.throws(() => authority.inspectDiagnostic(candidate("foreign", state.record.scope_id)), { code: "STANDARD_PROCESS_AUTHORITY_CHANGED" });
-  assert.throws(() => authority.inspectDiagnostic(candidate(configuration.instance_id, "f".repeat(64))), { code: "STANDARD_PROCESS_AUTHORITY_CHANGED" });
+  const candidates = createDiagnosticFixtureCandidates(state.record);
+  assert.throws(() => authority.inspectDiagnostic(candidates.instance), { code: "STANDARD_PROCESS_AUTHORITY_CHANGED" });
+  assert.throws(() => authority.inspectDiagnostic(candidates.scope), { code: "STANDARD_PROCESS_AUTHORITY_CHANGED" });
   const latest = state.native.journal.allocations.at(-1), file = latest.checkpoint.path, original = fs.readFileSync(file);
   try {
     fs.appendFileSync(file, "\n");
