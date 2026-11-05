@@ -33,9 +33,6 @@
       "maxLength": 256
     },
     "source": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "$id": "aidn://contracts/workflow-definition/human-drift-recovery-decision.v2",
-      "x-aidn-contract-version": "human-drift-recovery-decision.v2",
       "type": "object",
       "additionalProperties": false,
       "required": [
