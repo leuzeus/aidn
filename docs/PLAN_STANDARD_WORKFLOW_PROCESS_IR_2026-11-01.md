@@ -4752,3 +4752,13 @@ redirection to a different index for both checkpoint and branch ports, repeated
 refusal and a separately constructed fresh port. Earlier component/timing
 results on `2c3171de` do not qualify this correction. Its retained projects and
 any terminal PASS remain scoped to that earlier source.
+
+
+## SOURCE48 work path wiring, 2026-11-04
+
+The same published IR now connects admitted COMMITTING SPIKE planning to the
+existing task/validation/audit/fresh-human closure path through a canonical
+accepted-plan selector. Wiring alone does not establish retained/nonretained
+execution, session closure, EXPLORING experiments or full L1-L8/A1-A10 acceptance.
+Exact-source execution results are retained separately. ordinary_entry remains
+UNCHANGED and complete_standard_workflow remains false.

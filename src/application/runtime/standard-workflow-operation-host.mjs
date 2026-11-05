@@ -223,6 +223,19 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))) fail(reason);
     return { record, output: result.output };
   }
+  async function selectCyclePlan(instance) {
+    const context = (await processAuthority.observeCyclePlanContext()).context;
+    if (context.mode !== "COMMITTING") fail("STANDARD_CYCLE_PLAN_EXECUTION_MODE_REQUIRED");
+    const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "cycle_plan_record").at(-1);
+    if (!latest) fail("STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    const selected = acceptedForPromotion(instance, latest.intent.operation_id, "cycle_plan_record", "STANDARD_CYCLE_PLAN_RECORD_REQUIRED");
+    const plan = selected.record.preview.prepared.plan;
+    if (selected.output.effect_status !== "confirmed" || selected.output.facts.cycle_plan_recorded !== true || plan.cycle_path !== context.cycle_path
+      || plan.changes.some(row => artifacts.read(row.path, { required: true }).sha256 !== row.after_sha256)) fail("STANDARD_CYCLE_PLAN_RECORD_CHANGED");
+    return assertStandardOperationOutput({ contract_version: "standard-cycle-plan-selection-output.v1", operation_ref: "cycle_plan_select",
+      outcome: "completed", effect_status: "no_effect", facts: {}, observations: { record_operation_id: latest.intent.operation_id,
+        cycle_id: context.cycle_id, session_id: context.session_id, cycle_path: context.cycle_path, record_sha256: shadowHash(selected) }, evidence_refs: selected.output.evidence_refs });
+  }
   const sessionClosureAuthority = processAuthority ? createStandardSessionClosureAuthority({ targetRoot,
     readAcceptedOperation: acceptedForPromotion, readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input) }) : null;
   const sessionClosureReview = sessionClosureAuthority ? createStandardSessionClosureReview({ readSource: (instance, input) => sessionClosureAuthority.readSource(instance, input) }) : null;
@@ -936,7 +949,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "spike_cycle_initialize" ? await spike.prepareInitialize(state.record, input)
         : binding.id === "spike_conversion_finalize" ? await spike.prepareFinalize(state.record, input)
         : binding.id === "spike_experiment_admit" ? await spike.experimentAdmission(state.record, input)
-        : binding.id === "spike_experiment_execution_admit" ? spike.experimentExecutionAdmission(state.record, input)
+        : binding.id === "spike_experiment_execution_admit" ? await spike.experimentExecutionAdmission(state.record, input)
+        : binding.id === "cycle_plan_select" ? await selectCyclePlan(state.record)
         : binding.id === "mode_work_preflight" ? await processAuthority?.preflightModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_observe" ? await processAuthority?.observeModeWork(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
         : binding.id === "mode_work_continue_decision" ? await processAuthority?.prepareModeWorkContinuation(state.record, input) ?? fail("STANDARD_MODE_WORK_AUTHORITY_REQUIRED")
@@ -1126,7 +1140,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_audit_evaluate") output = await evaluateAudit(state.record, record.preview.input);
         else if (record.intent.binding_ref === "spike_conversion_admit") output = await spike.admit(state.record, record.preview.input);
         else if (record.intent.binding_ref === "spike_experiment_admit") output = await spike.experimentAdmission(state.record, record.preview.input);
-        else if (record.intent.binding_ref === "spike_experiment_execution_admit") output = spike.experimentExecutionAdmission(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "spike_experiment_execution_admit") output = await spike.experimentExecutionAdmission(state.record, record.preview.input);
+        else if (record.intent.binding_ref === "cycle_plan_select") output = await selectCyclePlan(state.record);
         else if (record.intent.binding_ref === "spike_cycle_initialize") output = await spike.initialize(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "spike_conversion_finalize") output = await spike.finalize(state.record, record.preview.prepared,

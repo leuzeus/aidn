@@ -2448,3 +2448,25 @@ from pending business journeys.
 
 Qualification with an injected fixture clock is offline expiry evidence only.
 Actual wall-clock expiry and genuine Native/Human/resource closure remain unproved.
+
+
+### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
+
+The authored IR routes an accepted COMMITTING SPIKE plan into the same existing
+DoR, scope freeze, task work, machine validation, audit and fresh human closure
+ports as ordinary COMMITTING work. A deterministic read-only cycle_plan_select
+authenticates the latest accepted canonical plan of the actual active cycle;
+it supplies the record ID, not permission or a successful business outcome.
+Private experiment admission output v2 permits this read-only execution
+admission while v1 remains readable with its original blocked semantics.
+EXPLORING execution still needs dedicated conformant ports or an authenticated
+mode transition. Conversion grants neither a product write nor retention or a
+new Native budget. Exact-source qualification remains separate from wiring.
+
+The operation host owns immutable local SPIKE evidence blobs in every storage
+mode. Hook evidence serializes the port result; sync evidence retains stdout
+bytes. Exclusive creation, fsync, byte length and SHA256 bind their references.
+They are retained without automatic purge or overwrite. Missing blobs remain
+unavailable in DB-only too, with no reconstruction or file/DB authority fallback.
+The reducer's JSON number/depth/size limits remain unchanged. Nominal DUAL and
+late tampering must each prove their own canonical postimage semantics.

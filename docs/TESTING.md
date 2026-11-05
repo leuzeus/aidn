@@ -1,5 +1,40 @@
 # Testing Guide
 
+## SOURCE48 SPIKE execution path, 2026-11-04
+
+The published model shares its existing COMMITTING work/validation/audit/closure
+subgraph between ordinary new-cycle planning and human-selected COMMITTING SPIKE
+planning. A read-only `cycle_plan_select` port authenticates the latest accepted
+canonical plan for the actual active cycle. The initial cycle parameter cannot
+substitute for that cycle. Selection grants no DoR, product write or retention.
+EXPLORING experiments still require their own conformant execution ports or a
+fresh authenticated mode transition and remain blocked explicitly.
+
+On a new frozen source, `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-spike-mode=files --standard-spike-experiment=retain --retain-always`
+selects the real COMMITTING SPIKE task/validation/audit/human closure path. Select
+`no_go` and `drop` independently. Each new fixture case has its own initial
+eight-response grant; no previous one-response conversion grant is renewed.
+These fixture actors and transport do not establish genuine Native/Human or
+complete STANDARD acceptance. Registration and source wiring are not execution
+evidence; exact-source terminal results are required.
+
+SPIKE finalization retains immutable local port evidence beneath
+`.aidn/runtime/standard-workflow/evidence/`: hook bytes serialize the returned
+port object, while sync bytes preserve its stdout. Outputs contain bounded
+references, byte counts and SHA256 instead of importing noninteger timing data
+into the reducer. The original JSON limits remain unchanged. Evidence belongs to
+the operation host in all storage modes; missing blobs remain unavailable, with
+no reconstruction or DB/file fallback. The nominal real SQLite DUAL case is
+separate from after-hook tampering; a confirmed hook/sync alone does not prove
+unchanged postimages. Use `--dual-nominal` for that separate wrapper case.
+
+The conversion-only fixture verifies the accepted governed Git checkpoint,
+its actual parent, committed paths and blob bytes, together with unchanged
+product bytes. It does not require HEAD to stay at its pre-checkpoint value.
+L1-L8/A1-A10, ordinary entry, installed evidence, genuine actors and full current
+Runtime/Governance Admission remain open.
+
 ## SOURCE47 SPIKE wrapper correction, 2026-11-04
 
 Nested wrapper inputs omit root-only schema declarations while retaining their

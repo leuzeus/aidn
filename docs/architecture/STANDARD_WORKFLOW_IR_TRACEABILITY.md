@@ -822,3 +822,17 @@ these components do not establish repeated correction, the full C2 journey,
 genuine human/native/provider/OS, configured PostgreSQL or exact installed
 archive behavior. The qualification record separates terminal component results
 from pending business journeys.
+
+
+## SOURCE48 execution raccord, 2026-11-04
+
+SPEC-R02/R03/R04: a fresh authenticated conversion selection may choose a
+COMMITTING SPIKE. After canonical plan recording and fresh branch admission,
+cycle_plan_select reads its accepted record from the actual canonical active
+cycle. The shared cycle_work subgraph consumes the existing DoR, freeze,
+task/validation/verification/audit and human closure authorities (SPEC-R04/R06).
+Retain/no_go/drop remain independent current-result choices, not conversion
+permissions. No nonretained baseline promotion or cleanup is added. EXPLORING
+execution ports/mode transition, session closure qualification and remaining
+L1-L8/A1-A10 remain unfinished. ordinary_entry is UNCHANGED and the published
+catalog still declares complete_standard_workflow=false.

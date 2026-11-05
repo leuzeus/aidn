@@ -1,6 +1,8 @@
 import spikeReviewInput from "../contracts/workflow-definition/standard-spike-review-input.v1.schema.json" with { type: "json" };
 import spikeExperimentInput from "../contracts/workflow-definition/standard-spike-experiment-input.v1.schema.json" with { type: "json" };
 import spikeExperimentOutput from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v1.schema.json" with { type: "json" };
+import spikeExperimentOutputV2 from "../contracts/workflow-definition/standard-spike-experiment-admission-output.v2.schema.json" with { type: "json" };
+import planSelectionOutput from "../contracts/workflow-definition/standard-cycle-plan-selection-output.v1.schema.json" with { type: "json" };
 import spikeInitializeInput from "../contracts/workflow-definition/standard-spike-initialize-input.v1.schema.json" with { type: "json" };
 import spikeFinalizeInput from "../contracts/workflow-definition/standard-spike-finalize-input.v1.schema.json" with { type: "json" };
 import spikeOutput from "../contracts/workflow-definition/standard-spike-output.v1.schema.json" with { type: "json" };
@@ -130,6 +132,10 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (operation === "cycle_plan_select") {
+    if (checkShadowJson(value) || validateJsonSchema(value, empty, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === "spike_experiment_execution_admit") {
     if (checkShadowJson(value) || validateJsonSchema(value, spikeExperimentInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -184,6 +190,16 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-cycle-plan-selection-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, planSelectionOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
+  if (value?.contract_version === "standard-spike-experiment-admission-output.v2") {
+    if (checkShadowJson(value) || validateJsonSchema(value, spikeExperimentOutputV2, "$", { contractKind: "workflow-definition" }).length
+      || shadowHash(value.facts) !== shadowHash(value.outcome !== "completed" ? {} : value.operation_ref === "spike_experiment_execution_admit"
+        ? { spike_experiment_execution_admitted: true } : { spike_experiment_planning_admitted: true, spike_experiment_committing: value.facts.spike_experiment_committing })) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-spike-experiment-admission-output.v1") {
     if (checkShadowJson(value) || validateJsonSchema(value, spikeExperimentOutput, "$", { contractKind: "workflow-definition" }).length
       || value.outcome === "completed" && (value.operation_ref !== "spike_experiment_admit"

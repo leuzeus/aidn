@@ -32,7 +32,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 148); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 149); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -75,7 +75,7 @@ test("authored literal/operation-only inputs satisfy their actual closed operati
   }
 });
 function committingSteps() {
-  const node = assets.model.nodes.find(row => row.id === "committing"), delivery = assets.model.nodes.find(row => row.id === "session_pr_delivery");
+  const node = assets.model.nodes.find(row => row.id === "cycle_work"), delivery = assets.model.nodes.find(row => row.id === "session_pr_delivery");
   assert.equal(delivery.kind, "sequence"); assert.equal(node.children.at(-1), delivery.id);
   return node.children.flatMap(id => id === delivery.id ? delivery.children : [id]);
 }

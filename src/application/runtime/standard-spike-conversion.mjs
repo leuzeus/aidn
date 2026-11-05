@@ -216,13 +216,13 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
         || shadowHash(initialized(instance, source.record.preview.input)) !== shadowHash(original)) fail("STANDARD_SPIKE_EXPERIMENT_CONTEXT_CHANGED");
       const allowed = prewrite.ok === true && prewrite.activation?.active === true
         && ["admitted", "admitted_with_warnings"].includes(prewrite.admission_status) && (!audit || audit.outcome === "completed");
-      return assertStandardOperationOutput({ contract_version: "standard-spike-experiment-admission-output.v1", operation_ref: "spike_experiment_admit",
+      return assertStandardOperationOutput({ contract_version: "standard-spike-experiment-admission-output.v2", operation_ref: "spike_experiment_admit",
         outcome: allowed ? "completed" : "blocked", effect_status: "no_effect", facts: allowed ? { spike_experiment_planning_admitted: true,
           spike_experiment_committing: original.selection.chosen_mode === "COMMITTING" } : {},
         observations: { conversion_operation_id: input.initialize_operation_id, selection: original.selection, prewrite, audit,
           planning: allowed ? "admitted" : "blocked", product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false }, evidence_refs: source.output.evidence_refs });
     },
-    experimentExecutionAdmission(instance, input) {
+    async experimentExecutionAdmission(instance, input) {
       assertStandardOperationInput("spike_experiment_execution_admit", input); active(instance);
       const converted = readAcceptedOperation(instance, input.conversion_operation_id, "spike_conversion_finalize");
       const recorded = readAcceptedOperation(instance, input.record_operation_id, "cycle_plan_record");
@@ -231,10 +231,22 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
       const selection = converted.output.observations.selection, plan = recorded.record.preview.prepared.plan;
       if (!plan.cycle_path.startsWith(`cycles/${selection.cycle_id}-spike-`)
         || plan.changes.some(row => artifacts.read(row.path, { required: true }).sha256 !== row.after_sha256)) fail("STANDARD_SPIKE_EXPERIMENT_PLAN_CHANGED");
-      return assertStandardOperationOutput({ contract_version: "standard-spike-experiment-admission-output.v1", operation_ref: "spike_experiment_execution_admit",
-        outcome: "blocked", effect_status: "no_effect", facts: {}, observations: { reason_code: "STANDARD_SPIKE_EXPERIMENT_EXECUTION_REQUIRED",
+      const context = operations.observeScope(), metadata = plan.changes.map(row => artifacts.metadataHash(row.path));
+      const prewrite = await preWriteAdmit({ targetRoot: root, skill: "branch-cycle-audit" }); active(instance);
+      const current = analyzeStructuredArtifact(artifacts.read("CURRENT-STATE.md", { required: true }).content).key_values;
+      const session = artifacts.sessions().find(row => row.session_id === current.active_session);
+      const audit = selection.chosen_mode === "COMMITTING" ? await operations.auditCycle({ session_id: current.active_session, cycle_id: selection.cycle_id }) : null;
+      active(instance);
+      if (!session || parseSessionMetadata(session.content).mode !== selection.chosen_mode || current.mode !== selection.chosen_mode || current.active_cycle !== selection.cycle_id
+        || shadowHash(operations.observeScope()) !== shadowHash(context) || shadowHash(plan.changes.map(row => artifacts.metadataHash(row.path))) !== shadowHash(metadata)
+        || plan.changes.some(row => artifacts.read(row.path, { required: true }).sha256 !== row.after_sha256)) fail("STANDARD_SPIKE_EXPERIMENT_PLAN_CHANGED");
+      const allowed = selection.chosen_mode === "COMMITTING" && audit?.outcome === "completed" && prewrite.ok === true
+        && prewrite.activation?.active === true && ["admitted", "admitted_with_warnings"].includes(prewrite.admission_status);
+      return assertStandardOperationOutput({ contract_version: "standard-spike-experiment-admission-output.v2", operation_ref: "spike_experiment_execution_admit",
+        outcome: allowed ? "completed" : "blocked", effect_status: "no_effect", facts: allowed ? { spike_experiment_execution_admitted: true } : {},
+        observations: { reason_code: allowed ? "STANDARD_SPIKE_COMMITTING_EXECUTION_ADMITTED" : selection.chosen_mode === "EXPLORING" ? "STANDARD_SPIKE_EXPLORING_EXECUTION_PORT_REQUIRED" : "STANDARD_SPIKE_EXPERIMENT_ADMISSION_BLOCKED",
           conversion_operation_id: input.conversion_operation_id, record_operation_id: input.record_operation_id,
-          selected_mode: selection.chosen_mode, product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false }, evidence_refs: recorded.output.evidence_refs });
+          selected_mode: selection.chosen_mode, prewrite, audit, readiness: "required", product_effects_authorized: false, retention_authorized: false, native_authority_renewed: false }, evidence_refs: recorded.output.evidence_refs });
     },
   });
 }

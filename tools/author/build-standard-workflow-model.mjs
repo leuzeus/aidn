@@ -33,7 +33,9 @@ const native = (id, role_ref, policy_ref, output_contract, skill_ids, rule_refs)
 };
 const xor = (id, choices) => node(id, "xor", { branches: choices.map(([flow_id, node_id, condition]) => ({ flow_id, node_id, condition })) });
 
-seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_route"]);
+seq("standard", ["startup", "mode_preflight", "session_start_finalize", "mode_route", "cycle_work_route"]);
+xor("cycle_work_route", [["planned", "cycle_work", "cycle_plan_recorded"], ["analysis", "cycle_work_inapplicable", null]]);
+seq("cycle_work_inapplicable", []);
 nodes.push(...structuredClone(startup.nodes)); inputs.push(...structuredClone(startup.data_bindings.inputs));
 nodes.find(row => row.id === "startup").children = startup.nodes.find(row => row.id === "startup").children.filter(id => id !== "session_start_finalize");
 xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking", "thinking_handoff", "mode_thinking"], ["exploring", "exploring_handoff", "mode_exploring"]]);
@@ -41,7 +43,7 @@ xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking",
 // reaches a durable human operation; continuation creates a new loop occurrence.
 // Retention still requires a separately admitted SPIKE conversion.
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
-  seq(`${prefix}_handoff`, [...(prefix === "exploring" ? ["exploring_context_refresh", "exploring_git_checkpoint"] : []), `${prefix}_analysis_loop`, `${prefix}_session_close`]);
+  seq(`${prefix}_handoff`, [...(prefix === "exploring" ? ["exploring_context_refresh", "exploring_git_checkpoint"] : []), `${prefix}_analysis_loop`, prefix === "exploring" ? "exploring_after_analysis" : `${prefix}_session_close`]);
   if (prefix === "exploring") op("exploring_git_checkpoint", "session_git_checkpoint", operation(null, "context_operation_id", "exploring_context_refresh"));
   node(`${prefix}_analysis_loop`, "loop", { child: `${prefix}_analysis_iteration`, until: "mode_analysis_completed", max_iterations: 32 });
   seq(`${prefix}_analysis_iteration`, [`${prefix}_analysis`, `${prefix}_observe`, ...(prefix === "exploring" ? ["spike_admit"] : []), `${prefix}_after_report`]);
@@ -51,6 +53,8 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   native(`${prefix}_analysis`, "mode_analyst", `${prefix}_analysis_policy`, "standard-mode-work-report.v1", ["context-reload"], ["SPEC-R01", "SPEC-R02"]);
   op(`${prefix}_evaluate`, "mode_work_evaluate", occurrence(`${prefix}_analysis`));
 }
+xor("exploring_after_analysis", [["spike", "spike_work_pending", "spike_conversion_completed"], ["analysis", "exploring_session_close", null]]);
+seq("spike_work_pending", []);
 op("spike_admit", "spike_conversion_admit", operation(null, "review_operation_id", "exploring_observe"));
 seq("spike_conversion", ["spike_decide", "spike_initialize", "spike_finalize", "spike_experiment_admit", "spike_planning_route"]);
 op("spike_decide", "spike_conversion_decision", operation(null, "review_operation_id", "exploring_observe"));
@@ -72,7 +76,8 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   if (prefix === "exploring") op("exploring_context_refresh", "cycle_context_refresh", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
   op(`${prefix}_admit`, "mode_work_preflight", { session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] }, mode: { source: "literal", value: mode } });
 }
-seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record", "readiness", "implementation_enter", "task_loop",
+seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record"]);
+seq("cycle_work", ["plan_select", "readiness", "implementation_enter", "task_loop",
   "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
 seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_wait", "session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate", "session_pr_after_triage"]);
 op("session_pr_review_observe", "session_pr_review_content_observe", operation("session_pr_review_observe", "update_operation_id", "session_pr_update_push"));
@@ -161,7 +166,8 @@ for (const original of cycle.data_bindings.inputs) {
 native("plan", "planner", "planning", "standard-cycle-plan-proposal.v1", ["cycle-create"], ["SPEC-R03", "SPEC-R04"]);
 op("plan_evaluate", "cycle_plan_evaluate", occurrence("plan"));
 op("plan_record", "cycle_plan_record", operation("plan_record", "evaluation_operation_id", "plan_evaluate"));
-op("readiness", "cycle_readiness_evaluate", operation("readiness", "record_operation_id", "plan_record"));
+op("plan_select", "cycle_plan_select");
+op("readiness", "cycle_readiness_evaluate", { record_operation_id: { source: "operation_output", node_id: "plan_select", path: ["observations", "record_operation_id"] } });
 op("implementation_enter", "cycle_implementation_enter", operation("implementation_enter", "evaluation_operation_id", "readiness"));
 node("task_loop", "loop", { child: "task_iteration", until: "cycle_tasks_finished", max_iterations: 32 });
 seq("task_iteration", ["task_select", "implement", "work_evaluate", "validate", "task_validation", "task_advance", "task_route"]);
@@ -215,7 +221,7 @@ function checkpointDrift(id, parent, before) {
 checkpointDrift("startup_drift", null, null);
 checkpointDrift("cycle_drift", "cycle_create", "cycle_checkpoint");
 checkpointDrift("correction_cycle_drift", "correction_cycle", "correction_cycle_checkpoint");
-checkpointDrift("closure_drift", "committing", "close_finalize");
+checkpointDrift("closure_drift", "cycle_work", "close_finalize");
 checkpointDrift("promotion_drift", "promotion", "promotion_finalize");
 checkpointDrift("session_closure_drift", null, null);
 

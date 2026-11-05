@@ -96,6 +96,8 @@ const selectedStandardComposedMode = process.argv.find(value => value.startsWith
 const selectedModeWorkResumeMode = process.argv.find(value => value.startsWith("--standard-mode-work-resume-mode="))?.split("=")[1];
 const selectedSpikeMode = process.argv.find(value => value.startsWith("--standard-spike-mode="))?.split("=")[1];
 const selectedSpikeChoice = process.argv.find(value => value.startsWith("--standard-spike-choice="))?.split("=")[1] ?? "convert-to-spike";
+const selectedSpikeExperiment = process.argv.find(value => value.startsWith("--standard-spike-experiment="))?.split("=")[1] ?? null;
+if (selectedSpikeExperiment && (!selectedSpikeMode || selectedSpikeChoice !== "convert-to-spike" || !["retain", "no_go", "drop"].includes(selectedSpikeExperiment))) throw Error("STANDARD_SPIKE_EXPERIMENT_FIXTURE_ARGUMENTS_INVALID");
 if (selectedSpikeMode && (!["files", "dual", "db-only"].includes(selectedSpikeMode)
   || !["convert-to-spike", "refused", "deferred", "cancelled"].includes(selectedSpikeChoice))) throw Error("STANDARD_SPIKE_FIXTURE_ARGUMENTS_INVALID");
 if (selectedModeWorkResumeMode && !["files", "dual", "db-only"].includes(selectedModeWorkResumeMode)) throw Error("STANDARD_MODE_RESUME_FIXTURE_ARGUMENTS_INVALID");
@@ -789,7 +791,7 @@ if (process.argv[2] === "--mixed-continue") {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 } else try {
   if (selectedSpikeMode) await check("standard spike: published model and real conversion wrapper", () => verifyStandardSpikeExecution({
-    mixedFixture, storageMode: selectedSpikeMode, choice: selectedSpikeChoice }));
+    mixedFixture, storageMode: selectedSpikeMode, choice: selectedSpikeChoice, experiment: selectedSpikeExperiment }));
   if (selectedModeWorkResumeMode) await check("standard mode resume: expired authority and new cold authenticated decision", () => verifyModeWorkContinuationExecution({
     storageMode: selectedModeWorkResumeMode, sessionMode: selectedModeWorkSession, choice: selectedModeWorkResumeChoice,
     firstDisposition: selectedModeWorkResumeDisposition, mixedFixture }));
