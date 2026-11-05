@@ -1,5 +1,22 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE44 source continuation, 2026-11-04
+
+The four original SOURCE43 pending cases subsequently terminated PASS, giving
+9 PASS / 0 FAIL / 0 pending for that component set. Their evidence remains
+FILES-only, with fixture Native/Human/resource capabilities and controlled clocks;
+it does not transfer to a newer model, other storage modes or real actors.
+
+SOURCE44 connects THINKING/nonretained EXPLORING analysis to existing R05,
+human session closure, canonical record/checkpoint and final-hook ports in the
+same IR. It preserves mode in private drift context/plan v2 and introduces
+explicit process-data-bindings.v3 for 141 entries; v1/v2 keep their 128 bound.
+This is source wiring pending qualification. Registered closure cases do not
+prove execution. SPIKE conversion, retained/nonretained effectful experiments,
+general L4, ordinary entry, full nominal C2 and the entire L1-L8/A1-A10 plan
+remain active. complete_standard_workflow stays false.
+
+
 Date : 2026-11-01. État : **PLAN ENREGISTRÉ — INTÉGRATION STANDARD À RÉALISER**.
 Référence inspectée : commit `dd1dbaba9ae7123c157dd35f8a6f42f34f32d3fa`.
 Catégorie : architecture et intégration runtime ; voie prévue pour la réalisation :

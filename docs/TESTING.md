@@ -1,5 +1,33 @@
 # Testing Guide
 
+## Mode session closure and data capacity
+
+Use `node tools/perf/verify-standard-process-binding-input-fixtures.mjs` for
+versioned data-binding capacity: v1/v2 at 128 and refusal at 129, v3 at 141/256
+and refusal at 257, followed by actual published expression/resolver checks.
+`verify-standard-mode-work-fixtures.mjs` checks the common reducer's closure
+ordering and distinct blocked paths; synthetic receipts are not port evidence.
+
+For real source ports with fixture Native/Human authorities, select
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-mode-work-mode=files --standard-mode-work-session=THINKING
+--standard-mode-work-close --retain-always`. Select EXPLORING and each storage
+mode separately; negative FILES choices use
+`--standard-mode-closure-choice=refused|deferred|cancelled`. These are fixture
+selectors, not public CLI flags. Each creates a new project and initial grant
+of two responses and 3600000 ms before execution; no original grant is renewed.
+The case must observe the actual R05 mode, fresh human subject, canonical CLOSED
+postimage and final hook/run-file removal, then cold read-only resume and exact
+replay/simulation without new allocations or effects. Non-close choices must
+preserve the open session and their distinct workflow outcomes.
+
+Analysis-only and continuation fixtures now stop at RUNNING after successful
+analysis, because actual closure is still ahead. A completed analysis is not a
+closed session. Report exact-source PASS/FAIL/NOT_RUN separately. SQLite, genuine
+Native/Human/OS, PostgreSQL, installed archives and full STANDARD require their
+own evidence; no result transfers implicitly.
+
+
 New mode continuation source wiring has a separate contract suite:
 `node tools/perf/verify-standard-mode-work-continuation-fixtures.mjs`.
 The mixed fixture selector is `node tools/perf/verify-agentic-process-execution-fixtures.mjs

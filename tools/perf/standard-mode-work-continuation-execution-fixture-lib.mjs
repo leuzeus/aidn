@@ -153,13 +153,14 @@ export async function verifyModeWorkContinuationExecution({ storageMode, session
             assert.deepEqual(f.open().inspectAllocations().origin_journal, oldJournal);
           }
         } else assert.equal(record.results.at(-1)?.output.outcome, "completed");
+        if (record.intent.binding_ref === "mode_work_evaluate") break;
       } else {
         assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed", JSON.stringify(result));
         assert.equal(f.t.sessions.length, beforeCount + 1); f.reopen();
       }
     }
     const final = f.open().inspect(), journal = f.open().inspectAllocations();
-    assert.ok(waiting); assert.equal(final.cursor.status, "COMPLETED"); assert.equal(f.t.sessions.length, 2); assert.ok(f.t.sessions.every(row => row.closed));
+    assert.ok(waiting); assert.equal(final.cursor.status, "RUNNING"); assert.equal(f.t.sessions.length, 2); assert.ok(f.t.sessions.every(row => row.closed));
     assert.deepEqual(authorization, original); assert.deepEqual(journal.initial_authorization, original); assert.deepEqual(journal.allocations[0], originalAllocation);
     assert.equal(journal.allocations.length, 2); assert.notEqual(journal.allocations[0].authorization_sha256, journal.allocations[1].authorization_sha256);
     assert.equal(journal.allocations.reduce((sum, row) => sum + row.consumption.responses_observed, 0), 2);

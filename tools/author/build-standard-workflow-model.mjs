@@ -41,7 +41,7 @@ xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking",
 // reaches a durable human operation; continuation creates a new loop occurrence.
 // Retention still requires a separately admitted SPIKE conversion.
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
-  seq(`${prefix}_handoff`, [`${prefix}_analysis_loop`]);
+  seq(`${prefix}_handoff`, [`${prefix}_analysis_loop`, `${prefix}_session_close`]);
   node(`${prefix}_analysis_loop`, "loop", { child: `${prefix}_analysis_iteration`, until: "mode_analysis_completed", max_iterations: 32 });
   seq(`${prefix}_analysis_iteration`, [`${prefix}_analysis`, `${prefix}_observe`, `${prefix}_after_report`]);
   op(`${prefix}_observe`, "mode_work_observe", occurrence(`${prefix}_analysis`));
@@ -269,6 +269,28 @@ seq("correction_pr_effects_pending", []);
 seq("correction_pr_redelivery", ["correction_pr_redelivery_push", ...reviewRoots.map(reviewName), "correction_pr_effects_pending"]);
 nodes.find(row => row.id === "correction_cycle").children.push("correction_pr_redelivery");
 
+// Analysis completion is only an input to closure. These occurrences use the
+// same R05, human decision, canonical record, checkpoint and final-hook ports
+// as COMMITTING. No analysis receipt supplies a closure fact or permission.
+for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
+  const name = suffix => `${prefix}_${suffix}`;
+  seq(name("session_close"), ["session_close_admit", "session_closure_drift", "session_closure_decide",
+    "session_close_record", "session_close_checkpoint", "session_close_finalize"].map(name));
+  op(name("session_close_admit"), "session_close_admit", {
+    session_id: { source: "operation_input", node_id: "session_initialize", path: ["session_id"] } });
+  checkpointDrift(name("session_closure_drift"), null, null);
+  nodes.find(row => row.id === name("session_closure_drift_report")).policy_ref = `${prefix}_drift_policy`;
+  op(name("session_closure_decide"), "session_closure_decision", {
+    ...operation(null, "admission_operation_id", name("session_close_admit")),
+    ...operation(null, "drift_evaluation_operation_id", name("session_closure_drift_evaluate")),
+    ...operation(null, "drift_finalization_operation_id", name("session_closure_drift_finalize")) });
+  op(name("session_close_record"), "session_close_record", operation(null, "decision_operation_id", name("session_closure_decide")));
+  op(name("session_close_checkpoint"), "session_close_checkpoint", operation(null, "record_operation_id", name("session_close_record")));
+  op(name("session_close_finalize"), "session_close_finalize", {
+    ...operation(null, "record_operation_id", name("session_close_record")),
+    ...operation(null, "checkpoint_operation_id", name("session_close_checkpoint")) });
+}
+
 const policy = (id, assurance_profile, allowed_permissions, independent_review = false) => ({ id, version: 1, assurance_profile, mode: "COMMITTING",
   independent_review, context_isolation_required: independent_review, required_permissions: ["read:product"], allowed_permissions });
 const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard", revision: 1,
@@ -280,10 +302,12 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { id: "auditor", role: "auditor", action: "audit", skills: ["cycle-close"] },
     { id: "pr_reviewer", role: "auditor", action: "audit", skills: ["pr-orchestrate"] }],
   policies: [{ ...policy("thinking_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "THINKING" },
+    { ...policy("thinking_drift_policy", "compatible-work.v1", ["read:product"]), mode: "THINKING" },
+    { ...policy("exploring_drift_policy", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" },
     { ...policy("exploring_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
-  data_bindings: { contract_version: "process-data-bindings.v2", parameter_keys: ["session", "cycle"], inputs } };
+  data_bindings: { contract_version: "process-data-bindings.v3", parameter_keys: ["session", "cycle"], inputs } };
 const modelPath = "package/catalogs/process-models/aidn-standard.v1.json";
 const existing = fs.existsSync(new URL(modelPath, root)) ? json(modelPath) : null;
 if (existing) {

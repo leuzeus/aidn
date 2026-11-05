@@ -31,7 +31,7 @@ export function createStandardSessionClosureAuthority({ targetRoot, readAccepted
       const event = observed.observed_event;
       if (observed.event_file !== eventFile || !Number.isSafeInteger(observed.event_offset) || observed.event_offset < 0
         || event?.event !== "drift_check_completed" || event.run_id !== "process_drift_" + finalization.record.operation_id
-        || event.skill !== "drift-check" || event.result !== "ok" || event.mode !== "COMMITTING" || event.branch !== plan.branch
+        || event.skill !== "drift-check" || event.result !== "ok" || event.mode !== (plan.contract_version === "standard-drift-finalize-plan.v2" ? plan.mode : "COMMITTING") || event.branch !== plan.branch
         || event.ts !== observed.hook?.payload?.ts || observed.hook?.ok !== true || observed.hook.payload?.ok !== true)
         fail("STANDARD_SESSION_CLOSURE_DRIFT_PROOF_CHANGED");
       const file = agentRunPhysicalPath(path.join(artifacts.root, eventFile)), descriptor = fs.openSync(file, "r");
@@ -43,7 +43,7 @@ export function createStandardSessionClosureAuthority({ targetRoot, readAccepted
         if (end < 0 || shadowHash(JSON.parse(bytes.subarray(0, end).toString("utf8"))) !== shadowHash(event)) fail("STANDARD_SESSION_CLOSURE_DRIFT_PROOF_CHANGED");
       } finally { fs.closeSync(descriptor); }
       const current = await readStandardSessionClosureContext({ targetRoot, sessionId: admission.record.preview.input.session_id });
-      if (current.blocked || current.branch !== plan.branch || current.head !== plan.head
+      if (current.blocked || current.mode !== (plan.contract_version === "standard-drift-finalize-plan.v2" ? plan.mode : "COMMITTING") || current.branch !== plan.branch || current.head !== plan.head
         || current.scope_sha256 !== admission.output.observations.scope_sha256) fail("STANDARD_SESSION_CLOSURE_CONTEXT_CHANGED");
       return { admission: { operation_id: admission.record.operation_id, session_id: current.session_id, output: admission.output },
         evaluation: { operation_id: evaluation.record.operation_id, output: evaluation.output },

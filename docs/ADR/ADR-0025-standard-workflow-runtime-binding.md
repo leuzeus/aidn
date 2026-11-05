@@ -1,5 +1,28 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Mode closure and versioned data capacity, 2026-11-04
+
+New STANDARD revisions route completed THINKING and nonretained EXPLORING
+analysis into existing session-close admission, R05 diagnostic/finalization,
+authenticated human closure, canonical report, Git checkpoint and final hook.
+The analysis receipt supplies no closure permission or success. Negative human
+choices retain their distinct outcomes. Native diagnostics use the actual mode.
+Drift context v2 and finalize-plan v2 bind that canonical mode; legacy v1 plans
+retain their COMMITTING interpretation and are never rewritten.
+
+The previous graph used 127 of 128 data-binding entries; these two closure
+branches require 141. Private process-data-bindings.v3 permits at most 256
+entries, matching the unchanged 256-node model bound. It preserves v2 expression,
+resolution, scope and authority semantics, including resolved-input.v2. V1/v2
+readers and their 128-entry bounds remain unchanged. The common reducer remains
+the only execution/replay/simulation engine. No Native deadline, response quota,
+turn cap or 300000-ms effect-plan freshness limit is increased.
+
+This is source wiring pending exact-source execution qualification. SPIKE,
+effectful experiments, general UNKNOWN/resource recovery, ordinary entry and
+the complete L1-L8/A1-A10 plan remain open. There is no installed/native claim.
+
+
 ## Status
 
 New model revisions retain a mode report observation before routing its outcome.

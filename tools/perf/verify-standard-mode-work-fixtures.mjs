@@ -21,7 +21,9 @@ for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_co
   test(`${mode} has real preflight, analysis and evaluation nodes with read-only permissions`, () => {
     const node = id => model.nodes.find(row => row.id === id);
     assert.deepEqual(node(prefix + "_preflight").children, [prefix + "_admit"]);
-    assert.deepEqual(node(prefix + "_handoff").children, [prefix + "_analysis_loop"]);
+    assert.deepEqual(node(prefix + "_handoff").children, [prefix + "_analysis_loop", prefix + "_session_close"]);
+    assert.deepEqual(node(prefix + "_session_close").children, ["session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"].map(id => prefix + "_" + id));
+    assert.equal(model.policies.find(row => row.id === node(prefix + "_session_closure_drift_report").policy_ref).mode, mode);
     assert.deepEqual(node(prefix + "_analysis_iteration").children, [prefix + "_analysis", prefix + "_observe", prefix + "_after_report"]);
     assert.equal(node(prefix + "_analysis_loop").until, "mode_analysis_completed");
     assert.equal(node(prefix + "_continue_decide").binding_ref, "mode_work_continue_decision");
@@ -46,10 +48,10 @@ for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_co
     const output = evaluate(report(mode, "waiting")); assertStandardOperationOutput(output);
     assert.equal(output.outcome, "blocked"); assert.deepEqual(output.facts, {}); assert.equal(output.effect_status, "no_effect");
   });
-  test(`${mode} routes through the SAME published IR and reducer replay with one synthetic analysis`, () => {
+  test(`${mode} routes analysis and actual closure ports through the SAME published IR and reducer replay`, () => {
     const result = preflightStandardComposedFixture({ model, scenario: { ...scenario, mode } });
-    assert.equal(result.responses_required, 1); assert.equal(result.replay_exact, true); assert.equal(result.planned_status, "COMPLETED");
-    assert.deepEqual(result.native_occurrences.map(row => row.node_id), [prefix + "_analysis"]);
+    assert.equal(result.responses_required, 2); assert.equal(result.replay_exact, true); assert.equal(result.planned_status, "COMPLETED");
+    assert.deepEqual(result.native_occurrences.map(row => row.node_id), [prefix + "_analysis", prefix + "_session_closure_drift_report"]);
     assert.ok(result.operations.includes(prefix + "_admit")); assert.ok(result.operations.includes(prefix + "_evaluate"));
     assert.ok(!result.operations.includes("cycle_initialize")); assert.equal(result.write_authorization, false);
   });

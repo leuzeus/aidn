@@ -7,6 +7,7 @@ import { assertStandardDriftReport } from "../../core/workflow/native-activity-o
 import { readControlledDriftGit, assertDiagnosticPathScope } from "./standard-drift-git.mjs";
 import { runCycleCloseAdmitUseCase } from "./cycle-close-admit-use-case.mjs";
 import { AIDN_BRANCH_KIND } from "../../lib/workflow/branch-kind-lib.mjs";
+import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // Read canonical business state. Visible projections are never a DB fallback.
@@ -17,6 +18,9 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
   const current = artifacts.read("CURRENT-STATE.md", { required: true }), fields = analyzeStructuredArtifact(current.content).key_values;
   const session = artifacts.sessions().find(row => row.session_id === fields.active_session);
   if (!session) fail("STANDARD_DRIFT_SESSION_REQUIRED");
+  const mode = parseSessionMetadata(session.content).mode;
+  if (!["THINKING", "EXPLORING", "COMMITTING"].includes(mode) || mode !== fields.mode)
+    fail("STANDARD_DRIFT_MODE_CHANGED");
   const cycles = artifacts.cycles(), activeCycleId = fields.active_cycle && fields.active_cycle !== "none" ? fields.active_cycle : null;
   let cycleId = activeCycleId, cycle = cycleId ? cycles.find(row => row.cycle_id === cycleId) : null, completion = null;
   if (cycleId && !cycle) fail("STANDARD_DRIFT_CYCLE_REQUIRED");
@@ -24,8 +28,8 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
   const terminal = state => ["DONE", "NO_GO", "DROPPED"].includes(state);
   // The closure application alone may recover a terminal owning cycle. A missing
   // active anchor never permits guessing an open/unrelated cycle or session goal.
-  const admission = await runCycleCloseAdmitUseCase({ targetRoot: artifacts.root, mode: "COMMITTING" });
-  const ownsBranch = [AIDN_BRANCH_KIND.CYCLE, AIDN_BRANCH_KIND.INTERMEDIATE].includes(admission.branch_kind);
+  const admission = await runCycleCloseAdmitUseCase({ targetRoot: artifacts.root, mode });
+  const ownsBranch = mode === "COMMITTING" && [AIDN_BRANCH_KIND.CYCLE, AIDN_BRANCH_KIND.INTERMEDIATE].includes(admission.branch_kind);
   if (ownsBranch) {
     if (admission.ok !== true) throw Object.assign(new Error("STANDARD_DRIFT_COMPLETION_ADMISSION_BLOCKED"), {
       code: "STANDARD_DRIFT_COMPLETION_ADMISSION_BLOCKED", admission_reason: admission.reason_code });
@@ -37,7 +41,7 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
       cycleId = target.cycle_id; cycle = selected; completion = { branch: admission.branch, branch_kind: admission.branch_kind,
         cycle_id: cycleId, cycle_state: target.state, admission_reason: admission.reason_code };
     } else if (!activeCycleId) fail("STANDARD_DRIFT_COMPLETION_CONTEXT_REQUIRED");
-  } else if (terminal(cycleState(cycle)) || !cycle && cycles.some(row => analyzeStructuredArtifact(row.content).key_values.branch_name === admission.branch)) {
+  } else if (mode === "COMMITTING" && (terminal(cycleState(cycle)) || !cycle && cycles.some(row => analyzeStructuredArtifact(row.content).key_values.branch_name === admission.branch))) {
     fail("STANDARD_DRIFT_COMPLETION_CONTEXT_REQUIRED");
   }
   const brief = cycle ? artifacts.read(cycle.path.replace(/status\.md$/, "brief.md"), { required: true }) : null;
@@ -64,7 +68,7 @@ export async function readStandardDriftContext({ targetRoot, productSha256, prod
   const git = readControlledDriftGit({ root: artifacts.root, productRoot, productFiles, deniedRoots, environment,
     observedDocuments: documents.map(row => "docs/audit/" + row.path) });
   if (admission.branch !== git.branch) fail("STANDARD_DRIFT_CONTEXT_CHANGED");
-  const body = { contract_version: "standard-drift-context.v1", project_scope_sha256: shadowHash(project.scope),
+  const body = { contract_version: "standard-drift-context.v2", mode, project_scope_sha256: shadowHash(project.scope),
     branch: git.branch, head: git.head, product_sha256: productSha256,
     session_id: session.session_id, cycle_id: cycleId, original_objective: objective,
     context_use: completion ? "cycle_completion" : cycle ? "active_cycle" : "session", cycle_state: cycleState(cycle),

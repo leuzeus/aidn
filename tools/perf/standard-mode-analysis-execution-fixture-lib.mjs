@@ -28,11 +28,20 @@ export function modeAnalysisWitness(host, configuration) {
   });
 }
 
-export async function verifyModeAnalysisExecution({ storageMode, sessionMode, disposition, mixedFixture }) {
+export async function verifyModeAnalysisExecution({ storageMode, sessionMode, disposition, mixedFixture, closeSession = false, closureChoice = "close" }) {
   let sourceFile;
   const humanSource = { read: input => closureHumanSource(sourceFile).read(input), verify: input => closureHumanSource(sourceFile).verify(input) };
   const f = mixedFixture(storageMode, { standardModel: true, humanSource, hostTrace: true, async answer({ params }) {
     const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
+    if (closeSession && observed.context.contract_version === "standard-drift-context.v2") {
+      assert.equal(observed.context.mode, sessionMode);
+      return { outcome: "completed", summary: "Fixture diagnostic bound to actual session scope", report: {
+        contract_version: "standard-drift-report.v1", context_sha256: observed.context_sha256,
+        original_objective: observed.context.original_objective, current_objective: observed.context.original_objective,
+        drift_level: "none", objective_changed: false, changes: [], keep: ["Read-only analysis"], discard: [],
+        split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+        recommendation: "continue", rationale: "Diagnostic only; the host must perform R05 and session closure separately", evidence_refs: observed.evidence_refs } };
+    }
     assert.equal(observed.context.contract_version, "standard-mode-work-context.v1");
     assert.equal(observed.context.mode, sessionMode);
     assert.ok(observed.context.preflight_operation_id);
@@ -58,16 +67,16 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
   const initial = f.open().initialize({ parameters });
   f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
   // A separate, new fixture authority, never an extension of a retained case.
-  const auth = { ...f.authorize(), max_responses: 1, max_turn_ms: 300000 };
-  auth.global_deadline_ms = auth.workflow_deadline_ms = auth.authorized_at_ms + 1800000;
+  const auth = { ...f.authorize(), max_responses: closeSession ? 2 : 1, max_turn_ms: 300000 };
+  auth.global_deadline_ms = auth.workflow_deadline_ms = auth.authorized_at_ms + (closeSession ? 3600000 : 1800000);
   fs.writeFileSync(path.join(f.base, "mode-analysis-original-authority.json"), JSON.stringify({
     proof_class: "fixture-only-not-retry-authority", configuration: f.configuration, parameters,
-    storage_mode: storageMode, session_mode: sessionMode, disposition, authorization: auth,
+    storage_mode: storageMode, session_mode: sessionMode, disposition, close_session: closeSession, closure_choice: closureChoice, authorization: auth,
   }));
   const originalAuthority = shadowHash(auth), originalProduct = fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"), "utf8");
   const originalHead = execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim();
-  let evaluation;
-  for (let step = 0; step < 20; step++) {
+  let evaluation, closure;
+  for (let step = 0; step < (closeSession ? 40 : 20); step++) {
     const state = f.open().inspect();
     if (state.cursor.status === "COMPLETED") break;
     const before = f.t.sessions.length;
@@ -76,6 +85,19 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
       assert.equal(f.t.sessions.length, before, "D/H must not allocate Native");
       if (result.status === "waiting_for_human") {
         const record = f.open().readOperation(result.operation_id);
+        if (closeSession && record.intent.binding_ref === "session_closure_decision") {
+          const claim = { contract_version: "human-session-closure-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+            source_event_id: "mode-closure-" + sessionMode, subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question),
+            choice: closureChoice, rationale: "New fixture decision bound to this session, R05 and current HEAD",
+            session_report: closureChoice === "close" ? { summary: "Read-only analysis completed", open_loops: [], blockers: [], next_entry_point: "Start a new explicitly authorized session" } : null,
+            evidence_refs: [{ ref: "fixture:mode-closure-choice", sha256: "b".repeat(64) }] };
+          const entries = JSON.parse(fs.readFileSync(sourceFile, "utf8"));
+          fs.writeFileSync(sourceFile, JSON.stringify({ ...entries, closure: claim }));
+          await f.open().receiveDecision(result.operation_id, { sourceRef: "closure", write: true });
+          await f.open().acceptOperation(result.operation_id, { write: true });
+          if (closureChoice !== "close") break;
+          continue;
+        }
         if (record.intent.binding_ref === "mode_work_continue_decision") {
           evaluation = record.preview.prepared.review;
           const observation = f.open().readOperation(record.preview.input.review_operation_id).results.at(-1).output;
@@ -99,7 +121,8 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
       }
       const record = f.open().readOperation(result.operation_id), output = record.results.at(-1)?.output;
       console.log(JSON.stringify({ mode_analysis_step: record.intent.binding_ref, outcome: output?.outcome, native_sessions: f.t.sessions.length }));
-      if (record.intent.binding_ref === "mode_work_evaluate") { evaluation = output; break; }
+      if (record.intent.binding_ref === "mode_work_evaluate") { evaluation = output; if (!closeSession) break; }
+      if (record.intent.binding_ref === "session_close_finalize") { closure = output; break; }
       assert.equal(output?.outcome, "completed");
     } else {
       assert.equal(result.kind, "native"); assert.equal(result.journal_phase, "closed", JSON.stringify({ phase: result.journal_phase, status: result.status, failure: result.first_failure }));
@@ -108,24 +131,31 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
   }
   assert.ok(evaluation, "published mode evaluation must be reached");
   assert.equal(shadowHash(auth), originalAuthority);
-  assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
+  assert.equal(f.t.sessions.length, closeSession ? 2 : 1); assert.ok(f.t.sessions.every(row => row.closed));
   assert.equal(fs.readFileSync(path.join(f.configuration.product_root, "app.mjs"), "utf8"), originalProduct);
-  assert.equal(execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim(), originalHead);
+  if (!closeSession || closureChoice !== "close") assert.equal(execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true }).trim(), originalHead);
+  if (closeSession && closureChoice === "close") {
+    assert.equal(closure?.effect_status, "confirmed"); assert.equal(closure.facts.session_close_completed, true);
+    assert.equal(closure.observations.event.mode, sessionMode);
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: f.configuration.target_root });
+    assert.match(artifacts.read("sessions/S001.md", { required: true }).content, /^state:\s*CLOSED\s*$/m);
+    assert.equal(fs.existsSync(path.join(f.configuration.target_root, ".aidn/runtime/perf/current-run-id.txt")), false);
+  }
   const complete = ["thinking_complete", "nonretained"].includes(disposition);
   const final = f.open().inspect();
   const nativeResults = final.record.events.filter(row => row.kind === "result");
-  assert.equal(nativeResults.length, 1);
+  assert.equal(nativeResults.length, closeSession ? 2 : 1);
   for (const kind of ["activity-context", "artifact-output", "native-result"])
     assert.equal(nativeResults[0].result.evidence_refs.filter(row => row.ref.endsWith("-" + kind + ".json")).length, 1,
       "Authenticated mode result must carry " + kind);
-  assert.equal(final.cursor.status, complete ? "COMPLETED" : "WAITING");
+  assert.equal(final.cursor.status, closeSession ? ({ close: "COMPLETED", refused: "FAILED", deferred: "WAITING", cancelled: "CANCELLED" }[closureChoice]) : complete ? "RUNNING" : "WAITING");
   assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
   assert.equal(evaluation.effect_status, "no_effect");
   assert.equal(evaluation.observations.product_effects_authorized, false);
   assert.equal(evaluation.observations.retention_authorized, false);
   assert.equal(evaluation.observations.session_closure_completed, false);
   if (!complete) assert.deepEqual(evaluation.facts, {});
-  if (sessionMode === "THINKING") {
+  if (sessionMode === "THINKING" && !closeSession) {
     const admitted = await preWriteAdmit({ targetRoot: f.configuration.target_root, skill: "start-session", nativeRequest: {
       tool_name: "apply_patch", cwd: f.configuration.target_root,
       tool_input: { command: "*** Begin Patch\n*** Update File: product/app.mjs\n@@\n-export const value = 1;\n+export const value = 99;\n*** End Patch" },
@@ -159,7 +189,8 @@ export async function verifyModeAnalysisExecution({ storageMode, sessionMode, di
   assert.equal(modeAnalysisWitness(f.open(), f.configuration), before);
   console.log(JSON.stringify({ mode_analysis_proof: true, storage_mode: storageMode, session_mode: sessionMode, disposition,
     project: f.configuration.target_root, control: f.configuration.control_root, model_sha256: final.record.model_sha256,
-    instance_sha256: final.record.instance_sha256, workflow_status: final.cursor.status, native_responses: 1,
+    instance_sha256: final.record.instance_sha256, workflow_status: final.cursor.status, native_responses: f.t.sessions.length,
+    session_closure: closeSession ? closure?.facts.session_close_completed === true : "NOT_RUN", closure_choice: closeSession ? closureChoice : null,
     D_H_wait_extra_model_calls: 0, cold_read_only_poll: true, new_decision_resume: "NOT_RUN", replay_simulation_exact: true,
     effects_unchanged: true, native_human: "fixture-capabilities", postgres: "NOT_RUN", installed_archive: "NOT_RUN", full_standard_workflow: false }));
 }

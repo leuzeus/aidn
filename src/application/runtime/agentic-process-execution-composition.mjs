@@ -96,7 +96,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         const binding = contractRef === PR_TRIAGE_CONTRACT ? "session_pr_triage_select" : "cycle_audit_select";
         const policy = model.policies.find(row => row.id === node?.policy_ref), input = model.data_bindings?.inputs.find(row => row.node_id === id);
         if (node?.kind !== "activity" || role?.role !== "auditor" || role?.action !== "audit" || policy?.independent_review !== true || policy.context_isolation_required !== true
-          || !policy.allowed_permissions.includes("read:product") || policy.allowed_permissions.some(permission => permission.startsWith("write:")) || model.data_bindings?.contract_version !== "process-data-bindings.v2"
+          || !policy.allowed_permissions.includes("read:product") || policy.allowed_permissions.some(permission => permission.startsWith("write:")) || !["process-data-bindings.v2", "process-data-bindings.v3"].includes(model.data_bindings?.contract_version)
           || Object.keys(input?.fields ?? {}).join(",") !== field || input.fields[field].source !== "operation_id"
           || model.nodes.find(row => row.id === input.fields[field].node_id)?.binding_ref !== binding) fail("PROCESS_ACTIVITY_OUTPUT_BINDING_INVALID");
       }
@@ -106,7 +106,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         const field = contractRef === CYCLE_TASK_WORK_CONTRACT ? "task_operation_id" : "implementation_operation_id";
         const binding = contractRef === CYCLE_TASK_WORK_CONTRACT ? "cycle_task_select" : "cycle_implementation_enter";
         if (node?.kind !== "activity" || role?.role !== "executor" || role?.action !== "implement" || policy?.independent_review !== false
-          || !policy.allowed_permissions.includes("write:product") || model.data_bindings?.contract_version !== "process-data-bindings.v2"
+          || !policy.allowed_permissions.includes("write:product") || !["process-data-bindings.v2", "process-data-bindings.v3"].includes(model.data_bindings?.contract_version)
           || Object.keys(input?.fields ?? {}).join(",") !== field || input.fields[field].source !== "operation_id"
           || model.nodes.find(row => row.id === input.fields[field].node_id)?.binding_ref !== binding) fail("PROCESS_ACTIVITY_OUTPUT_BINDING_INVALID");
       } else if (!skill || node?.kind !== "activity" || !role?.skills.includes(skill)

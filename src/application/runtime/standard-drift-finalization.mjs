@@ -12,9 +12,12 @@ import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.m
 import { assertStandardOperationInput, assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import planSchema from "../../core/contracts/workflow-definition/standard-drift-finalize-plan.v1.schema.json" with { type: "json" };
+import planSchemaV2 from "../../core/contracts/workflow-definition/standard-drift-finalize-plan.v2.schema.json" with { type: "json" };
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const eventRelative = ".aidn/runtime/perf/workflow-events.ndjson";
+const schemaFor = plan => plan?.contract_version === "standard-drift-finalize-plan.v2" ? planSchemaV2 : planSchema;
+const planMode = plan => plan.contract_version === "standard-drift-finalize-plan.v2" ? plan.mode : "COMMITTING";
 const emit = (outcome, effect_status, observations, facts = {}, evidence_refs = []) => assertStandardOperationOutput({
   contract_version: "standard-drift-output.v1", operation_ref: "drift_check_finalize", outcome, effect_status, observations, facts, evidence_refs });
 export function createStandardDriftFinalization({ targetRoot, readEvaluation, readCurrent, now = Date.now }) {
@@ -25,6 +28,8 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
     assertStandardOperationInput("drift_check_finalize", input);
     if (!/^op_[a-f0-9]{40}$/.test(operationId ?? "")) fail("STANDARD_DRIFT_OPERATION_ID_INVALID");
     const verified = await readEvaluation(instance, input), result = verified.output;
+    const mode = verified.context.contract_version === "standard-drift-context.v2" ? verified.context.mode : "COMMITTING";
+    if (!["THINKING", "EXPLORING", "COMMITTING"].includes(mode)) fail("STANDARD_DRIFT_MODE_CHANGED");
     if (result.facts.drift_present !== false || result.facts.drift_context_complete !== true || result.facts.drift_recovery_required !== false)
       return { can_apply: false, reason_code: "STANDARD_DRIFT_RECOVERY_REQUIRED" };
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
@@ -36,7 +41,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
     const gate = await runGatingEvaluateUseCase({ targetRoot: root, runtimeDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), args: {
       cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
       stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
-      thresholdFiles: 3, thresholdMinutes: 45, mode: "COMMITTING", runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: true,
+      thresholdFiles: 3, thresholdMinutes: 45, mode, runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: true,
     } });
     const constraints = { level1: gate.levels.level1, level3: gate.levels.level3,
       other_signals: gate.levels.level2.active_signals.filter(value => value !== "time_since_last_drift_check") };
@@ -45,10 +50,10 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
     const body = { evaluation_operation_id: input.evaluation_operation_id, evaluation_sha256: verified.evaluation_sha256,
       context_sha256: verified.context_sha256, report: result.observations.report, producer: result.observations.producer };
     const after = `# Drift report\n\ncontract_version: critical-markdown-v1\nid: drift-${operationId}\ntype: drift_report\nowner: aidn-drift-check\nsteward: project-maintainer\nprivacy_classification: project-internal\nretention_policy: retain-with-process-instance\nsource_of_truth: agentic_process_instance\nsource_mode: ${artifacts.describe().state_mode}\nlifecycle_status: retained\nupdated_at: ${new Date(preparedAt).toISOString()}\n\n\`\`\`json\n${JSON.stringify(body, null, 2)}\n\`\`\`\n`;
-    const plan = { contract_version: "standard-drift-finalize-plan.v1", operation_id: operationId, input, prepared_at_ms: preparedAt,
+    const plan = { contract_version: "standard-drift-finalize-plan.v2", mode, operation_id: operationId, input, prepared_at_ms: preparedAt,
       context_sha256: verified.context_sha256, evaluation_sha256: verified.evaluation_sha256, branch: verified.context.branch, head: verified.context.head,
       report: { path: reportPath, before_sha256: null, after, after_sha256: artifactContentHash(after) }, gate_constraints: constraints };
-    if (validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_DRIFT_PLAN_INVALID");
+    if (validateJsonSchema(plan, schemaFor(plan), "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_DRIFT_PLAN_INVALID");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
   return Object.freeze({
@@ -57,7 +62,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
       const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
       if (write !== true || typeof assertAuthorized !== "function" || !prepared.can_apply || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan
         || !Number.isSafeInteger(age) || age < 0 || age > 300000) fail("STANDARD_DRIFT_EXPLICIT_EFFECT_REQUIRED");
-      if (validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_DRIFT_PLAN_INVALID");
+      if (validateJsonSchema(plan, schemaFor(plan), "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_DRIFT_PLAN_INVALID");
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         const assertCurrent = () => { if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_DRIFT_PROCESS_CHANGED"); };
         const assertContext = async () => {
@@ -85,11 +90,11 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
           await assertContext(); await assertAuthorized(); assertCurrent();
           const runId = "process_drift_" + plan.operation_id;
           const hookStarted = now();
-          hook = runSkillHookUseCase({ args: { skill: "drift-check", mode: "COMMITTING", runId, strict: true, noAutoSkipGate: false },
+          hook = runSkillHookUseCase({ args: { skill: "drift-check", mode: planMode(plan), runId, strict: true, noAutoSkipGate: false },
             perfDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), targetRoot: root, processAdapter: createLocalProcessAdapter() });
           const payload = hook.payload, afterSize = fs.statSync(eventPath()).size, size = afterSize - beforeSize;
           await assertContext();
-          if (hook.ok !== true || payload?.ok !== true || payload.result !== "ok" || payload.branch !== plan.branch || payload.mode !== "COMMITTING"
+          if (hook.ok !== true || payload?.ok !== true || payload.result !== "ok" || payload.branch !== plan.branch || payload.mode !== planMode(plan)
             || !Number.isSafeInteger(size) || size <= 0 || size > 65536) fail("STANDARD_DRIFT_HOOK_UNCONFIRMED");
           const descriptor = fs.openSync(file, "r"), bytes = Buffer.alloc(size);
           try { if (fs.readSync(descriptor, bytes, 0, size, beforeSize) !== size) fail("STANDARD_DRIFT_HOOK_UNCONFIRMED"); } finally { fs.closeSync(descriptor); }
@@ -100,7 +105,7 @@ export function createStandardDriftFinalization({ targetRoot, readEvaluation, re
           }
           const matches = events.filter(row => row.event.run_id === runId), event = matches[0]?.event;
           if (matches.length !== 1 || event.event !== "drift_check_completed" || event.skill !== "drift-check" || event.result !== "ok"
-            || event.mode !== "COMMITTING" || event.branch !== plan.branch || event.ts !== payload.ts
+            || event.mode !== planMode(plan) || event.branch !== plan.branch || event.ts !== payload.ts
             || !Number.isFinite(Date.parse(event.ts)) || Date.parse(event.ts) < hookStarted || Date.parse(event.ts) > now()) fail("STANDARD_DRIFT_HOOK_UNCONFIRMED");
           if (artifacts.read(plan.report.path).sha256 !== plan.report.after_sha256) fail("STANDARD_DRIFT_REPORT_CHANGED");
           return emit("completed", "confirmed", { report_path: plan.report.path, report_sha256: plan.report.after_sha256,

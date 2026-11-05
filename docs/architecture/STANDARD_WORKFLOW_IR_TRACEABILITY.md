@@ -1,5 +1,25 @@
 # Standard workflow IR traceability
 
+## Mode session closure source continuation, 2026-11-04
+
+THINKING and nonretained EXPLORING now connect analysis to the existing
+close-session ports in the same published IR: admission, drift-check activity,
+report evaluation, actual R05 hook, human closure decision, report record,
+checkpoint and final close hook. SPEC-R02/R05/R07/R11 and the current
+context-reload, drift-check and close-session skills remain the authorities.
+Native report production is separate from deterministic effects and human consent.
+Drift context/plan v2 preserve the observed session mode through the physical
+R05 event and closure proof. Historical plan v1 remains COMMITTING.
+
+The graph needs 141 data bindings, exceeding v2's 128 bound. Explicit v3 admits
+up to 256 without changing historical readers, expression scopes or reducer.
+Capacity, published graph and actual mode closure have separate fixtures.
+Nine closure selectors are registered after the exact historical 168-command
+prefix; registration is not execution. Exact-source results are pending.
+SPIKE admission/retained experiments and all remaining L1-L8/A1-A10 are open.
+Ordinary entry and complete_standard_workflow=false remain unchanged.
+
+
 SOURCE42's current candidate is startup/cycle/standard 167/165/109. The standard
 JSON has 202 nodes, 121 operation occurrences and 19 native activities, canonical
 SHA `f6bbf6bd160bb8f79c1f95d22e84a59302fc694051bd417961874d611f6d56b7`.

@@ -95,6 +95,9 @@ const selectedStandardComposedMode = process.argv.find(value => value.startsWith
 const selectedModeWorkResumeMode = process.argv.find(value => value.startsWith("--standard-mode-work-resume-mode="))?.split("=")[1];
 if (selectedModeWorkResumeMode && !["files", "dual", "db-only"].includes(selectedModeWorkResumeMode)) throw Error("STANDARD_MODE_RESUME_FIXTURE_ARGUMENTS_INVALID");
 const selectedModeWorkMode = process.argv.find(value => value.startsWith("--standard-mode-work-mode="))?.split("=")[1];
+const selectedModeWorkClose = process.argv.includes("--standard-mode-work-close");
+const selectedModeClosureChoice = process.argv.find(value => value.startsWith("--standard-mode-closure-choice="))?.split("=")[1] ?? "close";
+if (selectedModeWorkClose && (!selectedModeWorkMode || !["close", "refused", "deferred", "cancelled"].includes(selectedModeClosureChoice))) throw Error("STANDARD_MODE_CLOSURE_FIXTURE_ARGUMENTS_INVALID");
 const selectedModeWorkSession = process.argv.find(value => value.startsWith("--standard-mode-work-session="))?.split("=")[1] ?? "THINKING";
 const selectedModeWorkResumeChoice = process.argv.find(value => value.startsWith("--standard-mode-work-resume-choice="))?.split("=")[1] ?? "continue_analysis";
 const selectedModeWorkResumeDisposition = process.argv.find(value => value.startsWith("--standard-mode-work-resume-disposition="))?.split("=")[1] ?? "waiting";
@@ -784,7 +787,7 @@ if (process.argv[2] === "--mixed-continue") {
     storageMode: selectedModeWorkResumeMode, sessionMode: selectedModeWorkSession, choice: selectedModeWorkResumeChoice,
     firstDisposition: selectedModeWorkResumeDisposition, mixedFixture }));
   if (selectedModeWorkMode) await check("standard mode analysis: published mixed execution and cold read-only polling", () => verifyModeAnalysisExecution({
-    storageMode: selectedModeWorkMode, sessionMode: selectedModeWorkSession, disposition: selectedModeWorkDisposition, mixedFixture,
+    storageMode: selectedModeWorkMode, sessionMode: selectedModeWorkSession, disposition: selectedModeWorkDisposition, mixedFixture, closeSession: selectedModeWorkClose, closureChoice: selectedModeClosureChoice,
   }));
   if (selectedStandardComposedMode) await check(`standard composed ${selectedStandardComposedMode}: shipped model owns actual startup/cycle/R05 prefix to ${standardComposedStop}`, async () => {
     const mode = selectedStandardComposedMode;
@@ -827,7 +830,7 @@ if (process.argv[2] === "--mixed-continue") {
           contract_version: CYCLE_TASK_WORK_CONTRACT, context_sha256: observed.context_sha256, task_id: context.task.id, task: context.task.task,
           work_outcome: "changed", changes: [{ path: "product/app.mjs", operation: "update" }], notes: ["Host verification remains separate"] } };
       }
-      assert.equal(observed.context.contract_version, "standard-drift-context.v1");
+      assert.equal(observed.context.contract_version, "standard-drift-context.v2");
       return { outcome: "completed", summary: "Scoped diagnostic fixture; production ports remain real", report: {
         contract_version: "standard-drift-report.v1", context_sha256: observed.context_sha256,
         original_objective: observed.context.original_objective, current_objective: observed.context.original_objective,

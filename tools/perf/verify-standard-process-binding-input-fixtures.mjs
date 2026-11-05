@@ -7,9 +7,26 @@ import { createAgenticProcess, advanceAgenticProcess, inspectAgenticProcess } fr
 import { agenticPolicyPins } from '../../src/core/workflow/agentic-process-model.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
+import { assertProcessDataBindings } from '../../src/core/workflow/process-data-contracts.mjs';
 const assets = loadStandardWorkflowAssets(), bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
 const H = 'a'.repeat(64); let serial = 0, checks = 0, covered = 0;
 const test = (name, fn) => { fn(); checks++; console.log('PASS ' + name); };
+test('versioned binding capacity preserves v1/v2 bounds and admits the larger standard graph only through v3', () => {
+  const rows = length => Array.from({ length }, (_, i) => ({ node_id: 'op_' + i, fields: {} }));
+  const nodes = length => rows(length).map(row => ({ id: row.node_id, kind: 'operation' }));
+  for (const version of [1, 2]) {
+    const value = { contract_version: `process-data-bindings.v${version}`, parameter_keys: [], inputs: rows(128) };
+    assertProcessDataBindings(value, nodes(128));
+    assert.throws(() => assertProcessDataBindings({ ...value, inputs: rows(129) }, nodes(129)), { code: 'PROCESS_DATA_BINDINGS_INVALID' });
+    assert.equal(value.inputs.length, 128);
+  }
+  for (const count of [141, 256]) assertProcessDataBindings({ contract_version: 'process-data-bindings.v3', parameter_keys: [], inputs: rows(count) }, nodes(count));
+  assert.throws(() => assertProcessDataBindings({ contract_version: 'process-data-bindings.v3', parameter_keys: [], inputs: rows(257) }, nodes(257)), { code: 'PROCESS_DATA_BINDINGS_INVALID' });
+  const instance = createAgenticProcess({ instanceId: 'capacity-v3', scopeId: 'fixture', model: assets.model, policyPins: agenticPolicyPins(assets.model), facts: {}, parameters: {} });
+  const hash = instance.instance_sha256;
+  const replay = inspectAgenticProcess(instance);
+  assert.equal(replay.status, 'RUNNING'); assert.equal(instance.instance_sha256, hash);
+});
 // Use the published expressions and the real reducer/input resolver. Earlier
 // operations receive explicitly synthetic pure receipts; no service/Git/provider
 // is constructed. This is interpreter/contract evidence, not effect evidence.
