@@ -24,6 +24,29 @@ datés de `dd1dbab`, distincts de cet avancement.
 
 ### Avancement d’exécution
 
+- SOURCE41 qualifies independent EXPLORING/nonretained DUAL and EXPLORING/waiting
+  DB-only cases on frozen `b9113433`, both terminal PASS with unchanged source.
+  The former completes the analysis; the latter retains WAITING/blocked/no_effect
+  with no success facts. Both use model 105, one fixture Native response, zero
+  extra D/H/wait responses, cold read-only polling and exact common-reducer
+  replay/simulation with unchanged effect witnesses. No new-decision resume is
+  claimed. New THINKING DUAL/DB-only and EXPLORING FILES cases have started on
+  `8b01b7df`; their dated status stays separate from these completed cases.
+  ROOT's independent authenticated journal observation establishes SOURCE37's
+  generation-9 first_failure as STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE:
+  the fixture answer reentered unreserved host inspection during Native. This
+  is a fixture defect; production reservation checks remain unchanged. The
+  corrective-task callback had the same forbidden inspection. `587e8ecf` and
+  `8b01b7df` move causal source checks before allocation, require the new review
+  to consume redelivery, and compare the callback's authenticated context IDs.
+  A corrected invalid-finding report now proposes the required technical reply;
+  no reply delivery, resolution or merge authority is inferred. Helper 20,
+  typed triage 17, composition 32 and exact original-input transfer pass on
+  `8b01b7df`; the synthetic budget preflight also passes 50 checks on that source.
+  The [focused record](qualification/standard-workflow/mode-matrix-and-correction-fixture-2026-11-04.json)
+  retains each exact source and verdict. No complete C2 has been relaunched.
+  New decisions, SPIKE/experiments/closure and the entire L1-L8/A1-A10 remain due.
+
 - SOURCE40 conserve deux échecs d'entrée Native sur de nouveaux cas indépendants.
   `28c1deff` retient PROCESS_EXECUTION_FAILED au stade `activity_output_context` ;
   le type d'exception interne reste inconnu. Le code excluait le contrat de mode
@@ -38,14 +61,16 @@ datés de `dd1dbab`, distincts de cet avancement.
   le callback du preview de l'exécuteur au worker réel et au contrôleur fixture,
   sans cache ni substitution d'un ancien hash et en gardant la comparaison.
   Les deux contrôles de frontière worker passent sur cette source.
-  Le nouveau cas THINKING FILES reste pending à l'observation datée du registre.
+  Its THINKING FILES case subsequently reached terminal PASS at 23:35:31 UTC;
+  the earlier tracked pending entry remains a dated snapshot.
   Les [preuves datées](qualification/standard-workflow/mode-native-entry-2026-11-04.json)
   distinguent chaque source, résultat, autorité et limite. Les transports Native/
   humains restent doublés ; A2, la reprise après nouvelle décision, SPIKE,
   les expériences avec effets, les clôtures et le plan entier restent ouverts.
   Le long C2 SOURCE37 sur `4e62c478` est désormais terminal FAIL, exit 1 le
-  4 novembre à 23:29:42 UTC. La première cause Native reste à établir ; les
-  anciens budgets, autorisations et ressources ne sont ni réparés ni relancés.
+  4 novembre à 23:29:42 UTC. Its Native first_failure is now independently
+  authenticated in SOURCE41 above; the original budgets, authority and resources
+  remain unchanged, without retry or global resource-closure inference.
 
 - SOURCE39 ajoute un driver mixte ciblé pour les analyses des modes du modèle
   publié 104, avec choix humain et transport Native doublés, ports applicatifs,

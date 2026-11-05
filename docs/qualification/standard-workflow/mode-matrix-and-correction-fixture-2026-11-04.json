@@ -1,0 +1,311 @@
+{
+  "observed_utc": "2026-11-05T00:03:06.708586+00:00",
+  "scope": "SOURCE41 representative mode execution and correction fixture boundaries; not complete STANDARD acceptance",
+  "lane": "ASSURED",
+  "models": {
+    "startup_revision": 163,
+    "cycle_revision": 161,
+    "standard_revision": 105,
+    "standard_model_sha256": "0e9571602b26c8a31914b5fda0f2c4dfd2266fa4174afcd938d8f7765e33293e",
+    "runtime_graph_or_policy_changed": false
+  },
+  "correction_fixture_source": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+  "source37_first_failure": {
+    "code": "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE",
+    "generation": 9,
+    "responses_observed": 0,
+    "journal_hmac_verified_by_independent_root": true,
+    "journal_sha256": "8376ac5709c47d3bba9e04acf2f6a4cde37809cea11d9d735fb1d341be45cc00",
+    "independent_report_sha256": "885513f71a314dc171603431d8e77bd62b29332c69a05090539db5071d171777",
+    "cause": "Fixture callback reentered unreserved mixed-host inspection during its reserved Native allocation.",
+    "inner_stack_or_stage": "NOT_RECONSTRUCTED",
+    "all_resource_closure": "NOT_ESTABLISHED",
+    "retry_authority": false
+  },
+  "cases": [
+    {
+      "case_id": "source41-correction-actual-input-transfer-20261104",
+      "source_head": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+      "script_name": "source41-triage-input-transfer-20261104.mjs",
+      "selectors": [],
+      "started_utc": "2026-11-04T23:59:46.858349+00:00",
+      "terminal": true,
+      "verdict": "PASS",
+      "exit_code": 0,
+      "finished_utc": "2026-11-04T23:59:49.748440+00:00",
+      "source_unchanged": true,
+      "protected_files": 2184,
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 465,
+          "sha256": "fb8e6742ed660baaba141c224b85a376b634bda6975ad465d77d4828f0066b8b"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "case_id": "source41-correction-composition-20261104",
+      "source_head": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+      "script_name": "verify-standard-workflow-composition-fixtures.mjs",
+      "selectors": [],
+      "started_utc": "2026-11-04T23:58:02.692756+00:00",
+      "terminal": true,
+      "verdict": "PASS",
+      "exit_code": 0,
+      "finished_utc": "2026-11-04T23:58:06.368893+00:00",
+      "source_unchanged": true,
+      "protected_files": 2184,
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 2985,
+          "sha256": "863eaeae94d15d8a7f05e0130c5a4c942df8661cf8ce6ab171d140d344c51dea"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "case_id": "source41-correction-helper-20261104",
+      "source_head": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+      "script_name": "verify-standard-composed-cycle-fixtures.mjs",
+      "selectors": [
+        "--retain-always"
+      ],
+      "started_utc": "2026-11-04T23:57:00.823755+00:00",
+      "terminal": true,
+      "verdict": "PASS",
+      "exit_code": 0,
+      "finished_utc": "2026-11-04T23:57:04.651844+00:00",
+      "source_unchanged": true,
+      "protected_files": 2184,
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 296,
+          "sha256": "9a3202df56553643273b7bf51407dc02287da14d9a7bc65c81845d7caafdb882"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "case_id": "source41-correction-preflight-20261104",
+      "source_head": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+      "script_name": "verify-standard-composed-preflight-fixtures.mjs",
+      "selectors": [],
+      "started_utc": "2026-11-04T23:58:02.700759+00:00",
+      "terminal": true,
+      "verdict": "PASS",
+      "exit_code": 0,
+      "finished_utc": "2026-11-05T00:02:57.326619+00:00",
+      "source_unchanged": true,
+      "protected_files": 2184,
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 4285,
+          "sha256": "e052d57250162e0b778de3ad4ad7bea1a0408322dc5c4c081c69606b70d7ff07"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "case_id": "source41-correction-triage-20261104",
+      "source_head": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+      "script_name": "verify-standard-pr-triage-fixtures.mjs",
+      "selectors": [],
+      "started_utc": "2026-11-04T23:57:00.802219+00:00",
+      "terminal": true,
+      "verdict": "PASS",
+      "exit_code": 0,
+      "finished_utc": "2026-11-04T23:57:03.941871+00:00",
+      "source_unchanged": true,
+      "protected_files": 2184,
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 1718,
+          "sha256": "4c1b438b6b3b1a0bbfd541f5298ebf11ce436b1362861d1151876ebcc4676d6d"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "case_id": "source41-exploring-files-20261104",
+      "source_head": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+      "script_name": "verify-agentic-process-execution-fixtures.mjs",
+      "selectors": [
+        "--standard-mode-work-mode=files",
+        "--standard-mode-work-session=EXPLORING",
+        "--retain-always"
+      ],
+      "started_utc": "2026-11-05T00:02:00.166583+00:00",
+      "terminal": false,
+      "verdict": "PENDING",
+      "scope": "Dated start only; preserve the original process and authority, no retry inferred."
+    },
+    {
+      "case_id": "source41-exploring-nonretained-dual-20261104",
+      "source_head": "b911343355cbcb4166e81d75a5bd0e2167d28ac2",
+      "script_name": "verify-agentic-process-execution-fixtures.mjs",
+      "selectors": [
+        "--standard-mode-work-mode=dual",
+        "--standard-mode-work-session=EXPLORING",
+        "--standard-mode-work-disposition=nonretained",
+        "--retain-always"
+      ],
+      "started_utc": "2026-11-04T23:50:07.358845+00:00",
+      "terminal": true,
+      "verdict": "PASS",
+      "exit_code": 0,
+      "finished_utc": "2026-11-05T00:01:03.523550+00:00",
+      "source_unchanged": true,
+      "protected_files": 2184,
+      "mode_analysis_proof": {
+        "mode_analysis_proof": true,
+        "storage_mode": "dual",
+        "session_mode": "EXPLORING",
+        "disposition": "nonretained",
+        "model_sha256": "0e9571602b26c8a31914b5fda0f2c4dfd2266fa4174afcd938d8f7765e33293e",
+        "instance_sha256": "c433ca387afd0870b24036b8852ba1f31266bcd0f679421ba062453fe322cbe0",
+        "workflow_status": "COMPLETED",
+        "native_responses": 1,
+        "D_H_wait_extra_model_calls": 0,
+        "cold_read_only_poll": true,
+        "new_decision_resume": "NOT_RUN",
+        "replay_simulation_exact": true,
+        "effects_unchanged": true,
+        "native_human": "fixture-capabilities",
+        "postgres": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": false
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 1774,
+          "sha256": "0dbc44694934861759de8d2e6bf4049094839c41b2312c3c5e3bd96fb97bf786"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 295,
+          "sha256": "fde98a9455281ec9ddc831eff827cf30fadc9054365ad96399dc82e39033a419"
+        }
+      ]
+    },
+    {
+      "case_id": "source41-exploring-waiting-db-20261104",
+      "source_head": "b911343355cbcb4166e81d75a5bd0e2167d28ac2",
+      "script_name": "verify-agentic-process-execution-fixtures.mjs",
+      "selectors": [
+        "--standard-mode-work-mode=db-only",
+        "--standard-mode-work-session=EXPLORING",
+        "--standard-mode-work-disposition=waiting",
+        "--retain-always"
+      ],
+      "started_utc": "2026-11-04T23:50:07.173761+00:00",
+      "terminal": true,
+      "verdict": "PASS",
+      "exit_code": 0,
+      "finished_utc": "2026-11-05T00:01:10.450933+00:00",
+      "source_unchanged": true,
+      "protected_files": 2184,
+      "mode_analysis_proof": {
+        "mode_analysis_proof": true,
+        "storage_mode": "db-only",
+        "session_mode": "EXPLORING",
+        "disposition": "waiting",
+        "model_sha256": "0e9571602b26c8a31914b5fda0f2c4dfd2266fa4174afcd938d8f7765e33293e",
+        "instance_sha256": "7d7b4f17c1866bcd363e893ece46457cbc804e083362e3b7c78c1ec6cdc988b8",
+        "workflow_status": "WAITING",
+        "native_responses": 1,
+        "D_H_wait_extra_model_calls": 0,
+        "cold_read_only_poll": true,
+        "new_decision_resume": "NOT_RUN",
+        "replay_simulation_exact": true,
+        "effects_unchanged": true,
+        "native_human": "fixture-capabilities",
+        "postgres": "NOT_RUN",
+        "installed_archive": "NOT_RUN",
+        "full_standard_workflow": false
+      },
+      "original_logs": [
+        {
+          "name": "stdout.log",
+          "bytes": 1769,
+          "sha256": "687c3cb24834b7d3011e8801cf8d37e550d4da715df852c7c80a94bd5b64e6be"
+        },
+        {
+          "name": "stderr.log",
+          "bytes": 295,
+          "sha256": "c90a5354b521f1a41cde080110cc9c3ee5191d99037153b8fd09eee4efe734d4"
+        }
+      ]
+    },
+    {
+      "case_id": "source41-thinking-db-20261104",
+      "source_head": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+      "script_name": "verify-agentic-process-execution-fixtures.mjs",
+      "selectors": [
+        "--standard-mode-work-mode=db-only",
+        "--standard-mode-work-session=THINKING",
+        "--retain-always"
+      ],
+      "started_utc": "2026-11-05T00:01:59.864615+00:00",
+      "terminal": false,
+      "verdict": "PENDING",
+      "scope": "Dated start only; preserve the original process and authority, no retry inferred."
+    },
+    {
+      "case_id": "source41-thinking-dual-20261104",
+      "source_head": "8b01b7df869d18f97f58de2e5a0a0479e785ddab",
+      "script_name": "verify-agentic-process-execution-fixtures.mjs",
+      "selectors": [
+        "--standard-mode-work-mode=dual",
+        "--standard-mode-work-session=THINKING",
+        "--retain-always"
+      ],
+      "started_utc": "2026-11-05T00:02:00.235159+00:00",
+      "terminal": false,
+      "verdict": "PENDING",
+      "scope": "Dated start only; preserve the original process and authority, no retry inferred."
+    }
+  ],
+  "pass": 7,
+  "fail": 0,
+  "pending": [
+    "source41-exploring-files-20261104",
+    "source41-thinking-db-20261104",
+    "source41-thinking-dual-20261104"
+  ],
+  "limits": [
+    "SOURCE40 THINKING/FILES is terminal PASS at 2026-11-04T23:35:31.151378Z on 83f4f404; its earlier tracked pending record remains a dated snapshot.",
+    "SOURCE41 DUAL EXPLORING nonretained and DB-only EXPLORING waiting use independent fixture authorities and real application/Git/SQLite ports on b9113433.",
+    "Cold read-only polling is not a new-decision resume. Native and human identities remain fixture capabilities, with zero real model calls.",
+    "The correction helpers and exact retained-input transfer do not qualify complete C2, actual native callback execution, provider responses/resolutions or merge.",
+    "The historical C2 source, all grants, budgets, receipts and uncertain resources remain unchanged; no historical project/control/store cloned.",
+    "The global v2 default is distinct from ordinary STANDARD entry and complete_standard_workflow=false.",
+    "Full current Runtime/Governance Admission, all remaining L1-L8/A1-A10, genuine Native/Human/Provider/OS, real PostgreSQL and exact installed archive remain outstanding.",
+    "Two early shell guard invocations failed before a guard file existed; no Node qualification process or fixture authority was created by those invocations. They are not passing or terminal mixed cases."
+  ]
+}

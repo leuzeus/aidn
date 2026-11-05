@@ -1,5 +1,24 @@
 # Standard workflow IR traceability
 
+SOURCE41's [focused record](../qualification/standard-workflow/mode-matrix-and-correction-fixture-2026-11-04.json)
+qualifies EXPLORING/nonretained DUAL and EXPLORING/waiting DB-only on b9113433,
+model 105, with real application/Git/SQLite ports and fixture Native/human
+capabilities. Both terminal PASS cases retain one response, zero extra D/H/wait
+calls, cold polling, exact common-reducer replay/simulation and unchanged effects.
+The waiting case remains blocked/no_effect without success facts. New-decision
+resume is NOT_RUN. The independent authenticated SOURCE37 journal observation
+establishes first_failure STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE at generation
+9, zero responses: the fixture callback called unreserved inspect during Native.
+Inner stack/stage is not reconstructed. The fixture-only correction on 8b01b7df
+prepares causal expectations before allocation, compares authenticated input IDs,
+requires the new review's redelivery source and retains technical reply obligations.
+Helper 20, typed triage 17, composition 32, synthetic preflight 50 and exact
+retained-input transfer pass. Three additional mode/storage cases remain pending
+at this dated snapshot. Production authority/pins/graph/guards are unchanged. No full
+C2 retry, actual Native callback, provider effects or resource closure is claimed.
+Entire L1-L8/A1-A10, genuine Native/Human/Provider/OS/PG and installed proof remain
+open; ordinary entry is unchanged and complete_standard_workflow=false.
+
 SOURCE40 retains two independent native-entry failures. 28c1deff records
 PROCESS_EXECUTION_FAILED at `activity_output_context`; the inner Node exception
 type was not retained. 463b342c supplies the missing instance/occurrence/product
@@ -11,13 +30,15 @@ fails with the actual STANDARD_MODE_WORK_PRODUCT_CHANGED at the same stage,
 before any response. The worker authority omitted its fresh product reader.
 83f4f404 supplies the actual executor-preview callback in both the real worker
 and fixture controller, preserving comparison and reservation/authentication.
-Both worker-boundary checks pass there. The new THINKING FILES case is pending at the record timestamp.
+Both worker-boundary checks pass there. Its THINKING FILES case later reached
+terminal PASS at 23:35:31 UTC; the earlier pending record remains a dated snapshot.
 The [dated record](../qualification/standard-workflow/mode-native-entry-2026-11-04.json)
 separates sources and scopes. Old failures/resources stay unchanged; new-decision
 resumes, SPIKE/experiments/closure, genuine Native/Human/Provider/OS and whole
 L1-L8/A1-A10 remain open. The separate SOURCE37 C2 case on 4e62c478 is terminal
-FAIL at 23:29:42 UTC, with unchanged source; its first Native cause is still
-unknown and no retry or global resource closure follows.
+FAIL at 23:29:42 UTC, with unchanged source. Its first Native code was unknown
+at that observation; SOURCE41 now retains the independently authenticated code
+and fixture callsite above. No retry or global resource closure follows.
 
 SOURCE39 adds a targeted mixed execution fixture for the published model 104
 mode paths, separate from synthetic planning and canonical-context components.
