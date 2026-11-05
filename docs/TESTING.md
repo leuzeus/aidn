@@ -3142,6 +3142,18 @@ signed historical opinions and separate Native grants. Terminal evidence is
 required for each case; none of these selectors alone qualifies the published
 STANDARD model or an independent worker process.
 
+Adding `--drift-worker-process` to a drift-worker selection reconstructs the
+production worker authority and executor in an asynchronous child Node process.
+The static fixture entry keeps Native RPC doubled and the parent event loop live
+for actual authenticated H transport requests. Private admission travels only in
+stdin; fixture IPC carries observation markers and counters. `revoked-after-observe`
+and `expired-after-observe` select the final awaited Native observation before the
+production turn fence. The child records its PID/parent PID, RPC/session/turn
+counts and exact close-call counts. The enclosing qualification Job remains
+required for OS closure; these fixtures do not qualify the fixed production entry,
+genuine actors, published STANDARD execution or business ALLresources closure.
+These new selections require exact-source terminal evidence before any PASS claim.
+
 `verify-standard-cycle-close-hook-contract-fixtures.mjs` verifies the closed
 fixed input, supported schema vocabulary and correlation of confirmed, blocked
 and uncertain outcomes. `--cycle-close-finalize-mode=contract|files|db-only` in

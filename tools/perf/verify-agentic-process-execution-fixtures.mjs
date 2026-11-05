@@ -48,6 +48,8 @@ import { standardWorkflowOperationBindings, createStandardWorkflowOperations } f
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createNativeAllocationWorkerAuthority } from "../../src/application/runtime/native-allocation-worker-authority.mjs";
+import { transport } from "./agentic-native-rpc-fixture-lib.mjs";
+import { runIndependentDriftWorker } from "./independent-drift-worker-fixture-lib.mjs";
 import { verifyNativeHumanVerificationPort } from "./native-human-verification-fixture-lib.mjs";
 import { assertNativeAllocationJournal, nativeJournalPath } from "../../src/core/workflow/native-allocation-journal.mjs";
 import { controlDelivery } from "../../src/core/workflow/process-control-inbox.mjs";
@@ -88,7 +90,10 @@ const selectedCycleReadinessMode = process.argv.find(value => value.startsWith("
 const selectedCycleWorkMode = process.argv.find(value => value.startsWith("--cycle-work-mode="))?.slice("--cycle-work-mode=".length);
 const selectedCycleCloseFinalizeMode = process.argv.find(value => value.startsWith("--cycle-close-finalize-mode="))?.slice("--cycle-close-finalize-mode=".length);
 const driftWorkerMode = process.argv.find(value => value.startsWith("--drift-worker-mode="))?.split("=")[1];
-if (driftWorkerMode && !["nominal", "revoked", "expired", "wrong-authority", "wrong-subject"].includes(driftWorkerMode)) throw Error("DRIFT_WORKER_FIXTURE_MODE_INVALID");
+const independentDriftWorker = process.argv.includes("--drift-worker-process");
+if (independentDriftWorker && !driftWorkerMode) throw Error("DRIFT_WORKER_FIXTURE_MODE_REQUIRED");
+if (driftWorkerMode && !["nominal", "revoked", "expired", "wrong-authority", "wrong-subject", "revoked-after-observe", "expired-after-observe"].includes(driftWorkerMode)) throw Error("DRIFT_WORKER_FIXTURE_MODE_INVALID");
+if (driftWorkerMode?.endsWith("-after-observe") && !independentDriftWorker) throw Error("DRIFT_WORKER_INDEPENDENT_PROCESS_REQUIRED");
 if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseFinalizeMode)) throw Error("CYCLE_CLOSE_FINALIZE_FIXTURE_MODE_INVALID");
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
@@ -316,83 +321,6 @@ function persistenceFixture(f, backend, stateMode) {
   } });
 }
 function mutatePg(f, changes) { const state = JSON.parse(fs.readFileSync(f.pgState)); Object.assign(state, changes); fs.writeFileSync(f.pgState, JSON.stringify(state)); }
-function inlineTomlToJson(text) {
-  let quoted = false, escaped = false, result = "";
-  for (const character of text) {
-    if (!escaped && character === '"') quoted = !quoted;
-    result += !quoted && character === "=" ? ":" : character;
-    escaped = quoted && !escaped && character === "\\";
-  }
-  return JSON.parse(result);
-}
-function transport(f, options = {}) {
-  const sessions = [], calls = [];
-  const rpcFactory = configuration => {
-    const index = sessions.length + 1, thread = `thread-${index}`, permission = configuration.args.find(arg => arg.startsWith("permissions.aidn_agentic_"));
-    const profile = permission.split("=")[0].slice("permissions.".length), parsed = inlineTomlToJson(permission.slice(permission.indexOf("=") + 1));
-    const cfg = { model: "fixture-model", model_provider: "openai", model_reasoning_effort: "medium", approval_policy: "never", memories: { use_memories: false, generate_memories: false },
-      features: { memories: false, plugins: false, apps: false, hooks: true, multi_agent: false }, agents: { enabled: false }, history: { persistence: "none" },
-      project_doc_max_bytes: 0, instructions: "", developer_instructions: "",
-      log_dir: JSON.parse(configuration.args.find(arg => arg.startsWith("log_dir=")).slice("log_dir=".length)),
-      sqlite_home: JSON.parse(configuration.args.find(arg => arg.startsWith("sqlite_home=")).slice("sqlite_home=".length)),
-      mcp_servers: {}, plugins: {}, apps: { _default: { enabled: false } },
-      shell_environment_policy: { inherit: "all", ignore_default_excludes: true, filters: Object.fromEntries(CODEX_STARTUP_ENVIRONMENT_PROFILES.worker.map(name => [name, "include"])), set: {} },
-      permissions: { [profile]: parsed } };
-    const session = { thread, turns: 0, closed: false, configuration, cfg }; sessions.push(session);
-    return {
-      async request(method, params) {
-        calls.push({ method, params, thread });
-        if (method === "initialize") return {};
-        if (method === "windowsSandbox/readiness") return { status: options.backendMissing ? "notReady" : "ready" };
-        if (method === "permissionProfile/list") return { data: [{ id: profile, allowed: !options.profileDenied }], nextCursor: null };
-        if (method === "hooks/list") {
-          assert.equal(params.threadId, thread, "Inspect the actual loaded thread's hooks before any model turn");
-          assert.equal(Object.hasOwn(params, "cwds"), false);
-          const hooks = configuration.cwd === f.dirs.product ? ["preToolUse", "sessionStart"].map((eventName, index) => ({ eventName,
-            enabled: true, trustStatus: "trusted", source: "project", handlerType: "command", async: false,
-            sourcePath: path.join(f.configuration.target_root, ".codex/hooks.json"), currentHash: f.configuration.native.hook_hashes.work[index] })) : [];
-          if (options.foreignHook) hooks.push({ enabled: true, trustStatus: "trusted", source: "global", currentHash: "sha256:" + "a".repeat(64) });
-          if (options.noAdmission) hooks[0].eventName = "unrelatedEvent";
-          return { data: [{ cwd: configuration.cwd, hooks, errors: [], warnings: [] }] };
-        }
-        if (method === "config/read") { options.onConfigRead?.(); if (options.badProfile) return { config: {} }; return { config: cfg }; }
-        if (method === "thread/start") return { thread: { id: thread }, model: cfg.model, approvalPolicy: "never", activePermissionProfile: { id: profile },
-          sandbox: { type: Object.values(parsed.filesystem).includes("write") ? "workspaceWrite" : "readOnly", networkAccess: false } };
-        if (method !== "turn/start") throw Error("unexpected method");
-        const turn = `turn-${++session.turns}`;
-        if (options.silence) return { turn: { id: turn } };
-        if (params.input[0].text.includes("Change value")) put(f.dirs.product, "app.mjs", "export const value = 2;\n");
-        if (index === 2 && options.mutateReview) put(f.dirs.product, "app.mjs", "export const value = 99;\n");
-        if (index === 2 && options.mutateSnapshot) put(configuration.cwd, "app.mjs", "export const value = 99;\n");
-        if (options.revoke) applyAuthorization(planAuthorization({ targetRoot: f.configuration.target_root, action: "revoke" }));
-        if (options.backendDrift) put(f.configuration.target_root, ".aidn/config.json", JSON.stringify({ runtime: { persistence: { backend: "sqlite" } } }));
-        if (options.storage) put(f.dirs.control, "case/native-overflow.bin", Buffer.alloc(11 * 1024 * 1024));
-        const notify = (method, params) => configuration.onNotification({ method, params });
-        await notify("rawResponse/completed", { threadId: options.foreignThread ? "other-thread" : thread, turnId: turn, responseId: `response-${session.turns}` });
-        const usage = { inputTokens: 10 * session.turns, cachedInputTokens: 0, outputTokens: session.turns, reasoningOutputTokens: 0, totalTokens: 11 * session.turns };
-        if (!options.noUsage) await notify("thread/tokenUsage/updated", { threadId: thread, turnId: options.foreignTurn ? "other-turn" : turn,
-          tokenUsage: { total: usage, last: usage } });
-        await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "functionCallOutput", name: "exec", id: "fixture-tool", output: "private command/output must not be retained" } });
-        await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "commentary", text: "Working on the admitted activity." } });
-        const answer = options.answer ? await options.answer({ params, index }) : { outcome: options.reject && index === 2 ? "rejected" : "completed", summary: "Fixture result." };
-        await notify("item/completed", { threadId: thread, turnId: turn, item: { type: "agentMessage", phase: "final_answer", text: JSON.stringify(answer) } });
-        await notify("turn/completed", { threadId: thread, turn: { id: turn, status: "completed" } });
-        if (options.unverifiableStorage) fs.symlinkSync(f.base, path.join(f.dirs.control, "case/unverifiable-link"), "junction");
-        if (options.transientStorage) put(f.dirs.control, "case/transient.tmp", "transient");
-        return { turn: { id: turn } };
-      },
-      notify() {}, async flush() {}, async close() {
-        session.closed = true;
-        if (options.corruptEvidenceOnClose) {
-          const directory = path.join(f.dirs.control, "case"), file = fs.readdirSync(directory).find(name => name.endsWith("-native-result.json"));
-          if (file) fs.appendFileSync(path.join(directory, file), "\n");
-        }
-        return { closed: !options.closeFailure };
-      },
-    };
-  };
-  return { rpcFactory, sessions, calls };
-}
 async function run(f, options = {}) {
   const t = transport(f, options), auth = f.authorize();
   if (options.maxResponses) auth.max_responses = options.maxResponses;
@@ -438,6 +366,9 @@ function journalController(f, t, options = {}) {
       if (options.controllerFailure) throw Object.assign(new Error("FIXTURE_CONTROLLER_INTERRUPTED"), { code: "FIXTURE_CONTROLLER_INTERRUPTED" });
       const sent = JSON.parse(request.stdin);
       options.mutateAdmission?.(sent.allocation, f);
+      if (options.independentDriftWorker && f.launches >= 2) {
+        return runIndependentDriftWorker({ request, sent, f, options, onEvent });
+      }
       if (options.realWorker) {
         const child = spawnSync(process.execPath, [fileURLToPath(new URL("../../src/adapters/agents/agentic-process-worker.mjs", import.meta.url))], {
           input: JSON.stringify(sent), env: request.env, cwd: request.cwd, encoding: "utf8", shell: false, timeout: 30000,
@@ -837,17 +768,28 @@ if (process.argv[2] === "--mixed-continue") {
     console.log(JSON.stringify(await verifyNativeHumanVerificationPort()));
   });
   if (driftWorkerMode) await check("drift worker current human: " + driftWorkerMode, async () => {
-    const claims = new Map(); let f, review, live = true;
+    const claims = new Map(); let f, review, live = true, expire = false, currentVerifications = 0;
     const actualNow = Date.now;
     const humanSource = { read: ({ sourceRef }) => claims.get(sourceRef) ?? null, async verify({ source, sourceRef, question }) {
       await new Promise(resolve => setImmediate(resolve));
-      if (f?.launches >= 2 && driftWorkerMode === "expired") Date.now = () => review.prepared_at_ms + 300001;
+      currentVerifications++;
+      if (f?.launches >= 2 && (driftWorkerMode === "expired" || expire)) Date.now = () => review.prepared_at_ms + 300001;
       if (!live || shadowHash(claims.get(sourceRef)) !== shadowHash(source) || source.question_sha256 !== shadowHash(question)) return { outcome: "unverified" };
       return { outcome: "verified", authority_id: f?.launches >= 2 && driftWorkerMode === "wrong-authority" ? "another" : source.authority_id,
         source_sha256: f?.launches >= 2 && driftWorkerMode === "wrong-subject" ? "f".repeat(64) : shadowHash(source) };
     } };
-    f = finalizationFixture("files", { recovery: true, finalize: false, rediagnosis: true, humanSource,
-      beforeWorker() { if (f.launches >= 2 && driftWorkerMode === "revoked") live = false; } });
+    let beforeChild = null;
+    f = finalizationFixture("files", { recovery: true, finalize: false, rediagnosis: true, humanSource, independentDriftWorker,
+      beforeWorker() {
+        if (f.launches < 2) return;
+        beforeChild = { current_verifications: currentVerifications, review_age_ms: Date.now() - review.prepared_at_ms,
+          head: execFileSync("git", ["-C", f.configuration.target_root, "rev-parse", "HEAD"], { encoding: "utf8", windowsHide: true, timeout: 10000 }).trim() };
+        if (driftWorkerMode === "revoked") live = false;
+      },
+      afterWorkerObservation() {
+        if (driftWorkerMode === "revoked-after-observe") live = false;
+        if (driftWorkerMode === "expired-after-observe") expire = true;
+      } });
     f.sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
     f.cycleObjective = "Determine whether a bounded prototype is useful";
     try {
@@ -865,17 +807,32 @@ if (process.argv[2] === "--mixed-continue") {
       await host.acceptOperation(waiting.operation_id, { write: true });
       const before = host.inspect().record, count = f.t.calls.filter(row => row.method === "turn/start").length;
       const result = await host.step({ write: true, authorization });
+      const child = f.independentWorker;
+      if (independentDriftWorker) {
+        assert.ok(child, "The second Native request must reconstruct in a separate Node process");
+        assert.ok(beforeChild.current_verifications > 0);
+        assert.ok(beforeChild.review_age_ms >= 0 && beforeChild.review_age_ms <= 300000);
+        assert.equal(child.capability_in_native, false);
+        assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count);
+        if (driftWorkerMode.endsWith("-after-observe")) {
+          assert.equal(child.observations, 3); assert.equal(child.sessions.length, 1);
+        } else if (driftWorkerMode !== "nominal") {
+          assert.equal(child.sessions.length, 0); assert.equal(child.rpc_calls, 0);
+        }
+      }
       if (driftWorkerMode === "nominal") { assert.equal(result.journal_phase, "closed", JSON.stringify(result));
-        assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count + 1);
+        assert.equal(independentDriftWorker ? child.turns : f.t.calls.filter(row => row.method === "turn/start").length - count, 1);
       } else {
-        assert.equal(result.first_failure, driftWorkerMode === "expired" ? "STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED" : "PROCESS_HUMAN_NOT_AUTHENTICATED", JSON.stringify(result));
+        assert.equal(result.first_failure, driftWorkerMode.startsWith("expired") ? "STANDARD_DRIFT_DIAGNOSIS_REQUEST_EXPIRED" : "PROCESS_HUMAN_NOT_AUTHENTICATED", JSON.stringify(result));
         assert.equal(f.t.calls.filter(row => row.method === "turn/start").length, count); assert.equal(f.t.sessions.length, 1);
+        if (independentDriftWorker) assert.equal(child.turns, 0);
       }
       assert.ok(f.t.sessions.every(row => row.closed));
       assert.equal(shadowHash(host.inspect().record.events.slice(0, before.events.length)), shadowHash(before.events));
       assert.equal(JSON.stringify(f.t.calls).includes("human_verification"), false);
       console.log(JSON.stringify({ scope: "production-parent-worker-ports-with-fixture-actors", mode: driftWorkerMode, result,
-        original_human_source_unchanged: shadowHash(claims.get("current")) === shadowHash(claim), published_process: "NOT_RUN", independent_worker_process: "NOT_RUN", native: "fixture" }));
+        original_human_source_unchanged: shadowHash(claims.get("current")) === shadowHash(claim), published_process: "NOT_RUN",
+        independent_worker_process: independentDriftWorker ? { beforeChild, ...child, stdout: undefined } : "NOT_RUN", native: "fixture" }));
     } finally { Date.now = actualNow; }
   });
   if (selectedSpikeMode) await check("standard spike: published model and real conversion wrapper", () => verifyStandardSpikeExecution({
