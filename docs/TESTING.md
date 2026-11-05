@@ -1,5 +1,14 @@
 # Testing Guide
 
+`node tools/perf/verify-standard-ordinary-entry-fixtures.mjs --mode=files|dual|db-only`
+drives the public CLI's production STANDARD composition on a fresh activated
+fixture. It checks immutable preview, exact host-key preparation/initialization,
+deterministic operations, cold H wait/resume, Ed25519 fixture-source forgery and
+stale-question refusal, and same-model/reducer replay/SIM. It passes no controller
+or authorization doubles to the production entry. Its Native configuration is
+deliberately unlaunchable and its signed principals are fixtures. Report real
+Native/Human/Provider/OS, installed package and full STANDARD separately.
+
 The SPIKE wrapper-precondition suite also exercises both session checkpoint
 inventories with real initializer CAS postimages and synthetic signed writer
 records. It checks the exact finite path/hash set, signature tampering, wrong

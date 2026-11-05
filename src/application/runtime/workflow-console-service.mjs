@@ -13,7 +13,7 @@ const operations = Object.freeze({
   propose: ["definition", "explanation", "baseInstanceId"],
   activate: ["definition", "explanation", "baseInstanceId", "expectedPreviewSha256", "review"],
   "initialize-selected": ["workflowId", "instanceId", "expectedSelectionSha256", "engine"],
-  run: ["command", "engine", "configuration", "authorization", "plan", "run"],
+  run: ["command", "engine", "configuration", "authorization", "plan", "run", "actionFile", "decisionSource", "controlSource", "observation"],
 });
 export const workflowConsoleCode = cause => {
   const value = cause?.code ?? cause?.message;

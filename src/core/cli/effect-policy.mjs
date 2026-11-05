@@ -95,7 +95,7 @@ const CLI_EFFECT_POLICIES = freezeDeep([
     effectClass: "preview", surfaceDefaultEffect: "preview",
     effectVariants: [{ whenArgs: ["--execute"], effectClass: "executor" }],
     jsonContract: "runtime-workflow-run.v1.schema.json", safeArgs: ["runtime", "workflow-run", "--json"], allowNonZero: true,
-    notes: "Default structured agentic execution for JSON models and compiled BPMN. Preview starts no native session. Explicit execution requires a matching preview, authorization and bounded owned process tree. Legacy execution requires explicit selection.",
+    notes: "Default structured agentic execution for JSON models and compiled BPMN. An explicit standard-workflow-execution.v1 configuration selects the published mixed host. Standard action-file application requires execute/expect-plan. Host-key preparation, initialization, operation, decision and control actions stay explicit. Replay/SIM and preview create no key, instance or Native. Native additionally requires authorization and the bounded owned tree. Legacy execution requires explicit selection.",
   }),
   ...["workflow-inspect", "workflow-action", "workflow-dashboard"].map(name => commandPolicy({
     id: "runtime-" + name, command: "aidn runtime " + name + " --json", surfaceDefault: true, stability: "experimental",

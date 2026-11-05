@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-workflow-entry-result.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "action_kind", "process_status", "workflow_completed", "operation_outcome", "effect_status", "written", "native_started", "details"],
+  "properties": {
+    "contract_version": { "const": "standard-workflow-entry-result.v1" },
+    "action_kind": { "enum": ["prepare_host", "initialize", "operation", "dispatch", "decision", "control", "native"] },
+    "process_status": { "type": ["string", "null"] }, "workflow_completed": { "type": "boolean" },
+    "operation_outcome": { "enum": ["completed", "rejected", "blocked", "deferred", "cancelled", "reconciliation_required", null] },
+    "effect_status": { "enum": ["no_effect", "confirmed", "unknown", null] },
+    "written": { "type": "boolean" }, "native_started": { "type": ["boolean", "null"] }, "details": { "type": ["object", "null"] }
+  }
+}

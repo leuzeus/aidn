@@ -48,6 +48,10 @@ The classification keeps automation from confusing output format with write perm
   `--execute` and the owned runner's authorization/budgets before native effects.
   `workflow-dashboard` is preview-only until `--serve` explicitly opens
   its foreground loopback listener. Both clients use the same admissions.
+  A STANDARD execution configuration selects the published mixed composition.
+  Its saved action-file plus execute/expect-plan admits one exact action;
+  preparing a durable host key and initializing an instance are separate actions.
+  Decision/control selectors never imply writes. Replay/SIM remain preview-only.
 - A command whose effect depends on an option carries a machine-readable
   invocation rule. Options do not inherit a command-level class as a shortcut.
 - Effect resolution uses an immutable copy of the original argument vector and

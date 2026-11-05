@@ -78,7 +78,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       return structuredClone(value);
     } finally { clearTimeout(timer); combined.removeEventListener("abort", onAbort); stop.abort(); }
   }
-  async function verify(claim, sourceRef, request, signal) {
+  async function verify(claim, sourceRef, request, signal, historical = false) {
     if (request.contract_version === "standard-spike-question.v1") assertHumanSpikeDecision(claim, request);
     else if (request.contract_version === "standard-mode-work-question.v1") assertHumanModeWorkDecision(claim, request);
     else if (["standard-pr-correction-question.v1", "standard-pr-correction-question.v2", "standard-pr-correction-question.v3"].includes(request.contract_version)) assertHumanPrCorrectionDecision(claim, request);
@@ -89,7 +89,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     else if (request.contract_version === "standard-drift-recovery-question.v1") assertHumanRecoveryDecision(claim); else assertHumanModeDecision(claim);
     if (claim.question_sha256 !== shadowHash(request)) fail("PROCESS_HUMAN_QUESTION_CHANGED");
     if (!request.choices.includes(claim.choice)) fail("PROCESS_HUMAN_CHOICE_NOT_OFFERED");
-    const proof = await bounded("verify", { source: claim, sourceRef, question: request }, signal);
+    const proof = await bounded("verify", { source: claim, sourceRef, question: request, historical }, signal);
     if (proof?.outcome !== "verified" || proof.authority_id !== claim.authority_id || proof.source_sha256 !== shadowHash(claim)) fail("PROCESS_HUMAN_NOT_AUTHENTICATED");
   }
   function captured(record) {
@@ -132,8 +132,8 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       const { authentication, key_id, ...body } = record;
       write({ ...body, phase: "receipted", receipt_sha256: shadowHash(receipt) }, before.content_sha256);
     },
-    async verifyCaptured(record, signal) {
-      const value = captured(record); await verify(value.source, value.source_ref, question(record), signal);
+    async verifyCaptured(record, signal, { historical = false } = {}) {
+      const value = captured(record); await verify(value.source, value.source_ref, question(record), signal, historical);
     },
     output(record, capture) {
       const request = question(record);

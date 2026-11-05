@@ -1,5 +1,15 @@
 # Standard workflow IR traceability
 
+Ordinary entry now has an explicit STANDARD configuration route through
+`workflow-run-service` and `standard-workflow-entry`, shared by the console run
+operation. The entry loads the published model/catalog and composes the existing
+mixed host with durable external host keys and signed source ports. It prepares
+one exact action, reuses live stage/CAS/receipt acceptance and resumes retained
+instances without converting historical graphs. The new ordinary-entry suite
+uses the public CLI on disposable activated projects with independent fixture
+signatures; its results must remain separate from genuine Native/Human/Provider,
+full STANDARD, installed archive and full-family qualification.
+
 The 2026-11-05 session checkpoint inventory includes the accepted
 `spike_cycle_initialize` output, preserving its actual CAS postimage evidence.
 Preclose and final close use the same finite writer set, with final close adding

@@ -11,8 +11,8 @@ const root = new URL("../../../", import.meta.url);
 const read = path => fs.readFileSync(new URL(path, root));
 const skillIds = ["convert-to-spike", "drift-check", "context-reload", "start-session", "cycle-create", "branch-cycle-audit", "cycle-close", "promote-baseline", "close-session", "pr-orchestrate"];
 
-// Explicitly partial composition. This loader is not the ordinary/default
-// workflow selector, and cannot claim full standard-workflow completion.
+// The published model remains partial. The explicit ordinary STANDARD entry
+// uses this loader; default engine selection alone never selects this model.
 export function loadStandardWorkflowAssets() {
   const catalog = JSON.parse(read(STANDARD_WORKFLOW_CATALOG_PATH)), model = JSON.parse(read(STANDARD_WORKFLOW_MODEL_PATH));
   const skills = Object.fromEntries(skillIds.map(id => {
@@ -28,8 +28,8 @@ export function createStandardWorkflowHost(options) {
   return Object.freeze({ ...host, modelSource: assets.source });
 }
 
-// Internal composition of this published partial model; ordinary selection is
-// still separate. The common mixed host validates configuration/model identity,
+// Composition of this published partial model. The ordinary entry selects it
+// through its versioned configuration. The mixed host validates model identity,
 // typed outputs and authenticated native allocations against this source.
 export function createStandardWorkflowExecution(options, adapters = {}) {
   const assets = loadStandardWorkflowAssets();

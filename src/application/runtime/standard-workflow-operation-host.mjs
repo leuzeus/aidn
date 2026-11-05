@@ -113,7 +113,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     fail("STANDARD_HOST_CONTROL_CONFIGURATION_INVALID");
   const operations = createStandardWorkflowOperations({ targetRoot, now }), artifacts = createStandardWorkflowArtifacts({ targetRoot });
   const spike = processAuthority ? createStandardSpikeConversion({ targetRoot, operations, now, readAcceptedOperation: acceptedForPromotion,
-    observeModeWork: (instance, input) => processAuthority.observeModeWork(instance, input), verifyDecision: record => human.verifyCaptured(record),
+    observeModeWork: (instance, input) => processAuthority.observeModeWork(instance, input), verifyDecision: record => verifyHumanRecord(record),
     readCurrent: id => current(id).record, observeProduct: () => processAuthority.observeProduct() }) : null;
   const cyclePlanRecord = processAuthority ? createStandardCyclePlanRecord({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readCyclePlanEvaluation(instance, input),
@@ -376,7 +376,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readSource: (instance, input) => integrationAuthority.readSource(instance, input), readCurrent: id => current(id).record,
     async readDecision(instance, input) {
       const selected = acceptedForPromotion(instance, input.decision_operation_id, "session_branch_integration_decision", "STANDARD_SESSION_INTEGRATION_DECISION_REQUIRED");
-      await human.verifyCaptured(selected.record);
+      await verifyHumanRecord(selected.record);
       const capture = human.captured(selected.record), question = human.question(selected.record), output = selected.output;
       if (output.effect_status !== "no_effect" || output.facts.session_branch_integration_requested !== true || output.observations.choice !== "integrate-to-session"
         || output.observations.source_sha256 !== shadowHash(capture.source) || output.observations.question_sha256 !== shadowHash(question)
@@ -597,6 +597,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && agenticProcessPersistence({ targetRoot }).backend === "postgres";
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource,
     projectionRequired });
+  function verifyHumanRecord(record, signal) {
+    const accepted = current(record.intent.instance_id).record.events.some(event => event.kind === "operation_result"
+      && event.receipt.operation_id === record.operation_id && record.results.some(result => shadowHash(result.receipt) === shadowHash(event.receipt)));
+    return human.verifyCaptured(record, signal, { historical: accepted });
+  }
   const controls = createStandardControlInbox({ store: createProcessControlInboxStore(options), signer, source: activeControlSource,
     projectionRequired });
   function readAuthority() {
@@ -702,7 +707,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_closure_decision") await sessionClosureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
-      if (record.preview.binding.executor_kind === "human") await human.verifyCaptured(record, signal);
+      if (record.preview.binding.executor_kind === "human") await verifyHumanRecord(record, signal);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
@@ -865,6 +870,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return service.initialize({ ...input, model, facts: {} });
     },
     inspect: id => current(id),
+    prepareDecision: id => structuredClone(human.question(retained(id).record)),
     prepareControl: input => structuredClone(controlRequest(input)),
     async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, captureKind = null, write = false }) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");

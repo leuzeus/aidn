@@ -44,6 +44,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     reconcileCorrectionCheckpoint: (id, input) => operations.reconcileCorrectionCheckpoint(id, input),
     acceptOperation: (id, input) => operations.accept(id, input),
     readOperation: id => operations.readJournal(id),
+    prepareDecision: id => operations.prepareDecision(id),
     receiveDecision: (id, input) => operations.receiveDecision(id, input),
     prepareControl: input => operations.prepareControl({ ...input, instanceId: configuration.instance_id }),
     captureControl: input => operations.captureControl({ ...input, instanceId: configuration.instance_id }),

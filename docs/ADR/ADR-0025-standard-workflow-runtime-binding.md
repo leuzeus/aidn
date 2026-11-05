@@ -1,5 +1,42 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Explicit ordinary STANDARD entry, 2026-11-05
+
+`workflow-run` and the console run operation select the packaged model through
+the closed `standard-workflow-execution.v1` configuration. This selection is
+separate from the default agentic engine. The host supplies catalog/model/skill,
+activity-output and implementation pins; authored configuration cannot supply
+an authority, actor factory, controller double, model override or raw facts.
+Custom native-only configurations and explicit historical readers keep their
+existing paths. The same mixed host owns operation/native dispatch and replay
+uses the same reducer over the authenticated retained instance.
+
+An invocation prepares one closed action. Applying its exact saved object needs
+`--action-file --execute --expect-plan`; stage/dispatch/accept retain their live
+CAS, freshness, original plan and journal checks. A first host-key action creates
+only its durable MAC key, outside project/product/review/native writable roots.
+The next preview initializes the instance using that actual key identity. No
+preview creates a key, directory, cache, instance or Native allocation. No shared
+synchronization or external publication is inferred. Partial failures retain the
+existing journals and report uncertainty instead of allowing a blind retry.
+
+`AIDN_STANDARD_HOST_HOME` belongs to the embedding environment. Its existing
+physical directory must be explicitly protected in the native configuration.
+The versioned principals registry pins independent Ed25519 public keys and
+allowed source kinds. Signed inbox envelopes bind exact source reference,
+question/control request, authority, payload and bounded issuance/expiry. New
+delivery and receipt acceptance require freshness; an already accepted event
+keeps its original dates and remains historically verifiable after expiry.
+Reserved/unaccepted claims do not get that historical exception. Journal MACs
+do not authenticate people or providers. Offline fixture signers remain fixture
+principals even when using the production signature adapter.
+
+Top-level source skills can join this instance when the operator selects its
+configuration. Native activities and leaf completion hooks never recursively
+invoke the ordinary entry. This wiring requires separate exact-source proof of
+productive cold resume, same-reducer replay/SIM, backends, current gates, genuine
+actors and installed package resolution. It does not complete L1-L8/A1-A10.
+
 ## SPIKE postimages in session checkpoints, 2026-11-05
 
 The preclose and final session checkpoints now share their finite accepted-writer

@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-workflow-action.v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "context", "kind", "payload"],
+  "properties": {
+    "contract_version": { "const": "standard-workflow-action.v1" },
+    "context": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_sha256", "configuration_sha256", "model_source_sha256", "instance_sha256", "native", "key_id", "trust_sha256"],
+      "properties": {
+        "request_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "configuration_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "model_source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "instance_sha256": { "type": ["string", "null"] },
+        "key_id": { "type": ["string", "null"] }, "trust_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "native": { "type": "object" }
+      }
+    },
+    "kind": { "enum": ["prepare_host", "initialize", "operation", "dispatch", "decision", "control", "native", "observe", "replay", "simulate"] },
+    "payload": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "instance_sha256": { "type": "string" }, "preview": { "type": "object" },
+        "operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" },
+        "journal_sha256": { "type": "string" }, "question": { "type": "object" }, "request": { "type": "object" },
+        "source_ref": { "type": "string" }, "authorization_sha256": { "type": ["string", "null"] },
+        "status": { "type": "string" }, "reason": { "type": "string" }
+      }
+    }
+  }
+}

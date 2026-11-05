@@ -6,6 +6,7 @@ import { runOwnedAgenticProcess } from "./agentic-process-owned-run.mjs";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createPublicAgentRunLifecycle } from "./agent-run-public-composition.mjs";
 import { parseAgentRunArguments } from "./agent-run-lifecycle-service.mjs";
+import { runStandardWorkflowEntry } from "./standard-workflow-entry.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const codeOf = cause => /^[A-Z][A-Z0-9_]{0,100}$/.test(cause?.code ?? cause?.message ?? "") ? cause.code ?? cause.message : "WORKFLOW_RUN_UNAVAILABLE";
@@ -18,6 +19,7 @@ export function workflowRunEnvelope(effect = "preview") {
 // Common execution entry, independent of XML authoring. JSON/preview never
 // allocates a native session. Execution retains the owned host and its budgets.
 export async function runProjectWorkflow({ targetRoot, engine, configuration, authorization, plan,
+  actionFile = null, decisionSource = null, controlSource = null, observation = null,
   execute = false, syncRelay = false, expectPlan = null } = {}, { runOwned = runOwnedAgenticProcess, lifecycle = createPublicAgentRunLifecycle } = {}) {
   const output = workflowRunEnvelope(execute ? "executor" : "preview");
   try {
@@ -30,6 +32,7 @@ export async function runProjectWorkflow({ targetRoot, engine, configuration, au
       return output;
     }
     if (output.engine === "legacy") {
+      if (actionFile || decisionSource || controlSource || observation) fail("WORKFLOW_RUN_LEGACY_ARGUMENT_CONFLICT");
       if (authorization) fail("WORKFLOW_RUN_LEGACY_AUTHORIZATION_INVALID");
       const args = ["--target", root, "--configuration", path.resolve(configuration), ...(plan ? ["--plan", path.resolve(plan)] : []),
         ...(execute ? ["--execute", "--expect-plan", expectPlan ?? "", ...(syncRelay ? ["--sync-relay"] : [])] : [])];
@@ -43,6 +46,18 @@ export async function runProjectWorkflow({ targetRoot, engine, configuration, au
     }
     if (plan || syncRelay) fail("WORKFLOW_RUN_AGENTIC_ARGUMENT_CONFLICT");
     const config = readAgentRunFile(path.resolve(configuration), { maxBytes: 1048576 }).value;
+    if (config.contract_version === "standard-workflow-execution.v1") {
+      if (agentRunPhysicalPath(config.execution?.target_root, { directory: true }) !== root) fail("WORKFLOW_RUN_TARGET_CHANGED");
+      const consent = authorization ? readAgentRunFile(path.resolve(authorization), { maxBytes: 16384 }).value : null;
+      if (execute) output.dry_run = false;
+      const result = await runStandardWorkflowEntry({ request: config, actionFile, decisionSource, controlSource, observation,
+        authorization: consent, execute, expectPlan });
+      output.preview = result.preview; output.action_sha256 = result.action_sha256; output.can_apply = result.can_apply;
+      output.result = result.result; output.requirements = result.requirements;
+      output.written = result.written; output.dry_run = !execute;
+      return output;
+    }
+    if (actionFile || decisionSource || controlSource || observation) fail("WORKFLOW_RUN_STANDARD_CONFIGURATION_REQUIRED");
     if (agentRunPhysicalPath(config.target_root, { directory: true }) !== root) fail("WORKFLOW_RUN_TARGET_CHANGED");
     const preview = await runOwned({ configuration: config, execute: false });
     const consent = authorization ? readAgentRunFile(path.resolve(authorization), { maxBytes: 16384 }).value : null;

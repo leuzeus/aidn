@@ -33,7 +33,7 @@ export function createStandardControlInbox({ store, signer, source, projectionRe
   }
   async function verify(record, signal) {
     const proof = await invoke(record.contract_version === "process-control-inbox.v2" ? "verifyReview" : "verify",
-      { source: record.source, sourceRef: record.source_ref, request: record.request,
+      { source: record.source, sourceRef: record.source_ref, request: record.request, historical: record.phase === "delivered",
         ...(record.contract_version === "process-control-inbox.v2" ? { payload: record.payload } : {}) }, signal);
     if (proof?.outcome !== "verified" || proof.authority_id !== record.source.authority_id
       || proof.source_sha256 !== shadowHash(record.source)) fail("PROCESS_CONTROL_NOT_AUTHENTICATED");

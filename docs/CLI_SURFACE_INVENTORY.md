@@ -332,9 +332,22 @@ finalization; `--verify` retains its read-only verification behavior.
     requires `--execute --authorization <file> --expect-plan <sha256>`; JSON and
     preview start no native client. `--engine legacy` explicitly selects the
     sequential compatibility lifecycle and retains its plan/shared-sync admission.
-    The owned native composition accepts native-only v1/v2 graphs. Operation
-    nodes and raw v2 control-scenario facts/events refuse before native startup;
-    mixed dispatch and general history resume remain separate work.
+    An explicit `standard-workflow-execution.v1` configuration selects the
+    published STANDARD catalog/model and the common mixed host. Its `execution`
+    supplies project/native pins and roots; the host supplies the model, skills,
+    typed activity outputs and implementation pins. Save the returned `preview`
+    object and apply it with `--action-file <file> --execute --expect-plan <sha256>`.
+    Each invocation admits one exact action. A missing durable key first offers
+    a separate `prepare_host` action; initialization follows with the real key
+    identity. `AIDN_STANDARD_HOST_HOME` is an existing external protected host
+    directory, never a request-selected authority. Decisions use
+    `--decision-source <ref>`; control delivery uses `--control-source <ref>`.
+    `--replay` and `--simulate` observe retained model/events without writes or
+    Native allocation. The console run action forwards these same selectors.
+    Custom native-only v1/v2 graphs keep their owned runner; raw v2 control facts
+    remain refused. Historical instances are not converted. Source wiring is
+    not full STANDARD, genuine actor or installation qualification; absent
+    provider/renewal capabilities remain blocking.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
 - `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`
