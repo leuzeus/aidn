@@ -1,5 +1,10 @@
 # Testing Guide
 
+The 135 operation occurrences also exceed catalog v1's 128-entry bound.
+Explicit standard-workflow-catalog.v2 allows 256; v1 keeps its original bound.
+The first frozen SOURCE44 candidate failed catalog validation before dispatch;
+that failure is retained separately from any corrected-source qualification.
+
 ## Mode session closure and data capacity
 
 Use `node tools/perf/verify-standard-process-binding-input-fixtures.mjs` for

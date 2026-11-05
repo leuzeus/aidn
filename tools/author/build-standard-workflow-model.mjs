@@ -314,7 +314,7 @@ if (existing) {
   model.revision = existing.revision;
 }
 assertAgenticProcessModel(model);
-const catalog = { contract_version: "standard-workflow-catalog.v1", component_id: "aidn-standard", revision: model.revision,
+const catalog = { contract_version: "standard-workflow-catalog.v2", component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
     entry_conditions: ["fresh_session_admission", "single_new_cycle"], remaining_activities: ["existing_session_resume", "thinking_session_closure", "exploring_experiments_and_spike_conversion",
       "cycle_choice_and_carryover", "governed_git_checkpoints", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },

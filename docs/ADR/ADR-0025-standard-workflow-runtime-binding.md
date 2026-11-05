@@ -1,5 +1,10 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+The 135 operation occurrences also exceed catalog v1's 128-entry bound.
+Explicit standard-workflow-catalog.v2 allows 256; v1 keeps its original bound.
+The first frozen SOURCE44 candidate failed catalog validation before dispatch;
+that failure is retained separately from any corrected-source qualification.
+
 ## Mode closure and versioned data capacity, 2026-11-04
 
 New STANDARD revisions route completed THINKING and nonretained EXPLORING

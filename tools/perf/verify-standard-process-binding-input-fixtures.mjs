@@ -8,9 +8,20 @@ import { agenticPolicyPins } from '../../src/core/workflow/agentic-process-model
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 import { validateJsonSchema } from '../../src/core/contracts/json-schema-validator.mjs';
 import { assertProcessDataBindings } from '../../src/core/workflow/process-data-contracts.mjs';
+import { assertStandardWorkflowComponentCatalog } from '../../src/core/workflow/standard-workflow-model-catalog.mjs';
 const assets = loadStandardWorkflowAssets(), bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
 const H = 'a'.repeat(64); let serial = 0, checks = 0, covered = 0;
 const test = (name, fn) => { fn(); checks++; console.log('PASS ' + name); };
+test('catalog v2 retains exact model and activity coverage while v1 preserves its capacity bound', () => {
+  assertStandardWorkflowComponentCatalog(assets.catalog, assets.model);
+  const schemas = [1, 2].map(v => JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-workflow-catalog.v${v}.schema.json`, import.meta.url))));
+  for (const [v, counts] of [[1, [128, 129]], [2, [135, 256, 257]]]) for (const count of counts) {
+    const value = { ...assets.catalog, contract_version: `standard-workflow-catalog.v${v}`, bindings: Array.from({ length: count }, (_, i) => ({ ...assets.catalog.bindings[0], node_id: 'op_' + i })) };
+    const errors = validateJsonSchema(value, schemas[v - 1], '$', { contractKind: 'workflow-definition' });
+    assert.equal(errors.length === 0, count <= (v === 1 ? 128 : 256));
+  }
+  assert.throws(() => assertStandardWorkflowComponentCatalog({ ...assets.catalog, activities: [] }, assets.model), { code: 'STANDARD_ACTIVITY_COVERAGE_INVALID' });
+});
 test('versioned binding capacity preserves v1/v2 bounds and admits the larger standard graph only through v3', () => {
   const rows = length => Array.from({ length }, (_, i) => ({ node_id: 'op_' + i, fields: {} }));
   const nodes = length => rows(length).map(row => ({ id: row.node_id, kind: 'operation' }));
