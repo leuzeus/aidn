@@ -5,6 +5,21 @@ Explicit standard-workflow-catalog.v2 allows 256; v1 keeps its original bound.
 The first frozen SOURCE44 candidate failed catalog validation before dispatch;
 that failure is retained separately from any corrected-source qualification.
 
+## Explicit SPIKE conversion source, 2026-11-04
+
+SPIKE conversion reuses the existing operation journal, decision inbox and
+canonical artifact CAS. The new human source is explicit inbox v11; previous
+versions are not converted. Its selected cycle fields, chosen session mode and
+branch action are bound to the exact analysis, inventory, continuity, session
+and current-state subject. A Native retention request supplies information only.
+Cycle plan v3 distinguishes recommendation from explicit branch creation and
+preserves v2 behavior. COMMITTING still uses the actual branch/cycle audit.
+The final strict EXPLORING convert-to-spike hook and required DB-backed sync
+must succeed separately before conversion completion. Product effects,
+retention, promotion and renewed Native authority remain unestablished.
+The subsequent experiment admission is blocked pending implementation; source
+wiring is not composed execution, historical-reader or full A2 qualification.
+
 ## Mode closure and versioned data capacity, 2026-11-04
 
 New STANDARD revisions route completed THINKING and nonretained EXPLORING

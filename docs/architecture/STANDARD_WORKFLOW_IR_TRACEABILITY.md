@@ -5,6 +5,26 @@ Explicit standard-workflow-catalog.v2 allows 256; v1 keeps its original bound.
 The first frozen SOURCE44 candidate failed catalog validation before dispatch;
 that failure is retained separately from any corrected-source qualification.
 
+## SPIKE conversion source continuation, 2026-11-04
+
+New revisions route an EXPLORING `retain_requested` report through the existing
+convert-to-spike activation/pre-write and continuity ports, a separate human
+decision, the real cycle creation port and the strict EXPLORING conversion hook.
+The human source selects a new cycle, learning goal, timebox, decision target,
+session mode and explicit branch action. Recommendation preserves the physical
+branch classification. COMMITTING selection requires explicit branch creation
+and retains the actual branch/cycle audit. Canonical session, snapshot and
+current-state summaries are updated with the cycle; no baseline is written.
+
+Private inbox v11 and cycle-initialize plan v3 preserve their historical readers.
+Conversion requests grant neither product effects, retention, promotion nor a
+Native renewal. The subsequent experiment admission deliberately blocks until
+the effectful experiment route is implemented. This source wiring is pending
+qualification; existing retain-request continuation fixtures must be reconciled
+with the newly explicit conversion decision. It is not A2 or full STANDARD
+acceptance. Other mode closures, experiments, L4, L5-L8 and all remaining plan
+acceptance scenarios remain open.
+
 ## Mode session closure source continuation, 2026-11-04
 
 THINKING and nonretained EXPLORING now connect analysis to the existing

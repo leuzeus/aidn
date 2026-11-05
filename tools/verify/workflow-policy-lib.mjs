@@ -45,7 +45,7 @@ const REQUIRED_GATE_SCRIPTS = Object.freeze({
   "effects-policy": "perf:verify-cli-effect-policy",
   "runtime-db-runtime-cli": "perf:verify-db-runtime-cli",
   "runtime-agent-execution-contracts": "perf:verify-agent-execution-contracts",
-  "runtime-agentic-process": "perf:verify-agentic-process",
+  "runtime-agentic-process": "perf:verify-agentic-process && node tools/perf/verify-standard-spike-conversion-fixtures.mjs --mode=files && node tools/perf/verify-standard-spike-conversion-fixtures.mjs --mode=dual && node tools/perf/verify-standard-spike-conversion-fixtures.mjs --mode=db-only",
   "runtime-agent-execution-postgres": "perf:verify-agent-execution-postgres",
   "runtime-agent-worker-fixtures": "perf:verify-agent-worker-fixtures",
   "runtime-agent-execution-scheduler": "perf:verify-agent-execution-scheduler-fixtures",

@@ -463,7 +463,7 @@ const SOURCE_OF_TRUTH_POLICIES = freezeDeep([
     dual: "configured runtime artifact store; visible JSON is derived",
     dbOnly: "configured runtime artifact store; no automatic visible projection",
     projection: "workflows/decision-inbox/<id>.json for required dual projection only",
-    notes: "Existing artifact CAS, no new coordination table. Source identity and exact question are verified through trusted host capabilities, then retained under the host MAC. No raw model/user JSON authenticates itself. Absence waits; refusal, deferral and cancellation have explicit non-success receipts. Native human channel, provider events and general effect-owner recovery remain separate qualifications.",
+    notes: "Existing artifact CAS, no new coordination table. Source identity and exact question are verified through trusted host capabilities, then retained under the host MAC. Private SPIKE inbox v11 binds explicit new cycle selection, mode and branch action; historical readers stay unchanged. No raw model/user JSON authenticates itself. Absence waits; refusal, deferral and cancellation have explicit non-success receipts. Native human channel, provider events and general effect-owner recovery remain separate qualifications.",
   }),
   policy({
     concept: "process_operation_journal", label: "Authenticated process operation journal",

@@ -1,3 +1,8 @@
+import spikeReviewInput from "../contracts/workflow-definition/standard-spike-review-input.v1.schema.json" with { type: "json" };
+import spikeInitializeInput from "../contracts/workflow-definition/standard-spike-initialize-input.v1.schema.json" with { type: "json" };
+import spikeFinalizeInput from "../contracts/workflow-definition/standard-spike-finalize-input.v1.schema.json" with { type: "json" };
+import spikeOutput from "../contracts/workflow-definition/standard-spike-output.v1.schema.json" with { type: "json" };
+import { assertSpikeDecisionOutput } from "./standard-spike-decision.mjs";
 import modeWorkPreflight from "../contracts/workflow-definition/standard-mode-work-preflight-input.v1.schema.json" with { type: "json" };
 import modeWorkEvaluate from "../contracts/workflow-definition/standard-mode-work-evaluate-input.v1.schema.json" with { type: "json" };
 import modeWorkOutput from "../contracts/workflow-definition/standard-mode-work-output.v1.schema.json" with { type: "json" };
@@ -123,6 +128,11 @@ export function normalizeStandardOperationInput(operation, value) {
   return structuredClone(value);
 }
 export function assertStandardOperationInput(operation, value) {
+  if (["spike_conversion_admit", "spike_conversion_decision", "spike_cycle_initialize", "spike_conversion_finalize", "spike_experiment_admit"].includes(operation)) {
+    const schema = operation === "spike_cycle_initialize" ? spikeInitializeInput : ["spike_conversion_finalize", "spike_experiment_admit"].includes(operation) ? spikeFinalizeInput : spikeReviewInput;
+    if (checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (["mode_work_preflight", "mode_work_evaluate", "mode_work_observe", "mode_work_continue_decision"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, operation === "mode_work_continue_decision" ? modeWorkDecisionInput : operation === "mode_work_preflight" ? modeWorkPreflight : modeWorkEvaluate, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -168,6 +178,16 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-spike-decision-output.v1") return assertSpikeDecisionOutput(value);
+  if (value?.contract_version === "standard-spike-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, spikeOutput, "$", { contractKind: "workflow-definition" }).length
+      || (value.outcome === "reconciliation_required") !== (value.effect_status === "unknown")
+      || value.outcome !== "completed" && Object.keys(value.facts).length
+      || value.outcome === "completed" && (value.operation_ref === "spike_conversion_admit" ? value.effect_status !== "no_effect" || typeof value.facts.mode_work_spike_requested !== "boolean"
+        : value.operation_ref === "spike_cycle_initialize" ? value.effect_status !== "confirmed" || shadowHash(value.facts) !== shadowHash({ spike_cycle_initialized: true, spike_conversion_completed: false, spike_experiments_pending: true })
+        : value.operation_ref === "spike_conversion_finalize" ? value.effect_status !== "confirmed" || shadowHash(value.facts) !== shadowHash({ spike_conversion_completed: true, spike_experiments_pending: true, mode_analysis_completed: true }) : true)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-mode-work-observation-output.v1") return assertModeWorkObservationOutput(value);
   if (value?.contract_version === "standard-mode-work-decision-output.v1") return assertModeWorkDecisionOutput(value);
   if (value?.contract_version === "standard-mode-work-output.v1") {

@@ -43,13 +43,19 @@ xor("mode_route", [["committing", "committing", "mode_committing"], ["thinking",
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
   seq(`${prefix}_handoff`, [`${prefix}_analysis_loop`, `${prefix}_session_close`]);
   node(`${prefix}_analysis_loop`, "loop", { child: `${prefix}_analysis_iteration`, until: "mode_analysis_completed", max_iterations: 32 });
-  seq(`${prefix}_analysis_iteration`, [`${prefix}_analysis`, `${prefix}_observe`, `${prefix}_after_report`]);
+  seq(`${prefix}_analysis_iteration`, [`${prefix}_analysis`, `${prefix}_observe`, ...(prefix === "exploring" ? ["spike_admit"] : []), `${prefix}_after_report`]);
   op(`${prefix}_observe`, "mode_work_observe", occurrence(`${prefix}_analysis`));
-  xor(`${prefix}_after_report`, [["complete", `${prefix}_evaluate`, "mode_work_report_complete"], ["waiting", `${prefix}_continue_decide`, null]]);
+  xor(`${prefix}_after_report`, [["complete", `${prefix}_evaluate`, "mode_work_report_complete"], ...(prefix === "exploring" ? [["spike", "spike_conversion", "mode_work_spike_requested"]] : []), ["waiting", `${prefix}_continue_decide`, null]]);
   op(`${prefix}_continue_decide`, "mode_work_continue_decision", { review_operation_id: { source: "operation_id", node_id: `${prefix}_observe` } });
   native(`${prefix}_analysis`, "mode_analyst", `${prefix}_analysis_policy`, "standard-mode-work-report.v1", ["context-reload"], ["SPEC-R01", "SPEC-R02"]);
   op(`${prefix}_evaluate`, "mode_work_evaluate", occurrence(`${prefix}_analysis`));
 }
+op("spike_admit", "spike_conversion_admit", operation(null, "review_operation_id", "exploring_observe"));
+seq("spike_conversion", ["spike_decide", "spike_initialize", "spike_finalize", "spike_experiment_admit"]);
+op("spike_decide", "spike_conversion_decision", operation(null, "review_operation_id", "exploring_observe"));
+op("spike_initialize", "spike_cycle_initialize", operation(null, "decision_operation_id", "spike_decide"));
+op("spike_finalize", "spike_conversion_finalize", operation(null, "initialize_operation_id", "spike_initialize"));
+op("spike_experiment_admit", "spike_experiment_admit", operation(null, "initialize_operation_id", "spike_finalize"));
 xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
   seq(`${prefix}_preflight`, [`${prefix}_admit`]);

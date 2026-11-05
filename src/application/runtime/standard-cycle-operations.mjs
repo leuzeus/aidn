@@ -7,12 +7,15 @@ import { projectRuntimeState } from "../../../tools/runtime/project-runtime-stat
 import { buildRuntimeStateMarkdown } from "./runtime-state-projector-use-case.mjs";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
+import { classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import { buildCanonicalFromMarkdown } from "../../lib/workflow/markdown-render-lib.mjs";
 import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { assertStandardOperationInput, assertStandardOperationOutput, normalizeStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
+import { assertSpikeSelection } from "../../core/workflow/standard-spike-decision.mjs";
+import spikePlanSchema from "../../core/contracts/workflow-definition/standard-cycle-initialize-plan.v3.schema.json" with { type: "json" };
 import planSchema from "../../core/contracts/workflow-definition/standard-cycle-initialize-plan.v2.schema.json" with { type: "json" };
 import contextSchema from "../../core/contracts/workflow-definition/standard-cycle-context-plan.v2.schema.json" with { type: "json" };
 import { createStandardCycleCheckpoint } from "./standard-cycle-checkpoint.mjs";
@@ -45,8 +48,13 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     return text.replace(pattern, (_all, heading) => heading + "\n" + body + "\n\n");
   }
   function assertPlan(plan) {
-    if (validateJsonSchema(plan, planSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_CYCLE_PLAN_INVALID");
+    if (validateJsonSchema(plan, plan.contract_version === "standard-cycle-initialize-plan.v3" ? spikePlanSchema : planSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_CYCLE_PLAN_INVALID");
     assertStandardOperationInput("cycle_initialize", plan.input);
+    if (plan.contract_version === "standard-cycle-initialize-plan.v3") {
+      assertSpikeSelection(plan.spike_selection);
+      if (plan.input.cycle_type !== "spike" || plan.input.cycle_id !== plan.spike_selection.cycle_id || plan.input.title !== plan.spike_selection.title
+        || plan.input.objective !== plan.spike_selection.learning_goal || plan.mode !== "EXPLORING") fail("STANDARD_SPIKE_CYCLE_PLAN_INVALID");
+    }
     if (plan.branch_name !== `${plan.input.cycle_type}/${plan.input.cycle_id}-${plan.input.title}`
       || plan.cycle_path !== `cycles/${plan.input.cycle_id}-${plan.input.cycle_type}-${plan.input.title}`
       || !new RegExp(`^sessions/${plan.input.session_id}(?:[-_.][A-Za-z0-9._-]+)?\\.md$`).test(plan.session_path)
@@ -62,9 +70,10 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
       return file;
     });
   }
-  async function prepare(input, preparedAt, acquired = false) {
+  async function prepare(input, preparedAt, acquired = false, spike = null) {
     assertStandardOperationInput("cycle_initialize", input);
     input = normalizeStandardOperationInput("cycle_initialize", input);
+    if (spike !== null) assertSpikeSelection(spike);
     const context = scope(), observed = session(input.session_id), admitted = await admission();
     if ((!acquired && artifacts.ownerPending()) || !admitted.allowed) return { can_apply: false, admission: admitted };
     if (input.base_branch !== context.branch || admitted.lifecycle.continuity_base_branch !== input.base_branch
@@ -80,12 +89,16 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
       const name = files[index], relative = cyclePath + "/" + (name === "STATUS" ? "status" : name) + ".md";
       if (artifacts.read(relative).sha256 !== null) fail("STANDARD_CYCLE_DESTINATION_EXISTS");
       let after = template.content.replaceAll("CXXX", input.cycle_id).replaceAll("[type]", input.cycle_type);
-      if (name === "brief") after = section(after, "Objective", "- " + input.objective);
+      if (name === "brief") {
+        after = section(after, "Objective", "- " + input.objective);
+        if (spike) after += `\n## Spike learning\n\n- Learning goal: ${spike.learning_goal}\n- Timebox: ${spike.timebox}\n- Decision target: ${spike.decision_target}\n- Code may be throwaway.\n`;
+      }
+      if (name === "decisions" && spike) after += `\n## Conversion decision target\n\n- ${spike.decision_target}\n- Outcome: pending experiments; no retention or promotion accepted.\n`;
       if (name === "STATUS") {
         for (const [key, value] of Object.entries({ state: "OPEN", owner: "aidn-cycle-create", "current goal": input.objective, branch_name: branch,
           session_owner: input.session_id, outcome: "ACTIVE", reported_to_session: "none", continuity_rule: input.continuity_rule,
           continuity_base_branch: context.branch, continuity_latest_cycle_branch: admitted.lifecycle.latest_active_cycle_branch,
-          continuity_decision_by: "agent", continuity_override_reason: "none", dor_state: "NOT_READY", dor_last_check: at, dor_checked_by: "none", dor_override_reason: "none",
+          continuity_decision_by: spike ? "user" : "agent", continuity_override_reason: "none", dor_state: "NOT_READY", dor_last_check: at, dor_checked_by: "none", dor_override_reason: "none",
           usage_matrix_scope: "local", usage_matrix_state: "NOT_DEFINED", usage_matrix_summary: "none", usage_matrix_rationale: "none", scope_frozen: "false",
           scope_freeze_reason: "none", blockers: "\n  - none", "next step": "\n  - Write the plan and audit specification before implementation.", "last updated": at })) after = replaceField(after, key, value);
         after += `\ncycle_id: ${input.cycle_id}\nupdated_at: ${at}\nsource_of_truth: cycle_state\nlifecycle_status: active\ncontinuity_import_target: ${input.continuity_rule === "R2_SESSION_BASE_WITH_IMPORT" ? admitted.lifecycle.latest_active_cycle_branch : "none"}\n`;
@@ -96,10 +109,14 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     const details = analyzeStructuredArtifact(observed.row.content).derived_session_context;
     const targets = [...new Set([...(details?.integration_target_cycles ?? []), input.cycle_id])];
     const attached = [...new Set([...(details?.attached_cycles ?? []), input.cycle_id])];
+    const branchKind = spike?.branch_action === "recommend" ? classifyAidnBranch(context.branch) : "cycle";
     let sessionText = observed.row.content;
-    for (const [key, value] of Object.entries({ updated_at: at, branch_kind: "cycle", integration_target_cycles: "\n" + targets.map(id => "  - " + id).join("\n"),
+    for (const [key, value] of Object.entries({ updated_at: at, branch_kind: branchKind, integration_target_cycles: "\n" + targets.map(id => "  - " + id).join("\n"),
       integration_target_cycle: targets.length === 1 ? input.cycle_id : "none", primary_focus_cycle: input.cycle_id,
       attached_cycles: "\n" + attached.map(id => "  - " + id).join("\n"), cycle_branch: branch })) sessionText = replaceField(sessionText, key, value);
+    if (spike) {
+      sessionText = replaceField(sessionText, "mode", spike.chosen_mode).replace(/\[[ xX]\] (THINKING|EXPLORING|COMMITTING)/g, (_all, value) => `[${value === spike.chosen_mode ? "x" : " "}] ${value}`);
+    }
     changes.push({ path: observed.row.path, before_sha256: observed.row.sha256, after: sessionText });
     const snapshot = artifacts.read("snapshots/context-snapshot.md", { required: true });
     const existing = snapshot.content.match(/^## Active cycles[^\r\n]*\r?\n([\s\S]*?)(?=^## |$(?![\s\S]))/m)?.[1];
@@ -109,10 +126,11 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     snapshotText = section(snapshotText, "Next entry point", `- Session active: ${input.session_id}\n- Active cycle: ${input.cycle_id}\n- Next action: complete DoR planning at ${cyclePath}/status.md.`);
     changes.push({ path: snapshot.path, before_sha256: snapshot.sha256, after: snapshotText });
     let current = observed.current.content;
-    for (const [key, value] of Object.entries({ updated_at: at, active_cycle: input.cycle_id, cycle_branch: branch, branch_kind: "cycle", dor_state: "NOT_READY", first_plan_step: "unknown" })) current = replaceField(current, key, value);
+    for (const [key, value] of Object.entries({ updated_at: at, active_cycle: input.cycle_id, cycle_branch: branch, branch_kind: branchKind, dor_state: "NOT_READY", first_plan_step: "unknown" })) current = replaceField(current, key, value);
+    if (spike) current = replaceField(current, "mode", spike.chosen_mode);
     changes.push({ path: observed.current.path, before_sha256: observed.current.sha256, after: current });
     projectionFiles(changes);
-    const plan = { contract_version: "standard-cycle-initialize-plan.v2", operation_ref: "cycle_initialize", input, prepared_at_ms: preparedAt, scope: context,
+    const plan = { contract_version: spike ? "standard-cycle-initialize-plan.v3" : "standard-cycle-initialize-plan.v2", ...(spike ? { spike_selection: spike } : {}), operation_ref: "cycle_initialize", input, prepared_at_ms: preparedAt, scope: context,
       mode: observed.metadata.mode, branch_name: branch, cycle_path: cyclePath, session_path: observed.row.path, latest_cycle_branch: admitted.lifecycle.latest_active_cycle_branch,
       templates: templates.map(row => ({ path: row.path, sha256: row.sha256 })), changes: changes.map(row => ({ ...row, before_metadata_sha256: artifacts.metadataHash(row.path), after_sha256: artifactContentHash(row.after) })) };
     assertPlan(plan); return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
@@ -188,20 +206,26 @@ export function createStandardCycleOperations({ artifacts, scope, git, replaceFi
     async admitCycle(input = {}) { assertStandardOperationInput("cycle_admit", input); const observed = await admission(), allowed = observed.allowed && !artifacts.ownerPending();
       return emit("cycle_admit", allowed ? "completed" : "blocked", "no_effect", observed, allowed ? { cycle_creation_allowed: true } : {}); },
     prepareCycle: input => prepare(input, now()),
+    prepareSpikeCycle: (input, selection, at = now()) => prepare(input, at, false, assertSpikeSelection(selection)),
     async initializeCycle(prepared, { write = false, expectPlan, effectGuard = null } = {}) {
       explicit(prepared, write, expectPlan); assertPlan(prepared.plan);
       if (effectGuard !== null && (typeof effectGuard.before !== "function" || typeof effectGuard.after !== "function")) fail("STANDARD_CYCLE_EFFECT_GUARD_INVALID");
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
         try {
-          const fresh = await prepare(prepared.plan.input, prepared.plan.prepared_at_ms, true); if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
+          const fresh = await prepare(prepared.plan.input, prepared.plan.prepared_at_ms, true, prepared.plan.spike_selection ?? null); if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail("STANDARD_PREVIEW_CHANGED");
           await effectGuard?.before({ assertOwner: () => artifacts.assertLocalEffectOwner(expectPlan) }); projectionFiles(prepared.plan.changes);
         }
         catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         const committed = [], afterMetadata = [];
         try {
-          git(["switch", "-c", prepared.plan.branch_name]);
+          if (prepared.plan.spike_selection?.branch_action !== "recommend") git(["switch", "-c", prepared.plan.branch_name]);
           for (const change of prepared.plan.changes) { afterMetadata.push(artifacts.compareAndSwapPreservingMetadata(change).metadata_sha256); committed.push(change.path); }
-          const checked = await audit({ session_id: prepared.plan.input.session_id, cycle_id: prepared.plan.input.cycle_id });
+          const spike = prepared.plan.spike_selection;
+          const checked = spike?.chosen_mode === "EXPLORING" ? { allowed: session(prepared.plan.input.session_id).metadata.mode === spike.chosen_mode
+            && scope().branch === (spike.branch_action === "recommend" ? prepared.plan.scope.branch : prepared.plan.branch_name), dor_ready: false,
+            observation_kind: "exploring-canonical-postimages-and-physical-branch", committing_branch_audit: "NOT_APPLICABLE",
+            branch_kind: classifyAidnBranch(scope().branch), branch_recommendation: prepared.plan.branch_name, branch_created: spike.branch_action === "create" }
+            : await audit({ session_id: prepared.plan.input.session_id, cycle_id: prepared.plan.input.cycle_id });
           if (!checked.allowed || checked.dor_ready || scope().head !== prepared.plan.scope.head || prepared.plan.changes.some(row => artifacts.read(row.path).sha256 !== row.after_sha256)) fail("STANDARD_CYCLE_POSTCONDITION_FAILED");
           const projection = artifacts.project(committed);
           for (const [index, file] of projectionFiles(prepared.plan.changes).entries()) if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== prepared.plan.changes[index].after_sha256) fail("STANDARD_CYCLE_PROJECTION_UNCONFIRMED");

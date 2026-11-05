@@ -9,7 +9,7 @@ export const STANDARD_WORKFLOW_CATALOG_PATH = "package/catalogs/standard-workflo
 export const STANDARD_WORKFLOW_MODEL_PATH = "package/catalogs/process-models/aidn-standard.v1.json";
 const root = new URL("../../../", import.meta.url);
 const read = path => fs.readFileSync(new URL(path, root));
-const skillIds = ["drift-check", "context-reload", "start-session", "cycle-create", "branch-cycle-audit", "cycle-close", "promote-baseline", "close-session", "pr-orchestrate"];
+const skillIds = ["convert-to-spike", "drift-check", "context-reload", "start-session", "cycle-create", "branch-cycle-audit", "cycle-close", "promote-baseline", "close-session", "pr-orchestrate"];
 
 // Explicitly partial composition. This loader is not the ordinary/default
 // workflow selector, and cannot claim full standard-workflow completion.

@@ -5,6 +5,18 @@ Explicit standard-workflow-catalog.v2 allows 256; v1 keeps its original bound.
 The first frozen SOURCE44 candidate failed catalog validation before dispatch;
 that failure is retained separately from any corrected-source qualification.
 
+## SPIKE conversion component
+
+Run `node tools/perf/verify-standard-spike-conversion-fixtures.mjs --mode=files`
+(also `dual` and `db-only`) on a new frozen source. This suite separates typed
+human claims, signed fixture inbox reads and actual canonical cycle creation
+with recommendation, EXPLORING branch creation and COMMITTING branch audit.
+It retains disposable projects and reports mixed conversion, strict conversion
+hook, experiments and genuine human qualification as NOT_RUN. A component PASS
+does not establish the full conversion wrapper or same-IR execution. Existing
+retain-request continuation fixtures need the new explicit conversion route;
+do not transfer historical results to this revised model.
+
 ## Mode session closure and data capacity
 
 Use `node tools/perf/verify-standard-process-binding-input-fixtures.mjs` for

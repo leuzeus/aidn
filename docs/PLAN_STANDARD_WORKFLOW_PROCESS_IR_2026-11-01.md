@@ -1,5 +1,22 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE45 source continuation, 2026-11-04
+
+SOURCE44's original THINKING/FILES close case terminated with exit 0 on its
+unchanged frozen source. Its fixture evidence includes canonical CLOSED, actual
+mode-specific hook, cold read-only polling and exact common-reducer replay/SIM.
+It does not establish cold human closure, other backends, genuine Native or the
+entire plan. The original seal is unchanged; later observations are supplements.
+
+The new source connects explicitly admitted SPIKE conversion to authenticated
+human selection and the real cycle creation port, with versioned v3 plans and
+inbox v11. Recommendation does not create or relabel the physical branch;
+COMMITTING selection retains actual branch audit. Strict conversion hook and
+DB-backed sync are separate from metadata creation. Qualification is pending.
+Effectful experiments remain blocked at a named admission boundary; retained
+and nonretained experiments, the updated retain-request continuation route,
+all other unfinished L1-L8/A1-A10, ordinary entry and installed proof remain due.
+
 ## SOURCE44 source continuation, 2026-11-04
 
 The four original SOURCE43 pending cases subsequently terminated PASS, giving

@@ -24,7 +24,7 @@ for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_co
     assert.deepEqual(node(prefix + "_handoff").children, [prefix + "_analysis_loop", prefix + "_session_close"]);
     assert.deepEqual(node(prefix + "_session_close").children, ["session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"].map(id => prefix + "_" + id));
     assert.equal(model.policies.find(row => row.id === node(prefix + "_session_closure_drift_report").policy_ref).mode, mode);
-    assert.deepEqual(node(prefix + "_analysis_iteration").children, [prefix + "_analysis", prefix + "_observe", prefix + "_after_report"]);
+    assert.deepEqual(node(prefix + "_analysis_iteration").children, [prefix + "_analysis", prefix + "_observe", ...(prefix === "exploring" ? ["spike_admit"] : []), prefix + "_after_report"]);
     assert.equal(node(prefix + "_analysis_loop").until, "mode_analysis_completed");
     assert.equal(node(prefix + "_continue_decide").binding_ref, "mode_work_continue_decision");
     assert.equal(node(prefix + "_admit").binding_ref, "mode_work_preflight");
