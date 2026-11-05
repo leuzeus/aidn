@@ -20,7 +20,7 @@ test('catalog v2 retains exact model and activity coverage while v1 preserves it
     const errors = validateJsonSchema(value, schemas[v - 1], '$', { contractKind: 'workflow-definition' });
     assert.equal(errors.length === 0, count <= (v === 1 ? 128 : 256));
   }
-  assert.throws(() => assertStandardWorkflowComponentCatalog({ ...assets.catalog, activities: [] }, assets.model), { code: 'STANDARD_ACTIVITY_COVERAGE_INVALID' });
+  assert.throws(() => assertStandardWorkflowComponentCatalog({ ...assets.catalog, activities: assets.catalog.activities.slice(1) }, assets.model), { code: 'STANDARD_ACTIVITY_COVERAGE_INVALID' });
 });
 test('versioned binding capacity preserves v1/v2 bounds and admits the larger standard graph only through v3', () => {
   const rows = length => Array.from({ length }, (_, i) => ({ node_id: 'op_' + i, fields: {} }));
