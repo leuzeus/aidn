@@ -16,7 +16,8 @@ import { artifactContentHash } from "../../core/workflow/artifact-compare-swap.m
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import inputSchema from "../../core/contracts/workflow-definition/standard-cycle-close-hook-input.v1.schema.json" with { type: "json" };
 import planSchema from "../../core/contracts/workflow-definition/standard-cycle-close-hook-plan.v1.schema.json" with { type: "json" };
-import outputSchema from "../../core/contracts/workflow-definition/standard-cycle-close-hook-output.v1.schema.json" with { type: "json" };
+import outputSchema from "../../core/contracts/workflow-definition/standard-cycle-close-hook-output.v2.schema.json" with { type: "json" };
+import renewalSchema from "../../core/contracts/workflow-definition/standard-cycle-close-renewal-plan.v1.schema.json" with { type: "json" };
 import recordSchema from "../../core/contracts/workflow-definition/standard-cycle-close-plan.v1.schema.json" with { type: "json" };
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -26,7 +27,7 @@ const openGate = gate => gate?.result === "ok" && gate.levels?.level1?.decision 
 
 // readRecorded is a trusted capability authenticating the accepted terminal
 // record and its human/audit provenance. JSON never supplies a successful hook.
-export function createStandardCycleCloseHook({ targetRoot, readRecorded, observeContext, readCurrent, readObjectiveCompletion = null, now = Date.now }) {
+export function createStandardCycleCloseHook({ targetRoot, readRecorded, observeContext, readCurrent, readObjectiveCompletion = null, readHistoricalCompletion = null, now = Date.now }) {
   if ([readRecorded, observeContext, readCurrent].some(value => typeof value !== "function")) fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
   const events = () => {
@@ -65,7 +66,9 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     if (!/^op_[a-f0-9]{40}$/.test(operationId ?? "")) fail("STANDARD_CYCLE_CLOSE_HOOK_OPERATION_INVALID");
     if (!valid(input, inputSchema)) fail("STANDARD_CYCLE_CLOSE_HOOK_INPUT_INVALID");
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const { observed, selected } = await source(instance, input), gating = await gate(instance, observed.context.cycle_id);
+    const { observed, selected } = await source(instance, input);
+    if (readObjectiveCompletion !== null) await readObjectiveCompletion(instance);
+    const gating = await gate(instance, observed.context.cycle_id);
     if (!openGate(gating)) return { can_apply: false, reason_code: "STANDARD_CYCLE_CLOSE_HOOK_GATE_REQUIRED", gate: gating };
     const before = events(), context = observed.context;
     const plan = { contract_version: "standard-cycle-close-hook-plan.v1", input, operation_id: operationId, prepared_at_ms: at, context_sha256: observed.context_sha256,
@@ -77,17 +80,51 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     if (!valid(plan, planSchema)) fail("STANDARD_CYCLE_CLOSE_HOOK_PLAN_INVALID");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
+  const expired = cause => ["STANDARD_OBJECTIVE_DISPOSITION_EXPIRED", "STANDARD_OBJECTIVE_COMPLETION_EXPIRED"].includes(cause?.code);
+  async function renewal(instance, input, operationId, at, cause) {
+    if (!expired(cause) || typeof readHistoricalCompletion !== "function") throw cause;
+    if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+    const { observed } = await source(instance, input);
+    const previous = await readHistoricalCompletion(instance);
+    if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
+    const plan = { contract_version: "standard-cycle-close-renewal-plan.v1", input, operation_id: operationId, prepared_at_ms: at,
+      context_sha256: observed.context_sha256, previous_completion: previous, reason_code: cause.code };
+    if (!valid(plan, renewalSchema)) fail("STANDARD_CYCLE_CLOSE_RENEWAL_PLAN_INVALID");
+    return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
+  }
+  async function returnToReview(instance, prepared, assertAuthorized) {
+    const plan = prepared.plan;
+    let cause;
+    try { await readObjectiveCompletion(instance); }
+    catch (error) { if (!expired(error)) throw error; cause = error; }
+    if (!cause) fail("STANDARD_PREVIEW_CHANGED");
+    const fresh = await renewal(instance, plan.input, plan.operation_id, plan.prepared_at_ms, cause);
+    if (fresh.plan_sha256 !== prepared.plan_sha256) fail("STANDARD_PREVIEW_CHANGED");
+    await assertAuthorized();
+    if (now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000
+      || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
+    return emit("completed", "no_effect", { reason_code: cause.code, previous_completion: plan.previous_completion },
+      { cycle_close_completed: false, drift_completion_reviewed: false });
+  }
   function emit(outcome, effect_status, observations, facts = {}, evidence_refs = []) {
-    const output = { contract_version: "standard-cycle-close-hook-output.v1", operation_ref: "cycle_close_finalize", outcome, effect_status, observations, facts, evidence_refs };
+    const output = { contract_version: "standard-cycle-close-hook-output.v2", operation_ref: "cycle_close_finalize", outcome, effect_status, observations, facts, evidence_refs };
     if (!valid(output, outputSchema)) fail("STANDARD_CYCLE_CLOSE_HOOK_OUTPUT_INVALID"); return output;
   }
-  return Object.freeze({ prepare: (instance, input, operationId) => prepare(instance, input, operationId, now()),
+  return Object.freeze({ async prepare(instance, input, operationId) {
+      const at = now();
+      try { return await prepare(instance, input, operationId, at); }
+      catch (cause) { return renewal(instance, input, operationId, at, cause); }
+    },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       const plan = prepared?.plan;
-      try { if (!valid(plan, planSchema) || write !== true || !prepared.can_apply || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan
+      try { if (!valid(plan, plan.contract_version === "standard-cycle-close-renewal-plan.v1" ? renewalSchema : planSchema) || write !== true || !prepared.can_apply || shadowHash(plan) !== expectPlan || prepared.plan_sha256 !== expectPlan
         || typeof assertAuthorized !== "function" || now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_CYCLE_CLOSE_HOOK_EXPLICIT_EFFECT_REQUIRED"); }
       catch (cause) { cause.effect_status = "no_effect"; throw cause; }
-      return artifacts.withLocalEffectOwner(expectPlan, async () => {
+      if (plan.contract_version === "standard-cycle-close-renewal-plan.v1") {
+        try { return await returnToReview(instance, prepared, assertAuthorized); }
+        catch (cause) { cause.effect_status = "no_effect"; throw cause; }
+      }
+      try { return await artifacts.withLocalEffectOwner(expectPlan, async () => {
         const assertEffectAuthorized = async () => {
           // Observation/authentication may yield. The operation grant is checked
           // last, then synchronous TTL/process fences precede the next effect.
@@ -170,7 +207,15 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
             committed: changes.map(row => row.path), causal_transition: { before_context_sha256: plan.context_sha256, after_context_sha256: completed.context_sha256 } },
             { cycle_close_completed: true, cycle_retained: plan.scope.target_state === "DONE" }, [{ ref: "aidn:cycle-close/" + runId, sha256: shadowHash(event) }, ...changes.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.after_sha256 }))]);
         } catch (cause) { return emit("reconciliation_required", "unknown", { reason_code: cause.code ?? "STANDARD_CYCLE_CLOSE_HOOK_UNCONFIRMED", hook, committed: completionCommitted }); }
-      });
+      }); } catch (cause) {
+        // The owner has been released only for a proved pre-effect refusal.
+        // Once the hook has started, its existing UNKNOWN result stays owned.
+        if (!expired(cause) || cause.effect_status !== "no_effect") throw cause;
+        try {
+          const next = await renewal(instance, plan.input, plan.operation_id, now(), cause);
+          return await returnToReview(instance, next, assertAuthorized);
+        } catch (error) { error.effect_status = "no_effect"; throw error; }
+      }
     },
   });
 }

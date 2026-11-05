@@ -71,7 +71,10 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (node.binding_ref === "mode_decision") facts = { mode_committing: scenario.mode === "COMMITTING", mode_thinking: scenario.mode === "THINKING", mode_exploring: scenario.mode === "EXPLORING", cycle_work_requested: scenario.mode === "COMMITTING" };
         if (node.binding_ref === "cycle_task_advance") facts = { cycle_tasks_finished: ++advanced >= scenario.task_iterations };
         if (fullCorrection && node.id === "session_pr_correction_decide") facts = { session_pr_correction_cycle_requested: true };
-        if (node.binding_ref === "cycle_close_finalize") facts = { cycle_retained: scenario.closure === "retain" };
+        if (node.binding_ref === "drift_completion_select") facts = { drift_diagnosis_requested: !operations.includes("closure_drift_finalize"), drift_completion_review_required: false, drift_completion_reviewed: operations.includes("closure_drift_finalize") };
+        if (node.binding_ref === "drift_followup_select") facts = { drift_route_ready: true, drift_followup_review_required: false };
+        if (node.binding_ref === "drift_check_finalize") facts = { drift_check_completed: true };
+        if (node.binding_ref === "cycle_close_finalize") facts = { cycle_close_completed: true, cycle_retained: scenario.closure === "retain" };
         if (node.binding_ref === "baseline_promotion_decision") facts = { baseline_promotion_requested: scenario.promotion === "promote", baseline_promotion_not_requested: scenario.promotion === "skip" };
         if (node.binding_ref === "session_pr_triage_evaluate") facts = { session_pr_findings_classified: true,
           session_pr_corrections_required: node.id === "session_pr_triage_evaluate" && scenario.review_disposition === "valid_finding",

@@ -1,0 +1,103 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "input",
+    "operation_id",
+    "prepared_at_ms",
+    "context_sha256",
+    "previous_completion",
+    "reason_code"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-close-renewal-plan.v1"
+    },
+    "input": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$id": "aidn://contracts/workflow-definition/standard-cycle-close-hook-input.v1",
+      "x-aidn-contract-version": "standard-cycle-close-hook-input.v1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "closure_operation_id"
+      ],
+      "properties": {
+        "closure_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        }
+      }
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "prepared_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "context_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "previous_completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "receipt_sha256",
+        "plan_sha256",
+        "output_sha256",
+        "alignment_sha256",
+        "report_sha256",
+        "event_sha256",
+        "event_offset"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "receipt_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "plan_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "output_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "alignment_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "report_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "event_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "event_offset": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "reason_code": {
+      "enum": [
+        "STANDARD_OBJECTIVE_DISPOSITION_EXPIRED",
+        "STANDARD_OBJECTIVE_COMPLETION_EXPIRED"
+      ]
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-close-renewal-plan.v1",
+  "x-aidn-contract-version": "standard-cycle-close-renewal-plan.v1"
+}

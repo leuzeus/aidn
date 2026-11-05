@@ -1,5 +1,37 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE63 pre-effect expiry continuation candidate, 2026-11-05
+
+The primary published closure now repeats a bounded review/close-attempt loop.
+The completion selector runs before diagnosis: an accepted primary completion
+can enter a current linked review without repeating its report or R05 event.
+An explicit diagnosis request selects a newly admitted activity occurrence.
+Private close-hook output v2 can complete an attempt with no_effect and
+cycle_close_completed=false only for the two recognized objective expiry codes.
+This is control progress, never successful business closure. Revocation, wrong
+subjects/witnesses and UNKNOWN do not take this return edge.
+
+A private renewal-plan.v1 retains the exact accepted historical completion anchor.
+Apply reobserves expiry, authenticates that anchor, obtains a separate current
+operation grant and checks process CAS. A proved pre-effect refusal releases its
+local owner before requesting review. Once the hook starts, UNKNOWN and owner
+retention remain. Existing checkpoint and metadata effect fences still apply.
+
+Read-only cycle_close_completed_select projects only an accepted confirmed close
+operation identity across the loop boundary. Downstream consumers still validate
+the actual receipt and canonical artifacts. Three purely sequential groups are
+inlined in this new revision only. Existing node/fanout/depth/occurrence limits,
+historical models and v1 readers remain; this does not decide capacity for the
+remaining standard. These derived records use the existing operation journal,
+with no new store, authority, public command, backend fallback or implicit write.
+
+This is candidate implementation pending exact-source qualification. Components
+and synthetic reducer events cannot prove productive published execution, cold
+closure, worker current-H verification, the other ten R05 contexts and recovery
+execution, general L4, required193/public contracts/Governance Admission, genuine
+actors or exact installed behavior. The entire L1-L8/A1-A10 remains incomplete.
+
+
 ## SOURCE62 primary R05 routing candidate, 2026-11-05
 
 The scenario closure fixture now reuses one warm host while retaining a distinct

@@ -2,6 +2,7 @@ import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.m
 import { observeStandardDriftGate } from "./standard-drift-finalization.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
+import { inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const output = (operation_ref, outcome, observations, facts = {}, evidence_refs = []) => assertStandardOperationOutput({
@@ -15,7 +16,27 @@ export function createStandardDriftRoute({ targetRoot, readEvaluation, authentic
     async completion(instance) {
       authenticate(instance);
       const id = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_check_finalize").at(-1)?.intent.operation_id;
-      if (!id) fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
+      // This entry runs before diagnosis as well as after an accepted completion.
+      // Only the primary closure's own finalizer can skip its diagnostic. Earlier
+      // checkpoint finalizers are history, not a completion of this checkpoint.
+      const intent = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id)?.intent;
+      const renewal = instance.events.findLast(event => event.kind === "operation_intent" && event.intent.binding_ref === "drift_completion_decision");
+      const requested = renewal && instance.events.indexOf(renewal) > instance.events.indexOf(instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id));
+      let diagnose = !id;
+      if (id && instance.model) {
+        // The signed intent identifies an occurrence, whose node is derived by
+        // the same reducer. Do not infer node identity from an occurrence suffix.
+        const frames = inspectAgenticProcess(instance).occurrences;
+        diagnose = frames.find(frame => frame.occurrence_id === intent.occurrence_id)?.node_id !== "closure_drift_finalize";
+      }
+      if (requested) {
+        const record = readOperation(renewal.intent.operation_id), result = record.results.at(-1);
+        if (record.phase !== "receipted" || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result?.receipt)))
+          fail("STANDARD_OBJECTIVE_DISPOSITION_NOT_ACCEPTED");
+        diagnose ||= result.output.observations.choice === "request_diagnosis";
+      }
+      if (diagnose) return output("drift_completion_select", "completed", { reason_code: "STANDARD_DRIFT_DIAGNOSIS_REQUIRED" },
+        { drift_completion_review_required: false, drift_completion_reviewed: false, drift_diagnosis_requested: true });
       const record = readOperation(id), result = record.results.at(-1);
       if (record.phase !== "receipted" || result?.receipt.outcome !== "completed" || result.output.effect_status !== "confirmed"
         || result.output.facts.drift_check_completed !== true || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt)))
@@ -32,7 +53,7 @@ export function createStandardDriftRoute({ targetRoot, readEvaluation, authentic
       }
       authenticate(instance);
       return output("drift_completion_select", "completed", { reason_code: review ? "STANDARD_OBJECTIVE_COMPLETION_REVIEW" : "STANDARD_DRIFT_NOMINAL", previous_completion: anchor },
-        { drift_completion_review_required: review, drift_completion_reviewed: !review });
+        { drift_completion_review_required: review, drift_completion_reviewed: !review, drift_diagnosis_requested: false });
     },
     async select(instance, input) {
       authenticate(instance);

@@ -1,5 +1,19 @@
 # Testing Guide
 
+## Pre-effect close expiry continuation, 2026-11-05
+
+The close-record component accepts --mode=files --final-hook
+--late-objective-expiry --retain-always. It uses the production close-hook port
+and canonical files with synthetic completion/H capabilities. Controls cover
+expiry before preparation and after successful preview, independent port
+reconstruction, no-effect owner release, unchanged artifacts/events, separate
+operation authorization, wrong witnesses, revoked H, process CAS and rejection
+of success hybrids. This is not a durable published-process restart or genuine
+actor proof. The composed budget preflight now supplies the explicit diagnostic,
+completion-selector and close-loop facts required by the published IR; these
+remain synthetic planning events, never authenticated execution results.
+
+
 ## Linked objective review component, 2026-11-05
 
 The scenario closure fixture now reuses one warm host while retaining a distinct

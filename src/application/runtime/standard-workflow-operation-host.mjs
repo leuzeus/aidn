@@ -226,7 +226,22 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   const cycleCloseHook = processAuthority ? createStandardCycleCloseHook({ targetRoot, now,
     readObjectiveCompletion: instance => objectiveCompletion.read(instance),
+    readHistoricalCompletion: instance => objectiveCompletion.review(instance),
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
+  function selectCompletedClose(instance) {
+    const intent = instance.events.findLast(event => event.kind === "operation_intent" && event.intent.binding_ref === "cycle_close_finalize")?.intent;
+    if (!intent) fail("STANDARD_CYCLE_CLOSE_ACCEPTED_COMPLETION_REQUIRED");
+    const record = retained(intent.operation_id).record, result = record.results.at(-1), output = assertStandardOperationOutput(result?.output);
+    if (record.phase !== "receipted" || shadowHash(record.intent) !== shadowHash(intent)
+      || result.receipt.outcome !== "completed" || output.outcome !== "completed" || output.effect_status !== "confirmed"
+      || output.operation_ref !== "cycle_close_finalize" || output.facts.cycle_close_completed !== true
+      || result.receipt.output_sha256 !== shadowHash(output)
+      || !instance.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt))
+      || current(instance.instance_id).record.instance_sha256 !== instance.instance_sha256) fail("STANDARD_CYCLE_CLOSE_ACCEPTED_COMPLETION_REQUIRED");
+    return assertStandardOperationOutput({ contract_version: "standard-cycle-close-selection-output.v1", operation_ref: "cycle_close_completed_select",
+      outcome: "completed", effect_status: "no_effect", facts: {}, evidence_refs: [],
+      observations: { closure_operation_id: intent.operation_id, receipt_sha256: shadowHash(result.receipt), output_sha256: shadowHash(output) } });
+  }
   function acceptedForPromotion(instance, id, binding, reason = "STANDARD_PROMOTION_ACCEPTED_SOURCE_REQUIRED") {
     const record = retained(id).record, result = record.results.at(-1);
     const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding).at(-1);
@@ -995,6 +1010,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "baseline_promotion_decision" ? await promotionReview?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "baseline_promotion_finalize" ? await baselinePromotionHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PROMOTION_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "baseline_promotion_record" ? await baselinePromotion?.prepare(state.record, input) ?? fail("STANDARD_PROMOTION_AUTHORITY_REQUIRED")
+        : binding.id === "cycle_close_completed_select" ? selectCompletedClose(state.record)
         : binding.id === "cycle_close_finalize" ? await cycleCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "cycle_close_record" ? await cycleCloseRecord?.prepare(state.record, input) ?? fail("STANDARD_CYCLE_CLOSE_AUTHORITY_REQUIRED")
         : binding.id === "cycle_closure_decision" ? await closureReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_CLOSURE_AUDIT_AUTHORITY_REQUIRED")
@@ -1145,6 +1161,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "cycle_admit") output = await operations.admitCycle(record.preview.input);
         else if (record.intent.binding_ref === "branch_cycle_audit") output = await operations.auditCycle(record.preview.input);
         else if (record.intent.binding_ref === "drift_completion_select") output = await driftRoute?.completion(state.record) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
+        else if (record.intent.binding_ref === "cycle_close_completed_select") output = selectCompletedClose(state.record);
         else if (record.intent.binding_ref === "drift_followup_select") output = await driftRoute?.select(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "drift_report_evaluate") output = await processAuthority?.evaluateDriftReport(state.record, record.preview.input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE");
         else if (record.intent.binding_ref === "cycle_plan_evaluate") output = await processAuthority?.evaluateCyclePlan(state.record, record.preview.input) ?? fail("STANDARD_CYCLE_PLAN_AUTHORITY_UNAVAILABLE");

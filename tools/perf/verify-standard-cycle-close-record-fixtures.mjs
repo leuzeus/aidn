@@ -1,3 +1,4 @@
+import { verifyCycleCloseRenewalBoundary } from "./cycle-close-renewal-fixture-lib.mjs";
 import { createStandardCycleTerminalCheckpoint } from "../../src/application/runtime/standard-cycle-terminal-checkpoint.mjs";
 import { createStandardCycleCloseHook } from "../../src/application/runtime/standard-cycle-close-hook.mjs";
 import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
@@ -207,6 +208,11 @@ try {
           hookPlan = await hook.prepare(instance, hookInput, hookId);
         }
         assert.equal(hookPlan.can_apply, true, JSON.stringify(hookPlan));
+        if (selected === "files" && !finalFault && process.argv.includes("--late-objective-expiry")) {
+          const renewalProof = await verifyCycleCloseRenewalBoundary({ targetRoot: root, instance, input: hookInput, operationId: hookId, prepared: hookPlan,
+            readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }), observeContext });
+          checks += renewalProof.checks; console.log(JSON.stringify(renewalProof));
+        }
         const eventFile = path.join(root, '.aidn/runtime/perf/workflow-events.ndjson'), beforeHook = fs.readFileSync(eventFile);
         await assert.rejects(hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => { throw Object.assign(Error('fixture denied'), { code: 'FIXTURE_GRANT_DENIED' }); } }), { code: 'FIXTURE_GRANT_DENIED' });
         assert.deepEqual(fs.readFileSync(eventFile), beforeHook); assert.equal(artifacts.ownerPending(), false);
@@ -272,5 +278,5 @@ try {
   console.log(JSON.stringify({ status: "PASS", checks, mode, choice, proof: "terminal-post-git-authorization-fault", effect_status: "unknown", owner_retained: true,
     final_hook: "NOT_RUN", native: "NOT_RUN", installed_archive: "NOT_RUN", full_process_host: "NOT_RUN" }));
 } finally {
-  for (const folder of owned) { const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); }
+  for (const folder of owned) { if (process.argv.includes("--retain-always")) { console.log(JSON.stringify({ retained_fixture: folder })); continue; } const resolved = fs.realpathSync(folder); assert.equal(path.dirname(resolved), temp); assert.ok(path.basename(resolved).startsWith("aidn-standard-fresh-")); fs.rmSync(resolved, { recursive: true, force: true }); }
 }

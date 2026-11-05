@@ -20,7 +20,7 @@ for (const scenario of ["nominal", "fresh", "expired-disposition", "expired-comp
   const selected = scenario === "unaccepted" ? { ...instance, events: instance.events.slice(0, 1) } : instance;
   if (["nominal", "fresh", "expired-disposition", "expired-completion"].includes(scenario)) {
     const result = await route.completion(selected), expired = scenario.startsWith("expired");
-    assert.deepEqual(result.facts, { drift_completion_review_required: expired, drift_completion_reviewed: !expired });
+    assert.deepEqual(result.facts, { drift_completion_review_required: expired, drift_completion_reviewed: !expired, drift_diagnosis_requested: false });
     assert.equal(current, scenario === "nominal" ? 0 : 1); assert.equal(historical, expired ? 1 : 0);
     assert.deepEqual(result.observations.previous_completion, expired ? anchor : null);
   } else {

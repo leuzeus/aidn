@@ -1,0 +1,232 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-cycle-close-hook-output.v2",
+  "x-aidn-contract-version": "standard-cycle-close-hook-output.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-cycle-close-hook-output.v2"
+    },
+    "operation_ref": {
+      "const": "cycle_close_finalize"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "reconciliation_required",
+        "blocked"
+      ]
+    },
+    "effect_status": {
+      "enum": [
+        "confirmed",
+        "unknown",
+        "no_effect"
+      ]
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "cycle_close_completed": {
+          "type": "boolean"
+        },
+        "cycle_retained": {
+          "type": "boolean"
+        },
+        "drift_completion_reviewed": {
+          "const": false
+        }
+      }
+    },
+    "observations": {
+      "type": "object"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "sha256"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "outcome": {
+          "const": "completed"
+        },
+        "effect_status": {
+          "const": "confirmed"
+        },
+        "facts": {
+          "required": [
+            "cycle_close_completed",
+            "cycle_retained"
+          ],
+          "properties": {
+            "cycle_close_completed": {
+              "const": true
+            }
+          },
+          "maxProperties": 2
+        },
+        "evidence_refs": {
+          "minItems": 4
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "reconciliation_required"
+        },
+        "effect_status": {
+          "const": "unknown"
+        },
+        "facts": {
+          "maxProperties": 0
+        },
+        "evidence_refs": {
+          "maxItems": 0
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "blocked"
+        },
+        "effect_status": {
+          "const": "no_effect"
+        },
+        "facts": {
+          "maxProperties": 0
+        },
+        "evidence_refs": {
+          "maxItems": 0
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "completed"
+        },
+        "effect_status": {
+          "const": "no_effect"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cycle_close_completed",
+            "drift_completion_reviewed"
+          ],
+          "properties": {
+            "cycle_close_completed": {
+              "const": false
+            },
+            "drift_completion_reviewed": {
+              "const": false
+            }
+          }
+        },
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason_code",
+            "previous_completion"
+          ],
+          "properties": {
+            "reason_code": {
+              "enum": [
+                "STANDARD_OBJECTIVE_DISPOSITION_EXPIRED",
+                "STANDARD_OBJECTIVE_COMPLETION_EXPIRED"
+              ]
+            },
+            "previous_completion": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "receipt_sha256",
+                "plan_sha256",
+                "output_sha256",
+                "alignment_sha256",
+                "report_sha256",
+                "event_sha256",
+                "event_offset"
+              ],
+              "properties": {
+                "operation_id": {
+                  "type": "string",
+                  "pattern": "^op_[a-f0-9]{40}$"
+                },
+                "receipt_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "plan_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "output_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "alignment_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "report_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "event_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "event_offset": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "evidence_refs": {
+          "maxItems": 0
+        }
+      }
+    }
+  ]
+}

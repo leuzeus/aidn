@@ -322,10 +322,10 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   const id = "closure_drift";
   Object.assign(nodes.find(row => row.id === id), { kind: "loop", child: id + "_checkpoint_iteration", until: "drift_completion_reviewed", max_iterations: 32 });
   delete nodes.find(row => row.id === id).children;
-  seq(id + "_checkpoint_iteration", [id + "_loop", id + "_completion_select", id + "_completion_route"]);
+  seq(id + "_checkpoint_iteration", [id + "_completion_select", id + "_completion_route"]);
   node(id + "_loop", "loop", { child: id + "_iteration", until: "drift_check_completed", max_iterations: 32 });
   op(id + "_completion_select", "drift_completion_select");
-  xor(id + "_completion_route", [["review", id + "_completion_review", "drift_completion_review_required"], ["nominal", id + "_completion_nominal", null]]);
+  xor(id + "_completion_route", [["diagnose", id + "_loop", "drift_diagnosis_requested"], ["review", id + "_completion_review", "drift_completion_review_required"], ["nominal", id + "_completion_nominal", null]]);
   op(id + "_completion_review", "drift_completion_decision");
   seq(id + "_completion_nominal", []);
   seq(id + "_iteration", [id + "_report", id + "_evaluate", id + "_select", id + "_review_route", id + "_outcome_route"]);
@@ -340,6 +340,24 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   op(id + "_recovery_record", "drift_recovery_record", operation(null, "decision_operation_id", id + "_review"));
   seq(id + "_diagnosis_requested", []);
 }
+// Expiry before any close effect completes only this attempt. The accepted R05
+// completion remains in history and the next iteration enters its linked review.
+// A separate authenticated selection projects the confirmed attempt identity
+// across the loop boundary; data bindings never reach into a sibling/old scope.
+{
+  const parent = nodes.find(row => row.id === "cycle_work");
+  const at = parent.children.indexOf("closure_drift");
+  parent.children.splice(at, 2, "cycle_close_loop", "close_completed_select");
+  node("cycle_close_loop", "loop", { child: "cycle_close_iteration", until: "cycle_close_completed", max_iterations: 32 });
+  seq("cycle_close_iteration", ["closure_drift", "close_finalize"]);
+  op("close_completed_select", "cycle_close_completed_select");
+  for (const row of inputs) for (const expr of Object.values(row.fields)) {
+    if (expr.node_id === "close_finalize") {
+      if (expr.source !== "operation_id") throw Error("STANDARD_CLOSE_SELECTION_BINDING_REQUIRED");
+      Object.assign(expr, { source: "operation_output", node_id: "close_completed_select", path: ["observations", "closure_operation_id"] });
+    }
+  }
+}
 // Eliminate two one-child control wrappers to retain the existing 256-node
 // bound. This changes occurrence paths in this new revision, not past models.
 for (const id of ["thinking_preflight", "exploring_preflight"]) {
@@ -353,6 +371,15 @@ for (const id of ["thinking_preflight", "exploring_preflight"]) {
 }
 
 for (const id of ["cycle_drift", "promotion_drift", "correction_promotion_drift", "session_closure_drift", "thinking_session_closure_drift", "exploring_session_closure_drift"]) {
+  const wrapper = nodes.find(row => row.id === id);
+  const parent = nodes.find(row => row.kind === "sequence" && row.children.includes(id));
+  if (wrapper?.kind !== "sequence" || !parent) throw Error("STANDARD_INLINE_SEQUENCE_REQUIRED");
+  parent.children.splice(parent.children.indexOf(id), 1, ...wrapper.children);
+  nodes.splice(nodes.indexOf(wrapper), 1);
+}
+// Inline three purely sequential groups in this new revision. No leaf, scope,
+// admission or ordering changes; the model validator keeps fanout/depth limits.
+for (const id of ["startup", "cycle_create", "thinking_session_close"]) {
   const wrapper = nodes.find(row => row.id === id);
   const parent = nodes.find(row => row.kind === "sequence" && row.children.includes(id));
   if (wrapper?.kind !== "sequence" || !parent) throw Error("STANDARD_INLINE_SEQUENCE_REQUIRED");

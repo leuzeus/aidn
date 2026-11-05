@@ -1,5 +1,16 @@
 # 04 JSON Contracts
 
+## Close expiry continuation contracts
+
+Private standard-cycle-close-renewal-plan.v1 and close-hook-output.v2 distinguish
+a proved pre-effect expiry return from confirmed closure and UNKNOWN. A completed
+no-effect attempt must set cycle_close_completed=false and retain its historical
+completion anchor. The private close selection output projects only an accepted
+confirmed operation identity across the loop boundary. V1 readers remain. These
+are existing operation-journal records, with no new public CLI case or independent
+authority. See ADR-0025 for fences and qualification limits.
+
+
 The private standard-drift-recovery-plan.v3 adds an exact accepted-completion
 anchor to a fresh objective review. V2 question/source and inbox v12 bind that
 nested subject without converting historical records. The private route-output
