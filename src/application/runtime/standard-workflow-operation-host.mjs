@@ -24,7 +24,7 @@ import { createStandardSessionClosureAuthority } from "./standard-session-closur
 import { createStandardSessionClosureReview } from "./standard-session-closure-review.mjs";
 import { createStandardSessionCloseRecord } from "./standard-session-close-record.mjs";
 import { createStandardSessionCloseCheckpoint } from "./standard-session-close-checkpoint.mjs";
-import { createStandardSessionPrecloseCheckpoint } from "./standard-session-preclose-checkpoint.mjs";
+import { createStandardSessionPrecloseCheckpoint, collectStandardSessionCheckpointPostimages } from "./standard-session-preclose-checkpoint.mjs";
 import { createStandardSessionDeliveryCheckpoint } from "./standard-session-delivery-checkpoint.mjs";
 import { sessionClosePaths } from "../../core/workflow/standard-session-close-render.mjs";
 import { createStandardSessionCloseHook } from "./standard-session-close-hook.mjs";
@@ -268,22 +268,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || owner.session_closure_status !== "checkpoint_pending") fail("STANDARD_SESSION_CHECKPOINT_OWNER_CHANGED");
     const ownedPaths = artifacts.cycles().filter(row => analyzeStructuredArtifact(row.content).key_values.session_owner === review.session_id).map(row => row.path.slice(0, -10));
     const fixed = [review.session_path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
-    const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "session_pr_correction_cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
-      "cycle_task_advance", "cycle_verification_enter", "cycle_close_record", "cycle_close_finalize", "baseline_promotion_record", "baseline_promotion_finalize", "session_close_record"]);
-    const approved = new Map(), journals = [];
-    for (const event of instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")) {
-      const record = retained(event.receipt.operation_id).record;
-      if (!writers.has(record.intent.binding_ref)) continue;
-      const result = record.results.find(row => shadowHash(row.receipt) === shadowHash(event.receipt));
-      if (record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id || result?.output.effect_status !== "confirmed"
-        || record.preview.binding.executor_kind !== "deterministic") fail("STANDARD_SESSION_CHECKPOINT_WRITER_REQUIRED");
-      journals.push({ operation_id: record.operation_id, output_sha256: shadowHash(result.output) });
-      for (const row of result.output.evidence_refs) if (row.ref.startsWith("docs/audit/")) {
-        const name = row.ref.slice(11);
-        if (!fixed.includes(name) && !ownedPaths.some(parent => name.startsWith(parent + "/"))) fail("STANDARD_SESSION_CHECKPOINT_WRITER_SCOPE_INVALID");
-        approved.set(name, row.sha256);
-      }
-    }
+    const { approved, journals } = collectStandardSessionCheckpointPostimages({ instance, readRetained: retained, fixed, ownedPaths, closing: true });
     const admission = acceptedForPromotion(instance, review.admission_operation_id, "session_close_admit").output.observations.admission;
     const completionCycle = ["cycle", "intermediate"].includes(classifyAidnBranch(review.branch)) ? admission.mapped_cycle : null;
     if (completionCycle && (!["DONE", "NO_GO", "DROPPED"].includes(completionCycle.state) || completionCycle.session_owner !== review.session_id))
@@ -326,22 +311,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       fail("STANDARD_SESSION_PRECLOSE_CLOSURE_EVIDENCE_CHANGED");
     const fixed = [selected[0].path, "CURRENT-STATE.md", "RUNTIME-STATE.md", "snapshots/context-snapshot.md", "baseline/current.md", "baseline/history.md", "index.md"];
     const ownedPaths = owned.map(row => row.path.slice(0, -10));
-    const writers = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "session_pr_correction_cycle_initialize", "cycle_plan_record", "cycle_implementation_enter",
-      "cycle_task_advance", "cycle_verification_enter", "cycle_close_record", "cycle_close_finalize", "baseline_promotion_record", "baseline_promotion_finalize"]);
-    const approved = new Map(), journals = [];
-    for (const event of instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")) {
-      const record = retained(event.receipt.operation_id).record;
-      if (!writers.has(record.intent.binding_ref)) continue;
-      const result = record.results.find(row => shadowHash(row.receipt) === shadowHash(event.receipt));
-      if (record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id || result?.output.effect_status !== "confirmed"
-        || record.preview.binding.executor_kind !== "deterministic") fail("STANDARD_SESSION_PRECLOSE_WRITER_REQUIRED");
-      journals.push({ operation_id: record.operation_id, output_sha256: shadowHash(result.output) });
-      for (const row of result.output.evidence_refs) if (row.ref.startsWith("docs/audit/")) {
-        const name = row.ref.slice(11);
-        if (!fixed.includes(name) && !ownedPaths.some(parent => name.startsWith(parent + "/"))) fail("STANDARD_SESSION_PRECLOSE_WRITER_SCOPE_INVALID");
-        approved.set(name, row.sha256);
-      }
-    }
+    const { approved, journals } = collectStandardSessionCheckpointPostimages({ instance, readRetained: retained, fixed, ownedPaths });
     const prior = instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")
       .map(row => retained(row.receipt.operation_id).record).filter(row => ["cycle_terminal_checkpoint", "baseline_promotion_checkpoint"].includes(row.intent.binding_ref)).at(-1);
     if (!prior) fail("STANDARD_SESSION_PRECLOSE_CHECKPOINT_REQUIRED");

@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardSpikeConversion } from "../../src/application/runtime/standard-spike-conversion.mjs";
+import { collectStandardSessionCheckpointPostimages } from "../../src/application/runtime/standard-session-preclose-checkpoint.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createProjectArtifactStore } from "../../src/application/runtime/project-artifact-store-service.mjs";
 import { observeModeWorkReport } from "../../src/core/workflow/standard-mode-work-continuation.mjs";
@@ -72,6 +73,39 @@ await assert.rejects(wrapper.initialize(instance, prepared, { expectPlan: prepar
 const initialized = await wrapper.initialize(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized: async () => {} });
 assert.equal(initialized.effect_status, "confirmed", JSON.stringify(initialized)); assert.deepEqual(prepared, original);
 for (const row of original.plan.inner.plan.changes) assert.equal(artifacts.read(row.path).sha256, row.after_sha256);
+// Exercise the shared inventory with real initializer postimages and an
+// explicitly synthetic signed journal. Full mixed-host closure is separate.
+const receipt = { operation_id: initializeId, outcome: "completed", output_sha256: shadowHash(initialized) };
+const writerInstance = { instance_id: "fixture", scope_id: "scope", events: [{ kind: "operation_result", receipt }] };
+const writer = { operation_id: initializeId, phase: "receipted", intent: { binding_ref: "spike_cycle_initialize", instance_id: "fixture", scope_id: "scope" },
+  preview: { binding: { executor_kind: "deterministic" } }, results: [{ receipt, output: initialized }] };
+const writerOptions = { instance: writerInstance, fixed: ["sessions/S001.md", "snapshots/context-snapshot.md", "CURRENT-STATE.md"],
+  ownedPaths: [original.plan.inner.plan.cycle_path] };
+let signedWriter = signer.seal(writer), writerChecks = 0;
+const readWriter = id => { assert.equal(id, initializeId); signer.verify(signedWriter); return { record: signedWriter }; };
+for (const closing of [false, true]) {
+  const collect = () => collectStandardSessionCheckpointPostimages({ ...writerOptions, readRetained: readWriter, closing });
+  const rows = collect();
+  assert.deepEqual([...rows.approved], original.plan.inner.plan.changes.map(row => [row.path, row.after_sha256]));
+  assert.deepEqual(rows.journals, [{ operation_id: initializeId, output_sha256: shadowHash(initialized) }]); writerChecks++;
+  signedWriter.results[0].output.evidence_refs[0].sha256 = "f".repeat(64);
+  assert.throws(collect, { code: "PROCESS_JOURNAL_NOT_AUTHENTICATED" }); writerChecks++;
+  const prefix = closing ? "STANDARD_SESSION_CHECKPOINT" : "STANDARD_SESSION_PRECLOSE";
+  for (const change of [value => { value.intent.scope_id = "other"; }, value => { value.intent.instance_id = "other"; },
+    value => { value.phase = "dispatching"; }, value => { value.preview.binding.executor_kind = "human"; },
+    value => { value.results[0].receipt = { ...receipt, output_sha256: "f".repeat(64) }; },
+    value => { value.results[0].output.effect_status = "unknown"; }]) {
+    const invalid = structuredClone(writer); change(invalid); signedWriter = signer.seal(invalid);
+    assert.throws(collect, { code: prefix + "_WRITER_REQUIRED" }); writerChecks++;
+  }
+  const invalid = structuredClone(writer); invalid.results[0].output.evidence_refs.push({ ref: "docs/audit/foreign.md", sha256: H });
+  signedWriter = signer.seal(invalid); assert.throws(collect, { code: prefix + "_WRITER_SCOPE_INVALID" }); writerChecks++;
+  const unapproved = structuredClone(writer); unapproved.intent.binding_ref = "spike_conversion_finalize";
+  signedWriter = signer.seal(unapproved); assert.equal(collect().approved.size, 0); writerChecks++;
+  signedWriter = signer.seal(writer);
+}
+console.log(JSON.stringify({ checkpoint_writer_inventory: "PASS", checks: writerChecks, postimages: initialized.evidence_refs.length,
+  journal_authority: "signed-synthetic-component-only", canonical_initializer: "real-port", mixed_session_close: "NOT_RUN" }));
 sources.set(initializeId, { record: { preview: { prepared: original } }, output: initialized });
 prepared = await wrapper.prepareFinalize(instance, { contract_version: "standard-spike-finalize-input.v1", initialize_operation_id: initializeId });
 let final;

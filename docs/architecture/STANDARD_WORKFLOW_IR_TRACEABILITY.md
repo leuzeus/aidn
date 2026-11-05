@@ -1,5 +1,15 @@
 # Standard workflow IR traceability
 
+The 2026-11-05 session checkpoint inventory includes the accepted
+`spike_cycle_initialize` output, preserving its actual CAS postimage evidence.
+Preclose and final close use the same finite writer set, with final close adding
+its own session report writer. Journal authentication, accepted receipt,
+instance/scope and owned paths remain mandatory; unchanged canonical bytes and
+metadata, physical projections and actual Git checkpoint confirmation are checked
+separately. This implements the SPEC-R07/R11 closure boundary using existing
+operation evidence. Component checks do not establish mixed SPIKE/session closure,
+ordinary entry, installed behavior or completion of L1-L8/A1-A10.
+
 ## SOURCE47 SPIKE wrapper correction, 2026-11-04
 
 Nested wrapper inputs omit root-only schema declarations while retaining their

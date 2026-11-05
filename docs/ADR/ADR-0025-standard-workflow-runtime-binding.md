@@ -1,5 +1,22 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## SPIKE postimages in session checkpoints, 2026-11-05
+
+The preclose and final session checkpoints now share their finite accepted-writer
+inventory. It includes `spike_cycle_initialize`, whose authenticated output carries
+the actual inner initializer CAS postimages. The host still verifies the retained
+journal signature and preview, the accepted receipt, deterministic executor,
+instance/scope, confirmed effect and session-owned paths. Later accepted writers
+replace earlier hashes only for the paths they actually wrote. Current canonical
+bytes, metadata, projections and Git effects remain independently checked by the
+existing checkpoint ports. Conversion finalization alone is not a canonical writer.
+
+This reuses the existing operation evidence and local owner; it adds no persistence
+authority, public command, export, fallback or implicit retention. The short wrapper
+suite combines real initializer postimages with synthetic signed writer records.
+It cannot qualify the mixed session-close journey, genuine actors or installation.
+Exact-source full-path evidence and the remaining L1-L8/A1-A10 work remain due.
+
 ## SOURCE47 SPIKE wrapper correction, 2026-11-04
 
 Nested wrapper inputs omit root-only schema declarations while retaining their

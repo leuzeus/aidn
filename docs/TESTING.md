@@ -1,5 +1,13 @@
 # Testing Guide
 
+The SPIKE wrapper-precondition suite also exercises both session checkpoint
+inventories with real initializer CAS postimages and synthetic signed writer
+records. It checks the exact finite path/hash set, signature tampering, wrong
+instance/scope, unaccepted receipt, dispatching phase, non-deterministic writer,
+unknown effect and foreign path refusal. Conversion finalization is not admitted
+as a separate canonical writer. These are component checks; published-model
+session closure, cold restart and full Runtime require their own evidence.
+
 ## SOURCE48 SPIKE execution path, 2026-11-04
 
 The published model shares its existing COMMITTING work/validation/audit/closure

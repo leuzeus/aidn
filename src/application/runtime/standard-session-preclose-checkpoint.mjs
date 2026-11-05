@@ -12,6 +12,31 @@ import outputSchema from "../../core/contracts/workflow-definition/standard-sess
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const valid = (value, schema) => !checkShadowJson(value) && !validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length;
 const cacheRelative = ".aidn/runtime/cache/reload-state.json";
+const checkpointWriters = new Set(["session_initialize", "session_mode_apply", "cycle_context_refresh", "cycle_initialize", "spike_cycle_initialize",
+  "session_pr_correction_cycle_initialize", "cycle_plan_record", "cycle_implementation_enter", "cycle_task_advance", "cycle_verification_enter",
+  "cycle_close_record", "cycle_close_finalize", "baseline_promotion_record", "baseline_promotion_finalize"]);
+
+// readRetained is the host's signature/preview-verifying reader. Authenticated
+// initializer receipts, including SPIKE's inner CAS evidence, enter the same
+// finite inventory. A path or a currently visible file is never write authority.
+export function collectStandardSessionCheckpointPostimages({ instance, readRetained, fixed, ownedPaths, closing = false }) {
+  const prefix = closing ? "STANDARD_SESSION_CHECKPOINT" : "STANDARD_SESSION_PRECLOSE", approved = new Map(), journals = [];
+  for (const event of instance.events.filter(row => row.kind === "operation_result" && row.receipt.outcome === "completed")) {
+    const record = readRetained(event.receipt.operation_id).record;
+    if (!checkpointWriters.has(record.intent.binding_ref) && !(closing && record.intent.binding_ref === "session_close_record")) continue;
+    const result = record.results.find(row => shadowHash(row.receipt) === shadowHash(event.receipt));
+    if (record.operation_id !== event.receipt.operation_id || record.phase !== "receipted"
+      || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id || result?.output.effect_status !== "confirmed"
+      || record.preview.binding.executor_kind !== "deterministic") fail(prefix + "_WRITER_REQUIRED");
+    journals.push({ operation_id: record.operation_id, output_sha256: shadowHash(result.output) });
+    for (const row of result.output.evidence_refs) if (row.ref.startsWith("docs/audit/")) {
+      const name = row.ref.slice(11);
+      if (!fixed.includes(name) && !ownedPaths.some(parent => name.startsWith(parent + "/"))) fail(prefix + "_WRITER_SCOPE_INVALID");
+      approved.set(name, row.sha256);
+    }
+  }
+  return { approved, journals };
+}
 // The trusted reader derives the finite latest postimages from accepted business
 // writers. No model-selected Git path, shell command or session-profile expansion.
 export function createStandardSessionPrecloseCheckpoint({ targetRoot, readSource, readCurrent, now = Date.now }) {
