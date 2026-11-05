@@ -182,7 +182,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       const choice = capture.source.choice, isRecovery = recovery(record);
       const accepted = (isRecovery ? record.preview.prepared.plan.options.map(row => row.choice) : ["THINKING", "EXPLORING", "COMMITTING"]).includes(choice);
       const outcome = accepted ? "completed" : choice === "refused" ? "rejected" : choice;
-      return { contract_version: isRecovery ? "standard-drift-recovery-output.v1" : "standard-operation-output.v2",
+      return { contract_version: isRecovery ? "standard-drift-recovery-output.v1" : "standard-operation-output.v3",
         operation_ref: isRecovery ? "drift_recovery_decision" : "mode_decision", outcome, effect_status: "no_effect",
         observations: { inbox_id: capture.inbox_id, source_ref: capture.source_ref, source_sha256: shadowHash(capture.source), choice },
         facts: !accepted ? {} : isRecovery ? { drift_recovery_chosen: true, drift_recovery_requirements_delta: choice === "requirements_delta",

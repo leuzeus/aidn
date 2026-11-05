@@ -17,6 +17,22 @@ const report = (mode, disposition) => ({ contract_version: MODE_WORK_CONTRACT, c
 const evaluate = value => evaluateStandardModeWork({ report: value, producer: { proof_class: "fixture" }, reference }, context(value.mode));
 let checks = 0;
 const test = (name, run) => { run(); checks++; console.log("PASS " + name); };
+test("versioned mode output binds every authenticated choice to its exact routing intent", () => {
+  for (const choice of ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"]) {
+    const accepted = ["THINKING", "EXPLORING", "COMMITTING"].includes(choice);
+    const value = { contract_version: "standard-operation-output.v3", operation_ref: "mode_decision",
+      outcome: accepted ? "completed" : choice === "refused" ? "rejected" : choice, effect_status: "no_effect", observations: { choice },
+      facts: accepted ? { mode_thinking: choice === "THINKING", mode_exploring: choice === "EXPLORING", mode_committing: choice === "COMMITTING", cycle_work_requested: choice === "COMMITTING" } : {}, evidence_refs: [] };
+    assertStandardOperationOutput(value);
+    assert.throws(() => assertStandardOperationOutput({ ...value, facts: { ...value.facts, cycle_work_requested: choice !== "COMMITTING" } }), { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
+    if (accepted) {
+      const { cycle_work_requested, ...legacyFacts } = value.facts;
+      assertStandardOperationOutput({ ...value, contract_version: "standard-operation-output.v2", facts: legacyFacts });
+      assert.throws(() => assertStandardOperationOutput({ ...value, contract_version: "standard-operation-output.v2" }), { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
+      assert.throws(() => assertStandardOperationOutput({ ...value, facts: legacyFacts }), { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
+    }
+  }
+});
 test("cycle work routing uses authenticated intent without claiming a recorded plan", () => {
   const route = model.nodes.find(row => row.id === "cycle_work_route");
   assert.equal(route.branches[0].condition, "cycle_work_requested");

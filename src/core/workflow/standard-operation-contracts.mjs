@@ -88,6 +88,7 @@ import initialize from "../contracts/workflow-definition/standard-session-initia
 import output from "../contracts/workflow-definition/standard-operation-output.v1.schema.json" with { type: "json" };
 import plan from "../contracts/workflow-definition/standard-session-initialize-plan.v1.schema.json" with { type: "json" };
 import outputV2 from "../contracts/workflow-definition/standard-operation-output.v2.schema.json" with { type: "json" };
+import outputV3 from "../contracts/workflow-definition/standard-operation-output.v3.schema.json" with { type: "json" };
 import sessionRef from "../contracts/workflow-definition/standard-session-reference-input.v1.schema.json" with { type: "json" };
 import modeApply from "../contracts/workflow-definition/standard-mode-apply-input.v1.schema.json" with { type: "json" };
 import cycleInput from "../contracts/workflow-definition/standard-cycle-initialize-input.v1.schema.json" with { type: "json" };
@@ -191,6 +192,15 @@ export function assertStandardOperationInput(operation, value) {
 // observations is the opaque, host-owned business payload. Full normative
 // documents stay outside reducer events: receipts carry their immutable hash.
 export function assertStandardOperationOutput(value) {
+  if (value?.contract_version === "standard-operation-output.v3") {
+    const choice = value.observations?.choice, accepted = ["THINKING", "EXPLORING", "COMMITTING"].includes(choice);
+    if (checkShadowJson(value) || validateJsonSchema(value, outputV3, "$", { contractKind: "workflow-definition" }).length
+      || value.effect_status !== "no_effect"
+      || value.outcome !== (accepted ? "completed" : choice === "refused" ? "rejected" : choice)
+      || shadowHash(value.facts) !== shadowHash(accepted ? { mode_thinking: choice === "THINKING", mode_exploring: choice === "EXPLORING",
+        mode_committing: choice === "COMMITTING", cycle_work_requested: choice === "COMMITTING" } : {})) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
   if (value?.contract_version === "standard-spike-experiment-admission-output.v3") {
     if (checkShadowJson(value) || validateJsonSchema(value, spikeExperimentOutputV3, "$", { contractKind: "workflow-definition" }).length
       || shadowHash(value.facts) !== shadowHash(value.outcome === "completed" ? { spike_experiment_execution_admitted: true, cycle_work_requested: true } : {})) fail("STANDARD_OPERATION_OUTPUT_INVALID");

@@ -2,11 +2,12 @@
 
 ## Explicit cycle-work routing, 2026-11-05
 
-The authenticated mode decision emits `cycle_work_requested`: COMMITTING requests
+The authenticated mode decision's private output v3 emits `cycle_work_requested`: COMMITTING requests
 the cycle path; THINKING and EXPLORING start without that request. A separately
 accepted SPIKE execution admission can set it to true using private output v3.
 This fact describes intent, not a recorded plan, readiness, write permission or
-retention. The existing plan selector and subsequent admissions still verify
+retention. The existing mode-output v2 schema and readers remain unchanged.
+The existing plan selector and subsequent admissions still verify
 those conditions. V1/v2 admission readers and retained models remain unchanged.
 
 The final cycle-work selector consumes this fact rather than waiting for

@@ -184,8 +184,10 @@ refusals; a valid shadow envelope grants no authority to execute.
 Private `standard-spike-experiment-admission-output.v3` adds an explicit
 `cycle_work_requested=true` only to a completed SPIKE execution admission.
 Blocked output carries no positive facts. V1/v2 outputs remain readable with
-their original semantics. The mode decision's existing extensible v2 facts
-carry the initial requested/not-requested value; this grants no product effect
+their original semantics. Private `standard-operation-output.v3` carries the
+mode decision's initial requested/not-requested value. Its closed facts bind
+all three mode flags and that request to the exact observed choice. The closed
+v2 schema remains unchanged for historical readers. This grants no product effect
 and cannot substitute for plan selection or DoR. See ADR-0025.
 
 Private task-selection/progression inputs, the advance plan and task output use
