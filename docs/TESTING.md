@@ -7,6 +7,13 @@ that failure is retained separately from any corrected-source qualification.
 
 ## SPIKE conversion component
 
+Run `node tools/perf/verify-standard-spike-wrapper-preconditions.mjs` for the
+short delayed-wrapper case, and append `--metadata-tamper` for a fresh real
+SQLite dual project with content-preserving metadata mutation. The latter must
+refuse before the conversion hook; actor sources remain synthetic. These two
+cases do not qualify the complete IR path, post-hook tampering or experiments.
+
+
 The separate selector `node tools/perf/verify-agentic-process-execution-fixtures.mjs
 --standard-spike-mode=files --retain-always` executes the published model through
 the actual conversion wrapper, including a delayed initializer and the final

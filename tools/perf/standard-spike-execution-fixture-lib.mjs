@@ -35,8 +35,13 @@ export async function verifyStandardSpikeExecution({ mixedFixture, storageMode, 
   for (let step = 0; step < 32; step++) {
     const before = f.open().inspect(), count = f.t.sessions.length;
     if (["FAILED", "CANCELLED", "COMPLETED"].includes(before.cursor.status)) break;
-    const read = await f.open().step();
-    if (read.kind === "operation_preview" && read.preview.binding.id === "spike_cycle_initialize") {
+    const initializerReady = before.cursor.ready.some(id => {
+      const occurrence = before.cursor.occurrences.find(row => row.occurrence_id === id);
+      return f.model.nodes.find(row => row.id === occurrence?.node_id)?.binding_ref === "spike_cycle_initialize";
+    });
+    if (initializerReady) {
+      const read = await f.open().step();
+      assert.equal(read.kind, "operation_preview");
       const preview = read.preview, at = preview.prepared.plan.prepared_at_ms;
       await new Promise(resolve => setTimeout(resolve, 1100));
       const staged = await f.open().stageOperation(preview, { write: true, expectedPreviewSha256: shadowHash(preview) });

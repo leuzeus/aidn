@@ -1,5 +1,24 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE46 SPIKE planning continuation, 2026-11-04
+
+The published model now selects a read-only planning activity for the human's
+chosen EXPLORING or COMMITTING mode after confirmed SPIKE conversion. It reuses
+the existing authenticated cycle-plan proposal, evaluation and canonical record
+ports. The planning admission checks the accepted conversion, exact canonical
+postimages including metadata, current activation and actual branch audit for
+COMMITTING. Planning grants no product effect, retention or renewed Native budget.
+The separate execution boundary stays blocked with
+`STANDARD_SPIKE_EXPERIMENT_EXECUTION_REQUIRED` after an accepted canonical plan.
+Effectful experiments, retained/nonretained outcomes and their closure remain
+unfinished. An EXPLORING selection never silently becomes COMMITTING.
+
+The short wrapper-precondition suite uses signed synthetic accepted sources and
+real application ports; it is not a published-model or genuine-human proof.
+The mixed selector has its own exact frozen source and must retain its result
+independently. Neither suite establishes A2 or complete STANDARD integration.
+
+
 ## SOURCE45 source continuation, 2026-11-04
 
 SOURCE44's original THINKING/FILES close case terminated with exit 0 on its

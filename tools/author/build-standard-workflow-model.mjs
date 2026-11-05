@@ -51,11 +51,20 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   op(`${prefix}_evaluate`, "mode_work_evaluate", occurrence(`${prefix}_analysis`));
 }
 op("spike_admit", "spike_conversion_admit", operation(null, "review_operation_id", "exploring_observe"));
-seq("spike_conversion", ["spike_decide", "spike_initialize", "spike_finalize", "spike_experiment_admit"]);
+seq("spike_conversion", ["spike_decide", "spike_initialize", "spike_finalize", "spike_experiment_admit", "spike_planning_route"]);
 op("spike_decide", "spike_conversion_decision", operation(null, "review_operation_id", "exploring_observe"));
 op("spike_initialize", "spike_cycle_initialize", operation(null, "decision_operation_id", "spike_decide"));
 op("spike_finalize", "spike_conversion_finalize", operation(null, "initialize_operation_id", "spike_initialize"));
 op("spike_experiment_admit", "spike_experiment_admit", operation(null, "initialize_operation_id", "spike_finalize"));
+xor("spike_planning_route", [["committing", "spike_committing_planning", "spike_experiment_committing"], ["exploring", "spike_exploring_planning", null]]);
+for (const prefix of ["spike_committing", "spike_exploring"]) {
+  seq(`${prefix}_planning`, ["plan", "evaluate", "record", "execution_admit"].map(id => `${prefix}_${id}`));
+  native(`${prefix}_plan`, "planner", prefix === "spike_committing" ? "planning" : "exploring_planning", "standard-cycle-plan-proposal.v1", ["cycle-create"], ["SPEC-R02", "SPEC-R04"]);
+  op(`${prefix}_evaluate`, "cycle_plan_evaluate", occurrence(`${prefix}_plan`));
+  op(`${prefix}_record`, "cycle_plan_record", operation(null, "evaluation_operation_id", `${prefix}_evaluate`));
+  op(`${prefix}_execution_admit`, "spike_experiment_execution_admit", { ...operation(null, "conversion_operation_id", "spike_finalize"),
+    ...operation(null, "record_operation_id", `${prefix}_record`) });
+}
 xor("mode_preflight", [["committing", "startup_drift", "mode_committing"], ["thinking", "thinking_preflight", "mode_thinking"], ["exploring", "exploring_preflight", "mode_exploring"]]);
 for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING"]]) {
   seq(`${prefix}_preflight`, [`${prefix}_admit`]);
@@ -310,7 +319,8 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
   policies: [{ ...policy("thinking_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "THINKING" },
     { ...policy("thinking_drift_policy", "compatible-work.v1", ["read:product"]), mode: "THINKING" },
     { ...policy("exploring_drift_policy", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" },
-    { ...policy("exploring_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
+    { ...policy("exploring_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" },
+    { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
   operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
   data_bindings: { contract_version: "process-data-bindings.v3", parameter_keys: ["session", "cycle"], inputs } };
