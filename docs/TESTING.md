@@ -28,6 +28,15 @@ requires a confirmed diagnosis and never asks the human. A passing reproduction
 does not resolve that disagreement or complete R05. Terminal cycle status is an
 explicit fixture precondition; no original arena or authority is reused.
 
+Branch-integration inspection resolves its source/target/HEAD object IDs in one
+fresh Git call and its finite lock/reflog paths in another. Every physical path,
+filter context, worktree binding, lock, index and reflog remains freshly observed
+at each existing fence, including after awaited authorization. The port suite
+also refuses missing references and checks a linked worktree with spaces. This
+reduces subprocess launches without caching an admission or changing CAS. The
+preserved source55 gate timings motivated this bounded change; no timing rerun or
+complete 193-case result is implied.
+
 The synthetic composed preflight follows `cycle_work_requested` from its modeled
 mode decision. THINKING and nonretained EXPLORING count two Native activities:
 analysis and session-closure drift. They terminate after their actual closure

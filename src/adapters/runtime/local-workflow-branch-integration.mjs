@@ -43,15 +43,22 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
   }
   if (git(["ls-files", "--stage", "-z"]).split("\0").some(row => row.startsWith("160000 "))) fail("WORKFLOW_BRANCH_SUBMODULE_SCOPE_UNSUPPORTED");
   const index = binding.index, lock = index + ".lock";
-  const gitPath = name => agentRunPhysicalPath(path.resolve(root, git(["rev-parse", "--git-path", name]).trim()), { missing: true });
-  function logBytes(ref) {
-    const file = gitPath("logs/" + ref);
+  function gitPaths(names) {
+    // One fresh Git invocation resolves this finite batch. Physical validation
+    // still applies to every returned path, including linked-worktree paths.
+    const rows = git(["rev-parse", ...names.flatMap(name => ["--git-path", name])]).trimEnd().split(/\r?\n/);
+    if (rows.length !== names.length) fail("WORKFLOW_BRANCH_GIT_PATHS_INVALID");
+    return rows.map(row => agentRunPhysicalPath(path.resolve(root, row), { missing: true }));
+  }
+  const gitPath = name => gitPaths([name])[0];
+  function logBytes(ref, observedPath = null) {
+    const file = observedPath ?? gitPath("logs/" + ref);
     if (!fs.existsSync(file)) return Buffer.alloc(0);
     const row = fs.lstatSync(file);
     if (!row.isFile() || row.nlink !== 1 || row.size > 4194304) fail("WORKFLOW_BRANCH_REFLOG_INVALID");
     return fs.readFileSync(file);
   }
-  const logState = ref => { const bytes = logBytes(ref); return { byte_length: bytes.length, sha256: hash(bytes) }; };
+  const logState = (ref, observedPath = null) => { const bytes = logBytes(ref, observedPath); return { byte_length: bytes.length, sha256: hash(bytes) }; };
   function branch(value) {
     if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/.test(value)) fail("WORKFLOW_BRANCH_IDENTITY_INVALID");
     git(["check-ref-format", "refs/heads/" + value]); return "refs/heads/" + value;
@@ -75,21 +82,25 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     // nothing is reused across calls or an awaited authorization/provider.
     const sourceRef = branch(source_branch), targetRef = source_branch === target_branch ? sourceRef : branch(target_branch);
     const currentRef = git(["symbolic-ref", "--quiet", "HEAD"]).trim();
-    const sourceHead = git(["rev-parse", "--verify", sourceRef]).trim();
-    const targetHead = targetRef === sourceRef ? sourceHead : git(["rev-parse", "--verify", targetRef]).trim();
+    const refs = [...new Set([sourceRef, targetRef, "HEAD"])];
+    const resolved = git(["rev-parse", ...refs]).trimEnd().split(/\r?\n/);
+    if (resolved.length !== refs.length || resolved.some(value => !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value))) fail("WORKFLOW_BRANCH_GIT_REFS_INVALID");
+    const heads = new Map(refs.map((ref, index) => [ref, resolved[index]]));
+    const sourceHead = heads.get(sourceRef), targetHead = heads.get(targetRef);
     const ancestor = spawnSync("git", [...fixed, "merge-base", "--is-ancestor", targetHead, sourceHead], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
     if (![0, 1].includes(ancestor.status)) fail("WORKFLOW_BRANCH_ANCESTRY_UNAVAILABLE");
     const rows = worktrees(), status = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
     const sourceSymbolic = spawnSync("git", [...fixed, "symbolic-ref", "--quiet", sourceRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
     const targetSymbolic = targetRef === sourceRef ? sourceSymbolic
       : spawnSync("git", [...fixed, "symbolic-ref", "--quiet", targetRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
+    const [sourceLockPath, headLogPath, targetLogPath] = gitPaths([sourceRef + ".lock", "logs/HEAD", "logs/" + targetRef]);
     return { source_branch, target_branch, source_ref: sourceRef, target_ref: targetRef, source_head: sourceHead, target_head: targetHead,
-      current_ref: currentRef, head: git(["rev-parse", "HEAD"]).trim(), index_sha256: indexHash(), clean: status === "", lock_present: fs.existsSync(lock),
+      current_ref: currentRef, head: heads.get("HEAD"), index_sha256: indexHash(), clean: status === "", lock_present: fs.existsSync(lock),
       filter_context_sha256: filterContextSha256,
-      source_lock_present: fs.existsSync(gitPath(sourceRef + ".lock")),
+      source_lock_present: fs.existsSync(sourceLockPath),
       source_symbolic: sourceSymbolic,
       target_symbolic: targetSymbolic,
-      head_reflog: logState("HEAD"), target_reflog: logState(targetRef),
+      head_reflog: logState("HEAD", headLogPath), target_reflog: logState(targetRef, targetLogPath),
       fast_forward: ancestor.status === 0, target_checked_out_elsewhere: rows.some(row => row.branch === targetRef && key(row.root) !== key(root)),
       worktree_bindings_sha256: shadowHash(rows.filter(row => key(row.root) !== key(root)).map(row => ({ root_sha256: hash(key(row.root)), branch: row.branch }))) };
   }

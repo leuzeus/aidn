@@ -56,6 +56,12 @@ try {
     const symbolic = f.port.inspect(equal);
     assert.equal(symbolic.source_symbolic, true); assert.equal(symbolic.target_symbolic, true);
   });
+  await check("a missing source or target refuses without trusting rev-parse's unresolved text", () => {
+    const f = fixture();
+    for (const missing of [{ ...scope, source_branch: "missing-source" }, { ...scope, target_branch: "missing-target" }])
+      assert.throws(() => f.port.inspect(missing), { code: "WORKFLOW_BRANCH_GIT_FAILED" });
+    refsUnchanged(f);
+  });
   await check("FF transaction binds reflogs and preserves source, index and product", async () => {
     const f = fixture(), index = fs.readFileSync(path.join(f.root, ".git/index")), bytes = fs.readFileSync(path.join(f.root, "product/app.mjs"));
     let grants = 0; const output = await f.port.integrate(f.plan, { write: true, assertAuthorized() { grants++; } });
@@ -90,7 +96,7 @@ try {
     await assert.rejects(f.port.integrate(plan, grant), { code: "WORKFLOW_BRANCH_PRECONDITIONS_REQUIRED", effect_status: "no_effect" });
   });
   await check("target checked out in another worktree refuses", async () => {
-    const f = fixture(), linked = path.join(f.root, "..", path.basename(f.root) + "-linked"); roots.push(linked);
+    const f = fixture(), linked = path.join(f.root, "..", path.basename(f.root) + "-linked with spaces"); roots.push(linked);
     git(f.root, "worktree", "add", linked, scope.target_branch);
     const plan = { ...f.plan, observed: f.port.inspect(scope) }; assert.equal(plan.observed.target_checked_out_elsewhere, true);
     await assert.rejects(f.port.integrate(plan, grant), { code: "WORKFLOW_BRANCH_PRECONDITIONS_REQUIRED", effect_status: "no_effect" }); refsUnchanged(f);
