@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { execFileSync } from "node:child_process";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
@@ -40,6 +42,11 @@ for (const choice of spikeConversionChoices) {
 assert.throws(() => assertHumanSpikeDecision({ ...source("convert-to-spike"), selection: { ...selection, cycle_id: "C006" } }, question), { code: "STANDARD_SPIKE_CYCLE_ALREADY_EXISTS" });
 assert.throws(() => assertHumanSpikeDecision({ ...source("convert-to-spike"), question_sha256: "f".repeat(64) }, question), { code: "PROCESS_HUMAN_QUESTION_CHANGED" });
 assert.throws(() => assertHumanSpikeDecision({ ...source("convert-to-spike"), selection: { ...selection, chosen_mode: "COMMITTING" } }, question), { code: "STANDARD_SPIKE_SELECTION_INVALID" });
+// Composed schemas retain input validation without embedding root declarations.
+for (const name of ["initialize", "finalize"]) {
+  const schema = JSON.parse(fs.readFileSync(new URL(`../../src/core/contracts/workflow-definition/standard-spike-${name}-plan.v1.schema.json`, import.meta.url), "utf8"));
+  assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
+}
 console.log(JSON.stringify({ contract_checks: "PASS", proof_scope: "typed fixture claims; no human authentication or business effect from schema" }));
 try {
   for (const [chosen_mode, branch_action] of [["EXPLORING", "recommend"], ["EXPLORING", "create"], ["COMMITTING", "create"]]) {
