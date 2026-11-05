@@ -11,6 +11,9 @@ import { writeFileAtomicSync } from "../../lib/fs/atomic-write-lib.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import ownerSchema from "../../core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json" with { type: "json" };
+import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
+import { currentStandardDispatchContext } from "./standard-dispatch-context.mjs";
+import { createLocalArtifactResourceFence } from "./local-artifact-resource-fence.mjs";
 
 export const standardFail = code => { throw Object.assign(new Error(code), { code }); };
 const fail = standardFail;
@@ -54,6 +57,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   }
   function compareAndSwap(change) {
     if (!activeOwner) fail("STANDARD_EFFECT_OWNER_REQUIRED");
+    fence().assert(activeOwner.lease);
     relative(change.path); const selected = describe();
     if (selected.database) {
       const store = open(false);
@@ -74,6 +78,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     return { committed: true, projection: "canonical" };
   }
   function project(names) {
+    if (activeOwner) fence().assert(activeOwner.lease);
     const selected = describe();
     if (!selected.database || selected.state_mode === "db-only") return { requested: false };
     const store = open(false);
@@ -87,6 +92,7 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   }
   function compareAndSwapPreservingMetadata(change) {
     if (!activeOwner) fail("STANDARD_EFFECT_OWNER_REQUIRED");
+    fence().assert(activeOwner.lease);
     relative(change.path);
     if (!Object.hasOwn(change, "before_metadata_sha256") || change.before_metadata_sha256 !== null && !/^[a-f0-9]{64}$/.test(change.before_metadata_sha256)) fail("STANDARD_METADATA_PREIMAGE_REQUIRED");
     const selected = describe();
@@ -113,34 +119,53 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   // Local serialization is not distributed ownership. Canonical CAS still
   // protects each DB row; crash/concurrent-owner recovery remains explicit.
   const lock = () => agentRunPhysicalPath(path.join(root, ".aidn/runtime/standard-workflow/effects.lock"), { missing: true });
+  let selectedFence;
+  const fence = () => selectedFence ??= createLocalArtifactResourceFence({ targetRoot: root, stateMode: describe().state_mode });
   let activeOwner = false;
   function withLocalEffectOwner(planSha, operation) {
     if (!/^[a-f0-9]{64}$/.test(planSha)) fail("STANDARD_EFFECT_OWNER_PLAN_INVALID");
-    const file = lock(); fs.mkdirSync(path.dirname(file), { recursive: true }); let descriptor;
-    try { descriptor = fs.openSync(file, "wx"); } catch (cause) { if (cause.code === "EEXIST") fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED"); throw cause; }
+    let lease;
+    try { lease = fence().acquire(); } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
+    const file = lock(); let descriptor;
+    try { fs.mkdirSync(path.dirname(file), { recursive: true }); descriptor = fs.openSync(file, "wx"); }
+    catch (cause) { fence().release(lease); if (cause.code === "EEXIST") fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED"); throw cause; }
     const token = randomUUID(), owner = { contract_version: "process-local-effect-owner.v1", token, pid: process.pid,
       scope_sha256: shadowHash({ physical_root: root }), plan_sha256: planSha, created_at: new Date().toISOString() };
+    const dispatch = currentStandardDispatchContext();
     try {
       if (validateJsonSchema(owner, ownerSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_EFFECT_OWNER_INVALID");
       fs.writeFileSync(descriptor, JSON.stringify(owner)); fs.fsyncSync(descriptor);
+      // Signed canonical declaration and exact handle identity precede the
+      // callback. The v1 lock format stays readable; no old owner is converted.
+      dispatch?.declareLocalOwner(owner, exactFileIdentity(fs.fstatSync(descriptor, { bigint: true })), lease.record);
     }
     catch (cause) { fs.closeSync(descriptor); throw cause; }
-    activeOwner = { owner, descriptor };
+    activeOwner = { owner, descriptor, lease };
     let uncertain = true;
     return Promise.resolve().then(operation).then(result => { uncertain = !["confirmed", "no_effect"].includes(result?.effect_status); return result; })
     .catch(cause => { uncertain = cause?.effect_status !== "no_effect"; throw cause; }).finally(() => {
       activeOwner = false;
-      fs.closeSync(descriptor);
-      const retained = readAgentRunFile(file).value;
-      if (retained.token !== token) fail("STANDARD_EFFECT_OWNER_CHANGED");
-      if (!uncertain) fs.unlinkSync(file);
+      try {
+        const retained = readAgentRunFile(file).value;
+        if (shadowHash(retained) !== shadowHash(owner)
+          || shadowHash(exactFileIdentity(fs.lstatSync(file, { bigint: true }))) !== shadowHash(exactFileIdentity(fs.fstatSync(descriptor, { bigint: true }))))
+          fail("STANDARD_EFFECT_OWNER_CHANGED");
+        if (!uncertain) {
+          // This is the original live owner's ordinary release. No reconciler
+          // is allowed to unlink an abandoned lock through this port.
+          fs.unlinkSync(file);
+          dispatch?.releaseLocalOwner(owner);
+          fence().release(lease);
+        }
+      } finally { fs.closeSync(descriptor); }
     });
   }
   function assertLocalEffectOwner(planSha) {
     if (!activeOwner || activeOwner.owner.plan_sha256 !== planSha) fail("STANDARD_EFFECT_OWNER_REQUIRED");
+    fence().assert(activeOwner.lease);
     const file = lock(), retained = readAgentRunFile(file).value;
-    const actual = fs.lstatSync(file), opened = fs.fstatSync(activeOwner.descriptor);
-    if (!actual.isFile() || actual.nlink !== 1 || actual.ino !== opened.ino || actual.dev !== opened.dev
+    const actual = fs.lstatSync(file, { bigint: true }), opened = fs.fstatSync(activeOwner.descriptor, { bigint: true });
+    if (!actual.isFile() || actual.nlink !== 1n || actual.ino !== opened.ino || actual.dev !== opened.dev
       || shadowHash(retained) !== shadowHash(activeOwner.owner)) fail("STANDARD_EFFECT_OWNER_CHANGED");
   }
   function inventory() {
@@ -225,5 +250,6 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
     if (new Set(result.map(row => BigInt(row.cycle_id.slice(1)).toString())).size !== result.length) fail("STANDARD_CYCLE_ID_AMBIGUOUS");
     return result;
   }
-  return Object.freeze({ root, describe, read, inventory, observeInventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner, ownerPending: () => fs.existsSync(lock()) });
+  return Object.freeze({ root, describe, read, inventory, observeInventory, sessions, cycles, metadataHash, compareAndSwapPreservingMetadata, compareAndSwap, project, withLocalEffectOwner, assertLocalEffectOwner,
+    resourceFence: () => fence(), localOwnerPending: () => fs.existsSync(lock()), ownerPending: () => fs.existsSync(lock()) || fence().read().record?.state === "held" });
 }

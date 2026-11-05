@@ -9,7 +9,7 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 // The common reducer owns control flow. This adapter selects a port for the
 // cursor's ready leaf; it contains no standard-workflow routing decisions.
 export function createStandardWorkflowMixedHost({ configuration: suppliedConfiguration, modelSource = null, readSigningKey, authorize, humanSource, controlSource,
-  environment = process.env, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, nativeAuthorizationSource }, { controllerFactory, validationBoundaryFactory } = {}) {
+  environment = process.env, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, dispositionSource = null, nativeAuthorizationSource }, { controllerFactory, validationBoundaryFactory } = {}) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value;
@@ -27,7 +27,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     && model.operation_pins[node.binding_ref] === shadowHash(bindings.get(node.binding_ref)))) nativeHost();
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
     authorize, humanSource, controlSource, processAuthority, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
-    reconciliationConfiguration: configuration }, { validationBoundaryFactory });
+    reconciliationConfiguration: configuration, dispositionSource }, { validationBoundaryFactory });
   const inspect = () => operations.inspect(configuration.instance_id);
   const nodeFor = frame => model.nodes.find(node => node.id === frame.node_id);
   async function finishOperation(id, signal) {
@@ -41,6 +41,8 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     inspect,
     inspectDiagnostic: () => operations.inspectDiagnostic(configuration.instance_id),
     prepareReconciliationInventory: input => operations.prepareReconciliationInventory(configuration.instance_id, input),
+    prepareOperationDisposition: (id, input) => operations.prepareOperationDisposition(id, input),
+    applyOperationDisposition: (plan, input) => operations.applyOperationDisposition(plan, input),
     previewNative: () => nativeHost().preview(),
     inspectAllocations: () => nativeHost().inspect(),
     readCheckpoint: generation => nativeHost().readCheckpoint(generation),

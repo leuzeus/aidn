@@ -1,5 +1,17 @@
 # 04 JSON Contracts
 
+## Original dispatch and disposition records
+
+Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,
+`process-operation-disposition.v1`, `local-artifact-resource-fence.v1` and explicit
+disposition authorization request/grant v1 contracts retain original output,
+write-ahead ownership, exact observation fences and fresh consent attempts under
+the existing operation-journal concept. They add no public CLI case, table,
+shared sync, historical conversion, resource deletion or budget refund. Only
+implementation-owned adapter profiles can produce a disposition assessment;
+unsupported resources remain UNKNOWN. See ADR-0026 for the partial scope.
+
+
 The private `process-reconciliation-inventory.v1` is a signed derived observation
 under the existing operation-journal concept. It binds the physical scope,
 canonical runtime, exact instance prefix, model/source/configuration, historical

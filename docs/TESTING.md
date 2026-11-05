@@ -1,5 +1,28 @@
 # Testing Guide
 
+## Original return disposition and real crash boundaries
+
+`node tools/perf/verify-standard-operation-disposition-fixtures.mjs files`
+(or `dual` / `db-only`) selects the new internal public-host component fixture.
+It freezes a real one-operation context_reload model, stages through the actual
+host, then terminates a separate Node process at the reserved, effect-returned
+and durable-return boundaries. Missing original returns stay UNKNOWN. Later
+cases terminate disposition after its signed preparation and after receipt CAS,
+reopen the host, obtain new fixture consent, retain every earlier attempt and
+redeliver the original output without another evaluation. They cover exact
+common-reducer replay/SIM, scope forgery, concurrent repreneurs and a foreign
+fence/ABA refusal. Every disposable arena, failed prefix and process exit is
+retained outside the checkout. The existing required host case includes all
+three modes without deleting any previous scenario or changing dispatcher argv.
+
+This does not qualify the session-report postimage profile, all normal-writer
+concurrency boundaries, every crash/acceptance boundary, general resource
+discovery/closure, new admission, the published STANDARD journey, genuine
+Native/H/provider, PostgreSQL or installed execution. An OS process-creation
+identity supports only its bounded owner observation; it is not all-resource
+closure. Report these unexecuted obligations separately from component PASS.
+
+
 ## Retained-resource inventory foundation
 
 `node tools/perf/verify-standard-reconciliation-inventory-fixtures.mjs files`

@@ -1,5 +1,59 @@
 # ADR-0026 - Explicit native authorization epochs
 
+## Original-operation return recovery, 2026-11-05
+
+The internal operation host writes a signed `process-dispatch-record.v1` before
+each deterministic callback. It retains the exact original intent, preview,
+scope/runtime and operation owner hash, an OS-observed process creation identity,
+and each local artifact owner's token plus bigint file identity. Local owner
+declarations precede the callback; successful ordinary release is recorded after
+unlink. A separately signed return retains the original output and context.
+No historical journal, grant, counter, deadline, receipt or failure is converted.
+
+`prepareOperationDisposition` is read-only and binds the exact current prefix,
+inventory, runtime, authority, original journal/dispatch record and resource-fence
+revision. Implementation-owned profiles currently observe read-only reload and
+session admissions, plus the finite session report postimages. They never
+re-evaluate an old operation under changed inputs. An unavailable return,
+changed context, unsupported resource profile or retained owner stays UNKNOWN.
+The artifact postimage profile also checks canonical metadata and required visible
+projection bytes. Its positive qualification remains separate from read-only
+return recovery.
+
+Explicit application requires a separately composed `dispositionSource` with
+bounded authorize/verify methods. The ordinary effect authorizer is never a
+fallback. Fresh versioned requests carry nonces and exact subjects; grants bind
+the request, principal, evidence and a maximum one-minute lifetime. Source
+verification is followed by current fences. Fixture sources do not authenticate
+real humans. No JSON-selected verifier or closure callback is accepted.
+
+A canonical `local-artifact-resource-fence.v1` serializes managed artifact owners
+and disposition/receipt acceptance. Normal owners check their exact fence before
+CAS. A new disposition CAS acquires the prepared fence revision before final
+postimage observations. A signed disposition attempt, including that held fence,
+precedes the journal result. A lost journal append resumes with a fresh signed
+plan/grant and preserves all earlier attempts. Receipt acceptance holds the same
+fence through the common service's canonical event CAS; its reservation precedes
+fresh authorization and is retained. The exact original output can be delivered
+again without another business callback or journal write.
+
+Only an abandoned **disposition/acceptance** fence authenticated in that operation's
+signed audit can transfer by CAS after an OS-observed creation identity proves
+the former process terminated. This closes only that bounded local bookkeeping
+critical section. It proves neither descendant nor Native/provider/H closure.
+Normal abandoned artifact fences and old v1 locks remain unresolved. The
+reconciler never unlinks an old effects.lock, deletes artifacts/branches/PRs,
+refunds budgets, creates COMPLETED for an unknown or admits another native epoch.
+
+This is a partial executable disposition protocol, not complete all-resource
+reconciliation or new workflow admission. Native, H/control allocation discovery
+and closure, Git/provider effects and unmanaged writers still require their real
+adapters and shared fences. Crash fixtures use actual new Node processes and
+termination; their model and consent source remain fixtures. Full published
+STANDARD, L1-L8/A1-A10, the required 193 cases, genuine Native/H/provider and the
+exact installed package remain separate unfinished obligations.
+
+
 ## Retained-resource inventory foundation, 2026-11-05
 
 The common operation/mixed host exposes the internal read-only

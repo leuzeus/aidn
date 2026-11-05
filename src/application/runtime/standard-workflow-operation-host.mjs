@@ -85,6 +85,7 @@ import previewSchema from "../../core/contracts/workflow-definition/standard-ope
 import { processParameterOptions } from "../../core/workflow/process-data-contracts.mjs";
 import { resolveStandardProcessInput, assertStandardResolvedPreview } from "./standard-process-inputs.mjs";
 import { createStandardReconciliationInventory } from "./standard-reconciliation-inventory.mjs";
+import { createStandardOperationDisposition } from "./standard-operation-disposition.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const receiptId = (id, index) => "receipt_" + id.slice(3) + (index ? "_" + index : "");
@@ -100,7 +101,7 @@ function controlCheckpoint(instance, eventId) {
 // Fixed local business adapters plus the common reducer/store. This host owns
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
-export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null }, { validationBoundaryFactory } = {}) {
+export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null }, { validationBoundaryFactory, dispatchCheckpoint } = {}) {
   if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
@@ -733,7 +734,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   async function verifyGrant(record, signal) {
     if (shadowHash(await grantFor(record.preview, signal)) !== shadowHash(record.grant)) fail("STANDARD_HOST_AUTHORIZATION_CHANGED");
   }
-  let service;
+  let service, disposition;
   const authority = {
     prepare({ instance, occurrence }) {
       const record = retained(operationJournalId(instance, occurrence.occurrence_id)).record;
@@ -751,7 +752,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return result.receipt;
     },
     async verifyReceipt({ receipt, intent, instance, signal }) {
-      scope(instance); const record = retained(intent.operation_id).record; await verifyGrant(record, signal);
+      scope(instance); const record = retained(intent.operation_id).record;
+      if (await disposition.verifyReceipt(record, receipt, signal)) {
+        if (!record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt)) || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
+        return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
+      }
+      await verifyGrant(record, signal);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
@@ -919,6 +925,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const reconciliationInventory = createStandardReconciliationInventory({ targetRoot, signer, now,
     configuration: reconciliationConfiguration, modelSource: source,
     readInstance: id => current(id).record, readAuthority, readContext: snapshot });
+  disposition = createStandardOperationDisposition({ targetRoot, stateMode: initial.stateMode, signer, artifacts, now,
+    readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot,
+    inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
+    appendResult(record, output) {
+      const before = retained(record.operation_id);
+      if (shadowHash(before.record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      const receipt = resultReceipt(record, output), { authentication, key_id, ...body } = record;
+      persist({ ...body, phase: "receipted", revision: record.revision + 1, results: [...record.results, { output, receipt }] }, before.content_sha256);
+      return receipt;
+    }, makeReceipt: resultReceipt });
   const operationHost = {
     initialize(input) {
       if (input.facts && Object.keys(input.facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
@@ -926,6 +942,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     inspect: id => current(id),
     prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
+    prepareOperationDisposition: (id, input) => disposition.prepare(id, input),
+    applyOperationDisposition: (plan, input) => disposition.apply(plan, input),
     inspectDiagnostic(id) {
       if (!processAuthority) fail("STANDARD_HOST_DIAGNOSTIC_AUTHORITY_REQUIRED");
       const value = service.inspect(id);
@@ -1130,6 +1148,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       const { authentication, key_id, ...body } = record;
       const claimed = persist({ ...body, phase: "dispatching", revision: record.revision + 1, owner: { generation, pid: process.pid } }, before.content_sha256);
+      const output = await disposition.run(claimed, async () => {
       let output;
       try {
         if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256)
@@ -1255,6 +1274,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           outcome: noEffect ? "blocked" : "reconciliation_required", effect_status: noEffect ? "no_effect" : "unknown", facts: {},
           observations: { reason_code: /^[A-Z][A-Z0-9_]+$/.test(cause.code ?? "") ? cause.code : "STANDARD_HOST_DISPATCH_UNCONFIRMED" }, evidence_refs: [] };
       }
+      return output;
+      });
       const receipt = resultReceipt(record, output);
       const retainedClaim = retained(id);
       if (shadowHash(retainedClaim.record) !== shadowHash(claimed)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
@@ -1338,8 +1359,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const index = selectedReceiptId === undefined ? record.results.length - 1 : record.results.findIndex(row => row.receipt.receipt_id === selectedReceiptId);
       const receipt = record.results[index]?.receipt;
       if (!receipt) fail("PROCESS_OPERATION_RECEIPT_UNAVAILABLE");
-      return service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,
-        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true });
+      if (state.record.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) return state;
+      return disposition.withReceiptAcceptance(id, () => service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,
+        eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true }));
     },
     readJournal: id => structuredClone(retained(id).record),
     readDecisionSource: ref => human.readSource(ref),
