@@ -7,17 +7,27 @@ import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-
 import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.mjs";
 import { analyzeStructuredArtifact } from "../../lib/workflow/structured-artifact-parser-lib.mjs";
 import { parseSessionMetadata } from "../../lib/workflow/session-context-lib.mjs";
-import { shadowHash } from "../../core/workflow/shadow-json.mjs";
+import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { assertModeWorkObservationOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
 import { assertSpikeReview, assertSpikeDecisionOutput, spikeConversionChoices } from "../../core/workflow/standard-spike-decision.mjs";
 import { assertStandardOperationInput, assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import initializeSchema from "../../core/contracts/workflow-definition/standard-spike-initialize-plan.v1.schema.json" with { type: "json" };
 import finalizeSchema from "../../core/contracts/workflow-definition/standard-spike-finalize-plan.v1.schema.json" with { type: "json" };
+import outputSchema from "../../core/contracts/workflow-definition/standard-spike-output.v1.schema.json" with { type: "json" };
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: "no_effect" }); };
-const emit = (operation_ref, outcome, effect_status, observations, facts = {}, evidence_refs = []) => assertStandardOperationOutput({
-  contract_version: "standard-spike-output.v1", operation_ref, outcome, effect_status, observations, facts, evidence_refs });
+const emit = (operation_ref, outcome, effect_status, observations, facts = {}, evidence_refs = []) => {
+  const output = { contract_version: "standard-spike-output.v1", operation_ref, outcome, effect_status, observations, facts, evidence_refs };
+  try { return assertStandardOperationOutput(output); }
+  catch (cause) {
+    // Bounded diagnostics preserve the failing validator, without exposing logs.
+    cause.shadow_json_issue = checkShadowJson(output);
+    cause.schema_issues = validateJsonSchema(output, outputSchema, "$", { contractKind: "workflow-definition" }).slice(0, 8);
+    cause.observation_issues = Object.fromEntries(Object.entries(observations).map(([key, value]) => [key, checkShadowJson(value)]));
+    throw cause;
+  }
+};
 const continuity = value => Object.fromEntries(["ok", "action", "mode", "active_session", "active_cycle", "branch", "continuity_rule", "continuity_base_branch",
   "latest_active_cycle_branch", "canonical_continuity_status", "canonical_continuity_ambiguities", "planning_arbitration_status", "backlog_selected_execution_scope"].map(key => [key, value[key] ?? null]));
 
