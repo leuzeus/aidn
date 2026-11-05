@@ -22,7 +22,7 @@ import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-proc
 const metadataStage = process.argv.find(arg => arg.startsWith("--metadata-stage="))?.split("=")[1] ?? null;
 if (metadataStage && !["before-authorization", "after-hook"].includes(metadataStage)) throw Error("SPIKE_METADATA_STAGE_INVALID");
 const portDiagnostic = process.argv.includes("--dual-port-diagnostic");
-const mode = process.argv.includes("--metadata-tamper") || metadataStage || process.argv.includes("--dual-nominal") || portDiagnostic ? "dual" : "files", roots = [];
+const mode = process.argv.includes("--db-only-nominal") ? "db-only" : process.argv.includes("--metadata-tamper") || metadataStage || process.argv.includes("--dual-nominal") || portDiagnostic ? "dual" : "files", roots = [];
 const root = createFreshStandardWorkflowFixture(mode, roots), operations = createStandardWorkflowOperations({ targetRoot: root });
 console.log(JSON.stringify({ root, mode, proof_class: "wrapper-precondition-synthetic-accepted-sources", native_calls: 0 }));
 const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), H = "a".repeat(64), evidence = [{ ref: "fixture:analysis", sha256: H }];
@@ -149,8 +149,24 @@ if (portDiagnostic) {
   final = { metadata_only_tamper: "REJECTED_BEFORE_HOOK", canonical_content_unchanged: true };
   }
 } else {
+  const canonicalRows = () => {
+    const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true, readOnly: true });
+    try { return original.plan.inner.plan.changes.map(row => store.getArtifact(row.path)); } finally { store.close(); }
+  };
+  const before = mode !== "files" ? canonicalRows() : null;
   final = await wrapper.finalize(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized: async () => {} });
   assert.equal(final.effect_status, "confirmed", JSON.stringify(final)); assert.equal(final.facts.spike_conversion_completed, true);
+  if (before) {
+    assert.deepEqual(canonicalRows(), before, "projection sync must preserve complete canonical rows, including metadata");
+    assert.equal(final.observations.sync.source, "canonical_projection");
+    assert.equal(final.observations.sync.state_mode, mode);
+    if (mode === "db-only") assert.equal(JSON.parse(fs.readFileSync(path.join(root, final.observations.sync.evidence.ref))).projection.requested, false);
+    for (const kind of ["hook", "sync"]) {
+      const retained = final.observations[kind].evidence, bytes = fs.readFileSync(path.join(root, retained.ref));
+      assert.equal(bytes.length, retained.bytes); assert.equal(createHash("sha256").update(bytes).digest("hex"), retained.sha256);
+      assert.equal(JSON.parse(bytes).ok, true);
+    }
+  }
 }
 assert.ok(verifications > 0);
 console.log(JSON.stringify({ ok: true, root, mode, final, prepared_at_ms: original.plan.prepared_at_ms,

@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -185,11 +184,20 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
             || checkpoint.gate?.skipped === true || !["ok", "warn"].includes(checkpoint.gate?.result) || checkpoint.reload?.decision === "stop"
             || checkpoint.index_sync_check?.enabled && checkpoint.index_sync_check.in_sync !== true) fail("STANDARD_SPIKE_HOOK_UNCONFIRMED");
           if (plan.state_mode !== "files") {
-            const raw = execFileSync(process.execPath, [fileURLToPath(new URL("../../../tools/runtime/sync-db-first-selective.mjs", import.meta.url)),
-              "--target", root, "--strict", "--json"], { cwd: root, encoding: "utf8", shell: false, windowsHide: true, timeout: 300000, maxBuffer: 4194304 });
-            const result = JSON.parse(raw);
-            sync = retainEffect(expectPlan, "sync", raw, { ok: result.ok === true, state_mode: result.state_mode ?? null });
-            if (result.ok !== true || result.state_mode !== plan.state_mode) fail("STANDARD_SPIKE_SYNC_UNCONFIRMED");
+            // Initialization already wrote canonical rows through metadata-bound
+            // CAS. Importing their projections would reclassify that authority.
+            // Synchronize only these canonical postimages outward; db-only
+            // deliberately requests no visible projection.
+            const source = initialized(instance, plan.input);
+            if (postimages(source) !== plan.postimages_sha256) fail("STANDARD_SPIKE_POSTIMAGE_CHANGED");
+            const projection = artifacts.project(source.inner.changes.map(row => row.path));
+            if (postimages(initialized(instance, plan.input)) !== plan.postimages_sha256) fail("STANDARD_SPIKE_POSTIMAGE_CHANGED");
+            if (plan.state_mode === "dual") for (const row of source.inner.changes) {
+              const file = agentRunPhysicalPath(path.join(root, "docs/audit", row.path));
+              if (readAgentRunFile(file, { json: false, maxBytes: 1048576 }).sha256 !== row.after_sha256) fail("STANDARD_SPIKE_PROJECTION_CHANGED");
+            }
+            const result = { ok: true, state_mode: plan.state_mode, source: "canonical_projection", projection };
+            sync = retainEffect(expectPlan, "sync", JSON.stringify(result), { ok: true, state_mode: plan.state_mode, source: "canonical_projection" });
           }
           await assertAuthorized(); active(instance);
           const context = operations.observeScope(), original = initialized(instance, plan.input);

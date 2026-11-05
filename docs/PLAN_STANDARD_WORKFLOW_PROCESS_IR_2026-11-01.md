@@ -4762,3 +4762,17 @@ accepted-plan selector. Wiring alone does not establish retained/nonretained
 execution, session closure, EXPLORING experiments or full L1-L8/A1-A10 acceptance.
 Exact-source execution results are retained separately. ordinary_entry remains
 UNCHANGED and complete_standard_workflow remains false.
+
+## SPIKE canonical projection finalization, 2026-11-04
+
+A new real SQLite DUAL diagnostic observed unchanged content and metadata across
+the conversion hook, followed by metadata reclassification during selective
+file import. Finalization therefore projects only the accepted canonical CAS
+postimages through the existing artifact port. It checks their exact content
+and metadata before and after projection, verifies DUAL projection bytes, and
+requests no visible export in db-only. No changed metadata is whitelisted.
+After-hook authorization and postimage fences still apply; uncertain effects
+retain UNKNOWN and no positive facts. Serialized projection evidence identifies
+its source; historical raw import stdout and failed arenas stay immutable.
+This is source wiring pending exact-source nominal and tamper qualification,
+not full SPIKE, ordinary-entry, installed or L1-L8/A1-A10 acceptance.

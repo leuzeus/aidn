@@ -21,13 +21,18 @@ evidence; exact-source terminal results are required.
 
 SPIKE finalization retains immutable local port evidence beneath
 `.aidn/runtime/standard-workflow/evidence/`: hook bytes serialize the returned
-port object, while sync bytes preserve its stdout. Outputs contain bounded
+port object. Canonical projection sync bytes serialize that port's result;
+historical selective-import evidence retains its original stdout. Outputs contain bounded
 references, byte counts and SHA256 instead of importing noninteger timing data
 into the reducer. The original JSON limits remain unchanged. Evidence belongs to
 the operation host in all storage modes; missing blobs remain unavailable, with
 no reconstruction or DB/file fallback. The nominal real SQLite DUAL case is
 separate from after-hook tampering; a confirmed hook/sync alone does not prove
 unchanged postimages. Use `--dual-nominal` for that separate wrapper case.
+Use `--db-only-nominal` separately to verify no visible projection is requested.
+Both nominal cases compare the complete canonical rows before and after the
+real finalizer, including ownership, classification and timestamps. The bounded
+projection synchronizes only accepted CAS postimages; it never reimports them.
 For a new diagnostic project, `--dual-port-diagnostic` runs the actual hook and
 selective sync once each, without calling wrapper finalization afterwards. It
 retains full canonical rows and projection bytes before the hook, after the hook
