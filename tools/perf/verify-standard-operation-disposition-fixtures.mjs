@@ -57,19 +57,25 @@ if (process.argv.includes("--worker")) {
     process.send({ unexpected_completion: true });
   } catch (cause) { process.send({ error: cause.code ?? cause.message, stack: cause.stack }); process.exitCode = 1; }
 } else if (process.argv[1] && path.resolve(process.argv[1]) === here) {
-  await verifyStandardOperationDisposition(process.argv[2] ?? "files");
+  await verifyStandardOperationDisposition(process.argv[2] ?? "files", undefined, process.argv.find(arg => arg.startsWith("--case="))?.slice(7) ?? null);
 }
-export async function verifyStandardOperationDisposition(mode = "files", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n")) {
+export async function verifyStandardOperationDisposition(mode = "files", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n"), only = null) {
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
+  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write"];
+  if (only !== null && !cases.includes(only)) throw Error("FIXTURE_CASE_INVALID");
+  const selected = name => only === null || only === name;
   const owned = [], retained = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-disposition-evidence-"));
   let checks = 0;
   const pass = name => { checks++; report(name); };
   async function setup(name) {
+    const times = { setup_started_ms: Date.now() };
     const config = { root: createStandardWorkflowFixture(mode, owned), key: randomBytes(32).toString("hex"), name };
+    times.fixture_created_ms = Date.now();
     const host = open(config), preview = host.initialize({ instanceId: "disposition" });
     host.initialize({ instanceId: "disposition", write: true, expectedResultSha256: preview.record.instance_sha256 });
     const prepared = await host.preview({ instanceId: "disposition", expectedSha256: host.inspect("disposition").record.instance_sha256, occurrenceId: "root" });
     config.operation_id = (await host.stage(prepared, { write: true, expectedPreviewSha256: shadowHash(prepared) })).operation_id;
+    times.operation_staged_ms = Date.now(); fs.writeFileSync(path.join(retained, name + "-phases.json"), JSON.stringify(times));
     fs.writeFileSync(path.join(retained, name + "-source.json"), JSON.stringify(config));
     return config;
   }
@@ -97,6 +103,7 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
   const apply = (host, plan) => host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
   try {
     for (const boundary of ["dispatch_reserved", "effect_returned"]) {
+      if (!selected(boundary)) continue;
       const config = await setup(boundary); await crash(config, boundary);
       const calls = [], host = open(config, {}, source(calls)), plan = prepare(host, config);
       assert.equal(plan.assessment, "unknown"); assert.equal((await apply(host, plan)).written, false);
@@ -104,6 +111,7 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       pass(`${mode}: real process termination at ${boundary} retains UNKNOWN without rerun or fresh authorization`);
     }
     for (const boundary of [null, "disposition_recorded", "disposition_receipted"]) {
+      if (!selected(boundary ?? "redelivery")) continue;
       const config = await setup(boundary ?? "redelivery"); await crash(config, "dispatch_returned");
       let host = open(config), plan = prepare(host, config);
       assert.equal(plan.assessment, "no_effect_original");
@@ -130,7 +138,7 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       assert.deepEqual(simulation.trace.at(-1).cursor, inspectAgenticProcess(accepted.record));
       pass(`${mode}: ${boundary ?? "original return"} cold recovery, durable fresh consent, one receipt, no re-evaluation and exact common-reducer SIM`);
     }
-    {
+    if (selected("concurrency")) {
       const config = await setup("concurrency"); await crash(config, "dispatch_returned");
       const host = open(config), plan = prepare(host, config), invalid = structuredClone(plan); invalid.scope_id = "foreign";
       await assert.rejects(() => apply(host, invalid), { code: "PROCESS_JOURNAL_NOT_AUTHENTICATED" });
@@ -141,7 +149,7 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       assert.equal(open(config).readJournal(config.operation_id).results.length, 1);
       pass(`${mode}: forged scope refused and two concurrent repreneurs append exactly one original result`);
     }
-    {
+    if (selected("foreign-fence")) {
       const config = await setup("foreign-fence"); await crash(config, "dispatch_returned");
       const host = open(config), plan = prepare(host, config), artifacts = createStandardWorkflowArtifacts({ targetRoot: config.root });
       const lease = artifacts.resourceFence().acquire();
@@ -152,7 +160,7 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       await assert.rejects(() => apply(host, plan));
       pass(`${mode}: foreign live fence is retained; release/reacquire ABA invalidates the old disposition`);
     }
-    {
+    if (selected("fence-lost-after-write")) {
       const config = await setup("fence-lost-after-write"), artifacts = createStandardWorkflowArtifacts({ targetRoot: config.root });
       const before = artifacts.read("CURRENT-STATE.md", { required: true });
       const malicious = createWorkflowRecordStore({ targetRoot: config.root, stateMode: mode, descriptor: { pathForId: () => LOCAL_ARTIFACT_FENCE_PATH,
@@ -168,7 +176,7 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       assert.deepEqual(malicious.read("local_artifacts").record, replacement);
       pass(`${mode}: actual artifact mutation followed by lost release fence never becomes no_effect; substituted owner is retained`);
     }
-    process.stdout.write(JSON.stringify({ status: "PASS", checks, retained, mode, scope: "actual public one-operation host/read-only return; real child termination; fixture consent",
+    process.stdout.write(JSON.stringify({ status: "PASS", checks, retained, mode, selected_case: only, full_selector: only === null, scope: "actual public one-operation host/read-only return; real child termination; fixture consent",
       artifact_postimage_profile: "NOT_RUN", full_standard: "NOT_RUN", native_human_provider_closure: "NOT_RUN", all_resource_disposition: "INCOMPLETE" }) + "\n");
     return checks;
   } finally {
