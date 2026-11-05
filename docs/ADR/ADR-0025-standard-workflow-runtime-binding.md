@@ -1,5 +1,9 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Physical fixture identity representation, 2026-11-05
+
+Diagnostic and Git component witnesses preserve device/inode IDs as decimal strings from bigint lstat observations. Numeric mode and size conversion is bounded before use. This changes future fixture evidence only; prior captures retain their documented precision limit. It adds no runtime authority, public contract or historical conversion and does not reconcile resources or qualify STANDARD.
+
 ## Fresh Git identity observation, 2026-11-05
 
 Standard scope and drift-context readers obtain HEAD and its symbolic branch in

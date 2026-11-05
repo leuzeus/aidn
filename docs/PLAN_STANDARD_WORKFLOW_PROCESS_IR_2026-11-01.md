@@ -1,5 +1,9 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Exact future physical witness identities, 2026-11-05
+
+Future diagnostic and Git fixture captures use bigint lstat and decimal-string device/inode identifiers, with bounded numeric conversion of mode and size. Prior captures are preserved with their Number precision limitation. Exact-source qualification is separate; identity precision grants no disposition, authority renewal or workflow completion.
+
 ## Fresh Git identity cost candidate, 2026-11-05
 
 Read-only measurements of the interrupted setup distinguished a dispatching

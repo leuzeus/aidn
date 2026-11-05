@@ -1,5 +1,9 @@
 # Testing Guide
 
+## Exact fixture file identities, 2026-11-05
+
+The Git-head component also verifies decimal-string device/inode identities from bigint lstat observations in both physical witnesses, distinct adjacent IDs beyond 2**53, JSON round trips, bounded mode/size conversion and unchanged diagnostic reads. Earlier Number-based captures remain approximate and are retained unchanged. This component establishes no resource disposition, Native resumption or complete STANDARD result.
+
 ## Fresh Git identity component, 2026-11-05
 
 `node tools/perf/verify-standard-drift-session-scope-fixtures.mjs --git-head-only`

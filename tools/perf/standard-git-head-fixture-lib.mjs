@@ -4,6 +4,8 @@ import path from "node:path";
 import os from "node:os";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { fixturePhysicalStat } from "./fixture-physical-stat-lib.mjs";
+import { diagnosticFixtureWitness } from "./standard-terminal-diagnostic-fixture-lib.mjs";
 import { readStandardGitHead } from "../../src/application/runtime/standard-drift-git.mjs";
 
 export function verifyStandardGitHead() {
@@ -14,10 +16,11 @@ export function verifyStandardGitHead() {
   function witness() {
     const rows = [];
     function walk(file) {
-      const stat = fs.lstatSync(file), row = { path: path.relative(root, file), dev: stat.dev, ino: stat.ino, mode: stat.mode };
+      const stat = fs.lstatSync(file, { bigint: true }), observed = fixturePhysicalStat(stat);
+      const row = { path: path.relative(root, file), dev: observed.dev, ino: observed.ino, mode: observed.mode };
       if (stat.isSymbolicLink()) rows.push({ ...row, link: fs.readlinkSync(file) });
       else if (stat.isDirectory()) { const names = fs.readdirSync(file).sort(); rows.push({ ...row, names }); for (const name of names) walk(path.join(file, name)); }
-      else rows.push({ ...row, bytes: stat.size, sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") });
+      else rows.push({ ...row, bytes: observed.bytes, sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") });
     }
     walk(root); return rows;
   }
@@ -29,6 +32,20 @@ export function verifyStandardGitHead() {
     return actual;
   }
   try {
+    const wide = { dev: 9007199254740993n, ino: 11821949023755611n, mode: 0o100644n, size: 17n };
+    assert.deepEqual(fixturePhysicalStat(wide), { dev: "9007199254740993", ino: "11821949023755611", mode: 0o100644, bytes: 17 });
+    assert.notEqual(fixturePhysicalStat({ ...wide, ino: wide.ino + 1n }).ino, fixturePhysicalStat(wide).ino);
+    for (const stat of [{ ...wide, ino: Number(wide.ino) }, { ...wide, size: -1n }, { ...wide, mode: 0x100000000n },
+      { ...wide, size: BigInt(Number.MAX_SAFE_INTEGER) + 1n }]) assert.throws(() => fixturePhysicalStat(stat));
+    assert.throws(() => fixturePhysicalStat(wide, { maxBytes: 16 }));
+    assert.throws(() => fixturePhysicalStat(wide, { maxBytes: 1.5 }));
+    const configuration = { target_root: root, control_root: root, product_root: root, review_root: root, native: { home: root } };
+    fs.writeFileSync(path.join(root, "identity.txt"), "exact identity\n");
+    const actualStat = fs.lstatSync(path.join(root, "identity.txt"), { bigint: true });
+    const physical = diagnosticFixtureWitness(configuration), actualFile = physical.find(row => row.path === path.join(root, "identity.txt"));
+    assert.equal(actualFile.ino, actualStat.ino.toString()); assert.equal(actualFile.dev, actualStat.dev.toString());
+    assert.equal(actualFile.bytes, 15); assert.deepEqual(JSON.parse(JSON.stringify(physical)), physical);
+    assert.deepEqual(diagnosticFixtureWitness(configuration), physical);
     git(["init", "-b", "fixture"]);
     const before = witness(); assert.throws(() => readStandardGitHead(git)); assert.deepEqual(witness(), before);
     git(["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture first"]);
@@ -41,7 +58,7 @@ export function verifyStandardGitHead() {
     git(["switch", "-c", "fixture-next"]); assert.equal(observed().branch, "fixture-next");
     for (const value of ["", "a".repeat(40), "a".repeat(40) + "\nrefs/tags/foreign\n", "a".repeat(40) + "\nHEAD\nextra\n"])
       assert.throws(() => readStandardGitHead(() => value), { code: "STANDARD_DRIFT_GIT_OBSERVATION_FAILED" });
-    return { checks: 7, fresh_per_invocation: true, unchanged_read_witnesses: true, native_started: false };
+    return { checks: 17, exact_bigint_identity: true, fresh_per_invocation: true, unchanged_read_witnesses: true, native_started: false };
   } finally {
     const resolved = fs.realpathSync(root);
     if (!resolved.startsWith(temporary + path.sep)) throw Error("FIXTURE_CLEANUP_SCOPE_INVALID");
