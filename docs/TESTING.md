@@ -28,6 +28,12 @@ the operation host in all storage modes; missing blobs remain unavailable, with
 no reconstruction or DB/file fallback. The nominal real SQLite DUAL case is
 separate from after-hook tampering; a confirmed hook/sync alone does not prove
 unchanged postimages. Use `--dual-nominal` for that separate wrapper case.
+For a new diagnostic project, `--dual-port-diagnostic` runs the actual hook and
+selective sync once each, without calling wrapper finalization afterwards. It
+retains full canonical rows and projection bytes before the hook, after the hook
+and after sync under `.aidn/runtime/spike-port-diagnostic/`. Its report identifies
+changed content and metadata fields. This diagnostic cannot establish wrapper
+completion or authorize a postimage change; original failed arenas stay intact.
 
 The conversion-only fixture verifies the accepted governed Git checkpoint,
 its actual parent, committed paths and blob bytes, together with unchanged

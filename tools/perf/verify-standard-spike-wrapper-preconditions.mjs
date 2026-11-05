@@ -10,12 +10,19 @@ import { observeHumanSpikeDecision } from "../../src/core/workflow/standard-spik
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 import { decisionInboxId } from "../../src/core/workflow/process-decision-inbox.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import { runSkillHookUseCase } from "../../src/application/runtime/skill-hook-use-case.mjs";
+import { createLocalProcessAdapter } from "../../src/adapters/runtime/local-process-adapter.mjs";
 
 // This short precondition suite calls the actual wrapper with signed synthetic
 // accepted sources. It is separate from the published-model mixed qualification.
 const metadataStage = process.argv.find(arg => arg.startsWith("--metadata-stage="))?.split("=")[1] ?? null;
 if (metadataStage && !["before-authorization", "after-hook"].includes(metadataStage)) throw Error("SPIKE_METADATA_STAGE_INVALID");
-const mode = process.argv.includes("--metadata-tamper") || metadataStage || process.argv.includes("--dual-nominal") ? "dual" : "files", roots = [];
+const portDiagnostic = process.argv.includes("--dual-port-diagnostic");
+const mode = process.argv.includes("--metadata-tamper") || metadataStage || process.argv.includes("--dual-nominal") || portDiagnostic ? "dual" : "files", roots = [];
 const root = createFreshStandardWorkflowFixture(mode, roots), operations = createStandardWorkflowOperations({ targetRoot: root });
 console.log(JSON.stringify({ root, mode, proof_class: "wrapper-precondition-synthetic-accepted-sources", native_calls: 0 }));
 const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), H = "a".repeat(64), evidence = [{ ref: "fixture:analysis", sha256: H }];
@@ -68,7 +75,46 @@ for (const row of original.plan.inner.plan.changes) assert.equal(artifacts.read(
 sources.set(initializeId, { record: { preview: { prepared: original } }, output: initialized });
 prepared = await wrapper.prepareFinalize(instance, { contract_version: "standard-spike-finalize-input.v1", initialize_operation_id: initializeId });
 let final;
-if (mode === "dual" && !process.argv.includes("--dual-nominal")) {
+if (portDiagnostic) {
+  // A new disposable diagnostic runs each real port exactly once. It does not
+  // call finalize afterwards or claim wrapper completion. Retain full canonical
+  // rows and projection bytes so content and metadata changes stay distinguishable.
+  const folder = path.join(root, ".aidn/runtime/spike-port-diagnostic");
+  fs.mkdirSync(folder, { recursive: true });
+  const capture = stage => {
+    const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true, readOnly: true });
+    let rows;
+    try { rows = original.plan.inner.plan.changes.map(change => {
+      const row = store.getArtifact(change.path), file = path.join(root, "docs/audit", change.path);
+      const projection = fs.existsSync(file) ? fs.readFileSync(file) : null;
+      return { path: change.path, canonical: row, content_sha256: artifacts.read(change.path).sha256,
+        metadata_sha256: artifacts.metadataHash(change.path), projection_base64: projection?.toString("base64") ?? null,
+        projection_sha256: projection && createHash("sha256").update(projection).digest("hex") };
+    }); } finally { store.close(); }
+    const snapshot = { stage, observed_utc: new Date().toISOString(), rows };
+    fs.writeFileSync(path.join(folder, `${stage}.json`), JSON.stringify(snapshot, null, 2), { flag: "wx" });
+    return snapshot;
+  };
+  const before = capture("before-hook");
+  const hook = runSkillHookUseCase({ args: { skill: "convert-to-spike", mode: "EXPLORING", completionCycleId: selection.cycle_id, strict: true, noAutoSkipGate: true },
+    perfDir: fileURLToPath(new URL("./", import.meta.url)), targetRoot: root, processAdapter: createLocalProcessAdapter() });
+  fs.writeFileSync(path.join(folder, "hook-result.json"), JSON.stringify(hook), { flag: "wx" });
+  const afterHook = capture("after-hook");
+  const rawSync = execFileSync(process.execPath, [fileURLToPath(new URL("../runtime/sync-db-first-selective.mjs", import.meta.url)),
+    "--target", root, "--strict", "--json"], { cwd: root, encoding: "utf8", shell: false, windowsHide: true, timeout: 300000, maxBuffer: 4194304 });
+  fs.writeFileSync(path.join(folder, "sync-stdout.json"), rawSync, { flag: "wx" });
+  const afterSync = capture("after-sync");
+  const differences = (a, b) => a.rows.map((old, i) => ({ path: old.path,
+    changed: Object.keys({ ...old.canonical, ...b.rows[i].canonical }).filter(key => JSON.stringify(old.canonical?.[key]) !== JSON.stringify(b.rows[i].canonical?.[key])),
+    content_changed: old.content_sha256 !== b.rows[i].content_sha256, metadata_changed: old.metadata_sha256 !== b.rows[i].metadata_sha256,
+    projection_changed: old.projection_sha256 !== b.rows[i].projection_sha256 }));
+  const report = { proof_class: "real-port-sequence-diagnostic-only", root, folder, hook_ok: hook.ok, sync_ok: JSON.parse(rawSync).ok,
+    hook_differences: differences(before, afterHook), sync_differences: differences(afterHook, afterSync), wrapper_completion: "NOT_RUN" };
+  fs.writeFileSync(path.join(folder, "report.json"), JSON.stringify(report, null, 2), { flag: "wx" });
+  console.log(JSON.stringify(report));
+  assert.equal(hook.ok, true); assert.equal(JSON.parse(rawSync).ok, true);
+  final = { diagnostic_completed: true, wrapper_completion: "NOT_RUN" };
+} else if (mode === "dual" && !process.argv.includes("--dual-nominal")) {
   const name = original.plan.inner.plan.changes[0].path, before = artifacts.read(name), metadata = artifacts.metadataHash(name);
   let injections = 0, authorizations = 0;
   const mutate = () => {
