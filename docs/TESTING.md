@@ -15,7 +15,26 @@ fence/ABA refusal. Every disposable arena, failed prefix and process exit is
 retained outside the checkout. The existing required host case includes all
 three modes without deleting any previous scenario or changing dispatcher argv.
 
-This does not qualify the session-report postimage profile, all normal-writer
+The same suite additionally runs `artifact-redelivery`,
+`artifact-disposition-recorded` and `artifact-disposition-receipted` (also
+selectable with `--case=`). These exercise the actual session-report writer,
+signed dispatch, exact canonical postimages/metadata, inventory, disposition
+and common process service with a fixture-composed admission and closure
+decision. Each case terminates a real child at the original durable return;
+the latter two also terminate a new disposition process. Cold reconstruction
+must retain one original output/receipt, recover the exact postimages and accept
+through the common service/reducer and SIM. Session closure remains pending.
+This component runs below the ordinary operation host; it is not a productive
+published STANDARD journey or a genuine human authorization.
+
+The full invocation includes every case. Selected-case results alone do not
+replace its global verdict. A bounded partition must freeze all case IDs, order,
+assertions, logical full argv and exact child argv before starting, retain common
+immutable source/dependency/tool captures, revalidate them before each case,
+stop at the first failure and emit a global result with unstarted cases explicit.
+The earlier 120-second full FILES failure remains historical failure evidence.
+
+This does not qualify all normal-writer
 concurrency boundaries, every crash/acceptance boundary, general resource
 discovery/closure, new admission, the published STANDARD journey, genuine
 Native/H/provider, PostgreSQL or installed execution. An OS process-creation

@@ -17,6 +17,7 @@ import { observeLocalProcess, observeLocalProcessOwner } from "../../src/adapter
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { WRITE_DISPOSITION_CASES, verifyStandardOperationWriteDisposition } from "./standard-operation-write-disposition-fixture-lib.mjs";
 
 const here = fileURLToPath(import.meta.url), H = "a".repeat(64);
 function source(calls = []) {
@@ -61,7 +62,7 @@ if (process.argv.includes("--worker")) {
 }
 export async function verifyStandardOperationDisposition(mode = "files", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n"), only = null) {
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
-  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write"];
+  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES];
   if (only !== null && !cases.includes(only)) throw Error("FIXTURE_CASE_INVALID");
   const selected = name => only === null || only === name;
   const owned = [], retained = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-disposition-evidence-"));
@@ -176,8 +177,9 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       assert.deepEqual(malicious.read("local_artifacts").record, replacement);
       pass(`${mode}: actual artifact mutation followed by lost release fence never becomes no_effect; substituted owner is retained`);
     }
-    process.stdout.write(JSON.stringify({ status: "PASS", checks, retained, mode, selected_case: only, full_selector: only === null, scope: "actual public one-operation host/read-only return; real child termination; fixture consent",
-      artifact_postimage_profile: "NOT_RUN", full_standard: "NOT_RUN", native_human_provider_closure: "NOT_RUN", all_resource_disposition: "INCOMPLETE" }) + "\n");
+    if (only === null || WRITE_DISPOSITION_CASES.includes(only)) checks += await verifyStandardOperationWriteDisposition(mode, report, only);
+    process.stdout.write(JSON.stringify({ status: "PASS", checks, retained, mode, selected_case: only, full_selector: only === null, scope: "actual public one-operation host/read-only return; production artifact writer component; real child termination; fixture consent",
+      artifact_postimage_profile: only === null || WRITE_DISPOSITION_CASES.includes(only) ? "PASS_COMPONENT" : "NOT_RUN", full_standard: "NOT_RUN", native_human_provider_closure: "NOT_RUN", all_resource_disposition: "INCOMPLETE" }) + "\n");
     return checks;
   } finally {
     // Preserve every new arena and every failed/crashed original for review.
