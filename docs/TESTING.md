@@ -8,6 +8,22 @@ unknown effect and foreign path refusal. Conversion finalization is not admitted
 as a separate canonical writer. These are component checks; published-model
 session closure, cold restart and full Runtime require their own evidence.
 
+For a new disposable project, add `--standard-spike-session-close` to an explicit
+`--standard-spike-experiment=retain|no_go|drop` case. This extends the actual cycle
+closure through preclose checkpoint, session admission, R05, a fresh authenticated
+session decision, report, checkpoint and final close hook. Retained-cycle promotion
+is separately declined by a fresh `not_requested` decision. It stops before delivery
+or external provider actions, then cold-polls the retained instance and replays the
+same model/reducer while comparing canonical bytes/metadata, projections, Git,
+product and journal evidence. It is not an observed merge or a genuine actor test.
+
+The new full-session case starts with its own three-hour, eight-response grant,
+10-MiB output cap and 300000-ms per-turn bound. The duration accounts for observed
+deterministic admission costs in the one-hour cases, which refused at the product
+allocation reserve. Original dates, caps, failures, owners and arenas remain intact.
+This selector does not implement their resource reconciliation or renew authority.
+Its source wiring, component checks and full-path execution verdicts are separate.
+
 ## SOURCE48 SPIKE execution path, 2026-11-04
 
 The published model shares its existing COMMITTING work/validation/audit/closure
