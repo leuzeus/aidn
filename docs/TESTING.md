@@ -7,6 +7,14 @@ that failure is retained separately from any corrected-source qualification.
 
 ## SPIKE conversion component
 
+The separate selector `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--standard-spike-mode=files --retain-always` executes the published model through
+the actual conversion wrapper, including a delayed initializer and the final
+strict hook. `--standard-spike-choice=refused|deferred|cancelled` selects a
+non-success decision. Actor authentication and Native transport are fixtures;
+the selector must retain its own fresh project and original authorization.
+Execution results, DB-backed variants and cold restart require their own evidence.
+
 Run `node tools/perf/verify-standard-spike-conversion-fixtures.mjs --mode=files`
 (also `dual` and `db-only`) on a new frozen source. This suite separates typed
 human claims, signed fixture inbox reads and actual canonical cycle creation
