@@ -15,7 +15,9 @@ explicitly starts with absent canonical baseline history, captures its fence,
 then creates it through the artifact CAS port during an await. The test requires
 the original fence to refuse. Database cases keep its projection absent until
 the later explicit projection; SQLite fixture setup is not a business delete.
-These controls are not a complete DB-only workflow or installed qualification.
+The corpus excludes that document before its first explicit canonical import
+and fixture commit; no referenced artifact or history is deleted. These controls
+are not a complete DB-only workflow or installed qualification.
 
 ## Pre-effect close expiry continuation, 2026-11-05
 

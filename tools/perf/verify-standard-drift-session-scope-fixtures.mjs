@@ -9,28 +9,15 @@ import { createStandardWorkflowOperations } from "../../src/application/runtime/
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { readStandardDriftContext, captureStandardDriftContextFence } from "../../src/application/runtime/standard-drift-report.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
-import { getDatabaseSync, rebuildRuntimeHeads } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
-import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 const mode = process.argv.find(value => value.startsWith("--mode="))?.slice(7) ?? "files";
 if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
 const owned = [], temporary = fs.realpathSync(os.tmpdir()); let complete = false, checks = 0;
 const pass = name => { checks++; console.log("PASS " + name); };
 try {
-  const root = createFreshStandardWorkflowFixture(mode, owned), ops = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
-  // Establish an absent optional artifact in this new disposable test corpus
-  // before any context observation. This is fixture setup, not a workflow delete.
-  const optionalName = "baseline/history.md", optionalVisible = path.join(root, "docs/audit", optionalName);
-  assert.ok(fs.realpathSync(root).startsWith(temporary + path.sep));
-  if (mode !== "files") {
-    const db = new (getDatabaseSync())(resolveRuntimeSqliteFile({ targetRoot: root }));
-    try {
-      db.exec("BEGIN IMMEDIATE");
-      db.prepare("DELETE FROM artifact_blobs WHERE artifact_id IN (SELECT artifact_id FROM artifacts WHERE path = ?)").run(optionalName);
-      db.prepare("DELETE FROM artifacts WHERE path = ?").run(optionalName);
-      rebuildRuntimeHeads(db); db.exec("COMMIT");
-    } finally { db.close(); }
-  }
-  if (fs.existsSync(optionalVisible)) fs.unlinkSync(optionalVisible);
+  const optionalName = "baseline/history.md";
+  const root = createFreshStandardWorkflowFixture(mode, owned, { absentOptionalDocuments: [optionalName] });
+  const ops = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+  const optionalVisible = path.join(root, "docs/audit", optionalName);
   assert.equal(artifacts.read(optionalName).sha256, null);
   let plan = await ops.prepareSession({ session_id: "S001", session_branch: "S001-drift-close", objective: "Observe all canonical baseline completion changes before session closure" });
   assert.equal((await ops.initializeSession(plan, { write: true, expectPlan: plan.plan_sha256 })).outcome, "completed");

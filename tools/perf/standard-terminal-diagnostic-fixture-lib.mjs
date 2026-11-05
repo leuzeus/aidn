@@ -6,6 +6,7 @@ import { createAgenticProcess } from "../../src/core/workflow/agentic-process.mj
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { createStandardProcessAuthority } from "../../src/application/runtime/standard-process-authority.mjs";
 import { nativeEvidenceFile } from "../../src/application/runtime/native-allocation-evidence.mjs";
+import { processParameterOptions } from "../../src/core/workflow/process-data-contracts.mjs";
 
 // Snapshot the complete disposable checkout and owned execution tree. Symlinks
 // are observed, never followed into shared dependencies or another arena.
@@ -36,7 +37,7 @@ export function verifyTerminalDiagnosticRefusals({ host, configuration, readSign
   const authority = createStandardProcessAuthority({ configuration, model, readSigningKey, humanSource,
     readProductSha256: () => host.previewNative().product_sha256 });
   assert.throws(() => authority.authenticate(state.record, { diagnostic: true }), { code: "STANDARD_PROCESS_NATIVE_ALLOCATION_ACTIVE" });
-  const candidate = (instanceId, scopeId) => createAgenticProcess({ instanceId, model, scopeId, policyPins: agenticPolicyPins(model), facts: {} });
+  const candidate = (instanceId, scopeId) => createAgenticProcess({ instanceId, model, scopeId, policyPins: agenticPolicyPins(model), facts: {}, ...processParameterOptions(state.record) });
   assert.throws(() => authority.inspectDiagnostic(candidate("foreign", state.record.scope_id)), { code: "STANDARD_PROCESS_AUTHORITY_CHANGED" });
   assert.throws(() => authority.inspectDiagnostic(candidate(configuration.instance_id, "f".repeat(64))), { code: "STANDARD_PROCESS_AUTHORITY_CHANGED" });
   const latest = state.native.journal.allocations.at(-1), file = latest.checkpoint.path, original = fs.readFileSync(file);

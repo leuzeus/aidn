@@ -15,7 +15,9 @@ The worker fixture now uses this port after a refusal and separately requires
 ordinary execution to remain excluded. Exact-source independent qualification,
 resource disposition and productive published STANDARD remain due. The storage
 fixture explicitly creates an initially absent optional canonical document during
-an await; fixture setup removes only that document in its new disposable corpus.
+an await; its new corpus excludes that document before the first canonical import
+and fixture commit. A prior DUAL fixture attempt failed on a foreign-key guard;
+that result is retained, with no disabled guard or deleted history.
 No public CLI/JSON surface, store, grant or historical conversion is introduced.
 
 ## Current-H diagnostic context fence, 2026-11-05

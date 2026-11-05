@@ -8,6 +8,8 @@ import { prepareActivationFixture, isActivationFixtureSource } from "./test-acti
 import { buildCanonicalFromMarkdown } from "../../src/lib/workflow/markdown-render-lib.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createProjectArtifactStore } from "../../src/application/runtime/project-artifact-store-service.mjs";
+import { runArtifactImport } from "../../src/application/install/artifact-import-service.mjs";
+import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 
 
 const repo = fileURLToPath(new URL("../../", import.meta.url));
@@ -61,8 +63,10 @@ export function createStandardWorkflowFixture(mode = "files", owned = []) {
 // Coherent empty project, installed by the actual source installer. Only Codex
 // discovery/login is stubbed: no native executor or model is invoked here.
 // This is source-install qualification, not an exact-archive qualification.
-export function createFreshStandardWorkflowFixture(mode = "db-only", owned = []) {
+export function createFreshStandardWorkflowFixture(mode = "db-only", owned = [], { absentOptionalDocuments = [] } = {}) {
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_STATE_MODE_INVALID");
+  if (!Array.isArray(absentOptionalDocuments) || absentOptionalDocuments.some(name => !["baseline/history.md", "index.md"].includes(name))
+    || new Set(absentOptionalDocuments).size !== absentOptionalDocuments.length) throw Error("FIXTURE_OPTIONAL_DOCUMENT_INVALID");
   const root = fs.mkdtempSync(path.join(temporary, "aidn-standard-fresh-")); owned.push(root);
   git(root, "init", "-b", "dev"); git(root, "config", "user.name", "Fixture"); git(root, "config", "user.email", "fixture@example.invalid");
   git(root, "-c", "core.hooksPath=NUL", "commit", "--allow-empty", "-m", "fixture seed");
@@ -71,8 +75,25 @@ export function createFreshStandardWorkflowFixture(mode = "db-only", owned = [])
   else { const file = path.join(bin, "codex"); fs.writeFileSync(file, '#!/usr/bin/env sh\nif [ "$1" = "login" ] && [ "$2" = "status" ]; then echo "Logged in"; fi\nexit 0\n'); fs.chmodSync(file, 0o755); }
   const store = { files: "file", dual: "dual-sqlite", "db-only": "sqlite" }[mode];
   execFileSync(process.execPath, [path.join(repo, "tools/install.mjs"), "--target", root, "--pack", "core", "--init-defaults", "--project-name", "component-fixture",
-    "--source-branch", "dev", "--artifact-import-store", store, "--runtime-persistence-backend", "sqlite", "--no-codex-migrate-custom"],
+    "--source-branch", "dev", "--artifact-import-store", store, "--runtime-persistence-backend", "sqlite", "--no-codex-migrate-custom",
+    ...(absentOptionalDocuments.length ? ["--skip-artifact-import"] : [])],
     { cwd: repo, env: { ...process.env, PATH: bin + path.delimiter + (process.env.PATH ?? "") }, encoding: "utf8", stdio: "pipe", timeout: 180000, windowsHide: true, maxBuffer: 8388608 });
+  if (absentOptionalDocuments.length) {
+    // Build the new corpus before its FIRST canonical import and fixture commit.
+    // No referenced artifact, runtime head or historical record is deleted.
+    assert.ok(fs.realpathSync(root).startsWith(temporary + path.sep));
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+    if (mode !== "files" && fs.existsSync(resolveRuntimeSqliteFile({ targetRoot: root })))
+      for (const name of absentOptionalDocuments) assert.equal(artifacts.read(name).sha256, null);
+    for (const name of absentOptionalDocuments) {
+      const file = path.join(root, "docs/audit", name);
+      if (fs.existsSync(file)) fs.unlinkSync(file);
+    }
+    const config = JSON.parse(fs.readFileSync(path.join(root, ".aidn/config.json"), "utf8"));
+    const imported = runArtifactImport(repo, root, false, { artifactImportStore: store }, config);
+    assert.equal(imported.ok, true, JSON.stringify(imported));
+    for (const name of absentOptionalDocuments) assert.equal(artifacts.read(name).sha256, null);
+  }
   prepareActivationFixture(root, repo);
   git(root, "add", "."); git(root, "-c", "core.hooksPath=NUL", "commit", "-m", "installed fixture");
   assert.equal(createStandardWorkflowArtifacts({ targetRoot: root }).describe().state_mode, mode);

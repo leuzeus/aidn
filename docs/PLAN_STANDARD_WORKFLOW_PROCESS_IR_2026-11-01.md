@@ -16,6 +16,14 @@ Exact-source results must be recorded separately. This candidate does not
 complete the published STANDARD route, other R05 contexts, general L4,
 required193, genuine actors, installed execution or L1-L8/A1-A10.
 
+The first new-source HEAD test reached authenticated read-only observation and
+continued execution exclusion, then failed while constructing its wrong-instance
+negative without required process parameters. The first DUAL storage test failed
+in corpus setup on a SQLite foreign-key guard; DB-only was not started after
+fail-first. Both failures remain. The corrected test preserves process parameters
+and seeds optional absence before first canonical import. New-arena qualification
+is required; no old arena is resumed and no fixture result establishes disposition.
+
 ## Last awaited H context correction candidate, 2026-11-05
 
 A new independent-worker nominal passed on the pre-fence source. Two separate
