@@ -1,4 +1,8 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
+import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { fileURLToPath } from "node:url";
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { runConvertToSpikeAdmitUseCase } from "./convert-to-spike-admit-use-case.mjs";
@@ -35,6 +39,21 @@ const continuity = value => Object.fromEntries(["ok", "action", "mode", "active_
 // accepted operation IDs; it cannot supply a cycle selection or grant.
 export function createStandardSpikeConversion({ targetRoot, operations, readAcceptedOperation, observeModeWork, verifyDecision, readCurrent, observeProduct, now = Date.now }) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
+  function retainEffect(planSha, kind, raw, summary) {
+    artifacts.assertLocalEffectOwner(planSha);
+    const ref = `.aidn/runtime/standard-workflow/evidence/spike-${planSha}-${kind}.json`;
+    const file = agentRunPhysicalPath(path.join(root, ref), { missing: true });
+    const bytes = Buffer.from(raw, "utf8");
+    if (bytes.length > 4194304) fail("STANDARD_SPIKE_EVIDENCE_TOO_LARGE");
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    // Never overwrite an earlier observation or synthesize missing raw bytes.
+    const descriptor = fs.openSync(file, "wx");
+    try { fs.writeFileSync(descriptor, bytes); fs.fsyncSync(descriptor); } finally { fs.closeSync(descriptor); }
+    const retained = readAgentRunFile(file, { json: false, maxBytes: 4194304 });
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    if (retained.sha256 !== sha256) fail("STANDARD_SPIKE_EVIDENCE_CHANGED");
+    return { ...summary, evidence: { ref, sha256, bytes: bytes.length } };
+  }
   const active = instance => { if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_SPIKE_INSTANCE_CHANGED"); };
   const planValid = (plan, schema) => {
     const issues = validateJsonSchema(plan, schema, "$", { contractKind: "workflow-definition" });
@@ -156,17 +175,21 @@ export function createStandardSpikeConversion({ targetRoot, operations, readAcce
           if (postimages(initialized(instance, plan.input)) !== plan.postimages_sha256) fail("STANDARD_SPIKE_METADATA_CHANGED"); }
         catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         try {
-          hook = runSkillHookUseCase({ args: { skill: "convert-to-spike", mode: "EXPLORING", completionCycleId: plan.selection.cycle_id, strict: true, noAutoSkipGate: true },
+          const rawHook = runSkillHookUseCase({ args: { skill: "convert-to-spike", mode: "EXPLORING", completionCycleId: plan.selection.cycle_id, strict: true, noAutoSkipGate: true },
             perfDir: fileURLToPath(new URL("../../../tools/perf/", import.meta.url)), targetRoot: root, processAdapter: createLocalProcessAdapter() });
-          const payload = hook.payload, checkpoint = payload?.checkpoint;
-          if (hook.ok !== true || hook.strict !== true || payload?.ok !== true || payload.result !== "ok" || payload.skill !== "convert-to-spike"
+          hook = retainEffect(expectPlan, "hook", JSON.stringify(rawHook), { ok: rawHook.ok === true, strict: rawHook.strict === true,
+            payload: { mode: rawHook.payload?.mode ?? null } });
+          const payload = rawHook.payload, checkpoint = payload?.checkpoint;
+          if (rawHook.ok !== true || rawHook.strict !== true || payload?.ok !== true || payload.result !== "ok" || payload.skill !== "convert-to-spike"
             || payload.mode !== "EXPLORING" || payload.target_root !== root || checkpoint?.ok !== true || checkpoint.summary?.result !== "ok"
             || checkpoint.gate?.skipped === true || !["ok", "warn"].includes(checkpoint.gate?.result) || checkpoint.reload?.decision === "stop"
             || checkpoint.index_sync_check?.enabled && checkpoint.index_sync_check.in_sync !== true) fail("STANDARD_SPIKE_HOOK_UNCONFIRMED");
           if (plan.state_mode !== "files") {
-            sync = JSON.parse(execFileSync(process.execPath, [fileURLToPath(new URL("../../../tools/runtime/sync-db-first-selective.mjs", import.meta.url)),
-              "--target", root, "--strict", "--json"], { cwd: root, encoding: "utf8", shell: false, windowsHide: true, timeout: 300000, maxBuffer: 4194304 }));
-            if (sync.ok !== true || sync.state_mode !== plan.state_mode) fail("STANDARD_SPIKE_SYNC_UNCONFIRMED");
+            const raw = execFileSync(process.execPath, [fileURLToPath(new URL("../../../tools/runtime/sync-db-first-selective.mjs", import.meta.url)),
+              "--target", root, "--strict", "--json"], { cwd: root, encoding: "utf8", shell: false, windowsHide: true, timeout: 300000, maxBuffer: 4194304 });
+            const result = JSON.parse(raw);
+            sync = retainEffect(expectPlan, "sync", raw, { ok: result.ok === true, state_mode: result.state_mode ?? null });
+            if (result.ok !== true || result.state_mode !== plan.state_mode) fail("STANDARD_SPIKE_SYNC_UNCONFIRMED");
           }
           await assertAuthorized(); active(instance);
           const context = operations.observeScope(), original = initialized(instance, plan.input);

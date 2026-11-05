@@ -15,7 +15,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 // accepted sources. It is separate from the published-model mixed qualification.
 const metadataStage = process.argv.find(arg => arg.startsWith("--metadata-stage="))?.split("=")[1] ?? null;
 if (metadataStage && !["before-authorization", "after-hook"].includes(metadataStage)) throw Error("SPIKE_METADATA_STAGE_INVALID");
-const mode = process.argv.includes("--metadata-tamper") || metadataStage ? "dual" : "files", roots = [];
+const mode = process.argv.includes("--metadata-tamper") || metadataStage || process.argv.includes("--dual-nominal") ? "dual" : "files", roots = [];
 const root = createFreshStandardWorkflowFixture(mode, roots), operations = createStandardWorkflowOperations({ targetRoot: root });
 console.log(JSON.stringify({ root, mode, proof_class: "wrapper-precondition-synthetic-accepted-sources", native_calls: 0 }));
 const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), H = "a".repeat(64), evidence = [{ ref: "fixture:analysis", sha256: H }];
@@ -68,7 +68,7 @@ for (const row of original.plan.inner.plan.changes) assert.equal(artifacts.read(
 sources.set(initializeId, { record: { preview: { prepared: original } }, output: initialized });
 prepared = await wrapper.prepareFinalize(instance, { contract_version: "standard-spike-finalize-input.v1", initialize_operation_id: initializeId });
 let final;
-if (mode === "dual") {
+if (mode === "dual" && !process.argv.includes("--dual-nominal")) {
   const name = original.plan.inner.plan.changes[0].path, before = artifacts.read(name), metadata = artifacts.metadataHash(name);
   let injections = 0, authorizations = 0;
   const mutate = () => {
@@ -88,6 +88,13 @@ if (mode === "dual") {
       assert.equal(final.outcome, "reconciliation_required"); assert.equal(final.effect_status, "unknown"); assert.deepEqual(final.facts, {});
       assert.equal(final.observations.hook.ok, true); assert.equal(final.observations.sync.ok, true);
       assert.equal(final.observations.reason_code, "STANDARD_SPIKE_POSTIMAGE_CHANGED");
+      for (const kind of ["hook", "sync"]) {
+        const retained = final.observations[kind].evidence;
+        const bytes = (await import("node:fs")).readFileSync((await import("node:path")).join(root, retained.ref));
+        assert.equal(bytes.length, retained.bytes);
+        assert.equal((await import("node:crypto")).createHash("sha256").update(bytes).digest("hex"), retained.sha256);
+        assert.equal(JSON.parse(bytes).ok, true);
+      }
     }
     assert.equal(injections, 1); assert.equal(authorizations, metadataStage === "before-authorization" ? 1 : 2);
   } else {
