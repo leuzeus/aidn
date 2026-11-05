@@ -99,7 +99,10 @@ try {
   function changedRecord(name, mutate, expected) {
     test(name, () => {
       const bytes = fs.readFileSync(file);
-      try { const value = JSON.parse(bytes); mutate(value); fs.writeFileSync(file, JSON.stringify(value)); assert.throws(() => authority.inspectDiagnostic(instance), expected); }
+      try {
+        const value = JSON.parse(bytes); mutate(value); fs.writeFileSync(file, JSON.stringify(value));
+        for (const read of [() => authority.inspectDiagnostic(instance), () => host.inspectDiagnostic()]) assert.throws(read, expected);
+      }
       finally { fs.writeFileSync(file, bytes); }
     });
   }
@@ -136,15 +139,30 @@ try {
       checkpoint: { path: checkpointFile, sha256: bytesHash(checkpointFile), state_sha256: shadowHash(state), instance_sha256: instance.instance_sha256 },
       consumption: { responses_observed: 0, response_sha256: [], storage_debit_bytes: 0, native_usage_sha256: null }, closure_ref: { path: closureFile, sha256: bytesHash(closureFile) } }] });
   createNativeAllocationJournalStore({ targetRoot: root, stateMode: "files" }).compareAndSwap(journal, null);
-  test("signed historical checkpoint remains readable after code changes and grant expiry", () => assert.deepEqual(authority.inspectDiagnostic(instance).checkpoint.state, state));
+  test("signed historical checkpoint remains readable after code changes and grant expiry", () => {
+    assert.deepEqual(authority.inspectDiagnostic(instance).checkpoint, state);
+    assert.deepEqual(host.inspectDiagnostic().native.checkpoint, state);
+  });
   test("checkpoint tampering and missing checkpoint remain rejected", () => {
     const bytes = fs.readFileSync(checkpointFile);
-    try { fs.appendFileSync(checkpointFile, "\n"); assert.throws(() => authority.inspectDiagnostic(instance), { code: "NATIVE_ALLOCATION_EVIDENCE_CHANGED" });
-      fs.unlinkSync(checkpointFile); assert.throws(() => authority.inspectDiagnostic(instance)); }
+    try {
+      fs.appendFileSync(checkpointFile, "\n");
+      for (const read of [() => authority.inspectDiagnostic(instance), () => host.inspectDiagnostic()]) assert.throws(read, { code: "NATIVE_ALLOCATION_EVIDENCE_CHANGED" });
+      fs.unlinkSync(checkpointFile);
+      for (const read of [() => authority.inspectDiagnostic(instance), () => host.inspectDiagnostic()]) assert.throws(read);
+    }
     finally { fs.writeFileSync(checkpointFile, bytes); }
   });
   test("the retained signed configuration cannot be replaced by caller options", () => assert.throws(() => open({ ...configuration, product_root: configuration.review_root }).inspectDiagnostic(instance), { code: "STANDARD_PROCESS_NATIVE_HISTORY_CHANGED" }));
-  const final = diagnosticFixtureWitness(configuration); authority.inspectDiagnostic(instance);
+  const instanceFile = path.join(root, "docs/audit/workflows/process-instances/history.json");
+  test("the public diagnostic port rejects a structurally valid foreign scope", () => {
+    const bytes = fs.readFileSync(instanceFile);
+    try {
+      fs.writeFileSync(instanceFile, JSON.stringify(createAgenticProcess({ instanceId: "history", scopeId: "f".repeat(64), model, policyPins: agenticPolicyPins(model) })));
+      assert.throws(() => host.inspectDiagnostic(), { code: "STANDARD_PROCESS_AUTHORITY_CHANGED" });
+    } finally { fs.writeFileSync(instanceFile, bytes); }
+  });
+  const final = diagnosticFixtureWitness(configuration); authority.inspectDiagnostic(instance); host.inspectDiagnostic();
   test("checkpoint history authentication is read-only", () => assert.deepEqual(diagnosticFixtureWitness(configuration), final));
   console.log(JSON.stringify({ status: "PASS", checks, scope: "public-mixed-historical-diagnostic", native: "NOT_RUN", effects: "DENIED", general_reconciliation: "NOT_RUN", whole_goal_complete: false }));
 } finally {
