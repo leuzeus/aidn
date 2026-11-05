@@ -1,5 +1,9 @@
 # Testing Guide
 
+## Published binding alignment after implementation changes, 2026-11-05
+
+A component check does not load the published STANDARD assets. After changing an implementation-covered file, run the startup/model, cycle-component and composed-workflow fixture suites. Their real loaders compare every published binding to the current registry. Refresh only through explicit source authoring: `tools/verify/refresh-standard-startup-bindings.mjs --write`, the same command with `--cycle-create --write`, then `tools/author/build-standard-workflow-model.mjs --write`. Each changed component gets a new revision; runtime reads never refresh pins. This source alignment does not qualify historical diagnostic authentication, productive execution, resource disposition or L1-L8/A1-A10.
+
 ## Exact fixture file identities, 2026-11-05
 
 The Git-head component also verifies decimal-string device/inode identities from bigint lstat observations in both physical witnesses, distinct adjacent IDs beyond 2**53, JSON round trips, bounded mode/size conversion and unchanged diagnostic reads. Earlier Number-based captures remain approximate and are retained unchanged. This component establishes no resource disposition, Native resumption or complete STANDARD result.

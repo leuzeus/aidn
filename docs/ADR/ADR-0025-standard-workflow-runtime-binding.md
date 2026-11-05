@@ -1,5 +1,9 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Explicit published component refresh, 2026-11-05
+
+Implementation-covered source changes require explicit authoring of every affected published component before new instances can load it. Startup, cycle-create and composed STANDARD retain separate incremented revisions and exact current implementation pins. Runtime loading still refuses mismatches; no historical instance, pin, authorization or evidence is converted. Historical diagnostic compatibility is a separate unresolved authentication boundary, as are general reconciliation and productive STANDARD qualification.
+
 ## Physical fixture identity representation, 2026-11-05
 
 Diagnostic and Git component witnesses preserve device/inode IDs as decimal strings from bigint lstat observations. Numeric mode and size conversion is bounded before use. This changes future fixture evidence only; prior captures retain their documented precision limit. It adds no runtime authority, public contract or historical conversion and does not reconcile resources or qualify STANDARD.

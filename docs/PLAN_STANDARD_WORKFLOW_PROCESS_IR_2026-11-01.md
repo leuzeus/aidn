@@ -1,5 +1,9 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Published source alignment candidate, 2026-11-05
+
+The Git observation implementation change left the three published component pin sets stale. Explicit source authoring advances startup to revision 214, cycle-create to 211 and composed STANDARD to 159. Only component revisions, implementation pins and dependent hashes change; topology, authorities, skills and limits stay at their reviewed definitions. New-source loader qualification is required. Historical signed instances and their original pins are retained. This refresh does not restore the historical diagnostic reader or complete general L4, productive STANDARD, required193, genuine actors or exact installation.
+
 ## Exact future physical witness identities, 2026-11-05
 
 Future diagnostic and Git fixture captures use bigint lstat and decimal-string device/inode identifiers, with bounded numeric conversion of mode and size. Prior captures are preserved with their Number precision limitation. Exact-source qualification is separate; identity precision grants no disposition, authority renewal or workflow completion.
