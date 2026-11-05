@@ -1,5 +1,27 @@
 # Testing Guide
 
+## SOURCE60 completion admission selectors, 2026-11-05
+
+The objective fence component now has 24 controls: the prior finalization
+fences plus independent read-only admission, checkpoint summary emission,
+missing/JSON-only proof, delayed revocation/expiry/replacement, changed goals,
+other signals, STOP/L3 and event authorization. Working-source preflight passed
+with observation/artifact doubles; frozen qualification is separate.
+
+`verify-standard-cycle-close-record-fixtures.mjs --mode=files --final-hook
+--delayed-hook-fences` adds no-effect delayed revocation/expiry before checkpoint.
+The grant_after fault uses observed event growth and must retain UNKNOWN.
+
+`verify-agentic-process-execution-fixtures.mjs --cycle-close-finalize-mode=files
+--cycle-close-objective-completion --retain-always` selects a new scenario graph
+with real planning/work/validation/audit/terminal record ports, then a fresh
+terminal diagnostic and authenticated fixture alignment. It requires cold host
+cycle_close_finalize, canonical completion, nonmutating preview, independent
+checkpoint gating and retained redelivery/replay/SIM. Native/Human are fixtures;
+published routing, general causal transitions and genuine actors remain due.
+Record frozen-source outcomes separately.
+
+
 The recovery fixture also runs seventeen read-only completion-reader checks.
 They distinguish the latest accepted v3 finalization from an opinion, historical
 finalizer or UNKNOWN result; bind current evaluation/context/HEAD and physical

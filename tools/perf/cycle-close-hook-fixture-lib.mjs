@@ -7,6 +7,7 @@ import { runReloadCheckUseCase } from "../../src/application/runtime/reload-chec
 import { completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { verifyObjectiveCompletionClosure } from "./objective-completion-closure-fixture-lib.mjs";
 
 export function attachCycleCloseHookModel(model) {
   model.nodes[0].children.splice(-1, 0, "close_finalize");
@@ -16,6 +17,7 @@ export function attachCycleCloseHookModel(model) {
 }
 
 export async function verifyCycleCloseHookExecution({ f, artifacts, cyclePath, verifier, script, setAllowed }) {
+  if (f.objectiveCompletion) return verifyObjectiveCompletionClosure({ f, artifacts, cyclePath, verifier, script });
   const before = f.open().inspect(), sessions = f.t.sessions.length, checks = verifier.calls(), targetRoot = f.configuration.target_root;
   const pending = await f.open().step();
   assert.equal(pending.preview.binding.id, "cycle_close_finalize");

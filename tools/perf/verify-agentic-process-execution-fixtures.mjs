@@ -596,9 +596,28 @@ function mixedFixture(stateMode = "files", options = {}) {
     if (options.closure) attachCycleClosureModel(model);
     if (options.closeRecord) attachCycleCloseRecordModel(model);
     if (options.closeFinalize) attachCycleCloseHookModel(model);
+    if (options.objectiveCompletion) {
+      f.objectiveCompletion = true;
+      model.roles.push({ id: "objective_auditor", role: "auditor", action: "analyze", skills: ["drift-check"] });
+      const policy = model.policies.find(row => row.id === model.nodes.find(row => row.id === "analyze").policy_ref);
+      model.policies.push({ ...structuredClone(policy), id: "objective_drift_policy", allowed_permissions: ["read:product"] });
+      model.nodes[0].children.splice(model.nodes[0].children.indexOf("close_finalize"), 0, "objective_drift", "objective_evaluate", "objective_decide", "objective_finalize");
+      model.nodes.push({ id: "objective_drift", kind: "activity", participant_ref: "delivery", role_ref: "objective_auditor", policy_ref: "objective_drift_policy" });
+      for (const [id, binding, field, source] of [["objective_evaluate", "drift_report_evaluate", "report_occurrence_id", "objective_drift"],
+        ["objective_decide", "drift_recovery_decision", "evaluation_operation_id", "objective_evaluate"],
+        ["objective_finalize", "drift_check_finalize", "evaluation_operation_id", "objective_evaluate"]]) {
+        model.nodes.push(op(id, binding)); model.operation_pins[binding] = shadowHash(standardWorkflowOperationBindings().find(row => row.id === binding));
+        model.data_bindings.inputs.push({ node_id: id, fields: { [field]: { source: field === "report_occurrence_id" ? "occurrence_id" : "operation_id", node_id: source } } });
+      }
+    }
     const content = fs.readFileSync(new URL("../../scaffold/codex/aidn-cycle-create/SKILL.md", import.meta.url));
     f.configuration.skills["cycle-create"] = { path: put(f.base, "package/cycle-create.md", content), sha256: sha(content) };
     f.configuration.activity_outputs = { analyze: CYCLE_PLAN_CONTRACT };
+    if (options.objectiveCompletion) {
+      f.configuration.activity_outputs.objective_drift = "standard-drift-report.v1";
+      const content = fs.readFileSync(new URL("../../scaffold/codex/aidn-drift-check/SKILL.md", import.meta.url));
+      f.configuration.skills["drift-check"] = { path: put(f.base, "package/drift-check.md", content), sha256: sha(content) };
+    }
     if (options.work) f.configuration.activity_outputs.implement = options.taskProgress ? CYCLE_TASK_WORK_CONTRACT : CYCLE_WORK_CONTRACT;
     if (options.audit) {
       f.configuration.activity_outputs.audit_review = CYCLE_AUDIT_CONTRACT;
@@ -611,6 +630,7 @@ function mixedFixture(stateMode = "files", options = {}) {
     : options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
     : { analyze: "Analyze without writing.", review: "Review without correcting." };
   if (options.audit) f.configuration.instructions.audit_review = "Audit the final product and supplied checklist read-only; report uncertainty and leave all decisions and writes to the host.";
+  if (options.objectiveCompletion) f.configuration.instructions.objective_drift = "Diagnose the exact terminal context read-only; the host retains decisions and completion effects.";
   if (options.work) f.configuration.instructions.implement = options.taskProgress ? "Implement only the host-selected task and its done criteria; host validation and progression remain separate." : "Implement the frozen first task only; leave deterministic validation to the host.";
   const criteriaText = options.taskProgress ? `Follow the selected task: intermediate value 2, final value ${options.taskFinalValue}, unchanged interface. Host checks remain separate.` : options.work ? "The admitted local value becomes 2; validation remains a separate host operation." : "Read the product without changing any bytes.";
   fs.writeFileSync(f.configuration.criteria.path, criteriaText); f.configuration.criteria.sha256 = sha(criteriaText);

@@ -145,7 +145,8 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     const mode = selected === "partial" ? "db-only" : selected === "projection" ? "dual" : ["report", "source", "unchanged"].includes(selected) ? "files" : selected;
     let allowed = true, tamper = false, root;
     const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
-    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, work, validation, verification, taskProgress, audit, closure, closeRecord, closeFinalize, taskFinalValue: selected === "unchanged" ? 2 : 3, authorize: async request => {
+    const objectiveCompletion = closeFinalize && process.argv.includes("--cycle-close-objective-completion");
+    const f = mixedFixture(["refusal", "stale"].includes(mode) ? "files" : mode, { planning: true, readiness, work, validation, verification, taskProgress, audit, closure, closeRecord, closeFinalize, objectiveCompletion, taskFinalValue: selected === "unchanged" ? 2 : 3, authorize: async request => {
       if (tamper && request.binding.id === "cycle_plan_record") {
         tamper = false; const store = createProjectArtifactStore({ targetRoot: root, existingOnly: true });
         try { const row = store.getArtifact("CURRENT-STATE.md"); store.upsertArtifact({ ...row, classification_reason: "fixture-planning-race" }); }
@@ -153,6 +154,11 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
       }
       return { ...grant, authorized: allowed };
     }, async answer({ params }) { const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
+      if (objectiveCompletion && observed.context.contract_version === "standard-drift-context.v2") return { outcome: "completed", summary: "Exact terminal context diagnostic fixture", report: {
+        contract_version: "standard-drift-report.v1", context_sha256: observed.context_sha256, original_objective: observed.context.original_objective,
+        current_objective: observed.context.original_objective, drift_level: "none", objective_changed: false, changes: [], keep: ["Exact scope"], discard: [],
+        split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+        recommendation: "continue", rationale: "Fixture Native wire only; exact host completion and closure readers remain real.", evidence_refs: observed.evidence_refs } };
       if (observed.context.contract_version === "standard-cycle-audit-context.v1") return { outcome: "completed", summary: "Read-only audit proposal", report: cycleAuditProposal(observed) };
       if (observed.context.contract_version === "standard-cycle-task-work-context.v1") {
         const context = observed.context, value = context.task_ordinal === 1 || selected === "unchanged" ? 2 : 3;
@@ -179,7 +185,9 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     root = f.configuration.target_root;
     const verifier = taskProgress ? taskProgressValidationProfile(f.base, selected === "unchanged") : validation ? createValidationProfileFixture(f.base, { testRef: "TEST-001" }) : null;
     if (verifier) f.validationProfile = verifier.profileRef;
+    if (objectiveCompletion) f.sessionObjective = "Learn through an explicitly admitted bounded SPIKE";
     const auth = await bootstrapMixed(f), operations = createStandardWorkflowOperations({ targetRoot: root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+    if (objectiveCompletion) f.objectiveCompletionAuthorization = auth;
     if (work) { auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 60000; }
     // The expanded offline audit corpus fixes its bounded budget before the first allocation.
     if (audit) { auth.global_deadline_ms += 3600000; auth.workflow_deadline_ms += 3600000; }
@@ -195,7 +203,7 @@ export async function verifyCyclePlanExecution(check, { mixedFixture, bootstrapM
     const admitted = await operations.admitCycle();
     assert.equal(admitted.outcome, "completed", JSON.stringify(admitted));
     prepared = await operations.prepareCycle({ session_id: "S001", cycle_id: "C001", cycle_type: "feature", title: "planning",
-      objective: "Execute real mixed bootstrap", continuity_rule: admitted.observations.lifecycle.continuity_rule, base_branch: admitted.observations.lifecycle.continuity_base_branch });
+      objective: objectiveCompletion ? "Determine whether a bounded prototype is useful" : "Execute real mixed bootstrap", continuity_rule: admitted.observations.lifecycle.continuity_rule, base_branch: admitted.observations.lifecycle.continuity_base_branch });
     assert.equal(prepared.can_apply, true, JSON.stringify(prepared));
     assert.equal((await operations.initializeCycle(prepared, { write: true, expectPlan: prepared.plan_sha256 })).outcome, "completed");
     prepared = await operations.prepareCycleContext({ session_id: "S001" });

@@ -8,6 +8,7 @@ import { cycleCloseCompletionBoundary } from "./standard-drift-recovery.mjs";
 import { runCycleCloseAdmitUseCase } from "./cycle-close-admit-use-case.mjs";
 import { runGatingEvaluateUseCase } from "./gating-evaluate-use-case.mjs";
 import { runSkillHookUseCase } from "./skill-hook-use-case.mjs";
+import { defaultCycleCloseHookArguments, runCycleCloseHookUseCase } from "./cycle-close-hook-use-case.mjs";
 import { createLocalProcessAdapter } from "../../adapters/runtime/local-process-adapter.mjs";
 import { cycleClosePaths, cycleCloseCompletionPaths, renderStandardCycleCloseCompletion } from "../../core/workflow/standard-cycle-close-render.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
@@ -25,7 +26,7 @@ const openGate = gate => gate?.result === "ok" && gate.levels?.level1?.decision 
 
 // readRecorded is a trusted capability authenticating the accepted terminal
 // record and its human/audit provenance. JSON never supplies a successful hook.
-export function createStandardCycleCloseHook({ targetRoot, readRecorded, observeContext, readCurrent, now = Date.now }) {
+export function createStandardCycleCloseHook({ targetRoot, readRecorded, observeContext, readCurrent, readObjectiveCompletion = null, now = Date.now }) {
   if ([readRecorded, observeContext, readCurrent].some(value => typeof value !== "function")) fail("STANDARD_CYCLE_CLOSE_HOOK_AUTHORITY_REQUIRED");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
   const events = () => {
@@ -34,7 +35,8 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     if (bytes.length && bytes.at(-1) !== 10) fail("STANDARD_CYCLE_CLOSE_HOOK_EVENT_LOG_INVALID");
     return bytes;
   };
-  const gate = completionCycleId => runGatingEvaluateUseCase({ targetRoot: root, runtimeDir, completionCycleId, args: {
+  const gate = (instance, completionCycleId) => runGatingEvaluateUseCase({ targetRoot: root, runtimeDir, completionCycleId,
+    readObjectiveCompletion: readObjectiveCompletion === null ? null : () => readObjectiveCompletion(instance), args: {
     cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
     stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
     thresholdFiles: 3, thresholdMinutes: 45, mode: "COMMITTING", runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
@@ -63,7 +65,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     if (!/^op_[a-f0-9]{40}$/.test(operationId ?? "")) fail("STANDARD_CYCLE_CLOSE_HOOK_OPERATION_INVALID");
     if (!valid(input, inputSchema)) fail("STANDARD_CYCLE_CLOSE_HOOK_INPUT_INVALID");
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" };
-    const { observed, selected } = await source(instance, input), gating = await gate(observed.context.cycle_id);
+    const { observed, selected } = await source(instance, input), gating = await gate(instance, observed.context.cycle_id);
     if (!openGate(gating)) return { can_apply: false, reason_code: "STANDARD_CYCLE_CLOSE_HOOK_GATE_REQUIRED", gate: gating };
     const before = events(), context = observed.context;
     const plan = { contract_version: "standard-cycle-close-hook-plan.v1", input, operation_id: operationId, prepared_at_ms: at, context_sha256: observed.context_sha256,
@@ -86,6 +88,15 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
         || typeof assertAuthorized !== "function" || now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_CYCLE_CLOSE_HOOK_EXPLICIT_EFFECT_REQUIRED"); }
       catch (cause) { cause.effect_status = "no_effect"; throw cause; }
       return artifacts.withLocalEffectOwner(expectPlan, async () => {
+        const assertEffectAuthorized = async () => {
+          // Observation/authentication may yield. The operation grant is checked
+          // last, then synchronous TTL/process fences precede the next effect.
+          if (readObjectiveCompletion !== null) await readObjectiveCompletion(instance);
+          await assertAuthorized();
+          if (now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000
+            || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256)
+            fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
+        };
         let before;
         try {
           const fresh = await prepare(instance, plan.input, plan.operation_id, plan.prepared_at_ms, true);
@@ -94,13 +105,28 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
           const current = await source(instance, plan.input);
           if (current.observed.context_sha256 !== plan.context_sha256 || shadowHash(current.selected.plan) !== plan.record_plan_sha256
             || shadowHash(current.selected.output) !== plan.record_output_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
-            || !openGate(await gate(plan.scope.cycle_id)) || now() - plan.prepared_at_ms > 300000) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
+            || !openGate(await gate(instance, plan.scope.cycle_id)) || now() - plan.prepared_at_ms > 300000) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
+          before = events(); if (before.length !== plan.event_log.bytes || artifactContentHash(before) !== plan.event_log.sha256) fail("STANDARD_PREVIEW_CHANGED");
+          await assertEffectAuthorized();
           before = events(); if (before.length !== plan.event_log.bytes || artifactContentHash(before) !== plan.event_log.sha256) fail("STANDARD_PREVIEW_CHANGED");
         } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
         let hook = null; const completionCommitted = [];
         try {
           const runId = "process_close_" + plan.operation_id.slice(3), started = now();
-          hook = runSkillHookUseCase({ args: { skill: "cycle-close", mode: "COMMITTING", strict: true, noAutoSkipGate: true, runId }, perfDir: runtimeDir, targetRoot: root, processAdapter: createLocalProcessAdapter() });
+          if (readObjectiveCompletion !== null) {
+            const payload = await runCycleCloseHookUseCase({ targetRoot: root, runtimeDir,
+              args: { ...defaultCycleCloseHookArguments(runtimeDir), mode: "COMMITTING", runId, autoSkipGateOnNoSignal: false },
+              assertEffectAuthorized,
+              readObjectiveCompletion: async () => {
+                const completed = await readObjectiveCompletion(instance);
+                await assertAuthorized();
+                if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
+                  || now() < plan.prepared_at_ms || now() - plan.prepared_at_ms > 300000) fail("STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED");
+                return completed;
+              } });
+            hook = { ok: payload.ok, skill: "cycle-close", tool: "cycle-close-hook.mjs", mode: "COMMITTING", target: root,
+              state_mode: payload.state_mode, strict: true, invocation: "in_process_authenticated_objective_completion", result: payload.result, payload };
+          } else hook = runSkillHookUseCase({ args: { skill: "cycle-close", mode: "COMMITTING", strict: true, noAutoSkipGate: true, runId }, perfDir: runtimeDir, targetRoot: root, processAdapter: createLocalProcessAdapter() });
           const payload = hook.payload, checkpoint = payload?.checkpoint;
           if (hook.ok !== true || hook.strict !== true || hook.state_mode !== plan.scope.state_mode || payload?.ok !== true || payload.result !== "ok" || payload.skill !== "cycle-close"
             || payload.target_root !== root || payload.branch !== plan.scope.branch || payload.mode !== "COMMITTING" || payload.action !== "cycle_close_allowed"
@@ -117,7 +143,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
             || event.ts !== checkpoint.ts || !Number.isFinite(Date.parse(event.ts)) || Date.parse(event.ts) < started || Date.parse(event.ts) > now()) fail("STANDARD_CYCLE_CLOSE_HOOK_EVENT_UNCONFIRMED");
           await assertAuthorized();
           const current = await source(instance, plan.input);
-          if (now() - plan.prepared_at_ms > 300000 || current.observed.context_sha256 !== plan.context_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(plan.scope.cycle_id))) fail("STANDARD_CYCLE_CLOSE_HOOK_POSTCONDITION_FAILED");
+          if (now() - plan.prepared_at_ms > 300000 || current.observed.context_sha256 !== plan.context_sha256 || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || !openGate(await gate(instance, plan.scope.cycle_id))) fail("STANDARD_CYCLE_CLOSE_HOOK_POSTCONDITION_FAILED");
           // Only after the actual checkpoint is confirmed may current metadata
           // stop asking for that hook. An interrupted suffix retains ownership;
           // the already executed checkpoint must not be run again automatically.
@@ -128,6 +154,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
           });
           const changes = renderStandardCycleCloseCompletion({ cyclePath: current.observed.context.cycle_path, context: current.observed.context,
             documents: beforeDocs, runId, eventSha256: shadowHash(event), completedAt: Date.parse(checkpoint.ts) });
+          await assertEffectAuthorized();
           const metadata = [];
           for (const [index, change] of changes.entries()) { metadata.push(artifacts.compareAndSwapPreservingMetadata({ ...change,
             before_metadata_sha256: plan.completion_preimages[index].metadata_sha256, after: change.text_chunks.join("") }).metadata_sha256); completionCommitted.push(change.path); }

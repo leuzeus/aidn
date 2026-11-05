@@ -64,7 +64,7 @@ function runReloadCheck(runtimeDir, targetRoot, cachePath, stateMode, indexFile,
   });
 }
 
-async function detectSignals(targetRoot, args, reloadResult, gitAdapter, completionContext = null, verifyObjectiveAlignment = null) {
+async function detectSignals(targetRoot, args, reloadResult, gitAdapter, completionContext = null, verifyObjectiveAlignment = null, readObjectiveCompletion = null) {
   const observations = await collectGatingObservations({
     targetRoot,
     eventFile: args.eventFile,
@@ -142,6 +142,29 @@ async function detectSignals(targetRoot, args, reloadResult, gitAdapter, complet
       throw Error("STANDARD_OBJECTIVE_ALIGNMENT_GATE_CHANGED");
     levels = derive(fresh.observations, { ...signal, objective_delta: false });
   }
+  // Admission consumes an already accepted physical completion. It cannot use
+  // the finalizer's effect capability or manufacture a drift completion event.
+  if (readObjectiveCompletion !== null) {
+    if (typeof readObjectiveCompletion !== "function" || verifyObjectiveAlignment !== null || args.completeDriftCheck === true)
+      throw Error("STANDARD_OBJECTIVE_COMPLETION_GATE_INVALID");
+    const eligible = value => value.levels.level1.decision !== "stop" && !value.levels.level3.required
+      && shadowHash(value.levels.level2.active_signals) === shadowHash(["objective_delta"]);
+    if (eligible({ levels })) {
+      const completed = await readObjectiveCompletion();
+      if (completed !== null) {
+        const fresh = await detectSignals(targetRoot, args, reloadResult, gitAdapter, completionContext);
+        if (!eligible(fresh) || shadowHash(fresh.levels) !== shadowHash(levels)
+          || completed.session_objective !== fresh.observations.sessionObjective || completed.cycle_objective !== fresh.observations.cycleGoal
+          || observations.sessionObjective !== fresh.observations.sessionObjective || observations.cycleGoal !== fresh.observations.cycleGoal)
+          throw Error("STANDARD_OBJECTIVE_COMPLETION_GATE_CHANGED");
+        // Reauthenticate after observation even for a no-event preview. Reads
+        // do not renew the retained review's TTL or bypass process/context CAS.
+        if (shadowHash(await readObjectiveCompletion()) !== shadowHash(completed)) throw Error("STANDARD_OBJECTIVE_COMPLETION_GATE_CHANGED");
+        objectiveAlignment = completed;
+        levels = derive(fresh.observations, { ...signal, objective_delta: false });
+      }
+    }
+  }
   return { levels, repairLayerObserved: observations.repairLayerObserved, observations, objectiveAlignment };
 }
 
@@ -165,7 +188,7 @@ export function printHumanGatingResult(result) {
   }
 }
 
-export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, completionCycleId = null, verifyObjectiveAlignment = null }) {
+export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, completionCycleId = null, verifyObjectiveAlignment = null, readObjectiveCompletion = null, assertEventAuthorized = null }) {
   const started = Date.now();
   const gitAdapter = createLocalGitAdapter();
   args.cache = resolveRuntimeTargetPath(targetRoot, args.cache);
@@ -219,7 +242,7 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, c
       args.indexBackend,
     );
   }
-  const { levels, repairLayerObserved, objectiveAlignment } = await detectSignals(targetRoot, args, reload, gitAdapter, completionContext, verifyObjectiveAlignment);
+  const { levels, repairLayerObserved, objectiveAlignment } = await detectSignals(targetRoot, args, reload, gitAdapter, completionContext, verifyObjectiveAlignment, readObjectiveCompletion);
   if (completionRefusal) {
     levels.level1.decision = "stop";
     levels.level1.reason_codes = [...new Set([...levels.level1.reason_codes, completionRefusal])];
@@ -274,9 +297,13 @@ export async function runGatingEvaluateUseCase({ args, targetRoot, runtimeDir, c
     // wait, immediately before the synchronous append. A revoked, expired or
     // replaced disposition must leave even the existing log prefix unchanged.
     if (objectiveAlignment !== null) {
-      const currentAlignment = await verifyObjectiveAlignment();
+      const currentAlignment = await (verifyObjectiveAlignment ?? readObjectiveCompletion)();
       if (shadowHash(currentAlignment) !== shadowHash(objectiveAlignment))
         throw Error("STANDARD_OBJECTIVE_ALIGNMENT_GATE_CHANGED");
+    }
+    if (assertEventAuthorized !== null) {
+      if (typeof assertEventAuthorized !== "function") throw Error("STANDARD_GATE_EVENT_AUTHORITY_INVALID");
+      await assertEventAuthorized();
     }
     if (objectiveAlignment !== null) eventPayload.objective_alignment_sha256 = shadowHash(objectiveAlignment);
     result.event_file = appendRuntimeNdjsonEvent(args.eventFile, eventPayload);

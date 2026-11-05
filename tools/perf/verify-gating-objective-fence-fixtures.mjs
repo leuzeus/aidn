@@ -113,6 +113,45 @@ try {
       pass(`owned evaluator ${scenario}: event effect and preserved prefix verified`);
     }
   }
+  for (const scenario of ["preview", "checkpoint", "missing", "revoked", "expired", "replaced", "goals", "scope", "stop", "l3", "json-only", "effect-revoked"]) {
+    fs.writeFileSync(eventFile, prefix);
+    let reads = 0, verifications = 0, authorized = true, clock = 100, effectChecks = 0;
+    globalThis.objectiveFenceFixture = { async observe() {
+      reads++; await new Promise(resolve => setImmediate(resolve));
+      const value = observations(); value.latestDriftMs = Date.now();
+      if (reads === 2) {
+        if (scenario === "revoked") authorized = false;
+        if (scenario === "expired") clock = 300101;
+        if (scenario === "goals") value.cycleGoal = "Changed goal";
+        if (scenario === "scope") value.changedFiles = ["a", "b", "c", "d"];
+        if (scenario === "stop") value.canonicalIntentFailureReason = "REQUIRED_ARTIFACT_MISSING";
+        if (scenario === "l3") value.repairLayerBlocking = true;
+      }
+      return value;
+    } };
+    const input = { ...args(), emitEvent: ["checkpoint", "effect-revoked"].includes(scenario), completeDriftCheck: false };
+    if (scenario === "json-only") input.readObjectiveCompletion = alignment;
+    const run = () => runGatingEvaluateUseCase({ targetRoot: root, runtimeDir: root, args: input,
+      ...(scenario === "json-only" ? {} : { readObjectiveCompletion: async () => {
+        verifications++; assert.equal(authorized, true, "fixture completion revoked");
+        assert.ok(clock - alignment.prepared_at_ms <= 300000, "fixture completion expired");
+        return scenario === "missing" ? null : { ...alignment, ...(scenario === "replaced" && reads === 2 ? { source_event_id: "replacement" } : {}) };
+      } }), assertEventAuthorized: () => { effectChecks++; assert.notEqual(scenario, "effect-revoked", "fixture effect authorization revoked"); } });
+    if (["preview", "checkpoint", "missing", "json-only"].includes(scenario)) {
+      const result = await run(); assert.equal(result.result, ["missing", "json-only"].includes(scenario) ? "warn" : "ok");
+      if (scenario === "checkpoint") {
+        const event = JSON.parse(fs.readFileSync(eventFile).subarray(prefix.length));
+        assert.equal(event.event, "gating_summary"); assert.equal(event.skill, "gating-evaluate"); assert.equal(effectChecks, 1);
+      } else { assert.deepEqual(fs.readFileSync(eventFile), prefix); assert.equal(effectChecks, 0); }
+    } else {
+      await assert.rejects(run(), scenario === "revoked" ? /completion revoked/ : scenario === "expired" ? /completion expired/
+        : scenario === "effect-revoked" ? /effect authorization revoked/ : /STANDARD_OBJECTIVE_COMPLETION_GATE_CHANGED/);
+      assert.deepEqual(fs.readFileSync(eventFile), prefix);
+    }
+    if (scenario === "preview") { assert.equal(reads, 2); assert.equal(verifications, 2); }
+    if (scenario === "checkpoint") assert.equal(verifications, 3);
+    pass(`completion admission ${scenario}: independent reobservation, exact proof and no synthetic completion event`);
+  }
   // Exercise the production finalizer with an artifact effect spy. Its exact
   // schema/plan/owner flow and real Git ignore check run; no canonical DB claim.
   fs.mkdirSync(path.join(root, "docs/audit"), { recursive: true });

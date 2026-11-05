@@ -1,5 +1,27 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## SOURCE60 completion admission and closure candidate, 2026-11-05
+
+The operation host now binds the completion reader to signed operation and
+accepted evaluation/disposition readers, canonical report bytes and a fixed
+physical event-log reader. Cycle-close admission consumes it independently in
+read-only gating. The existing CLI cycle-close hook and the owned in-process
+invocation share the production hook use case and checkpoint. No JSON supplies
+this capability; preview emits no completion event. Other signals and STOP
+remain blocking. Checkpoint and completion writes recheck operation authority,
+TTL and process CAS after asynchronous evidence reads. Effects already started
+retain UNKNOWN and the owner on subsequent refusal.
+
+This candidate requires the exact diagnostic/context/HEAD to remain current.
+The scenario diagnoses after terminal transition/checkpoint; no general causal
+bridge or expiry renewal is implemented. A new scenario-authored mixed fixture
+requests actual host cycle-close and cold reconstruction after authenticated
+fixture alignment. Its result must be recorded separately after frozen-source
+execution. Published review/diagnosis routes, session boundaries, full193/current
+contracts/Governance Admission, general L4, genuine actors and installed proof
+remain due. The entire L1-L8/A1-A10 goal remains incomplete.
+
+
 ## SOURCE59 read-only completion evidence primitive, 2026-11-05
 
 A separate internal reader now requires an accepted confirmed v3 finalization,

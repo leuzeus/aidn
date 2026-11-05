@@ -210,6 +210,20 @@ try {
         const eventFile = path.join(root, '.aidn/runtime/perf/workflow-events.ndjson'), beforeHook = fs.readFileSync(eventFile);
         await assert.rejects(hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => { throw Object.assign(Error('fixture denied'), { code: 'FIXTURE_GRANT_DENIED' }); } }), { code: 'FIXTURE_GRANT_DENIED' });
         assert.deepEqual(fs.readFileSync(eventFile), beforeHook); assert.equal(artifacts.ownerPending(), false);
+        if (process.argv.includes("--delayed-hook-fences")) {
+          for (const fault of ["revoked", "expired"]) {
+            let clock = Date.now(), lost = false;
+            const probe = createStandardCycleCloseHook({ targetRoot: root, readRecorded: async () => ({ record_operation_id: op, plan: preview.plan, output: result }),
+              observeContext, readCurrent: () => instance, now: () => clock,
+              readObjectiveCompletion: async () => { await new Promise(resolve => setImmediate(resolve)); lost = true;
+                if (fault === "expired") clock = hookPlan.plan.prepared_at_ms + 300001; return null; } });
+            await assert.rejects(probe.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256,
+              assertAuthorized: () => { if (lost && fault === "revoked") throw Error("fixture delayed grant revoked"); } }),
+              error => error.effect_status === "no_effect" && (fault === "revoked" ? /delayed grant revoked/.test(error.message) : error.code === "STANDARD_CYCLE_CLOSE_HOOK_SOURCE_CHANGED"));
+            assert.deepEqual(fs.readFileSync(eventFile), beforeHook); assert.equal(artifacts.ownerPending(), false);
+            pass(`closure ${fault} during awaited evidence read refuses before checkpoint effects`);
+          }
+        }
         if (finalFault === 'suffix') {
           assert.notEqual(mode, 'files'); const db = new (getDatabaseSync())(resolveRuntimeSqliteFile({ targetRoot: root }));
           try { db.exec(`CREATE TRIGGER fixture_abort_close_completion BEFORE INSERT ON artifacts WHEN NEW.path='${cycle}/status.md' AND CAST(NEW.content AS TEXT) LIKE '%"cycle_close_completed": true%' BEGIN SELECT RAISE(ABORT,'fixture completion suffix'); END`); }
@@ -226,7 +240,7 @@ try {
             return write(file, ...args);
           }; }
           finalized = await hook.apply(instance, hookPlan, { write: true, expectPlan: hookPlan.plan_sha256, assertAuthorized: () => {
-            grants++; if (finalFault === 'grant_after' && grants === 2) throw Object.assign(Error('fixture authorization revoked after checkpoint'), { code: 'FIXTURE_GRANT_REVOKED_AFTER_HOOK' });
+            grants++; if (finalFault === 'grant_after' && fs.statSync(eventFile).size > beforeHook.length) throw Object.assign(Error('fixture authorization revoked after checkpoint'), { code: 'FIXTURE_GRANT_REVOKED_AFTER_HOOK' });
           } });
         } finally { fs.openSync = open; fs.writeFileSync = write; }
         const afterHook = fs.readFileSync(eventFile); assert.notDeepEqual(afterHook, beforeHook);

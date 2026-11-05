@@ -66,6 +66,7 @@ import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
 import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
 import { createStandardObjectiveDisposition } from "./standard-drift-objective-disposition.mjs";
+import { createStandardObjectiveCompletion } from "./standard-drift-objective-completion.mjs";
 import { createStandardControlInbox } from "./standard-workflow-control-inbox.mjs";
 import { createStandardPrReviewControlSource } from "./standard-session-pr-review-control-source.mjs";
 import { createStandardPrReviewReceiver } from "./standard-session-pr-review-receive.mjs";
@@ -217,6 +218,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     ? createStandardCycleTerminalCheckpoint({ targetRoot, now, readRecorded: readAcceptedTerminalRecord,
       observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   const cycleCloseHook = processAuthority ? createStandardCycleCloseHook({ targetRoot, now,
+    readObjectiveCompletion: instance => objectiveCompletion.read(instance),
     readRecorded: readAcceptedTerminalRecord, observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   function acceptedForPromotion(instance, id, binding, reason = "STANDARD_PROMOTION_ACCEPTED_SOURCE_REQUIRED") {
     const record = retained(id).record, result = record.results.at(-1);
@@ -603,6 +605,21 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const objectiveDisposition = createStandardObjectiveDisposition({ now, human,
     readOperation: id => retained(id).record,
     assertFresh: async (instance, review) => { processAuthority.authenticate(instance); await recovery.assertFresh(instance, review); } });
+  const objectiveCompletion = processAuthority ? createStandardObjectiveCompletion({ now,
+    readOperation: id => retained(id).record,
+    readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
+    readDisposition: (instance, input, verified) => objectiveDisposition.read(instance, input, verified),
+    readCurrent: id => current(id).record,
+    readReport: name => artifacts.read(name, { required: true }),
+    readEvent: ({ file, offset }) => {
+      if (file !== ".aidn/runtime/perf/workflow-events.ndjson" || !Number.isSafeInteger(offset) || offset < 0)
+        fail("STANDARD_OBJECTIVE_COMPLETION_EVENT_CHANGED");
+      const bytes = readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, file)), { json: false, maxBytes: 4194304 }).value;
+      const end = bytes.indexOf(10, offset);
+      if (offset > 0 && bytes[offset - 1] !== 10 || end < offset || end - offset >= 65536)
+        fail("STANDARD_OBJECTIVE_COMPLETION_EVENT_CHANGED");
+      return bytes.subarray(offset, end + 1);
+    } }) : null;
   function verifyHumanRecord(record, signal) {
     const accepted = current(record.intent.instance_id).record.events.some(event => event.kind === "operation_result"
       && event.receipt.operation_id === record.operation_id && record.results.some(result => shadowHash(result.receipt) === shadowHash(event.receipt)));
