@@ -67,6 +67,13 @@ function readNativeAsset(root, relative, beforeObserve) {
     ? readBytes(localAbsolute(root, relative))
     : readBytes(localPath(root, relative, beforeObserve), undefined, beforeObserve);
 }
+function readLocalRecord(root, relative, beforeObserve) {
+  // These legacy reads observe only localPath, not readBytes. Keep that exact
+  // callback boundary; without a callback retain the complete final scan once.
+  return beforeObserve == null
+    ? readBytes(localAbsolute(root, relative))
+    : readBytes(localPath(root, relative, beforeObserve));
+}
 function parse(bytes) {
   if (bytes === null) return null;
   try { return JSON.parse(bytes.toString("utf8")); } catch { fail("ACTIVATION_INVALID_JSON"); }
@@ -195,7 +202,7 @@ function validateNativeAssets(root, assets, globalRuntime = null, beforeObserve)
 }
 
 function validateReceipt(identity, { globalRecoveryPlanId, beforeObserve } = {}) {
-  const bytes = readBytes(localPath(identity.target_root, RECEIPT, beforeObserve));
+  const bytes = readLocalRecord(identity.target_root, RECEIPT, beforeObserve);
   if (bytes === null) return null;
   const receipt = unseal(parse(bytes)), root = identity.target_root;
   if (receipt.schema_version !== 1 || receipt.scope !== "codex-integration" || receipt.root_id !== identity.root_id || !object(receipt.assets)) fail("ACTIVATION_INVALID_RECEIPT");
@@ -220,12 +227,12 @@ function validateReceipt(identity, { globalRecoveryPlanId, beforeObserve } = {})
     resolveGlobalProjectBinding(receipt.global_runtime, { recoveryPlanId: globalRecoveryPlanId, beforeObserve });
   } else {
     const packageRoot = physicalDirectory(binding.root, false, beforeObserve);
-    const version = readBytes(localPath(packageRoot, "VERSION", beforeObserve)), entry = readBytes(localPath(packageRoot, binding.entry, beforeObserve));
+    const version = readLocalRecord(packageRoot, "VERSION", beforeObserve), entry = readLocalRecord(packageRoot, binding.entry, beforeObserve);
     if (!version || !entry || version.toString("utf8").trim() !== binding.version || hash(version) !== binding.version_sha256 || hash(entry) !== binding.entry_sha256) fail("ACTIVATION_PACKAGE_CHANGED");
   }
   const id = receipt.last_transaction;
   if (typeof id !== "string" || !/^[a-f0-9]{32}$/.test(id)) fail("ACTIVATION_COMPLETION_MISSING");
-  const tx = unseal(parse(readBytes(localPath(root, `.aidn/install/transactions/${id}.json`, beforeObserve))));
+  const tx = unseal(parse(readLocalRecord(root, `.aidn/install/transactions/${id}.json`, beforeObserve)));
   const externalComplete = tx.external_status === "complete"
     || (["rollback", "uninstall"].includes(tx.action) && tx.external_status === "skipped");
   if (tx.schema_version !== 1 || tx.id !== id || tx.root_id !== identity.root_id || !["codex-integration", "installation"].includes(tx.scope)

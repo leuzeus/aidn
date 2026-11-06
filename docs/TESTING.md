@@ -1,5 +1,31 @@
 # Testing Guide
 
+## Adjacent installation-record scans, 2026-11-06
+
+The activation fixture retains all earlier assertions and adds four checks for
+the receipt, package VERSION/entry and completed transaction reads. With null or
+undefined observers, each retains one complete final ancestor/leaf scan before
+the original size and content read. An observer retains both original scans and
+its original two leaf callbacks; these record reads never supplied that callback
+to the final read. Mutation at the final callback must still refuse. A fresh read
+after an await rejects changed, missing, oversized and hardlinked records.
+Nonmutating reads and the existing ancestor-redirection checks remain required.
+Migration/pending guards, authority reads and transaction-operation validation
+are unchanged. No observation is cached across calls or awaits.
+
+A newly instrumented first FILES report writer on the preceding source reached
+its durable return inside the original 15-second worker bound. Its pre-ownership
+interval contained 28 complete child pairs and 126 bounded FS samples; this
+identified activation and scope readers as actual callers. The trace lost one
+post-ownership FS sample at its byte cap, and instrumentation overhead is unknown.
+The selected fixture also exercised cold disposition, one original receipt,
+acceptance and replay/SIM, with fixture admission/consent below the ordinary host.
+It establishes no causal speedup, complete trace, full63, general L4, productive
+STANDARD, required193, genuine actors or installed-client qualification. The
+earlier uninstrumented timeout remains. This changed source needs its own
+activation, authored-loader, real-writer and full ordered qualifications under
+their existing bounds and separately frozen preparations.
+
 ## Adjacent native-asset path scans, 2026-11-06
 
 The activation suite retains every previous assertion and checks the native

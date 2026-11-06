@@ -1,5 +1,26 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Adjacent installation-record scan candidate, 2026-11-06
+
+A freshly instrumented first FILES writer on the preceding source reached its
+durable return under the original 15-second bound. Its named pre-ownership
+callers include activation, workspace, scope and closure readers. All 28 child
+pairs and 126 FS samples before ownership are retained; one later FS sample was
+dropped at the byte cap. Overhead remains unknown, and the earlier uninstrumented
+timeout remains a failure. This is one fixture-authorized writer/disposition/
+acceptance/replay/SIM component, not productive STANDARD or general L4.
+
+The candidate removes only the adjacent first scan from four callback-free
+installation-record reads: receipt, package VERSION/entry and transaction.
+Lexical validation, the complete final scan, size/content/integrity comparisons
+and the original observer path remain. Native callbacks, pending/migration
+guards, Git reads, temporal fences, authorities, consent and accounting are
+unchanged. Four added fixture checks cover read-only scan counts, exact observer
+callbacks, mutation and fresh refusal after an await. Qualification of this
+changed source, explicit pins/assets, full63, required193, all resources and
+productive complete STANDARD, ordinary entries, genuine actors and exact
+installation remain due. ENTIRE L1-L8/A1-A10 stays active/incomplete.
+
 ## Adjacent native-asset scan candidate, 2026-11-06
 
 The synchronous callback-free activation reader can combine relative-name

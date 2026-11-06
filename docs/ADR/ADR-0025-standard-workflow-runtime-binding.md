@@ -1,5 +1,25 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Adjacent installation-record scan candidate, 2026-11-06
+
+Four activation reads previously called localPath immediately before readBytes:
+the receipt, package VERSION/entry and completed transaction. Without an
+observer, the first complete scan duplicates the immediately following scan.
+Retain lexical relative-path validation and the complete final scan, then the
+same existence, size, content, integrity and binding comparisons. With any
+observer value, preserve the original path and its callback/error behavior;
+these reads observed localPath only. Native-asset callback behavior remains
+distinct. Pending/migration guards, operation-path validation, authority reads,
+Git order/environments and every later fence remain independent and fresh.
+
+A new exact-source diagnostic names the real first writer's pre-ownership
+callers, but its overhead is unknown and its bounded trace lost one later FS
+sample. Its selected fixture success does not replace an earlier timeout or
+qualify this candidate. Explicit pin authoring, fresh component/loaders/writer
+qualification, full63, general L4 and the entire L1-L8/A1-A10 plan remain required.
+No public contract, effect authority, canonical store, historical record,
+consent lifetime, resource-closure rule or installed behavior changes here.
+
 ## Adjacent activation asset scan candidate, 2026-11-06
 
 Within one callback-free native-asset read, relative-path validation now feeds
