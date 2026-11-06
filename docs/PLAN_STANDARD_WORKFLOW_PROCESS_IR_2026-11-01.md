@@ -1,5 +1,19 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Contrat d'appels réutilisables L3 à implémenter, 2026-11-06
+
+La [proposition ciblée d'appels de sous-modèles](STANDARD_WORKFLOW_REUSABLE_CALLS_DESIGN_2026-11-06.md)
+relie la borne actuelle de 256 nœuds aux contrats qui supposent un arbre :
+validation du modèle, ascendance des données, résolution dans l'hôte et
+réducteur. Un `call.child` arborescent ne constitue pas une cible réutilisable
+versionnée. La proposition prépare des cibles v2 embarquées et épinglées,
+des paramètres/retours durables et une première expérience de plus de 256
+occurrences comprenant des opérations et des données authentifiées.
+Elle est non implémentée et non qualifiée ; aucun pin, modèle distribué,
+plafond, résultat historique ou autorisation n'est modifié par ce document.
+L3, le raccordement STANDARD productif et tous les critères L1–L8/A1–A10
+restent à terminer.
+
 ## Adjacent installation-record scan candidate, 2026-11-06
 
 A freshly instrumented first FILES writer on the preceding source reached its
