@@ -45,13 +45,24 @@ const open = (config, options = {}, authority = source()) => createStandardWorkf
   dispositionSource: authority }, options);
 
 if (process.argv.includes("--worker")) {
-  const config = JSON.parse(fs.readFileSync(process.argv.at(-1), "utf8"));
+  const configFile = process.argv.at(-1), config = JSON.parse(fs.readFileSync(configFile, "utf8"));
+  const mark = phase => fs.appendFileSync(configFile + ".phases.jsonl", JSON.stringify({ phase, at_ms: Date.now(), pid: process.pid }) + "\n");
+  mark("worker_entered");
   const host = open(config, { dispatchCheckpoint: async boundary => {
+    mark(boundary);
     if (boundary === config.boundary) {
-      process.send({ boundary, identity: observeLocalProcess(process.pid) });
+      // Reuse this process's already OS-observed creation identity from its
+      // durable dispatch/fence. A second PowerShell query before termination
+      // adds no identity evidence; the parent still freshly verifies death.
+      const identity = config.plan
+        ? createStandardWorkflowArtifacts({ targetRoot: config.root }).resourceFence().read().record.process_identity
+        : createProcessDispatchRecordStore({ targetRoot: config.root, stateMode: config.mode }).read(config.operation_id).record.process_identity;
+      assert.equal(identity.pid, process.pid);
+      process.send({ boundary, identity });
       await new Promise(() => {});
     }
   } });
+  mark("host_opened");
   try {
     if (config.plan) await host.applyOperationDisposition(config.plan, { write: true, expectedPlanSha256: shadowHash(config.plan) });
     else await host.dispatch(config.operation_id, { write: true });
@@ -70,7 +81,7 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
   const pass = name => { checks++; report(name); };
   async function setup(name) {
     const times = { setup_started_ms: Date.now() };
-    const config = { root: createStandardWorkflowFixture(mode, owned), key: randomBytes(32).toString("hex"), name };
+    const config = { root: createStandardWorkflowFixture(mode, owned), mode, key: randomBytes(32).toString("hex"), name };
     times.fixture_created_ms = Date.now();
     const host = open(config), preview = host.initialize({ instanceId: "disposition" });
     host.initialize({ instanceId: "disposition", write: true, expectedResultSha256: preview.record.instance_sha256 });
@@ -84,10 +95,10 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
     const file = path.join(retained, config.name + "-" + boundary + ".json");
     fs.writeFileSync(file, JSON.stringify({ ...config, boundary, plan }));
     const child = fork(here, ["--worker", file], { cwd: config.root, windowsHide: true, stdio: ["ignore", "pipe", "pipe", "ipc"] });
-    let stderr = "", message;
+    let stderr = "", message, timerExpired = false, exit;
     child.stdout.resume(); child.stderr.on("data", bytes => { stderr += bytes; if (stderr.length > 16384) child.kill(); });
     const ended = new Promise(resolve => child.once("close", (code, signal) => resolve({ code, signal })));
-    const timer = setTimeout(() => child.kill(), 15000);
+    const timer = setTimeout(() => { timerExpired = true; child.kill(); }, 15000);
     try {
       message = await new Promise((resolve, reject) => {
         child.once("error", reject);
@@ -95,10 +106,14 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
         child.once("close", () => reject(Error("WORKER_CLOSED_BEFORE_BOUNDARY:" + stderr.slice(-2048))));
       });
       child.kill();
-      const exit = await ended;
+      exit = await ended;
       assert.equal(observeLocalProcessOwner(message.identity), "terminated");
-      fs.writeFileSync(file + ".exit.json", JSON.stringify({ message, exit, stderr, actual_process_termination: true }));
-    } finally { clearTimeout(timer); if (child.exitCode === null && child.signalCode === null) { child.kill(); await ended; } }
+    } finally {
+      clearTimeout(timer); if (child.exitCode === null && child.signalCode === null) child.kill();
+      exit ??= await ended;
+      fs.writeFileSync(file + ".exit.json", JSON.stringify({ message: message ?? null, exit, stderr, timer_expired: timerExpired,
+        original_worker_bound_ms: 15000, actual_process_termination: true, target_boundary_observed: Boolean(message) }));
+    }
   }
   const prepare = (host, config) => host.prepareOperationDisposition(config.operation_id, { expectedSha256: host.inspect("disposition").record.instance_sha256 });
   const apply = (host, plan) => host.applyOperationDisposition(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
