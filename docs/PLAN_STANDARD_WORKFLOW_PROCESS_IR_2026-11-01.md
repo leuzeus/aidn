@@ -1,5 +1,19 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Pre-acquisition control-intention candidate, 2026-11-05
+
+A signed bounded operation control intention now precedes disposition and
+acceptance fence acquisition. It retains the proposed token/OS creation identity,
+exact plan, verified disposition grant, signed inventory, prefix and original
+journal/receipt/audit hashes. Only an authenticated matching abandoned token can
+transfer after fresh owner observation and canonical CAS; another attempt keeps
+old grants and needs new permission. It proves no external-resource closure.
+Two appended real-worker crash cases cover the reservation/acquisition gap;
+their qualification is pending on this source. The earlier full36 failure remains.
+General discovery/disposition for all domains, every crash and concurrency
+boundary, productive complete STANDARD, ordinary entries, required193, genuine
+actors, installed archive and the entire L1-L8/A1-A10 remain incomplete.
+
 ## Retained-resource inventory foundation candidate, 2026-11-05
 
 General L4 now starts with an internal signed read-only inventory from the

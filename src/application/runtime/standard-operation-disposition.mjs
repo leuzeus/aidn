@@ -15,6 +15,9 @@ import planSchema from "../../core/contracts/workflow-definition/process-operati
 import recordSchema from "../../core/contracts/workflow-definition/process-operation-disposition.v1.schema.json" with { type: "json" };
 import requestSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-request.v1.schema.json" with { type: "json" };
 import grantSchema from "../../core/contracts/workflow-definition/process-disposition-authorization-grant.v1.schema.json" with { type: "json" };
+import controlSchema from "../../core/contracts/workflow-definition/process-operation-control-intent.v1.schema.json" with { type: "json" };
+import fenceSchema from "../../core/contracts/workflow-definition/local-artifact-resource-fence.v1.schema.json" with { type: "json" };
+import { assertProcessReconciliationInventory } from "../../core/workflow/process-reconciliation-inventory.mjs";
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const bodyOf = ({ authentication, key_id, ...body }) => body;
@@ -29,6 +32,7 @@ const dispositionPath = id => {
   if (!/^op_[a-f0-9]{40}$/.test(id)) fail("PROCESS_DISPOSITION_ID_INVALID");
   return `workflows/operation-dispositions/${id}.json`;
 };
+const controlPath = id => dispositionPath(id).replace("operation-dispositions/", "operation-control-intents/");
 
 // These are implementation-owned resource profiles, not declarations accepted
 // from JSON. Extend them only with a real adapter and its closure qualification.
@@ -41,6 +45,9 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
   const acceptance = new AsyncLocalStorage();
   const dispositions = createWorkflowRecordStore({ targetRoot, stateMode, descriptor: { pathForId: dispositionPath,
     validate: assertRecord, idOf: row => row.operation_id, hashOf: shadowHash, kind: "process_operation_journal" } });
+  const controls = createWorkflowRecordStore({ targetRoot, stateMode, descriptor: { pathForId: controlPath,
+    validate(row) { if (!valid(row, controlSchema)) fail("PROCESS_CONTROL_INTENT_INVALID"); return row; },
+    idOf: row => row.operation_id, hashOf: shadowHash, kind: "process_operation_journal" } });
   let processIdentity;
   const runtime = () => shadowHash(artifacts.describe());
   function write(store, body, expected) {
@@ -62,6 +69,49 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
   }
   function saveDispatch(before, update) {
     return write(dispatches, { ...bodyOf(before.record), ...update, revision: before.record.revision + 1 }, before.content_sha256);
+  }
+  function readControls(id) {
+    const before = controls.read(id);
+    if (!before.record) return before;
+    signer.verify(before.record);
+    for (const attempt of before.record.attempts) {
+      signer.verify(attempt.plan); signer.verify(attempt.inventory);
+      assertProcessReconciliationInventory(attempt.inventory);
+      if (!valid(attempt.plan, planSchema) || attempt.plan.operation_id !== id
+        || attempt.plan.physical_root_sha256 !== shadowHash(artifacts.root)
+        || attempt.plan.runtime_sha256 !== runtime()
+        || attempt.inventory.instance_id !== attempt.plan.instance_id
+        || attempt.inventory.instance_sha256 !== attempt.instance_sha256
+        || attempt.inventory.scope_id !== attempt.plan.scope_id || attempt.inventory.model_sha256 !== attempt.plan.model_sha256
+        || attempt.inventory.physical_root_sha256 !== attempt.plan.physical_root_sha256
+        || !valid(attempt.resource_fence.record, fenceSchema) || attempt.resource_fence.record.state !== "held"
+        || attempt.resource_fence.record.physical_root_sha256 !== attempt.plan.physical_root_sha256)
+        fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
+      if (attempt.action === "disposition" && (!attempt.grant || !valid(attempt.grant.request, requestSchema)
+        || !valid(attempt.grant.grant, grantSchema) || attempt.grant.request.plan_sha256 !== shadowHash(attempt.plan)
+        || shadowHash(attempt.grant.request.plan) !== shadowHash(attempt.plan)
+        || attempt.grant.request.action !== "operation_disposition"
+        || attempt.grant.grant.request_sha256 !== shadowHash(attempt.grant.request)
+        || attempt.grant.verification?.outcome !== "verified"
+        || attempt.grant.verification.request_sha256 !== shadowHash(attempt.grant.request)
+        || attempt.grant.verification.grant_sha256 !== shadowHash(attempt.grant.grant)
+        || attempt.grant.verification.authority_id !== attempt.grant.grant.authority_id
+        || attempt.instance_sha256 !== attempt.plan.instance_sha256
+        || attempt.journal_sha256 !== attempt.plan.journal_sha256
+        || attempt.resource_fence.previous_sha256 !== attempt.plan.fence_sha256)) fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
+      if (attempt.action === "acceptance" && (attempt.grant !== null || !attempt.receipt_sha256 || !attempt.audit_sha256))
+        fail("PROCESS_CONTROL_INTENT_SUBJECT_CHANGED");
+    }
+    return before;
+  }
+  function reserveControl(before, attempt) {
+    if ((before.record?.attempts.length ?? 0) >= 32) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
+    const row = { contract_version: "process-operation-control-intent.v1", operation_id: attempt.plan.operation_id,
+      revision: (before.record?.revision ?? 0) + 1, attempts: [...(before.record?.attempts ?? []), attempt] };
+    // Refuse before acquiring a resource if retained proof exceeds the existing
+    // bounded record reader. Never discard an earlier attempt to make room.
+    if (Buffer.byteLength(JSON.stringify(row)) > 900000) fail("PROCESS_CONTROL_INTENT_STORAGE_BOUND");
+    return write(controls, row, before.content_sha256);
   }
   function assessment(record, capsule) {
     if (!capsule || capsule.phase !== "returned" || capsule.leases.some(row => row.status !== "released")
@@ -96,10 +146,10 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     // This operation's audit attempts are retained and authenticated separately.
     // Exclude only their own artifact from the pre-append business-resource fence,
     // so a crash before the journal CAS can resume without rewriting an old plan.
-    material.resources = material.resources.filter(row => !["artifact:" + dispositionPath(id), "artifact:" + LOCAL_ARTIFACT_FENCE_PATH].includes(row.ref));
+    material.resources = material.resources.filter(row => !["artifact:" + dispositionPath(id), "artifact:" + controlPath(id), "artifact:" + LOCAL_ARTIFACT_FENCE_PATH].includes(row.ref));
     return { operation, instance, capsule, inventory_sha256: shadowHash(material), assessment: assessment(operation, capsule),
       authority_sha256: shadowHash(readAuthority()), runtime_sha256: runtime(), physical_root_sha256: shadowHash(artifacts.root),
-      fence_sha256: artifacts.resourceFence().read().content_sha256 };
+      fence_sha256: artifacts.resourceFence().read().content_sha256, inventory_record: retained };
   }
   function subject(observed) {
     const { operation, instance, capsule } = observed;
@@ -217,10 +267,19 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       if (!(record.phase === "dispatching" || record.phase === "receipted" && (record.results.at(-1).receipt.effect_status === "unknown" || original)))
         fail("PROCESS_DISPOSITION_UNCERTAIN_OPERATION_REQUIRED");
       const grant = await currentGrant({ action: "operation_disposition", plan_sha256: shadowHash(plan), plan }, signal);
-      const ownedLease = previous.record && [previous.record.resource_fence, ...previous.record.attempts.map(row => row.resource_fence)]
+      const control = readControls(plan.operation_id), fence = artifacts.resourceFence();
+      const ownedLease = [...(previous.record ? [previous.record.resource_fence, ...previous.record.attempts.map(row => row.resource_fence)] : []),
+        ...(control.record?.attempts.map(row => row.resource_fence.record) ?? [])]
         .find(row => shadowHash(row) === shadowHash(artifacts.resourceFence().read().record));
-      const lease = artifacts.resourceFence().acquire({ expectedSha256: plan.fence_sha256, ...(ownedLease ? { dispositionLease: ownedLease } : {}) });
+      const prepared = fence.prepareAcquire({ expectedSha256: plan.fence_sha256 });
+      reserveControl(control, { action: "disposition", plan, grant, inventory: observed.inventory_record,
+        instance_sha256: observed.instance.instance_sha256, journal_sha256: shadowHash(record),
+        receipt_sha256: original ? shadowHash(original.receipt) : null, audit_sha256: previous.record ? shadowHash(previous.record) : null,
+        resource_fence: prepared });
+      await onBoundary("disposition_control_reserved", record.operation_id);
+      const lease = fence.acquire({ prepared, expectedSha256: plan.fence_sha256, ...(ownedLease ? { dispositionLease: ownedLease } : {}) });
       try {
+      await onBoundary("disposition_fence_acquired", record.operation_id);
       // All asynchronous authority calls finish before this exact fence CAS.
       // Reobserve the entire subject under the acquired fence before audit or
       // result writes. A second full scan immediately before this synchronous
@@ -246,9 +305,17 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       if (!before.record) return action();
       signer.verify(before.record); signer.verify(before.record.plan);
       const currentFence = artifacts.resourceFence().read();
+      const control = readControls(id);
       const known = [before.record.resource_fence, ...before.record.attempts.map(row => row.resource_fence),
-        ...before.record.acceptance_reservations.map(row => row.resource_fence)].find(row => shadowHash(row) === shadowHash(currentFence.record));
-      const lease = artifacts.resourceFence().acquire({ expectedSha256: currentFence.content_sha256, ...(known ? { dispositionLease: known } : {}) });
+        ...before.record.acceptance_reservations.map(row => row.resource_fence),
+        ...(control.record?.attempts.map(row => row.resource_fence.record) ?? [])].find(row => shadowHash(row) === shadowHash(currentFence.record));
+      const instance = readInstance(before.record.plan.instance_id);
+      const retained = inventory.prepare(instance.instance_id, { expectedSha256: instance.instance_sha256 });
+      const prepared = artifacts.resourceFence().prepareAcquire({ expectedSha256: currentFence.content_sha256 });
+      reserveControl(control, { action: "acceptance", plan: before.record.plan, grant: null, inventory: retained,
+        instance_sha256: instance.instance_sha256, journal_sha256: shadowHash(readOperation(id).record),
+        receipt_sha256: shadowHash(before.record.receipt), audit_sha256: shadowHash(before.record), resource_fence: prepared });
+      const lease = artifacts.resourceFence().acquire({ prepared, expectedSha256: currentFence.content_sha256, ...(known ? { dispositionLease: known } : {}) });
       try {
         if (before.record.acceptance_reservations.length >= 32) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
         write(dispositions, { ...bodyOf(before.record), revision: before.record.revision + 1,

@@ -56,7 +56,9 @@ if (process.argv.includes("--worker")) {
       // durable dispatch/fence. A second PowerShell query before termination
       // adds no identity evidence; the parent still freshly verifies death.
       const identity = config.plan
-        ? createStandardWorkflowArtifacts({ targetRoot: config.root }).resourceFence().read().record.process_identity
+        ? config.boundary === "disposition_control_reserved"
+          ? JSON.parse(createStandardWorkflowArtifacts({ targetRoot: config.root }).read(`workflows/operation-control-intents/${config.operation_id}.json`, { required: true }).content).attempts.at(-1).resource_fence.record.process_identity
+          : createStandardWorkflowArtifacts({ targetRoot: config.root }).resourceFence().read().record.process_identity
         : createProcessDispatchRecordStore({ targetRoot: config.root, stateMode: config.mode }).read(config.operation_id).record.process_identity;
       assert.equal(identity.pid, process.pid);
       process.send({ boundary, identity });
@@ -74,7 +76,7 @@ if (process.argv.includes("--worker")) {
 }
 export async function verifyStandardOperationDisposition(mode = "files", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n"), only = null) {
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
-  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES, "prefix-change-during-grant"];
+  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES, "prefix-change-during-grant", "disposition_control_reserved", "disposition_fence_acquired"];
   if (only !== null && !cases.includes(only)) throw Error("FIXTURE_CASE_INVALID");
   const selected = name => only === null || only === name;
   const owned = [], retained = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-disposition-evidence-"));
@@ -127,8 +129,7 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       assert.equal(host.readJournal(config.operation_id).results.length, 0); assert.equal(calls.length, 0);
       pass(`${mode}: real process termination at ${boundary} retains UNKNOWN without rerun or fresh authorization`);
     }
-    for (const boundary of [null, "disposition_recorded", "disposition_receipted"]) {
-      if (!selected(boundary ?? "redelivery")) continue;
+    async function returnedCase(boundary) {
       const config = await setup(boundary ?? "redelivery"); await crash(config, "dispatch_returned");
       let host = open(config), plan = prepare(host, config);
       assert.equal(plan.assessment, "no_effect_original");
@@ -140,7 +141,19 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       if (boundary) {
         await crash(config, boundary, plan);
         host = open(config);
-        if (boundary === "disposition_recorded") { assert.equal(host.readJournal(config.operation_id).results.length, 0); plan = prepare(host, config); }
+        if (["disposition_control_reserved", "disposition_fence_acquired"].includes(boundary)) {
+          const artifacts = createStandardWorkflowArtifacts({ targetRoot: config.root });
+          const control = JSON.parse(artifacts.read(`workflows/operation-control-intents/${config.operation_id}.json`, { required: true }).content);
+          createOperationJournalSigner(() => Buffer.from(config.key, "hex")).verify(control);
+          assert.equal(control.attempts.length, 1);
+          assert.equal(control.attempts[0].action, "disposition");
+          assert.equal(control.attempts[0].plan.operation_id, config.operation_id);
+          assert.equal(artifacts.read(`workflows/operation-dispositions/${config.operation_id}.json`).sha256, null);
+          const held = artifacts.resourceFence().read().record;
+          if (boundary === "disposition_fence_acquired") assert.deepEqual(held, control.attempts[0].resource_fence.record);
+          else assert.notDeepEqual(held, control.attempts[0].resource_fence.record);
+        }
+        if (["disposition_recorded", "disposition_control_reserved", "disposition_fence_acquired"].includes(boundary)) { assert.equal(host.readJournal(config.operation_id).results.length, 0); plan = prepare(host, config); }
       }
       const receipt = (await apply(host, plan)).receipt;
       assert.equal(receipt.output_sha256, original.output_sha256);
@@ -154,6 +167,9 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
         policyPins: accepted.record.policy_pins, scopeId: accepted.record.scope_id, events: accepted.record.events, facts: {} });
       assert.deepEqual(simulation.trace.at(-1).cursor, inspectAgenticProcess(accepted.record));
       pass(`${mode}: ${boundary ?? "original return"} cold recovery, durable fresh consent, one receipt, no re-evaluation and exact common-reducer SIM`);
+    }
+    for (const boundary of [null, "disposition_recorded", "disposition_receipted"]) {
+      if (selected(boundary ?? "redelivery")) await returnedCase(boundary);
     }
     if (selected("concurrency")) {
       const config = await setup("concurrency"); await crash(config, "dispatch_returned");
@@ -210,6 +226,9 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       assert.equal(initial.inspect("disposition").cursor.status, "CANCELLED");
       assert.equal(createStandardWorkflowArtifacts({ targetRoot: config.root }).resourceFence().read().record.state, "released");
       pass(`${mode}: actual prefix CAS during awaited grant refuses under the newly acquired fence without audit/result; cancellation retained`);
+    }
+    for (const boundary of ["disposition_control_reserved", "disposition_fence_acquired"]) {
+      if (selected(boundary)) await returnedCase(boundary);
     }
     process.stdout.write(JSON.stringify({ status: "PASS", checks, retained, mode, selected_case: only, full_selector: only === null, scope: "actual public one-operation host/read-only return; production artifact writer component; real child termination; fixture consent",
       artifact_postimage_profile: only === null || WRITE_DISPOSITION_CASES.includes(only) ? "PASS_COMPONENT" : "NOT_RUN", full_standard: "NOT_RUN", native_human_provider_closure: "NOT_RUN", all_resource_disposition: "INCOMPLETE" }) + "\n");

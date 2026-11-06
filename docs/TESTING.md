@@ -37,6 +37,17 @@ through the common service/reducer and SIM. Session closure remains pending.
 This component runs below the ordinary operation host; it is not a productive
 published STANDARD journey or a genuine human authorization.
 
+`disposition_control_reserved` and `disposition_fence_acquired` additionally
+terminate actual separate processes immediately before and after acquisition,
+before the audit exists. The retained signed control intention must identify
+the exact proposed/held token and original inventory. A new cold host obtains
+new consent and delivers one original result through acceptance and replay/SIM.
+They are appended after all previous cases in each full selector; the ordered
+three-mode manifest therefore has 42 cases, preserving all earlier 36 and their
+assertions. New-source qualification is required. Actual OS-owner replacement,
+reused PID, every acceptance/CAS crash, normal-writer concurrency, independent
+external discovery and general L4 remain separate obligations.
+
 The full invocation includes every case. Selected-case results alone do not
 replace its global verdict. A bounded partition must freeze all case IDs, order,
 assertions, logical full argv and exact child argv before starting, retain common

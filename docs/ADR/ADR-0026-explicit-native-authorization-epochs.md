@@ -45,8 +45,25 @@ cached inventory, admission or verdict. A changed subject fails and releases
 only the newly acquired bookkeeping lease. The later post-audit observation,
 fresh grant checks, acceptance fence and canonical CAS remain required.
 
+Before acquisition, a private signed `process-operation-control-intent.v1`
+retains the exact proposed fence token/revision and OS creation identity, plan,
+current verified disposition grant, signed inventory and journal/receipt/audit
+hashes. Its bounded ordered attempts use the existing operation-journal canonical
+CAS/projection policy. The proposal is not a held lease. A crash before acquisition
+retains only that proposal; a crash after acquisition can be matched to the exact
+retained token even before the disposition audit exists. Each new attempt needs
+a fresh plan and independently verified grant. The original attempts and grants
+remain historical; they do not renew permission or close external resources.
+An acceptance control reservation likewise precedes its acquisition and binds
+the exact retained receipt/audit and current inventory/prefix. It grants no effect
+authority: fresh receipt-acceptance authorization and canonical CAS still follow.
+Only this operation's own control artifact is excluded from its business-subject
+hash, alongside its existing audit and fence; it is separately authenticated.
+The complete inventory remains retained, including receipts and debit minima.
+The bounded control record refuses further allocation rather than dropping proof.
+
 Only an abandoned **disposition/acceptance** fence authenticated in that operation's
-signed audit can transfer by CAS after an OS-observed creation identity proves
+signed audit or pre-acquisition control intention can transfer by CAS after an OS-observed creation identity proves
 the former process terminated. This closes only that bounded local bookkeeping
 critical section. It proves neither descendant nor Native/provider/H closure.
 Normal abandoned artifact fences and old v1 locks remain unresolved. The

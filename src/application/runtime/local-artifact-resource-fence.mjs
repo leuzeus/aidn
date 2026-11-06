@@ -30,7 +30,20 @@ export function createLocalArtifactResourceFence({ targetRoot, stateMode }) {
     if (current.content_sha256 !== lease.content_sha256 || current.record?.state !== "held"
       || current.record.token !== lease.record.token) fail("STANDARD_RESOURCE_FENCE_CHANGED");
   };
+  function proposed(before) {
+    self ??= observeLocalProcess(process.pid);
+    if (!self) fail("PROCESS_IDENTITY_UNAVAILABLE");
+    return { contract_version: "local-artifact-resource-fence.v1", revision: (before.record?.revision ?? 0) + 1,
+      physical_root_sha256: rootSha, state: "held", token: randomUUID(), process_identity: self };
+  }
   return Object.freeze({ read,
+    prepareAcquire({ expectedSha256 } = {}) {
+      const before = read();
+      if (expectedSha256 !== before.content_sha256) fail("STANDARD_RESOURCE_FENCE_CHANGED");
+      // This is a proposed token, never a held lease or permission to write.
+      // The host durably authenticates its control intention before acquisition.
+      return { record: proposed(before), previous_sha256: before.content_sha256 };
+    },
     acquire(options = {}) {
       const before = read();
       if (Object.hasOwn(options, "expectedSha256") && options.expectedSha256 !== before.content_sha256) fail("STANDARD_RESOURCE_FENCE_CHANGED");
@@ -40,10 +53,17 @@ export function createLocalArtifactResourceFence({ targetRoot, stateMode }) {
         if (!options.dispositionLease || shadowHash(options.dispositionLease) !== shadowHash(before.record)
           || observeLocalProcessOwner(before.record.process_identity) !== "terminated") fail("STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED");
       }
-      self ??= observeLocalProcess(process.pid);
-      if (!self) fail("PROCESS_IDENTITY_UNAVAILABLE");
-      const after = save({ contract_version: "local-artifact-resource-fence.v1", revision: (before.record?.revision ?? 0) + 1,
-        physical_root_sha256: rootSha, state: "held", token: randomUUID(), process_identity: self }, before.content_sha256);
+      const candidate = options.prepared?.record ?? proposed(before);
+      if (options.prepared) {
+        self ??= observeLocalProcess(process.pid);
+        validate(candidate);
+        if (Object.keys(options.prepared).sort().join(",") !== "previous_sha256,record"
+          || options.prepared.previous_sha256 !== before.content_sha256
+          || candidate.revision !== (before.record?.revision ?? 0) + 1 || candidate.state !== "held"
+          || shadowHash(candidate.process_identity) !== shadowHash(self)) fail("STANDARD_RESOURCE_FENCE_CHANGED");
+      }
+      const after = save(candidate, before.content_sha256);
+      if (shadowHash(after.record) !== shadowHash(candidate)) fail("STANDARD_RESOURCE_FENCE_CHANGED");
       return { ...after, previous_sha256: before.content_sha256 };
     }, assert,
     release(lease) {
