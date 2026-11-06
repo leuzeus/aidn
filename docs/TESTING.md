@@ -1,5 +1,25 @@
 # Testing Guide
 
+## Shared replay-local selection factories, 2026-11-06
+
+The reusable-call `contract` selector adds small comparisons between ordinary
+and exotic-data lookup paths over the same retained fixture prefixes. It checks
+ignored forged dependency options, the existing transition option getter/spread,
+missing-frame error order, live root replacement in historical public selection,
+callback mutation and fresh lookup after await, a forged witness, and the
+1024-occurrence/512-event bounds. Existing tests retain v1/v2, 256-node limits,
+model/intent/receipt forgeries, duplicate identity and SIM isolation. No production
+algorithm copy supplies the oracle; both paths share the single selection body.
+
+These new-source checks are NOT_RUN pending a new immutable READY and exact ROOT
+GO. Syntax, routing and explicit asset authoring are preparation only. Execute
+contract/sequential/concurrent/cold/negative under 15/180/180/180/60 seconds and
+660 seconds global, fail-first with following cases NOT_STARTED. Preserve every
+existing workload, return, history, concurrent/cold/negative, redelivery, stale
+CAS and streaming SIM obligation. The separate pure inlining experiment's
+descriptive improvement does not transfer to these factories. Earlier cohort
+FAIL and diagnostic-observer FAIL remain. Full STANDARD and L1-L8/A1-A10 stay due.
+
 ## Final-validation SIM composition candidate, 2026-11-06
 
 The existing reusable-call `contract` selector additionally compares every row

@@ -1,5 +1,25 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Shared replay-local selection factory candidate, 2026-11-06
+
+The core now uses shared internal frame-input and call-transition factories,
+with fixed public dependencies and specialization lexical to each synchronous
+replay. There is one algorithm body per selection/transition. Proxies, accessors
+and nonstandard prototypes retain the original lookup path; public callbacks,
+historical live-root behavior, full validation, final root SHA, fingerprints,
+authentication, freshness and CAS remain. No supplied table/cursor/dependency
+becomes authority and no model observation survives a replay call or await.
+
+The approved isolated inlining experiment passed 51 controls and eight paired
+pure inspections. That source-specific descriptive observation does not establish
+performance or qualification of these factories. Small adversarial controls join
+the existing contract selector; the new exact-source five-case qualification is
+NOT_RUN until its own READY and ROOT GO, under the unchanged bounds/workloads.
+Earlier cohort FAIL and observer FAIL remain. Published assets require explicit
+pin refresh; loader availability is not productive execution. STANDARD extraction,
+required193, general L4, real actors/installation and all L1-L8/A1-A10 remain
+ACTIVE/INCOMPLETE; complete_standard_workflow stays false.
+
 ## Final-validation SIM composition candidate, 2026-11-06
 
 The approved local composition passes the cursor from the new state's complete

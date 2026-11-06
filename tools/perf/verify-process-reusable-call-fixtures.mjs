@@ -12,6 +12,7 @@ import { processFrameNode, processModelIdentity } from "../../src/core/workflow/
 import { assertProcessDataBindings } from "../../src/core/workflow/process-data-contracts.mjs";
 import { resolveProcessOperationInput } from "../../src/core/workflow/process-input-resolution.mjs";
 import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
+import { resolveProcessCallData, assertProcessCallTransition } from "../../src/core/workflow/process-call-data.mjs";
 import { shadowHash, canonicalShadowJson } from "../../src/core/workflow/shadow-json.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
 import { createAgenticProcessStore, readAgenticProcessStoreInspection } from "../../src/adapters/runtime/agentic-process-store.mjs";
@@ -274,6 +275,82 @@ async function simulationCompositionCases(record) {
   }
   console.log("PASS final-validation SIM composition: every small-call row/hash, v1/v2, initial/cancel/duplicate/divergent, mutable identity, forged model/intent/receipt, getter refusal and isolation after await");
 }
+async function replayIdentitySelectionCases(record) {
+  const checkpoint = count => {
+    const { instance_sha256, ...body } = structuredClone(record);
+    const value = { ...body, revision: count + 1, events: body.events.slice(0, count) };
+    return { ...value, instance_sha256: shadowHash(value) };
+  };
+  const returnIndex = record.events.findIndex(row => row.kind === "call_return"), event = record.events[returnIndex];
+  assert.ok(returnIndex > 0);
+  for (const count of [0, 1, returnIndex, returnIndex + 1, record.events.length]) {
+    const value = checkpoint(count), expected = inspectAgenticProcess(value);
+    // Exotic data takes the original lookup path through the same algorithm.
+    assert.deepEqual(inspectAgenticProcess(new Proxy(value, {})), expected);
+    const witnessProxy = structuredClone(value);
+    if (witnessProxy.events.length) witnessProxy.events[0] = new Proxy(witnessProxy.events[0], {});
+    assert.deepEqual(inspectAgenticProcess(witnessProxy), expected);
+    const customArray = structuredClone(value);
+    Object.setPrototypeOf(customArray.model.nodes, Object.create(Array.prototype));
+    assert.deepEqual(inspectAgenticProcess(customArray), expected);
+  }
+  const instance = checkpoint(returnIndex), cursor = inspectAgenticProcess(instance);
+  const readOperation = id => event.witnesses.find(row => row.operation_id === id);
+  let injected = 0, optionReads = 0;
+  const forged = () => { injected++; throw Error("UNTRUSTED_LOOKUP_CALLED"); };
+  const options = { instance, cursor, occurrenceId: event.occurrence_id, returning: true, readOperation,
+    index: forged, models: forged, openModelSelection: forged, resolveCallTarget: forged, cursorToken: forged };
+  Object.defineProperty(options, "lookups", { enumerable: true, get() { optionReads++; return forged; } });
+  assert.deepEqual(resolveProcessFrameInput(options), event.resolution);
+  assert.deepEqual(resolveProcessCallData(options), { resolution: event.resolution, witnesses: event.witnesses });
+  assert.equal(optionReads, 0, "public resolver destructuring adds no option spread");
+  assert.equal(assertProcessCallTransition(event, options), event);
+  assert.equal(optionReads, 1, "transition retains its historical option spread exactly once");
+  assert.equal(injected, 0, "extra options never become factory dependencies");
+  const unreadModel = new Proxy({}, { get() { throw Error("MODEL_READ_TOO_EARLY"); } });
+  assert.throws(() => resolveProcessFrameInput({ instance: { model: unreadModel }, cursor: { occurrences: [] }, occurrenceId: "missing" }),
+    { code: "PROCESS_INPUT_BINDING_REQUIRED" }, "missing frame must precede model hashing");
+  assert.throws(() => resolveProcessCallData({ instance: { model: unreadModel }, cursor: { occurrences: [] }, occurrenceId: "missing" }),
+    { code: "PROCESS_OCCURRENCE_UNKNOWN" });
+  const callbackInstance = structuredClone(instance);
+  assert.throws(() => resolveProcessFrameInput({ instance: callbackInstance, cursor, occurrenceId: event.occurrence_id, returning: true,
+    readOperation: id => { callbackInstance.model.revision++; return readOperation(id); } }), { code: "PROCESS_CALL_TARGET_CHANGED" });
+  // Historical frames without model_sha256 read the live root on every lookup.
+  // A reader replacing model must not silently keep a captured old root.
+  const witness = event.witnesses[0], historical = { instance_sha256: H, model: {
+    nodes: [seq("root", ["source", "target"]), op("source"), op("target")],
+    data_bindings: { contract_version: "process-data-bindings.v1", parameter_keys: [], inputs: [{ node_id: "target",
+      fields: { a: expression("operation_output", "source"), b: expression("operation_output", "source") } }] } } };
+  const historicalCursor = { occurrences: [
+    { occurrence_id: "root", node_id: "root", parent_id: null, status: "RUNNING" },
+    { occurrence_id: "root/0", node_id: "source", parent_id: "root", status: "COMPLETED",
+      operation: { intent: witness.intent, receipt: witness.results.at(-1).receipt } },
+    { occurrence_id: "root/1", node_id: "target", parent_id: "root", status: "READY" },
+  ] };
+  let historicalReads = 0;
+  assert.throws(() => resolveProcessFrameInput({ instance: historical, cursor: historicalCursor, occurrenceId: "root/1",
+    readOperation: () => { historicalReads++; historical.model = { nodes: [] }; return witness; } }), TypeError);
+  assert.equal(historicalReads, 1, "replacement is seen before the second historical field callback");
+  await Promise.resolve();
+  instance.model.call_targets[0].model.revision++;
+  assert.throws(() => resolveProcessCallData(options), { code: "PROCESS_CALL_TARGET_CHANGED" }, "fresh public lookup after await");
+  const changedWitness = structuredClone(event); changedWitness.witnesses[0].results[0].receipt.output_sha256 = H;
+  assert.throws(() => advanceAgenticProcess(checkpoint(returnIndex), changedWitness), { code: "PROCESS_INPUT_RESULT_CHANGED" });
+  const limited = { contract_version: "agentic-process-model.v2", model_id: "occurrence_limit", revision: 1,
+    participants: [{ id: "project" }], roles: [], policies: [], entry: "root", operation_pins: { fixture_write: shadowHash(binding) },
+    nodes: [
+      { id: "root", kind: "multi_instance", participant_ref: "project", child: "inner", items: Array.from({ length: 32 }, (_, i) => `i_${i}`), ordering: "parallel" },
+      { id: "inner", kind: "multi_instance", participant_ref: "project", child: "leaf", items: Array.from({ length: 32 }, (_, i) => `j_${i}`), ordering: "parallel" }, op("leaf"),
+    ] };
+  assert.throws(() => createAgenticProcess({ instanceId: "limit", model: limited, policyPins: {}, scopeId: "scope" }), { code: "PROCESS_OCCURRENCE_LIMIT" });
+  const facts = checkpoint(0);
+  facts.events = Array.from({ length: 512 }, (_, i) => ({ event_id: `fact_${i}`, kind: "facts", facts: {} })); facts.revision = 513;
+  const { instance_sha256, ...body } = facts; facts.instance_sha256 = shadowHash(body); inspectAgenticProcess(facts);
+  facts.events.push({ event_id: "fact_512", kind: "facts", facts: {} }); facts.revision++;
+  const { instance_sha256: previous, ...oversized } = facts; facts.instance_sha256 = shadowHash(oversized);
+  assert.throws(() => inspectAgenticProcess(facts), { code: "PROCESS_INSTANCE_INVALID" });
+  console.log("PASS replay-local shared selection, exotic fallback, fixed public dependencies, historical getter/error/live-root semantics, callback/after-await freshness, forged witness and 1024/512 bounds");
+}
 async function contractCases() {
   await inspectionStoreCases();
   const m = model({ size: 2 }); assertAgenticProcessModel(m);
@@ -351,6 +428,7 @@ async function contractCases() {
   assert.throws(() => inspectAgenticProcess({ ...changedPrefix, instance_sha256: shadowHash(changedPrefix) }), /PROCESS_OPERATION_INTENT_BINDING_CHANGED/);
   console.log("PASS every small-call prefix retains canonical SHA256 with Unicode/escaped values; changed historical binding refused");
   await simulationCompositionCases(prefixState.record);
+  await replayIdentitySelectionCases(prefixState.record);
 }
 async function executionCase(parallel, cold = false) {
   const arena = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-reusable-calls-")), m = model({ parallel });

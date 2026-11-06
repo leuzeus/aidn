@@ -1,5 +1,29 @@
 # ADR-0022 — Structured agentic process and constrained resource assignment
 
+## Shared replay-local model selection, 2026-11-06
+
+Two internal factories share one definition of frame-input selection and call
+transition validation. Public wrappers construct fixed dependencies and retain
+their existing destructuring, error order, option spread and reader callbacks.
+No existing entry accepts an index, table, dependency or token as trusted input.
+Internal files remain importable; the factories confer no effect authority.
+
+Within each complete synchronous replay, a descriptor/proxy/prototype guard
+permits lexical reuse of its already constructed model identities. Exotic data
+uses the original public lookup path through the same shared algorithms. The
+specialized witness reader is only the validated event's local Map.get. No
+function or model observation escapes replay or survives calls/awaits. Complete
+incoming/final validation, prefix fingerprints, schemas, intent/receipt/source
+checks and the final full root-model hash remain. Historical unpinned lookups
+retain their live instance.model behavior even if a public callback replaces it.
+
+A separate inlining experiment passed its pure equivalence controls and eight
+alternating inspection pairs. Its descriptive improvement and unmeasured
+instrumentation overhead do not qualify this factory implementation or imply
+service/whole-workflow performance. This source requires its own READY/GO and
+unchanged five-case qualification. The preceding cohort and observer FAIL remain;
+STANDARD extraction, general L4 and all L1-L8/A1-A10 are active/incomplete.
+
 ## Final-validation cursor composition into SIM, 2026-11-06
 
 The internal synchronous advance-and-inspect composition returns the cursor

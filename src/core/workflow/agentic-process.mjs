@@ -9,6 +9,9 @@ import instanceSchemaV2 from "../contracts/workflow-definition/agentic-process-i
 import { assertProcessOperationIntent, assertProcessOperationReceipt, assertProcessControlEvent } from "./process-operation-contracts.mjs";
 import { processFrameModel, processModels, resolveProcessCallTarget } from "./process-call-model.mjs";
 import { assertProcessCallTransition } from "./process-call-data.mjs";
+import { createProcessFrameInputSelector } from "./process-frame-input-selection.mjs";
+import { createProcessCallSelector } from "./process-call-selection.mjs";
+import { isPlainProcessReplayData } from "./process-replay-data.mjs";
 import { assertProcessParameters } from "./process-data-contracts.mjs";
 
 const terminal = status => ["COMPLETED", "FAILED", "CANCELLED"].includes(status);
@@ -69,6 +72,25 @@ function replay(instance) {
   const nodeTables = new Map([...models].map(([hash, model]) => [hash, new Map(model.nodes.map(node => [node.id, node]))]));
   const modelOf = frame => frame.model_sha256 === undefined ? instance.model : models.get(frame.model_sha256) ?? fail("PROCESS_CALL_TARGET_CHANGED");
   const nodeOf = frame => nodeTables.get(hashes.get(modelOf(frame))).get(frame.node_id);
+  // Specialization never accepts a caller's index or callback. Every function
+  // and model observation below is private to this synchronous replay.
+  const plain = isPlainProcessReplayData(instance);
+  function resolveReplayTarget(root, reference) {
+    if (!plain) return resolveProcessCallTarget(root, reference);
+    const target = root.call_targets?.find(row => row.model_id === reference?.model_id && row.revision === reference?.revision);
+    if (!target) fail("PROCESS_CALL_TARGET_MISSING");
+    if (target.model_sha256 !== reference.model_sha256 || hashes.get(target.model) !== reference.model_sha256)
+      fail("PROCESS_CALL_TARGET_CHANGED");
+    return target.model;
+  }
+  const callSelection = plain ? createProcessCallSelector({
+    frameNode: (_root, frame) => nodeOf(frame),
+    resolveFrameInput: createProcessFrameInputSelector({
+      openModelSelection: root => ({ rootSha256: hashes.get(root), modelFor: modelOf }),
+      resolveCallTarget: resolveReplayTarget,
+    }),
+    resolveCallTarget: resolveReplayTarget,
+  }) : null;
   const factsFor = frame => frame.call_scope_id ? frames.get(frame.call_scope_id).local_facts : facts;
   const frames = new Map(); let facts = { ...instance.initial_facts }, failure = null;
   function stop(frame, status, reason) {
@@ -186,12 +208,12 @@ function replay(instance) {
       if (!v2 || !pinnedCalls || node.kind !== "call" || !node.target) fail("PROCESS_CALL_ORDER_INVALID");
       const entering = event.kind === "call_enter";
       if (frame.status !== "WAITING" || frame.wait_reason !== (entering ? "call_entry" : "call_return")) fail("PROCESS_CALL_ORDER_INVALID");
-      assertProcessCallTransition(event, { instance: { ...instance, instance_sha256: prefixSha256(eventIds.size - 1) },
+      (plain ? callSelection.assertCallTransition : assertProcessCallTransition)(event, { instance: { ...instance, instance_sha256: prefixSha256(eventIds.size - 1) },
         cursor: { occurrences: [...frames.values()] }, occurrenceId: frame.occurrence_id });
       if (entering) {
         frame.call_entry = event.resolution; frame.local_facts = {};
         frame.status = "RUNNING"; frame.wait_reason = null;
-        const target = resolveProcessCallTarget(instance.model, node.target);
+        const target = resolveReplayTarget(instance.model, node.target);
         enter(target.entry, `${frame.occurrence_id}/call`, frame.occurrence_id, target, frame.occurrence_id);
       } else { frame.call_return = event.resolution; finish(frame); }
     } else if (event.kind === "operation_intent") {
