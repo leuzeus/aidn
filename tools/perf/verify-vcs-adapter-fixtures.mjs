@@ -89,6 +89,15 @@ function main() {
     assert(path.resolve(linkedGitCommonDir) === path.resolve(gitCommonDir), "expected linked worktree to share the same common dir as main checkout");
     assert(linkedWorktreeFlag === true, "expected linked checkout to be reported as linked worktree");
 
+    assert(adapter.getCurrentBranch(linkedRoot) === "feature/worktree-fixture", "expected the linked checkout's own branch");
+    runGit(targetRoot, ["switch", "-c", "feature/branch-observation"]);
+    assert(adapter.getCurrentBranch(targetRoot) === "feature/branch-observation", "expected a fresh branch after switching on the same adapter");
+    runGit(targetRoot, ["switch", "--detach", "HEAD"]);
+    assert(adapter.getCurrentBranch(targetRoot) === "unknown", "expected the retained detached-HEAD fallback");
+    runGit(targetRoot, ["switch", "main"]);
+    assert(adapter.getCurrentBranch(targetRoot) === "main", "expected a fresh branch after reattaching HEAD");
+    assert(adapter.getCurrentBranch(path.join(tempRoot, "missing")) === "unknown", "expected the retained Git-failure fallback");
+
     fs.writeFileSync(readmePath, "# fixture\n\nupdated\n", "utf8");
 
     const dirtyWorkingTree = adapter.hasWorkingTreeChanges(targetRoot);

@@ -17,14 +17,7 @@ function runGitString(targetRoot, args) {
 export function createLocalGitAdapter() {
   return assertVcsAdapter({
     getCurrentBranch(targetRoot) {
-      try {
-        return execSync(`git -C "${targetRoot}" branch --show-current`, {
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "ignore"],
-        }).trim() || "unknown";
-      } catch {
-        return "unknown";
-      }
+      return runGitString(targetRoot, ["branch", "--show-current"]) || "unknown";
     },
     getHeadCommit(targetRoot) {
       try {

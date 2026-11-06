@@ -1,5 +1,16 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Fresh shell-free branch observation, 2026-11-05
+
+The local VCS branch reader uses the existing shell-free Git string adapter for
+each observation. Detached HEAD and Git failures retain `unknown`; no authority,
+context, inventory or admission is cached or carried across calls or awaits.
+The actual-writer diagnostic observed repeated shell launches before ownership.
+This candidate removes that shell boundary without changing admission or effect
+fences. The local VCS adapter joins the standard implementation hash inputs.
+Source pins are authored explicitly; exact-source qualification remains
+required. No causal performance gain or complete STANDARD/L4 claim follows.
+
 ## Single fresh execution-authority observation, 2026-11-05
 
 The ordinary operation host uses the existing trusted execution-authority port
