@@ -9,6 +9,7 @@ import { assertAgenticProcessModel, agenticPolicyPins } from "../../src/core/wor
 import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { processFrameNode, processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
+import { assertProcessDataBindings } from "../../src/core/workflow/process-data-contracts.mjs";
 import { resolveProcessOperationInput } from "../../src/core/workflow/process-input-resolution.mjs";
 import { shadowHash, canonicalShadowJson } from "../../src/core/workflow/shadow-json.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
@@ -123,6 +124,34 @@ async function step(arena, phase = "complete") {
 
 async function contractCases() {
   const m = model({ size: 2 }); assertAgenticProcessModel(m);
+  // An explicit return crosses only the source call boundary. Enclosing dynamic
+  // scopes, sequence order and historical implicit-export refusals still apply.
+  const sameScope = structuredClone(m);
+  sameScope.nodes[0].id = "body";
+  sameScope.nodes.unshift({ id: "root", kind: "loop", participant_ref: "project", child: "body", until: "done", max_iterations: 1 });
+  assertAgenticProcessModel(sameScope);
+  for (const kind of ["loop", "multi_instance", "call"]) {
+    const scoped = structuredClone(m);
+    const wrapper = { id: "scope", kind, participant_ref: "project", child: "first",
+      ...(kind === "loop" ? { until: "done", max_iterations: 1 } : kind === "multi_instance" ? { items: ["one"], ordering: "sequential" } : {}) };
+    scoped.nodes[0].children[0] = "scope"; scoped.nodes.push(wrapper);
+    assert.throws(() => assertAgenticProcessModel(scoped), /PROCESS_INPUT_SOURCE_SCOPE_INVALID/);
+  }
+  const forward = structuredClone(m); forward.nodes[0].children.reverse();
+  assert.throws(() => assertAgenticProcessModel(forward), /PROCESS_INPUT_SOURCE_NOT_ORDERED/);
+  const crossBranch = model({ size: 2, parallel: true });
+  crossBranch.data_bindings.inputs[1].fields.value = expression("call_output", "first");
+  assert.throws(() => assertAgenticProcessModel(crossBranch), /PROCESS_INPUT_SOURCE_NOT_ORDERED/);
+  for (const version of [1, 2, 3, 4]) {
+    const historicalNodes = [seq("root", ["invoke", "consume"]), { id: "invoke", kind: "call", participant_ref: "project", child: "source" }, op("source"), op("consume")];
+    const data = { contract_version: `process-data-bindings.v${version}`, parameter_keys: [], inputs: [
+      { node_id: "source", fields: {} }, { node_id: "consume", fields: { value: expression("operation_output", "source") } }] };
+    assert.throws(() => assertProcessDataBindings(data, historicalNodes), /PROCESS_INPUT_SOURCE_SCOPE_INVALID/);
+    if (version === 4) {
+      data.inputs[1].fields.value = expression("call_output", "invoke");
+      assert.throws(() => assertProcessDataBindings(data, historicalNodes), /PROCESS_INPUT_SOURCE_INVALID/);
+    }
+  }
   for (const mutate of [m => { m.nodes[1].target.model_sha256 = H; }, m => { m.call_targets = []; },
     m => { m.call_targets.push(structuredClone(m.call_targets[0])); }, m => { m.nodes[1].child = "second"; },
     m => { m.call_targets[0].model.nodes.push(seq("orphan", [])); }, m => { m.data_bindings.inputs[1].fields.value.node_id = "second"; }]) {
@@ -136,6 +165,7 @@ async function contractCases() {
     current.nodes.find(row => row.id === "work_0").kind = "call";
     delete current.nodes.find(row => row.id === "work_0").binding_ref;
     current.nodes.find(row => row.id === "work_0").target = { model_id: next.model_id, revision: next.revision, model_sha256: H };
+    current.data_bindings.inputs.find(row => row.node_id === "work_1").fields.value = expression("call_output", "work_0");
     current.operation_pins = { fixture_write: shadowHash(binding) }; // work_1 remains a local operation
     current.call_interface.returns = {};
   }

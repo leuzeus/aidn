@@ -21,6 +21,12 @@ identities, authority, grants and cumulative accounting stay instance-bound.
 The same reducer validates execution, cold reconstruction, replay and SIM.
 These records are part of `agentic_process_instance`, with no new store or table.
 
+Only explicit `call_output` from a pinned `target` exports that call's declared
+return into its containing sequence scope. Enclosing loop, collection and call
+scopes remain mandatory, as do ordering and optional-branch restrictions.
+Internal operation values and historical `child` calls retain their previous
+scope checks; this does not introduce implicit exports.
+
 This is an executable source candidate pending exact-source qualification.
 Published STANDARD extraction, complete lifecycle coverage, ordinary-entry
 qualification and Native/Human/Provider/installed acceptance remain incomplete.

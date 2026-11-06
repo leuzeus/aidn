@@ -15,8 +15,16 @@ covers unchanged state on wrong types, concurrent CAS, changed witnesses,
 occurrence/author mismatch, distinct refusal/defer/cancel/UNKNOWN and no implicit
 success. `contract` checks closed references, recursion, stale/conflicting/missing
 pins, local tree, 257-node rejection and a frozen historical v1 hash.
+It also checks declared-return ordering within an enclosing loop, refusal across
+loop/collection/historical-call scopes or parallel branches, and implicit-export
+refusal for data-binding versions 1 through 4. The indirect-recursion fixture
+uses `call_output` after converting its source operation to a call, so an invalid
+operation-output reference does not mask the recursion assertion.
 
-These selectors are authored, **NOT_RUN** pending frozen-source READY and ROOT GO.
+The initial SOURCE83 contract run failed nominal validation with
+`PROCESS_INPUT_SOURCE_SCOPE_INVALID`; the other four cases were NOT_STARTED.
+That original result remains retained. On the corrected source these selectors
+are **NOT_RUN** pending a new frozen-source READY and specific ROOT GO.
 They do not qualify the actual STANDARD host, every bound, every historical v2
 refusal, every cold/CAS/crash boundary, db-only/DUAL/PG, Native/Human/Provider,
 ordinary installed use or L1-L8/A1-A10. Follow with the existing common reducer,

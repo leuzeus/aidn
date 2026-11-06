@@ -27,9 +27,12 @@ export function assertProcessDataBindings(value, nodes) {
   const ancestry = id => { const result = []; for (let depth = 0; id !== undefined; depth++) {
     if (depth > 16) fail("PROCESS_INPUT_SCOPE_INVALID"); result.unshift(id); id = parents.get(id);
   } return result; };
-  function ordered(source, target) {
+  function ordered(source, target, exportedCall = false) {
     const left = ancestry(source), right = ancestry(target), scope = path => path.filter(id => ["loop", "multi_instance", "call"].includes(table.get(id).kind));
-    if (!scope(left).every((id, index) => scope(right)[index] === id)) fail("PROCESS_INPUT_SOURCE_SCOPE_INVALID");
+    // Only a pinned call's declared return belongs to its containing scope.
+    // Internal operations and historical child calls keep their full ancestry.
+    const sourceScope = scope(exportedCall ? left.slice(0, -1) : left);
+    if (!sourceScope.every((id, index) => scope(right)[index] === id)) fail("PROCESS_INPUT_SOURCE_SCOPE_INVALID");
     let index = 0; while (left[index] === right[index] && index < Math.min(left.length, right.length)) index++;
     const common = table.get(left[index - 1]);
     if (common?.kind !== "sequence" || common.children.indexOf(left[index]) >= common.children.indexOf(right[index])
@@ -54,7 +57,7 @@ export function assertProcessDataBindings(value, nodes) {
           || expr.source === "call_output" && !(calls && source.kind === "call" && source.target)
           || expr.source === "occurrence_id" && !["operation", "activity"].includes(source.kind)) fail("PROCESS_INPUT_SOURCE_INVALID");
         if (expr.source === "item") { if (!ancestry(row.node_id).includes(source.id)) fail("PROCESS_INPUT_ITEM_SCOPE_INVALID"); }
-        else ordered(source.id, row.node_id);
+        else ordered(source.id, row.node_id, expr.source === "call_output");
       }
     }
   }
