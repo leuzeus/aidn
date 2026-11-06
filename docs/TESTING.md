@@ -1,16 +1,19 @@
 # Testing Guide
 
-## Fresh branch observation without a shell, 2026-11-05
+## Fresh branch and HEAD observations without a shell, 2026-11-05
 
 `verify-vcs-adapter-fixtures.mjs` retains its existing Git checks and also reads
 the linked checkout's branch, switches and detaches HEAD on the same adapter,
-reattaches it and checks the missing-directory fallback. Each branch read invokes
-Git afresh through the existing shell-free string adapter. No observation is
+reattaches it and checks the missing-directory fallback. HEAD checks cover a new
+commit on the same adapter, detached HEAD, an independent linked checkout and
+the missing-directory fallback. Each branch and HEAD read invokes Git afresh
+through the existing shell-free string adapter. No observation is
 cached across calls or awaits, and admission/effect fences remain unchanged.
 
 An instrumented DB-only writer on the preceding source reached its ownership fence within
-the original 15-second worker bound. Its trace observed three shell-based branch
-reads; the candidate replaces those launches, with no measured speedup claim.
+the original 15-second worker bound. Correlated trace begin/end IDs identify two
+shell-based branch reads and one HEAD read. The candidate replaces their shell
+launches, retaining the Git reads, with no measured speedup claim.
 That diagnostic PASS does not qualify this changed source, the ordered 63 cases,
 general L4 or productive STANDARD. Published implementation pins require explicit
 authoring and fresh loader, real-writer, inventory and policy qualification.

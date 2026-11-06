@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execSync, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { assertVcsAdapter } from "../../core/ports/vcs-adapter-port.mjs";
 
 function runGitString(targetRoot, args) {
@@ -20,14 +20,7 @@ export function createLocalGitAdapter() {
       return runGitString(targetRoot, ["branch", "--show-current"]) || "unknown";
     },
     getHeadCommit(targetRoot) {
-      try {
-        return execSync(`git -C "${targetRoot}" rev-parse HEAD`, {
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "ignore"],
-        }).trim() || "unknown";
-      } catch {
-        return "unknown";
-      }
+      return runGitString(targetRoot, ["rev-parse", "HEAD"]) || "unknown";
     },
     hasWorkingTreeChanges(targetRoot) {
       try {
