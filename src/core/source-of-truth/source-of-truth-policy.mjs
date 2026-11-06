@@ -111,10 +111,10 @@ const CONCEPT_GOVERNANCE = freezeDeep({
     owner: "project workflow maintainer and trusted execution host",
     lifecycle: "READY|RUNNING|WAITING -> COMPLETED|FAILED|CANCELLED; admitted assignments and authenticated results remain distinct",
     scope: "one canonical runtime scope, pinned model/profile, policy fingerprints and scoped activity occurrences",
-    retention: "retain declared immutable initial parameters with ordered routing, assignment, result and cancellation events; no automatic purge",
+    retention: "retain declared immutable initial parameters, complete pinned embedded call targets, scoped call-entry parameters/source witnesses and typed accepted call returns with ordered routing, assignment, result and cancellation events; no automatic purge",
     migration: "separate versioned format; no conversion of existing instances or automatic installation activation",
     replacement: "explicit write and canonical artifact compare-and-swap; historical instances retain their model and policy pins",
-    evidence_targets: ["src/core/workflow/agentic-process.mjs", "src/adapters/runtime/agentic-process-store.mjs", "src/application/runtime/agentic-process-service.mjs", "src/application/workflow/bpmn-process-service.mjs", "src/core/workflow/agentic-process-simulation.mjs", "src/core/workflow/process-data-contracts.mjs", "src/core/contracts/workflow-definition/process-data-bindings.v1.schema.json"],
+    evidence_targets: ["src/core/workflow/process-call-model.mjs", "src/core/workflow/process-call-data.mjs", "src/core/contracts/workflow-definition/process-call-transition.v1.schema.json", "src/core/workflow/agentic-process.mjs", "src/adapters/runtime/agentic-process-store.mjs", "src/application/runtime/agentic-process-service.mjs", "src/application/workflow/bpmn-process-service.mjs", "src/core/workflow/agentic-process-simulation.mjs", "src/core/workflow/process-data-contracts.mjs", "src/core/contracts/workflow-definition/process-data-bindings.v1.schema.json"],
   },
   project_activation: {
     owner: "project maintainer",

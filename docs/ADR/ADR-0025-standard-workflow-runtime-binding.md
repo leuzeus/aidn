@@ -1,5 +1,22 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Reusable operation-call candidate, 2026-11-06
+
+The operation host and mixed step adapter resolve bindings and input contracts
+through the common cursor's pinned model identity. Call entry/return are explicit
+CAS transitions on that same service, without recursive workflow-step execution.
+Every component pin is checked against the fixed host registry; source authors
+must explicitly refresh all affected published assets. Neither a target nor a
+return grants effect authority. Accepted source values are retained with exact
+intent/receipt hashes so cold replay does not consult a current package file.
+See ADR-0022 for the closed candidate contracts and remaining Native limitation.
+
+The direct-IR fixture uses synthetic authorities and signed deterministic fixture
+effects. Its authored selectors and syntax checks are not executed qualification,
+a productive STANDARD workflow, general UNKNOWN reconciliation or installation.
+The distributed STANDARD model remains partial until an extracted component and
+all remaining paths have their own traceability and execution evidence.
+
 ## Adjacent installation-record scan candidate, 2026-11-06
 
 Four activation reads previously called localPath immediately before readBytes:

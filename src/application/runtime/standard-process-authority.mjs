@@ -29,6 +29,7 @@ import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
 import { assertStandardWorkflowModelSource, assertStandardWorkflowActivityOutputs } from "../../core/workflow/standard-workflow-model-catalog.mjs";
 import { assertStandardOperationInput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { assertAgenticProcessInstance, agenticProcessPrefixSha256, inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
+import { processModels, processFrameModel, processFrameNode } from "../../core/workflow/process-call-model.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
@@ -74,8 +75,8 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   const operations = createStandardWorkflowOperations({ targetRoot: configuration.target_root }), artifacts = createStandardWorkflowArtifacts({ targetRoot: configuration.target_root });
   const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
   function assertCurrentBindings() {
-    for (const node of model.nodes.filter(row => row.kind === "operation")) if (!bindings.has(node.binding_ref)
-      || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_PROCESS_BINDING_CHANGED");
+    for (const component of processModels(model)) for (const node of component.nodes.filter(row => row.kind === "operation")) if (!bindings.has(node.binding_ref)
+      || component.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_PROCESS_BINDING_CHANGED");
   }
   const operationStore = createProcessOperationJournalStore(options), controls = createProcessControlInboxStore(options), allocations = createNativeAllocationJournalStore(options), instances = createAgenticProcessStore(options);
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource, projectionRequired: false });
@@ -134,7 +135,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         if (instance.events.length < covered || shadowHash(instance.events.slice(0, covered)) !== shadowHash(native.instance.events)) fail("STANDARD_PROCESS_NATIVE_HISTORY_CHANGED");
       }
     } else if (reservation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
-    const seen = new Map();
+    const seen = new Map(), frames = new Map(inspectAgenticProcess(instance).occurrences.map(row => [row.occurrence_id, row]));
     for (const [index, event] of instance.events.entries()) {
       if (["assign", "result", "refusal"].includes(event.kind)) {
         if (!native || index >= covered || shadowHash(event) !== shadowHash(native.instance.events[index])) fail("STANDARD_PROCESS_NATIVE_HISTORY_NOT_AUTHENTICATED");
@@ -145,7 +146,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
           assertProcessOperationBinding(record.preview.binding);
           if (validateJsonSchema(record.preview, previewSchema, "$", { contractKind: "workflow-definition" }).length
             || record.preview.binding.id !== record.intent.binding_ref
-            || shadowHash(record.preview.binding) !== model.operation_pins[record.intent.binding_ref]
+            || shadowHash(record.preview.binding) !== processFrameModel(model, frames.get(event.occurrence_id)).operation_pins[record.intent.binding_ref]
             || !diagnostic && shadowHash(bindings.get(record.intent.binding_ref)) !== shadowHash(record.preview.binding)
             || ["instance_id", "instance_sha256", "scope_id", "model_sha256", "occurrence_id"].some(key => record.preview[key] !== record.intent[key])
             || record.intent.binding_sha256 !== shadowHash(record.preview.binding)
@@ -165,6 +166,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         if (capture.request.instance_sha256 !== agenticProcessPrefixSha256(instance, index) || shadowHash(capture.delivery) !== shadowHash(event.delivery)) fail("STANDARD_PROCESS_CONTROL_NOT_AUTHENTICATED");
         if (checkControlContext && index >= covered && capture.request.context_sha256 !== shadowHash(snapshot(productSha256))) fail("STANDARD_PROCESS_CONTROL_CONTEXT_CHANGED");
         if (capture.phase === "delivered" && capture.delivered_instance_sha256 !== agenticProcessPrefixSha256(instance, index + 1)) fail("STANDARD_PROCESS_CONTROL_NOT_AUTHENTICATED");
+      } else if (["call_enter", "call_return"].includes(event.kind)) {
+        // The common reducer has recomputed these values and source hashes from
+        // the pinned model, exact call scope and earlier accepted receipts.
+        // All earlier receipt origins are authenticated above; a call adds no
+        // authority, effect, resource allocation or accounting reset.
       } else fail("STANDARD_PROCESS_HISTORY_NOT_AUTHENTICATED");
     }
     return { native, journal };
@@ -281,7 +287,7 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   function readActivityOutput(instance, occurrenceId, contractRef = DRIFT_REPORT_CONTRACT, authenticationOptions = {}) {
     const state = authenticate(instance, authenticationOptions), event = instance.events.find(row => row.kind === "result" && row.occurrence_id === occurrenceId);
     if (!state || !event || event.result.outcome !== "completed") fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
-    const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId), node = model.nodes.find(row => row.id === frame?.node_id);
+    const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId), node = frame && processFrameNode(model, frame);
     if (configuration.activity_outputs?.[node?.id] !== contractRef) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");
     const retained = state.results.find(row => row.result.result_id === event.result.result_id);
     if (!retained || shadowHash(retained.result) !== shadowHash(event.result)) fail("STANDARD_DRIFT_AUTHENTICATED_RESULT_REQUIRED");

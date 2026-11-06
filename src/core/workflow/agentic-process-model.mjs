@@ -6,6 +6,7 @@ import schemaV2 from "../contracts/workflow-definition/agentic-process-model.v2.
 import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import { DEFAULT_BPMN_EXECUTION_PROFILE, BPMN_EXECUTION_PROFILES } from "./bpmn-profile.mjs";
 import { assertProcessDataBindings } from "./process-data-contracts.mjs";
+import { processModels, resolveProcessCallTarget } from "./process-call-model.mjs";
 
 export const AGENTIC_PROCESS_PROFILE = "structured-agentic-process.v1";
 export const AGENTIC_PROCESS_OPERATION_PROFILE = "structured-agentic-process.v2";
@@ -32,9 +33,9 @@ export const agenticProcessCapabilities = () => freezeShadow({ profile: AGENTIC_
   limits: { structured_single_entry: true, cross_pool_sequence: false, arbitrary_graphs: false,
     physical_parallelism_required: false, native_execution_qualified: false } });
 
-export function assertAgenticProcessModel(model, { executable = true, policyPins = null } = {}) {
+function assertLocalModel(model, { executable = true, policyPins = null } = {}) {
   const v2 = model?.contract_version === "agentic-process-model.v2";
-  if (checkShadowJson(model) || validateJsonSchema(model, v2 ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(model, ["contract_version", "model_id", "revision", "participants", "roles", "policies", "nodes", "entry", ...(v2 ? ["operation_pins"] : [])], v2 ? ["data_bindings"] : [])
+  if (checkShadowJson(model) || validateJsonSchema(model, v2 ? schemaV2 : schema, "$", { contractKind: "workflow-definition" }).length || !exactKeys(model, ["contract_version", "model_id", "revision", "participants", "roles", "policies", "nodes", "entry", ...(v2 ? ["operation_pins"] : [])], v2 ? ["data_bindings", "call_targets", "call_interface"] : [])
     || !["agentic-process-model.v1", "agentic-process-model.v2"].includes(model.contract_version) || !processId(model.model_id)
     || !Number.isSafeInteger(model.revision) || model.revision < 1) fail("PROCESS_MODEL_INVALID");
   const table = (rows, max, allowEmpty = false) => {
@@ -71,6 +72,9 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
       if (!exactKeys(node, [...base, "role_ref", "policy_ref"]) || !roles.has(node.role_ref) || !policies.has(node.policy_ref)) fail("PROCESS_ACTIVITY_INVALID");
       const role = roles.get(node.role_ref), policy = policies.get(node.policy_ref);
       if (policy.independent_review && (role.role !== "auditor" || role.action !== "audit")) fail("PROCESS_REVIEW_ROLE_INVALID");
+    } else if (v2 && node.kind === "call" && Object.hasOwn(node, "target")) {
+      if (!exactKeys(node, [...base, "target"]) || !exactKeys(node.target, ["model_id", "revision", "model_sha256"])) fail("PROCESS_CALL_REFERENCE_INVALID");
+      if (model.data_bindings?.contract_version !== "process-data-bindings.v4") fail("PROCESS_CALL_BINDINGS_REQUIRED");
     } else if (["sequence", "call", "loop", "multi_instance"].includes(node.kind)) {
       const extras = node.kind === "sequence" ? ["children"] : node.kind === "loop" ? ["child", "until", "max_iterations"]
         : node.kind === "multi_instance" ? ["child", "items", "ordering"] : ["child"];
@@ -124,6 +128,68 @@ export function assertAgenticProcessModel(model, { executable = true, policyPins
   visit(model.entry, 0);
   if (visited.size !== nodes.size) fail("PROCESS_NOT_STRUCTURED");
   if (model.data_bindings !== undefined) assertProcessDataBindings(model.data_bindings, model.nodes);
+  return model;
+}
+
+export function assertAgenticProcessModel(model, options = {}) {
+  assertLocalModel(model, options);
+  const models = processModels(model), identities = new Set([`${model.model_id}:${model.revision}`]);
+  for (const row of model.call_targets ?? []) {
+    if (row.model?.contract_version !== "agentic-process-model.v2" || row.model.call_targets !== undefined
+      || row.model_id !== row.model.model_id || row.revision !== row.model.revision || row.model_sha256 !== shadowHash(row.model)) fail("PROCESS_CALL_TARGET_CHANGED");
+    const identity = `${row.model_id}:${row.revision}`;
+    if (identities.has(identity)) fail("PROCESS_CALL_TARGET_CONFLICT");
+    identities.add(identity);
+    assertLocalModel(row.model, { executable: options.executable });
+    if (!row.model.call_interface) fail("PROCESS_CALL_INTERFACE_REQUIRED");
+  }
+  for (const current of models) if (current.call_interface) {
+    const spec = current.call_interface;
+    const safeKey = key => /^[a-z][a-z0-9_]{0,63}$/.test(key) && !["__proto__", "prototype", "constructor"].includes(key);
+    if (!current.data_bindings || shadowHash(Object.keys(spec.parameters).sort()) !== shadowHash([...current.data_bindings.parameter_keys].sort())
+      || [...Object.keys(spec.parameters), ...Object.keys(spec.returns)].some(key => !safeKey(key))) fail("PROCESS_CALL_INTERFACE_INVALID");
+    for (const output of Object.values(spec.returns)) {
+      if (current.nodes.find(node => node.id === output.node_id)?.kind !== "operation"
+        || output.path.some(part => !/^(?:[A-Za-z][A-Za-z0-9_-]{0,63}|0|[1-9][0-9]{0,3})$/.test(part) || ["__proto__", "prototype", "constructor"].includes(part))) fail("PROCESS_CALL_RETURN_INVALID");
+    }
+  }
+  const byIdentity = new Map(models.map(current => [`${current.model_id}:${current.revision}`, current]));
+  const checked = new Set();
+  function dependencies(current, stack) {
+    const identity = `${current.model_id}:${current.revision}`;
+    if (stack.includes(identity)) fail("PROCESS_CALL_RECURSION");
+    if (checked.has(identity)) return;
+    for (const node of current.nodes) if (node.target) {
+      const target = byIdentity.get(`${node.target.model_id}:${node.target.revision}`);
+      if (!target) fail("PROCESS_CALL_TARGET_MISSING");
+      dependencies(target, [...stack, identity]);
+    }
+    checked.add(identity);
+  }
+  dependencies(model, []);
+  // Keep each local graph a tree. Only explicit pinned edges cross models;
+  // validate the expanded ancestry, depth and IDs without overwriting parents.
+  const reached = new Set(); let expanded = 0;
+  function visit(current, id, depth, occurrence, stack) {
+    if (++expanded > 1024) fail("PROCESS_OCCURRENCE_LIMIT");
+    if (depth > 16) fail("PROCESS_NOT_STRUCTURED");
+    if (options.executable !== false && occurrence.length > 256) fail("PROCESS_OCCURRENCE_ID_LIMIT");
+    const node = current.nodes.find(row => row.id === id);
+    if (node.target) {
+      const identity = `${node.target.model_id}:${node.target.revision}`;
+      if (stack.includes(identity)) fail("PROCESS_CALL_RECURSION");
+      const target = resolveProcessCallTarget(model, node.target);
+      if (target.participants.length !== 1 || target.participants[0].id !== node.participant_ref) fail("PROCESS_CROSS_PARTICIPANT_SEQUENCE");
+      const fields = current.data_bindings.inputs.find(row => row.node_id === id)?.fields;
+      if (!fields || shadowHash(Object.keys(fields).sort()) !== shadowHash(Object.keys(target.call_interface.parameters).sort())) fail("PROCESS_CALL_PARAMETERS_INVALID");
+      reached.add(identity);
+      visit(target, target.entry, depth + 1, `${occurrence}/call`, [...stack, identity]);
+    } else if (node.kind === "sequence") node.children.forEach((child, index) => visit(current, child, depth + 1, `${occurrence}/${index}`, stack));
+    else if (node.child) visit(current, node.child, depth + 1, `${occurrence}/${node.kind === "loop" ? `iteration-${node.max_iterations}` : node.kind === "multi_instance" ? `item-${Math.max(0, node.items.length - 1)}` : "call"}`, stack);
+    else for (const branch of node.branches ?? []) visit(current, branch.node_id, depth + 1, `${occurrence}/${branch.flow_id}`, stack);
+  }
+  if (models.some(current => current.nodes.some(node => node.target))) visit(model, model.entry, 0, "root", [`${model.model_id}:${model.revision}`]);
+  if (reached.size !== (model.call_targets?.length ?? 0)) fail("PROCESS_CALL_TARGET_UNREACHABLE");
   return model;
 }
 

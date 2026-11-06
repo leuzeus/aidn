@@ -1,4 +1,6 @@
 import { createAgenticProcess, inspectAgenticProcess, advanceAgenticProcess, assertProcessResult } from "../../core/workflow/agentic-process.mjs";
+import { processFrameModel, processFrameNode } from "../../core/workflow/process-call-model.mjs";
+import { resolveProcessCallData } from "../../core/workflow/process-call-data.mjs";
 import { processFail as fail, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { decideAgentReuse } from "./agent-reuse-decision-service.mjs";
@@ -37,13 +39,13 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
   }
   function frameFor(instance, occurrenceId) {
     const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId);
-    if (!frame || instance.model.nodes.find(node => node.id === frame.node_id)?.kind !== "activity") fail("PROCESS_ACTIVITY_NOT_FOUND");
+    if (!frame || processFrameNode(instance.model, frame)?.kind !== "activity") fail("PROCESS_ACTIVITY_NOT_FOUND");
     return frame;
   }
   function requestFor(instance, frame) {
     authority(instance);
-    const node = instance.model.nodes.find(row => row.id === frame.node_id);
-    const policy = instance.model.policies.find(row => row.id === node.policy_ref), role = instance.model.roles.find(row => row.id === node.role_ref);
+    const node = processFrameNode(instance.model, frame);
+    const policy = processFrameModel(instance.model, frame).policies.find(row => row.id === node.policy_ref), role = processFrameModel(instance.model, frame).roles.find(row => row.id === node.role_ref);
     let binding;
     try { binding = readBinding({ instance_id: instance.instance_id, occurrence_id: frame.occurrence_id,
       participant_ref: node.participant_ref, scope_id: instance.scope_id }); } catch { fail("PROCESS_BINDING_UNAVAILABLE"); }
@@ -59,8 +61,8 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
     recommendation: { role: request.role, action: request.action, mode: request.mode }, scope: { scope_id: request.scope_id },
     adapters, roster, adapterHealth, phase, expectedExecutionId, requiredSkills, now, timeoutMs: authorityTimeoutMs });
   const skillsFor = (instance, frame) => {
-    const node = instance.model.nodes.find(row => row.id === frame.node_id);
-    return instance.model.roles.find(row => row.id === node.role_ref).skills;
+    const node = processFrameNode(instance.model, frame);
+    return processFrameModel(instance.model, frame).roles.find(row => row.id === node.role_ref).skills;
   };
   function refusal(previous, occurrenceId, eventId, stage, decision, write, expectedResultSha256) {
     const instance = advanceAgenticProcess(previous.record, { event_id: eventId, kind: "refusal", occurrence_id: occurrenceId,
@@ -100,17 +102,44 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
     };
     try { return await callback(invoke); }
     catch (cause) {
-      fail(/^PROCESS_(OPERATION|CONTROL)_[A-Z_]+$/.test(cause?.code ?? "") ? cause.code : prefix + "_AUTHORITY_UNAVAILABLE");
+      fail(/^PROCESS_(OPERATION|CONTROL|CALL|INPUT)_[A-Z_]+$/.test(cause?.code ?? "") ? cause.code : prefix + "_AUTHORITY_UNAVAILABLE");
     } finally { clearTimeout(timer); stop.abort(); }
   }
   function operationFrame(instance, occurrenceId) {
     authority(instance);
     const frame = inspectAgenticProcess(instance).occurrences.find(row => row.occurrence_id === occurrenceId);
-    const node = frame && instance.model.nodes.find(row => row.id === frame.node_id);
+    const node = frame && processFrameNode(instance.model, frame);
     if (node?.kind !== "operation") fail("PROCESS_OPERATION_NOT_FOUND");
     return { frame, node };
   }
+  async function transitionCall({ instanceId, expectedSha256, occurrenceId, eventId, write = false, expectedResultSha256 = null }, returning) {
+    if (!processId(eventId)) fail("PROCESS_CALL_REQUEST_INVALID");
+    const previous = current(instanceId, expectedSha256), instance = previous.record;
+    authority(instance);
+    const kind = returning ? "call_return" : "call_enter";
+    const retained = instance.events.find(row => row.event_id === eventId);
+    if (retained) {
+      if (retained.kind !== kind || retained.occurrence_id !== occurrenceId) fail("PROCESS_EVENT_ID_CONFLICT");
+      return commit(instance, previous, write, expectedResultSha256);
+    }
+    const cursor = inspectAgenticProcess(instance), records = new Map();
+    const data = await authorityObservation(operationAuthority, async invoke => {
+      for (let count = 0; count <= 32; count++) {
+        try { return resolveProcessCallData({ instance, cursor, occurrenceId, returning, readOperation: id => records.get(id) }); }
+        catch (error) {
+          if (error.code !== "PROCESS_CALL_WITNESS_REQUIRED") throw error;
+          if (count === 32 || records.has(error.operation_id)) fail("PROCESS_CALL_WITNESS_INVALID");
+          const record = await invoke("readCallOperation", { instance, operation_id: error.operation_id });
+          records.set(error.operation_id, record);
+        }
+      }
+      fail("PROCESS_CALL_WITNESS_INVALID");
+    });
+    return commit(advanceAgenticProcess(instance, { event_id: eventId, kind, occurrence_id: occurrenceId, ...data }), previous, write, expectedResultSha256);
+  }
   return Object.freeze({
+    enterCall: request => transitionCall(request, false),
+    returnCall: request => transitionCall(request, true),
     inspect(instanceId) {
       const previous = store.read(instanceId);
       if (!previous.record) fail("PROCESS_INSTANCE_NOT_FOUND");
@@ -143,7 +172,7 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
       const { intent } = await authorityObservation(operationAuthority, async invoke => {
         const observed = await invoke("prepare", { instance: previous.record, occurrence: frame, binding_ref: node.binding_ref });
         assertProcessOperationBinding(observed.binding);
-        assertProcessOperationIntent(observed.intent, { instance: previous.record, node, occurrenceId: frame.occurrence_id });
+        assertProcessOperationIntent(observed.intent, { instance: previous.record, node, occurrenceId: frame.occurrence_id, model: processFrameModel(previous.record.model, frame) });
         if (observed.binding.id !== node.binding_ref || shadowHash(observed.binding) !== observed.intent.binding_sha256
           || !["read-only", "preview"].includes(observed.binding.effect_class) && observed.intent.authorization_sha256 === null) fail("PROCESS_OPERATION_INTENT_BINDING_CHANGED");
         const proof = await invoke("verifyIntent", { binding: observed.binding, intent: observed.intent, instance: previous.record, occurrence: frame });
@@ -179,7 +208,7 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
       if (retained?.kind === "control" && retained.occurrence_id === occurrenceId && retained.delivery.delivery_id === deliveryId)
         return commit(previous.record, previous, write, expectedResultSha256);
       const occurrence = inspectAgenticProcess(previous.record).occurrences.find(row => row.occurrence_id === occurrenceId);
-      const node = occurrence && previous.record.model.nodes.find(row => row.id === occurrence.node_id);
+      const node = occurrence && processFrameNode(previous.record.model, occurrence);
       if (previous.record.contract_version !== "agentic-process-instance.v2" || node?.kind !== "event" || occurrence.status !== "WAITING") fail("PROCESS_CONTROL_ORDER_INVALID");
       const delivery = await authorityObservation(controlAuthority, async invoke => {
         const observed = await invoke("read", { delivery_id: deliveryId, instance: previous.record, occurrence });

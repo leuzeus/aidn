@@ -1,6 +1,9 @@
 # Appels de sous-modèles pour le workflow STANDARD
 
-Statut : **proposition de conception, non implémentée et non qualifiée**.
+Statut : **conception de référence ; premier candidat exécutable ajouté à la
+source, non qualifié**. Les contrats explicites sont décrits dans ADR-0022 et
+les sélecteurs de qualification dans `docs/TESTING.md`. Le raccordement complet
+à STANDARD, les bornes et profils encore non couverts restent à achever.
 Ce document prépare le contrat restant de L3. Il ne remplace ni
 [SPEC](SPEC.md), ni les décisions et autorisations d'exécution existantes.
 Le [plan complet](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md) conserve

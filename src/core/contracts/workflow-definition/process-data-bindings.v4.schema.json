@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-data-bindings.v4",
+  "x-aidn-contract-version": "process-data-bindings.v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "parameter_keys",
+    "inputs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "process-data-bindings.v4"
+    },
+    "parameter_keys": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_id",
+          "fields"
+        ],
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "fields": {
+            "type": "object",
+            "maxProperties": 32,
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source"
+              ],
+              "properties": {
+                "source": {
+                  "enum": [
+                    "literal",
+                    "parameter",
+                    "occurrence_id",
+                    "operation_id",
+                    "operation_input",
+                    "operation_output",
+                    "item",
+                    "call_output"
+                  ]
+                },
+                "value": {},
+                "key": {
+                  "type": "string"
+                },
+                "node_id": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "array",
+                  "maxItems": 8,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

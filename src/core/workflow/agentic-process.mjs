@@ -7,6 +7,8 @@ import { validateJsonSchema } from "../contracts/json-schema-validator.mjs";
 import instanceSchema from "../contracts/workflow-definition/agentic-process-instance.v1.schema.json" with { type: "json" };
 import instanceSchemaV2 from "../contracts/workflow-definition/agentic-process-instance.v2.schema.json" with { type: "json" };
 import { assertProcessOperationIntent, assertProcessOperationReceipt, assertProcessControlEvent } from "./process-operation-contracts.mjs";
+import { processFrameModel, processModels, resolveProcessCallTarget } from "./process-call-model.mjs";
+import { assertProcessCallTransition } from "./process-call-data.mjs";
 import { assertProcessParameters } from "./process-data-contracts.mjs";
 
 const terminal = status => ["COMPLETED", "FAILED", "CANCELLED"].includes(status);
@@ -34,9 +36,9 @@ function prefixHasher(instance) {
   };
 }
 
-export function assertActivityAssignment(instance, node, occurrenceId, request, decision) {
+export function assertActivityAssignment(instance, node, occurrenceId, request, decision, model = instance.model) {
   assertAgentReuseRequest(request);
-  const role = instance.model.roles.find(row => row.id === node.role_ref), policy = instance.model.policies.find(row => row.id === node.policy_ref);
+  const role = model.roles.find(row => row.id === node.role_ref), policy = model.policies.find(row => row.id === node.policy_ref);
   if (request.activity_id !== occurrenceId || request.scope_id !== instance.scope_id || request.role !== role.role || request.action !== role.action
     || ["assurance_profile", "mode", "independent_review", "context_isolation_required", "required_permissions", "allowed_permissions"]
       .some(key => shadowHash(request[key]) !== shadowHash(policy[key]))) fail("PROCESS_ASSIGNMENT_BINDING_CHANGED");
@@ -58,7 +60,13 @@ export function assertProcessResult(result, assignment) {
 function replay(instance) {
   const v2 = instance.contract_version === "agentic-process-instance.v2";
   const prefixSha256 = v2 ? prefixHasher(instance) : null;
-  const nodes = new Map(instance.model.nodes.map(node => [node.id, node]));
+  const pinnedCalls = instance.model.call_targets !== undefined;
+  const models = new Map(processModels(instance.model).map(model => [shadowHash(model), model]));
+  const hashes = new Map([...models].map(([hash, model]) => [model, hash]));
+  const nodeTables = new Map([...models].map(([hash, model]) => [hash, new Map(model.nodes.map(node => [node.id, node]))]));
+  const modelOf = frame => frame.model_sha256 === undefined ? instance.model : models.get(frame.model_sha256) ?? fail("PROCESS_CALL_TARGET_CHANGED");
+  const nodeOf = frame => nodeTables.get(hashes.get(modelOf(frame))).get(frame.node_id);
+  const factsFor = frame => frame.call_scope_id ? frames.get(frame.call_scope_id).local_facts : facts;
   const frames = new Map(); let facts = { ...instance.initial_facts }, failure = null;
   function stop(frame, status, reason) {
     if (!failure) failure = reason;
@@ -67,7 +75,7 @@ function replay(instance) {
     frames.get("root").status = status;
   }
   function loopNext(frame) {
-    const node = nodes.get(frame.node_id);
+    const node = nodeOf(frame), facts = factsFor(frame);
     if (!Object.hasOwn(facts, node.until)) { frame.status = "WAITING"; frame.wait_reason = "routing_fact"; return; }
     if (facts[node.until]) { finish(frame); return; }
     if (frame.iteration >= node.max_iterations) { stop(frame, "FAILED", "PROCESS_LOOP_LIMIT"); return; }
@@ -77,10 +85,12 @@ function replay(instance) {
   function finish(frame) {
     frame.status = "COMPLETED"; frame.wait_reason = null;
     if (!frame.parent_id) return;
-    const parent = frames.get(frame.parent_id), node = nodes.get(parent.node_id);
+    const parent = frames.get(frame.parent_id), node = nodeOf(parent);
     if (terminal(parent.status)) fail("PROCESS_PARENT_TERMINAL");
     parent.completed_children.push(frame.occurrence_id);
-    if (node.kind === "sequence") {
+    if (node.kind === "call" && node.target) {
+      parent.status = "WAITING"; parent.wait_reason = "call_return";
+    } else if (node.kind === "sequence") {
       const next = parent.completed_children.length;
       if (next === node.children.length) finish(parent);
       else enter(node.children[next], `${parent.occurrence_id}/${next}`, parent.occurrence_id);
@@ -91,7 +101,7 @@ function replay(instance) {
     } else if (parent.completed_children.length === parent.expected_children) finish(parent);
   }
   function route(frame) {
-    const node = nodes.get(frame.node_id);
+    const node = nodeOf(frame), facts = factsFor(frame);
     let selected;
     if (["xor", "or"].includes(node.kind)) {
       if (node.branches.some(branch => branch.condition !== null && !Object.hasOwn(facts, branch.condition))) {
@@ -109,19 +119,29 @@ function replay(instance) {
       enter(branch.node_id, `${frame.occurrence_id}/${branch.flow_id}`, frame.occurrence_id);
     }
   }
-  function enter(nodeId, occurrenceId, parentId) {
+  function enter(nodeId, occurrenceId, parentId, calledModel = null, callScopeId = undefined) {
     if (frames.size >= 1024 || frames.has(occurrenceId)) fail("PROCESS_OCCURRENCE_LIMIT");
-    const node = nodes.get(nodeId);
+    const parent = parentId ? frames.get(parentId) : null;
+    const model = calledModel ?? (parent ? modelOf(parent) : instance.model);
+    const node = model.nodes.find(row => row.id === nodeId);
+    if (!node) fail("PROCESS_NODE_INVALID");
     const frame = { occurrence_id: occurrenceId, node_id: nodeId, participant_ref: node.participant_ref,
       parent_id: parentId, status: "RUNNING", wait_reason: null, correlation_id: `${instance.instance_id}:${occurrenceId}`,
       selected_flows: [], skipped_flows: [], completed_children: [], expected_children: 1, iteration: 0, assignment: null, result: null, last_refusal: null };
+    if (pinnedCalls) {
+      frame.model_sha256 = hashes.get(model);
+      frame.call_scope_id = callScopeId === undefined ? parent?.call_scope_id ?? null : callScopeId;
+    }
     frames.set(occurrenceId, frame);
     if (["activity", "operation"].includes(node.kind)) frame.status = "READY";
     else if (node.kind === "sequence") {
       if (!node.children.length) { frame.expected_children = 0; finish(frame); }
       else enter(node.children[0], `${occurrenceId}/0`, occurrenceId);
     }
-    else if (node.kind === "call") enter(node.child, `${occurrenceId}/call`, occurrenceId);
+    else if (node.kind === "call") {
+      if (node.target) { frame.status = "WAITING"; frame.wait_reason = "call_entry"; }
+      else enter(node.child, `${occurrenceId}/call`, occurrenceId);
+    }
     else if (node.kind === "loop") { frame.iteration = 1; enter(node.child, `${occurrenceId}/iteration-1`, occurrenceId); }
     else if (node.kind === "multi_instance") {
       frame.expected_children = node.items.length;
@@ -138,7 +158,7 @@ function replay(instance) {
     for (const frame of [...frames.values()]) {
       if (failure) break;
       if (frame.status === "WAITING" && frame.wait_reason === "routing_fact") {
-        if (nodes.get(frame.node_id).kind === "loop") loopNext(frame); else route(frame);
+        if (nodeOf(frame).kind === "loop") loopNext(frame); else route(frame);
       }
     }
   }
@@ -157,13 +177,25 @@ function replay(instance) {
       resumeFactWaits();
       continue;
     }
-    const frame = frames.get(event.occurrence_id), node = frame && nodes.get(frame.node_id);
+    const frame = frames.get(event.occurrence_id), node = frame && nodeOf(frame);
     if (!frame) fail("PROCESS_OCCURRENCE_UNKNOWN");
-    if (event.kind === "operation_intent") {
+    if (["call_enter", "call_return"].includes(event.kind)) {
+      if (!v2 || !pinnedCalls || node.kind !== "call" || !node.target) fail("PROCESS_CALL_ORDER_INVALID");
+      const entering = event.kind === "call_enter";
+      if (frame.status !== "WAITING" || frame.wait_reason !== (entering ? "call_entry" : "call_return")) fail("PROCESS_CALL_ORDER_INVALID");
+      assertProcessCallTransition(event, { instance: { ...instance, instance_sha256: prefixSha256(eventIds.size - 1) },
+        cursor: { occurrences: [...frames.values()] }, occurrenceId: frame.occurrence_id });
+      if (entering) {
+        frame.call_entry = event.resolution; frame.local_facts = {};
+        frame.status = "RUNNING"; frame.wait_reason = null;
+        const target = resolveProcessCallTarget(instance.model, node.target);
+        enter(target.entry, `${frame.occurrence_id}/call`, frame.occurrence_id, target, frame.occurrence_id);
+      } else { frame.call_return = event.resolution; finish(frame); }
+    } else if (event.kind === "operation_intent") {
       if (!v2 || !exactKeys(event, ["event_id", "kind", "occurrence_id", "intent"]) || node.kind !== "operation"
         || !(frame.status === "READY" || frame.status === "WAITING" && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
       assertProcessOperationIntent(event.intent, { instance, node, revision: eventIds.size, occurrenceId: frame.occurrence_id,
-        expectedInstanceSha256: prefixSha256(eventIds.size - 1) });
+        expectedInstanceSha256: prefixSha256(eventIds.size - 1), model: modelOf(frame) });
       if (operationIds.has(event.intent.operation_id)) fail("PROCESS_OPERATION_ID_REUSED");
       operationIds.add(event.intent.operation_id);
       frame.operation = { intent: event.intent, receipt: null };
@@ -174,7 +206,11 @@ function replay(instance) {
       assertProcessOperationReceipt(event.receipt, frame.operation.intent);
       if (receiptIds.has(event.receipt.receipt_id)) fail("PROCESS_OPERATION_RECEIPT_REUSED");
       receiptIds.add(event.receipt.receipt_id); frame.operation.receipt = event.receipt;
-      if (event.receipt.outcome === "completed") { facts = { ...facts, ...event.receipt.facts }; finish(frame); resumeFactWaits(); }
+      if (event.receipt.outcome === "completed") {
+        if (frame.call_scope_id) Object.assign(frames.get(frame.call_scope_id).local_facts, event.receipt.facts);
+        else facts = { ...facts, ...event.receipt.facts };
+        finish(frame); resumeFactWaits();
+      }
       else if (["blocked", "deferred", "reconciliation_required"].includes(event.receipt.outcome)) frame.wait_reason = event.receipt.outcome;
       else stop(frame, event.receipt.outcome === "cancelled" ? "CANCELLED" : "FAILED", `PROCESS_OPERATION_${event.receipt.outcome.toUpperCase()}`);
     } else if (event.kind === "refusal") {
@@ -204,7 +240,7 @@ function replay(instance) {
       enter(branch.node_id, `${frame.occurrence_id}/${branch.flow_id}`, frame.occurrence_id);
     } else if (event.kind === "assign") {
       if (!exactKeys(event, ["event_id", "kind", "occurrence_id", "request", "decision"]) || node.kind !== "activity" || frame.status !== "READY") fail("PROCESS_ASSIGNMENT_ORDER_INVALID");
-      assertActivityAssignment(instance, node, frame.occurrence_id, event.request, event.decision);
+      assertActivityAssignment(instance, node, frame.occurrence_id, event.request, event.decision, modelOf(frame));
       frame.assignment = { request: event.request, decision: event.decision }; frame.status = "RUNNING";
     } else if (event.kind === "result") {
       if (!exactKeys(event, ["event_id", "kind", "occurrence_id", "result"]) || node.kind !== "activity" || frame.status !== "RUNNING" || !frame.assignment) fail("PROCESS_RESULT_ORDER_INVALID");
@@ -217,7 +253,7 @@ function replay(instance) {
   }
   const all = [...frames.values()];
   const status = v2 && !terminal(frames.get("root").status) && all.some(frame => frame.status === "WAITING")
-    && !all.some(frame => frame.status === "READY" || nodes.get(frame.node_id).kind === "activity" && frame.status === "RUNNING")
+    && !all.some(frame => frame.status === "READY" || nodeOf(frame).kind === "activity" && frame.status === "RUNNING")
     ? "WAITING" : frames.get("root").status;
   return { status, first_failure: failure, occurrences: all,
     ready: [...frames.values()].filter(frame => frame.status === "READY").map(frame => frame.occurrence_id),

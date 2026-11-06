@@ -1,5 +1,29 @@
 # Testing Guide
 
+## Embedded reusable-call source candidate, 2026-11-06
+
+`node tools/perf/verify-process-reusable-call-fixtures.mjs contract|negative|sequential|concurrent|cold`
+has exact selectors; execute each as a separate bounded Windows Job cohort case.
+`sequential` and `concurrent` embed one 131-node target twice and exceed 256
+expanded occurrences, with 240 signed deterministic fixture writes, local values
+and declared outputs. The sequential parent consumes its second return. `cold`
+reopens canonical instances in actual new Node processes at entry, intention,
+effect and accepted-return boundaries; no package model file resolves a target.
+All cases retain their arenas and report synthetic authority explicitly.
+Streaming SIM uses the common reducer and no effect/model ports. `negative`
+covers unchanged state on wrong types, concurrent CAS, changed witnesses,
+occurrence/author mismatch, distinct refusal/defer/cancel/UNKNOWN and no implicit
+success. `contract` checks closed references, recursion, stale/conflicting/missing
+pins, local tree, 257-node rejection and a frozen historical v1 hash.
+
+These selectors are authored, **NOT_RUN** pending frozen-source READY and ROOT GO.
+They do not qualify the actual STANDARD host, every bound, every historical v2
+refusal, every cold/CAS/crash boundary, db-only/DUAL/PG, Native/Human/Provider,
+ordinary installed use or L1-L8/A1-A10. Follow with the existing common reducer,
+operation, metadata/source-of-truth and published loader gates; report each
+actual execution separately. Do not transfer a candidate's result to the
+published STANDARD extraction or a different source HEAD.
+
 ## Adjacent installation-record scans, 2026-11-06
 
 The activation fixture retains all earlier assertions and adds four checks for

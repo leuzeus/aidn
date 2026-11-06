@@ -5,6 +5,8 @@ import { createJournaledNativeAllocation } from "./journaled-native-allocation.m
 import { standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 
+import { processModels, processFrameNode } from "../../core/workflow/process-call-model.mjs";
+
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // The common reducer owns control flow. This adapter selects a port for the
 // cursor's ready leaf; it contains no standard-workflow routing decisions.
@@ -13,7 +15,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value;
-  if (!model.nodes.some(node => node.kind === "operation")) fail("STANDARD_PROCESS_MIXED_MODEL_REQUIRED");
+  if (!processModels(model).some(component => component.nodes.some(node => node.kind === "operation"))) fail("STANDARD_PROCESS_MIXED_MODEL_REQUIRED");
   let native;
   const processAuthority = createStandardProcessAuthority({ configuration, model, modelSource, readSigningKey, humanSource, environment,
     readProductSha256: () => nativeHost().preview().product_sha256 });
@@ -23,13 +25,13 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   const bindings = new Map(standardWorkflowOperationBindings().map(row => [row.id, row]));
   // Preserve eager validation for current models. Historical diagnostic reads
   // need no execution composition; any later native use still calls read().
-  if (model.nodes.filter(node => node.kind === "operation").every(node => bindings.has(node.binding_ref)
-    && model.operation_pins[node.binding_ref] === shadowHash(bindings.get(node.binding_ref)))) nativeHost();
+  if (processModels(model).every(component => component.nodes.filter(node => node.kind === "operation").every(node => bindings.has(node.binding_ref)
+    && component.operation_pins[node.binding_ref] === shadowHash(bindings.get(node.binding_ref))))) nativeHost();
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
     authorize, humanSource, controlSource, processAuthority, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
     reconciliationConfiguration: configuration, dispositionSource }, { validationBoundaryFactory });
   const inspect = () => operations.inspect(configuration.instance_id);
-  const nodeFor = frame => model.nodes.find(node => node.id === frame.node_id);
+  const nodeFor = frame => processFrameNode(model, frame);
   async function finishOperation(id, signal) {
     const output = await operations.dispatch(id, { write: true, signal });
     if (!["receipted", "retained_result"].includes(output.status)) return { kind: "operation", operation_id: id, ...output };
@@ -66,6 +68,13 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
       if (model.data_bindings && (checkShadowJson(input) || !input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).length)) fail("PROCESS_INPUT_OVERRIDE_FORBIDDEN");
       const state = inspect(), cursor = state.cursor;
       if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) return { kind: "terminal", ...state, written: false, status: cursor.status };
+      const call = cursor.occurrences.find(frame => frame.status === "WAITING" && ["call_entry", "call_return"].includes(frame.wait_reason));
+      if (call) {
+        const request = { instanceId: configuration.instance_id, expectedSha256: state.record.instance_sha256,
+          occurrenceId: call.occurrence_id, eventId: `call_${state.record.revision}`, write };
+        const changed = await operations[call.wait_reason === "call_entry" ? "enterCall" : "returnCall"](request);
+        return { kind: "call", status: changed.cursor.status, ...changed };
+      }
       const ready = cursor.ready.map(id => cursor.occurrences.find(row => row.occurrence_id === id));
       const operation = ready.find(frame => nodeFor(frame).kind === "operation")
         ?? cursor.occurrences.find(frame => nodeFor(frame).kind === "operation" && frame.status === "WAITING"

@@ -1,5 +1,34 @@
 # ADR-0022 — Structured agentic process and constrained resource assignment
 
+## Embedded reusable call candidate, 2026-11-06
+
+V2 may explicitly retain a root `call_targets` library of complete immutable v2
+models, identified by `model_id`, `revision` and `model_sha256`. A new call uses
+`target`; historical `child` calls keep their existing tree semantics, bytes and
+events. Each local target keeps the 256-node bound. The common reducer validates
+expanded ancestry, rejects recursion and resolves local nodes by pinned model
+and occurrence, with the existing depth, JSON, ID, 1024-occurrence and 512-event
+limits. It performs no ambient package/path/network resolution.
+
+Private `process-data-bindings.v4`, `process-resolved-input.v3` and
+`process-call-transition.v1` describe this opt-in. `call_enter` durably records
+once-resolved typed parameters, sources and accepted source witnesses at the
+exact prefix. `call_return` records declared typed outputs only after all call
+children complete, verified against that call's accepted receipts. The service
+observes authenticated journals through its fixed host port and commits through
+the existing canonical artifact CAS. Facts and data are call-local; operation
+identities, authority, grants and cumulative accounting stay instance-bound.
+The same reducer validates execution, cold reconstruction, replay and SIM.
+These records are part of `agentic_process_instance`, with no new store or table.
+
+This is an executable source candidate pending exact-source qualification.
+Published STANDARD extraction, complete lifecycle coverage, ordinary-entry
+qualification and Native/Human/Provider/installed acceptance remain incomplete.
+The current Native configuration does not model-qualify activity instructions
+or output contracts; it explicitly refuses activities in embedded targets before
+allocation. The generic service's activity protocol remains distinct from that
+unqualified Native profile.
+
 ## Status
 
 Initially implemented as an opt-in internal source API and explicit owned native

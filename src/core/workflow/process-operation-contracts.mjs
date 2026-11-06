@@ -15,10 +15,10 @@ export function assertProcessOperationBinding(value) {
     || [value.rule_refs, value.allowed_modes].some(items => new Set(items).size !== items.length)) fail("PROCESS_OPERATION_BINDING_INVALID");
   return value;
 }
-export function assertProcessOperationIntent(value, { instance, node, occurrenceId, revision = instance.revision, expectedInstanceSha256 = instance.instance_sha256 } = {}) {
+export function assertProcessOperationIntent(value, { instance, node, occurrenceId, revision = instance.revision, expectedInstanceSha256 = instance.instance_sha256, model = instance.model } = {}) {
   assertSchema(value, intentSchema, "PROCESS_OPERATION_INTENT_INVALID");
   if (node.kind !== "operation" || value.binding_ref !== node.binding_ref || value.scope_id !== instance.scope_id
-    || value.instance_revision !== revision || value.binding_sha256 !== instance.model.operation_pins?.[node.binding_ref]
+    || value.instance_revision !== revision || value.binding_sha256 !== model.operation_pins?.[node.binding_ref]
     || value.instance_id !== instance.instance_id || value.instance_sha256 !== expectedInstanceSha256
     || value.model_sha256 !== instance.model_sha256 || value.occurrence_id !== occurrenceId) fail("PROCESS_OPERATION_INTENT_BINDING_CHANGED");
   return value;

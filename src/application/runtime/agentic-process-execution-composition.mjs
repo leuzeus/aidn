@@ -1,3 +1,4 @@
+import { processModels, processFrameNode, processFrameModel } from "../../core/workflow/process-call-model.mjs";
 import { MODE_WORK_CONTRACT } from "../../core/workflow/standard-mode-work.mjs";
 import { CYCLE_AUDIT_CONTRACT } from "../../core/workflow/standard-cycle-audit.mjs";
 import { PR_TRIAGE_CONTRACT } from "../../core/workflow/standard-pr-triage.mjs";
@@ -86,6 +87,10 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     if ([targetRoot, reviewRoot, controlRoot, config.native.home].some(other => inside(root, other) || inside(other, root))) fail("PROCESS_EXECUTION_TOOL_ROOT_OVERLAP");
   }
   const model = JSON.parse(pinned(config.model, [productRoot, reviewRoot]).toString("utf8")); assertAgenticProcessModel(model);
+  // Native configuration still keys instructions and output contracts locally.
+  // Refuse a target activity before allocating until that profile has a closed,
+  // model-qualified configuration; never borrow a root activity's authority.
+  if (model.call_targets?.some(row => row.model.nodes.some(node => node.kind === "activity"))) fail("PROCESS_EXECUTION_CALL_ACTIVITY_PROFILE_UNSUPPORTED");
   if (config.activity_outputs !== undefined) {
     if (!processAuthority || !config.activity_outputs || typeof config.activity_outputs !== "object" || Array.isArray(config.activity_outputs)) fail("PROCESS_ACTIVITY_OUTPUT_CONTRACT_UNSUPPORTED");
     for (const [id, contractRef] of Object.entries(config.activity_outputs)) {
@@ -115,13 +120,13 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       nativeActivityAnswerSchema(contractRef, "0".repeat(64));
     }
   }
-  if (model.nodes.some(node => node.kind === "operation") && !processAuthority) fail("PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED");
+  if (processModels(model).some(component => component.nodes.some(node => node.kind === "operation")) && !processAuthority) fail("PROCESS_EXECUTION_MODEL_PROFILE_UNSUPPORTED");
   const controlScenario = Object.hasOwn(config, "control_scenario")
     ? assertAgenticControlScenario(JSON.parse(pinned(config.control_scenario, [productRoot, reviewRoot]).toString("utf8")))
     : { initial_facts: {}, events: [] };
   if (model.contract_version === "agentic-process-model.v2"
     && (Object.keys(controlScenario.initial_facts).length || controlScenario.events.length)) fail("PROCESS_EXECUTION_CONTROL_PROFILE_UNSUPPORTED");
-  for (const policy of model.policies) if (!["compatible-work.v1", "independent-review.v1"].includes(policy.assurance_profile)) fail("PROCESS_EXECUTION_ASSURANCE_PROFILE_UNSUPPORTED");
+  for (const policy of processModels(model).flatMap(component => component.policies)) if (!["compatible-work.v1", "independent-review.v1"].includes(policy.assurance_profile)) fail("PROCESS_EXECUTION_ASSURANCE_PROFILE_UNSUPPORTED");
   for (const [key, value] of Object.entries(config.instructions)) if (!model.nodes.some(node => node.id === key && node.kind === "activity")
     || typeof value !== "string" || Buffer.byteLength(value) > 16384) fail("PROCESS_EXECUTION_INSTRUCTION_INVALID");
   const criteria = pinned(config.criteria, [productRoot, reviewRoot]).toString("utf8");
@@ -129,7 +134,7 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
     || Object.keys(config.authorities).length > 16) fail("PROCESS_EXECUTION_PROJECT_AUTHORITY_REQUIRED");
   const authorities = Object.fromEntries(Object.entries(config.authorities).map(([id, ref]) => [id, pinned(ref, [productRoot, reviewRoot]).toString("utf8")]));
   const skills = Object.fromEntries(Object.entries(config.skills ?? {}).map(([id, ref]) => [id, pinned(ref, [productRoot, reviewRoot]).toString("utf8")]));
-  for (const role of model.roles) if (role.skills.some(skill => !Object.hasOwn(skills, skill))) fail("PROCESS_EXECUTION_SKILL_MISSING");
+  for (const role of processModels(model).flatMap(component => component.roles)) if (role.skills.some(skill => !Object.hasOwn(skills, skill))) fail("PROCESS_EXECUTION_SKILL_MISSING");
   const { project: authorityAtCreation, persistence } = readWorkflowProjectExecutionAuthority({ targetRoot, env: environment });
   const scopeId = processAuthority ? processAuthority.read().scope_id : shadowHash({ project: authorityAtCreation.scope, persistence: persistence.binding_sha256 });
   function readAuthority() {
@@ -408,16 +413,19 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
           // their application host; this native allocation closes before them.
           if (processAuthority && current.cursor.ready.some(id => {
             const frame = current.cursor.occurrences.find(row => row.occurrence_id === id);
-            return model.nodes.find(row => row.id === frame.node_id)?.kind === "operation";
+            return processFrameNode(model, frame)?.kind === "operation";
           })) break;
+          if (processAuthority && current.cursor.occurrences.some(frame => frame.status === "WAITING"
+            && ["call_entry", "call_return"].includes(frame.wait_reason))) break;
           const occurrenceId = current.cursor.ready[0];
           if (!occurrenceId) {
             if (controlIndex < controlScenario.events.length) fail("PROCESS_EXECUTION_CONTROL_EVENT_UNREACHABLE");
             break; // durable event wait, no model polling
           }
           if (responseIds.size >= authorization.max_responses) fail("PROCESS_EXECUTION_RESPONSE_LIMIT");
-          const frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = model.nodes.find(row => row.id === frame.node_id);
-          const role = model.roles.find(row => row.id === node.role_ref), policy = model.policies.find(row => row.id === node.policy_ref);
+          const frame = current.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = processFrameNode(model, frame);
+          const component = processFrameModel(model, frame);
+          const role = component.roles.find(row => row.id === node.role_ref), policy = component.policies.find(row => row.id === node.policy_ref);
           executionStage = "activity_prepare";
           await host.prepare({ instance: current.record, frame, node, role, policy });
           executionStage = "activity_assignment";

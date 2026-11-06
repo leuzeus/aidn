@@ -19,7 +19,10 @@
     "instance_sha256"
   ],
   "properties": {
-    "initial_parameters": { "type": "object", "maxProperties": 32 },
+    "initial_parameters": {
+      "type": "object",
+      "maxProperties": 32
+    },
     "contract_version": {
       "const": "agentic-process-instance.v2"
     },
@@ -87,7 +90,9 @@
               "refusal",
               "operation_intent",
               "operation_result",
-              "control"
+              "control",
+              "call_enter",
+              "call_return"
             ]
           },
           "occurrence_id": {
@@ -419,6 +424,16 @@
                   }
                 }
               }
+            }
+          },
+          "resolution": {
+            "type": "object"
+          },
+          "witnesses": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object"
             }
           }
         }

@@ -73,6 +73,7 @@ import { createStandardPrReviewReceiver } from "./standard-session-pr-review-rec
 import { inspectAgenticProcess } from "../../core/workflow/agentic-process.mjs";
 import { assertControlRequest } from "../../core/workflow/process-control-inbox.mjs";
 import { createAgenticProcess, advanceAgenticProcess } from "../../core/workflow/agentic-process.mjs";
+import { processModels, processFrameNode, processFrameModel } from "../../core/workflow/process-call-model.mjs";
 import { assertAgenticProcessModel, agenticPolicyPins, processId } from "../../core/workflow/agentic-process-model.mjs";
 import { shadowHash, freezeShadow } from "../../core/workflow/shadow-json.mjs";
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from "../../core/workflow/process-operation-journal.mjs";
@@ -222,7 +223,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || shadowHash(evidence.evidence_refs) !== shadowHash(machine.evidence_refs)) fail("STANDARD_CYCLE_CLOSE_RECORDED_PROVENANCE_CHANGED");
     return { record_operation_id: closed.record.operation_id, plan, output: closed.output };
   }
-  const terminalCheckpoint = processAuthority && model.nodes.some(node => node.binding_ref === "cycle_terminal_checkpoint")
+  const terminalCheckpoint = processAuthority && processModels(model).some(component => component.nodes.some(node => node.binding_ref === "cycle_terminal_checkpoint"))
     ? createStandardCycleTerminalCheckpoint({ targetRoot, now, readRecorded: readAcceptedTerminalRecord,
       observeContext: () => processAuthority.observeCycleCloseContext(), readCurrent: id => current(id).record }) : null;
   const cycleCloseHook = processAuthority ? createStandardCycleCloseHook({ targetRoot, now,
@@ -473,7 +474,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readCheckpoint: sessionPrSuccessor.readCheckpoint, inspectPush: (branch, options) => sessionPushPort.inspect(branch, options) }) : null;
   const sessionPrReview = sessionPrReviewAuthority ? createStandardSessionPrReviewObservation({ now, reviewPort: sessionReviewPort,
     readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
-  const sessionPrReviewContent = sessionPrReviewAuthority && model.nodes.some(node => node.binding_ref === "session_pr_review_content_observe")
+  const sessionPrReviewContent = sessionPrReviewAuthority && processModels(model).some(component => component.nodes.some(node => node.binding_ref === "session_pr_review_content_observe"))
     ? createStandardSessionPrReviewContentObservation({ now, reviewPort: sessionReviewPort,
     readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
   if (sessionReviewEventPort !== null && (!sessionPrReviewContent
@@ -545,7 +546,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readCurrent: id => current(id).record }) : null;
   const prCorrectionReview = prCorrectionCheckpoint ? createStandardPrCorrectionReview({ readCheckpoint: prCorrectionCheckpoint.readCompleted,
     readCycleInventory: () => artifacts.cycles().map(row => ({ cycle_id: row.cycle_id, path: row.path, sha256: row.sha256, metadata_sha256: artifacts.metadataHash(row.path) })) }) : null;
-  const sessionGitCheckpoint = model.nodes.some(node => node.binding_ref === "session_git_checkpoint") ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
+  const sessionGitCheckpoint = processModels(model).some(component => component.nodes.some(node => node.binding_ref === "session_git_checkpoint")) ? createStandardWorkflowGitCheckpoint({ targetRoot, now, readCurrent: id => current(id).record,
     readContext(instance, input) {
       const context = acceptedForPromotion(instance, input.context_operation_id, "cycle_context_refresh", "STANDARD_GIT_ACCEPTED_CONTEXT_REQUIRED");
       const startId = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "session_start_finalize").at(-1)?.intent.operation_id;
@@ -593,7 +594,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       completion_boundary_sha256: promoted.output.observations.causal_transition.completion_boundary_sha256,
       parent_head: git.commit_sha ?? git.head, approved_postimages: [...approved.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([path, sha256]) => ({ path, sha256 })) };
   }
-  const baselinePromotionCheckpoint = processAuthority && model.nodes.some(node => node.binding_ref === "baseline_promotion_checkpoint")
+  const baselinePromotionCheckpoint = processAuthority && processModels(model).some(component => component.nodes.some(node => node.binding_ref === "baseline_promotion_checkpoint"))
     ? createStandardBaselinePromotionCheckpoint({ targetRoot, now, readSource: readAcceptedPromotionCheckpointSource,
       promotion: baselinePromotion, readCurrent: id => current(id).record }) : null;
   const baselinePromotionHook = processAuthority ? createStandardBaselinePromotionHook({ targetRoot, now,
@@ -619,8 +620,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
   const bindings = new Map(standardWorkflowOperationBindings().map(value => [value.id, value]));
   function assertCurrentBindings() {
-    for (const node of model.nodes.filter(node => node.kind === "operation"))
-      if (!bindings.has(node.binding_ref) || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_HOST_BINDING_CHANGED");
+    for (const component of processModels(model)) for (const node of component.nodes.filter(node => node.kind === "operation"))
+      if (!bindings.has(node.binding_ref) || component.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_HOST_BINDING_CHANGED");
   }
   const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID();
   const initialExecution = readWorkflowProjectExecutionAuthority({ targetRoot }), initial = initialExecution.project;
@@ -750,6 +751,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   let service, disposition;
   const authority = {
+    readCallOperation({ instance, operation_id }) {
+      scope(instance);
+      return retained(operation_id).record;
+    },
     prepare({ instance, occurrence }) {
       const record = retained(operationJournalId(instance, occurrence.occurrence_id)).record;
       if (record.phase !== "staged" || record.intent.instance_sha256 !== instance.instance_sha256) fail("PROCESS_OPERATION_INTENT_BINDING_CHANGED");
@@ -843,7 +848,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     if (!activeControlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
     const state = current(instanceId);
     if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
-    const frame = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = frame && model.nodes.find(row => row.id === frame.node_id);
+    const frame = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = frame && processFrameNode(model, frame);
     if (node?.kind !== "event" || frame.status !== "WAITING") fail("PROCESS_CONTROL_ORDER_INVALID");
     const context = snapshot();
     return assertControlRequest({ contract_version: "process-control-request.v1", scope_id: state.record.scope_id,
@@ -968,6 +973,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (input.facts && Object.keys(input.facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
       return service.initialize({ ...input, model, facts: {} });
     },
+    async enterCall(input) { current(input.instanceId); return service.enterCall(input); },
+    async returnCall(input) { current(input.instanceId); return service.returnCall(input); },
     inspect: id => current(id),
     prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
     prepareOperationDisposition: (id, input) => disposition.prepare(id, input),
@@ -1021,7 +1028,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const state = current(instanceId);
       if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
       const occurrence = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
-      const node = occurrence && model.nodes.find(row => row.id === occurrence.node_id), binding = bindings.get(node?.binding_ref);
+      const node = occurrence && processFrameNode(model, occurrence), binding = bindings.get(node?.binding_ref);
       if (!binding || !(occurrence.status === "READY" || occurrence.status === "WAITING" && ["blocked", "deferred"].includes(occurrence.operation?.receipt?.outcome))) fail("PROCESS_OPERATION_ORDER_INVALID");
       const resolved = resolveStandardProcessInput({ instance: state.record, occurrenceId, input, readOperation: id => retained(id).record });
       input = resolved.input;

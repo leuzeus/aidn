@@ -1,5 +1,15 @@
 # ADR-0026 - Explicit native authorization epochs
 
+## Embedded calls and authority, 2026-11-06
+
+The ADR-0022 call candidate introduces no authorization epoch, grant, owner,
+resource disposition, debit refund or counter reset. Native calls remain subject
+to current consent, exact source/model/scope/prefix, original cumulative budgets
+and all existing exclusions for UNKNOWN. A completed call child is not a resource
+closure proof. The Native target-activity profile explicitly refuses before
+allocation until model-qualified instructions and output bindings are defined
+and qualified. Existing FAIL/UNKNOWN evidence remains historical and unchanged.
+
 ## Normal-writer preallocation declaration candidate, 2026-11-05
 
 New deterministic dispatches use `process-dispatch-record.v2`. Its signed bounded
