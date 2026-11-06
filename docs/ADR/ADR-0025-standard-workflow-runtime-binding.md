@@ -1,5 +1,16 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Eligible occurrence lookup, 2026-11-06
+
+After the common service validates the complete cursor, the mixed host checks
+WAITING and blocked/deferred receipt eligibility before resolving a pending
+operation's pinned model. The first eligible operation and its ordering remain
+the same. There is no model/authority/result cache or skipped cursor validation;
+all preview, consent, journal, current-source and CAS boundaries remain fresh.
+A retained-prefix CPU diagnostic measured the analogous fixture filter's repeated
+model hashing. That diagnostic does not measure the mixed host or qualify this
+source; its real-port and complete STANDARD qualification remain required.
+
 ## Reusable operation-call candidate, 2026-11-06
 
 The operation host and mixed step adapter resolve bindings and input contracts

@@ -77,8 +77,10 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
       }
       const ready = cursor.ready.map(id => cursor.occurrences.find(row => row.occurrence_id === id));
       const operation = ready.find(frame => nodeFor(frame).kind === "operation")
-        ?? cursor.occurrences.find(frame => nodeFor(frame).kind === "operation" && frame.status === "WAITING"
-          && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome));
+        // inspect() validates the entire cursor first. Ineligible occurrences
+        // cannot supply this pending operation and need no model lookup here.
+        ?? cursor.occurrences.find(frame => frame.status === "WAITING"
+          && ["blocked", "deferred"].includes(frame.operation?.receipt?.outcome) && nodeFor(frame).kind === "operation");
       if (operation) {
         if (operation.operation?.receipt?.outcome === "blocked") {
           const id = operation.operation.intent.operation_id, record = operations.readJournal(id);

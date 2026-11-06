@@ -34,6 +34,10 @@ the same ordered operation subset, all 241 sequential operations, authenticated
 effects, CAS, replay/SIM assertions and original bounds. This changes fixture
 selection cost only; it establishes no product performance improvement. The
 changed fixture requires its own READY/GO and does not erase either earlier FAIL.
+The mixed host's pending-operation search also checks WAITING and receipt
+eligibility before model lookup, after full cursor validation. Its real-port
+regressions remain separately required; direct-IR fixture success alone cannot
+qualify that host change.
 They do not qualify the actual STANDARD host, every bound, every historical v2
 refusal, every cold/CAS/crash boundary, db-only/DUAL/PG, Native/Human/Provider,
 ordinary installed use or L1-L8/A1-A10. Follow with the existing common reducer,
