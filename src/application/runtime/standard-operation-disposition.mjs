@@ -217,11 +217,14 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       if (!(record.phase === "dispatching" || record.phase === "receipted" && (record.results.at(-1).receipt.effect_status === "unknown" || original)))
         fail("PROCESS_DISPOSITION_UNCERTAIN_OPERATION_REQUIRED");
       const grant = await currentGrant({ action: "operation_disposition", plan_sha256: shadowHash(plan), plan }, signal);
-      observed = fresh(); // All asynchronous authority calls finish before fences/CAS.
       const ownedLease = previous.record && [previous.record.resource_fence, ...previous.record.attempts.map(row => row.resource_fence)]
         .find(row => shadowHash(row) === shadowHash(artifacts.resourceFence().read().record));
       const lease = artifacts.resourceFence().acquire({ expectedSha256: plan.fence_sha256, ...(ownedLease ? { dispositionLease: ownedLease } : {}) });
       try {
+      // All asynchronous authority calls finish before this exact fence CAS.
+      // Reobserve the entire subject under the acquired fence before audit or
+      // result writes. A second full scan immediately before this synchronous
+      // acquisition adds no protected observation; retain no cross-call cache.
       observed = fresh(lease);
       freshGrant(grant.grant, grant.request);
       const receipt = original?.receipt ?? makeReceipt(observed.operation, observed.capsule.output);

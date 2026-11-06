@@ -37,6 +37,14 @@ fence through the common service's canonical event CAS; its reservation precedes
 fresh authorization and is retained. The exact original output can be delivered
 again without another business callback or journal write.
 
+After the awaited disposition grant, acquisition compares the exact prepared
+fence revision first. The complete current subject is then freshly reobserved
+under that fence before any disposition audit or journal-result write. There is
+no duplicate full scan immediately before that synchronous acquisition and no
+cached inventory, admission or verdict. A changed subject fails and releases
+only the newly acquired bookkeeping lease. The later post-audit observation,
+fresh grant checks, acceptance fence and canonical CAS remain required.
+
 Only an abandoned **disposition/acceptance** fence authenticated in that operation's
 signed audit can transfer by CAS after an OS-observed creation identity proves
 the former process terminated. This closes only that bounded local bookkeeping
