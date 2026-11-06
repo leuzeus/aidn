@@ -1,5 +1,23 @@
 # Testing Guide
 
+## Replay-local suffix buffer candidate, 2026-11-06
+
+The reusable-call `contract` selector also executes a small synthetic fixture
+with two calls, five operations and Unicode/escaped values. Every retained
+prefix hash is compared against independent canonical full-prefix hashing;
+re-sealing an altered historical intent must still fail its binding check.
+This does not replace the unchanged full-size sequential/concurrent/cold cases,
+their 241/240 operations, final return consumption, streaming SIM or bounds.
+
+A preceding exact-source complete-step diagnostic passed separately, followed
+by a pure prefix-hasher comparison that met all frozen equality and alternating
+timing criteria. One earlier diagnostic failed on an access-timestamp assertion;
+an invalid copied preparation was not started. Both remain preserved. The
+corrected harness retains access times separately and compares protected file
+identity/content fields. The new source and explicitly refreshed published pins
+are NOT_RUN until their own immutable READY and exact ROOT GO. No causal global
+performance, real actor, installed-client or complete STANDARD claim follows.
+
 ## Embedded reusable-call source candidate, 2026-11-06
 
 `node tools/perf/verify-process-reusable-call-fixtures.mjs contract|negative|sequential|concurrent|cold`

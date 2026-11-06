@@ -1,5 +1,20 @@
 # ADR-0022 — Structured agentic process and constrained resource assignment
 
+## Replay-local canonical suffix buffers, 2026-11-06
+
+The historical prefix hasher encodes the fixed canonical fields before/after
+`revision` once within a synchronous replay. Each digest still hashes every
+canonical suffix byte, the exact revision and ordered event prefix. Fingerprint
+format, historical validation, event bounds and all authority/CAS observations
+remain unchanged; no buffer or result crosses replay calls or awaits.
+
+A complete-step instrumented fixture diagnostic located this path, followed by
+a separate pure comparison against independent canonical hashes for 442
+prefixes and additional hashing shapes. The buffer candidate met the frozen
+eight alternating batch criteria. These observations support this local change,
+not a complete-workflow speedup. Current-source qualification remains required
+under the original bounds, with productive STANDARD and L1–L8/A1–A10 incomplete.
+
 ## Embedded reusable call candidate, 2026-11-06
 
 V2 may explicitly retain a root `call_targets` library of complete immutable v2

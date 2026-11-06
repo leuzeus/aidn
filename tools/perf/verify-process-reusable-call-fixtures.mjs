@@ -6,7 +6,7 @@ import path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { assertAgenticProcessModel, agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
-import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess, agenticProcessPrefixSha256 } from "../../src/core/workflow/agentic-process.mjs";
 import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { processFrameNode, processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 import { assertProcessDataBindings } from "../../src/core/workflow/process-data-contracts.mjs";
@@ -185,6 +185,23 @@ async function contractCases() {
   assert.equal(createAgenticProcess({ instanceId: "historical", scopeId: "scope-1", model: legacy, policyPins: agenticPolicyPins(legacy) }).instance_sha256,
     "f0fbe15fcc0de419f62c000e842f73ce3ed5f61036086551454e80a185783575");
   console.log("PASS closed references, recursion, stale/conflict/missing targets, local tree, parameters, 257-node rejection and historical v1 hash");
+  const prefixModel = model({ size: 2 });
+  prefixModel.data_bindings.inputs[0].fields.value.value = "\u00e9\u6f22\u5b57\\\"\n";
+  const prefixArena = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-call-prefix-hash-"));
+  console.log(JSON.stringify({ arena: prefixArena, fixture_authority: true, prefix_hash_contract: true, productive_STANDARD: false }));
+  initialize(prefixArena, prefixModel);
+  let prefixState, prefixSteps = 0;
+  do { prefixState = await step(prefixArena); assert.ok(++prefixSteps < 20); } while (prefixState.cursor.status !== "COMPLETED");
+  const { instance_sha256: retainedHash, ...prefixBody } = prefixState.record;
+  for (let count = 0; count <= prefixBody.events.length; count++) {
+    const expected = shadowHash({ ...prefixBody, revision: count + 1, events: prefixBody.events.slice(0, count) });
+    assert.equal(agenticProcessPrefixSha256(prefixState.record, count), expected);
+  }
+  assert.equal(shadowHash(prefixBody), retainedHash);
+  const changedPrefix = structuredClone(prefixBody);
+  changedPrefix.events.find(row => row.kind === "operation_intent").intent.instance_sha256 = H;
+  assert.throws(() => inspectAgenticProcess({ ...changedPrefix, instance_sha256: shadowHash(changedPrefix) }), /PROCESS_OPERATION_INTENT_BINDING_CHANGED/);
+  console.log("PASS every small-call prefix retains canonical SHA256 with Unicode/escaped values; changed historical binding refused");
 }
 async function executionCase(parallel, cold = false) {
   const arena = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-reusable-calls-")), m = model({ parallel });

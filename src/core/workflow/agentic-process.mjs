@@ -21,18 +21,21 @@ const content = ({ instance_sha256, ...value }) => value;
 // fingerprint. Reuse only canonical bytes within this one validated replay:
 // neither an instance, a cursor nor any external authority is cached.
 function prefixHasher(instance) {
-  const keys = Object.keys(content(instance)).sort(), eventIndex = keys.indexOf("events");
+  const keys = Object.keys(content(instance)).sort(), eventIndex = keys.indexOf("events"), revisionIndex = keys.indexOf("revision");
   const entry = key => JSON.stringify(key) + ":" + canonicalShadowJson(instance[key]);
   const head = "{" + keys.slice(0, eventIndex).map(entry).join(",") + ',"events":[';
-  const tail = keys.slice(eventIndex + 1).map(key => key === "revision" ? null : entry(key));
+  // Encode only immutable canonical suffix bytes within this replay. Every
+  // historical fingerprint still hashes all of them and its exact revision.
+  // No authority, cursor or result survives this synchronous invocation.
+  const beforeRevision = Buffer.from("]," + keys.slice(eventIndex + 1, revisionIndex).map(entry).join(",") + ',"revision":', "utf8");
+  const afterRevision = Buffer.from("," + keys.slice(revisionIndex + 1).map(entry).join(",") + "}", "utf8");
   const hash = createHash("sha256").update(head, "utf8"); let count = 0;
   return eventCount => {
     while (count < eventCount) {
       if (count) hash.update(",", "utf8");
       hash.update(canonicalShadowJson(instance.events[count++]), "utf8");
     }
-    const suffix = tail.map(part => part ?? '"revision":' + (eventCount + 1)).join(",");
-    return hash.copy().update("]," + suffix + "}", "utf8").digest("hex");
+    return hash.copy().update(beforeRevision).update(String(eventCount + 1), "utf8").update(afterRevision).digest("hex");
   };
 }
 
