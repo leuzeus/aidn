@@ -1,5 +1,26 @@
 # ADR-0022 — Structured agentic process and constrained resource assignment
 
+## Synchronous canonical inspection, 2026-11-06
+
+For the exact frozen store created by the process adapter, application
+`inspect` composes a fresh canonical read and the complete core validation/replay
+once. A private identity registry holds read functions only, never authority,
+instances, cursors or results. The internal read variant is hidden from the
+returned store. Unknown, historical, copied, proxied or custom ports keep the
+existing read-plus-inspect validation; optional methods or supplied cursors are
+not trusted. Every invocation reads canonical storage again, including after
+awaits. Persistence binding, content hash, ID checks and CAS remain unchanged.
+
+`operationFrame` has an intervening authority callback and retains its separate
+validation. Prepare/accept, observations, awaits, authentication, independent
+CAS reads and final validations are unchanged. A frozen-source diagnostic
+supported only this local mechanism with eight alternating fresh-read pairs and
+two exact complete operation steps. Their ordered times are descriptive; this
+does not establish complete-workflow performance. Meaningful forged-port,
+mutability, callback and after-await regressions extend the existing contract
+selector in FILES/DUAL/real SQLite DB-only. New-source qualification remains
+required under the original bounds; STANDARD and L1-L8/A1-A10 stay incomplete.
+
 ## Replay-local canonical suffix buffers, 2026-11-06
 
 The historical prefix hasher encodes the fixed canonical fields before/after

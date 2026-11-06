@@ -1,5 +1,24 @@
 # Testing Guide
 
+## Synchronous canonical inspection candidate, 2026-11-06
+
+The existing reusable-call `contract` selector additionally covers FILES, DUAL
+and real SQLite DB-only inspection: exact adapter-created stores, full fallback
+for historical/custom/copied/proxied stores, ignored forged cursor methods,
+mutable returned records versus frozen cursors, a fresh canonical read after
+await, changed canonical bytes and authority-callback mutation refusal before
+operation staging. These are synthetic fixtures; PostgreSQL and real actors
+are not covered. The callback-bearing operationFrame path remains unchanged.
+
+A separate exact-source diagnostic supported the adjacent read/inspection
+mechanism with eight alternating pairs and two full operation steps, each with
+two CAS and two final validations. It preserved original failed evidence.
+One ordered full-step pair is not causal whole-workflow performance proof.
+The candidate and refreshed published pins are NOT_RUN until their own immutable
+READY and exact ROOT GO. The five existing cases, original bounds, 241/240
+operations, returns, history, concurrency, cold, negatives and common-reducer
+replay/SIM remain required. All L1-L8/A1-A10 remain active/incomplete.
+
 ## Replay-local suffix buffer candidate, 2026-11-06
 
 The reusable-call `contract` selector also executes a small synthetic fixture

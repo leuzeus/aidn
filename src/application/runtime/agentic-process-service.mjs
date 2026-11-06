@@ -6,6 +6,7 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { decideAgentReuse } from "./agent-reuse-decision-service.mjs";
 import { assertProcessOperationBinding, assertProcessOperationIntent, assertProcessOperationReceipt, assertProcessControlEvent } from "../../core/workflow/process-operation-contracts.mjs";
 import { checkShadowJson } from "../../core/workflow/shadow-json.mjs";
+import { readAgenticProcessStoreInspection } from "../../adapters/runtime/agentic-process-store.mjs";
 
 // Host-composed trusted ports, never modules/attestations selected by a model.
 // This service records admission and accepted results; it launches no executor.
@@ -141,6 +142,11 @@ export function createAgenticProcessService({ store, readAuthority, readBinding,
     enterCall: request => transitionCall(request, false),
     returnCall: request => transitionCall(request, true),
     inspect(instanceId) {
+      const inspected = readAgenticProcessStoreInspection(store, instanceId);
+      if (inspected) {
+        if (!inspected.record) fail("PROCESS_INSTANCE_NOT_FOUND");
+        return inspected;
+      }
       const previous = store.read(instanceId);
       if (!previous.record) fail("PROCESS_INSTANCE_NOT_FOUND");
       return { ...previous, cursor: inspectAgenticProcess(previous.record) };

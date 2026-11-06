@@ -14,7 +14,8 @@ import { resolveProcessOperationInput } from "../../src/core/workflow/process-in
 import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
 import { shadowHash, canonicalShadowJson } from "../../src/core/workflow/shadow-json.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
-import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
+import { createAgenticProcessStore, readAgenticProcessStoreInspection } from "../../src/adapters/runtime/agentic-process-store.mjs";
+import { createArtifactStore } from "../../src/adapters/runtime/artifact-store.mjs";
 
 const H = "a".repeat(64), KEY = Buffer.from("reusable-call-fixture-authority-not-a-real-grant");
 const op = id => ({ id, kind: "operation", participant_ref: "project", binding_ref: "fixture_write" });
@@ -127,7 +128,69 @@ async function step(arena, phase = "complete") {
     eventId: `event_${state.record.revision}`, receiptId: receipt.receipt_id, write: true });
 }
 
+async function inspectionStoreCases() {
+  const m = { contract_version: "agentic-process-model.v2", model_id: "inspection_probe", revision: 1,
+    participants: [{ id: "project" }], roles: [], policies: [], nodes: [op("probe")], entry: "probe",
+    operation_pins: { fixture_write: shadowHash(binding) } };
+  for (const stateMode of ["files", "dual", "db-only"]) {
+    const arena = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-inspection-store-"));
+    console.log(JSON.stringify({ arena, stateMode, fixture_authority: true, inspection_store_contract: true }));
+    fs.mkdirSync(path.join(arena, ".aidn"));
+    fs.writeFileSync(path.join(arena, ".aidn/config.json"), JSON.stringify({ runtime: { stateMode } }));
+    if (stateMode !== "files") createArtifactStore({ sqliteFile: path.join(arena, ".aidn/runtime/index/workflow-index.sqlite") }).close();
+    const store = createAgenticProcessStore({ targetRoot: arena, stateMode });
+    const authority = () => ({ scope_id: "fixture-scope", model_sha256: shadowHash(m), policy_pins: agenticPolicyPins(m) });
+    const service = createAgenticProcessService({ store, readAuthority: authority });
+    service.initialize({ instanceId: "fixture", model: m, write: true });
+    const first = service.inspect("fixture"), before = store.read("fixture");
+    assert.deepEqual(first, { ...before, cursor: inspectAgenticProcess(before.record) });
+    assert.equal(Object.hasOwn(store, "readInspected"), false, "internal composition is not an optional store method");
+    first.record.revision = 999;
+    assert.throws(() => { first.cursor.status = "FORGED"; }, TypeError);
+    assert.deepEqual(service.inspect("fixture").record, before.record, "no retained mutable result");
+    assert.throws(() => service.inspect("missing"), /PROCESS_INSTANCE_NOT_FOUND/);
+    let forgedCalls = 0, reads = 0;
+    const forged = () => { forgedCalls++; return { record: before.record, cursor: { status: "COMPLETED" } }; };
+    const corruptRead = () => { reads++; const bad = structuredClone(before); bad.record.revision++; return bad; };
+    const copied = { ...store, read: corruptRead, readInspected: forged, inspect: forged };
+    const proxy = new Proxy(store, { get(target, key) {
+      // The target is frozen, so its existing read method must stay identical.
+      return key === "readInspected" || key === "inspect" ? forged : Reflect.get(target, key);
+    } });
+    assert.equal(readAgenticProcessStoreInspection(copied, "fixture"), null);
+    assert.equal(readAgenticProcessStoreInspection(proxy, "fixture"), null);
+    assert.throws(() => createAgenticProcessService({ store: copied }).inspect("fixture"), /PROCESS_INSTANCE_INVALID/);
+    assert.equal(reads, 1); assert.equal(forgedCalls, 0, "forged cursor methods never called");
+    const legacy = { read: () => { reads++; return { ...store.read("fixture"), cursor: { status: "FORGED" } }; }, readInspected: forged, inspect: forged };
+    assert.deepEqual(createAgenticProcessService({ store: legacy }).inspect("fixture"), service.inspect("fixture"));
+    assert.deepEqual(createAgenticProcessService({ store: proxy }).inspect("fixture"), service.inspect("fixture"));
+    assert.equal(forgedCalls, 0);
+    const fresh = createAgenticProcess({ instanceId: "fixture", model: m, scopeId: "fixture-scope",
+      policyPins: agenticPolicyPins(m), facts: { fresh_read: true } });
+    store.compareAndSwap(fresh, before.content_sha256);
+    await Promise.resolve();
+    assert.equal(service.inspect("fixture").record.instance_sha256, fresh.instance_sha256);
+    assert.notEqual(service.inspect("fixture").record.instance_sha256, before.record.instance_sha256);
+    // Callback mutation must still reach the independent operationFrame replay.
+    let captured, prepared = 0, authorityCalls = 0;
+    const callbackStore = { ...store, read(id) { const result = store.read(id); captured = result.record; return result; } };
+    const callbackService = createAgenticProcessService({ store: callbackStore,
+      readAuthority() { authorityCalls++; captured.revision++; return authority(); },
+      operationAuthority: { prepare() { prepared++; throw Error("MUST_NOT_STAGE"); } } });
+    await assert.rejects(callbackService.prepareOperation({ instanceId: "fixture", expectedSha256: fresh.instance_sha256,
+      occurrenceId: "root", eventId: "mutation_probe", write: true }), /PROCESS_INSTANCE_INVALID/);
+    assert.equal(authorityCalls, 1); assert.equal(prepared, 0);
+    assert.equal(service.inspect("fixture").record.instance_sha256, fresh.instance_sha256);
+    if (stateMode === "files") {
+      const file = path.join(arena, "docs/audit/workflows/process-instances/fixture.json"), invalid = JSON.parse(fs.readFileSync(file));
+      invalid.revision++; fs.writeFileSync(file, JSON.stringify(invalid) + "\n");
+      assert.throws(() => service.inspect("fixture"), /PROCESS_INSTANCE_INVALID/, "fresh corrupt canonical bytes must refuse");
+    }
+  }
+  console.log("PASS owned canonical inspection, historical/custom/copy/proxy fallback, forged cursor refusal, mutable-result isolation, fresh read after await and callback mutation refusal in files/dual/db-only");
+}
 async function contractCases() {
+  await inspectionStoreCases();
   const m = model({ size: 2 }); assertAgenticProcessModel(m);
   // An explicit return crosses only the source call boundary. Enclosing dynamic
   // scopes, sequence order and historical implicit-export refusals still apply.

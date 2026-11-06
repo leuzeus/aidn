@@ -1,5 +1,23 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Synchronous canonical inspection candidate, 2026-11-06
+
+Only application inspection of an exact adapter-created store composes its
+fresh canonical read with full validation/replay once. A private registry holds
+functions/identity metadata only; no authority, instance, cursor or result is
+cached between calls or awaits. Historical/custom/copied/proxied stores keep
+the existing validation path and cannot supply a trusted cursor. All operation
+callbacks, fresh reads, awaits, authentication, CAS and final validations stay.
+
+A new exact-source diagnostic supported this boundary in eight alternating
+pairs and two complete steps with exact states, intents, receipts and postimages.
+One ordered step pair is descriptive, not global causal performance proof.
+OperationFrame composition was rejected because readAuthority intervenes.
+New-source five-case qualification remains NOT_RUN pending its own READY/GO,
+with every original workload and bound unchanged. No STANDARD extraction is
+part of this correction; complete_standard_workflow remains false and all
+L1-L8/A1-A10 stay active/incomplete.
+
 ## Contrat d'appels réutilisables L3 à implémenter, 2026-11-06
 
 La [proposition ciblée d'appels de sous-modèles](STANDARD_WORKFLOW_REUSABLE_CALLS_DESIGN_2026-11-06.md)

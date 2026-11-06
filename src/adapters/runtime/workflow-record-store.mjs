@@ -13,7 +13,7 @@ import { workflowInstanceFail as fail } from "../../core/workflow/workflow-insta
 // reconciliation. Never infer owner death from a PID or automatically replay.
 export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, env = process.env, deadlineMs,
   artifactStoreFactory = createProjectArtifactStore }) {
-  const { pathForId, validate, idOf, hashOf, kind } = descriptor;
+  const { pathForId, validate, inspect, idOf, hashOf, kind } = descriptor;
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   if (!["files", "dual", "db-only"].includes(stateMode)) fail("WORKFLOW_INSTANCE_STATE_MODE_INVALID");
   const resolution = () => resolveEffectiveRuntimePersistence({ targetRoot: root, env });
@@ -23,7 +23,7 @@ export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, e
   const database = stateMode !== "files" || selected.backend === "postgres";
   const artifactStore = options => { assertBinding(); return artifactStoreFactory({ targetRoot: root, env, ...(deadlineMs === undefined ? {} : { deadlineMs }), ...options }); };
   const location = id => agentRunPhysicalPath(path.join(root, "docs/audit", pathForId(id)), { missing: true });
-  function read(id) {
+  function read(id, inspected = false) {
     assertBinding();
     let text = null;
     if (!database) {
@@ -37,11 +37,18 @@ export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, e
       } finally { store.close(); }
     }
     const instance = text === null ? null : JSON.parse(text);
-    if (instance) { validate(instance); if (idOf(instance) !== id) fail("WORKFLOW_INSTANCE_ID_CHANGED"); }
-    return { record: instance, content_sha256: text === null ? null : artifactContentHash(text) };
+    let cursor;
+    if (instance) {
+      // The descriptor inspector performs the complete validation itself, on
+      // these freshly parsed bytes. Ordinary reads and CAS keep their validator.
+      if (inspected) cursor = inspect(instance); else validate(instance);
+      if (idOf(instance) !== id) fail("WORKFLOW_INSTANCE_ID_CHANGED");
+    }
+    return { record: instance, content_sha256: text === null ? null : artifactContentHash(text), ...(inspected ? { cursor } : {}) };
   }
   return Object.freeze({
     read,
+    ...(typeof inspect === "function" ? { readInspected: id => read(id, true) } : {}),
     compareAndSwap(instance, expectedContentHash) {
       assertBinding();
       validate(instance);
