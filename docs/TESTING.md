@@ -25,6 +25,15 @@ The initial SOURCE83 contract run failed nominal validation with
 `PROCESS_INPUT_SOURCE_SCOPE_INVALID`; the other four cases were NOT_STARTED.
 That original result remains retained. On the corrected source these selectors
 are **NOT_RUN** pending a new frozen-source READY and specific ROOT GO.
+The first corrected-source cohort passed `contract`, then timed out at the
+unchanged 180-second sequential bound; concurrent/cold/negative were NOT_STARTED.
+Both Jobs closed with zero active processes. Its read-only retained-prefix CPU
+diagnostic identified repeated model hashing in the fixture's frame filter.
+The fixture now selects eligible statuses before resolving their model, keeping
+the same ordered operation subset, all 241 sequential operations, authenticated
+effects, CAS, replay/SIM assertions and original bounds. This changes fixture
+selection cost only; it establishes no product performance improvement. The
+changed fixture requires its own READY/GO and does not erase either earlier FAIL.
 They do not qualify the actual STANDARD host, every bound, every historical v2
 refusal, every cold/CAS/crash boundary, db-only/DUAL/PG, Native/Human/Provider,
 ordinary installed use or L1-L8/A1-A10. Follow with the existing common reducer,

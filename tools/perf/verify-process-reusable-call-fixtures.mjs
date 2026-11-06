@@ -106,9 +106,13 @@ async function step(arena, phase = "complete") {
   }
   // Prefer the opposite branch after every accepted operation to interleave the two
   // logical calls. No second scheduler or physical resource is allocated.
-  let frames = state.cursor.occurrences.filter(row => processFrameNode(m, row).kind === "operation" && row.status !== "COMPLETED");
+  // inspect() has already validated every occurrence. Only frames eligible for
+  // this step need a model lookup; completed frames cannot be selected below.
+  // Keep the same ordered subset before reversing the concurrent preference.
+  let frames = state.cursor.occurrences.filter(row => row.status !== "COMPLETED"
+    && (row.status === "READY" || row.wait_reason === "operation_result") && processFrameNode(m, row).kind === "operation");
   if (state.record.events.filter(row => row.kind === "operation_result").length % 2) frames.reverse();
-  const frame = frames.find(row => row.status === "READY" || row.wait_reason === "operation_result");
+  const frame = frames[0];
   if (!frame) return state;
   if (frame.status === "READY") {
     state = await service.prepareOperation({ instanceId: "fixture", expectedSha256: state.record.instance_sha256, occurrenceId: frame.occurrence_id,
