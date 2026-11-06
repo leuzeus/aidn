@@ -62,6 +62,17 @@ hash, alongside its existing audit and fence; it is separately authenticated.
 The complete inventory remains retained, including receipts and debit minima.
 The bounded control record refuses further allocation rather than dropping proof.
 
+Grant lifetime, plan lifetime and cancellation are checked immediately before
+the reservation write and immediately before acquisition after the awaited
+reservation checkpoint. The trusted source re-verifies consent after each
+critical awaited reservation/acquisition/audit checkpoint; complete synchronous
+subject and lease fences still follow before audit/result writes. A retained
+reservation never extends expired or revoked permission. The inventory can
+return its freshly authenticated instance and signed inventory together in one
+internal synchronous capture. Both original instance observations, both resource
+scans and both context/authority observations remain. No capture is cached for
+a later call/await; the public prepared-inventory expected-prefix check remains.
+
 Only an abandoned **disposition/acceptance** fence authenticated in that operation's
 signed audit or pre-acquisition control intention can transfer by CAS after an OS-observed creation identity proves
 the former process terminated. This closes only that bounded local bookkeeping

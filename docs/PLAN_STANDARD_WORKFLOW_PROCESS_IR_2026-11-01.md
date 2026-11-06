@@ -10,6 +10,14 @@ transfer after fresh owner observation and canonical CAS; another attempt keeps
 old grants and needs new permission. It proves no external-resource closure.
 Two appended real-worker crash cases cover the reservation/acquisition gap;
 their qualification is pending on this source. The earlier full36 failure remains.
+An additional source correction re-verifies consent after critical awaits and
+checks lifetime/cancellation before reservation/acquisition. Expiry and revocation
+selectors extend the manifest to 54 without removing earlier obligations. A
+compound synchronous inventory capture avoids a redundant outer instance read
+while retaining both internal prefix, resource, context and authority observations.
+The previous source's two FILES preaudit selectors passed, but its audit worker
+timed out at 15 seconds after acquisition. That failure is retained; neither
+those passes nor the new source correction qualify the complete partition.
 General discovery/disposition for all domains, every crash and concurrency
 boundary, productive complete STANDARD, ordinary entries, required193, genuine
 actors, installed archive and the entire L1-L8/A1-A10 remain incomplete.

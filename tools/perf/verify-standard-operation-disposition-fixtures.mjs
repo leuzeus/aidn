@@ -76,7 +76,7 @@ if (process.argv.includes("--worker")) {
 }
 export async function verifyStandardOperationDisposition(mode = "files", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n"), only = null) {
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
-  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES, "prefix-change-during-grant", "disposition_control_reserved", "disposition_fence_acquired"];
+  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES, "prefix-change-during-grant", "disposition_control_reserved", "disposition_fence_acquired", "control-expired", "control-revoked", "acquired-revoked", "audit-revoked"];
   if (only !== null && !cases.includes(only)) throw Error("FIXTURE_CASE_INVALID");
   const selected = name => only === null || only === name;
   const owned = [], retained = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-disposition-evidence-"));
@@ -229,6 +229,41 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
     }
     for (const boundary of ["disposition_control_reserved", "disposition_fence_acquired"]) {
       if (selected(boundary)) await returnedCase(boundary);
+    }
+    for (const name of ["control-expired", "control-revoked", "acquired-revoked", "audit-revoked"]) {
+      if (!selected(name)) continue;
+      const config = await setup(name); await crash(config, "dispatch_returned");
+      let revoked = false;
+      const base = source(), authority = { ...base,
+        async authorize(arg) {
+          const grant = await base.authorize(arg);
+          if (name === "control-expired") grant.expires_at_ms = grant.observed_at_ms + 5000;
+          return grant;
+        },
+        async verify(arg) { return revoked ? { outcome: "revoked" } : base.verify(arg); },
+      };
+      const target = name.startsWith("control-") ? "disposition_control_reserved"
+        : name === "acquired-revoked" ? "disposition_fence_acquired" : "disposition_recorded";
+      const host = open(config, { dispatchCheckpoint: async boundary => {
+        if (boundary !== target) return;
+        if (name === "control-expired") await new Promise(resolve => setTimeout(resolve, 5200));
+        else revoked = true;
+      } }, authority);
+      const plan = prepare(host, config), artifacts = createStandardWorkflowArtifacts({ targetRoot: config.root });
+      const beforeFence = artifacts.resourceFence().read();
+      await assert.rejects(() => apply(host, plan), { code: name === "control-expired"
+        ? "PROCESS_DISPOSITION_AUTHORIZATION_REQUIRED" : "PROCESS_DISPOSITION_AUTHORIZATION_NOT_AUTHENTICATED" });
+      assert.equal(host.readJournal(config.operation_id).results.length, 0);
+      const audit = artifacts.read(`workflows/operation-dispositions/${config.operation_id}.json`);
+      if (name === "audit-revoked") assert.notEqual(audit.sha256, null);
+      else assert.equal(audit.sha256, null);
+      if (name.startsWith("control-")) assert.equal(artifacts.resourceFence().read().content_sha256, beforeFence.content_sha256);
+      else assert.equal(artifacts.resourceFence().read().record.state, "released");
+      const control = JSON.parse(artifacts.read(`workflows/operation-control-intents/${config.operation_id}.json`, { required: true }).content);
+      createOperationJournalSigner(() => Buffer.from(config.key, "hex")).verify(control);
+      assert.equal(control.attempts.length, 1);
+      assert.equal(control.attempts[0].grant.grant.authorized, true);
+      pass(`${mode}: ${name} retains signed original consent/control history and refuses before a new acquisition or receipt`);
     }
     process.stdout.write(JSON.stringify({ status: "PASS", checks, retained, mode, selected_case: only, full_selector: only === null, scope: "actual public one-operation host/read-only return; production artifact writer component; real child termination; fixture consent",
       artifact_postimage_profile: only === null || WRITE_DISPOSITION_CASES.includes(only) ? "PASS_COMPONENT" : "NOT_RUN", full_standard: "NOT_RUN", native_human_provider_closure: "NOT_RUN", all_resource_disposition: "INCOMPLETE" }) + "\n");

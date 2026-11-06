@@ -171,15 +171,14 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
     resources.sort((a, b) => a.ref.localeCompare(b.ref, "en"));
     return { resources, operations, accounting, runtime_binding_sha256: observed.binding_sha256 };
   }
-  return Object.freeze({
-    prepare(instanceId, { expectedSha256 } = {}) {
+  function capture(instanceId, expectedSha256, requireExpected) {
       const before = readInstance(instanceId); assertAgenticProcessInstance(before);
-      if (expectedSha256 !== before.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
+      if (requireExpected && expectedSha256 !== before.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
       const authority = readAuthority(), context = readContext(), first = observe(before), second = observe(before);
       if (shadowHash(first) !== shadowHash(second) || readInstance(instanceId).instance_sha256 !== before.instance_sha256
         || shadowHash(readAuthority()) !== shadowHash(authority) || shadowHash(readContext()) !== shadowHash(context))
         fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
-      return assertProcessReconciliationInventory(signer.seal({ contract_version: "process-reconciliation-inventory.v1",
+      const inventory = assertProcessReconciliationInventory(signer.seal({ contract_version: "process-reconciliation-inventory.v1",
         instance_id: before.instance_id, instance_sha256: before.instance_sha256, instance_revision: before.revision,
         scope_id: before.scope_id, model_sha256: before.model_sha256, policy_sha256: shadowHash(before.policy_pins),
         model_source_sha256: modelSource === null ? null : shadowHash(modelSource),
@@ -187,6 +186,13 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
         authority_sha256: shadowHash(authority), context_sha256: shadowHash(context), observed_at_ms: now(),
         ...first, discovery: RECONCILIATION_DISCOVERY_DOMAINS.map(domain => ({ domain, status: "independent_observation_required" })),
         complete_resource_closure: false, permits_effects: false, written: false }));
-    },
+      return { instance: before, inventory };
+  }
+  return Object.freeze({
+    prepare(instanceId, { expectedSha256 } = {}) { return capture(instanceId, expectedSha256, true).inventory; },
+    // Return the instance authenticated twice by this very capture, rather than
+    // make callers perform another full authority read just to name its prefix.
+    // This internal compound observation has no cross-call state or permission.
+    observeSubject(instanceId) { return capture(instanceId, null, false); },
   });
 }

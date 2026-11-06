@@ -42,9 +42,15 @@ terminate actual separate processes immediately before and after acquisition,
 before the audit exists. The retained signed control intention must identify
 the exact proposed/held token and original inventory. A new cold host obtains
 new consent and delivers one original result through acceptance and replay/SIM.
-They are appended after all previous cases in each full selector; the ordered
-three-mode manifest therefore has 42 cases, preserving all earlier 36 and their
-assertions. New-source qualification is required. Actual OS-owner replacement,
+They are appended after all previous cases in each full selector. The further
+`control-expired`, `control-revoked`, `acquired-revoked` and `audit-revoked` cases
+invalidate consent at the real awaited boundary. Expiry uses a real 5200 ms wait
+against a fixture grant with its original five-second lifetime. Before acquisition,
+the prepared fence must stay unchanged; later refusal retains the signed control
+and any existing audit, appends no receipt and releases only the newly held lease.
+The ordered three-mode manifest therefore has 54 cases, preserving all earlier
+36 plus the two preaudit boundaries and all assertions. New-source qualification
+is required. Actual OS-owner replacement,
 reused PID, every acceptance/CAS crash, normal-writer concurrency, independent
 external discovery and general L4 remain separate obligations.
 
