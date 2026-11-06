@@ -27,6 +27,13 @@ scopes remain mandatory, as do ordering and optional-branch restrictions.
 Internal operation values and historical `child` calls retain their previous
 scope checks; this does not introduce implicit exports.
 
+Input selection builds a model-identity table within that synchronous invocation
+and rechecks the complete root model hash after trusted journal callbacks. Each
+scope lookup uses those same pinned bytes; no table, cursor, journal output or
+authority survives the invocation. This avoids rehashing every model at every
+ancestor lookup and refuses model mutation during a reader callback. All source
+receipt/input/output checks and subsequent service authority/CAS fences remain.
+
 This is an executable source candidate pending exact-source qualification.
 Published STANDARD extraction, complete lifecycle coverage, ordinary-entry
 qualification and Native/Human/Provider/installed acceptance remain incomplete.

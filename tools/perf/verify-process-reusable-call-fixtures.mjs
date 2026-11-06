@@ -11,6 +11,7 @@ import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic
 import { processFrameNode, processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 import { assertProcessDataBindings } from "../../src/core/workflow/process-data-contracts.mjs";
 import { resolveProcessOperationInput } from "../../src/core/workflow/process-input-resolution.mjs";
+import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
 import { shadowHash, canonicalShadowJson } from "../../src/core/workflow/shadow-json.mjs";
 import { createAgenticProcessService } from "../../src/application/runtime/agentic-process-service.mjs";
 import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
@@ -268,6 +269,12 @@ async function negativeCases() {
   for (const event of state.record.events.slice(0, -1)) prefix = advanceAgenticProcess(prefix, event);
   const changedOutput = structuredClone(returning); changedOutput.witnesses[0].results[0].output.value = "neighbor";
   assert.throws(() => advanceAgenticProcess(prefix, changedOutput), /PROCESS_INPUT_RESULT_CHANGED/);
+  const callbackInstance = structuredClone(prefix), callbackCursor = inspectAgenticProcess(callbackInstance);
+  assert.throws(() => resolveProcessFrameInput({ instance: callbackInstance, cursor: callbackCursor,
+    occurrenceId: returning.occurrence_id, returning: true, readOperation: id => {
+      callbackInstance.model.revision++;
+      return fixture(arena, state.record.model).read(id);
+    } }), /PROCESS_CALL_TARGET_CHANGED/);
   const wrongOccurrence = structuredClone(returning); wrongOccurrence.occurrence_id = "root/1";
   assert.throws(() => advanceAgenticProcess(prefix, wrongOccurrence), /PROCESS_OCCURRENCE_UNKNOWN/);
   const wrongAuthor = structuredClone(prefix.events.at(-1)); wrongAuthor.receipt.authority_id = "wrong-author";

@@ -38,6 +38,13 @@ The mixed host's pending-operation search also checks WAITING and receipt
 eligibility before model lookup, after full cursor validation. Its real-port
 regressions remain separately required; direct-IR fixture success alone cannot
 qualify that host change.
+The later sequential run also timed out at 180 seconds with 221 accepted fixture
+effects; it remains FAIL, with concurrent/cold/negative NOT_STARTED and both Jobs
+closed. The next source candidate resolves model identities once per synchronous
+input selection, rechecking the full root hash after journal callbacks. Its
+negative selector includes mutation during such a callback. There is no cache
+across invocations or awaits and no retained external observation; qualification
+of the changed source remains required under the same operations and bounds.
 They do not qualify the actual STANDARD host, every bound, every historical v2
 refusal, every cold/CAS/crash boundary, db-only/DUAL/PG, Native/Human/Provider,
 ordinary installed use or L1-L8/A1-A10. Follow with the existing common reducer,

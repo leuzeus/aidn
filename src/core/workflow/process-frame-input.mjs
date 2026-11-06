@@ -1,7 +1,7 @@
 import { assertResolvedProcessInput, processResolutionVersion } from "./process-data-contracts.mjs";
 import { checkShadowJson, shadowHash, freezeShadow } from "./shadow-json.mjs";
 
-import { processFrameModel, processFrameNode, resolveProcessCallTarget } from "./process-call-model.mjs";
+import { processModels, resolveProcessCallTarget } from "./process-call-model.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 // This is pure data selection. Only the trusted outer host supplies a journal
@@ -10,7 +10,13 @@ export function resolveProcessFrameInput({ instance, cursor, occurrenceId, readO
   const frames = new Map(cursor.occurrences.map(row => [row.occurrence_id, row]));
   const target = frames.get(occurrenceId);
   if (!target) fail("PROCESS_INPUT_BINDING_REQUIRED");
-  const model = processFrameModel(instance.model, target);
+  // Resolve authored model identities once inside this synchronous selection.
+  // No cursor, journal value or authority is retained beyond this invocation.
+  const models = new Map(processModels(instance.model).map(model => [shadowHash(model), model]));
+  const rootSha256 = models.keys().next().value;
+  const modelFor = frame => frame.model_sha256 === undefined ? instance.model
+    : models.get(frame.model_sha256) ?? fail("PROCESS_CALL_TARGET_CHANGED");
+  const model = modelFor(target);
   const nodes = new Map(model.nodes.map(row => [row.id, row]));
   const targetNode = nodes.get(target.node_id);
   const called = returning ? resolveProcessCallTarget(instance.model, targetNode.target) : null;
@@ -23,7 +29,7 @@ export function resolveProcessFrameInput({ instance, cursor, occurrenceId, readO
     const result = [];
     while (frame.parent_id) {
       const parent = frames.get(frame.parent_id);
-      if (["loop", "multi_instance", "call"].includes(processFrameNode(instance.model, parent).kind)) result.unshift(frame.occurrence_id);
+      if (["loop", "multi_instance", "call"].includes(modelFor(parent).nodes.find(node => node.id === parent.node_id).kind)) result.unshift(frame.occurrence_id);
       frame = parent;
     }
     return result;
@@ -94,5 +100,8 @@ export function resolveProcessFrameInput({ instance, cursor, occurrenceId, readO
   }
   const resolution = { contract_version: returning ? "process-resolved-input.v3" : processResolutionVersion(model.data_bindings), instance_sha256: instance.instance_sha256,
     occurrence_id: occurrenceId, bindings_sha256: shadowHash(returning ? called.call_interface.returns : model.data_bindings), input, sources };
+  // A synchronous trusted reader can still be a callback. Refuse a model edit
+  // during that callback rather than returning a selection from mixed bytes.
+  if (shadowHash(instance.model) !== rootSha256) fail("PROCESS_CALL_TARGET_CHANGED");
   return freezeShadow(assertResolvedProcessInput(resolution, returning ? {} : { instance, occurrenceId, model }));
 }
