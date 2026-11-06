@@ -661,6 +661,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     // One complete fresh activation describes both authorities at this same
     // synchronous boundary. Never retain it for a later call or await.
     const { project, persistence } = readWorkflowProjectExecutionAuthority({ targetRoot });
+    return executionAuthority({ project, persistence });
+  }
+  function executionAuthority({ project, persistence }) {
     if (project.stateMode !== initial.stateMode) fail("STANDARD_HOST_STATE_MODE_CHANGED");
     return { scope_id: shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
       operation_host: { version: 1, state_mode: project.stateMode, key_id: signer.keyId, ...(source ? { model_source_sha256: shadowHash(source) } : {}),
@@ -673,8 +676,17 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   function snapshot() {
     if (processAuthority) return processAuthority.snapshot();
-    return { ...(source ? { model_source: source } : {}), context: operations.observeScope(), documents: ["CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md", "baseline/current.md", "snapshots/context-snapshot.md"]
+    return snapshotWithScope(operations.observeScope());
+  }
+  function snapshotWithScope(context) {
+    return { ...(source ? { model_source: source } : {}), context, documents: ["CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md", "baseline/current.md", "snapshots/context-snapshot.md"]
       .map(path => { const row = artifacts.read(path, { required: true }); return { path, sha256: row.sha256 }; }) };
+  }
+  function observeBoundary() {
+    if (processAuthority) return { authority: readAuthority(), context: snapshot() };
+    assertCurrentBindings();
+    const observed = operations.observeExecutionScope();
+    return { authority: executionAuthority(observed.authority), context: snapshotWithScope(observed.context) };
   }
   function validatePreview(preview) {
     if (validateJsonSchema(preview, previewSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_HOST_PREVIEW_INVALID");
@@ -790,6 +802,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, authorityTimeoutMs: 5000 });
   const current = id => {
     const value = service.inspect(id); scope(value.record);
+    return authenticateState(value);
+  };
+  function authenticateState(value) {
     if (processAuthority) { processAuthority.authenticate(value.record); return value; }
     if (Object.keys(value.record.initial_facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
     // Replay proves structure, not origin. Reopening a host must authenticate
@@ -811,7 +826,18 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         || event.kind === "operation_result" && !record.results.some(result => shadowHash(result.receipt) === shadowHash(event.receipt))) fail("STANDARD_HOST_RESULT_HISTORY_NOT_AUTHENTICATED");
     }
     return value;
-  };
+  }
+  function observeReconciliationSubject(id) {
+    if (processAuthority) return { instance: current(id).record, authority: readAuthority(), context: snapshot() };
+    // Inspect the canonical instance first, then derive its authority and context
+    // from one fresh activation in this same synchronous observation. The second
+    // inventory boundary repeats everything; no result crosses a call or await.
+    const value = service.inspect(id), observed = observeBoundary(), record = value.record;
+    if (record.scope_id !== observed.authority.scope_id || record.model_sha256 !== observed.authority.model_sha256
+      || shadowHash(record.policy_pins) !== shadowHash(observed.authority.policy_pins)) fail("STANDARD_HOST_AUTHORITY_CHANGED");
+    authenticateState(value);
+    return { instance: record, ...observed };
+  }
   function requireWrite(write, expected, actual) { if (write !== true || expected !== actual) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED"); }
   function controlRequest({ instanceId, expectedSha256, occurrenceId }) {
     if (!activeControlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
@@ -926,9 +952,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const reconciliationInventory = createStandardReconciliationInventory({ targetRoot, signer, now,
     configuration: reconciliationConfiguration, modelSource: source,
-    readInstance: id => current(id).record, readAuthority, readContext: snapshot });
+    readInstance: id => current(id).record, readAuthority, readContext: snapshot, readSubject: observeReconciliationSubject });
   disposition = createStandardOperationDisposition({ targetRoot, stateMode: initial.stateMode, signer, artifacts, now,
-    readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot,
+    readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot, observeBoundary,
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
     appendResult(record, output) {
       const before = retained(record.operation_id);

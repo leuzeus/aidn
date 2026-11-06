@@ -1,5 +1,19 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Compound synchronous subject candidate, 2026-11-05
+
+The ordinary host now combines the authority/context reads of one reconciliation
+boundary using one fresh activation. Both instance/history observations, both
+resource scans and exact before/after authority/context/prefix comparisons remain.
+Dispatch declaration and original-return assessment use that port; subsequent
+calls and awaits retain independent fresh observations. The mixed host keeps its
+existing path. No consent, audit, CAS, owner or accounting rule is relaxed.
+The D62 diagnostic failed in its first uninstrumented worker after reservation,
+before the second worker; audit-path attribution and overhead remain unknown.
+No unchanged diagnostic is rerun and no causal speedup is claimed. Fresh-source
+qualification, general L4, productive published STANDARD, ordinary entries,
+required193, genuine actors, installed archive and all L1-L8/A1-A10 remain due.
+
 ## Pre-acquisition control-intention candidate, 2026-11-05
 
 A signed bounded operation control intention now precedes disposition and

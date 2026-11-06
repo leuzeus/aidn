@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { createStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
 import { createStandardWorkflowOperationHost } from "../../src/application/runtime/standard-workflow-operation-host.mjs";
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
@@ -61,6 +62,18 @@ export async function verifyStandardReconciliationInventory(mode, pass) {
     const forged = structuredClone(inventory); forged.resources = [];
     assert.throws(() => signer.verify(forged), { code: "PROCESS_JOURNAL_NOT_AUTHENTICATED" });
     pass(`${mode}: signed canonical discovery includes a journal absent from all instance events; no effects/closure/authority`);
+
+    // The same open host must see a real external Git change on its next call.
+    // A compound synchronous observation cannot become a retained admission.
+    execFileSync("git", ["-C", root, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`,
+      "commit", "--allow-empty", "-m", "fixture context boundary"], { windowsHide: true, stdio: "pipe", timeout: 10000 });
+    const changedContext = host.prepareReconciliationInventory(id, { expectedSha256: before.record.instance_sha256 });
+    signer.verify(changedContext);
+    assert.notEqual(changedContext.context_sha256, inventory.context_sha256);
+    assert.equal(changedContext.authority_sha256, inventory.authority_sha256);
+    assert.equal(changedContext.instance_sha256, inventory.instance_sha256);
+    assert.equal(changedContext.permits_effects, false); assert.equal(authorizations, 0);
+    pass(`${mode}: an already open host freshly observes changed Git context without renewing authority or writing an inventory`);
 
     // The same immutable intent is discoverable both before a receipt and after
     // an UNKNOWN receipt. Preserve the original owner and every result identity.

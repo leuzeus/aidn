@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createStandardWorkflowArtifacts, standardFail as fail } from "./standard-workflow-artifacts.mjs";
-import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
+import { readWorkflowProjectAuthority, readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { runStartSessionAdmitUseCase } from "./start-session-admit-use-case.mjs";
 import { runReloadCheckUseCase } from "./reload-check-use-case.mjs";
 import { preWriteAdmit } from "../../../tools/runtime/pre-write-admit.mjs";
@@ -262,15 +262,17 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
   const git = args => execFileSync("git", ["-C", root, "-c", `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`,
     "-c", "core.fsmonitor=false", "-c", "submodule.recurse=false", ...args],
   { encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 1048576, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } }).trim();
-  function scope() {
+  function observeScope(execution = false) {
     if (implementation() !== loadedImplementation) fail("STANDARD_IMPLEMENTATION_CHANGED");
     if (Object.keys(process.env).some(key => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(key))) fail("STANDARD_GIT_ENV_SCOPE_CONFLICT");
-    const project = readWorkflowProjectAuthority({ targetRoot: root }), persistence = artifacts.describe();
+    const authority = execution ? readWorkflowProjectExecutionAuthority({ targetRoot: root }) : null;
+    const project = authority?.project ?? readWorkflowProjectAuthority({ targetRoot: root }), persistence = artifacts.describe();
     // Do this before existing helpers: a missing canonical state must never
     // trigger their historical visible-file compatibility fallback.
     artifacts.read("CURRENT-STATE.md", { required: true });
-    return { project, persistence, ...readStandardGitHead(git) };
+    return { context: { project, persistence, ...readStandardGitHead(git) }, authority };
   }
+  const scope = () => observeScope().context;
   async function admission(mode = "UNKNOWN") {
     const prewrite = await preWriteAdmit({ targetRoot: root, skill: "start-session" });
     const lifecycle = await runStartSessionAdmitUseCase({ targetRoot: root, mode });
@@ -316,6 +318,8 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
     ...createStandardCycleOperations({ artifacts, scope, git, replaceField, now }),
     bindings: standardWorkflowOperationBindings,
     observeScope: scope,
+    // One synchronous observation, never an input-supplied or retained authority.
+    observeExecutionScope: () => observeScope(true),
     async reload(input = {}) {
       assertStandardOperationInput("context_reload", input);
       const current = scope(), documents = ["baseline/current.md", "snapshots/context-snapshot.md", "CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md"]

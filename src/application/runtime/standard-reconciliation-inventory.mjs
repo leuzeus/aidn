@@ -21,7 +21,7 @@ const prefixFor = (instance, intent) => agenticProcessPrefixSha256(instance, int
 
 // Only trusted host capabilities supply these readers. Authored JSON cannot
 // select a discoverer, verifier or effect observer. This port has no writer.
-export function createStandardReconciliationInventory({ targetRoot, signer, readInstance, readAuthority, readContext,
+export function createStandardReconciliationInventory({ targetRoot, signer, readInstance, readAuthority, readContext, readSubject,
   configuration = null, modelSource = null, now = Date.now }) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
   function observe(instance) {
@@ -172,11 +172,12 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
     return { resources, operations, accounting, runtime_binding_sha256: observed.binding_sha256 };
   }
   function capture(instanceId, expectedSha256, requireExpected) {
-      const before = readInstance(instanceId); assertAgenticProcessInstance(before);
+      const subject = () => readSubject ? readSubject(instanceId) : { instance: readInstance(instanceId), authority: readAuthority(), context: readContext() };
+      const { instance: before, authority, context } = subject(); assertAgenticProcessInstance(before);
       if (requireExpected && expectedSha256 !== before.instance_sha256) fail("PROCESS_REVISION_CONFLICT");
-      const authority = readAuthority(), context = readContext(), first = observe(before), second = observe(before);
-      if (shadowHash(first) !== shadowHash(second) || readInstance(instanceId).instance_sha256 !== before.instance_sha256
-        || shadowHash(readAuthority()) !== shadowHash(authority) || shadowHash(readContext()) !== shadowHash(context))
+      const first = observe(before), second = observe(before), after = subject();
+      if (shadowHash(first) !== shadowHash(second) || after.instance.instance_sha256 !== before.instance_sha256
+        || shadowHash(after.authority) !== shadowHash(authority) || shadowHash(after.context) !== shadowHash(context))
         fail("PROCESS_RECONCILIATION_OBSERVATION_CHANGED");
       const inventory = assertProcessReconciliationInventory(signer.seal({ contract_version: "process-reconciliation-inventory.v1",
         instance_id: before.instance_id, instance_sha256: before.instance_sha256, instance_revision: before.revision,

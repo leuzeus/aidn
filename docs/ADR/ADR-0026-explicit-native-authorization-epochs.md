@@ -1,5 +1,20 @@
 # ADR-0026 - Explicit native authorization epochs
 
+## Compound ordinary-host observations, 2026-11-05
+
+An internal ordinary-host port derives its project/persistence authority and
+context from one fresh activation within each synchronous boundary. Inventory
+capture uses that compound subject before and after its two resource scans,
+retaining canonical instance/history authentication and all three comparisons.
+Dispatch declaration and original-return assessment use the same compound port;
+later observations and every awaited boundary read again. The mixed host retains
+its existing authority path. No JSON supplies an observation, and no observation
+is stored as admission or carried across calls/awaits. Resource closure, consent,
+CAS, cumulative debits, historical journals and UNKNOWN rules are unchanged.
+This reduces redundant work identified in source; it makes no measured speedup
+claim. Current-source real-crash, storage and loader qualification is required.
+General L4 and the full L1-L8/A1-A10 objective remain incomplete.
+
 ## Original-operation return recovery, 2026-11-05
 
 The internal operation host writes a signed `process-dispatch-record.v1` before

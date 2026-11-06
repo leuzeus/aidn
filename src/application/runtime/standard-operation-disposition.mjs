@@ -45,7 +45,7 @@ const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_cl
 const artifactProfiles = new Set(["session_close_record"]);
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, inventory, dispositionSource, appendResult, makeReceipt, onBoundary = async () => {}, now = Date.now }) {
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, onBoundary = async () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
   const dispositions = createWorkflowRecordStore({ targetRoot, stateMode, descriptor: { pathForId: dispositionPath,
@@ -120,8 +120,9 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     return write(controls, row, before.content_sha256);
   }
   function assessment(record, capsule) {
-    if (!capsule || capsule.phase !== "returned" || capsule.leases.some(row => row.status !== "released")
-      || capsule.authority_sha256 !== shadowHash(readAuthority()) || capsule.context_after_sha256 !== shadowHash(readContext()) || artifacts.localOwnerPending()) return "unknown";
+    if (!capsule || capsule.phase !== "returned" || capsule.leases.some(row => row.status !== "released")) return "unknown";
+    const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
+    if (capsule.authority_sha256 !== shadowHash(observed.authority) || capsule.context_after_sha256 !== shadowHash(observed.context) || artifacts.localOwnerPending()) return "unknown";
     const output = capsule.output, id = record.intent.binding_ref;
     assertStandardOperationOutput(output);
     if (output.operation_ref !== id || output.contract_version !== record.preview.binding.output_contract) fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
@@ -217,12 +218,13 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       if (dispatches.read(record.operation_id).record) fail("PROCESS_DISPATCH_ALREADY_DECLARED");
       processIdentity ??= observeLocalProcess(process.pid);
       if (!processIdentity) fail("PROCESS_IDENTITY_UNAVAILABLE");
+      const boundary = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
       write(dispatches, { contract_version: "process-dispatch-record.v1", operation_id: record.operation_id, revision: 1, phase: "reserved",
         instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, model_sha256: record.intent.model_sha256,
-        intent_sha256: shadowHash(record.intent), preview_sha256: shadowHash(record.preview), authority_sha256: shadowHash(readAuthority()),
+        intent_sha256: shadowHash(record.intent), preview_sha256: shadowHash(record.preview), authority_sha256: shadowHash(boundary.authority),
         operation_owner_sha256: shadowHash(record.owner),
         runtime_sha256: runtime(), physical_root_sha256: shadowHash(artifacts.root), process_identity: processIdentity,
-        context_before_sha256: shadowHash(readContext()), context_after_sha256: null, leases: [], output: null, output_sha256: null }, null);
+        context_before_sha256: shadowHash(boundary.context), context_after_sha256: null, leases: [], output: null, output_sha256: null }, null);
       await onBoundary("dispatch_reserved", record.operation_id);
       saveDispatch(readDispatch(record.operation_id, record), { phase: "running" });
       const capability = Object.freeze({

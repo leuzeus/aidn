@@ -1,5 +1,20 @@
 # Testing Guide
 
+## Compound reconciliation observations, 2026-11-05
+
+The ordinary host derives the authority and context of each synchronous
+reconciliation boundary from one fresh activation. The inventory still captures
+both boundaries, scans resources twice, authenticates canonical history and
+compares the exact prefix, authority and context. The mixed host keeps its
+existing independent authority/authentication path. No observation is cached
+across a call or await. The inventory fixture changes real Git HEAD between two
+calls on the same open host and requires a changed context with no authorization.
+Run it in files, dual and db-only, then the unchanged real-crash disposition
+selectors and the ordered full manifest. Published loaders separately check the
+explicitly authored pins. An earlier current-source diagnostic timed out in the
+first worker before the instrumented second worker; it measured no audit-path
+cost. Qualification of this source, general L4 and full STANDARD remain required.
+
 ## Operation-host execution-authority observation, 2026-11-05
 
 After changing authority composition, select the isolated ordinary-host
