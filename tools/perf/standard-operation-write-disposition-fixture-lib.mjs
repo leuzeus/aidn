@@ -82,9 +82,16 @@ function open(config, boundary = async () => {}, grants = []) {
 }
 
 if (process.argv.includes("--write-disposition-worker")) {
-  const config = JSON.parse(fs.readFileSync(process.argv.at(-1), "utf8"));
+  const file = process.argv.at(-1), config = JSON.parse(fs.readFileSync(file, "utf8"));
+  const mark = phase => fs.appendFileSync(file + ".phases.jsonl", JSON.stringify({ phase, at_ms: Date.now(), pid: process.pid }) + "\n");
+  mark("worker_entered");
   const h = open(config, async boundary => { if (boundary === config.boundary) {
-    process.send({ boundary, identity: observeLocalProcess(process.pid) }); await new Promise(() => {}); } });
+    mark(boundary);
+    const identity = config.plan ? h.artifacts.resourceFence().read().record.process_identity
+      : createProcessDispatchRecordStore({ targetRoot: config.root, stateMode: config.mode }).read(config.operation_id).record.process_identity;
+    assert.equal(identity.pid, process.pid);
+    process.send({ boundary, identity }); await new Promise(() => {}); } });
+  mark("host_opened");
   try {
     if (config.plan) await h.disposition.apply(config.plan, { write: true, expectedPlanSha256: shadowHash(config.plan) });
     else {
@@ -139,13 +146,17 @@ export async function verifyStandardOperationWriteDisposition(mode, report, only
     const file = path.join(retained, config.name + "-" + boundary + ".json"); fs.writeFileSync(file, JSON.stringify({ ...config, boundary, plan }));
     const child = fork(here, ["--write-disposition-worker", file], { cwd: config.root, windowsHide: true, stdio: ["ignore", "pipe", "pipe", "ipc"] });
     let stderr = ""; child.stdout.resume(); child.stderr.on("data", bytes => { stderr += bytes; if (stderr.length > 16384) child.kill(); });
-    const ended = new Promise(resolve => child.once("close", (code, signal) => resolve({ code, signal }))), timer = setTimeout(() => child.kill(), 15000);
+    let timerExpired = false, message, exit;
+    const ended = new Promise(resolve => child.once("close", (code, signal) => resolve({ code, signal }))), timer = setTimeout(() => { timerExpired = true; child.kill(); }, 15000);
     try {
-      const message = await new Promise((resolve, reject) => { child.once("error", reject); child.once("message", row => row.boundary === boundary ? resolve(row) : reject(Error(JSON.stringify(row))));
+      message = await new Promise((resolve, reject) => { child.once("error", reject); child.once("message", row => row.boundary === boundary ? resolve(row) : reject(Error(JSON.stringify(row))));
         child.once("close", () => reject(Error("WORKER_CLOSED_BEFORE_BOUNDARY:" + stderr.slice(-2048)))); });
-      child.kill(); const exit = await ended; assert.equal(observeLocalProcessOwner(message.identity), "terminated");
-      fs.writeFileSync(file + ".exit.json", JSON.stringify({ message, exit, stderr, actual_process_termination: true })); phase(boundary, { name: config.name });
-    } finally { clearTimeout(timer); if (child.exitCode === null && child.signalCode === null) { child.kill(); await ended; } }
+      child.kill(); exit = await ended; assert.equal(observeLocalProcessOwner(message.identity), "terminated"); phase(boundary, { name: config.name });
+    } finally {
+      clearTimeout(timer); if (child.exitCode === null && child.signalCode === null) child.kill(); exit ??= await ended;
+      fs.writeFileSync(file + ".exit.json", JSON.stringify({ message: message ?? null, exit, stderr, timer_expired: timerExpired,
+        original_worker_bound_ms: 15000, actual_process_termination: true, target_boundary_observed: Boolean(message) }));
+    }
   }
   const prepare = (h, config) => h.disposition.prepare(config.operation_id, { expectedSha256: h.readInstance("artifact_disposition").instance_sha256 });
   const apply = (h, plan) => h.disposition.apply(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
