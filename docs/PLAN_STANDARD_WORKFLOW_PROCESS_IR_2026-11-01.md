@@ -1,5 +1,30 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Final-validation SIM composition candidate, 2026-11-06
+
+The approved local composition passes the cursor from the new state's complete
+final validation/replay directly into SIM's immediate snapshot before yield.
+The common transition keeps full incoming and outgoing validation; the ordinary
+advance API retains duplicate identity/mutability. SIM owns its cloned frozen
+scenario. No supplied cursor, result/authority cache, second reducer, generic
+validator shortcut, operation callback, authentication or CAS change is added.
+Initial inspection, per-row schema and 4 MiB limit, aggregate 4 MiB limit and
+historical v1/v2 readers remain. Small contract counterexamples cover exact rows
+and hashes, forged histories, duplicates and mutation/resumption after await.
+
+The preceding five-case cohort is retained as FAIL: one PASS, one sequential
+180-second timeout and three NOT_STARTED, with two Jobs closed at zero. Its
+241 authenticated operations, 486 events and completed 266-occurrence canonical
+cursor do not establish its exact timeout phase. Separate diagnostics supported
+the synchronous composition; 487 row hash arrays were compared only in worker
+memory, with unmeasured overhead and no global causal performance claim.
+The changed source and explicitly refreshed pins require new actor-bound READY
+and exact ROOT GO for the original five cases, workloads and 660-second bound.
+No STANDARD component is extracted here: complete_standard_workflow stays false.
+Productive full STANDARD, general L4, required193, ordinary entries, genuine
+Native/Human/provider/OS/PostgreSQL, exact installation and all L1-L8/A1-A10
+remain active/incomplete, with every prior FAIL/UNKNOWN and budget preserved.
+
 ## Synchronous canonical inspection candidate, 2026-11-06
 
 Only application inspection of an exact adapter-created store composes its

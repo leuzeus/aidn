@@ -1,5 +1,34 @@
 # Testing Guide
 
+## Final-validation SIM composition candidate, 2026-11-06
+
+The existing reusable-call `contract` selector additionally compares every row
+and canonical row hash of a small authenticated call history against separate
+advance-then-inspect calls. It checks aggregate trace equality, historical v1
+and current v2, initial rows, cancellation, identical and divergent deliveries,
+the mutable duplicate API's exact identity, frozen cursors, re-sealed forged
+model/intent/receipt histories, accessor refusal without getter execution, and
+caller mutation plus iterator resumption after an await. These are synthetic
+component controls, not real actors or productive STANDARD evidence.
+
+The composition retains full validation before and after each new event and
+the same reducer, row schema/4 MiB and aggregate 4 MiB limits. Only the immediately
+adjacent final-validation-to-snapshot replay is composed. No supplied cursor,
+authority, result or cross-call cache is trusted. The earlier isolated diagnostic
+compared 487 row hashes in worker memory, without retaining the arrays separately;
+its ordered full SIM pair and unmeasured overhead imply no global causal gain.
+
+New-source checks are NOT_RUN pending an immutable READY and exact ROOT GO.
+Execute `contract`, `sequential`, `concurrent`, `cold`, `negative` in that order,
+under 15/180/180/180/60 seconds and a 660-second global bound. Stop at the first
+failure and keep following cases NOT_STARTED. The new small checks replace none
+of the original 241/240 operations, two consumed returns, more than 256 expanded
+occurrences, historical/concurrent/cold/negative controls, redelivery, stale CAS,
+512-event/1024-occurrence/256-node bounds or streaming SIM. The earlier cohort
+remains FAIL (one PASS, one FAIL, three NOT_STARTED, both Jobs closed with zero
+processes); its canonical completed prefix did not timestamp the timeout phase.
+Published loaders, complete STANDARD and all L1-L8/A1-A10 remain separately due.
+
 ## Synchronous canonical inspection candidate, 2026-11-06
 
 The existing reusable-call `contract` selector additionally covers FILES, DUAL

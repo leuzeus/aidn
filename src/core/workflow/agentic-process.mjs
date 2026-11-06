@@ -280,9 +280,10 @@ function validateAndReplay(instance) {
 export function assertAgenticProcessInstance(instance) {
   validateAndReplay(instance); return instance;
 }
-function seal(value) {
+function seal(value, inspected = false) {
   const instance = { ...value, instance_sha256: shadowHash(value) };
-  assertAgenticProcessInstance(instance); return freezeShadow(instance);
+  const cursor = validateAndReplay(instance), sealed = freezeShadow(instance);
+  return inspected ? { instance: sealed, cursor: freezeShadow(cursor) } : sealed;
 }
 export function createAgenticProcess({ instanceId, model, policyPins, scopeId, facts = {}, parameters }) {
   if (checkShadowJson({ instanceId, model, policyPins, scopeId, facts }) || policyPins === null) fail("PROCESS_INPUT_INVALID");
@@ -303,13 +304,17 @@ export function agenticProcessPrefixSha256(instance, eventCount) {
   if (!Number.isSafeInteger(eventCount) || eventCount < 0 || eventCount > instance.events.length) fail("PROCESS_PREFIX_CHECKPOINT_INVALID");
   return shadowHash({ ...content(instance), revision: eventCount + 1, events: instance.events.slice(0, eventCount) });
 }
-export function advanceAgenticProcess(instance, event) {
-  assertAgenticProcessInstance(instance);
+export function advanceAgenticProcess(instance, event) { return advance(instance, event, false); }
+// Internal synchronous composition: the cursor comes from this transition's
+// complete final replay, never a caller-supplied cursor or retained observation.
+export function advanceAndInspectAgenticProcess(instance, event) { return advance(instance, event, true); }
+function advance(instance, event, inspected) {
+  const cursor = validateAndReplay(instance);
   if (checkShadowJson(event)) fail("PROCESS_EVENT_INVALID");
   const existing = instance.events.find(row => row.event_id === event.event_id);
   if (existing) {
     if (shadowHash(existing) !== shadowHash(event)) fail("PROCESS_EVENT_ID_CONFLICT");
-    return instance;
+    return inspected ? { instance, cursor: freezeShadow(cursor) } : instance;
   }
-  return seal({ ...content(instance), revision: instance.revision + 1, events: [...instance.events, structuredClone(event)] });
+  return seal({ ...content(instance), revision: instance.revision + 1, events: [...instance.events, structuredClone(event)] }, inspected);
 }

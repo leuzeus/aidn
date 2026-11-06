@@ -1,5 +1,33 @@
 # ADR-0022 — Structured agentic process and constrained resource assignment
 
+## Final-validation cursor composition into SIM, 2026-11-06
+
+The internal synchronous advance-and-inspect composition returns the cursor
+already computed by the complete final validation/replay that seals the new
+instance. Both transition APIs use the same reducer and validate the entire
+incoming instance before inspecting the event, then the entire new instance
+before returning. Duplicate events still validate the incoming history; the
+old advance API preserves the caller's exact instance identity and mutability.
+No cursor supplied by a caller is accepted and no cursor, result or authority is
+cached between calls or awaited observations.
+
+SIM owns a cloned, deeply frozen scenario. It consumes the newly computed
+cursor in its snapshot before yielding. Initial inspection, every row's schema
+and 4 MiB bound, the aggregate 4 MiB bound, fingerprints, historical v1/v2
+readers and all operation/service/authentication/CAS boundaries remain intact.
+The iterator's next event performs complete validation again after resumption.
+
+An isolated diagnostic on the preceding source supported this composition with
+eight alternating last-event pairs, two complete 486-event SIM traces and
+adversarial controls. Its 487 row hashes were compared in worker memory rather
+than retained separately; the ordered full pair is descriptive and its overhead
+is unmeasured. It supplies no whole-workflow causal performance claim. The
+preceding five-case qualification remains FAIL (contract passed, sequential
+timed out, three cases not started). This source and its additional small
+contract controls require their own immutable READY and exact ROOT GO under the
+unchanged five-case workloads and bounds. STANDARD extraction, general L4 and
+all L1-L8/A1-A10 remain active/incomplete.
+
 ## Synchronous canonical inspection, 2026-11-06
 
 For the exact frozen store created by the process adapter, application

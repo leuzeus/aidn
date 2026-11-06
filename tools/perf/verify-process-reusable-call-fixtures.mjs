@@ -6,8 +6,8 @@ import path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { assertAgenticProcessModel, agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
-import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess, agenticProcessPrefixSha256 } from "../../src/core/workflow/agentic-process.mjs";
-import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
+import { advanceAgenticProcess, advanceAndInspectAgenticProcess, createAgenticProcess, inspectAgenticProcess, agenticProcessPrefixSha256 } from "../../src/core/workflow/agentic-process.mjs";
+import { iterateAgenticProcessSimulation, simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { processFrameNode, processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 import { assertProcessDataBindings } from "../../src/core/workflow/process-data-contracts.mjs";
 import { resolveProcessOperationInput } from "../../src/core/workflow/process-input-resolution.mjs";
@@ -189,6 +189,91 @@ async function inspectionStoreCases() {
   }
   console.log("PASS owned canonical inspection, historical/custom/copy/proxy fallback, forged cursor refusal, mutable-result isolation, fresh read after await and callback mutation refusal in files/dual/db-only");
 }
+async function simulationCompositionCases(record) {
+  const initial = value => ({ instanceId: value.instance_id, model: value.model, policyPins: value.policy_pins,
+    scopeId: value.scope_id, facts: value.initial_facts, ...(value.initial_parameters === undefined ? {} : { parameters: value.initial_parameters }) });
+  const legacy = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/agentic-process/compatible-work-and-review.json", import.meta.url)));
+  const cancel = { event_id: "cancel_once", kind: "cancel" };
+  const historical = createAgenticProcess({ instanceId: "historical", model: legacy, policyPins: agenticPolicyPins(legacy), scopeId: "scope-1" });
+  const scenarios = [
+    { ...initial(historical), events: [{ event_id: "facts_once", kind: "facts", facts: { probe: true } }, cancel, cancel] },
+    { ...initial(record), events: record.events },
+  ];
+  function legacyRows(scenario) {
+    let instance = createAgenticProcess(scenario);
+    const row = (step, eventId) => ({ step, event_id: eventId, instance_sha256: instance.instance_sha256, cursor: inspectAgenticProcess(instance) });
+    const rows = [row(0, null)];
+    for (const [index, event] of scenario.events.entries()) {
+      instance = advanceAgenticProcess(instance, event); rows.push(row(index + 1, event.event_id));
+    }
+    return rows;
+  }
+  for (const scenario of scenarios) {
+    const expected = legacyRows(scenario), rows = [...iterateAgenticProcessSimulation(scenario)];
+    assert.deepEqual(rows, expected, "every SIM row equals the separate advance then inspect path");
+    assert.deepEqual(rows.map(shadowHash), expected.map(shadowHash));
+    assert.deepEqual(simulateAgenticProcess(scenario).trace, expected);
+    let instance = createAgenticProcess(scenario);
+    for (const [index, event] of scenario.events.entries()) {
+      const advanced = advanceAndInspectAgenticProcess(instance, event);
+      assert.equal(advanced.instance.instance_sha256, expected[index + 1].instance_sha256);
+      assert.deepEqual(advanced.cursor, expected[index + 1].cursor);
+      assert.ok(Object.isFrozen(advanced.cursor)); instance = advanced.instance;
+    }
+    // A duplicate must preserve the old API's identity and top-level mutability.
+    const mutable = structuredClone(instance), last = scenario.events.at(-1);
+    assert.equal(advanceAgenticProcess(mutable, last), mutable);
+    assert.equal(Object.isFrozen(mutable), false);
+    const inspected = advanceAndInspectAgenticProcess(mutable, last);
+    assert.equal(inspected.instance, mutable); assert.equal(Object.isFrozen(mutable), false);
+    assert.throws(() => { inspected.cursor.status = "FORGED"; }, TypeError);
+    const divergent = { ...last, kind: "forged" };
+    for (const advance of [advanceAgenticProcess, advanceAndInspectAgenticProcess]) {
+      assert.throws(() => advance(mutable, divergent), { code: "PROCESS_EVENT_ID_CONFLICT" });
+    }
+    await Promise.resolve();
+    mutable.revision++;
+    for (const advance of [advanceAgenticProcess, advanceAndInspectAgenticProcess]) {
+      assert.throws(() => advance(mutable, last), { code: "PROCESS_INSTANCE_INVALID" }, "duplicate revalidates changed input after await");
+    }
+    assert.deepEqual([...iterateAgenticProcessSimulation({ ...scenario, events: [] })], expected.slice(0, 1));
+  }
+  // The iterator owns a frozen scenario before its first yield. Caller changes
+  // while suspended must not alter its model, pending events or returned rows.
+  const isolated = structuredClone(scenarios[0]), expected = legacyRows(isolated), iterator = iterateAgenticProcessSimulation(isolated);
+  const first = iterator.next().value;
+  isolated.model.revision++; isolated.events[0].facts.probe = false; isolated.events.length = 0;
+  await Promise.resolve();
+  assert.deepEqual([first, ...iterator], expected);
+  let getters = 0;
+  const hostile = structuredClone(scenarios[1]);
+  Object.defineProperty(hostile.model, "revision", { enumerable: true, get() { getters++; return 1; } });
+  assert.throws(() => iterateAgenticProcessSimulation(hostile).next(), { code: "PROCESS_SIMULATION_INPUT_INVALID" });
+  assert.equal(getters, 0);
+  // Re-sealed histories must still authenticate their model, intent and receipt;
+  // a supplied hash or previously computed cursor never substitutes for replay.
+  for (const mutate of [value => { value.model.revision++; },
+    value => { value.events.find(row => row.kind === "operation_intent").intent.instance_sha256 = H; },
+    value => { value.events.find(row => row.kind === "operation_result").receipt.intent_sha256 = H; }]) {
+    const bad = structuredClone(record); mutate(bad); bad.model_sha256 = shadowHash(bad.model);
+    const { instance_sha256, ...body } = bad; bad.instance_sha256 = shadowHash(body);
+    let code;
+    assert.throws(() => advanceAgenticProcess(bad, bad.events.at(-1)), error => { code = error.code; return /^PROCESS_/.test(code); });
+    assert.throws(() => advanceAndInspectAgenticProcess(bad, bad.events.at(-1)), { code });
+    // SIM constructs a new instance from a scenario. Its refusal oracle must
+    // construct that same scenario, rather than reuse an instance-API error.
+    const scenario = { ...initial(bad), events: bad.events };
+    let simulationCode;
+    assert.throws(() => legacyRows(scenario), error => { simulationCode = error.code; return /^PROCESS_/.test(simulationCode); });
+    assert.throws(() => [...iterateAgenticProcessSimulation(scenario)], { code: simulationCode });
+  }
+  const staleModelHash = structuredClone(record); staleModelHash.model.revision++;
+  const { instance_sha256, ...staleBody } = staleModelHash; staleModelHash.instance_sha256 = shadowHash(staleBody);
+  for (const advance of [advanceAgenticProcess, advanceAndInspectAgenticProcess]) {
+    assert.throws(() => advance(staleModelHash, staleModelHash.events.at(-1)), { code: "PROCESS_INSTANCE_INVALID" });
+  }
+  console.log("PASS final-validation SIM composition: every small-call row/hash, v1/v2, initial/cancel/duplicate/divergent, mutable identity, forged model/intent/receipt, getter refusal and isolation after await");
+}
 async function contractCases() {
   await inspectionStoreCases();
   const m = model({ size: 2 }); assertAgenticProcessModel(m);
@@ -265,6 +350,7 @@ async function contractCases() {
   changedPrefix.events.find(row => row.kind === "operation_intent").intent.instance_sha256 = H;
   assert.throws(() => inspectAgenticProcess({ ...changedPrefix, instance_sha256: shadowHash(changedPrefix) }), /PROCESS_OPERATION_INTENT_BINDING_CHANGED/);
   console.log("PASS every small-call prefix retains canonical SHA256 with Unicode/escaped values; changed historical binding refused");
+  await simulationCompositionCases(prefixState.record);
 }
 async function executionCase(parallel, cold = false) {
   const arena = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-reusable-calls-")), m = model({ parallel });
