@@ -124,16 +124,25 @@ export function createStandardWorkflowArtifacts({ targetRoot, env = process.env 
   let activeOwner = false;
   function withLocalEffectOwner(planSha, operation) {
     if (!/^[a-f0-9]{64}$/.test(planSha)) fail("STANDARD_EFFECT_OWNER_PLAN_INVALID");
+    const token = randomUUID(), owner = { contract_version: "process-local-effect-owner.v1", token, pid: process.pid,
+      scope_sha256: shadowHash({ physical_root: root }), plan_sha256: planSha, created_at: new Date().toISOString() };
+    if (validateJsonSchema(owner, ownerSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_EFFECT_OWNER_INVALID");
+    const dispatch = currentStandardDispatchContext();
+    // The host signs the exact owner and proposed fence before either the fence
+    // CAS or filesystem allocation. A proposal never holds a lease or grants an
+    // effect. Standalone legacy callers still have no signed dispatch capability.
+    const prepared = dispatch ? fence().prepareAcquire({ expectedSha256: fence().read().content_sha256 }) : null;
+    dispatch?.reserveLocalOwner(owner, prepared);
     let lease;
-    try { lease = fence().acquire(); } catch (cause) { cause.effect_status = "no_effect"; throw cause; }
+    try { lease = fence().acquire(prepared ? { prepared, expectedSha256: prepared.previous_sha256 } : {}); }
+    catch (cause) { cause.effect_status = "no_effect"; throw cause; }
+    // A crash here remains discoverable through the signed proposed token even
+    // if no lock file or retrospectively observed physical identity exists yet.
+    dispatch?.localFenceAcquired(owner, lease);
     const file = lock(); let descriptor;
     try { fs.mkdirSync(path.dirname(file), { recursive: true }); descriptor = fs.openSync(file, "wx"); }
     catch (cause) { fence().release(lease); if (cause.code === "EEXIST") fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED"); throw cause; }
-    const token = randomUUID(), owner = { contract_version: "process-local-effect-owner.v1", token, pid: process.pid,
-      scope_sha256: shadowHash({ physical_root: root }), plan_sha256: planSha, created_at: new Date().toISOString() };
-    const dispatch = currentStandardDispatchContext();
     try {
-      if (validateJsonSchema(owner, ownerSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_EFFECT_OWNER_INVALID");
       fs.writeFileSync(descriptor, JSON.stringify(owner)); fs.fsyncSync(descriptor);
       // Signed canonical declaration and exact handle identity precede the
       // callback. The v1 lock format stays readable; no old owner is converted.

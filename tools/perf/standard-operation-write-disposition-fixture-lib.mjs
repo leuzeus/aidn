@@ -22,14 +22,16 @@ import { sessionClosureChoices } from "../../src/core/workflow/standard-session-
 import { inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { assertProcessDispatchRecord } from "../../src/core/workflow/process-dispatch-record.mjs";
 
 const here = fileURLToPath(import.meta.url), H = "a".repeat(64), body = ({ authentication, key_id, ...row }) => row;
 export const WRITE_DISPOSITION_CASES = ["artifact-redelivery", "artifact-disposition-recorded", "artifact-disposition-receipted"];
+export const WRITE_OWNER_INTENTION_CASES = ["artifact-owner-reserved", "artifact-owner-fence-acquired", "artifact-owner-declared"];
 // Trusted fixture composition, deliberately below the ordinary operation host.
 // The closure review/admission is synthetic; the write, ownership, dispatch,
 // inventory, stores, disposition and common service/reducer are production.
 // This does not establish the complete STANDARD or an actual human approval.
-function open(config, boundary = async () => {}, grants = []) {
+function open(config, boundary = async () => {}, grants = [], localResource = () => {}) {
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: config.root });
   const operations = createStandardWorkflowOperations({ targetRoot: config.root });
   const binding = standardWorkflowOperationBindings().find(row => row.id === "session_close_record");
@@ -53,7 +55,7 @@ function open(config, boundary = async () => {}, grants = []) {
     evidence_refs: [{ ref: operationOutputRef(record.operation_id), sha256: shadowHash(output) }] });
   const inventory = createStandardReconciliationInventory({ targetRoot: config.root, signer, readInstance, readAuthority, readContext });
   const disposition = createStandardOperationDisposition({ targetRoot: config.root, stateMode: config.mode, signer, artifacts,
-    readOperation, readInstance, readAuthority, readContext, inventory, makeReceipt, onBoundary: boundary,
+    readOperation, readInstance, readAuthority, readContext, inventory, makeReceipt, onBoundary: boundary, onLocalResource: localResource,
     dispositionSource: {
       async authorize({ request }) { grants.push(request); return { contract_version: "process-disposition-authorization-grant.v1",
         authority_id: "fixture_operator", authorized: true, request_sha256: shadowHash(request), principal_sha256: H,
@@ -78,7 +80,7 @@ function open(config, boundary = async () => {}, grants = []) {
   const writer = createStandardSessionCloseRecord({ targetRoot: config.root, readCurrent: readInstance,
     readDecision: async () => { const current = await readStandardSessionClosureContext({ targetRoot: config.root, sessionId: "S001" });
       assert.equal(current.context_sha256, config.material.question.review.context_sha256); return structuredClone(config.material); } });
-  return { artifacts, model, binding, signer, instances, journal, readInstance, readOperation, readAuthority, readContext, save, persist, disposition, service, writer };
+  return { artifacts, model, binding, signer, instances, journal, readInstance, readOperation, readAuthority, readContext, save, persist, disposition, inventory, service, writer };
 }
 
 if (process.argv.includes("--write-disposition-worker")) {
@@ -90,7 +92,16 @@ if (process.argv.includes("--write-disposition-worker")) {
     const identity = config.plan ? h.artifacts.resourceFence().read().record.process_identity
       : createProcessDispatchRecordStore({ targetRoot: config.root, stateMode: config.mode }).read(config.operation_id).record.process_identity;
     assert.equal(identity.pid, process.pid);
-    process.send({ boundary, identity }); await new Promise(() => {}); } });
+    process.send({ boundary, identity }); await new Promise(() => {}); } }, [], boundary => {
+      mark(boundary);
+      if (boundary !== config.boundary) return;
+      const identity = createProcessDispatchRecordStore({ targetRoot: config.root, stateMode: config.mode }).read(config.operation_id).record.process_identity;
+      assert.equal(identity.pid, process.pid);
+      // A synchronous observation hook adds no awaited authority boundary.
+      // The real parent kills this process while the actual production writer
+      // is paused immediately before/after the fence CAS or lock declaration.
+      process.send({ boundary, identity }); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);
+    });
   mark("host_opened");
   try {
     if (config.plan) await h.disposition.apply(config.plan, { write: true, expectedPlanSha256: shadowHash(config.plan) });
@@ -161,11 +172,52 @@ export async function verifyStandardOperationWriteDisposition(mode, report, only
   const prepare = (h, config) => h.disposition.prepare(config.operation_id, { expectedSha256: h.readInstance("artifact_disposition").instance_sha256 });
   const apply = (h, plan) => h.disposition.apply(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
   try {
-    for (const name of WRITE_DISPOSITION_CASES.filter(name => only === null || name === only)) {
-      const config = await setup(name); await crash(config, "dispatch_returned");
+    const selected = only === null ? WRITE_DISPOSITION_CASES : [...WRITE_DISPOSITION_CASES, ...WRITE_OWNER_INTENTION_CASES].filter(name => name === only);
+    for (const name of selected) {
+      const config = await setup(name);
+      if (WRITE_OWNER_INTENTION_CASES.includes(name)) {
+        const boundary = name === "artifact-owner-reserved" ? "local_owner_reserved"
+          : name === "artifact-owner-fence-acquired" ? "local_owner_fence_acquired" : "local_owner_declared";
+        const before = open(config), images = before.readOperation(config.operation_id).record.preview.prepared.plan.changes
+          .map(row => ({ path: row.path, sha256: before.artifacts.read(row.path).sha256, metadata_sha256: before.artifacts.metadataHash(row.path) }));
+        await crash(config, boundary);
+        const h = open(config), store = createProcessDispatchRecordStore({ targetRoot: config.root, stateMode: mode });
+        const original = store.read(config.operation_id).record; h.signer.verify(original); assertProcessDispatchRecord(original);
+        assert.equal(original.contract_version, "process-dispatch-record.v2"); assert.equal(original.phase, "running"); assert.equal(original.output, null);
+        assert.equal(original.local_owner_intentions.length, 1); const intention = original.local_owner_intentions[0];
+        assert.equal(observeLocalProcessOwner(original.process_identity), "terminated");
+        assert.equal(intention.owner.pid, original.process_identity.pid);
+        assert.deepEqual(intention.resource_fence.record.process_identity, original.process_identity);
+        const lock = path.join(config.root, intention.lock_path), fence = h.artifacts.resourceFence().read();
+        if (boundary === "local_owner_reserved") { assert.equal(fence.content_sha256, intention.resource_fence.previous_sha256); assert.equal(fs.existsSync(lock), false); }
+        else assert.deepEqual(fence.record, intention.resource_fence.record);
+        if (boundary === "local_owner_declared") {
+          assert.deepEqual(JSON.parse(fs.readFileSync(lock, "utf8")), intention.owner); assert.equal(original.leases.length, 1);
+          assert.equal(original.leases[0].status, "held");
+        } else { assert.equal(original.leases.length, 0); assert.equal(fs.existsSync(lock), false); }
+        const inventory = h.inventory.observeSubject("artifact_disposition").inventory;
+        h.signer.verify(inventory);
+        assert.ok(inventory.resources.some(row => row.ref === `local-owner-intention:${config.operation_id}/${intention.owner.token}`));
+        assert.equal(inventory.complete_resource_closure, false); assert.equal(inventory.permits_effects, false);
+        const prepared = prepare(h, config); assert.equal(prepared.assessment, "unknown");
+        assert.equal((await apply(h, prepared)).written, false); assert.equal(h.readOperation(config.operation_id).record.results.length, 0);
+        await assert.rejects(h.disposition.run(h.readOperation(config.operation_id).record, () => { throw Error("SECOND_EFFECT_FORBIDDEN"); }), { code: "PROCESS_DISPATCH_ALREADY_DECLARED" });
+        assert.deepEqual(store.read(config.operation_id).record, original); assert.deepEqual(h.artifacts.resourceFence().read(), fence);
+        assert.deepEqual(images.map(row => ({ path: row.path, sha256: h.artifacts.read(row.path).sha256, metadata_sha256: h.artifacts.metadataHash(row.path) })), images);
+        const forged = structuredClone(original); forged.local_owner_intentions[0].resource_fence.record.process_identity.pid++;
+        assert.throws(() => assertProcessDispatchRecord(forged), { code: "PROCESS_DISPATCH_RECORD_INVALID" });
+        const historical = structuredClone(original); delete historical.local_owner_intentions; historical.contract_version = "process-dispatch-record.v1";
+        assertProcessDispatchRecord(historical); // Reader-only shape check, no persisted conversion.
+        phase("unknown_retained", { name }); checks++; report(`${mode}: ${name} real writer crash, signed preallocation identity, cold inventory and unchanged artifacts/fence/UNKNOWN; no takeover or second dispatch`);
+        continue;
+      }
+      await crash(config, "dispatch_returned");
       let h = open(config), plan = prepare(h, config); assert.equal(plan.assessment, "confirmed_original");
       const store = createProcessDispatchRecordStore({ targetRoot: config.root, stateMode: mode }), original = store.read(config.operation_id).record;
       h.signer.verify(original); assert.equal(original.output.effect_status, "confirmed"); assert.equal(original.leases.length, 1);
+      assert.equal(original.contract_version, "process-dispatch-record.v2"); assert.equal(original.local_owner_intentions.length, 1);
+      assert.deepEqual(original.local_owner_intentions[0].owner, original.leases[0].owner);
+      assert.deepEqual(original.local_owner_intentions[0].resource_fence.record, original.leases[0].resource_fence);
       assert.equal(original.leases[0].status, "released"); assert.equal(original.operation_owner_sha256, shadowHash(h.readOperation(config.operation_id).record.owner));
       const images = original.output.observations.postimages;
       const witnesses = () => images.map(row => ({ path: row.path, sha256: h.artifacts.read(row.path).sha256, metadata_sha256: h.artifacts.metadataHash(row.path) }));

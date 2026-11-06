@@ -14,6 +14,7 @@ import { validateJsonSchema } from "../../core/contracts/json-schema-validator.m
 import ownerSchema from "../../core/contracts/workflow-definition/process-local-effect-owner.v1.schema.json" with { type: "json" };
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
+import { assertProcessDispatchRecord, dispatchRecordPath } from "../../core/workflow/process-dispatch-record.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
@@ -26,7 +27,7 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
   function observe(instance) {
     assertAgenticProcessInstance(instance);
-    const observed = artifacts.observeInventory(), resources = [], operations = [], records = new Map(), prefixes = new Map();
+    const observed = artifacts.observeInventory(), resources = [], operations = [], records = new Map(), prefixes = new Map(), dispatches = [];
     const accounting = { native_known: true, responses_observed_minimum: 0, storage_debit_bytes_minimum: 0,
       unresolved_native_allocations: 0, operation_attempts: 0, unknown_operations: 0 };
     const add = (ref, kind, sha256, details) => {
@@ -37,9 +38,13 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
       add("artifact:" + row.path, "artifact", row.sha256, { metadata_sha256: row.metadata_sha256, source: observed.source });
       // Unknown record namespaces are retained as artifacts, never treated as
       // an understood or closed resource. The external-discovery gaps stay open.
-      if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations)\//.test(row.path)) continue;
+      if (!/^workflows\/(operation-records|decision-inbox|control-inbox|native-allocations|dispatch-records)\//.test(row.path)) continue;
       const record = JSON.parse(row.content);
-      if (row.path.startsWith("workflows/operation-records/")) {
+      if (row.path.startsWith("workflows/dispatch-records/")) {
+        assertProcessDispatchRecord(record);
+        if (row.path !== dispatchRecordPath(record.operation_id)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+        if (record.instance_id === instance.instance_id) { signer.verify(record); dispatches.push(record); }
+      } else if (row.path.startsWith("workflows/operation-records/")) {
         assertOperationJournal(record);
         if (row.path !== `workflows/operation-records/${record.operation_id}.json`) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
         if (record.intent.instance_id !== instance.instance_id) continue;
@@ -106,6 +111,22 @@ export function createStandardReconciliationInventory({ targetRoot, signer, read
         // Decision source contracts bind the operation via the exact question;
         // link through the canonical operation records after the full scan.
         records.set(row.path, { record, decision });
+      }
+    }
+    for (const dispatch of dispatches) {
+      const operation = records.get(dispatch.operation_id);
+      if (!operation || dispatch.scope_id !== operation.intent.scope_id || dispatch.model_sha256 !== operation.intent.model_sha256
+        || dispatch.intent_sha256 !== shadowHash(operation.intent) || dispatch.preview_sha256 !== shadowHash(operation.preview)
+        || dispatch.operation_owner_sha256 !== shadowHash(operation.owner)
+        || dispatch.physical_root_sha256 !== shadowHash(artifacts.root)) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+      add("dispatch:" + dispatch.operation_id, "local_evidence", shadowHash(dispatch), {
+        phase: dispatch.phase, process_identity: dispatch.process_identity, output_sha256: dispatch.output_sha256,
+        leases: dispatch.leases, original_return_retained: dispatch.phase === "returned", complete_resource_closure: false });
+      for (const intention of dispatch.local_owner_intentions ?? []) {
+        if (intention.owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root })) fail("PROCESS_RECONCILIATION_RESOURCE_CHANGED");
+        add(`local-owner-intention:${dispatch.operation_id}/${intention.owner.token}`, "local_evidence", shadowHash(intention), {
+          intention, matching_lease: dispatch.leases.find(row => shadowHash(row.owner) === shadowHash(intention.owner)) ?? null,
+          allocation_observed: false, complete_resource_closure: false });
       }
     }
     for (const [id, entry] of records) {

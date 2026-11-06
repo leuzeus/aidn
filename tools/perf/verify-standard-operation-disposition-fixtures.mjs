@@ -18,7 +18,7 @@ import { observeLocalProcess, observeLocalProcessOwner } from "../../src/adapter
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { inspectAgenticProcess, advanceAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
-import { WRITE_DISPOSITION_CASES, verifyStandardOperationWriteDisposition } from "./standard-operation-write-disposition-fixture-lib.mjs";
+import { WRITE_DISPOSITION_CASES, WRITE_OWNER_INTENTION_CASES, verifyStandardOperationWriteDisposition } from "./standard-operation-write-disposition-fixture-lib.mjs";
 
 const here = fileURLToPath(import.meta.url), H = "a".repeat(64);
 function source(calls = []) {
@@ -76,7 +76,7 @@ if (process.argv.includes("--worker")) {
 }
 export async function verifyStandardOperationDisposition(mode = "files", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n"), only = null) {
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
-  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES, "prefix-change-during-grant", "disposition_control_reserved", "disposition_fence_acquired", "control-expired", "control-revoked", "acquired-revoked", "audit-revoked"];
+  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES, "prefix-change-during-grant", "disposition_control_reserved", "disposition_fence_acquired", "control-expired", "control-revoked", "acquired-revoked", "audit-revoked", ...WRITE_OWNER_INTENTION_CASES];
   if (only !== null && !cases.includes(only)) throw Error("FIXTURE_CASE_INVALID");
   const selected = name => only === null || only === name;
   const owned = [], retained = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-disposition-evidence-"));
@@ -264,6 +264,9 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       assert.equal(control.attempts.length, 1);
       assert.equal(control.attempts[0].grant.grant.authorized, true);
       pass(`${mode}: ${name} retains signed original consent/control history and refuses before a new acquisition or receipt`);
+    }
+    for (const name of WRITE_OWNER_INTENTION_CASES) {
+      if (selected(name)) checks += await verifyStandardOperationWriteDisposition(mode, report, name);
     }
     process.stdout.write(JSON.stringify({ status: "PASS", checks, retained, mode, selected_case: only, full_selector: only === null, scope: "actual public one-operation host/read-only return; production artifact writer component; real child termination; fixture consent",
       artifact_postimage_profile: only === null || WRITE_DISPOSITION_CASES.includes(only) ? "PASS_COMPONENT" : "NOT_RUN", full_standard: "NOT_RUN", native_human_provider_closure: "NOT_RUN", all_resource_disposition: "INCOMPLETE" }) + "\n");

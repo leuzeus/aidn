@@ -1,5 +1,30 @@
 # Testing Guide
 
+## Normal-writer preallocation declarations, 2026-11-05
+
+The disposition selector appends `artifact-owner-reserved`,
+`artifact-owner-fence-acquired` and `artifact-owner-declared` after the previous
+18 cases in each mode. The full ordered three-mode manifest now has 63 cases;
+every earlier ID, assertion and order remains. Selected cases do not replace
+that global verdict. Actual independent writer workers keep the 15000 ms bound;
+the governed case bound remains 120000 ms. No failed arena is resumed or repaired.
+
+Each appended case terminates the actual session-report writer at a synchronous
+preallocation/ownership boundary, then constructs new stores and a new inventory.
+It authenticates the signed v2 proposal and exact OS identity, checks the fence
+and lock appropriate to that boundary, retains all business preimages and zero
+receipts, and refuses a second dispatch. UNKNOWN and all unresolved resources
+remain. Separate controls cover v1 reader shape, substituted process identity and
+the nominal v2 proposal-to-released-lease link. These are fixture-authorized
+components below the ordinary host, not general writer takeover or complete L4.
+
+The preceding uninstrumented source81 quiet partition stopped in DUAL's first
+artifact writer, before dispatch_returned: 27 PASS, 1 FAIL and 26 NOT_STARTED.
+All 28 Jobs closed. Its first worker reached its original 15-second limit; no
+second disposition worker started, so it attributes no audit-path cost. That
+failure and the earlier full FILES failures remain. New-source evidence is
+required after explicit published pin authoring. No causal speedup is claimed.
+
 ## Compound reconciliation observations, 2026-11-05
 
 The ordinary host derives the authority and context of each synchronous

@@ -45,7 +45,8 @@ const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_cl
 const artifactProfiles = new Set(["session_close_record"]);
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, onBoundary = async () => {}, now = Date.now }) {
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt,
+  onBoundary = async () => {}, onLocalResource = () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
   const dispositions = createWorkflowRecordStore({ targetRoot, stateMode, descriptor: { pathForId: dispositionPath,
@@ -69,6 +70,10 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       || row.operation_owner_sha256 !== shadowHash(record.owner)
       || row.instance_id !== record.intent.instance_id || row.model_sha256 !== record.intent.model_sha256
       || row.physical_root_sha256 !== shadowHash(artifacts.root) || row.runtime_sha256 !== runtime())
+      fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
+    if (row.contract_version === "process-dispatch-record.v2" && row.local_owner_intentions.some(intention =>
+      intention.owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root })
+      || artifactProfiles.has(record.intent.binding_ref) && intention.owner.plan_sha256 !== record.preview.prepared?.plan_sha256))
       fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
     return observed;
   }
@@ -121,6 +126,9 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
   }
   function assessment(record, capsule) {
     if (!capsule || capsule.phase !== "returned" || capsule.leases.some(row => row.status !== "released")) return "unknown";
+    if (capsule.contract_version === "process-dispatch-record.v2" && capsule.local_owner_intentions.some(intention =>
+      !capsule.leases.some(lease => shadowHash(lease.owner) === shadowHash(intention.owner)
+        && shadowHash(lease.resource_fence) === shadowHash(intention.resource_fence.record) && lease.status === "released"))) return "unknown";
     const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
     if (capsule.authority_sha256 !== shadowHash(observed.authority) || capsule.context_after_sha256 !== shadowHash(observed.context) || artifacts.localOwnerPending()) return "unknown";
     const output = capsule.output, id = record.intent.binding_ref;
@@ -219,21 +227,45 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       processIdentity ??= observeLocalProcess(process.pid);
       if (!processIdentity) fail("PROCESS_IDENTITY_UNAVAILABLE");
       const boundary = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
-      write(dispatches, { contract_version: "process-dispatch-record.v1", operation_id: record.operation_id, revision: 1, phase: "reserved",
+      write(dispatches, { contract_version: "process-dispatch-record.v2", operation_id: record.operation_id, revision: 1, phase: "reserved",
         instance_id: record.intent.instance_id, scope_id: record.intent.scope_id, model_sha256: record.intent.model_sha256,
         intent_sha256: shadowHash(record.intent), preview_sha256: shadowHash(record.preview), authority_sha256: shadowHash(boundary.authority),
         operation_owner_sha256: shadowHash(record.owner),
         runtime_sha256: runtime(), physical_root_sha256: shadowHash(artifacts.root), process_identity: processIdentity,
-        context_before_sha256: shadowHash(boundary.context), context_after_sha256: null, leases: [], output: null, output_sha256: null }, null);
+        context_before_sha256: shadowHash(boundary.context), context_after_sha256: null, local_owner_intentions: [], leases: [], output: null, output_sha256: null }, null);
       await onBoundary("dispatch_reserved", record.operation_id);
       saveDispatch(readDispatch(record.operation_id, record), { phase: "running" });
       const capability = Object.freeze({
+        reserveLocalOwner(owner, resource_fence) {
+          const before = readDispatch(record.operation_id, record);
+          const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
+          if (before.record.contract_version !== "process-dispatch-record.v2" || before.record.phase !== "running"
+            || owner.pid !== processIdentity.pid || owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root })
+            || artifactProfiles.has(record.intent.binding_ref) && owner.plan_sha256 !== record.preview.prepared?.plan_sha256
+            || shadowHash(readOperation(record.operation_id).record) !== shadowHash(record)
+            || shadowHash(observed.authority) !== before.record.authority_sha256
+            || before.record.local_owner_intentions.length >= 32
+            || before.record.local_owner_intentions.some(row => row.owner.token === owner.token)) fail("PROCESS_DISPATCH_OWNER_CHANGED");
+          saveDispatch(before, { local_owner_intentions: [...before.record.local_owner_intentions,
+            { owner, lock_path: ".aidn/runtime/standard-workflow/effects.lock", resource_fence, context_sha256: shadowHash(observed.context) }] });
+          // Trusted synchronous observation only: no await or JSON callback,
+          // cached authority, acquisition or effect is introduced by this hook.
+          if (onLocalResource("local_owner_reserved", record.operation_id) !== undefined) fail("PROCESS_DISPATCH_RESOURCE_CALLBACK_INVALID");
+        },
+        localFenceAcquired(owner, lease) {
+          const before = readDispatch(record.operation_id, record);
+          const intention = before.record.local_owner_intentions.find(row => shadowHash(row.owner) === shadowHash(owner));
+          if (!intention || shadowHash(intention.resource_fence.record) !== shadowHash(lease.record)) fail("PROCESS_DISPATCH_OWNER_CHANGED");
+          artifacts.resourceFence().assert(lease);
+          if (onLocalResource("local_owner_fence_acquired", record.operation_id) !== undefined) fail("PROCESS_DISPATCH_RESOURCE_CALLBACK_INVALID");
+        },
         declareLocalOwner(owner, physical_identity, resource_fence) {
           const before = readDispatch(record.operation_id, record);
           if (before.record.phase !== "running" || owner.pid !== processIdentity.pid || artifactProfiles.has(record.intent.binding_ref) && owner.plan_sha256 !== record.preview.prepared?.plan_sha256
             || owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root }) || before.record.leases.some(row => row.owner.token === owner.token))
             fail("PROCESS_DISPATCH_OWNER_CHANGED");
           saveDispatch(before, { leases: [...before.record.leases, { owner, physical_identity, resource_fence, status: "held" }] });
+          if (onLocalResource("local_owner_declared", record.operation_id) !== undefined) fail("PROCESS_DISPATCH_RESOURCE_CALLBACK_INVALID");
         },
         releaseLocalOwner(owner) {
           const before = readDispatch(record.operation_id, record), index = before.record.leases.findIndex(row => shadowHash(row.owner) === shadowHash(owner));

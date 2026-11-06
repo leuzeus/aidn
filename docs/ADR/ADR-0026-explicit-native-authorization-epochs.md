@@ -1,5 +1,34 @@
 # ADR-0026 - Explicit native authorization epochs
 
+## Normal-writer preallocation declaration candidate, 2026-11-05
+
+New deterministic dispatches use `process-dispatch-record.v2`. Its signed bounded
+local-owner intentions retain the exact proposed owner, plan hash, physical lock
+path, current context hash and proposed canonical fence token with OS creation
+identity before the fence CAS or lock creation. The existing dispatch links the
+original intent, preview, grant, model, scope, runtime and operation owner. The
+proposal grants neither a held lease nor permission to perform a business effect.
+The actual lock declaration still records the opened physical identity before
+the callback. Original owner release retains its declaration and released lease.
+V1 remains readable; no historical dispatch is converted or retried.
+
+Canonical inventory authenticates both dispatch versions against the original
+operation and retains v2 proposals even when no lock was created. A proposal
+without a matching released lease stays unresolved for original-return
+disposition. No process observation, two stable scans or proposed token proves
+closure. This change grants no takeover of an ordinary abandoned fence/lock,
+resource deletion, refund, new admission or result for an UNKNOWN operation.
+Standalone legacy writers without a signed dispatch capability, Native/H/control
+reservations, process trees, Git/provider effects and general L4 remain open.
+
+Three appended crash cases exercise the actual session-report writer before
+fence acquisition, after acquisition before lock creation and after its signed
+lock declaration. The trusted synchronous observation hook adds no awaited
+permission boundary or authored callback. Each cold check must retain the exact
+proposal/fence, unchanged business preimages, zero receipts and UNKNOWN, and must
+refuse second dispatch. Exact-source qualification is pending; this is not a
+productive STANDARD, external-resource closure or L1-L8/A1-A10 completion.
+
 ## Compound ordinary-host observations, 2026-11-05
 
 An internal ordinary-host port derives its project/persistence authority and

@@ -1,5 +1,12 @@
 # 04 JSON Contracts
 
+New private `process-dispatch-record.v2` retains bounded signed normal-writer
+owner/fence intentions before allocation. Its v1 reader remains explicit, with
+no persisted conversion. A proposal is not a held lease, effect authorization,
+resource-closure proof or accepted result. Both versions reuse the existing
+operation-journal canonical CAS/projection surface. This adds no public CLI JSON
+root or backend fallback; exact-source crash qualification remains required.
+
 ## Original dispatch and disposition records
 
 Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,

@@ -1,5 +1,24 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Normal-writer preallocation declaration candidate, 2026-11-05
+
+New deterministic dispatch v2 retains a signed owner and fence proposal before
+the canonical fence CAS or filesystem lock allocation. The actual declaration
+still records the opened physical identity before effects. Canonical inventory
+authenticates those proposals against their original journals even if no lock
+exists. V1 readers remain explicit, without conversion. A proposed token grants
+no lease, permission, takeover, external closure, new result or budget refund.
+Three appended actual-writer crash cases extend the ordered manifest to 63;
+all previous IDs/assertions/bounds remain. Exact-source qualification is pending.
+
+The preceding source81 quiet cohort stopped at the first DUAL artifact worker:
+27 PASS, 1 FAIL, 26 NOT_STARTED; all 28 Jobs closed. Its worker timed out before
+dispatch_returned, without a second audit worker. It remains FAIL and establishes
+no audit-path attribution or causal gain. General L4, standalone writers,
+Native/H/control/process/Git/provider discovery and disposition, full productive
+STANDARD/R05, L3 capacity, ordinary L5 entries, required193, genuine actors,
+installed archive and the entire L1-L8/A1-A10 objective remain incomplete.
+
 ## Compound synchronous subject candidate, 2026-11-05
 
 The ordinary host now combines the authority/context reads of one reconciliation
