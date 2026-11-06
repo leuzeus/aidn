@@ -5,9 +5,10 @@ import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { loadStandardWorkflowStartupAssets } from "../../src/application/runtime/standard-workflow-startup-composition.mjs";
-import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
+import { standardWorkflowOperationBindings, assertStandardWorkflowImplementation } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { verifyStandardWorkflowStartupAssets, refreshStandardWorkflowStartupBindings, assertStandardWorkflowModelSource } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { agenticProcessImplementationPins } from "../../src/application/runtime/agentic-process-implementation-pins.mjs";
 
 const root = new URL("../../", import.meta.url), read = path => fs.readFileSync(new URL(path, root), "utf8");
 const assets = loadStandardWorkflowStartupAssets();
@@ -19,6 +20,20 @@ function fresh() {
 let checks = 0;
 function test(name, run) { run(); checks++; process.stdout.write(`PASS ${name}\n`); }
 function reject(name, mutate, code) { test(name, () => { const input = fresh(); mutate(input); assert.throws(() => verifyStandardWorkflowStartupAssets(input), { code }); }); }
+test("activation implementation bytes are direct fresh standard and process pins", () => {
+  const relative = "src/application/install/project-activation-service.mjs", url = new URL(relative, root);
+  const before = agenticProcessImplementationPins(), original = fs.readFileSync;
+  assert.ok(before.files.some(row => row.path === relative)); assertStandardWorkflowImplementation();
+  fs.readFileSync = function(file, ...args) {
+    const bytes = Reflect.apply(original, this, [file, ...args]);
+    return String(file) === url.href ? Buffer.concat([bytes, Buffer.from("\n// changed activation fixture bytes\n")]) : bytes;
+  };
+  try {
+    assert.throws(() => assertStandardWorkflowImplementation(), { code: "STANDARD_IMPLEMENTATION_CHANGED" });
+    assert.notEqual(agenticProcessImplementationPins().sha256, before.sha256);
+  } finally { fs.readFileSync = original; }
+  assertStandardWorkflowImplementation(); assert.equal(agenticProcessImplementationPins().sha256, before.sha256);
+});
 test("published startup JSON is executable through the common IR contract and fixed registry", () => {
   const input = fresh(); assert.deepEqual(verifyStandardWorkflowStartupAssets(input), assets.source);
   assert.equal(assets.model.contract_version, "agentic-process-model.v2"); assert.equal(assets.model.model_id, "aidn-standard-startup");

@@ -1,5 +1,26 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Adjacent activation asset scan candidate, 2026-11-06
+
+Within one callback-free native-asset read, relative-path validation now feeds
+the existing complete final physical-path scan, size bound and byte comparison
+directly. It no longer performs an identical adjacent scan solely while joining
+the relative name. Earlier receipt/transaction validation and every later fresh
+authority/context observation remain. With `beforeObserve`, the original two
+scans and callback sequence are unchanged because the callback can intervene.
+No path/content observation is cached across calls or awaits. Scope/identity,
+activation, consent, inventory, accounting, admission, CAS and effect fences
+remain independent and unchanged. Activation code joins the direct standard and
+process implementation pins; source assets require explicit revision authoring.
+
+A governed baseline on the preceding source passed its 22 activation assertions
+and observed paired localPath/readBytes scans of the targeted native leaf. It
+establishes no causal timing improvement, all-resource closure or qualification
+of this candidate. The current source, actual writer, all63 disposition cases,
+productive STANDARD and the entire L1-L8/A1-A10 goal remain separately due.
+No public CLI/JSON contract, governed concept, store or historical conversion is
+introduced; existing source-of-truth, metadata and authorization policies remain.
+
 ## Fresh shell-free branch and HEAD observations, 2026-11-05
 
 The local VCS branch and HEAD readers use the existing shell-free Git string

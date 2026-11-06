@@ -1,5 +1,26 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Adjacent native-asset scan candidate, 2026-11-06
+
+The synchronous callback-free activation reader can combine relative-name
+validation with its final complete physical-path scan instead of scanning the
+same path twice adjacently. With an observer, both original scans and the callback
+sequence remain. Earlier receipt/transaction validation and all later fresh
+observations, awaits, consent, inventory scans, identity/content/authority checks,
+CAS and fences remain. Direct standard/process pins cover the activation code;
+published source revisions are authored explicitly without historical conversion.
+
+The preceding-source activation baseline passed22 assertions and closed its Job
+with zero processes. Its nonempty targeted counter recorded14localPath/14readBytes
+leaf scans under validateNativeAssets. Those counts plus the caller establish a
+bounded redundancy, not all-FS attribution or a measured causal speedup. The
+changed source still needs fresh activation/loaders, actual-writer/postimage/
+receipt/cold-resume/redelivery/replaySIM, FILES/DUAL/realSQLiteDB-only inventory,
+policies and all63 exact disposition cases under their unchanged bounds. Earlier
+FAIL/UNKNOWN evidence remains. General L4, productive complete STANDARD/R05, L3,
+ordinary L5, required193, genuine L7, installed L8 and all L1-L8/A1-A10 remain
+active and incomplete.
+
 ## Normal-writer preallocation declaration candidate, 2026-11-05
 
 New deterministic dispatch v2 retains a signed owner and fence proposal before

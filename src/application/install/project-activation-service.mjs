@@ -45,16 +45,27 @@ function physicalDirectory(input, allowMissing = false, beforeObserve) {
   while (!fs.existsSync(existing)) existing = path.dirname(existing);
   return path.join(fs.realpathSync.native(existing), path.relative(existing, absolute));
 }
-function localPath(root, relative, beforeObserve) {
+function localAbsolute(root, relative) {
   if (typeof relative !== "string" || relative.includes("\\") || relative.startsWith("/")
       || relative.split("/").some((part) => !part || part === "." || part === ".." || part.includes(":"))) fail("ACTIVATION_INVALID_ASSET_PATH");
-  return safeAbsolute(path.join(root, ...relative.split("/")), { beforeObserve });
+  return path.join(root, ...relative.split("/"));
+}
+function localPath(root, relative, beforeObserve) {
+  return safeAbsolute(localAbsolute(root, relative), { beforeObserve });
 }
 function readBytes(file, maxBytes = 8 * 1024 * 1024, beforeObserve) {
   const absolute = safeAbsolute(file, { beforeObserve });
   if (!fs.existsSync(absolute)) return null;
   if (fs.statSync(absolute).size > maxBytes) fail("ACTIVATION_RECORD_TOO_LARGE");
   return fs.readFileSync(absolute);
+}
+function readNativeAsset(root, relative, beforeObserve) {
+  // Without an observer, localPath's scan and readBytes' scan are adjacent:
+  // validate the relative name, then retain the complete final scan and read.
+  // An observer may intervene between scans, so its original path is unchanged.
+  return beforeObserve == null
+    ? readBytes(localAbsolute(root, relative))
+    : readBytes(localPath(root, relative, beforeObserve), undefined, beforeObserve);
 }
 function parse(bytes) {
   if (bytes === null) return null;
@@ -163,7 +174,7 @@ function validateNativeAssets(root, assets, globalRuntime = null, beforeObserve)
   }
   for (const [relative, kind] of Object.entries(required)) if (assets[relative]?.kind !== kind) fail("ACTIVATION_REQUIRED_ASSET_MISSING", relative);
   for (const [relative, asset] of Object.entries(assets)) {
-    const bytes = readBytes(localPath(root, relative, beforeObserve), undefined, beforeObserve);
+    const bytes = readNativeAsset(root, relative, beforeObserve);
     if (bytes === null) fail("ACTIVATION_ASSET_MISSING", relative);
     if (asset.kind === "file") {
       if (bytes.toString("base64") !== asset.current) fail("ACTIVATION_ASSET_CHANGED", relative);

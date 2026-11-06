@@ -1,5 +1,30 @@
 # Testing Guide
 
+## Adjacent native-asset path scans, 2026-11-06
+
+The activation suite retains every previous assertion and checks the native
+asset reader with and without a `beforeObserve` callback. Without a callback,
+one complete final ancestor/leaf scan precedes the size and content read. With
+a callback, both original scans and all six targeted leaf callbacks remain;
+mutation or hardlink substitution at the last callback must refuse. Fresh reads
+after an await also reject changed, missing, oversized, hardlinked and redirected
+assets. Null/undefined observers follow the same callback-free path. Reads remain
+nonmutating. The startup model fixture substitutes activation source bytes in
+memory and requires both the current standard implementation fence and the
+direct process pin to detect the change, then verifies restoration.
+
+On the preceding source, a separately governed activation-suite baseline passed
+22 assertions with confirmed Job closure and zero active processes. Its bounded
+counter actually recorded 14 `localPath` and 14 `readBytes` leaf scans under
+`validateNativeAssets` for `aidn-session-start.mjs`. This establishes the targeted
+adjacent repetition with the synchronous caller; it is neither all-FS attribution
+nor a causal timing gain. Instrumentation overhead is unknown. That baseline does
+not qualify the changed source, actual writer, ordered63, resource disposition,
+productive STANDARD or the full L1-L8/A1-A10 objective. Qualify the changed
+activation and loader fixtures first, then the real writer, inventory and policy
+checks and every ordered disposition case under their original bounds, each with
+its own immutable preparation and coordination. Historical failures remain.
+
 ## Fresh branch and HEAD observations without a shell, 2026-11-05
 
 `verify-vcs-adapter-fixtures.mjs` retains its existing Git checks and also reads
