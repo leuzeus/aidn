@@ -11,11 +11,12 @@ import { createStandardWorkflowArtifacts } from "../../src/application/runtime/s
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createProcessDispatchRecordStore } from "../../src/adapters/runtime/process-dispatch-record-store.mjs";
 import { createWorkflowRecordStore } from "../../src/adapters/runtime/workflow-record-store.mjs";
+import { createAgenticProcessStore } from "../../src/adapters/runtime/agentic-process-store.mjs";
 import { LOCAL_ARTIFACT_FENCE_PATH } from "../../src/application/runtime/local-artifact-resource-fence.mjs";
 import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
 import { observeLocalProcess, observeLocalProcessOwner } from "../../src/adapters/runtime/local-process-identity.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
-import { inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { inspectAgenticProcess, advanceAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { WRITE_DISPOSITION_CASES, verifyStandardOperationWriteDisposition } from "./standard-operation-write-disposition-fixture-lib.mjs";
 
@@ -73,7 +74,7 @@ if (process.argv.includes("--worker")) {
 }
 export async function verifyStandardOperationDisposition(mode = "files", report = name => process.stdout.write(JSON.stringify({ pass: name }) + "\n"), only = null) {
   if (!["files", "dual", "db-only"].includes(mode)) throw Error("FIXTURE_MODE_INVALID");
-  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES];
+  const cases = ["dispatch_reserved", "effect_returned", "redelivery", "disposition_recorded", "disposition_receipted", "concurrency", "foreign-fence", "fence-lost-after-write", ...WRITE_DISPOSITION_CASES, "prefix-change-during-grant"];
   if (only !== null && !cases.includes(only)) throw Error("FIXTURE_CASE_INVALID");
   const selected = name => only === null || only === name;
   const owned = [], retained = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn-disposition-evidence-"));
@@ -193,6 +194,23 @@ export async function verifyStandardOperationDisposition(mode = "files", report 
       pass(`${mode}: actual artifact mutation followed by lost release fence never becomes no_effect; substituted owner is retained`);
     }
     if (only === null || WRITE_DISPOSITION_CASES.includes(only)) checks += await verifyStandardOperationWriteDisposition(mode, report, only);
+    if (selected("prefix-change-during-grant")) {
+      const config = await setup("prefix-change-during-grant"); await crash(config, "dispatch_returned");
+      const initial = open(config), plan = prepare(initial, config), base = source();
+      const authority = { ...base, async authorize(arg) {
+        const store = createAgenticProcessStore({ targetRoot: config.root, stateMode: mode }), before = store.read("disposition");
+        const changed = advanceAgenticProcess(before.record, { event_id: "fixture_concurrent_cancel", kind: "cancel" });
+        const result = store.compareAndSwap(changed, before.content_sha256);
+        if (result.projection === "pending") store.materialize("disposition", { write: true });
+        return base.authorize(arg);
+      } };
+      await assert.rejects(() => apply(open(config, {}, authority), plan), { code: "PROCESS_DISPOSITION_OBSERVATION_CHANGED" });
+      assert.equal(initial.readJournal(config.operation_id).results.length, 0);
+      assert.equal(createStandardWorkflowArtifacts({ targetRoot: config.root }).read(`workflows/operation-dispositions/${config.operation_id}.json`).sha256, null);
+      assert.equal(initial.inspect("disposition").cursor.status, "CANCELLED");
+      assert.equal(createStandardWorkflowArtifacts({ targetRoot: config.root }).resourceFence().read().record.state, "released");
+      pass(`${mode}: actual prefix CAS during awaited grant refuses under the newly acquired fence without audit/result; cancellation retained`);
+    }
     process.stdout.write(JSON.stringify({ status: "PASS", checks, retained, mode, selected_case: only, full_selector: only === null, scope: "actual public one-operation host/read-only return; production artifact writer component; real child termination; fixture consent",
       artifact_postimage_profile: only === null || WRITE_DISPOSITION_CASES.includes(only) ? "PASS_COMPONENT" : "NOT_RUN", full_standard: "NOT_RUN", native_human_provider_closure: "NOT_RUN", all_resource_disposition: "INCOMPLETE" }) + "\n");
     return checks;

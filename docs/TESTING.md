@@ -33,6 +33,10 @@ assertions, logical full argv and exact child argv before starting, retain commo
 immutable source/dependency/tool captures, revalidate them before each case,
 stop at the first failure and emit a global result with unstarted cases explicit.
 The earlier 120-second full FILES failure remains historical failure evidence.
+`prefix-change-during-grant` additionally changes the canonical instance by CAS
+during authorization. The post-grant fence must still reobserve and refuse the
+changed prefix before audit/result writes, retaining cancellation and releasing
+only its newly acquired bookkeeping lease.
 
 This does not qualify all normal-writer
 concurrency boundaries, every crash/acceptance boundary, general resource
