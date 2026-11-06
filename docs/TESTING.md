@@ -1,5 +1,15 @@
 # Testing Guide
 
+## Exact committed whitespace verification, 2026-11-06
+
+The earlier working-tree whitespace check excluded the three then-untracked
+modules; its PASS did not cover the complete committed change. The correction
+removes only whitespace on one blank line and explicitly refreshes the existing
+asset pins. Verify the staged change with `git diff --cached --check` and the
+complete committed range from `5cbcc6d8cfed3d4f19ca17b1d8fd1d064894e02b`
+with `git diff --check <base> <new-head>`. Syntax and these static checks do not
+execute the fixtures; a fresh READY and exact ROOT GO remain required.
+
 ## Shared replay-local selection factories, 2026-11-06
 
 The reusable-call `contract` selector adds small comparisons between ordinary

@@ -26,7 +26,7 @@ export function createProcessCallSelector({ frameNode: processFrameNode,
     assertProcessCallValues(resolution.input, returning ? Object.fromEntries(Object.entries(target.call_interface.returns).map(([key, row]) => [key, row.type])) : target.call_interface.parameters);
     return { resolution, witnesses: [...witnesses.values()].sort((a, b) => a.operation_id.localeCompare(b.operation_id)) };
   }
-  
+
   function assertProcessCallTransition(event, options) {
     if (checkShadowJson(event) || validateJsonSchema(event, transitionSchema, "$", { contractKind: "workflow-definition" }).length)
       fail("PROCESS_CALL_EVENT_INVALID");

@@ -1,5 +1,16 @@
 # Raccordement du workflow standard AIDN à l’IR de processus
 
+## Portée du contrôle des espaces, 2026-11-06
+
+Le précédent contrôle du working tree excluait les trois modules alors non
+suivis ; son PASS ne couvrait pas la plage complète commitée. La correction
+normalise uniquement une ligne blanche et rafraîchit explicitement les pins
+des assets existants. Sa vérification exige `git diff --cached --check` avant
+commit, puis `git diff --check 5cbcc6d8cfed3d4f19ca17b1d8fd1d064894e02b <nouveau-head>`.
+Ces contrôles statiques ne qualifient aucun comportement : nouveau READY et GO
+exact ROOT requis avant les fixtures. La décision ADR et le périmètre entier
+L1-L8/A1-A10 restent inchangés et incomplets.
+
 ## Shared replay-local selection factory candidate, 2026-11-06
 
 The core now uses shared internal frame-input and call-transition factories,
