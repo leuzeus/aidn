@@ -1,5 +1,16 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Single fresh execution-authority observation, 2026-11-05
+
+The ordinary operation host uses the existing trusted execution-authority port
+to describe project and persistence authority from one complete fresh activation
+at each synchronous boundary. It no longer reads installed activation twice
+solely to derive those two descriptions. No authority, context, inventory or
+verdict is reused across calls or awaits; later effect and acceptance fences
+remain independent. Instrumented crash diagnostics identified repeated activation
+Git calls, but include measurement overhead and establish no uninstrumented
+performance gain or complete STANDARD qualification.
+
 ## Historical diagnostic authentication, 2026-11-05
 
 The mixed host's dedicated `inspectDiagnostic` port authenticates retained model, scope, configuration, signed journals, checkpoints and result references using historical binding pins. Retained versioned input schemas and their explicit v1 normalizations validate this history independently of the current operation mapping. Reads neither convert instances nor renew grants, append receipts, release owners or reconcile resources. Current models keep eager native composition validation; historical diagnostics do not construct an executor. Current authority, admission, dispatch and native allocation still require the current implementation bindings. Caller options cannot select the private historical mode.

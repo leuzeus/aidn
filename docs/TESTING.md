@@ -1,5 +1,15 @@
 # Testing Guide
 
+## Operation-host execution-authority observation, 2026-11-05
+
+After changing authority composition, select the isolated ordinary-host
+`verify-standard-operation-disposition-fixtures.mjs files --case=disposition_recorded`
+case before the full ordered disposition partition. Keep its actual independent
+workers and original 15000 ms/120000 ms bounds. Startup, cycle and composed
+loaders must separately verify explicitly authored implementation pins. A
+selected-case result is not the full suite verdict. Diagnostic preloaders and
+their failed measurements remain distinct from uninstrumented qualification.
+
 ## Original return disposition and real crash boundaries
 
 `node tools/perf/verify-standard-operation-disposition-fixtures.mjs files`

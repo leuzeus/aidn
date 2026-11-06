@@ -58,8 +58,7 @@ import { createStandardCycleValidation } from "./standard-cycle-validation.mjs";
 import { createStandardCycleTaskAdvance } from "./standard-cycle-task-advance.mjs";
 import { createStandardCycleVerification } from "./standard-cycle-verification.mjs";
 import { evaluateStandardCycleValidation } from "../../core/workflow/standard-cycle-verification.mjs";
-import { readWorkflowProjectAuthority } from "./workflow-instance-composition.mjs";
-import { agenticProcessPersistence } from "./agentic-process-persistence.mjs";
+import { readWorkflowProjectExecutionAuthority } from "./workflow-instance-composition.mjs";
 import { createAgenticProcessService } from "./agentic-process-service.mjs";
 import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
 import { createProcessOperationJournalStore } from "../../adapters/runtime/process-operation-journal-store.mjs";
@@ -623,9 +622,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     for (const node of model.nodes.filter(node => node.kind === "operation"))
       if (!bindings.has(node.binding_ref) || model.operation_pins[node.binding_ref] !== shadowHash(bindings.get(node.binding_ref))) fail("STANDARD_HOST_BINDING_CHANGED");
   }
-  const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID(), initial = readWorkflowProjectAuthority({ targetRoot });
+  const signer = createOperationJournalSigner(readSigningKey), generation = randomUUID();
+  const initialExecution = readWorkflowProjectExecutionAuthority({ targetRoot }), initial = initialExecution.project;
   const options = { targetRoot, stateMode: initial.stateMode }, store = createAgenticProcessStore(options), journal = createProcessOperationJournalStore(options);
-  const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && agenticProcessPersistence({ targetRoot }).backend === "postgres";
+  const projectionRequired = initial.stateMode === "dual" || initial.stateMode === "files" && initialExecution.persistence.backend === "postgres";
   const human = createStandardHumanDecisions({ inbox: createProcessDecisionInboxStore(options), signer, source: humanSource,
     projectionRequired });
   const objectiveDisposition = createStandardObjectiveDisposition({ now, human,
@@ -658,7 +658,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   function readAuthority() {
     assertCurrentBindings();
     if (processAuthority) return processAuthority.read();
-    const project = readWorkflowProjectAuthority({ targetRoot }), persistence = agenticProcessPersistence({ targetRoot });
+    // One complete fresh activation describes both authorities at this same
+    // synchronous boundary. Never retain it for a later call or await.
+    const { project, persistence } = readWorkflowProjectExecutionAuthority({ targetRoot });
     if (project.stateMode !== initial.stateMode) fail("STANDARD_HOST_STATE_MODE_CHANGED");
     return { scope_id: shadowHash({ project: project.scope, persistence: persistence.binding_sha256,
       operation_host: { version: 1, state_mode: project.stateMode, key_id: signer.keyId, ...(source ? { model_source_sha256: shadowHash(source) } : {}),
