@@ -15,7 +15,7 @@ const test = (name, run, finalVerification = false) => {
   if (finalVerificationOnly && !finalVerification) return;
   run(); checks++; console.log("PASS " + name);
 };
-const plan = (changes = {}, stop = "component_complete") => preflightStandardComposedFixture({ model, scenario: { ...scenario, ...changes }, stop });
+const plan = (changes = {}, stop = "pr_effects_pending") => preflightStandardComposedFixture({ model, scenario: { ...scenario, ...changes }, stop });
 function verifyFinalVerificationCalls(result, sites) {
   assert.deepEqual(result.call_transitions.map(row => [row.node_id, row.kind]),
     sites.flatMap(site => [[site, "call_enter"], [site, "call_return"]]));
@@ -42,8 +42,8 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.native_occurrences.filter(n => n.node_id === "implement").length, 1);
   assert.equal(result.cold_resume_checkpoints.length, 1); assert.equal(result.cold_resume_checkpoints[0].responses, 5);
   assert.equal(result.responses_required - result.cold_resume_checkpoints[0].responses, 4);
-  assert.equal(result.planned_status, "COMPLETED"); assert.equal(result.replay_exact, true);
-  assert.equal(result.operations.length, 68); assert.equal(result.event_count, 159);
+  assert.equal(result.planned_status, "WAITING"); assert.equal(result.replay_exact, true);
+  assert.equal(result.operations.length, 69); assert.equal(result.event_count, 161);
   verifyFinalVerificationCalls(result, ["final_verification"]);
   assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
 }, true);
@@ -58,7 +58,7 @@ test("correction prefix stops at a real undecided human occurrence without inven
 });
 test("insufficient original allowance is refused before the long driver creates any fixture", () => {
   const child = spawnSync(process.execPath, [fileURLToPath(new URL("./verify-agentic-process-execution-fixtures.mjs", import.meta.url)),
-    "--standard-composed-mode=files", "--standard-composed-stop=component_complete", "--standard-composed-max-responses=8", "--standard-composed-preflight-only"],
+    "--standard-composed-mode=files", "--standard-composed-stop=pr_effects_pending", "--standard-composed-max-responses=8", "--standard-composed-preflight-only"],
   { encoding: "utf8", windowsHide: true, timeout: 300000 });
   assert.equal(child.status, 1, child.stdout + child.stderr);
   assert.match(child.stderr, /STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT/);
@@ -76,9 +76,9 @@ test("versioned correction route selects canonical reopening without another nat
 });
 test('v3 plans both cycles through the same published model, new closure, redelivery and review', () => {
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
-  const result = preflightStandardComposedFixture({ model, scenario: correction });
-  assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'COMPLETED');
-  assert.equal(result.operations.length, 118); assert.equal(result.event_count, 278);
+  const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
+  assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
+  assert.equal(result.operations.length, 119); assert.equal(result.event_count, 280);
   verifyFinalVerificationCalls(result, ["final_verification", "correction_final_verification"]);
   assert.ok(result.operations.includes('correction_initialize'));
   assert.ok(result.operations.includes('correction_session_branch_integrate'));
@@ -89,7 +89,7 @@ test('v3 plans both cycles through the same published model, new closure, redeli
 }, true);
 test("correction retains its original budget refusal and interruption choices", () => {
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
-  assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, max_responses: 16 } }), { code: 'STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT' });
+  assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, max_responses: 16 }, stop: "pr_effects_pending" }), { code: 'STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT' });
   for (const outcome of ['blocked', 'deferred', 'rejected', 'failed', 'cancelled']) {
     const stopped = preflightStandardComposedFixture({ model, scenario: { ...correction, interruption: { node_id: 'session_pr_correction_decide', outcome } } });
     assert.equal(stopped.responses_required, 9); assert.equal(stopped.interrupted, true);
@@ -119,7 +119,7 @@ test("non-retained closure bypasses promotion", () => {
 for (const mode of ["THINKING", "EXPLORING"]) {
   const prefix = mode.toLowerCase();
   test(mode + " plans analysis and closure drift; deterministic and human operations add no response", () => {
-    const result = plan({ mode, cold_resume: false, max_responses: 2 });
+    const result = plan({ mode, cold_resume: false, max_responses: 2 }, "component_complete");
     assert.equal(result.responses_required, 2);
     assert.deepEqual(result.native_occurrences.map(n => n.node_id), [prefix + "_analysis", prefix + "_session_closure_drift_report"]);
     assert.ok(result.operations.includes("mode_decision"));
@@ -127,7 +127,7 @@ for (const mode of ["THINKING", "EXPLORING"]) {
     assert.ok(result.operations.includes(prefix + "_evaluate"));
     assert.ok(result.operations.includes(prefix + "_session_close_finalize"));
     assert.ok(!result.operations.includes("plan_select"));
-    assert.throws(() => plan({ mode, max_responses: 1 }), { code: "STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT" });
+    assert.throws(() => plan({ mode, max_responses: 1 }, "component_complete"), { code: "STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT" });
     assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
     assert.equal(result.product_qualification, "NOT_ESTABLISHED");
     const analysis = model.nodes.find(n => n.id === prefix + "_analysis");
@@ -174,7 +174,7 @@ test("a new Node refuses a cold scenario or ceiling reset before creating its fi
       const file = path.join(control, "resume.json");
       fs.writeFileSync(file, JSON.stringify({ scenario, authorization: { max_responses: 9 }, ...change }));
       const child = spawnSync(process.execPath, [fileURLToPath(new URL("./verify-agentic-process-execution-fixtures.mjs", import.meta.url)),
-        "--standard-composed-mode=files", "--standard-composed-stop=component_complete", "--standard-composed-resume=" + file,
+        "--standard-composed-mode=files", "--standard-composed-stop=pr_effects_pending", "--standard-composed-resume=" + file,
         "--standard-composed-preflight-only"], { encoding: "utf8", windowsHide: true, timeout: 30000 });
       assert.equal(child.status, 1); assert.equal(child.stdout, ""); assert.match(child.stderr, /Cold resume must preserve/);
     }

@@ -10,6 +10,7 @@ import requestSchema from "../../core/contracts/workflow-definition/github-pr-ob
 import outputSchema from "../../core/contracts/workflow-definition/github-pr-observation-output.v1.schema.json" with { type: "json" };
 import contentRequestSchema from "../../core/contracts/workflow-definition/github-pr-observation-request.v2.schema.json" with { type: "json" };
 import contentSchema from "../../core/contracts/workflow-definition/github-pr-observation-output.v2.schema.json" with { type: "json" };
+import mergeSchema from "../../core/contracts/workflow-definition/github-pr-merge-observation.v1.schema.json" with { type: "json" };
 const contentCommentSchema = { $schema: contentSchema.$schema, $id: contentSchema.$id + "/comment", ...contentSchema.properties.threads.items.properties.comments.items };
 const commentSchema = { $schema: outputSchema.$schema, $id: outputSchema.$id + "/comment", ...outputSchema.properties.threads.items.properties.comments.items };
 const fail = code => { throw Object.assign(Error(code), { code }); };
@@ -38,6 +39,13 @@ const queries = Object.freeze({
     repository(owner:$owner,name:$name) { id nameWithOwner pullRequest(number:$number) { ${metadataFields} } }
   }`,
 });
+const mergeQuery = `query AidnPrMerge($owner:String!,$name:String!,$number:Int!) {
+  repository(owner:$owner,name:$name) { id nameWithOwner pullRequest(number:$number) {
+    id number headRefOid headRefName baseRefName state isDraft merged mergedAt
+    headRepository { id } baseRef { target { oid } }
+    mergeCommit { oid parents(first:3) { totalCount nodes { oid } pageInfo { hasNextPage } } }
+  } }
+}`;
 const contentCommentFields = commentFields.replace('author { login __typename }', 'author { login __typename ... on User { id } ... on Bot { id } ... on Organization { id } }');
 const contentQueries = Object.freeze(Object.fromEntries(Object.entries(queries).map(([kind, text]) => [kind,
   text.replaceAll(commentFields, contentCommentFields).replaceAll(metadataFields, metadataFields + ' baseRefOid')
@@ -69,9 +77,22 @@ function assertObservation(value, schema) {
 }
 export const assertGithubPrObservation = value => assertObservation(value, outputSchema);
 export const assertGithubPrContent = value => assertObservation(value, contentSchema);
+export function assertGithubPrMergeObservation(value) {
+  if (!valid(value, mergeSchema)) fail("GITHUB_PR_MERGE_OBSERVATION_INVALID");
+  const p = value.pull_request, from = Date.parse(value.observed_from), until = Date.parse(value.observed_until);
+  if (!Number.isFinite(from) || !Number.isFinite(until) || until < from
+    || p.merged !== (p.state === "MERGED") || p.merged !== (p.merge_oid !== null) || p.merged !== (p.merged_at !== null)
+    || p.merged && (!p.merge_parent_oids.length || new Set(p.merge_parent_oids).size !== p.merge_parent_oids.length
+      || p.merge_parent_oids.includes(p.merge_oid)
+      || p.merge_parent_oids.length === 2 && p.merge_parent_oids[1] !== p.head_oid
+      || p.observed_base_tip_oid === p.merge_parent_oids[0] || !(Date.parse(p.merged_at) <= until))
+    || !p.merged && p.merge_parent_oids.length) fail("GITHUB_PR_MERGE_OBSERVATION_INVALID");
+  return value;
+}
 // The embedding host pins the executable/repository. The runner is a test seam,
 // never configuration, an IR binding parameter or an authenticated-result flag.
-function createGithubWorkflowProtocol({ executable, executableSha256, workingDirectory, repository, environment = process.env }, { run = spawnSync, now = Date.now } = {}, includeContent = false) {
+function createGithubWorkflowProtocol({ executable, executableSha256, workingDirectory, repository, environment = process.env }, { run = spawnSync, now = Date.now } = {}, view = "review") {
+  const includeContent = view === "content", mergeOnly = view === "merge";
   if (!path.isAbsolute(executable ?? "") || !/^[a-f0-9]{64}$/.test(executableSha256 ?? "") || !path.isAbsolute(workingDirectory ?? "")
     || !repository || Object.keys(repository).some(key => !["owner", "name", "node_id"].includes(key))
     || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(repository.owner ?? "")
@@ -85,7 +106,7 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
   }
   pinned();
   return function* observePullRequest(request) {
-    if (!valid(request, includeContent ? contentRequestSchema : requestSchema)) fail("GITHUB_PR_OBSERVATION_REQUEST_INVALID");
+    if (!valid(request, includeContent || mergeOnly ? contentRequestSchema : requestSchema)) fail("GITHUB_PR_OBSERVATION_REQUEST_INVALID");
     const start = now(), mono = performance.now(); let requests = 0, threadPages = 0, commentPages = 0, totalComments = 0, totalBytes = 0;
     if (!Number.isSafeInteger(start) || start < 0) fail("GITHUB_PR_OBSERVATION_CLOCK_INVALID");
     function* call(kind, variables) {
@@ -95,7 +116,7 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
       if (++requests > githubObservationLimits.requests) fail("GITHUB_PR_OBSERVATION_LIMIT");
       let result;
       try { result = yield [binary, ["api", "graphql", "--hostname", "github.com", "--input", "-"], {
-        cwd, env, shell: false, windowsHide: true, encoding: "utf8", input: JSON.stringify({ query: (includeContent ? contentQueries : queries)[kind], variables }), timeout: remaining, maxBuffer: 4194304,
+        cwd, env, shell: false, windowsHide: true, encoding: "utf8", input: JSON.stringify({ query: mergeOnly ? mergeQuery : (includeContent ? contentQueries : queries)[kind], variables }), timeout: remaining, maxBuffer: 4194304,
       }]; } catch { fail("GITHUB_PR_OBSERVATION_UNAVAILABLE"); }
       if (result?.error || result?.status !== 0 || result?.signal) fail("GITHUB_PR_OBSERVATION_UNAVAILABLE");
       let response;
@@ -116,6 +137,29 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
       return { repository: { host: "github.com", owner, name, node_id: r.id }, pull_request: { node_id: p.id, number: p.number,
         head_oid: p.headRefOid, head_ref: p.headRefName, base_ref: p.baseRefName, state: p.state, is_draft: p.isDraft,
         ...(includeContent ? { base_oid: p.baseRefOid } : {}), merged: p.merged, merge_oid: p.mergeCommit?.oid ?? null, updated_at: p.updatedAt } };
+    }
+    if (mergeOnly) {
+      const data = yield* call("metadata", variables), identity = metadata(data), p = data.repository.pullRequest;
+      const parents = p.mergeCommit?.parents;
+      if (p.merged && (!Array.isArray(parents?.nodes) || parents.totalCount !== parents.nodes.length
+        || parents.pageInfo?.hasNextPage !== false)) fail("GITHUB_PR_MERGE_OBSERVATION_INVALID");
+      const { updated_at: _updatedAt, ...pr } = identity.pull_request;
+      if (pr.head_ref !== request.expected_head_ref || pr.base_ref !== request.expected_base_ref)
+        fail("GITHUB_PR_SOURCE_CHANGED");
+      pinned();
+      const end = now();
+      if (!Number.isSafeInteger(end) || end < start || Math.max(end - start, performance.now() - mono) > githubObservationLimits.deadlineMs)
+        fail("GITHUB_PR_OBSERVATION_DEADLINE");
+      const observed = assertGithubPrMergeObservation({
+        contract_version: "github-pr-merge-observation.v1",
+        repository: { node_id: identity.repository.node_id, owner: identity.repository.owner, name: identity.repository.name },
+        pull_request: { ...pr, head_repository_id: p.headRepository?.id, observed_base_tip_oid: p.baseRef?.target?.oid,
+          merged_at: p.mergedAt, merge_parent_oids: parents?.nodes.map(parent => parent?.oid) ?? [] },
+        observed_from: new Date(start).toISOString(), observed_until: new Date(end).toISOString(),
+      });
+      if (pr.state === "OPEN" && observed.pull_request.observed_base_tip_oid !== request.expected_base_oid
+        || pr.merged && observed.pull_request.merge_parent_oids[0] !== request.expected_base_oid) fail("GITHUB_PR_SOURCE_CHANGED");
+      return observed;
     }
     function connection(value, maximum, seen, expectedTotal) {
       if (!value || !Number.isInteger(value.totalCount) || value.totalCount < 0 || value.totalCount > maximum || expectedTotal != null && value.totalCount !== expectedTotal
@@ -177,7 +221,12 @@ export function createGithubWorkflowAsyncAdapter(configuration, { run = runGithu
   return Object.freeze({ observePullRequest: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
 }
 
+export function createGithubPrMergeAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
+  const observe = createGithubWorkflowProtocol(configuration, { run, now }, "merge");
+  return Object.freeze({ observePrMerge: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
+}
+
 export function createGithubPrContentAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
-  const observe = createGithubWorkflowProtocol(configuration, { run, now }, true);
+  const observe = createGithubWorkflowProtocol(configuration, { run, now }, "content");
   return Object.freeze({ observePullRequest: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
 }

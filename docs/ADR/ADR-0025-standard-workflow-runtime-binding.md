@@ -2940,6 +2940,29 @@ acceptance remains incomplete, ordinary entry unchanged and
 `complete_standard_workflow=false`. Genuine human/provider/native/OS, configured
 PostgreSQL and the exact installed package remain separate NOT_RUN evidence.
 
+### External merge observation at the pending PR effects boundary
+
+Both STANDARD delivery paths now bind a deterministic read-only observation
+to their own accepted triage operation. The host authenticates the latest
+update or redelivery, selected and received review content, and delivered event.
+The fixed GitHub query rechecks repository and PR identity, HEAD and refs. A
+merge proof requires a consistent commit and parent inventory, with the
+accepted pre-merge base as the first parent and the accepted HEAD as the second
+when present. The observed base-branch tip is separate from both the pre-merge
+base and the merge commit. The query alone supplies no ancestry proof for that tip.
+
+An open PR produces a deferred receipt. Closed without merge, ambiguous or
+changed evidence, and invalid authority produce blocked receipts. A matching
+merged PR yields a deferred receipt carrying the factual observation and no
+routing facts. It can be observed again through the same occurrence with a
+new receipt. A fresh required correction defers before calling GitHub. This
+route needs a separate accepted R08 effects-and-verification result for the
+current HEAD, including replies/resolutions or documented exceptions and
+impacted validations, before it can advance. Explicit consent and AIDN merge
+effects are separate, as are R09 fetch, divergence and reconciliation.
+The observer uses the existing operation journal and establishes no new
+canonical PR lifecycle state. Historical readers and scope remain versioned.
+
 The shared initial/corrective push port rechecks its source, current instance and
 plan age after the final awaited authorization. A changed context after an actual
 push retains UNKNOWN, empty positive facts and the effect owner. This component

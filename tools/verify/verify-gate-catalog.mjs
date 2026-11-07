@@ -890,7 +890,7 @@ const negativeProbes = {
   })(),
   standard_pr_correction_host_invocation_omission_rejected: (() => {
     const command = agenticProcessCases.cases.map(args => "node " + args.join(" ")).join(" && ")
-      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=component_complete --standard-composed-scenario=correction && ", "");
+      .replace("node tools/perf/verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=session_pr_correction_decide --standard-composed-scenario=correction && ", "");
     const candidate = { ...agenticProcessCases, cases: command.split(" && ").map(row => row.split(" ").slice(1)) };
     return candidateRejected({ candidateAgenticFixtureManifest: candidate });
   })(),

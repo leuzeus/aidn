@@ -29,6 +29,9 @@ import prCorrectionOutput from "../contracts/workflow-definition/standard-pr-cor
 import prTriageEvaluateInput from "../contracts/workflow-definition/standard-pr-triage-evaluate-input.v1.schema.json" with { type: "json" };
 import prTriageSelectOutput from "../contracts/workflow-definition/standard-pr-triage-select-output.v1.schema.json" with { type: "json" };
 import prTriageOutput from "../contracts/workflow-definition/standard-pr-triage-output.v1.schema.json" with { type: "json" };
+import prMergeProvider from "../contracts/workflow-definition/github-pr-merge-observation.v1.schema.json" with { type: "json" };
+import prMergeInput from "../contracts/workflow-definition/standard-session-pr-merge-observe-input.v1.schema.json" with { type: "json" };
+import prMergeOutput from "../contracts/workflow-definition/standard-session-pr-merge-observe-output.v1.schema.json" with { type: "json" };
 import prReceiveInput from "../contracts/workflow-definition/standard-session-pr-review-receive-input.v1.schema.json" with { type: "json" };
 import prReceiveOutput from "../contracts/workflow-definition/standard-session-pr-review-receive-output.v1.schema.json" with { type: "json" };
 import prReviewContentOutput from "../contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json" with { type: "json" };
@@ -170,6 +173,10 @@ export function assertStandardOperationInput(operation, value) {
     if (checkShadowJson(value) || validateJsonSchema(value, operation === "session_pr_triage_select" ? prTriageSelectInput : prTriageEvaluateInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
+  if (operation === "session_pr_merge_observe") {
+    if (checkShadowJson(value) || validateJsonSchema(value, prMergeInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === "session_pr_review_receive") {
     if (checkShadowJson(value) || validateJsonSchema(value, prReceiveInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -268,6 +275,20 @@ export function assertStandardOperationOutput(value) {
         : value.facts.session_pr_findings_classified !== true || !["session_pr_corrections_required", "session_pr_responses_required"].every(key => typeof value.facts[key] === "boolean")
           || value.observations.triage_completion !== "pending-effects-and-verification" || value.observations.checks_acceptance !== "not-established"
           || value.observations.merge_authorization !== "not-established")) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
+  if (value?.contract_version === "standard-session-pr-merge-observe-output.v1") {
+    if (checkShadowJson(value) || validateJsonSchema(value, prMergeOutput, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    const proof = value.observations.merge_observation;
+    if (proof ? validateJsonSchema(proof.provider, prMergeProvider, "$", { contractKind: "workflow-definition" }).length
+      || value.outcome !== "deferred" || value.observations.reason_code !== "STANDARD_PR_MERGE_REVIEW_EFFECTS_REQUIRED"
+      || proof.provider.pull_request.state !== "MERGED" || !proof.provider.pull_request.merged
+      || proof.provider.pull_request.merge_parent_oids[0] !== proof.pre_merge_base_oid
+      || value.evidence_refs.length !== 1 || value.evidence_refs[0].sha256 !== shadowHash(proof)
+      : value.evidence_refs.length !== 0 || value.outcome === "deferred"
+        && !["STANDARD_PR_MERGE_REVIEW_EFFECTS_REQUIRED", "STANDARD_PR_MERGE_AWAITING_PROVIDER", "STANDARD_PR_MERGE_PROVIDER_REQUIRED"].includes(value.observations.reason_code))
+      fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
   if (value?.contract_version === "standard-session-pr-review-receive-output.v1") {

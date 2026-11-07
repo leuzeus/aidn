@@ -104,7 +104,7 @@ if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-o
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const standardComposedStop = process.argv.find(value => value.startsWith("--standard-composed-stop="))?.slice("--standard-composed-stop=".length) ?? "plan";
-if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete", "session_pr_correction_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
+if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete", "pr_effects_pending", "session_pr_correction_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 const selectedModeWorkResumeMode = process.argv.find(value => value.startsWith("--standard-mode-work-resume-mode="))?.split("=")[1];
@@ -139,7 +139,7 @@ if ((standardHostTrace || standardCheckpointAckLoss || standardCheckpointOwnerAc
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
 const standardComposedBudgetText = process.argv.find(value => value.startsWith("--standard-composed-budget-ms="))?.slice("--standard-composed-budget-ms=".length);
 const standardComposedBudgetMs = standardComposedBudgetText === undefined ? 7200000 : Number(standardComposedBudgetText);
-if (standardComposedBudgetText !== undefined && (!selectedStandardComposedMode || !['promotion_decide', 'component_complete', 'session_pr_correction_decide'].includes(standardComposedStop) || !/^[0-9]+$/.test(standardComposedBudgetText)
+if (standardComposedBudgetText !== undefined && (!selectedStandardComposedMode || !['promotion_decide', 'component_complete', 'pr_effects_pending', 'session_pr_correction_decide'].includes(standardComposedStop) || !/^[0-9]+$/.test(standardComposedBudgetText)
   || !Number.isSafeInteger(standardComposedBudgetMs) || standardComposedBudgetMs < 3600000 || standardComposedBudgetMs > 10800000)) throw Error("STANDARD_COMPOSED_FIXTURE_BUDGET_INVALID");
 const selectedCycleClosureMode = process.argv.find(value => value.startsWith("--cycle-closure-mode="))?.slice("--cycle-closure-mode=".length);
 if (selectedCycleClosureMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleClosureMode)) throw Error("CYCLE_CLOSURE_FIXTURE_MODE_INVALID");
@@ -924,7 +924,8 @@ if (process.argv[2] === "--mixed-continue") {
     const resumed = standardResumeInput;
     const factory = standardComposedResume ? (_mode, options) => restoreComposedFixture(resumed, options) : mixedFixture;
     const stopsBeforeCorrectionChoice = standardComposedStop === "session_pr_correction_decide";
-    const runsPromotion = standardComposedStop === "component_complete" || stopsBeforeCorrectionChoice;
+    const stopsAtPrEffects = standardComposedStop === "pr_effects_pending";
+    const runsPromotion = standardComposedStop === "component_complete" || stopsAtPrEffects || stopsBeforeCorrectionChoice;
     const runsClosure = runsPromotion || standardComposedStop === "promotion_decide";
     const runsCycle = runsClosure || standardComposedStop === "closure_decide";
     let nativeAnswerSource;
@@ -1101,6 +1102,11 @@ if (process.argv[2] === "--mixed-continue") {
       }
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
+      if (stopsAtPrEffects && ["session_pr_merge_observe", "correction_pr_merge_observe"].includes(frame.node_id)) {
+        const observed = await f.open().step({ write: true, authorization: auth });
+        assert.equal(observed.status, "WAITING");
+        break;
+      }
       let result;
       if (standardCheckpointOwnerAckLoss && frame.node_id === 'session_pr_correction_checkpoint') {
         const lost = await loseCheckpointOwnerReleaseAck({ targetRoot: f.configuration.target_root }, () => f.open().step({ write: true, authorization: auth }));
@@ -1246,7 +1252,13 @@ if (process.argv[2] === "--mixed-continue") {
       }
     }
     const final = f.open().inspect();
-    if (runsPromotion && !stopsBeforeCorrectionChoice) assert.equal(final.cursor.status, "COMPLETED");
+    if (stopsAtPrEffects) {
+      assert.equal(final.cursor.status, "WAITING");
+      const frame = final.cursor.occurrences.find(row => row.node_id === (fullCorrection ? "correction_pr_merge_observe" : "session_pr_merge_observe"));
+      assert.equal(frame.operation.receipt.outcome, "deferred");
+      assert.equal(frame.operation.receipt.effect_status, "no_effect");
+      assert.deepEqual(frame.operation.receipt.facts, {});
+    } else if (standardComposedStop === "component_complete") assert.equal(final.cursor.status, "COMPLETED");
     else assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
     const callEvents = final.record.events.filter(row => ["call_enter", "call_return"].includes(row.kind));
@@ -1263,7 +1275,7 @@ if (process.argv[2] === "--mixed-continue") {
     if (runsCycle) {
       for (const binding of ["cycle_plan_record", "cycle_implementation_enter", "cycle_validation_execute", "cycle_task_advance", "cycle_verification_enter", "cycle_audit_evaluate"])
         assert.equal(last(binding)?.outcome, "completed");
-      assert.equal(final.cursor.status, runsPromotion && !stopsBeforeCorrectionChoice ? "COMPLETED" : "RUNNING");
+      assert.equal(final.cursor.status, stopsAtPrEffects ? "WAITING" : standardComposedStop === "component_complete" ? "COMPLETED" : "RUNNING");
       if (!runsClosure) assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "cycle_closure_decision").length, 0);
     }
     if (runsClosure) {
@@ -1438,7 +1450,7 @@ if (process.argv[2] === "--mixed-continue") {
       scenario_sha256: standardPreflight.scenario_sha256, planned_responses: standardPreflight.responses_required,
       original_max_responses: auth.max_responses, original_deadline_ms: auth.global_deadline_ms,
       native_sessions_started_in_child: childNativeSessions, native_prior_results: priorNativeResults, cold_resume: Boolean(resumed),
-      cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: runsPromotion ? null : standardComposedStop, component_completed: runsPromotion, full_standard_workflow: false, workflow_status: final.cursor.status, model_calls: 0,
+      cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: stopsAtPrEffects || standardComposedStop === "component_complete" ? null : standardComposedStop, component_completed: final.cursor.status === "COMPLETED", full_standard_workflow: false, workflow_status: final.cursor.status, model_calls: 0,
       verification_boundary: runsCycle ? "fixture-with-actual-Node-check" : "not-used", human_and_effect_authority: "fixture", session_push_transport: runsPromotion ? "actual-local-bare-git" : "not-used", pr_transport: runsPromotion ? "doubled-REST-reading-actual-bare-refs" : "not-used", replay_exact: true }));
   });
   await check("cycle closure contract: typed review and authenticated inbox preserve pending lifecycle", () => {

@@ -199,6 +199,9 @@
       "tools/perf/verify-standard-pr-triage-fixtures.mjs"
     ],
     [
+      "tools/perf/verify-standard-session-pr-merge-fixtures.mjs"
+    ],
+    [
       "tools/perf/verify-github-review-content-fixtures.mjs"
     ],
     [
@@ -429,12 +432,12 @@
     [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
-      "--standard-composed-stop=component_complete"
+      "--standard-composed-stop=pr_effects_pending"
     ],
     [
       "tools/perf/verify-agentic-process-execution-fixtures.mjs",
       "--standard-composed-mode=files",
-      "--standard-composed-stop=component_complete",
+      "--standard-composed-stop=session_pr_correction_decide",
       "--standard-composed-scenario=correction"
     ],
     [

@@ -1234,6 +1234,16 @@ limite affichée ; les politiques, stores, services et ports métier resteront r
 | A7 — Dérive / incident | Dérive → CR/nouveau cycle/rollback ou report ; incident L1/L2 distinct de STOP L3/L4. Reprise au checkpoint vérifié ; aucune édition de règle automatiquement autorisée. |
 | A8 — Clôtures et issues | DONE avec critères satisfaits ; NO_GO/DROPPED non promouvables ; report distinct ; cancel-close garde session ouverte ; refus/checkpoint/chaîne de contraintes en échec empêchent le succès global ; annulation native ferme les ressources et ne devient pas COMPLETED. |
 | A9 — Post-merge | Fusion observée pour les bons head/base, fetch et divergence réelle. Divergence/stratégie ambiguë bloque le prochain cycle jusqu’à décision et réconciliation ; zéro simple écriture `synced: true` en remplacement de l’observation. |
+
+La tranche A9 d’observation relie les parcours initial et correctif au reçu de
+triage de leur livraison. Elle conserve le SHA de base avant fusion, le commit
+de fusion et la pointe de base lue chez le fournisseur comme trois champs
+distincts. Le reçu reste en attente, même après observation de la fusion.
+Pour avancer, il manque un reçu accepté d’effets de revue et de vérification
+R08 au HEAD courant. Les réponses et résolutions ou exceptions documentées,
+le consentement et les effets de fusion AIDN, puis le fetch, la divergence et
+la réconciliation R09 restent des étapes distinctes. Les traces antérieures
+gardent leur modèle et leur périmètre.
 | A10 — Stockage et histoires | files/dual/db-only sur SQLite réel ; PostgreSQL configuré via adaptateur réel et transport simulé hors ligne, puis preuve PostgreSQL réel avant affirmation de ce backend. Projection en panne conservée comme telle. Lecteurs workflow-instance.v1 et agentic-process-instance.v1 préservés, historique non converti. |
 
 Pour chaque exécution : conserver empreintes modèle/bindings/politiques, états

@@ -3,6 +3,7 @@ import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
 import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.mjs";
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
+import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
 import { createStandardPrTriageSource } from "./standard-pr-triage-source.mjs";
 import { createStandardPrCorrectionAuthority } from "./standard-pr-correction-authority.mjs";
@@ -495,9 +496,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { instance: state.record, request_sha256: shadowHash(actual), input };
     } });
   const activeControlSource = reviewControlSource ? { ...controlSource, ...reviewControlSource } : controlSource;
-  const sessionPrReviewReceiver = sessionPrReviewContent && createStandardPrReviewReceiver({ observer: sessionPrReviewContent,
-    verifyEvent: (capture, options) => reviewControlSource?.verifyCapturedEvent(capture, options) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED"),
-    readDelivered(instance, input) {
+  function verifyPrReviewEvent(capture, options) {
+    return reviewControlSource?.verifyCapturedEvent(capture, options) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED");
+  }
+  function readDeliveredPrReview(instance, input) {
       assertStandardOperationInput("session_pr_review_receive", input);
       const frames = inspectAgenticProcess(instance).occurrences;
       const candidates = instance.events.filter(row => row.kind === "control")
@@ -513,7 +515,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         fail("STANDARD_PR_RECEIVE_EVENT_REQUIRED");
       readAcceptedPrUpdate(instance, capture.payload.observation.observations.update_operation_id);
       return capture;
-    } });
+  }
+  const sessionPrReviewReceiver = sessionPrReviewContent && createStandardPrReviewReceiver({ observer: sessionPrReviewContent,
+    verifyEvent: verifyPrReviewEvent, readDelivered: readDeliveredPrReview });
+  const sessionPrMerge = createStandardSessionPrMergeObservation({ now, reviewPort: sessionReviewPort,
+    readAccepted: acceptedForPromotion, readAcceptedUpdate: readAcceptedPrUpdate, readCurrent: id => current(id).record,
+    readDelivered: readDeliveredPrReview, verifyEvent: verifyPrReviewEvent });
   const prTriage = processAuthority && sessionPrReviewReceiver ? createStandardPrTriageSource({
     readReceived: (instance, id) => acceptedForPromotion(instance, id, "session_pr_review_receive", "STANDARD_PR_TRIAGE_RECEIVED_REQUIRED"),
     observeReceived: (instance, input, options) => sessionPrReviewReceiver.observe(instance, input, options),
@@ -1062,6 +1069,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_correction_decision" ? await prCorrectionReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_checkpoint" ? await prCorrectionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_reopen" ? await prCorrectionReopen?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_observe" ? await sessionPrReview?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
@@ -1215,6 +1223,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record), signal });
         else if (record.intent.binding_ref === "session_pr_correction_reopen") output = await prCorrectionReopen.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
+        else if (record.intent.binding_ref === "session_pr_merge_observe") output = await sessionPrMerge.observe(state.record, record.preview.input,
+          { signal, sourceSha256: record.preview.prepared.source_sha256 });
         else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_content_observe") output = await sessionPrReviewContent.observe(state.record, record.preview.input, { signal });
         else if (record.intent.binding_ref === "session_pr_review_observe") output = await sessionPrReview.observe(state.record, record.preview.input, { signal });

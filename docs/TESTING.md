@@ -1111,7 +1111,7 @@ after the result. Separate observations identify each executed model revision.
 The published candidate standard now selects `session_pr_review_wait` after its
 accepted complete-content observation and `session_pr_review_receive` afterwards.
 The composed execution fixture (`--standard-composed-mode=<mode>
---standard-composed-stop=component_complete`) exercises that actual graph with
+--standard-composed-stop=pr_effects_pending`) exercises that actual graph with
 real local operations, a bare Git remote, signed journals and fixture identity/
 provider/native transports. At this wait it checks a missing event, refusal of
 claim-only delivery and denied authentication, persists the complete payload,
@@ -1263,7 +1263,7 @@ provider and exact installed-archive qualification remain separate.
 ## Structured agentic process
 
 The separate `--standard-composed-scenario=correction-full` selects
-`composed-correction.v3.json`. With `--standard-composed-stop=component_complete`,
+`composed-correction.v3.json`. With `--standard-composed-stop=pr_effects_pending`,
 it targets the published model's full corrective cycle, fresh session closure,
 integration, redelivery and a second authenticated review delivery. The new
 scenario declares 17 responses before its own authorization. It cannot be
@@ -1274,6 +1274,17 @@ different checks expecting exactly 2 and 3. Native transport and human/provider
 identities remain doubles; Git/bare, canonical storage and application ports
 remain real. Adding this scenario or passing preflight does not qualify it.
 The final review still does not establish provider replies/resolutions or merge.
+The current boundary is a deferred operation receipt in a WAITING cursor. The
+historical `component_complete` records retain their original model and scope.
+
+`node tools/perf/verify-standard-session-pr-merge-fixtures.mjs` checks the fixed
+read-only GitHub query through a transport double and uses signed fixture
+receipts and the execution reducer to replay both observation occurrences.
+It checks OPEN to MERGED on a fresh attempt, typed refusals, immutable receipt
+inputs and continued waiting with no review or sync facts. The companion
+composition fixture verifies the shipped graph and implementation pins.
+Live provider, installed execution and the long corrective journey are
+separate qualifications.
 `verify-standard-composed-cycle-fixtures.mjs --retain-always` separately checks
 context-derived identities and the two actual Node verifiers: each must reject
 the other cycle's value. It does not run admission or the full composed journey.
@@ -1282,7 +1293,7 @@ validation-call and provider witnesses before and after common replay/simulation
 
 The candidate correction-host route is selected by
 `verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files
---standard-composed-stop=component_complete --standard-composed-scenario=correction`.
+--standard-composed-stop=session_pr_correction_decide --standard-composed-scenario=correction`.
 Its distinct `composed-correction.v2.json` scenario retains nine initial responses
 and its own cold prefix. Before any temporary root or initial authorization,
 preflight uses the current model/common reducer, including the valid-finding

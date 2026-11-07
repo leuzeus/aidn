@@ -10,6 +10,7 @@ import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-
 const H = "a".repeat(64), fail = code => { throw Object.assign(Error(code), { code }); };
 const stops = { session_pr_correction_decide: "session_pr_correction_decide", plan: "plan", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
 const keys = (v, names) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join() === [...names].sort().join();
+const effectsPendingNodes = ["session_pr_merge_observe", "correction_pr_merge_observe"];
 const verificationTargetId = "aidn-standard-final-verification";
 const verificationSites = ["final_verification", "correction_final_verification"];
 
@@ -25,7 +26,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     || !["retain", "drop", "no_go"].includes(scenario.closure) || !["promote", "skip"].includes(scenario.promotion)
     || !Number.isSafeInteger(scenario.task_iterations) || scenario.task_iterations < 1 || scenario.task_iterations > 32
     || typeof scenario.cold_resume !== "boolean" || !Number.isSafeInteger(scenario.max_responses) || scenario.max_responses < 1
-    || ![...Object.keys(stops), "component_complete"].includes(stop)) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
+    || ![...Object.keys(stops), "component_complete", "pr_effects_pending"].includes(stop)) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
   const interruption = scenario.interruption;
   const target = model.model_id === "aidn-standard" ? model.call_targets?.find(row => row.model_id === verificationTargetId)?.model : null;
   const targetLabels = verificationSites.flatMap((site, index) => model.nodes.some(node => node.id === site && node.target?.model_id === verificationTargetId)
@@ -80,6 +81,12 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         operation_id: intent.operation_id, input: resolution.input, sources: resolution.sources });
       emit({ kind: "operation_intent", occurrence_id: frame.occurrence_id, intent });
       if (interruption?.node_id === label) { opResult(frame, intent, interruption.outcome); interrupted = true; break; }
+      if (effectsPendingNodes.includes(node.id)) {
+        if (stop !== "pr_effects_pending") fail("STANDARD_FIXTURE_PREFLIGHT_INCOMPLETE");
+        opResult(frame, intent, "deferred");
+        operations.push(label);
+        break;
+      }
       if (node.id === "closure_decide" && scenario.cold_resume && !deferred) {
         opResult(frame, intent, "deferred");
         checkpoints.push({ event_count: state.events.length, responses: native.length, instance_sha256: state.instance_sha256 });
@@ -141,7 +148,10 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   const cursor = inspectAgenticProcess(state);
   if (interruption && !interrupted) fail("STANDARD_FIXTURE_INTERRUPTION_NOT_REACHED");
   if (!interrupted && stop === "component_complete" && cursor.status !== "COMPLETED") fail("STANDARD_FIXTURE_PREFLIGHT_INCOMPLETE");
-  if (!interrupted && stop !== "component_complete" && !cursor.occurrences.some(f => f.status === "READY" && f.node_id === stops[stop])) fail("STANDARD_FIXTURE_STOP_NOT_REACHED");
+  if (!interrupted && stop === "pr_effects_pending" && !cursor.occurrences.some(f => f.status === "WAITING"
+    && effectsPendingNodes.includes(f.node_id) && f.operation?.receipt?.outcome === "deferred")) fail("STANDARD_FIXTURE_STOP_NOT_REACHED");
+  if (!interrupted && Object.hasOwn(stops, stop) && !cursor.occurrences.some(f => f.status === "READY" && f.node_id === stops[stop]))
+    fail("STANDARD_FIXTURE_STOP_NOT_REACHED");
   let replay;
   for (const row of iterateAgenticProcessSimulation({ ...initial, events: state.events })) replay = row;
   if (replay.instance_sha256 !== state.instance_sha256) fail("STANDARD_FIXTURE_PREFLIGHT_REPLAY_CHANGED");
