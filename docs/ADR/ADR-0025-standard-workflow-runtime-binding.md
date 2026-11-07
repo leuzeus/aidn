@@ -3134,6 +3134,27 @@ instance so a restart resumes the same child. The target has an empty return
 interface. A call transition carries no authorization or successful review
 outcome. The historical direct operation shape retains its original reader.
 
+### Protected publication of an inline review reply
+
+The protected GitHub host exposes a dedicated single-reply capability. Its
+private request and plan bind the operation, pinned host, current repository
+and PR, HEAD and base, exact thread root and body. Preview and recovery use
+the bounded v3 observation. Dispatch requires explicit write intent and the
+exact plan grant. The host reauthenticates the provider actor and checks the
+grant immediately before the fixed GraphQL mutation. A successful
+acknowledgement is followed by a fresh observation matching the reply ID,
+parent, author and exact body.
+
+GitHub accepts the thread identifier without a conditional HEAD. A changed
+subject or uncertain response after dispatch yields an unknown result for
+reconciliation. Recovery reads the same subject and returns an exact visible
+published reply when present. An absent reply supplies no evidence that a
+prior dispatch failed. The GraphQL nonce correlates an acknowledgement and
+supplies no idempotency guarantee. The protected capability still needs its
+published operation, accepted triage selection and durable dispatch fence.
+
+[GitHub reply mutation](https://docs.github.com/en/graphql/reference/pulls#addpullrequestreviewthreadreply)
+
 ### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
 
 The authored IR routes an accepted COMMITTING SPIKE plan into the same existing

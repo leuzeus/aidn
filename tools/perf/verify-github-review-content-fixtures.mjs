@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createGithubReviewContentAsyncAdapter, assertGithubReviewContent, createGithubReviewEvidenceAdapter } from '../../src/adapters/git-provider/github-review-evidence.mjs';
 import { createGithubPrContentAsyncAdapter, assertGithubPrContent, createGithubPrReviewEffectsAsyncAdapter, assertGithubPrReviewEffects, createGithubWorkflowAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
+import { createGithubPrReviewReply, assertGithubPrReviewReplyResult } from '../../src/adapters/git-provider/github-pr-review-reply.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import evidenceSchema from '../../src/core/contracts/workflow-definition/github-review-evidence.v2.schema.json' with { type: 'json' };
 import threadSchema from '../../src/core/contracts/workflow-definition/github-pr-observation-output.v2.schema.json' with { type: 'json' };
@@ -49,6 +50,35 @@ function effects(mutate) {
       mutate?.(r, q);
     }),
   }).observePrReviewEffects(threadRequest);
+}
+function replyFixture() {
+  const notBefore = Date.now(), operationId = 'op_' + 'c'.repeat(40);
+  const request = { contract_version: 'github-pr-review-reply-request.v1', pull_request: threadRequest, thread_id: 'T1',
+    target_comment_id: 'C1', target_body_sha256: sha('Evidence with a full technical rationale.'), body: 'Technical response.', not_before_ms: notBefore };
+  const state = { posted: [], writes: 0, offset: 0, mutateRead() {}, failAck: false, persist: true };
+  const open = () => createGithubPrReviewReply({ repository: config.repository, actor: { node_id: 'U2', login: 'responder' },
+    hostContextSha256: 'a'.repeat(64), now: () => Date.now() + state.offset,
+    observe: () => effects(r => {
+      const thread = r.data.repository.pullRequest.reviewThreads?.nodes[0];
+      if (thread) {
+        const [root, template] = thread.comments.nodes;
+        thread.isResolved = false;
+        thread.comments = page([root, ...state.posted.map(row => ({ ...template, ...row }))]);
+      }
+      state.mutateRead(r);
+    }),
+    async runMutation(payload, { assertAuthorized }) {
+      await assertAuthorized();
+      assert.match(payload.query, /^mutation AidnPrReviewReply/);
+      assert.deepEqual(payload.variables, { input: { pullRequestReviewThreadId: 'T1', body: request.body, clientMutationId: operationId } });
+      state.writes++;
+      const published = new Date().toISOString();
+      if (state.persist) state.posted.push({ createdAt: published, updatedAt: published, publishedAt: published });
+      if (state.failAck) throw Error('lost acknowledgement with redacted fixture content');
+      return { data: { addPullRequestReviewThreadReply: { clientMutationId: operationId, comment: { id: 'C2', replyTo: { id: 'C1' } } } } };
+    },
+  });
+  return { state, request, operationId, open };
 }
 try {
   await check('new closed schemas use supported vocabulary', () => { for (const schema of [evidenceSchema, threadSchema, effectsSchema, requestSchema]) assert.deepEqual(validateJsonSchemaDefinition(schema, '#', { contractKind: 'workflow-definition' }), []); });
@@ -151,6 +181,67 @@ try {
     for (const fields of [{ headRepository: { id: 'R_other' } }, { isDraft: true }, { state: 'CLOSED' }]) {
       await assert.rejects(effects(r => Object.assign(r.data.repository.pullRequest, fields)), { code: 'GITHUB_PR_SOURCE_CHANGED' });
     }
+  });
+  await check('reply plan binds the thread, grant and source; an exact retry observes one publication', async () => {
+    const { state, request, operationId, open } = replyFixture();
+    const port = open(), plan = await port.prepare(request, operationId);
+    const options = { write: true, expectPlan: plan.plan_sha256, assertAuthorized: async () => {} };
+    assert.equal(state.writes, 0);
+    await assert.rejects(port.apply(plan, { ...options, write: false }), { code: 'GITHUB_PR_REPLY_EXPLICIT_EFFECT_REQUIRED' });
+    await assert.rejects(port.apply(plan, { ...options, expectPlan: 'f'.repeat(64) }), { code: 'GITHUB_PR_REPLY_PLAN_INVALID' });
+    await assert.rejects(port.apply(plan, { ...options, assertAuthorized: async () => { throw Error('refused grant'); } }), /refused grant/);
+    state.offset = 300001;
+    await assert.rejects(port.apply(plan, options), { code: 'GITHUB_PR_REPLY_PLAN_EXPIRED' });
+    state.offset = 0;
+    assert.equal(state.writes, 0);
+    const result = assertGithubPrReviewReplyResult(await port.apply(plan, options));
+    assert.equal(result.effect_status, 'confirmed');
+    assert.equal(result.reply_id, 'C2');
+    assert.equal(result.target_comment_id, 'C1');
+    assert.equal(result.body_sha256, sha(request.body));
+    const retry = await open().apply(plan, options);
+    assert.equal(retry.effect_status, 'no_effect');
+    assert.equal(retry.reply_id, result.reply_id);
+    assert.equal(state.writes, 1);
+  });
+  await check('a lost reply acknowledgement stays unknown; read-only recovery finds the same reply', async () => {
+    const { state, request, operationId, open } = replyFixture();
+    const port = open(), plan = await port.prepare(request, operationId), expectPlan = plan.plan_sha256;
+    assert.equal(await port.recover(plan, { expectPlan }), null);
+    state.failAck = true;
+    await assert.rejects(port.apply(plan, { write: true, expectPlan, assertAuthorized: async () => {} }),
+      { code: 'GITHUB_PR_REPLY_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
+    const recovered = await open().recover(plan, { expectPlan });
+    assert.equal(recovered.action, 'recovered');
+    assert.equal(recovered.reply_id, 'C2');
+    assert.equal(state.writes, 1);
+  });
+  await check('an acknowledgement with no observed postimage stays unknown and recovery sends nothing', async () => {
+    const { state, request, operationId, open } = replyFixture();
+    state.persist = false;
+    const port = open(), plan = await port.prepare(request, operationId), expectPlan = plan.plan_sha256;
+    await assert.rejects(port.apply(plan, { write: true, expectPlan, assertAuthorized: async () => {} }),
+      { code: 'GITHUB_PR_REPLY_RECONCILIATION_REQUIRED', effect_status: 'unknown' });
+    assert.equal(await open().recover(plan, { expectPlan }), null);
+    assert.equal(state.writes, 1);
+  });
+  await check('new thread state, a changed subject and a non-root target refuse the reply', async () => {
+    const { state, request, operationId, open } = replyFixture();
+    const port = open(), plan = await port.prepare(request, operationId);
+    const options = { write: true, expectPlan: plan.plan_sha256, assertAuthorized: async () => {} };
+    state.mutateRead = r => {
+      const thread = r.data.repository.pullRequest.reviewThreads?.nodes[0];
+      if (thread) thread.isResolved = true;
+    };
+    await assert.rejects(port.apply(plan, options), { code: 'GITHUB_PR_REPLY_OBSERVATION_CHANGED' });
+    state.mutateRead = r => { r.data.repository.pullRequest.headRefOid = 'f'.repeat(40); };
+    await assert.rejects(port.apply(plan, options), { code: 'GITHUB_PR_SOURCE_CHANGED' });
+    state.mutateRead = r => {
+      const thread = r.data.repository.pullRequest.reviewThreads?.nodes[0];
+      if (thread) thread.comments.nodes[0].replyTo = { id: 'C_parent' };
+    };
+    await assert.rejects(port.prepare(request, operationId), { code: 'GITHUB_PR_REPLY_TARGET_CHANGED' });
+    assert.equal(state.writes, 0);
   });
   await check('historical readers retain v1 envelopes without content fields or implicit conversion', () => {
     const run = (_e, _a, input) => response(input);

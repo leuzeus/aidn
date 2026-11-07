@@ -1321,6 +1321,13 @@ closed PRs. The ordinary host fixture exercises the authenticated port with the
 GitHub transport doubled. GitHub network qualification and a full execution
 from the ordinary entry remain separate.
 
+The provider content fixture also exercises the private reply protocol with
+a doubled transport. It checks exact plan grants, changed thread and HEAD,
+single publication, lost acknowledgement and read-only recovery. The
+ordinary GitHub host fixture checks the separate write transport and revokes
+the grant at its boundary. Published operation dispatch and live GitHub
+qualification remain separate.
+
 `verify-standard-composed-cycle-fixtures.mjs --retain-always` separately checks
 context-derived identities and the two actual Node verifiers: each must reject
 the other cycle's value. It does not run admission or the full composed journey.

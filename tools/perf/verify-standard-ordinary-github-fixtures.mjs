@@ -54,12 +54,39 @@ const put = value => fs.writeFileSync(manifest, JSON.stringify(value));
 process.env.AIDN_STANDARD_HOST_HOME = dirs.host;
 process.env.GH_TOKEN = "untrusted-ambient-fixture-token";
 const calls = [], token = "offline-fixture-credential";
-let wrongActor = false, mutate = false;
+let wrongActor = false, mutate = false, replyFixtureActive = false, replyWrites = 0, replyDate = null;
+const replyBody = "Technical response supported by fixture evidence.";
+const replyOperation = "op_" + "a".repeat(40);
+const connection = nodes => ({ totalCount: nodes.length, nodes, pageInfo: { hasNextPage: false, endCursor: null } });
+function replyThreads() {
+  if (!replyFixtureActive) return connection([]);
+  const date = new Date(0).toISOString();
+  const root = { id: "C_root", author: { id: "U_reviewer", login: "fixture-reviewer", __typename: "User" },
+    body: "Review finding.", createdAt: date, updatedAt: date, publishedAt: date, state: "SUBMITTED", isMinimized: false,
+    commit: { oid: head }, originalCommit: { oid: head }, replyTo: null };
+  const comments = [root];
+  if (replyDate) comments.push({ ...root, id: "C_reply", author: { id: binding.actor.node_id, login: binding.actor.login, __typename: "User" },
+    body: replyBody, createdAt: replyDate, updatedAt: replyDate, publishedAt: replyDate, replyTo: { id: root.id } });
+  return connection([{ id: "T_reply", path: "app.mjs", line: 1, isResolved: false, isOutdated: false, comments: connection(comments) }]);
+}
 const head = "1".repeat(40), tip = "2".repeat(40);
 const output = value => ({ status: 0, stdout: typeof value === "string" ? value : JSON.stringify(value) });
 const providerTransport = {
   runGithub() { assert.fail("unexpected synchronous GitHub transport"); },
   runRemoteGit() { assert.fail("unexpected remote Git transport"); },
+  async runGithubReply(binary, args, options) {
+    assert.equal(binary, binding.gh.path);
+    assert.equal(options.cwd, dirs.host);
+    assert.equal(options.shell, false);
+    assert.equal(options.env.GH_TOKEN, token);
+    assert.deepEqual(args, ["api", "graphql", "--hostname", "github.com", "--input", "-"]);
+    const payload = JSON.parse(options.input);
+    assert.match(payload.query, /^mutation AidnPrReviewReply/);
+    assert.deepEqual(payload.variables, { input: { pullRequestReviewThreadId: "T_reply", body: replyBody, clientMutationId: replyOperation } });
+    assert.equal(++replyWrites, 1);
+    replyDate = new Date().toISOString();
+    return output({ data: { addPullRequestReviewThreadReply: { clientMutationId: replyOperation, comment: { id: "C_reply", replyTo: { id: "C_root" } } } } });
+  },
   async runGithubRead(binary, args, options) {
     assert.equal(binary, binding.gh.path);
     assert.equal(options.cwd, dirs.host);
@@ -83,7 +110,7 @@ const providerTransport = {
         pullRequest: { id: "PR_fixture", number: 7, headRefOid: head, headRefName: "topic", baseRefName: "dev",
           headRepository: { id: "R_fixture" }, isDraft: false, state: "OPEN", merged: false, mergedAt: null,
           mergeCommit: null, baseRef: { target: { oid: tip } }, baseRefOid: tip, updatedAt: new Date(0).toISOString(),
-          reviewThreads: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } } });
+          reviewThreads: replyThreads() } } } });
     }
     assert.deepEqual(args.slice(0, -1), ["api", "--hostname", "github.com", "--method", "GET"]);
     if (args.at(-1) === "user") {
@@ -167,6 +194,26 @@ assert.equal(effects.pull_request.head_oid, head);
 assert.equal(effects.pull_request.base_oid, tip);
 assert.deepEqual(effects.threads, []);
 console.log("PASS host authenticates the dedicated read-only review effects protocol");
+replyFixtureActive = true;
+const replyPort = host.githubProvider.sessionReviewPort.reply;
+const replyPlan = await replyPort.prepare({ contract_version: "github-pr-review-reply-request.v1", pull_request: observationRequest,
+  thread_id: "T_reply", target_comment_id: "C_root", target_body_sha256: createHash("sha256").update("Review finding.").digest("hex"),
+  body: replyBody, not_before_ms: Date.now() }, replyOperation);
+assert.equal(replyWrites, 0);
+let grantReads = 0;
+const options = { write: true, expectPlan: replyPlan.plan_sha256, assertAuthorized: async () => {
+  if (++grantReads === 3) throw Object.assign(Error("grant withdrawn at transport boundary"), { code: "FIXTURE_GRANT_WITHDRAWN" });
+} };
+await assert.rejects(replyPort.apply(replyPlan, options), { code: "FIXTURE_GRANT_WITHDRAWN", effect_status: "no_effect" });
+assert.equal(replyWrites, 0);
+const reply = await replyPort.apply(replyPlan, { ...options, assertAuthorized: async () => {} });
+assert.equal(reply.effect_status, "confirmed");
+assert.equal(reply.reply_id, "C_reply");
+assert.equal(reply.actor_id, binding.actor.node_id);
+assert.equal(replyWrites, 1);
+assert.equal((await replyPort.recover(replyPlan, options)).reply_id, "C_reply");
+assert.equal(replyWrites, 1);
+console.log("PASS protected host rechecks the reply grant at dispatch and recovers without another write");
 
 const beforeEffects = calls.length;
 await assert.rejects(host.githubProvider.sessionPushPort.push({}, { write: true }), { code: "GITHUB_PUSH_EXPLICIT_WRITE_REQUIRED" });
