@@ -11,7 +11,12 @@ import { buildCanonicalFromMarkdown } from "../../src/lib/workflow/markdown-rend
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { resolveRuntimeSqliteFile } from "../../src/application/runtime/runtime-persistence-service.mjs";
 import { getDatabaseSync } from "../../src/lib/sqlite/workflow-db-schema-lib.mjs";
-import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { checkShadowJson, shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { artifactContentHash } from "../../src/core/workflow/artifact-compare-swap.mjs";
+import { assertProcessDispatchRecord } from "../../src/core/workflow/process-dispatch-record.mjs";
+import { createOperationJournalSigner } from "../../src/core/workflow/process-operation-journal.mjs";
+import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
+import { runReloadCheckUseCase } from "../../src/application/runtime/reload-check-use-case.mjs";
 
 const temporary = fs.realpathSync(os.tmpdir()), owned = [];
 let passed = 0;
@@ -23,10 +28,45 @@ try {
   const root = client(), ops = createStandardWorkflowOperations({ targetRoot: root });
   const hookMarker = path.join(root, "unexpected-checkout-hook");
   fs.writeFileSync(path.join(root, ".git/hooks/post-checkout"), "#!/bin/sh\nprintf unexpected > unexpected-checkout-hook\n", { mode: 0o755 });
+  await check("long canonical SPEC produces a valid signed returned dispatch without writing", async () => {
+    const target = client(), audit = path.join(target, "docs/audit");
+    const spec = path.join(audit, "SPEC.md");
+    fs.appendFileSync(spec, "\n" + "<!-- synthetic specification padding -->\n".repeat(420));
+    assert.equal(checkShadowJson(fs.readFileSync(spec, "utf8")), "JSON_LIMIT");
+    const before = git(target, "status", "--porcelain"), head = git(target, "rev-parse", "HEAD");
+    const cache = ".aidn/runtime/cache/reload-state.json", cacheFile = path.join(target, cache);
+    const output = await createStandardWorkflowOperations({ targetRoot: target }).reload();
+    const signer = createOperationJournalSigner(() => Buffer.alloc(32, 1)), digest = "a".repeat(64);
+    const returned = signer.seal({
+      contract_version: "process-dispatch-record.v2", operation_id: "op_" + "a".repeat(40), revision: 3, phase: "returned",
+      instance_id: "reload-fixture", scope_id: "reload-fixture", model_sha256: digest, intent_sha256: digest, preview_sha256: digest,
+      authority_sha256: digest, runtime_sha256: digest, physical_root_sha256: digest, operation_owner_sha256: digest,
+      process_identity: { platform: "win32", host: "fixture", pid: 1, creation: "fixture" },
+      context_before_sha256: digest, context_after_sha256: digest, leases: [], local_owner_intentions: [],
+      output, output_sha256: shadowHash(output),
+    });
+    assertProcessDispatchRecord(signer.verify(returned));
+    assertStandardOperationOutput(output);
+    const paths = ["baseline/current.md", "snapshots/context-snapshot.md", "CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md"];
+    const documents = paths.map(name => ({ path: name, sha256: artifactContentHash(fs.readFileSync(path.join(audit, name), "utf8")) }));
+    assert.deepEqual(output.observations.documents, documents);
+    assert.deepEqual(output.evidence_refs, documents.map(row => ({ ref: "docs/audit/" + row.path, sha256: row.sha256 })));
+    assert.equal(output.outcome, "completed");
+    assert.equal(output.effect_status, "no_effect");
+    assert.deepEqual(output.facts, { context_loaded: true });
+    const expected = await runReloadCheckUseCase({ targetRoot: target, args: { cache, stateMode: "files", stateModeExplicit: true,
+      indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto", writeCache: false } });
+    const observed = output.observations.reload;
+    assert.deepEqual(observed, { ...expected, ts: observed.ts });
+    assert.equal(observed.cache_written, false);
+    assert.equal(fs.existsSync(cacheFile), false);
+    assert.equal(git(target, "status", "--porcelain"), before);
+    assert.equal(git(target, "rev-parse", "HEAD"), head);
+  });
   await check("real reload and admissions are read-only", async () => {
     const status = git(root, "status", "--porcelain"), head = git(root, "rev-parse", "HEAD");
     const result = await ops.reload(); assert.equal(result.outcome, "completed"); assert.equal(result.observations.documents.length, 6);
-    assert.ok(result.observations.documents.every(row => row.content && row.sha256));
+    assert.ok(result.observations.documents.every(row => row.path && /^[a-f0-9]{64}$/.test(row.sha256)));
     assert.equal((await ops.admitSession()).observations.lifecycle.action, "create_session_allowed");
     assert.equal(git(root, "status", "--porcelain"), status); assert.equal(git(root, "rev-parse", "HEAD"), head);
   });

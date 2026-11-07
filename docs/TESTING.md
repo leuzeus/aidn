@@ -1621,7 +1621,12 @@ asset installation into disposable clients. Business state is fixture data and
 the session template comes from the current scaffold. It checks explicit effect
 plans, unchanged admissions, UNKNOWN-mode bootstrap, closed inputs, stale
 preimages, backend absence without fallback, local owner contention and a real
-SQLite trigger failure after session creation. Unknown effects retain their
+SQLite trigger failure after session creation. The read-only reload case uses
+a synthetic SPEC longer than 16,384 characters. It checks that the six
+canonical documents contribute path and SHA-256 descriptors to the result,
+that the reload observation and facts are preserved, and that the signed
+`returned` dispatch candidate validates in memory within the existing JSON
+limits. This case stops before persistent dispatch. Unknown effects retain their
 owner and block retries. Read-only reconciliation observes completed state;
 it does not recover an uncertain owner or replay effects. These fixtures do not
 run a standard IR model or the full start-session skill. Native, live PostgreSQL

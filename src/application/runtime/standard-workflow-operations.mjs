@@ -325,7 +325,10 @@ export function createStandardWorkflowOperations({ targetRoot, now = Date.now })
     async reload(input = {}) {
       assertStandardOperationInput("context_reload", input);
       const current = scope(), documents = ["baseline/current.md", "snapshots/context-snapshot.md", "CURRENT-STATE.md", "SPEC.md", "WORKFLOW.md", "WORKFLOW-KERNEL.md"]
-        .map(name => artifacts.read(name, { required: true }));
+        .map(name => {
+          const { path, sha256 } = artifacts.read(name, { required: true });
+          return { path, sha256 };
+        });
       const result = await runReloadCheckUseCase({ targetRoot: root, args: { cache: ".aidn/runtime/cache/reload-state.json", stateMode: current.persistence.state_mode,
         stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto", writeCache: false } });
       const loaded = result.decision !== "stop" && !result.missing_required_artifacts?.length;
