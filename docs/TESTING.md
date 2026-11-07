@@ -667,10 +667,19 @@ refuse before the instance write. The fixture also checks ambiguous origin,
 foreign instance, executable drift, request injection and offline replay/SIM
 with an invalid provider configuration. A separate host read exercises the
 real merge adapter protocol with the same transport double. The effect ports
-refuse missing grants before transport, and both review waits retain their
-instance when the dedicated event source is absent. The fixture does not
-advance a PR workflow or qualify production credentials, network effects,
-event capture, Native, installed archive, or full STANDARD.
+refuse missing grants before transport, and both named review waits retain
+their instance when the dedicated event source is absent. The ordinary entry
+also binds the explicit reviewer into the exact host trust digest.
+The review event component (`--review-event-only`) starts at a bounded event
+wait with fixture-seeded signed business context. It exercises the same
+private host and fixed GitHub query with a small pinned transport fixture and
+real local Git, substitution/refusal before capture,
+v2 reservation, delivery from a fresh Node process, idempotent acknowledgement
+and historical reverification with the original base and a different current
+tip. The elapsed-time result applies to that fixture transport. The published
+PR path to either wait and its full receipt chain, production
+credentials and network effects, Native and the installed archive require
+separate qualification.
 
 The SPIKE wrapper-precondition suite also exercises both session checkpoint
 inventories with real initializer CAS postimages and synthetic signed writer

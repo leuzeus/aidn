@@ -2992,13 +2992,29 @@ admission and authorization still apply.
 An absent manifest preserves local STANDARD behavior with unavailable provider
 ports. Replay and simulation need only retained history. They skip the provider
 configuration and contact neither provider nor credential source. An external
-merge read is available to the operation host. Both PR-review waits require an
-independent authenticated provider-event reader and verifier
-(`sessionReviewEventPort.readEvent` and `verifyEvent`). The ordinary host has
-no producer for this capability. A generic signed control claim or an API
-snapshot cannot deliver that event. The durable wait and the R08
+merge read is available to the operation host. An optional exact `reviewer`
+object in `standard-host-github.v1` pins `login`, `node_id` and `type` (`User`
+or `Bot`) independently of the transport actor. An unconfigured reviewer
+leaves both review waits without a dedicated event source. With the pin,
+`--control-source` supplies the opaque GitHub review node ID for a fixed
+authenticated GraphQL query. Both `sessionReviewEventPort.readEvent` and
+`verifyEvent` read GitHub. The source checks a submitted, visible review and
+its author, commit, repository, PR and branches against the latest accepted
+update and review-content receipts. It verifies the review revision against the
+complete captured collection before signing or delivering the v2 inbox entry.
+The existing five-minute capture window is measured from submission.
+Each capture or verification groups its fixed read queries under one
+authenticated credential, with the checkout binding checked before and after
+the group. Profile, credential and executable checks still fence transport.
+The existing control authority timeout applies to the entire verification.
+
+Reverification of a delivered capture uses the signed original subject and
+content. A merged PR requires a complete provider merge proof, the original
+base as first parent and a merge at or after the captured observation. The
+current base tip stays a separate provider value. Missing or ambiguous proof
+refuses. Both named waits continue to require the dedicated channel. R08
 reply/resolution or documented exception, separate human consent and merge, and
-R09 fetch/divergence/sync requirements stay explicit.
+R09 fetch/divergence/sync remain outstanding.
 `complete_standard_workflow` remains false.
 The observer uses the existing operation journal and establishes no new
 canonical PR lifecycle state. Historical readers and scope remain versioned.

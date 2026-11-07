@@ -5,6 +5,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
+import { verifyGithubReviewEventComponent } from "./standard-github-review-event-fixture-lib.mjs";
 import { runProjectWorkflow } from "../../src/application/runtime/workflow-run-service.mjs";
 import { createStandardHostAuthority } from "../../src/adapters/runtime/standard-host-authority.mjs";
 import { createStandardWorkflowOperationHost } from "../../src/application/runtime/standard-workflow-operation-host.mjs";
@@ -92,6 +93,8 @@ const providerTransport = {
 };
 const run = extra => runProjectWorkflow({ targetRoot: target, configuration, ...extra }, { providerTransport });
 const apply = preview => run({ preparedAction: preview.preview, execute: true, expectPlan: preview.action_sha256 });
+const reviewer = { login: "fixture-reviewer[bot]", node_id: "BOT_fixture", type: "Bot" };
+if (!process.argv.includes("--review-event-only")) {
 const unconfigured = await run();
 assert.deepEqual(unconfigured.errors, []);
 assert.equal(unconfigured.preview.kind, "prepare_host");
@@ -181,4 +184,21 @@ for (const wait of ["session_pr_review_wait", "correction_pr_review_wait"]) {
   assert.equal(operations.inspect(instanceId).record.instance_sha256, persisted.record.instance_sha256);
 }
 console.log("PASS both PR review waits refuse generic control and remain durable without an event source");
-console.log(JSON.stringify({ status: "PASS", base, target, real_github: "NOT_RUN", actual_pr_lifecycle: "NOT_RUN", native: "NOT_RUN", complete_standard_workflow: false }));
+put({ ...binding, reviewer });
+const configured = await run();
+assert.deepEqual(configured.errors, []);
+assert.notEqual(configured.preview.context.trust_sha256, prepare.preview.context.trust_sha256);
+assert.ok(createStandardHostAuthority({ configuration: request.execution }, { providerTransport }).githubProvider.sessionReviewEventPort);
+console.log("PASS the ordinary entry binds explicit Bot reviewer configuration into its exact host trust");
+}
+
+const componentConfiguration = { ...request.execution, instance_id: "ordinary-review-event" };
+const componentBinary = path.join(dirs.host, "gh-review-transport.fixture");
+fs.writeFileSync(componentBinary, "Pinned subprocess transport fixture\n");
+const componentBinding = { ...binding, instance_id: componentConfiguration.instance_id, reviewer, gh: pin(componentBinary) };
+const componentIdentity = shadowHash({ target: process.platform === "win32" ? target.toLowerCase() : target, instance: componentBinding.instance_id });
+fs.mkdirSync(path.join(dirs.host, componentIdentity + ".github"));
+fs.writeFileSync(path.join(dirs.host, componentIdentity + ".github.json"), JSON.stringify(componentBinding));
+await verifyGithubReviewEventComponent({ base, configuration: componentConfiguration, binding: componentBinding, git });
+console.log(JSON.stringify({ status: "PASS", base, target, real_github: "NOT_RUN", actual_pr_lifecycle: "NOT_RUN",
+  published_review_wait_delivery: "NOT_RUN", native: "NOT_RUN", complete_standard_workflow: false }));

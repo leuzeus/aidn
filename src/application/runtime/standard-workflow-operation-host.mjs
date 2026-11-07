@@ -476,14 +476,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readCheckpoint: sessionPrSuccessor.readCheckpoint, inspectPush: (branch, options) => sessionPushPort.inspect(branch, options) }) : null;
   const sessionPrReview = sessionPrReviewAuthority ? createStandardSessionPrReviewObservation({ now, reviewPort: sessionReviewPort,
     readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
+  const reviewContentObserver = reviewPort => createStandardSessionPrReviewContentObservation({ now, reviewPort,
+    readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead });
   const sessionPrReviewContent = sessionPrReviewAuthority && processModels(model).some(component => component.nodes.some(node => node.binding_ref === "session_pr_review_content_observe"))
-    ? createStandardSessionPrReviewContentObservation({ now, reviewPort: sessionReviewPort,
-    readCurrent: id => current(id).record, readConfirmedHead: sessionPrReviewAuthority.readConfirmedHead }) : null;
+    ? reviewContentObserver(sessionReviewPort) : null;
   if (sessionReviewEventPort !== null && (!sessionPrReviewContent
     || ![sessionReviewEventPort.readEvent, sessionReviewEventPort.verifyEvent].every(fn => typeof fn === "function")))
     fail("STANDARD_HOST_REVIEW_EVENT_CONFIGURATION_INVALID");
   const reviewControlSource = sessionReviewEventPort && createStandardPrReviewControlSource({ now, observer: sessionPrReviewContent,
     readEvent: input => sessionReviewEventPort.readEvent(input), verifyEvent: input => sessionReviewEventPort.verifyEvent(input),
+    withReviewReads: sessionReviewEventPort.withReviewReads, observerFor: reviewContentObserver,
     async readContext({ request, signal }) {
       if (signal?.aborted) fail("PROCESS_CONTROL_PR_ABORTED");
       const actual = controlRequest({ instanceId: request.instance_id, expectedSha256: request.instance_sha256, occurrenceId: request.occurrence_id });
@@ -494,7 +496,19 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const input = accepted.record.preview.input;
       if (accepted.output.facts.session_pr_review_evidence_available !== true
         || accepted.output.observations.update_operation_id !== input.update_operation_id) fail("PROCESS_CONTROL_PR_OBSERVATION_REQUIRED");
-      return { instance: state.record, request_sha256: shadowHash(actual), input };
+      const update = readAcceptedPrUpdate(state.record, input.update_operation_id);
+      const latestUpdate = state.record.events.findLast(row => row.kind === "operation_intent"
+        && ["session_pr_update_push", "session_pr_redelivery_push"].includes(row.intent.binding_ref));
+      const p = update.output.observations.pull_request, notBefore = update.record.preview.prepared.plan.prepared_at_ms;
+      const { evidence } = accepted.output.observations, observed = evidence.pull_request;
+      if (latestUpdate?.intent.operation_id !== input.update_operation_id || update.output.facts.session_pr_head_confirmed !== true
+        || !Number.isSafeInteger(notBefore) || p.state !== "OPEN" || p.draft || p.head_oid !== request.head || p.head_branch !== request.branch
+        || evidence.repository.node_id !== p.repository_id || observed.node_id !== p.node_id || observed.number !== p.number
+        || observed.head_oid !== p.head_oid || observed.base_oid !== p.base_oid || observed.head_ref !== p.head_branch
+        || observed.base_ref !== p.base_branch) fail("PROCESS_CONTROL_PR_OBSERVATION_REQUIRED");
+      const reviewSubject = { repository_id: p.repository_id, pull_request_id: p.node_id, pull_request_number: p.number,
+        head_oid: p.head_oid, base_oid: p.base_oid, head_ref: p.head_branch, base_ref: p.base_branch, not_before_ms: notBefore };
+      return { instance: state.record, request_sha256: shadowHash(actual), input, reviewSubject };
     } });
   const activeControlSource = reviewControlSource ? { ...controlSource, ...reviewControlSource } : controlSource;
   function verifyPrReviewEvent(capture, options) {

@@ -27,7 +27,7 @@ export function createGithubReviewFixture({ workingDirectory, pullRequest }) {
   };
   const review = createGithubReviewEvidenceAdapter(host, { run }), threads = createGithubWorkflowAdapter(host, { run });
   const content = createGithubReviewContentAsyncAdapter(host, { run: async (...args) => run(...args) }), prContent = createGithubPrContentAsyncAdapter(host, { run: async (...args) => run(...args) });
-  return { state, calls, port: { observeReviewEvidence: review.observeReviewEvidence, observePullRequest: threads.observePullRequest,
+  return { state, calls, run, port: { observeReviewEvidence: review.observeReviewEvidence, observePullRequest: threads.observePullRequest,
     observeReviewContent: content.observeReviewEvidence, observePrContent: prContent.observePullRequest } };
 }
 // Composed fixtures recover the actual fake-provider PR identity from its

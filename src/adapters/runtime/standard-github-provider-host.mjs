@@ -7,7 +7,7 @@ import { agentRunPhysicalPath, readAgentRunFile } from "../../application/runtim
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { createGithubSessionPush } from "../git-provider/github-session-push.mjs";
 import { createGithubPullRequestOpen } from "../git-provider/github-pull-request-open.mjs";
-import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
+import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter, createGithubPrReviewEventAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
 import { createGithubReviewEvidenceAsyncAdapter, createGithubReviewContentAsyncAdapter } from "../git-provider/github-review-evidence.mjs";
 import { driveGithubObservation, driveGithubObservationAsync, runGithubObservationCommand } from "../git-provider/github-observation-transport.mjs";
 
@@ -36,17 +36,19 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     if (!snapshot) return null;
     binding = snapshot.value;
   } catch { fail("STANDARD_GITHUB_HOST_CONFIGURATION_INVALID"); }
-  const { repository, actor, git, gh } = binding ?? {};
+  const { repository, actor, git, gh, reviewer } = binding ?? {};
+  const principal = (value, login = /^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/) => matches(value.login, login) && matches(value.node_id, nodeId);
   const executable = value => exact(value, "path,sha256") && typeof value.path === "string"
     && path.isAbsolute(value.path) && matches(value.sha256, hash);
-  if (!exact(binding, "actor,contract_version,gh,git,instance_id,repository,target_root")
+  if (!exact(binding, "actor,contract_version,gh,git,instance_id,repository," + (reviewer === undefined ? "" : "reviewer,") + "target_root")
     || binding.contract_version !== "standard-host-github.v1"
     || binding.target_root !== configuration.target_root || binding.instance_id !== configuration.instance_id
     || !exact(repository, "host,name,node_id,owner") || repository.host !== "github.com"
     || !matches(repository.owner, /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/)
     || !matches(repository.name, /^[A-Za-z0-9_.-]{1,100}$/) || [".", ".."].includes(repository.name)
-    || !matches(repository.node_id, nodeId) || !exact(actor, "login,node_id")
-    || !matches(actor.login, /^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/) || !matches(actor.node_id, nodeId)
+    || !matches(repository.node_id, nodeId) || !exact(actor, "login,node_id") || !principal(actor)
+    || reviewer !== undefined && (!exact(reviewer, "login,node_id,type") || !["User", "Bot"].includes(reviewer.type)
+      || !principal(reviewer, reviewer.type === "Bot" ? /^[A-Za-z0-9][A-Za-z0-9-]{0,99}(?:\[bot\])?$/ : undefined))
     || !executable(git) || !executable(gh) || key(git.path) === key(gh.path))
     fail("STANDARD_GITHUB_HOST_CONFIGURATION_INVALID");
 
@@ -94,16 +96,19 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   checkBinary(git); checkBinary(gh);
   const profile = profilePin(), local = shadowHash(repositoryBinding());
   const contextSha = shadowHash({ profile: "standard-host-github.v1", manifest: snapshot.sha256, env, profile_sha256: profile, local });
-  function revalidate() {
+  function revalidate({ repository = true, executables = true } = {}) {
     try { file(manifest, { sha256: snapshot.sha256 }); } catch { fail("STANDARD_GITHUB_HOST_CONFIGURATION_CHANGED"); }
     if (profilePin() !== profile) fail("STANDARD_GITHUB_HOST_PROFILE_CHANGED");
-    checkBinary(git); checkBinary(gh);
+    if (executables) { checkBinary(git); checkBinary(gh); }
+    if (repository) checkRepository();
+  }
+  function checkRepository() {
     if (shadowHash(repositoryBinding()) !== local) fail("STANDARD_GITHUB_REPOSITORY_BINDING_CHANGED");
   }
-  function transportGuard() {
+  function transportGuard(options) {
     const credentials = optionalFile(path.join(configDir, "hosts.yml"))?.sha256 ?? null;
     return () => {
-      revalidate();
+      revalidate(options);
       if ((optionalFile(path.join(configDir, "hosts.yml"))?.sha256 ?? null) !== credentials)
         fail("STANDARD_GITHUB_HOST_CREDENTIAL_CHANGED");
     };
@@ -166,7 +171,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     return async (request, { signal } = {}) => {
       const guard = transportGuard();
       const authenticated = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
-      const result = await factory({ ...github, environment: authenticated },
+      const result = await factory({ ...github, reviewer, environment: authenticated },
         { run: guardedRun(guard, runGithubRead) })[method](request, { signal });
       guard();
       return result;
@@ -174,6 +179,47 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   }
   const content = readPort(createGithubPrContentAsyncAdapter, "observePullRequest");
   const evidence = readPort(createGithubReviewContentAsyncAdapter, "observeReviewEvidence");
+  const readReviewEvent = readPort(createGithubPrReviewEventAsyncAdapter, "readEvent");
+  function reviewEvents(read) {
+    async function readEvent({ request, sourceRef, subject, signal }) {
+      if (!matches(sourceRef, nodeId) || !subject) fail("GITHUB_REVIEW_EVENT_REQUEST_INVALID");
+      return read({ request, sourceRef, subject }, { signal });
+    }
+    return {
+      readEvent,
+      async verifyEvent({ event, ...input }) {
+        const current = await readEvent(input);
+        if (!current || shadowHash(current) !== shadowHash(event)) fail("GITHUB_REVIEW_EVENT_CHANGED");
+        return { outcome: "verified", current: true, authority_id: current.authority_id,
+          event_sha256: shadowHash(current), subject_sha256: shadowHash(current.actor) };
+      },
+    };
+  }
+  // One bounded read-only review transaction uses one authenticated token.
+  // The fixed GitHub queries do not use the checkout. Fence its exact origin
+  // on both sides of the transaction while guarding credentials, profile and
+  // executable pins at each subprocess boundary inside it.
+  async function withReviewReads(collect, { signal } = {}) {
+    const guard = transportGuard({ repository: false, executables: false });
+    const guardAuth = () => { guard(); checkBinary(gh); };
+    guard();
+    checkBinary(git);
+    checkRepository();
+    const authenticated = await driveGithubObservationAsync(authenticate(guardAuth), runGithubRead, signal);
+    const config = { ...github, reviewer, environment: authenticated };
+    const transport = { run: guardedRun(guard, runGithubRead) };
+    const events = createGithubPrReviewEventAsyncAdapter(config, transport);
+    const content = createGithubPrContentAsyncAdapter(config, transport);
+    const evidence = createGithubReviewContentAsyncAdapter(config, transport);
+    const result = await collect({ ...reviewEvents(events.readEvent), reviewPort: {
+      observePrContent: content.observePullRequest, observeReviewContent: evidence.observeReviewEvidence,
+    } });
+    guard();
+    checkBinary(git);
+    checkRepository();
+    if (signal?.aborted) fail("GITHUB_OBSERVATION_ABORTED");
+    return result;
+  }
   return Object.freeze({ contextSha,
     async verifyIdentity(signal) { await driveGithubObservationAsync(authenticate(transportGuard()), runGithubRead, signal); },
     sessionPushPort: Object.freeze({
@@ -192,5 +238,6 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       observePrContent: content, observeReviewContent: evidence,
       observePrMerge: readPort(createGithubPrMergeAsyncAdapter, "observePrMerge"),
     }),
+    ...(reviewer ? { sessionReviewEventPort: Object.freeze({ ...reviewEvents(readReviewEvent), withReviewReads }) } : {}),
   });
 }

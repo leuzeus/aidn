@@ -51,7 +51,7 @@ export async function runStandardWorkflowEntry({ request, actionFile = null, pre
     authorize, environment, validationProfile, humanSource: authority.humanSource, controlSource: authority.controlSource,
     nativeAuthorizationSource: authority.nativeAuthorizationSource,
     sessionPushPort: provider?.sessionPushPort, sessionPullRequestPort: provider?.sessionPullRequestPort,
-    sessionReviewPort: provider?.sessionReviewPort });
+    sessionReviewPort: provider?.sessionReviewPort, sessionReviewEventPort: provider?.sessionReviewEventPort });
   return runStandardWorkflowAction({ request, configuration, parameters, modelSource, actionFile, preparedAction, decisionSource, controlSource,
     observation, authorization, execute, expectPlan, signal }, { authority, compose });
 }
