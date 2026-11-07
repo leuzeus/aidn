@@ -870,13 +870,19 @@ durable owner before transport. Recovery reads the same target and appends
 only an exact visible reply. An absent or ambiguous postimage preserves the
 pending dispatch or UNKNOWN receipt and the original authorization history.
 
-The bounded reply loop leads to the existing session_pr_review_effects_verify
-and session_pr_merge_observe operations after observing every reply obligation.
-The independent effects verifier still requires resolved threads on the
-exact PR, HEAD and base. A changed review or unresolved thread keeps the
-call waiting. Thread resolution writes, exceptions, renewed review routing,
-checks, merge consent and post-merge synchronization remain separate.
-Historical direct observation receipts stay readable.
+The reply loop leads to the bounded resolution loop.
+`session_pr_review_resolution_select` requires the published responses and
+selects an eligible open thread from the authenticated review.
+`session_pr_review_thread_resolve` uses the accepted selection and the same
+triage operation ID. The protected port checks the exact grant at transport
+and independently re-reads the postimage. Recovery of the durable dispatch
+only reads the provider. A reopened or unsupported thread needs a fresh review
+or a documented SPEC-R08 exception.
+
+`session_pr_review_effects_verify` independently requires every response and
+resolved thread on the exact PR, HEAD and base. The following operation
+`session_pr_merge_observe` only observes. Checks, merge consent, merge effect
+and R09 remain separate. Historical direct observation receipts stay readable.
 
 ## SPIKE canonical projection finalization, 2026-11-04
 

@@ -119,10 +119,10 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
         if (!write) return { kind: "operation_wait", written: false, status: "WAITING", operation_id: deterministic.operation.intent.operation_id };
         return finishOperation(deterministic.operation.intent.operation_id, signal);
       }
-      const replyRecovery = cursor.occurrences.find(frame => frame.operation?.receipt?.outcome === "reconciliation_required"
-        && frame.operation.intent.binding_ref === "session_pr_review_reply_publish");
-      if (replyRecovery) {
-        const id = replyRecovery.operation.intent.operation_id;
+      const reviewRecovery = cursor.occurrences.find(frame => frame.operation?.receipt?.outcome === "reconciliation_required"
+        && ["session_pr_review_reply_publish", "session_pr_review_thread_resolve"].includes(frame.operation.intent.binding_ref));
+      if (reviewRecovery) {
+        const id = reviewRecovery.operation.intent.operation_id;
         if (!write) return { kind: "operation_wait", written: false, status: "WAITING", operation_id: id };
         return finishOperation(id, signal);
       }

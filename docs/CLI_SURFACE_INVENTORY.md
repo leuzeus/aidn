@@ -351,8 +351,8 @@ finalization; `--verify` retains its read-only verification behavior.
     Native allocation. The console run action forwards these same selectors.
     Custom native-only v1/v2 graphs keep their owned runner; raw v2 control facts
     remain refused. Historical instances are not converted. Source wiring is
-    partial. An optional protected host manifest binds GitHub push, PR opening
-    and read capabilities as specified in ADR-0025. Exact initialization checks
+    partial. An optional protected host manifest binds GitHub push, PR opening,
+    review reads, inline replies and thread resolution as specified in ADR-0025. Exact initialization checks
     the configured identity. For either PR review wait, a reviewer pinned in
     the protected manifest enables `--control-source` with the opaque GitHub
     review node ID. Delivery requires the authenticated review and signed
@@ -363,8 +363,9 @@ finalization; `--verify` retains its read-only verification behavior.
     `--execute --expect-plan <outer action_sha256>`. The browser retains the same
     request under its explicit approval. The original operation or call plan is preserved;
     current authority, freshness and CAS are still checked. A retained R08
-    dispatch uses the same explicit action to record a reply through read-only
-    provider recovery. An absent postimage keeps the occurrence waiting.
+    reply or resolution dispatch uses the same explicit action to record the
+    postimage through read-only provider recovery. An absent postimage keeps
+    the occurrence waiting.
     A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`

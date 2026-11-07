@@ -111,10 +111,12 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     forged.resolution.input.triage_operation_id = update;
     assert.throws(() => advanceAgenticProcess(instance, forged), { code: 'PROCESS_CALL_RESOLUTION_CHANGED' });
     instance = advanceAgenticProcess(instance, event);
-    // This verifier fixture starts from a synthetic accepted selection. The
-    // reply fixture exercises actual selection, dispatch and recovery.
+    // This verifier fixture starts from synthetic accepted selections. The
+    // R08 FILES fixtures exercise selection, dispatch and recovery.
     accept('session_pr_review_reply_select', { contract_version: 'standard-pr-review-reply-select-input.v1', triage_operation_id: triage },
       { session_pr_replies_observed: true }, { selection: null });
+    accept('session_pr_review_resolution_select', { contract_version: 'standard-pr-review-resolution-select-input.v1', triage_operation_id: triage },
+      { session_pr_threads_observed_resolved: true }, { selection: null });
   }
   const transport = createGithubPrMergeAsyncAdapter({ executable: process.execPath, executableSha256, workingDirectory: os.tmpdir(),
     repository: { owner: 'fixture', name: 'repository', node_id: link.repository_id } }, { now: () => now,

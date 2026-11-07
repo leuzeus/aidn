@@ -72,7 +72,7 @@ function open(base, { initializeKey = false } = {}) {
   const author = { ...review.author };
   const rootComment = { id: 'C_root', author, body: 'Inline finding.', createdAt: submittedAt, updatedAt: submittedAt,
     publishedAt: submittedAt, state: 'SUBMITTED', isMinimized: false, commit: { oid: pr.head_oid }, originalCommit: { oid: pr.head_oid }, replyTo: null };
-  const roots = prefix === 'session' ? [rootComment, { ...rootComment, id: 'C_other' }] : [rootComment];
+  const roots = prefix === 'session' && behavior === 'normal' ? [rootComment, { ...rootComment, id: 'C_other' }] : [rootComment];
   const connection = nodes => ({ nodes, totalCount: nodes.length, pageInfo: { hasNextPage: false, endCursor: null } });
   const ok = value => ({ status: 0, stdout: typeof value === 'string' ? value : JSON.stringify(value) });
   let permitted, denied = false, revokeAt = null, grants = 0, calls = 0, crash = false;
@@ -96,7 +96,7 @@ function open(base, { initializeKey = false } = {}) {
         } } });
       }
       fixture.state.threads = roots.map((root, index) => ({
-        id: 'T_' + root.id, path: 'product.mjs', line: index + 1, isResolved: state.resolved, isOutdated: false,
+        id: 'T_' + root.id, path: 'product.mjs', line: index + 1, isResolved: state.resolved || state.resolvedThreads?.includes('T_' + root.id) === true, isOutdated: false,
         comments: connection([root, ...state.replies.filter(reply => reply.replyTo.id === root.id)]),
       }));
       const result = fixture.run(binary, args, options), value = JSON.parse(result.stdout);
@@ -104,6 +104,31 @@ function open(base, { initializeKey = false } = {}) {
         value.data.repository.pullRequest.reviews.nodes[0].body += ' changed';
       value.data.repository.pullRequest.headRepository = { id: pr.repository_id };
       return ok(value);
+    },
+    async runGithubResolution(binary, args, options) {
+      assert.equal(binary, binding.gh.path);
+      assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
+      const { query, variables: { input } } = JSON.parse(options.input);
+      assert.equal(query, 'mutation AidnPrReviewResolution($input:ResolveReviewThreadInput!) { resolveReviewThread(input:$input) { clientMutationId thread { id isResolved } } }');
+      assert.deepEqual(Object.keys(input).sort(), ['clientMutationId', 'threadId']);
+      assert.equal(input.threadId, 'T_C_root');
+      const record = host.readJournal(input.clientMutationId);
+      assert.equal(record.phase, 'dispatching');
+      assert.equal(record.intent.binding_ref, 'session_pr_review_thread_resolve');
+      assert.equal(record.intent.authorization_sha256, shadowHash(record.grant));
+      assert.equal(record.owner.pid, process.pid);
+      const { plan } = record.preview.prepared.plan.provider;
+      assert.deepEqual(plan.actor, binding.actor);
+      assert.equal(plan.repository_id, pr.repository_id);
+      assert.equal(plan.request.thread_id, input.threadId);
+      assert.deepEqual(plan.request.pull_request, { contract_version: 'github-pr-observation-request.v2', pull_request_number: pr.number,
+        expected_pull_request_id: pr.node_id, expected_head_oid: pr.head_oid, expected_base_oid: pr.base_oid,
+        expected_head_ref: pr.head_branch, expected_base_ref: pr.base_branch });
+      assert.deepEqual(state.resolutionSends, []);
+      state.resolutionSends.push(input.threadId);
+      if (behavior === 'resolve-interrupted') state.resolvedThreads.push(input.threadId);
+      save(providerFile, state);
+      return ok({ data: { resolveReviewThread: { clientMutationId: input.clientMutationId, thread: { id: input.threadId, isResolved: true } } } });
     },
     async runGithubReply(binary, args, options) {
       assert.equal(binary, binding.gh.path);
@@ -239,12 +264,18 @@ function open(base, { initializeKey = false } = {}) {
       eventId: 'call_review', write: true });
     assert.equal((await preview()).input.triage_operation_id, triage);
   }
-  return { host, preview, stage, run, inspect, seedPrefix, state, providerFile, calls: () => calls, allow: sha => { permitted = sha; },
+  function observePublishedReply() {
+    const date = new Date().toISOString();
+    state.replies.push({ ...rootComment, id: 'R_C_root', author: { id: binding.actor.node_id, login: binding.actor.login, __typename: 'User' },
+      body: response, createdAt: date, updatedAt: date, publishedAt: date, replyTo: { id: rootComment.id } });
+    save(providerFile, state);
+  }
+  return { host, preview, stage, run, inspect, seedPrefix, observePublishedReply, state, providerFile, calls: () => calls, allow: sha => { permitted = sha; },
     deny: value => { denied = value; }, revokeAt: value => { revokeAt = grants + value; }, interrupt: () => { crash = true; } };
 }
 
 function arrange(prefix, behavior) {
-  const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'aidn-source120-r08-'));
+  const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), behavior.startsWith('resolve-') ? 'aidn-source121-r08-' : 'aidn-source120-r08-'));
   const targetRoot = createFreshStandardWorkflowFixture('files');
   const dirs = Object.fromEntries(['host', 'control', 'review', 'native'].map(name => {
     const dir = path.join(base, name);
@@ -269,7 +300,7 @@ function arrange(prefix, behavior) {
   fs.mkdirSync(path.join(dirs.host, key + '.github'));
   save(path.join(dirs.host, key + '.github.json'), binding);
   save(path.join(base, 'configuration.json'), { configuration, home: dirs.host, binding, pr, prefix, behavior, submittedAt: new Date(Date.now() - 1000).toISOString() });
-  save(path.join(base, 'provider.json'), { sent: [], replies: [], resolved: false, reviewChanged: false });
+  save(path.join(base, 'provider.json'), { sent: [], replies: [], resolved: false, reviewChanged: false, resolvedThreads: [], resolutionSends: [] });
   console.log(JSON.stringify({ evidence: base, project: targetRoot, prefix, behavior }));
   return base;
 }
@@ -316,7 +347,79 @@ function verifyRetained(base) {
   console.log('PASS published R08 ' + prefix + ' ' + behavior + ' with seeded signed upstream receipts and real FILES operation ports');
 }
 
-if (process.argv[2] === '--verify-retained') {
+function recoverProcess(base, id) {
+  return JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--recover', base, id],
+    { encoding: 'utf8', timeout: 180000, windowsHide: true }));
+}
+
+async function qualifyResolution(behavior) {
+  const prefix = behavior === 'resolve-interrupted' ? 'correction' : 'session';
+  const base = arrange(prefix, behavior), f = open(base, { initializeKey: true });
+  await f.seedPrefix();
+  f.observePublishedReply();
+  assert.equal((await f.run()).results[0].output.facts.session_pr_replies_observed, true);
+  const selected = await f.run();
+  assert.equal(selected.results[0].output.observations.selection.thread_id, 'T_C_root');
+  const plan = await f.preview();
+  const chosen = selected.results[0].output.observations.selection;
+  assert.equal(plan.prepared.plan.reply_proof_sha256, chosen.reply_proof_sha256);
+  assert.equal(plan.prepared.plan.provider.plan.request.basis_sha256, chosen.basis_sha256);
+  let applied = plan;
+  if (behavior === 'resolve-missing') {
+    f.allow(shadowHash(plan));
+    f.revokeAt(5); // stage, intent, dispatch, port admission, protected send edge
+    const { operation_id: refusedId } = await f.stage(plan);
+    const refusal = await f.host.dispatch(refusedId, { write: true });
+    assert.equal(refusal.receipt.effect_status, 'no_effect');
+    await f.host.accept(refusedId, { write: true });
+    assert.equal(f.host.readJournal(refusedId).results[0].output.observations.reason_code, 'STANDARD_HOST_EXACT_OPERATION_REQUIRED');
+    assert.deepEqual(f.state.resolutionSends, []);
+
+    const changed = await f.preview();
+    f.state.reviewChanged = true;
+    const blocked = await f.run(changed);
+    assert.equal(blocked.results[0].output.observations.reason_code, 'STANDARD_PR_EFFECTS_REVIEW_CHANGED');
+    assert.deepEqual(f.state.resolutionSends, []);
+    f.state.reviewChanged = false;
+    applied = await f.preview();
+  }
+  f.allow(shadowHash(applied));
+  const { operation_id: id } = await f.stage(applied);
+  if (behavior === 'resolve-interrupted') {
+    f.interrupt();
+    await assert.rejects(f.host.dispatch(id, { write: true }), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
+    assert.equal(f.host.readJournal(id).phase, 'dispatching');
+  } else {
+    assert.equal((await f.host.dispatch(id, { write: true })).receipt.effect_status, 'unknown');
+    await f.host.accept(id, { write: true });
+    const before = f.inspect().record.instance_sha256;
+    const absent = recoverProcess(base, id);
+    assert.deepEqual(absent, { status: 'reconciliation_required', effect_status: 'unknown', count: 0, resolution_count: 1,
+      result_count: 1, instance: before });
+    f.state.resolvedThreads.push('T_C_root'); // A later read can finally prove the exact postimage.
+    save(f.providerFile, f.state);
+  }
+  assert.deepEqual(f.state.resolutionSends, ['T_C_root']);
+  const recovered = recoverProcess(base, id), again = recoverProcess(base, id);
+  assert.equal(recovered.status, 'receipted');
+  assert.equal(recovered.effect_status, 'confirmed');
+  assert.equal(recovered.resolution_count, 1);
+  assert.equal(recovered.result_count, behavior === 'resolve-missing' ? 2 : 1);
+  assert.deepEqual(again, { ...recovered, status: 'retained_result' });
+  const resumed = open(base);
+  const result = resumed.host.readJournal(id).results.at(-1).output.observations.resolution;
+  assert.equal(result.action, 'recovered');
+  assert.equal(result.thread_id, 'T_C_root');
+  assert.equal((await resumed.run()).results[0].output.facts.session_pr_threads_observed_resolved, true);
+  assert.equal((await resumed.run()).results[0].output.facts.session_pr_review_effects_verified, true);
+  assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_merge_observe');
+  replay(resumed);
+  console.log('PASS published R08 resolution ' + prefix + ' ' + behavior + ' with seeded signed upstream receipts and real FILES operation ports');
+}
+
+if (['--case=resolve-missing', '--case=resolve-interrupted'].includes(process.argv[2])) {
+  await qualifyResolution(process.argv[2].slice('--case='.length));
+} else if (process.argv[2] === '--verify-retained') {
   verifyRetained(process.argv[3]);
 } else if (process.argv[2] === '--recover') {
   const f = open(process.argv[3]), id = process.argv[4], before = f.host.readJournal(id);
@@ -330,7 +433,7 @@ if (process.argv[2] === '--verify-retained') {
   assert.deepEqual(after.grant, before.grant);
   replay(f);
   console.log(JSON.stringify({ status: result.status, effect_status: after.results.at(-1)?.receipt.effect_status ?? null,
-    count: f.state.sent.length, result_count: after.results.length, instance: f.inspect().record.instance_sha256 }));
+    count: f.state.sent.length, resolution_count: f.state.resolutionSends?.length ?? 0, result_count: after.results.length, instance: f.inspect().record.instance_sha256 }));
 } else {
   const cases = [['session', 'normal'], ['correction', 'lost'], ['correction', 'missing'], ['correction', 'interrupted']];
   const selected = process.argv[2] ? cases.filter(([, behavior]) => process.argv[2] === '--case=' + behavior) : cases;
@@ -368,8 +471,8 @@ if (process.argv[2] === '--verify-retained') {
       await f.run();
       assert.deepEqual(f.state.sent, ['C_root', 'C_other']);
       assert.equal((await f.run()).results[0].output.facts.session_pr_replies_observed, true);
-      assert.equal((await f.run()).results[0].output.observations.reason_code, 'STANDARD_PR_EFFECTS_RESOLUTION_REQUIRED');
       f.state.resolved = true;
+      assert.equal((await f.run()).results[0].output.facts.session_pr_threads_observed_resolved, true);
       assert.equal((await f.run()).results[0].output.facts.session_pr_review_effects_verified, true);
       assert.equal(f.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_merge_observe');
     } else {

@@ -6,6 +6,7 @@ import { performance } from "node:perf_hooks";
 import { agentRunPhysicalPath, readAgentRunFile } from "../../application/runtime/agent-run-configuration-service.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { createGithubSessionPush } from "../git-provider/github-session-push.mjs";
+import { createGithubPrReviewResolution } from "../git-provider/github-pr-review-resolution.mjs";
 import { createGithubPrReviewReply } from "../git-provider/github-pr-review-reply.mjs";
 import { createGithubPullRequestOpen } from "../git-provider/github-pull-request-open.mjs";
 import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter, createGithubPrReviewEventAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
@@ -28,7 +29,8 @@ function optionalFile(name, options) {
 // The caller is the private STANDARD host. The only dependency seam replaces
 // subprocess transports; the action, IR and project configuration select none.
 export function createStandardGithubProviderHost({ configuration, home, identity, environment }, {
-  runGithub = spawnSync, runGithubRead = runGithubObservationCommand, runGithubReply = runGithubObservationCommand, runRemoteGit = spawnSync,
+  runGithub = spawnSync, runGithubRead = runGithubObservationCommand, runGithubReply = runGithubObservationCommand,
+  runGithubResolution = runGithubObservationCommand, runRemoteGit = spawnSync,
 } = {}) {
   const manifest = path.join(home, identity + ".github.json");
   let snapshot, binding;
@@ -181,31 +183,32 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   const content = readPort(createGithubPrContentAsyncAdapter, "observePullRequest");
   const evidence = readPort(createGithubReviewContentAsyncAdapter, "observeReviewEvidence");
   const reviewEffects = readPort(createGithubPrReviewEffectsAsyncAdapter, "observePrReviewEffects");
-  const replyPort = createGithubPrReviewReply({ repository: repo, actor, hostContextSha256: contextSha, observe: reviewEffects,
-    async runMutation(payload, { signal, assertAuthorized }) {
-      const guard = transportGuard();
-      let authenticated;
-      try {
-        authenticated = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
-        await assertAuthorized();
-        guard();
-        if (signal?.aborted) fail("GITHUB_PR_REPLY_ABORTED");
-      } catch (cause) {
-        fail(/^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? "") ? cause.code : "GITHUB_PR_REPLY_PRECONDITION_REQUIRED");
-      }
-      try {
-        const result = await runGithubReply(gh.path, ["api", "graphql", "--hostname", host, "--input", "-"],
-          { ...options, env: authenticated, input: JSON.stringify(payload), signal });
-        guard();
-        if (result?.status !== 0 || result.signal || result.error || typeof result.stdout !== "string"
-          || Buffer.byteLength(result.stdout) > options.maxBuffer) fail("GITHUB_PR_REPLY_TRANSPORT_UNAVAILABLE");
-        return JSON.parse(result.stdout);
-      } catch {
-        throw Object.assign(Error("GITHUB_PR_REPLY_RECONCILIATION_REQUIRED"),
-          { code: "GITHUB_PR_REPLY_RECONCILIATION_REQUIRED", effect_status: "unknown" });
-      }
-    },
-  });
+  const protectedReviewMutation = (run, kind) => async (payload, { signal, assertAuthorized }) => {
+    let guard, authenticated;
+    try {
+      guard = transportGuard();
+      authenticated = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
+      await assertAuthorized();
+      guard();
+      if (signal?.aborted) fail(kind + "_ABORTED");
+    } catch (cause) {
+      fail(/^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? "") ? cause.code : kind + "_PRECONDITION_REQUIRED");
+    }
+    try {
+      const result = await run(gh.path, ["api", "graphql", "--hostname", host, "--input", "-"],
+        { ...options, env: authenticated, input: JSON.stringify(payload), signal });
+      guard();
+      if (result?.status !== 0 || result.signal || result.error || typeof result.stdout !== "string"
+        || Buffer.byteLength(result.stdout) > options.maxBuffer) fail(kind + "_TRANSPORT_UNAVAILABLE");
+      return JSON.parse(result.stdout);
+    } catch {
+      const code = kind + "_RECONCILIATION_REQUIRED";
+      throw Object.assign(Error(code), { code, effect_status: "unknown" });
+    }
+  };
+  const reviewHost = { repository: repo, actor, hostContextSha256: contextSha, observe: reviewEffects };
+  const replyPort = createGithubPrReviewReply({ ...reviewHost, runMutation: protectedReviewMutation(runGithubReply, "GITHUB_PR_REPLY") });
+  const resolutionPort = createGithubPrReviewResolution({ ...reviewHost, runMutation: protectedReviewMutation(runGithubResolution, "GITHUB_PR_RESOLUTION") });
   const readReviewEvent = readPort(createGithubPrReviewEventAsyncAdapter, "readEvent");
   function reviewEvents(read) {
     async function readEvent({ request, sourceRef, subject, signal }) {
@@ -266,7 +269,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       observePrMerge: readPort(createGithubPrMergeAsyncAdapter, "observePrMerge"),
       reviewEffectActor: Object.freeze({ ...actor }),
       observePrReviewEffects: reviewEffects,
-      reply: replyPort,
+      reply: replyPort, resolution: resolutionPort,
     }),
     ...(reviewer ? { sessionReviewEventPort: Object.freeze({ ...reviewEvents(readReviewEvent), withReviewReads }) } : {}),
   });

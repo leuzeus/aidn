@@ -7,6 +7,15 @@ resource-closure proof or accepted result. Both versions reuse the existing
 operation-journal canonical CAS/projection surface. This adds no public CLI JSON
 root or backend fallback; exact-source crash qualification remains required.
 
+## R08 thread resolution contracts
+
+Private `github-pr-review-resolution-{request,plan,result}.v1` and
+`standard-pr-review-{resolution-select,thread-resolve}-{input,output}.v1`
+bind the exact provider subject, accepted selection and observed resolution
+under the existing operation journal. A recovery result reports the resolved
+postimage. The journal preserves the original dispatch and any UNKNOWN result.
+Historical reply and observation contracts remain readable.
+
 ## Original dispatch and disposition records
 
 Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,

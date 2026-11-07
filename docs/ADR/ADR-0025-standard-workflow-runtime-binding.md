@@ -3179,6 +3179,44 @@ retained preview and journal digest for this recovery.
 
 [GitHub reply mutation](https://docs.github.com/en/graphql/reference/pulls#addpullrequestreviewthreadreply)
 
+### Protected resolution of an answered review thread
+
+The initial and corrective call sites use the same resolution loop after the
+reply loop. A read-only selection authenticates the exact triage, review
+delivery and latest confirmed update. It rechecks the complete review inventory
+and all required replies. A delivered open thread is eligible when it has a
+visible accepted inline response obligation with the exact published reply.
+A previously resolved thread that reopens, an open thread without that
+obligation, or unsupported response evidence needs a fresh review or a
+documented exception under SPEC-R08. Exception admission remains separate.
+Current valid findings and pending corrections still require the correction
+path, redelivery and fresh review. An expired or refused grant or changed
+review keeps the call waiting.
+
+An executor consumes the accepted selection ID and triage ID. Its exact
+preview binds the repository, PR, HEAD, base, both refs, thread, reply proof,
+provider actor, protected host and complete observed review thread basis.
+The signed intent and durable CAS owner precede transport. The protected
+GitHub host reauthenticates and checks the fresh grant, current review and
+owner before invoking the fixed `resolveReviewThread` mutation. GitHub
+accepts the thread ID without a conditional HEAD. The host independently
+re-reads the subject and verifies that only the selected resolution bit
+changed in the retained basis. The nonce correlates the acknowledgement.
+
+An ambiguous acknowledgement, an absent postimage after a possible send, or
+an interrupted owner requires reconciliation. The original action resumes via
+provider reads. A fresh exact postimage can append a confirmed receipt under
+the original intent, grant and owner. This proves the resolved state. Causal
+attribution of that state is unavailable after a lost acknowledgement. An
+absent or changed postimage leaves the original dispatch in place. The loop
+admits up to 31 selected resolutions and reserves the 32nd iteration for the
+read-only completion check. The independent effects verifier then rechecks
+all replies and resolved threads. Separate operations govern merge consent,
+the merge effect and R09. Historical records retain their original contracts
+and bindings.
+
+[GitHub thread resolution mutation](https://docs.github.com/en/graphql/reference/pulls#resolvereviewthread)
+
 ### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
 
 The authored IR routes an accepted COMMITTING SPIKE plan into the same existing

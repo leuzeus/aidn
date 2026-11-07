@@ -47,7 +47,7 @@ function inspectStandardPrReviewReplies(original, current, dispositions, actor, 
   return { replies: [...proofs.values()], missing: [...expected.values()].filter(item => !proofs.has(item.node_id)), unresolved };
 }
 
-export function createStandardPrReviewEffectsReader({ readAccepted, readAcceptedUpdate, readDelivered, verifyEvent, readCurrent, reviewPort, now = Date.now }) {
+export function createStandardPrReviewEffectsReader({ readAccepted, readAcceptedUpdate, readDelivered, verifyEvent, readCurrent, reviewPort, readAcceptedReplies = () => [], now = Date.now }) {
   const readSource = createStandardPrAcceptedReviewSource({ readAccepted, readAcceptedUpdate, readDelivered, sourceChanged });
   function source(instance, input) {
     const review = readSource(instance, input);
@@ -101,7 +101,16 @@ export function createStandardPrReviewEffectsReader({ readAccepted, readAccepted
       fail('STANDARD_PR_EFFECTS_STALE_OBSERVATION');
     if (first.observation_sha256 !== last.observation_sha256 || shadowHash(evidence.reviews) !== shadowHash(before.review.evidence.reviews))
       return { reason: 'STANDARD_PR_EFFECTS_REVIEW_CHANGED' };
-    return { first, last, evidence, actor, request, ...inspectStandardPrReviewReplies(before.review.threads, last, dispositions, actor, before.notBefore) };
+    const inspected = inspectStandardPrReviewReplies(before.review.threads, last, dispositions, actor, before.notBefore);
+    if (inspected.reason) return inspected;
+    const prior = readAcceptedReplies(instance, before.triage.record.operation_id);
+    const proofs = new Map(inspected.replies.map(proof => [proof.target_id, proof]));
+    for (const reply of prior) {
+      const proof = proofs.get(reply.target_comment_id);
+      if (!proof || proof.reply_id !== reply.reply_id || proof.published_at !== reply.published_at)
+        return { reason: 'STANDARD_PR_REPLY_RETAINED_POSTIMAGE_CHANGED' };
+    }
+    return { first, last, evidence, actor, request, acceptedReplyCount: prior.length, ...inspected };
   }
   return { source, observe };
 }

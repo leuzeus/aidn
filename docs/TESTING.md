@@ -4210,6 +4210,21 @@ took 950 seconds on Windows, above the 900-second deadline for the entire
 required runtime family. This scope leaves upstream composed execution and
 live GitHub behavior open.
 
+Run `node tools/perf/verify-github-review-resolution-fixtures.mjs` for the
+resolution port and closed contracts. The standalone FILES cases use
+`verify-standard-pr-review-reply-fixtures.mjs --case=resolve-missing` for the
+initial delivery and `--case=resolve-interrupted` for corrective redelivery.
+Each uses a disposable project, a seeded signed upstream prefix, real host and
+journal ports, and a doubled GitHub transport. The initial case checks refusal
+at transport, a changed review, UNKNOWN after an acknowledgement with no
+postimage, and later read-only confirmation. The corrective case reopens a
+dispatching owner in a new process. The two cases check one send, retained
+owner/grant/intent, accepted effects, and effect-free simulation/replay.
+Keep the FILES cases outside the required 900-second family. Their evidence
+covers the published child from call entry through effects verification.
+Live GitHub, Native, PostgreSQL, installed-package and full workflow
+qualification are separate.
+
 The PR creation component retains its link in the authenticated process journal.
 A separate session_pr_record now consumes that receipt, its historical delivery
 postimages and current physical/provider evidence. It advances the canonical

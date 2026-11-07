@@ -15,21 +15,14 @@ function output(operation, outcome, effect_status, facts, observations, evidence
     : 'standard-pr-review-reply-publish-output.v1', operation_ref: operation, outcome, effect_status, facts, observations, evidence_refs });
 }
 
-export function createStandardPrReviewReply({ readAcceptedReplies, ...ports }) {
+export function createStandardPrReviewReply(ports) {
   const reader = createStandardPrReviewEffectsReader(ports);
   const port = ports.reviewPort?.reply;
 
-  async function inspect(instance, source, input, signal) {
+  async function inspect(instance, source, signal) {
     const observed = await reader.observe(instance, source, { signal });
     if (observed.reason) return observed;
-    const prior = readAcceptedReplies(instance, input.triage_operation_id);
-    const proofs = new Map(observed.replies.map(proof => [proof.target_id, proof]));
-    for (const reply of prior) {
-      const proof = proofs.get(reply.target_comment_id);
-      if (!proof || proof.reply_id !== reply.reply_id || proof.published_at !== reply.published_at)
-        return { reason: 'STANDARD_PR_REPLY_RETAINED_POSTIMAGE_CHANGED' };
-    }
-    if (prior.length + observed.missing.length > limit) return { reason: 'STANDARD_PR_REPLY_ITERATION_BOUND' };
+    if (observed.acceptedReplyCount + observed.missing.length > limit) return { reason: 'STANDARD_PR_REPLY_ITERATION_BOUND' };
     if (!observed.missing.length) return observed;
     // Check every outstanding obligation before granting any individual write.
     const threads = new Map(observed.last.threads.map(thread => [thread.node_id, thread]));
@@ -76,7 +69,7 @@ export function createStandardPrReviewReply({ readAcceptedReplies, ...ports }) {
     const source = reader.source(instance, input);
     if (source.sha256 !== plan.source_sha256 || source.pullRequest.repository_id !== plan.repository_id)
       fail('STANDARD_PR_REPLY_SOURCE_CHANGED');
-    const observed = await inspect(instance, source, input, signal);
+    const observed = await inspect(instance, source, signal);
     if (observed.reason) fail(observed.reason);
     const { request, basis_sha256 } = plan.provider.plan;
     const proof = observed.replies.find(reply => reply.target_id === request.target_comment_id);
@@ -94,7 +87,7 @@ export function createStandardPrReviewReply({ readAcceptedReplies, ...ports }) {
       try {
         const source = reader.source(instance, input);
         if (source.sha256 !== prepared.source_sha256) fail('STANDARD_PR_REPLY_SOURCE_CHANGED');
-        const observed = await inspect(instance, source, input, signal);
+        const observed = await inspect(instance, source, signal);
         if (observed.reason) return output(select, 'deferred', 'no_effect', {}, { reason_code: observed.reason });
         const chosen = selection(source, observed);
         return output(select, 'completed', 'no_effect', { session_pr_replies_observed: chosen === null }, { selection: chosen });
@@ -107,7 +100,7 @@ export function createStandardPrReviewReply({ readAcceptedReplies, ...ports }) {
       const chosen = accepted.output.observations.selection;
       if (!chosen || accepted.record.preview.input.triage_operation_id !== input.triage_operation_id)
         fail('STANDARD_PR_REPLY_SELECTION_REQUIRED');
-      const source = reader.source(instance, input), observed = await inspect(instance, source, input);
+      const source = reader.source(instance, input), observed = await inspect(instance, source);
       if (observed.reason) fail(observed.reason);
       const known = observed.replies.find(reply => reply.target_id === chosen.target_comment_id);
       const basis = githubPrReviewReplyBasis(observed.last, chosen.thread_id, known?.reply_id);

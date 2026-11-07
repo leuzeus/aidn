@@ -3,6 +3,7 @@ import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
 import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.mjs";
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
+import { createStandardPrReviewResolution } from "./standard-session-pr-review-resolution.mjs";
 import { createStandardPrReviewReply } from "./standard-session-pr-review-reply.mjs";
 import { createStandardPrReviewEffectsVerification } from "./standard-session-pr-review-effects.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
@@ -535,25 +536,31 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const sessionPrReviewReceiver = sessionPrReviewContent && createStandardPrReviewReceiver({ observer: sessionPrReviewContent,
     verifyEvent: verifyPrReviewEvent, readDelivered: readDeliveredPrReview });
+  function acceptedReviewEffects(instance, triageId, binding, observation) {
+    const receipts = new Map(instance.events.filter(event => event.kind === "operation_result" && event.receipt.outcome === "completed")
+      .map(event => [event.receipt.operation_id, event.receipt]));
+    return instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === binding
+      && receipts.has(event.intent.operation_id)).flatMap(({ intent }) => {
+      const record = retained(intent.operation_id).record, last = record.results.at(-1);
+      if (record.phase !== "receipted" || shadowHash(record.intent) !== shadowHash(intent)
+        || shadowHash(last.receipt) !== shadowHash(receipts.get(intent.operation_id))) fail("STANDARD_PR_REVIEW_EFFECT_HISTORY_CHANGED");
+      if (record.preview.input.triage_operation_id !== triageId) return [];
+      return [assertStandardOperationOutput(last.output).observations[observation]];
+    });
+  }
   const acceptedReviewPorts = { now, reviewPort: sessionReviewPort, readAccepted: acceptedForPromotion,
     readAcceptedUpdate: readAcceptedPrUpdate, readCurrent: id => current(id).record,
-    readDelivered: readDeliveredPrReview, verifyEvent: verifyPrReviewEvent };
+    readDelivered: readDeliveredPrReview, verifyEvent: verifyPrReviewEvent,
+    readAcceptedReplies: (instance, triageId) => acceptedReviewEffects(instance, triageId, "session_pr_review_reply_publish", "reply") };
   const sessionPrMerge = createStandardSessionPrMergeObservation(acceptedReviewPorts);
   const sessionPrEffects = createStandardPrReviewEffectsVerification(acceptedReviewPorts);
-  const sessionPrReply = createStandardPrReviewReply({ ...acceptedReviewPorts,
-    readAcceptedReplies(instance, triageId) {
-      const receipts = new Map(instance.events.filter(event => event.kind === "operation_result" && event.receipt.outcome === "completed")
-        .map(event => [event.receipt.operation_id, event.receipt]));
-      return instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "session_pr_review_reply_publish"
-        && receipts.has(event.intent.operation_id)).flatMap(({ intent }) => {
-        const record = retained(intent.operation_id).record, last = record.results.at(-1);
-        if (record.phase !== "receipted" || shadowHash(record.intent) !== shadowHash(intent)
-          || shadowHash(last.receipt) !== shadowHash(receipts.get(intent.operation_id))) fail("STANDARD_PR_REPLY_HISTORY_CHANGED");
-        if (record.preview.input.triage_operation_id !== triageId) return [];
-        return [assertStandardOperationOutput(last.output).observations.reply];
-      });
-    },
-  });
+  const sessionPrReply = createStandardPrReviewReply(acceptedReviewPorts);
+  const sessionPrResolution = createStandardPrReviewResolution({ ...acceptedReviewPorts,
+    readAcceptedResolutions: (instance, triageId) => acceptedReviewEffects(instance, triageId, "session_pr_review_thread_resolve", "resolution") });
+  const reviewEffects = new Map([
+    ["session_pr_review_reply_publish", sessionPrReply],
+    ["session_pr_review_thread_resolve", sessionPrResolution],
+  ]);
   const prTriage = processAuthority && sessionPrReviewReceiver ? createStandardPrTriageSource({
     readReceived: (instance, id) => acceptedForPromotion(instance, id, "session_pr_review_receive", "STANDARD_PR_TRIAGE_RECEIVED_REQUIRED"),
     observeReceived: (instance, input, options) => sessionPrReviewReceiver.observe(instance, input, options),
@@ -1109,7 +1116,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_correction_checkpoint" ? await prCorrectionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_reopen" ? await prCorrectionReopen?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_reply_select" ? sessionPrReply.prepareSelection(state.record, input)
-        : binding.id === "session_pr_review_reply_publish" ? await sessionPrReply.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
+        : binding.id === "session_pr_review_resolution_select" ? sessionPrResolution.prepareSelection(state.record, input)
+        : reviewEffects.has(binding.id) ? await reviewEffects.get(binding.id).prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
         : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
@@ -1215,9 +1223,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async dispatch(id, { write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.intent.binding_ref === "session_pr_review_reply_publish"
+      if (reviewEffects.has(record.intent.binding_ref)
         && (record.phase === "dispatching" || record.results.at(-1)?.receipt.outcome === "reconciliation_required"))
-        return operationHost.reconcilePrReviewReply(id, { write, signal });
+        return operationHost.reconcilePrReviewEffect(id, { write, signal });
       if (record.phase === "receipted") return { status: "retained_result", receipt: record.results.at(-1).receipt };
       if (record.phase !== "staged") return { status: "reconciliation_required", operation_id: id };
       const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
@@ -1270,13 +1278,15 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
         else if (record.intent.binding_ref === "session_pr_review_reply_select") output = await sessionPrReply.select(state.record, record.preview.input,
           record.preview.prepared, { signal });
-        else if (record.intent.binding_ref === "session_pr_review_reply_publish") output = await sessionPrReply.apply(state.record, record.preview.input,
+        else if (record.intent.binding_ref === "session_pr_review_resolution_select") output = await sessionPrResolution.select(state.record, record.preview.input,
+          record.preview.prepared, { signal });
+        else if (reviewEffects.has(record.intent.binding_ref)) output = await reviewEffects.get(record.intent.binding_ref).apply(state.record, record.preview.input,
           record.preview.prepared, { signal, assertAuthorized: async () => {
             await verifyGrant(record, signal);
             if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
               || shadowHash(retained(id).record) !== shadowHash(claimed)
               || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
-              throw Object.assign(Error("STANDARD_PR_REPLY_OWNER_CHANGED"), { code: "STANDARD_PR_REPLY_OWNER_CHANGED", effect_status: "no_effect" });
+              throw Object.assign(Error("STANDARD_PR_REVIEW_EFFECT_OWNER_CHANGED"), { code: "STANDARD_PR_REVIEW_EFFECT_OWNER_CHANGED", effect_status: "no_effect" });
           } });
         else if (record.intent.binding_ref === "session_pr_review_effects_verify") output = await sessionPrEffects.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
@@ -1386,14 +1396,17 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       persist({ ...claimedBody, phase: "receipted", revision: claimed.revision + 1, results: [{ output, receipt }] }, retainedClaim.content_sha256);
       return { status: "receipted", receipt };
     },
-    async reconcilePrReviewReply(id, { write = false, signal } = {}) {
+    async reconcilePrReviewEffect(id, { write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      readDispatchedOperation(state.record, id, "session_pr_review_reply_publish", "STANDARD_PR_REPLY_DISPATCH_REQUIRED");
+      const binding = record.intent.binding_ref, effect = reviewEffects.get(binding);
+      if (!effect) fail("STANDARD_PR_REVIEW_EFFECT_DISPATCH_REQUIRED");
+      const reply = binding === "session_pr_review_reply_publish";
+      readDispatchedOperation(state.record, id, binding, reply ? "STANDARD_PR_REPLY_DISPATCH_REQUIRED" : "STANDARD_PR_RESOLUTION_DISPATCH_REQUIRED");
       if (record.results.length >= 32) fail("PROCESS_JOURNAL_RESULTS_LIMIT");
-      const output = await sessionPrReply.recover(state.record, record.preview.input, record.preview.prepared, { signal });
+      const output = await effect.recover(state.record, record.preview.input, record.preview.prepared, { signal });
       if (!output?.contract_version) return { status: "reconciliation_required", operation_id: id, effect_status: "unknown",
-        reason_code: output?.reason_code ?? "STANDARD_PR_REPLY_POSTIMAGE_UNAVAILABLE" };
+        reason_code: output?.reason_code ?? (reply ? "STANDARD_PR_REPLY_POSTIMAGE_UNAVAILABLE" : "STANDARD_PR_RESOLUTION_POSTIMAGE_UNAVAILABLE") };
       await verifyGrant(record, signal);
       if (signal?.aborted || current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
         || shadowHash(retained(id).record) !== shadowHash(record)
