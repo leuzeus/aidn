@@ -3119,6 +3119,21 @@ and issues neither consent nor check acceptance. Provider writes, documented
 exceptions, refreshed triage routing, consent, merge and post-merge
 reconciliation remain separate work.
 
+### Shared PR review continuation
+
+The initial and corrective deliveries call the same embedded
+aidn-standard-pr-review-completion target. Its model identity and operation
+bindings are pinned in the published catalog. Each call passes its own
+accepted triage operation ID through a closed string parameter. The two
+read-only operations resolve the parameter in the child scope. The host still
+authenticates the accepted triage, delivery and review at execution.
+
+The parent remains waiting while a child receipt is deferred or blocked.
+The common engine retains call entry and child occurrence identity in the
+instance so a restart resumes the same child. The target has an empty return
+interface. A call transition carries no authorization or successful review
+outcome. The historical direct operation shape retains its original reader.
+
 ### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
 
 The authored IR routes an accepted COMMITTING SPIKE plan into the same existing

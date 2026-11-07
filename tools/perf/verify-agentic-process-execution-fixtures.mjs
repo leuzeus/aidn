@@ -1033,7 +1033,13 @@ if (process.argv[2] === "--mixed-continue") {
           journals.set(id, shadowHash(journal));
           return journal;
         };
-        if (entering) {
+        if (["session_pr_effects_pending", "correction_pr_effects_pending"].includes(call.node_id)) {
+          assert.equal(entering, true);
+          const triage = accepted(event.resolution.input.triage_operation_id, "session_pr_triage_evaluate");
+          const triageNode = call.node_id.replace("_effects_pending", "_triage_evaluate");
+          assert.equal(state.cursor.occurrences.find(row => row.occurrence_id === triage.intent.occurrence_id)?.node_id, triageNode);
+          assert.deepEqual(event.resolution.input, { triage_operation_id: triage.intent.operation_id });
+        } else if (entering) {
           const { validation_operation_id, progress_operation_id } = event.resolution.input;
           accepted(validation_operation_id, "cycle_validation_execute");
           const progress = accepted(progress_operation_id, "cycle_task_advance");
@@ -1102,7 +1108,7 @@ if (process.argv[2] === "--mixed-continue") {
       }
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
-      if (stopsAtPrEffects && ["session_pr_review_effects_verify", "correction_pr_review_effects_verify"].includes(frame.node_id)) {
+      if (stopsAtPrEffects && frame.node_id === "pr_review_effects_verify") {
         const observed = await f.open().step({ write: true, authorization: auth });
         assert.equal(observed.status, "WAITING");
         break;
@@ -1254,7 +1260,9 @@ if (process.argv[2] === "--mixed-continue") {
     const final = f.open().inspect();
     if (stopsAtPrEffects) {
       assert.equal(final.cursor.status, "WAITING");
-      const frame = final.cursor.occurrences.find(row => row.node_id === (fullCorrection ? "correction_pr_review_effects_verify" : "session_pr_review_effects_verify"));
+      const call = final.cursor.occurrences.find(row => row.node_id === (fullCorrection ? "correction_pr_effects_pending" : "session_pr_effects_pending"));
+      assert.equal(call.status, "WAITING");
+      const frame = final.cursor.occurrences.find(row => row.node_id === "pr_review_effects_verify" && row.call_scope_id === call.occurrence_id);
       assert.equal(frame.operation.receipt.outcome, "deferred");
       assert.equal(frame.operation.receipt.effect_status, "no_effect");
       assert.deepEqual(frame.operation.receipt.facts, {});

@@ -2,7 +2,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { createAgenticProcessStore } from '../../src/adapters/runtime/agentic-process-store.mjs';
 import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
 import { createGithubPrMergeAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
 import { loadStandardWorkflowAssets } from '../../src/application/runtime/standard-workflow-composition.mjs';
@@ -10,6 +13,8 @@ import { createStandardPrReviewEffectsVerification } from '../../src/application
 import { createStandardSessionPrMergeObservation } from '../../src/application/runtime/standard-session-pr-merge-observe.mjs';
 import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess } from '../../src/core/workflow/agentic-process.mjs';
 import { simulateAgenticProcess } from '../../src/core/workflow/agentic-process-simulation.mjs';
+import { processFrameModel, processFrameNode } from '../../src/core/workflow/process-call-model.mjs';
+import { resolveProcessCallData } from '../../src/core/workflow/process-call-data.mjs';
 import { resolveProcessFrameInput } from '../../src/core/workflow/process-frame-input.mjs';
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from '../../src/core/workflow/process-operation-journal.mjs';
 import { assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
@@ -28,16 +33,26 @@ const asMerged = () => ({ state: 'MERGED', merged: true, mergedAt,
 
 function fixture(prefix = 'session', correctionsRequired = false, effects = null) {
   const updateBinding = prefix === 'session' ? 'session_pr_update_push' : 'session_pr_redelivery_push';
+  const target = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-completion');
+  const callSite = prefix + '_pr_effects_pending', triageNode = prefix + '_pr_triage_evaluate';
   const nodeIds = [prefix === 'session' ? updateBinding : 'correction_pr_redelivery_push',
-    ...['review_receive', 'triage_select', 'triage_evaluate', ...(effects ? ['review_effects_verify'] : []), 'merge_observe'].map(name => prefix + '_pr_' + name)];
+    ...['review_receive', 'triage_select', 'triage_evaluate'].map(name => prefix + '_pr_' + name),
+    effects ? callSite : prefix + '_pr_merge_observe'];
   const nodes = nodeIds.map(id => published.nodes.find(node => node.id === id));
+  // Exercise the historical direct operation shape separately from the call.
+  if (!effects) nodes[nodes.length - 1] = { ...target.model.nodes.find(node => node.id === 'pr_merge_observe'), id: nodeIds.at(-1) };
+  const terminal = effects ? published.data_bindings.inputs.find(row => row.node_id === callSite) : {
+    node_id: nodeIds.at(-1), fields: { contract_version: { source: 'literal', value: 'standard-session-pr-merge-observe-input.v1' },
+      triage_operation_id: { source: 'operation_id', node_id: triageNode } },
+  };
   const model = { contract_version: 'agentic-process-model.v2', model_id: 'a9-fixture', revision: 1,
     participants: [{ id: 'project' }], roles: [], policies: [], entry: 'sequence',
     nodes: [{ id: 'sequence', kind: 'sequence', participant_ref: 'project', children: nodeIds }, ...nodes],
-    operation_pins: Object.fromEntries(nodes.map(node => [node.binding_ref, published.operation_pins[node.binding_ref]])),
+    operation_pins: Object.fromEntries(nodes.filter(node => node.kind === 'operation')
+      .map(node => [node.binding_ref, published.operation_pins[node.binding_ref] ?? target.model.operation_pins[node.binding_ref]])),
+    ...(effects ? { call_targets: [target] } : {}),
     data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [],
-      inputs: nodeIds.map(node_id => node_id === nodeIds.at(-1) || node_id.endsWith('_pr_review_effects_verify')
-        ? published.data_bindings.inputs.find(row => row.node_id === node_id) : { node_id, fields: {} }) } };
+      inputs: nodeIds.map(node_id => node_id === terminal.node_id ? terminal : { node_id, fields: {} }) } };
   const initial = { instanceId: 'merge-fixture', scopeId: 'fixture-scope', model, policyPins: {}, facts: {}, parameters: {} };
   let instance = createAgenticProcess(initial);
   const retained = new Map(), provider = {
@@ -50,9 +65,9 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
   function apply(binding, input, output, prepare) {
     const cursor = inspectAgenticProcess(instance);
     const frame = cursor.occurrences.find(row => row.status === 'READY' || row.operation?.receipt?.outcome === 'deferred' || row.operation?.receipt?.outcome === 'blocked');
-    assert.equal(nodes.find(node => node.id === frame.node_id).binding_ref, binding);
+    assert.equal(processFrameNode(model, frame).binding_ref, binding);
     const id = operationJournalId(instance, frame.occurrence_id), intent = { contract_version: 'process-operation-intent.v1',
-      operation_id: id, binding_ref: binding, binding_sha256: model.operation_pins[binding], input_sha256: shadowHash(input),
+      operation_id: id, binding_ref: binding, binding_sha256: processFrameModel(model, frame).operation_pins[binding], input_sha256: shadowHash(input),
       preconditions_sha256: shadowHash(prepare ?? {}), authorization_sha256: null, authority_id: 'fixture_host', scope_id: instance.scope_id,
       instance_id: instance.instance_id, instance_sha256: instance.instance_sha256, model_sha256: instance.model_sha256,
       occurrence_id: frame.occurrence_id, instance_revision: instance.revision };
@@ -82,6 +97,21 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
   { selection_operation_id: selection, received_operation_id: received, payload_sha256: shadowHash(payload),
     head_oid: head, base_oid: base, triage_completion: 'pending-effects-and-verification', merge_authorization: 'not-established',
     ...(effects ? { dispositions: effects.dispositions } : {}) });
+  let callOccurrence;
+  if (effects) {
+    const cursor = inspectAgenticProcess(instance);
+    const call = cursor.occurrences.find(row => row.node_id === callSite);
+    assert.equal(call.wait_reason, 'call_entry');
+    callOccurrence = call.occurrence_id;
+    const data = resolveProcessCallData({ instance, cursor, occurrenceId: callOccurrence });
+    assert.deepEqual(data.resolution.input, { triage_operation_id: triage });
+    assert.deepEqual(data.witnesses, []);
+    const event = { event_id: 'enter_pr_review', kind: 'call_enter', occurrence_id: callOccurrence, ...data };
+    const forged = structuredClone(event);
+    forged.resolution.input.triage_operation_id = update;
+    assert.throws(() => advanceAgenticProcess(instance, forged), { code: 'PROCESS_CALL_RESOLUTION_CHANGED' });
+    instance = advanceAgenticProcess(instance, event);
+  }
   const transport = createGithubPrMergeAsyncAdapter({ executable: process.execPath, executableSha256, workingDirectory: os.tmpdir(),
     repository: { owner: 'fixture', name: 'repository', node_id: link.repository_id } }, { now: () => now,
     async run(_bin, args, options) {
@@ -107,8 +137,9 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
       if (!provider.current) throw Object.assign(Error('fixture event revoked'), { code: 'PROCESS_CONTROL_PR_NOT_AUTHENTICATED' });
     } });
   const attempt = async (observer = open()) => {
-    const cursor = inspectAgenticProcess(instance), node = nodeIds.at(effects ? -2 : -1);
-    const frame = cursor.occurrences.find(row => row.node_id === node);
+    const cursor = inspectAgenticProcess(instance);
+    const frame = cursor.occurrences.find(row => effects ? row.node_id === 'pr_review_effects_verify'
+      && row.call_scope_id === callOccurrence : row.node_id === nodeIds.at(-1));
     const { input } = resolveProcessFrameInput({ instance, cursor, occurrenceId: frame.occurrence_id });
     assert.equal(input.triage_operation_id, triage);
     const prepared = observer.prepare(instance, input);
@@ -116,7 +147,11 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     const id = apply(effects ? 'session_pr_review_effects_verify' : 'session_pr_merge_observe', input, output, prepared);
     const next = inspectAgenticProcess(instance);
     if (output.outcome === 'completed') {
-      assert.equal(next.occurrences.find(row => row.status === 'READY').node_id, nodeIds.at(-1));
+      const merge = next.occurrences.find(row => row.status === 'READY');
+      assert.equal(merge.node_id, 'pr_merge_observe');
+      assert.equal(merge.call_scope_id, callOccurrence);
+      assert.deepEqual(resolveProcessFrameInput({ instance, cursor: next, occurrenceId: merge.occurrence_id }).input,
+        { contract_version: 'standard-session-pr-merge-observe-input.v1', triage_operation_id: triage });
       assert.deepEqual(instance.events.at(-1).receipt.facts, { session_pr_review_effects_verified: true });
     } else {
       assert.equal(next.status, 'WAITING');
@@ -125,9 +160,42 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     assert.equal(instance.events.at(-1).receipt.effect_status, 'no_effect');
     return { output, id };
   };
-  return { provider, attempt, open, replay() {
+  return { provider, attempt, open, replay(cold = false) {
     instance = JSON.parse(JSON.stringify(instance));
     assert.equal(simulateAgenticProcess({ ...initial, events: instance.events }).trace.at(-1).instance_sha256, instance.instance_sha256);
+    if (!cold) return;
+    const parent = fs.realpathSync(os.tmpdir());
+    const targetRoot = fs.mkdtempSync(path.join(parent, 'aidn-pr-review-call-'));
+    try {
+      fs.mkdirSync(path.join(targetRoot, '.aidn'));
+      fs.writeFileSync(path.join(targetRoot, '.aidn', 'config.json'), JSON.stringify({ runtime: { stateMode: 'files' } }));
+      const store = createAgenticProcessStore({ targetRoot, stateMode: 'files', env: {} });
+      assert.equal(store.compareAndSwap(instance, null).written, true);
+      const before = store.read(instance.instance_id).content_sha256;
+      const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
+        import { readFileSync } from 'node:fs';
+        import { createAgenticProcessStore } from ${JSON.stringify(new URL('../../src/adapters/runtime/agentic-process-store.mjs', import.meta.url).href)};
+        import { createAgenticProcessService } from ${JSON.stringify(new URL('../../src/application/runtime/agentic-process-service.mjs', import.meta.url).href)};
+        import { resolveProcessFrameInput } from ${JSON.stringify(new URL('../../src/core/workflow/process-frame-input.mjs', import.meta.url).href)};
+        const { targetRoot, instanceId, callOccurrence } = JSON.parse(readFileSync(0, 'utf8'));
+        const store = createAgenticProcessStore({ targetRoot, stateMode: 'files', env: {} });
+        const { record: instance, cursor } = createAgenticProcessService({ store }).inspect(instanceId);
+        const frame = cursor.occurrences.find(row => row.call_scope_id === callOccurrence && row.node_id === 'pr_review_effects_verify');
+        const { input } = resolveProcessFrameInput({ instance, cursor, occurrenceId: frame.occurrence_id });
+        console.log(JSON.stringify({ status: cursor.status, instance_sha256: instance.instance_sha256, input,
+          call_entries: instance.events.filter(row => row.kind === 'call_enter' && row.occurrence_id === callOccurrence).length }));
+      `], { input: JSON.stringify({ targetRoot, instanceId: instance.instance_id, callOccurrence }), encoding: 'utf8', windowsHide: true, timeout: 30000 });
+      assert.equal(child.status, 0, child.stderr);
+      assert.deepEqual(JSON.parse(child.stdout), { status: 'WAITING', instance_sha256: instance.instance_sha256,
+        input: { contract_version: 'standard-session-pr-review-effects-input.v1', triage_operation_id: triage }, call_entries: 1 });
+      assert.equal(store.read(instance.instance_id).content_sha256, before);
+    } finally {
+      const resolved = fs.realpathSync(targetRoot);
+      assert.equal(resolved, targetRoot);
+      assert.equal(path.dirname(resolved), parent);
+      assert.ok(path.basename(resolved).startsWith('aidn-pr-review-call-'));
+      fs.rmSync(resolved, { recursive: true });
+    }
   } };
 }
 
@@ -223,7 +291,7 @@ for (const prefix of ['session', 'correction']) {
   assert.equal(waiting.output.outcome, 'deferred');
   assert.equal(waiting.output.observations.reason_code, 'STANDARD_PR_EFFECTS_REPLY_REQUIRED');
   const calls = f.github.calls.length;
-  f.replay();
+  f.replay(true);
   assert.equal(f.github.calls.length, calls);
   f.reply();
   assert.equal((await f.attempt()).output.observations.reason_code, 'STANDARD_PR_EFFECTS_RESOLUTION_REQUIRED');

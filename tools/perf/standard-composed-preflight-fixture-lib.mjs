@@ -10,9 +10,14 @@ import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-
 const H = "a".repeat(64), fail = code => { throw Object.assign(Error(code), { code }); };
 const stops = { session_pr_correction_decide: "session_pr_correction_decide", plan: "plan", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
 const keys = (v, names) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join() === [...names].sort().join();
-const effectsPendingNodes = ["session_pr_review_effects_verify", "correction_pr_review_effects_verify"];
-const verificationTargetId = "aidn-standard-final-verification";
-const verificationSites = ["final_verification", "correction_final_verification"];
+const effectsPendingNode = "pr_review_effects_verify";
+const verificationTargetId = "aidn-standard-final-verification", reviewTargetId = "aidn-standard-pr-review-completion";
+const callSites = new Map([
+  ["final_verification", { model_id: verificationTargetId, prefix: "" }],
+  ["correction_final_verification", { model_id: verificationTargetId, prefix: "correction_" }],
+  ["session_pr_effects_pending", { model_id: reviewTargetId, prefix: "session_" }],
+  ["correction_pr_effects_pending", { model_id: reviewTargetId, prefix: "correction_" }],
+]);
 
 // Test planning only. Synthetic receipts/control/assignments never authenticate
 // a human, native producer, provider or effect. Routing uses the execution reducer.
@@ -28,9 +33,11 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     || typeof scenario.cold_resume !== "boolean" || !Number.isSafeInteger(scenario.max_responses) || scenario.max_responses < 1
     || ![...Object.keys(stops), "component_complete", "pr_effects_pending"].includes(stop)) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
   const interruption = scenario.interruption;
-  const target = model.model_id === "aidn-standard" ? model.call_targets?.find(row => row.model_id === verificationTargetId)?.model : null;
-  const targetLabels = verificationSites.flatMap((site, index) => model.nodes.some(node => node.id === site && node.target?.model_id === verificationTargetId)
-    ? (target?.nodes ?? []).filter(node => node.kind === "operation").map(node => (index === 0 ? "" : "correction_") + node.id) : []);
+  const targetLabels = model.model_id === "aidn-standard" ? [...callSites].flatMap(([site, { model_id, prefix }]) => {
+    const target = model.call_targets?.find(row => row.model_id === model_id)?.model;
+    return model.nodes.some(node => node.id === site && node.target?.model_id === model_id)
+      ? (target?.nodes ?? []).filter(node => node.kind === "operation").map(node => prefix + node.id) : [];
+  }) : [];
   if (interruption !== null && (!keys(interruption, ["node_id", "outcome"])
     || !(targetLabels.includes(interruption.node_id) || model.nodes.some(n => n.id === interruption.node_id && ["operation", "activity"].includes(n.kind)))
     || !["blocked", "deferred", "rejected", "failed", "cancelled"].includes(interruption.outcome))) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
@@ -53,9 +60,9 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   for (let step = 0; step < 200; step++) {
     const cursor = inspectAgenticProcess(state);
     if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) break;
-    const call = target && cursor.occurrences.find(frame => frame.status === "WAITING"
-      && ["call_entry", "call_return"].includes(frame.wait_reason) && verificationSites.includes(frame.node_id)
-      && processFrameNode(model, frame).target?.model_id === verificationTargetId);
+    const call = model.model_id === "aidn-standard" && cursor.occurrences.find(frame => frame.status === "WAITING"
+      && ["call_entry", "call_return"].includes(frame.wait_reason) && callSites.has(frame.node_id)
+      && processFrameNode(model, frame).target?.model_id === callSites.get(frame.node_id).model_id);
     if (call) {
       const returning = call.wait_reason === "call_return", occurrence_id = call.occurrence_id;
       // Only accepted operation IDs enter this fixture call. It supplies no
@@ -72,7 +79,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     if (node.id === stops[stop]) break;
     if (node.kind === "operation") {
       const site = frame.call_scope_id && cursor.occurrences.find(row => row.occurrence_id === frame.call_scope_id);
-      const label = site?.node_id === "correction_final_verification" ? "correction_" + node.id : node.id;
+      const label = (callSites.get(site?.node_id)?.prefix ?? "") + node.id;
       const verificationLeaf = model.model_id === "aidn-standard" &&
         ["final_validation", "verification_enter", "correction_final_validation", "correction_verification_enter"].includes(label);
       const resolution = verificationLeaf ? resolveProcessFrameInput({ instance: state, cursor, occurrenceId: frame.occurrence_id }) : null;
@@ -81,7 +88,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         operation_id: intent.operation_id, input: resolution.input, sources: resolution.sources });
       emit({ kind: "operation_intent", occurrence_id: frame.occurrence_id, intent });
       if (interruption?.node_id === label) { opResult(frame, intent, interruption.outcome); interrupted = true; break; }
-      if (effectsPendingNodes.includes(node.id)) {
+      if (node.id === effectsPendingNode) {
         if (stop !== "pr_effects_pending") fail("STANDARD_FIXTURE_PREFLIGHT_INCOMPLETE");
         opResult(frame, intent, "deferred");
         operations.push(label);
@@ -149,7 +156,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   if (interruption && !interrupted) fail("STANDARD_FIXTURE_INTERRUPTION_NOT_REACHED");
   if (!interrupted && stop === "component_complete" && cursor.status !== "COMPLETED") fail("STANDARD_FIXTURE_PREFLIGHT_INCOMPLETE");
   if (!interrupted && stop === "pr_effects_pending" && !cursor.occurrences.some(f => f.status === "WAITING"
-    && effectsPendingNodes.includes(f.node_id) && f.operation?.receipt?.outcome === "deferred")) fail("STANDARD_FIXTURE_STOP_NOT_REACHED");
+    && f.node_id === effectsPendingNode && f.operation?.receipt?.outcome === "deferred")) fail("STANDARD_FIXTURE_STOP_NOT_REACHED");
   if (!interrupted && Object.hasOwn(stops, stop) && !cursor.occurrences.some(f => f.status === "READY" && f.node_id === stops[stop]))
     fail("STANDARD_FIXTURE_STOP_NOT_REACHED");
   let replay;

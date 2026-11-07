@@ -859,8 +859,10 @@ catalog still declares complete_standard_workflow=false.
 
 ## R08 review verification for both deliveries
 
-The initial and corrective delivery paths each run a deterministic
-session_pr_review_effects_verify bound to their accepted triage operation.
+The initial and corrective delivery paths pass their own accepted triage
+operation ID to the same pinned aidn-standard-pr-review-completion target.
+Inside the call, the deterministic session_pr_review_effects_verify and
+session_pr_merge_observe bindings resolve that ID through a typed parameter.
 The host reads the delivered event and current update receipts, then compares
 fresh authenticated thread and review evidence for the exact PR, HEAD and base.
 Submitted replies with the accepted body and actor and observed thread

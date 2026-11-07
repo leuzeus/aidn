@@ -28,6 +28,14 @@ const op = (id, binding_ref, fields = {}) => {
   node(id, "operation", { binding_ref }); inputs.push({ node_id: id, fields }); return id;
 };
 const operation = (node_id, field, source) => ({ [field]: { source: "operation_id", node_id: source } });
+function pinTarget(model) {
+  const previous = existing?.call_targets?.find(row => row.model_id === model.model_id);
+  if (previous) {
+    model.revision = previous.revision;
+    if (shadowHash(model) !== previous.model_sha256) model.revision++;
+  }
+  return processModelIdentity(model);
+}
 const occurrence = source => ({ report_occurrence_id: { source: "occurrence_id", node_id: source } });
 const native = (id, role_ref, policy_ref, output_contract, skill_ids, rule_refs) => {
   node(id, "activity", { role_ref, policy_ref });
@@ -128,9 +136,24 @@ op("session_pr_correction_decide", "session_pr_correction_decision", {
   ...operation("session_pr_correction_decide", "checkpoint_operation_id", "session_pr_correction_checkpoint") });
 op("session_pr_correction_checkpoint", "session_pr_correction_checkpoint", operation("session_pr_correction_checkpoint", "reopen_operation_id", "session_pr_correction_reopen"));
 op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("session_pr_correction_reopen", "triage_operation_id", "session_pr_triage_evaluate"));
-seq("session_pr_effects_pending", ["session_pr_review_effects_verify", "session_pr_merge_observe"]);
-op("session_pr_review_effects_verify", "session_pr_review_effects_verify", operation(null, "triage_operation_id", "session_pr_triage_evaluate"));
-op("session_pr_merge_observe", "session_pr_merge_observe", operation("session_pr_merge_observe", "triage_operation_id", "session_pr_triage_evaluate"));
+// The two deliveries pass their own accepted triage operation into the same
+// pinned continuation. A deferred child operation keeps its call open.
+const firstPrNode = nodes.length, firstPrInput = inputs.length;
+const triageId = { triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] } };
+seq("pr_review_completion", ["pr_review_effects_verify", "pr_merge_observe"]);
+op("pr_review_effects_verify", "session_pr_review_effects_verify", triageId);
+op("pr_merge_observe", "session_pr_merge_observe", triageId);
+const prReviewNodes = nodes.splice(firstPrNode);
+const prReviewTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-pr-review-completion", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "pr_review_completion", nodes: prReviewNodes,
+  operation_pins: pinsFor(prReviewNodes), call_interface: { parameters: { triage_operation_id: "string" }, returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["triage_operation_id"], inputs: inputs.splice(firstPrInput) } };
+const prReviewRef = pinTarget(prReviewTarget);
+function callPrReview(id, triage) {
+  node(id, "call", { target: prReviewRef });
+  inputs.push({ node_id: id, fields: operation(null, "triage_operation_id", triage) });
+}
+callPrReview("session_pr_effects_pending", "session_pr_triage_evaluate");
 op("session_pr_checkpoint", "session_pr_checkpoint", operation("session_pr_checkpoint", "record_operation_id", "session_pr_record"));
 op("session_pr_update_push", "session_pr_update_push", operation("session_pr_update_push", "checkpoint_operation_id", "session_pr_checkpoint"));
 op("session_pr_record", "session_pr_record", operation("session_pr_record", "open_operation_id", "session_pr_open"));
@@ -200,12 +223,7 @@ const verificationTarget = { contract_version: "agentic-process-model.v2", model
   operation_pins: pinsFor(verificationNodes),
   call_interface: { parameters: Object.fromEntries(verificationParameters.map(key => [key, "string"])), returns: {} },
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: verificationParameters, inputs: inputs.splice(firstTargetInput) } };
-const previousTarget = existing?.call_targets?.find(row => row.model_id === verificationTarget.model_id);
-if (previousTarget) {
-  verificationTarget.revision = previousTarget.revision;
-  if (shadowHash(verificationTarget) !== previousTarget.model_sha256) verificationTarget.revision++;
-}
-const verificationRef = processModelIdentity(verificationTarget);
+const verificationRef = pinTarget(verificationTarget);
 node("final_verification", "call", { target: verificationRef });
 inputs.push({ node_id: "final_verification", fields: {
   ...operation(null, "validation_operation_id", "validate"), ...operation(null, "progress_operation_id", "task_advance"),
@@ -315,9 +333,7 @@ for (const id of reviewNodes) {
   const activity = activities.find(row => row.node_id === id);
   if (activity) activities.push({ ...structuredClone(activity), node_id: copy.id });
 }
-seq("correction_pr_effects_pending", ["correction_pr_review_effects_verify", "correction_pr_merge_observe"]);
-op("correction_pr_review_effects_verify", "session_pr_review_effects_verify", operation(null, "triage_operation_id", "correction_pr_triage_evaluate"));
-op("correction_pr_merge_observe", "session_pr_merge_observe", operation("correction_pr_merge_observe", "triage_operation_id", "correction_pr_triage_evaluate"));
+callPrReview("correction_pr_effects_pending", "correction_pr_triage_evaluate");
 seq("correction_pr_redelivery", ["correction_pr_redelivery_push", ...reviewRoots.map(reviewName), "correction_pr_effects_pending"]);
 nodes.find(row => row.id === "correction_cycle").children.push("correction_pr_redelivery");
 
@@ -432,7 +448,10 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" },
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
-  operation_pins: pinsFor(nodes), call_targets: [{ ...verificationRef, model: verificationTarget }],
+  operation_pins: pinsFor(nodes), call_targets: [
+    { ...verificationRef, model: verificationTarget },
+    { ...prReviewRef, model: prReviewTarget },
+  ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
 if (existing) {
   model.revision = existing.revision;

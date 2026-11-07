@@ -17,11 +17,12 @@ const test = (name, run, finalVerification = false) => {
 };
 const plan = (changes = {}, stop = "pr_effects_pending") => preflightStandardComposedFixture({ model, scenario: { ...scenario, ...changes }, stop });
 function verifyFinalVerificationCalls(result, sites) {
-  assert.deepEqual(result.call_transitions.map(row => [row.node_id, row.kind]),
+  const transitions = result.call_transitions.filter(row => sites.includes(row.node_id));
+  assert.deepEqual(transitions.map(row => [row.node_id, row.kind]),
     sites.flatMap(site => [[site, "call_enter"], [site, "call_return"]]));
   assert.equal(result.verification_inputs.length, sites.length * 2);
   for (let index = 0; index < sites.length; index++) {
-    const [entry, returned] = result.call_transitions.slice(index * 2, index * 2 + 2);
+    const [entry, returned] = transitions.slice(index * 2, index * 2 + 2);
     const [evaluation, verification] = result.verification_inputs.slice(index * 2, index * 2 + 2);
     assert.deepEqual(entry.resolution.sources.map(source => [source.field, source.source, source.operation_id]),
       ["progress_operation_id", "validation_operation_id"].map(field => [field, "operation_id", entry.resolution.input[field]]));
@@ -33,8 +34,20 @@ function verifyFinalVerificationCalls(result, sites) {
     assert.deepEqual(returned.resolution.input, {});
     assert.deepEqual([entry.witnesses, returned.witnesses], [[], []]);
   }
-  const inputs = result.call_transitions.filter(row => row.kind === "call_enter").flatMap(row => Object.values(row.resolution.input));
+  const inputs = transitions.filter(row => row.kind === "call_enter").flatMap(row => Object.values(row.resolution.input));
   assert.equal(new Set(inputs).size, inputs.length);
+}
+function verifyReviewCall(result, prefix) {
+  const [entry] = result.call_transitions.slice(-1);
+  assert.equal(entry.node_id, prefix + "_pr_effects_pending");
+  assert.equal(entry.kind, "call_enter");
+  assert.equal(result.call_transitions.filter(row => row.node_id.endsWith("_pr_effects_pending")).length, 1);
+  assert.deepEqual(entry.witnesses, []);
+  const { triage_operation_id } = entry.resolution.input;
+  assert.ok(triage_operation_id);
+  assert.deepEqual(entry.resolution.sources.map(({ field, source, operation_id }) => [field, source, operation_id]),
+    [["triage_operation_id", "operation_id", triage_operation_id]]);
+  assert.equal(result.operations.at(-1), prefix + "_pr_review_effects_verify");
 }
 test("positive path selects nine native turns; its cold prefix keeps the same cumulative ceiling", () => {
   const result = plan();
@@ -43,8 +56,9 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.cold_resume_checkpoints.length, 1); assert.equal(result.cold_resume_checkpoints[0].responses, 5);
   assert.equal(result.responses_required - result.cold_resume_checkpoints[0].responses, 4);
   assert.equal(result.planned_status, "WAITING"); assert.equal(result.replay_exact, true);
-  assert.equal(result.operations.length, 69); assert.equal(result.event_count, 161);
+  assert.equal(result.operations.length, 69); assert.equal(result.event_count, 162);
   verifyFinalVerificationCalls(result, ["final_verification"]);
+  verifyReviewCall(result, "session");
   assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
 }, true);
 test("correction prefix stops at a real undecided human occurrence without inventing a negative decision", () => {
@@ -78,8 +92,9 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 119); assert.equal(result.event_count, 280);
+  assert.equal(result.operations.length, 119); assert.equal(result.event_count, 281);
   verifyFinalVerificationCalls(result, ["final_verification", "correction_final_verification"]);
+  verifyReviewCall(result, "correction");
   assert.ok(result.operations.includes('correction_initialize'));
   assert.ok(result.operations.includes('correction_session_branch_integrate'));
   assert.ok(result.operations.includes('correction_pr_redelivery_push'));

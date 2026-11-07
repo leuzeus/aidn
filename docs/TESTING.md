@@ -1304,9 +1304,11 @@ read-only GitHub query through a transport double and uses signed fixture
 receipts and the execution reducer to replay both observation occurrences.
 It checks OPEN to MERGED on a fresh attempt, typed refusals, immutable receipt
 inputs and continued waiting with no review or sync facts. For R08, the fixture
-replays both published verification occurrences from a signed fixture prefix.
-Missing, changed, premature, draft, minimized and ambiguous replies remain in
-waiting. A fresh exact reply and a resolved thread let the reducer reach the
+exercises both published call sites and their shared verification occurrence
+from a signed fixture prefix. It refuses a substituted triage input and
+reopens the waiting child from the FILES store in a fresh Node process with
+the same call identity and input. Missing, changed, premature, draft, minimized and ambiguous replies
+remain in waiting. A fresh exact reply and a resolved thread let the reducer reach the
 merge observation. The companion composition fixture verifies the shipped
 graph and implementation pins.
 Live provider, installed execution and the long corrective journey are
