@@ -1102,7 +1102,7 @@ if (process.argv[2] === "--mixed-continue") {
       }
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
-      if (stopsAtPrEffects && ["session_pr_merge_observe", "correction_pr_merge_observe"].includes(frame.node_id)) {
+      if (stopsAtPrEffects && ["session_pr_review_effects_verify", "correction_pr_review_effects_verify"].includes(frame.node_id)) {
         const observed = await f.open().step({ write: true, authorization: auth });
         assert.equal(observed.status, "WAITING");
         break;
@@ -1254,7 +1254,7 @@ if (process.argv[2] === "--mixed-continue") {
     const final = f.open().inspect();
     if (stopsAtPrEffects) {
       assert.equal(final.cursor.status, "WAITING");
-      const frame = final.cursor.occurrences.find(row => row.node_id === (fullCorrection ? "correction_pr_merge_observe" : "session_pr_merge_observe"));
+      const frame = final.cursor.occurrences.find(row => row.node_id === (fullCorrection ? "correction_pr_review_effects_verify" : "session_pr_review_effects_verify"));
       assert.equal(frame.operation.receipt.outcome, "deferred");
       assert.equal(frame.operation.receipt.effect_status, "no_effect");
       assert.deepEqual(frame.operation.receipt.facts, {});

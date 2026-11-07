@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
-import { createGithubPrMergeAsyncAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
+import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
+import { createGithubPrMergeAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
 import { loadStandardWorkflowAssets } from '../../src/application/runtime/standard-workflow-composition.mjs';
+import { createStandardPrReviewEffectsVerification } from '../../src/application/runtime/standard-session-pr-review-effects.mjs';
 import { createStandardSessionPrMergeObservation } from '../../src/application/runtime/standard-session-pr-merge-observe.mjs';
 import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess } from '../../src/core/workflow/agentic-process.mjs';
 import { simulateAgenticProcess } from '../../src/core/workflow/agentic-process-simulation.mjs';
@@ -24,17 +26,17 @@ const asMerged = () => ({ state: 'MERGED', merged: true, mergedAt,
   mergeCommit: { oid: merge, parents: { totalCount: 2, nodes: [{ oid: base }, { oid: head }], pageInfo: { hasNextPage: false } } },
   baseRef: { target: { oid: tip } } });
 
-function fixture(prefix = 'session', correctionsRequired = false) {
+function fixture(prefix = 'session', correctionsRequired = false, effects = null) {
   const updateBinding = prefix === 'session' ? 'session_pr_update_push' : 'session_pr_redelivery_push';
   const nodeIds = [prefix === 'session' ? updateBinding : 'correction_pr_redelivery_push',
-    ...['review_receive', 'triage_select', 'triage_evaluate', 'merge_observe'].map(name => prefix + '_pr_' + name)];
+    ...['review_receive', 'triage_select', 'triage_evaluate', ...(effects ? ['review_effects_verify'] : []), 'merge_observe'].map(name => prefix + '_pr_' + name)];
   const nodes = nodeIds.map(id => published.nodes.find(node => node.id === id));
   const model = { contract_version: 'agentic-process-model.v2', model_id: 'a9-fixture', revision: 1,
     participants: [{ id: 'project' }], roles: [], policies: [], entry: 'sequence',
     nodes: [{ id: 'sequence', kind: 'sequence', participant_ref: 'project', children: nodeIds }, ...nodes],
     operation_pins: Object.fromEntries(nodes.map(node => [node.binding_ref, published.operation_pins[node.binding_ref]])),
     data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [],
-      inputs: nodeIds.map(node_id => node_id === nodeIds.at(-1)
+      inputs: nodeIds.map(node_id => node_id === nodeIds.at(-1) || node_id.endsWith('_pr_review_effects_verify')
         ? published.data_bindings.inputs.find(row => row.node_id === node_id) : { node_id, fields: {} }) } };
   const initial = { instanceId: 'merge-fixture', scopeId: 'fixture-scope', model, policyPins: {}, facts: {}, parameters: {} };
   let instance = createAgenticProcess(initial);
@@ -59,7 +61,7 @@ function fixture(prefix = 'session', correctionsRequired = false) {
       authority_id: intent.authority_id, outcome: output.outcome, effect_status: output.effect_status, output_sha256: shadowHash(output),
       facts: output.facts, evidence_refs: [{ ref: operationOutputRef(id), sha256: shadowHash(output) }] };
     instance = advanceAgenticProcess(instance, { event_id: 'result_' + id, kind: 'operation_result', occurrence_id: frame.occurrence_id, receipt });
-    retained.set(id, signer.seal({ record: { preview: { input }, intent, operation_id: id }, output, receipt }));
+    retained.set(id, signer.seal({ record: { preview: { input, prepared_at_ms: effects?.triageAt ?? now }, intent, operation_id: id }, output, receipt }));
     return id;
   }
   function accept(binding, input, facts, observations) {
@@ -68,7 +70,8 @@ function fixture(prefix = 'session', correctionsRequired = false) {
   const update = accept(updateBinding, {}, { session_pr_head_confirmed: true }, { pull_request: link });
   const payload = { event: { repository_id: link.repository_id, pull_request_id: link.node_id, pull_request_number: link.number,
     head_ref: link.head_branch, base_ref: link.base_branch, head_oid: head, base_oid: base, occurred_at: beforeMerge },
-    observation: { observations: { update_operation_id: update, evidence: { observed_until: beforeMerge }, threads: { observed_until: beforeMerge } } } };
+    observation: { observations: { update_operation_id: update, evidence: effects?.evidence ?? { observed_until: beforeMerge },
+      threads: effects?.threads ?? { observed_until: beforeMerge } } } };
   const capture = signer.seal({ inbox_id: 'fixture_inbox', delivery: { delivery_id: 'fixture_delivery' }, payload });
   const received = accept('session_pr_review_receive', {}, { session_pr_review_event_received: true },
     { inbox_id: capture.inbox_id, delivery_sha256: shadowHash(capture.delivery), payload });
@@ -77,7 +80,8 @@ function fixture(prefix = 'session', correctionsRequired = false) {
   const triage = accept('session_pr_triage_evaluate', {}, { session_pr_findings_classified: true,
     session_pr_corrections_required: correctionsRequired, session_pr_responses_required: true },
   { selection_operation_id: selection, received_operation_id: received, payload_sha256: shadowHash(payload),
-    head_oid: head, base_oid: base, triage_completion: 'pending-effects-and-verification', merge_authorization: 'not-established' });
+    head_oid: head, base_oid: base, triage_completion: 'pending-effects-and-verification', merge_authorization: 'not-established',
+    ...(effects ? { dispositions: effects.dispositions } : {}) });
   const transport = createGithubPrMergeAsyncAdapter({ executable: process.execPath, executableSha256, workingDirectory: os.tmpdir(),
     repository: { owner: 'fixture', name: 'repository', node_id: link.repository_id } }, { now: () => now,
     async run(_bin, args, options) {
@@ -94,7 +98,8 @@ function fixture(prefix = 'session', correctionsRequired = false) {
     assert.ok(record.events.some(event => event.kind === 'operation_result' && shadowHash(event.receipt) === shadowHash(row.receipt)));
     return row;
   };
-  const open = (reviewPort = transport) => createStandardSessionPrMergeObservation({ now: () => now, reviewPort,
+  const open = (reviewPort = transport) => (effects ? createStandardPrReviewEffectsVerification : createStandardSessionPrMergeObservation)({
+    now: effects ? Date.now : () => now, reviewPort,
     readAccepted, readAcceptedUpdate: (record, id) => readAccepted(record, id, updateBinding), readCurrent: () => instance,
     readDelivered: (_record, input) => { assert.equal(input.update_operation_id, update); return signer.verify(capture); },
     verifyEvent(value) {
@@ -102,14 +107,21 @@ function fixture(prefix = 'session', correctionsRequired = false) {
       if (!provider.current) throw Object.assign(Error('fixture event revoked'), { code: 'PROCESS_CONTROL_PR_NOT_AUTHENTICATED' });
     } });
   const attempt = async (observer = open()) => {
-    const cursor = inspectAgenticProcess(instance), frame = cursor.occurrences.find(row => row.node_id === nodeIds.at(-1));
+    const cursor = inspectAgenticProcess(instance), node = nodeIds.at(effects ? -2 : -1);
+    const frame = cursor.occurrences.find(row => row.node_id === node);
     const { input } = resolveProcessFrameInput({ instance, cursor, occurrenceId: frame.occurrence_id });
     assert.equal(input.triage_operation_id, triage);
     const prepared = observer.prepare(instance, input);
     const output = await observer.observe(instance, input, { sourceSha256: prepared.source_sha256 });
-    const id = apply('session_pr_merge_observe', input, output, prepared);
-    assert.equal(inspectAgenticProcess(instance).status, 'WAITING');
-    assert.deepEqual(instance.events.at(-1).receipt.facts, {});
+    const id = apply(effects ? 'session_pr_review_effects_verify' : 'session_pr_merge_observe', input, output, prepared);
+    const next = inspectAgenticProcess(instance);
+    if (output.outcome === 'completed') {
+      assert.equal(next.occurrences.find(row => row.status === 'READY').node_id, nodeIds.at(-1));
+      assert.deepEqual(instance.events.at(-1).receipt.facts, { session_pr_review_effects_verified: true });
+    } else {
+      assert.equal(next.status, 'WAITING');
+      assert.deepEqual(instance.events.at(-1).receipt.facts, {});
+    }
     assert.equal(instance.events.at(-1).receipt.effect_status, 'no_effect');
     return { output, id };
   };
@@ -168,5 +180,113 @@ const offline = fixture();
 assert.equal((await offline.attempt(offline.open(null))).output.observations.reason_code, 'STANDARD_PR_MERGE_PROVIDER_REQUIRED');
 assert.equal(offline.provider.calls, 0);
 console.log('PASS a new correction or a missing observation port retains its wait without provider calls');
+async function reviewEffects(prefix, { correctionsRequired = false, disposition = 'invalid' } = {}) {
+  const github = createGithubReviewFixture({ workingDirectory: os.tmpdir(), pullRequest: link });
+  const date = new Date(Date.now() - 30000).toISOString(), author = { id: 'U_reviewer', login: 'fixture-reviewer', __typename: 'User' };
+  const actor = { node_id: 'U_reply', login: 'fixture-actor' }, response = 'Technical rationale grounded in the fixture source.';
+  const root = { id: 'C_root', author, body: 'Please fix this behavior.', commit: { oid: head }, originalCommit: { oid: head },
+    createdAt: date, updatedAt: date, state: 'SUBMITTED', isMinimized: false, replyTo: null, publishedAt: date };
+  const thread = { id: 'T_fixture', path: 'example.mjs', line: 1, isResolved: false, isOutdated: false,
+    comments: { nodes: [root], totalCount: 1, pageInfo: { hasNextPage: false, endCursor: null } } };
+  github.state.threads.push(thread);
+  const request = { contract_version: 'github-pr-observation-request.v2', pull_request_number: link.number,
+    expected_pull_request_id: link.node_id, expected_head_oid: head, expected_base_oid: base,
+    expected_head_ref: link.head_branch, expected_base_ref: link.base_branch };
+  const threads = await github.port.observePrContent(request);
+  const evidence = await github.port.observeReviewContent({ ...request, contract_version: 'github-review-evidence-request.v1' });
+  const config = { executable: process.execPath, executableSha256, workingDirectory: os.tmpdir(),
+    repository: { owner: 'fixture', name: 'repository', node_id: link.repository_id } };
+  const read = createGithubPrReviewEffectsAsyncAdapter(config, { async run(...args) {
+    const response = github.run(...args), parsed = JSON.parse(response.stdout);
+    parsed.data.repository.pullRequest.headRepository = { id: link.repository_id };
+    return { ...response, stdout: JSON.stringify(parsed) };
+  } });
+  const triageAt = Date.now(), effects = { threads, evidence, triageAt, dispositions: [
+    { kind: 'comment', node_id: root.id, thread_id: thread.id, disposition, proposed_response: response },
+  ] };
+  const component = fixture(prefix, correctionsRequired, effects);
+  const port = { ...read, reviewEffectActor: actor, observeReviewContent: github.port.observeReviewContent };
+  function reply(overrides = {}) {
+    const published = new Date().toISOString();
+    const value = { ...root, id: 'C_reply_' + thread.comments.totalCount, replyTo: { id: root.id },
+      author: { id: actor.node_id, login: actor.login, __typename: 'User' }, body: response,
+      createdAt: published, updatedAt: published, publishedAt: published, ...overrides };
+    thread.comments.nodes.push(value); thread.comments.totalCount++;
+    return value;
+  }
+  return { ...component, attempt: (observer = component.open(port)) => component.attempt(observer), github, reply, thread, root };
+}
+
+for (const prefix of ['session', 'correction']) {
+  const f = await reviewEffects(prefix);
+  const waiting = await f.attempt();
+  assert.equal(waiting.output.outcome, 'deferred');
+  assert.equal(waiting.output.observations.reason_code, 'STANDARD_PR_EFFECTS_REPLY_REQUIRED');
+  const calls = f.github.calls.length;
+  f.replay();
+  assert.equal(f.github.calls.length, calls);
+  f.reply();
+  assert.equal((await f.attempt()).output.observations.reason_code, 'STANDARD_PR_EFFECTS_RESOLUTION_REQUIRED');
+  f.thread.isResolved = true;
+  f.replay();
+  const { output, id } = await f.attempt();
+  assert.equal(output.outcome, 'completed');
+  assert.notEqual(id, waiting.id);
+  assert.equal(output.observations.proof.head_oid, head);
+  assert.equal(output.observations.proof.reply_count, 1);
+  assert.equal(output.observations.proof.resolved_thread_count, 1);
+  assert.throws(() => assertStandardOperationOutput({ ...output, outcome: 'deferred' }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
+  assert.throws(() => assertStandardOperationOutput({ ...output, evidence_refs: [] }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
+  f.replay();
+  console.log('PASS ' + prefix + ' R08 waits for reply and resolution, replays without reads and advances with both');
+}
+for (const [label, change, code] of [
+  ['wrong actor', f => f.reply({ author: f.root.author }), 'STANDARD_PR_EFFECTS_REVIEW_CHANGED'],
+  ['wrong target', f => f.reply({ replyTo: { id: 'C_other' } }), 'STANDARD_PR_EFFECTS_REVIEW_CHANGED'],
+  ['changed reply', f => f.reply({ body: 'different rationale' }), 'STANDARD_PR_EFFECTS_REVIEW_CHANGED'],
+  ['minimized reply', f => f.reply({ isMinimized: true }), 'STANDARD_PR_EFFECTS_REPLY_REQUIRED'],
+  ['draft reply', f => f.reply({ state: 'PENDING', publishedAt: null }), 'STANDARD_PR_EFFECTS_REPLY_REQUIRED'],
+  ['reply before triage', f => f.reply({ createdAt: f.root.createdAt, publishedAt: f.root.publishedAt }), 'STANDARD_PR_EFFECTS_REPLY_REQUIRED'],
+  ['duplicate reply', f => { f.reply(); f.reply(); }, 'STANDARD_PR_EFFECTS_REPLY_AMBIGUOUS'],
+  ['edited source comment', f => { f.reply(); f.root.body = 'amended finding'; }, 'STANDARD_PR_EFFECTS_REVIEW_CHANGED'],
+  ['edited review', f => { f.reply(); f.github.state.reviews[0].body = 'amended review'; }, 'STANDARD_PR_EFFECTS_REVIEW_CHANGED'],
+  ['head moved', f => { f.github.state.pullRequest.head_oid = '5'.repeat(40); }, 'GITHUB_PR_SOURCE_CHANGED'],
+  ['event revoked', f => { f.provider.current = false; }, 'PROCESS_CONTROL_PR_NOT_AUTHENTICATED'],
+]) {
+  const f = await reviewEffects('session');
+  f.thread.isResolved = true;
+  change(f);
+  const { output } = await f.attempt();
+  assert.notEqual(output.outcome, 'completed');
+  assert.equal(output.observations.reason_code, code);
+  assert.deepEqual(output.facts, {});
+  console.log('PASS R08 ' + label + ' retains the gate');
+}
+const noReply = await reviewEffects('session', { disposition: 'not_a_finding' });
+noReply.thread.isResolved = true;
+const providerCalls = noReply.github.calls.length;
+assert.equal((await noReply.attempt(noReply.open(null))).output.observations.reason_code, 'STANDARD_PR_EFFECTS_PROVIDER_REQUIRED');
+assert.equal(noReply.github.calls.length, providerCalls);
+const resolved = (await noReply.attempt()).output;
+assert.equal(resolved.outcome, 'completed');
+assert.equal(resolved.observations.proof.reply_count, 0);
+assert.equal(resolved.observations.proof.resolved_thread_count, 1);
+console.log('PASS R08 defers without a provider and accepts a resolved thread with no reply obligation');
+
+const inconsistent = await reviewEffects('session');
+inconsistent.reply();
+inconsistent.thread.isResolved = true;
+let threadReads = 0;
+inconsistent.github.state.beforeCall = ({ query }) => {
+  if (query.startsWith('query AidnReviewThreads') && ++threadReads === 2) inconsistent.thread.isResolved = false;
+};
+assert.equal((await inconsistent.attempt()).output.observations.reason_code, 'STANDARD_PR_EFFECTS_REVIEW_CHANGED');
+console.log('PASS R08 a thread reopened between samples retains the gate');
+
+const pendingCorrection = await reviewEffects('correction', { correctionsRequired: true, disposition: 'valid' });
+const beforeCalls = pendingCorrection.github.calls.length;
+assert.equal((await pendingCorrection.attempt()).output.observations.reason_code, 'STANDARD_PR_EFFECTS_CORRECTION_OR_TRIAGE_REQUIRED');
+assert.equal(pendingCorrection.github.calls.length, beforeCalls);
+console.log('PASS R08 outstanding correction defers before provider reads');
 console.log(JSON.stringify({ status: 'PASS', proof: 'published-bindings-reducer-and-authenticated-fixture-receipts',
   provider_transport_and_event_authority: 'DOUBLED', installed: 'NOT_RUN', complete_standard_workflow: false }));

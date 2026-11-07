@@ -3100,11 +3100,24 @@ requires an open non-draft PR whose head repository matches the protected
 repository. The private github-pr-observation.v3 envelope leaves both historical
 observation versions and the delivered review inbox payload intact.
 
-This port supplies inputs for R08 effect verification. The published workflow
-still waits at the existing review effects boundary. An accepted result still
-requires matching replies and resolutions to the accepted triage and current
-delivery, with a separate documented exception path. The read-back provides no
-provider mutation, check acceptance or merge consent.
+Both published STANDARD paths now verify the accepted triage before merge
+observation. The verifier authenticates the delivery, accepted triage and
+current update receipts, then compares two thread observations and a fresh
+review inventory for the exact open PR, HEAD and base. It checks unchanged
+original comment material. Each invalid inline finding requires a unique
+visible submitted reply to that comment, from the configured GitHub actor and
+with the accepted response body, published after the review and triage fence.
+Every observed thread must be resolved. A successful receipt binds the exact
+subject, time interval and proof digests to the accepted triage and update.
+
+An outstanding correction, missing provider, absent reply, unresolved thread,
+unsupported top-level reply or changed review keeps the occurrence waiting.
+A provider or local authority refusal yields a blocked receipt. The existing
+merge observation follows accepted verification and still cannot advance past
+the merge boundary. The deterministic verifier performs provider reads only
+and issues neither consent nor check acceptance. Provider writes, documented
+exceptions, refreshed triage routing, consent, merge and post-merge
+reconciliation remain separate work.
 
 ### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
 

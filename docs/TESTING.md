@@ -1295,16 +1295,20 @@ accepted output and host-supplied context. The first and corrective plans select
 different checks expecting exactly 2 and 3. Native transport and human/provider
 identities remain doubles; Git/bare, canonical storage and application ports
 remain real. Adding this scenario or passing preflight does not qualify it.
-The final review still does not establish provider replies/resolutions or merge.
-The current boundary is a deferred operation receipt in a WAITING cursor. The
-historical `component_complete` records retain their original model and scope.
+The fixture reaches the deterministic reply and resolution verification
+occurrence. Its provider lacks the reply and resolution observation capability,
+so the receipt is deferred and the cursor remains WAITING. The historical `component_complete` records retain their original model and scope.
 
 `node tools/perf/verify-standard-session-pr-merge-fixtures.mjs` checks the fixed
 read-only GitHub query through a transport double and uses signed fixture
 receipts and the execution reducer to replay both observation occurrences.
 It checks OPEN to MERGED on a fresh attempt, typed refusals, immutable receipt
-inputs and continued waiting with no review or sync facts. The companion
-composition fixture verifies the shipped graph and implementation pins.
+inputs and continued waiting with no review or sync facts. For R08, the fixture
+replays both published verification occurrences from a signed fixture prefix.
+Missing, changed, premature, draft, minimized and ambiguous replies remain in
+waiting. A fresh exact reply and a resolved thread let the reducer reach the
+merge observation. The companion composition fixture verifies the shipped
+graph and implementation pins.
 Live provider, installed execution and the long corrective journey are
 separate qualifications.
 The GitHub content fixture checks the separate review-effect read-back schema
@@ -1312,8 +1316,8 @@ through the fixed provider transport. It covers the reply target, published and
 pending comments, minimized comments, author IDs, body digest, resolution,
 malformed or altered evidence, and refusal on foreign repository, draft and
 closed PRs. The ordinary host fixture exercises the authenticated port with the
-GitHub transport doubled. Published R08 effect verification and GitHub network
-qualification remain separate.
+GitHub transport doubled. GitHub network qualification and a full execution
+from the ordinary entry remain separate.
 
 `verify-standard-composed-cycle-fixtures.mjs --retain-always` separately checks
 context-derived identities and the two actual Node verifiers: each must reject

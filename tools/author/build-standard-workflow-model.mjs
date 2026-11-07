@@ -128,7 +128,8 @@ op("session_pr_correction_decide", "session_pr_correction_decision", {
   ...operation("session_pr_correction_decide", "checkpoint_operation_id", "session_pr_correction_checkpoint") });
 op("session_pr_correction_checkpoint", "session_pr_correction_checkpoint", operation("session_pr_correction_checkpoint", "reopen_operation_id", "session_pr_correction_reopen"));
 op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("session_pr_correction_reopen", "triage_operation_id", "session_pr_triage_evaluate"));
-seq("session_pr_effects_pending", ["session_pr_merge_observe"]);
+seq("session_pr_effects_pending", ["session_pr_review_effects_verify", "session_pr_merge_observe"]);
+op("session_pr_review_effects_verify", "session_pr_review_effects_verify", operation(null, "triage_operation_id", "session_pr_triage_evaluate"));
 op("session_pr_merge_observe", "session_pr_merge_observe", operation("session_pr_merge_observe", "triage_operation_id", "session_pr_triage_evaluate"));
 op("session_pr_checkpoint", "session_pr_checkpoint", operation("session_pr_checkpoint", "record_operation_id", "session_pr_record"));
 op("session_pr_update_push", "session_pr_update_push", operation("session_pr_update_push", "checkpoint_operation_id", "session_pr_checkpoint"));
@@ -314,7 +315,8 @@ for (const id of reviewNodes) {
   const activity = activities.find(row => row.node_id === id);
   if (activity) activities.push({ ...structuredClone(activity), node_id: copy.id });
 }
-seq("correction_pr_effects_pending", ["correction_pr_merge_observe"]);
+seq("correction_pr_effects_pending", ["correction_pr_review_effects_verify", "correction_pr_merge_observe"]);
+op("correction_pr_review_effects_verify", "session_pr_review_effects_verify", operation(null, "triage_operation_id", "correction_pr_triage_evaluate"));
 op("correction_pr_merge_observe", "session_pr_merge_observe", operation("correction_pr_merge_observe", "triage_operation_id", "correction_pr_triage_evaluate"));
 seq("correction_pr_redelivery", ["correction_pr_redelivery_push", ...reviewRoots.map(reviewName), "correction_pr_effects_pending"]);
 nodes.find(row => row.id === "correction_cycle").children.push("correction_pr_redelivery");

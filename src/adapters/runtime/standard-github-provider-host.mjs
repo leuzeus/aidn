@@ -237,6 +237,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       observeReviewEvidence: readPort(createGithubReviewEvidenceAsyncAdapter, "observeReviewEvidence"),
       observePrContent: content, observeReviewContent: evidence,
       observePrMerge: readPort(createGithubPrMergeAsyncAdapter, "observePrMerge"),
+      reviewEffectActor: Object.freeze({ ...actor }),
       observePrReviewEffects: readPort(createGithubPrReviewEffectsAsyncAdapter, "observePrReviewEffects"),
     }),
     ...(reviewer ? { sessionReviewEventPort: Object.freeze({ ...reviewEvents(readReviewEvent), withReviewReads }) } : {}),

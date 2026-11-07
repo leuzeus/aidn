@@ -857,6 +857,18 @@ execution ports/mode transition, session closure qualification and remaining
 L1-L8/A1-A10 remain unfinished. ordinary_entry is UNCHANGED and the published
 catalog still declares complete_standard_workflow=false.
 
+## R08 review verification for both deliveries
+
+The initial and corrective delivery paths each run a deterministic
+session_pr_review_effects_verify bound to their accepted triage operation.
+The host reads the delivered event and current update receipts, then compares
+fresh authenticated thread and review evidence for the exact PR, HEAD and base.
+Submitted replies with the accepted body and actor and observed thread
+resolution can satisfy the receipt. Missing or changed proof keeps the
+occurrence waiting or blocked. The receipt allows merge observation while
+authorization, provider writes, exceptions and post-merge synchronization
+remain separate. Existing historical observation receipts stay readable.
+
 ## SPIKE canonical projection finalization, 2026-11-04
 
 A new real SQLite DUAL diagnostic observed unchanged content and metadata across

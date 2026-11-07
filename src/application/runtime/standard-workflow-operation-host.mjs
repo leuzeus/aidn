@@ -3,6 +3,7 @@ import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
 import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.mjs";
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
+import { createStandardPrReviewEffectsVerification } from "./standard-session-pr-review-effects.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
 import { createStandardPrTriageSource } from "./standard-pr-triage-source.mjs";
@@ -533,9 +534,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   const sessionPrReviewReceiver = sessionPrReviewContent && createStandardPrReviewReceiver({ observer: sessionPrReviewContent,
     verifyEvent: verifyPrReviewEvent, readDelivered: readDeliveredPrReview });
-  const sessionPrMerge = createStandardSessionPrMergeObservation({ now, reviewPort: sessionReviewPort,
-    readAccepted: acceptedForPromotion, readAcceptedUpdate: readAcceptedPrUpdate, readCurrent: id => current(id).record,
-    readDelivered: readDeliveredPrReview, verifyEvent: verifyPrReviewEvent });
+  const acceptedReviewPorts = { now, reviewPort: sessionReviewPort, readAccepted: acceptedForPromotion,
+    readAcceptedUpdate: readAcceptedPrUpdate, readCurrent: id => current(id).record,
+    readDelivered: readDeliveredPrReview, verifyEvent: verifyPrReviewEvent };
+  const sessionPrMerge = createStandardSessionPrMergeObservation(acceptedReviewPorts);
+  const sessionPrEffects = createStandardPrReviewEffectsVerification(acceptedReviewPorts);
   const prTriage = processAuthority && sessionPrReviewReceiver ? createStandardPrTriageSource({
     readReceived: (instance, id) => acceptedForPromotion(instance, id, "session_pr_review_receive", "STANDARD_PR_TRIAGE_RECEIVED_REQUIRED"),
     observeReceived: (instance, input, options) => sessionPrReviewReceiver.observe(instance, input, options),
@@ -1087,6 +1090,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_correction_decision" ? await prCorrectionReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_checkpoint" ? await prCorrectionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_reopen" ? await prCorrectionReopen?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
         : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
@@ -1241,6 +1245,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record), signal });
         else if (record.intent.binding_ref === "session_pr_correction_reopen") output = await prCorrectionReopen.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
+        else if (record.intent.binding_ref === "session_pr_review_effects_verify") output = await sessionPrEffects.observe(state.record, record.preview.input,
+          { signal, sourceSha256: record.preview.prepared.source_sha256 });
         else if (record.intent.binding_ref === "session_pr_merge_observe") output = await sessionPrMerge.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
         else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });
