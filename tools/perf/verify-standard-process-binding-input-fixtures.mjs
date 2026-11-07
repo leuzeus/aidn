@@ -43,7 +43,8 @@ test('versioned binding capacity preserves v1/v2 bounds and admits the larger st
 // is constructed. This is interpreter/contract evidence, not effect evidence.
 function atBoundary(spec) {
   const node = structuredClone(assets.model.nodes.find(row => row.id === spec.node_id));
-  const sources = [...new Set(Object.values(spec.fields).filter(row => row.source === 'operation_id').map(row => row.node_id))];
+  const expressions = Object.values(spec.fields);
+  const sources = [...new Set(expressions.filter(row => ['operation_id', 'operation_output'].includes(row.source)).map(row => row.node_id))];
   const sourceNodes = sources.map(id => structuredClone(assets.model.nodes.find(row => row.id === id)));
   const nodes = [{ id: 'fixture', kind: 'sequence', participant_ref: 'project', children: [...sources, node.id] }, ...sourceNodes, node];
   const model = { contract_version: 'agentic-process-model.v2', model_id: 'binding-input-boundary', revision: 1,
@@ -51,18 +52,30 @@ function atBoundary(spec) {
     operation_pins: Object.fromEntries(nodes.filter(row => row.kind === 'operation').map(row => [row.binding_ref, shadowHash(bindings.get(row.binding_ref))])),
     data_bindings: { contract_version: 'process-data-bindings.v2', parameter_keys: [], inputs: [...sources.map(node_id => ({ node_id, fields: {} })), structuredClone(spec)] } };
   let instance = createAgenticProcess({ instanceId: 'binding-input-fixture', model, policyPins: agenticPolicyPins(model), scopeId: 'fixture-scope', parameters: {} });
+  const operations = new Map();
   for (const source of sourceNodes) {
+    const priorInput = {};
+    const readsOutput = expressions.some(row => row.source === 'operation_output' && row.node_id === source.id);
+    let output = {};
+    if (readsOutput) {
+      assert.equal(source.binding_ref, 'cycle_close_completed_select');
+      output = { contract_version: 'standard-cycle-close-selection-output.v1', operation_ref: source.binding_ref,
+        outcome: 'completed', effect_status: 'no_effect', facts: {}, evidence_refs: [],
+        observations: { closure_operation_id: 'op_' + 'e'.repeat(40), receipt_sha256: H, output_sha256: H } };
+    }
     const occurrence_id = inspectAgenticProcess(instance).ready[0];
     const intent = { contract_version: 'process-operation-intent.v1', operation_id: 'op_' + (++serial).toString(16).padStart(40, '0'),
-      binding_ref: source.binding_ref, binding_sha256: shadowHash(bindings.get(source.binding_ref)), input_sha256: H, preconditions_sha256: H,
+      binding_ref: source.binding_ref, binding_sha256: shadowHash(bindings.get(source.binding_ref)), input_sha256: shadowHash(priorInput), preconditions_sha256: H,
       authorization_sha256: H, authority_id: 'synthetic-boundary-fixture', scope_id: instance.scope_id, instance_id: instance.instance_id,
       instance_sha256: instance.instance_sha256, model_sha256: instance.model_sha256, occurrence_id, instance_revision: instance.revision };
     instance = advanceAgenticProcess(instance, { event_id: 'intent-' + serial, kind: 'operation_intent', occurrence_id, intent });
     const receipt = { contract_version: 'process-operation-receipt.v1', receipt_id: 'receipt-' + serial, operation_id: intent.operation_id,
-      intent_sha256: shadowHash(intent), authority_id: intent.authority_id, outcome: 'completed', effect_status: 'no_effect', output_sha256: H, facts: {}, evidence_refs: [{ ref: 'fixture:synthetic-prior', sha256: H }] };
+      intent_sha256: shadowHash(intent), authority_id: intent.authority_id, outcome: 'completed', effect_status: 'no_effect', output_sha256: shadowHash(output), facts: {}, evidence_refs: [{ ref: 'fixture:synthetic-prior', sha256: H }] };
     instance = advanceAgenticProcess(instance, { event_id: 'result-' + serial, kind: 'operation_result', occurrence_id, receipt });
+    operations.set(intent.operation_id, { phase: 'receipted', preview: { input: priorInput }, intent, results: [{ output, receipt }] });
   }
-  return { instance, occurrenceId: inspectAgenticProcess(instance).ready[0], binding: bindings.get(node.binding_ref) };
+  return { instance, occurrenceId: inspectAgenticProcess(instance).ready[0], binding: bindings.get(node.binding_ref),
+    readOperation: id => operations.get(id) };
 }
 const eligible = assets.model.data_bindings.inputs.filter(spec => assets.model.nodes.find(row => row.id === spec.node_id).kind === 'operation'
   && Object.values(spec.fields).every(row => ['literal', 'operation_id'].includes(row.source)));
@@ -74,6 +87,17 @@ test('actual interpreter resolves published literal and prior-operation expressi
     if (schema.required?.includes('contract_version')) assert.equal(resolved.input.contract_version, schema.properties.contract_version.const);
     covered++;
   }
+});
+test('the integration boundary consumes the exact accepted close selection and refuses a substituted receipt result', () => {
+  const spec = assets.model.data_bindings.inputs.find(row => row.node_id === 'session_branch_integration_decide');
+  const boundary = atBoundary(spec);
+  const resolved = resolveStandardProcessInput(boundary);
+  assert.equal(resolved.input.closure_operation_id, 'op_' + 'e'.repeat(40));
+  assert.throws(() => resolveStandardProcessInput({ ...boundary, readOperation: id => {
+    const retained = structuredClone(boundary.readOperation(id));
+    retained.results[0].output.observations.closure_operation_id = 'op_' + 'f'.repeat(40);
+    return retained;
+  } }), { code: 'PROCESS_INPUT_RESULT_CHANGED' });
 });
 test('model37-shaped missing integration literal is refused at the real resolver before dispatch', () => {
   const spec = structuredClone(assets.model.data_bindings.inputs.find(row => row.node_id === 'session_branch_integration_decide'));
