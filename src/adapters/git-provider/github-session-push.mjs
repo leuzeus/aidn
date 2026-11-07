@@ -44,9 +44,14 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
       || hash(fs.readFileSync(githubBinary)) !== githubSha256) fail('GITHUB_PUSH_HOST_PIN_CHANGED');
   }
   function budget() { const at = now(); if (!Number.isSafeInteger(at) || at < 0) fail('GITHUB_PUSH_CLOCK_INVALID'); return { at, mono: performance.now(), calls: 0 }; }
+  function remaining(state) {
+    const elapsed = Math.max(now() - state.at, performance.now() - state.mono), left = Math.floor(60000 - elapsed);
+    if (!Number.isFinite(elapsed) || elapsed < 0 || left <= 0) fail('GITHUB_PUSH_LIMIT');
+    return left;
+  }
   function invoke(binary, args, state, env, remote = false, statuses = [0]) {
-    pinned(); const elapsed = Math.max(now() - state.at, performance.now() - state.mono), timeout = Math.min(30000, Math.floor(60000 - elapsed));
-    if (!Number.isFinite(elapsed) || elapsed < 0 || timeout <= 0 || ++state.calls > 24) fail('GITHUB_PUSH_LIMIT');
+    pinned(); const timeout = Math.min(30000, remaining(state));
+    if (++state.calls > 24) fail('GITHUB_PUSH_LIMIT');
     let result;
     try { result = (binary === githubBinary ? runGithub : remote ? runRemoteGit : spawnSync)(binary, args,
       { cwd: remote ? transportCwd : root, env, encoding: 'utf8', shell: false, windowsHide: true, timeout, maxBuffer: 1048576, stdio: 'pipe' }); }
@@ -118,8 +123,7 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
     if (typeof branch !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/.test(branch)) fail('GITHUB_PUSH_BRANCH_INVALID');
     const target = 'refs/heads/' + branch; local(['check-ref-format', target], state); return target;
   }
-  function remoteHead(branch, state, credentials) {
-    const target = ref(branch, state);
+  function remoteHead(branch, target, state, credentials) {
     const result = invoke(gitBinary, transportArgs(['--config-env=http.extraHeader=AIDN_GITHUB_AUTH_HEADER', 'ls-remote', '--refs', '--', remoteUrl, target]), state, credentials.git, true).stdout.trim();
     if (!result) return null;
     const rows = result.split(/\r?\n/), [head, name] = rows[0].split('\t');
@@ -129,18 +133,21 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
     return head;
   }
   function inspectLocal(branch, state) {
-    for (const name of ['HEAD.lock', 'packed-refs.lock', 'config.lock'])
-      if (fs.existsSync(agentRunPhysicalPath(path.resolve(root, local(['rev-parse', '--git-path', name], state).stdout.trim()), { missing: true })))
-        fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
+    const names = ['HEAD.lock', 'packed-refs.lock', 'config.lock'];
+    const paths = local(['rev-parse', ...names.flatMap(name => ['--git-path', name])], state).stdout.trimEnd().split(/\r?\n/);
+    if (paths.length !== names.length || paths.some(file => !file
+      || fs.existsSync(agentRunPhysicalPath(path.resolve(root, file), { missing: true })))) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
     return createLocalWorkflowBranchIntegration({ targetRoot: root, environment: inspectionEnv }).inspect({ source_branch: branch, target_branch: branch });
   }
   function inspectInternal(branch, assertLocal = null) {
     const state = budget(); configuration(state);
     const localView = assertLocal ? inspectLocal(branch, state) : createLocalWorkflowBranchIntegration({ targetRoot: root, environment: inspectionEnv }).inspect({ source_branch: branch, target_branch: branch });
-    if ((!assertLocal && !localView.clean) || localView.current_ref !== ref(branch, state) || localView.head !== localView.source_head || localView.source_symbolic
+    if (!assertLocal && !localView.clean) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
+    const target = ref(branch, state);
+    if (localView.current_ref !== target || localView.head !== localView.source_head || localView.source_symbolic
       || localView.target_symbolic || localView.lock_present || localView.source_lock_present) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
     if (assertLocal) assertLocal(structuredClone(localView));
-    const credentials = credential(state), head = remoteHead(branch, state, credentials);
+    const credentials = credential(state), head = remoteHead(branch, target, state, credentials);
     if (head !== null && head !== localView.head) {
       local(['cat-file', '-e', head + '^{commit}'], state);
       if (local(['merge-base', '--is-ancestor', head, localView.head], state, [0, 1]).status !== 0) fail('GITHUB_PUSH_REMOTE_DIVERGED');
@@ -149,7 +156,8 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
       const after = inspectLocal(branch, state); assertLocal(structuredClone(after));
       if (shadowHash(after) !== shadowHash(localView)) fail('GITHUB_PUSH_LOCAL_CONTEXT_CHANGED');
     }
-    return { profile: 'github-https-git.v1', remote_identity_sha256: context, branch, ref: ref(branch, state), head: localView.head,
+    pinned(); remaining(state);
+    return { profile: 'github-https-git.v1', remote_identity_sha256: context, branch, ref: target, head: localView.head,
       remote_head: head, local_sha256: shadowHash(localView) };
   }
   const inspect = branch => inspectInternal(branch);
@@ -160,7 +168,7 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
   function observeRemote(branch, { assertLocal } = {}) {
     if (typeof assertLocal !== 'function') fail('GITHUB_PUSH_OWNED_OBSERVATION_REQUIRED');
     const state = budget(); configuration(state); const target = ref(branch, state);
-    assertLocal(); const credentials = credential(state), head = remoteHead(branch, state, credentials); assertLocal();
+    assertLocal(); const credentials = credential(state), head = remoteHead(branch, target, state, credentials); assertLocal();
     return { profile: 'github-https-git.v1', remote_identity_sha256: context, branch, ref: target, remote_head: head };
   }
   pinned();
@@ -179,7 +187,7 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
         if (shadowHash(inspect(observed.branch)) !== shadowHash(observed)) fail('GITHUB_PUSH_PREVIEW_CHANGED');
         if (observed.remote_head === observed.head) return { ...observed, changed: false, effect_status: 'no_effect' };
         const state = budget(); configuration(state); const credentials = credential(state);
-        if (remoteHead(observed.branch, state, credentials) !== observed.remote_head) fail('GITHUB_PUSH_PREVIEW_CHANGED');
+        if (remoteHead(observed.branch, ref(observed.branch, state), state, credentials) !== observed.remote_head) fail('GITHUB_PUSH_PREVIEW_CHANGED');
         await assertAuthorized(); pinned();
         preparation = prepareTransport(observed, state);
         await assertAuthorized();

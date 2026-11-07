@@ -7,12 +7,35 @@ import { createFreshStandardWorkflowFixture } from './standard-workflow-fixture-
 import { createLocalWorkflowSessionPush } from '../../src/adapters/runtime/local-workflow-session-push.mjs';
 import { createStandardSessionPush } from '../../src/application/runtime/standard-session-push.mjs';
 import { createStandardWorkflowArtifacts } from '../../src/application/runtime/standard-workflow-artifacts.mjs';
+import { LOCAL_ARTIFACT_FENCE_PATH } from '../../src/application/runtime/local-artifact-resource-fence.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
+import { resolveRuntimeSqliteFile } from '../../src/application/runtime/runtime-persistence-service.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import { assertStandardOperationInput, assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 const temporary = fs.realpathSync(os.tmpdir()), owned = [], H = 'a'.repeat(64), op = x => 'op_' + x.repeat(40);
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
-const tree = root => { const rows = []; const walk = at => { for (const name of fs.readdirSync(at).sort()) { const file = path.join(at, name); if (fs.lstatSync(file).isDirectory()) walk(file); else rows.push([path.relative(root, file).replaceAll('\\', '/'), shadowHash({ bytes: fs.readFileSync(file).toString('base64') })]); } }; walk(root); return shadowHash(rows); };
+function checkoutSnapshot(root, expectedWrites) {
+  const rows = [];
+  function walk(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const file = path.join(directory, entry.name);
+      if (expectedWrites.has(file)) continue;
+      if (entry.isDirectory()) walk(file);
+      else rows.push([path.relative(root, file), shadowHash({ bytes: fs.readFileSync(file).toString('base64') })]);
+    }
+  }
+  walk(root);
+  return rows;
+}
+function canonicalSnapshot(root) {
+  const store = createProjectArtifactStore({ targetRoot: root, readOnly: true, existingOnly: true });
+  try {
+    const rows = store.listArtifacts(1000);
+    assert.ok(rows.length < 1000, 'snapshot must include all canonical fixture rows');
+    return rows.filter(row => row.path !== LOCAL_ARTIFACT_FENCE_PATH).sort((a, b) => a.path.localeCompare(b.path));
+  } finally { store.close(); }
+}
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
 let checks = 0, cleanup = false;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
@@ -53,6 +76,28 @@ try {
     finally { git(root, 'config', '--remove-section', 'filter.fixture'); }
     assert.equal(readRemote(), null); assert.equal(fs.existsSync(path.join(root, 'forbidden')), false);
   });
+  await test('owned observation checks each Git lock and rechecks after transport', () => {
+    for (const name of ['HEAD.lock', 'packed-refs.lock', 'config.lock']) {
+      const lock = path.resolve(root, git(root, 'rev-parse', '--git-path', name));
+      fs.writeFileSync(lock, 'fixture lock', { flag: 'wx' });
+      try {
+        assert.throws(() => port.observeOwned('S001-push', { assertLocal() { assert.fail('lock must block before transport'); } }),
+          { code: 'WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED' });
+      } finally { fs.unlinkSync(lock); }
+    }
+    const lock = path.resolve(root, git(root, 'rev-parse', '--git-path', 'config.lock'));
+    let observations = 0, createdLock = false;
+    try {
+      assert.throws(() => port.observeOwned('S001-push', { assertLocal() {
+        if (++observations === 1) {
+          fs.writeFileSync(lock, 'fixture lock', { flag: 'wx' });
+          createdLock = true;
+        }
+      } }), { code: 'WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED' });
+      assert.equal(observations, 1);
+    } finally { if (createdLock) fs.unlinkSync(lock); }
+    assert.equal(port.observeOwned('S001-push', { assertLocal() {} }).remote_head, null);
+  });
   await test('missing exact intent, lost permission and changed admission refuse before remote effect', async () => {
     await assert.rejects(service().apply(instance, plan, { write: true, expectPlan: H, assertAuthorized() {} }), { code: 'STANDARD_SESSION_PUSH_EXPLICIT_EFFECT_REQUIRED' });
     await assert.rejects(service().apply(instance, plan, { write: true, expectPlan: plan.plan_sha256, assertAuthorized() { throw Error('denied'); } }));
@@ -75,13 +120,33 @@ try {
     fs.writeFileSync(hook, '#!/bin/sh\necho executed > "' + marker.replaceAll('\\', '/') + '"\n'); fs.chmodSync(hook, 0o755);
     git(root, 'push', '--dry-run', '--', bare, 'HEAD:refs/heads/control-probe');
     assert.equal(fs.existsSync(marker), true); fs.unlinkSync(marker); assert.equal(readRemote(), null);
-    const before = tree(root), refs = git(root, 'show-ref'), index = fs.readFileSync(path.join(root, '.git/index'));
+    const fence = artifacts.resourceFence();
+    const initialFence = fence.read().record;
+    const fencePath = path.join(root, 'docs/audit', LOCAL_ARTIFACT_FENCE_PATH);
+    const expectedWrites = new Set(mode === 'db-only' ? [] : [fencePath]);
+    let canonicalBefore;
+    if (mode !== 'files') {
+      const sqliteFile = resolveRuntimeSqliteFile({ targetRoot: root });
+      assert.ok(path.relative(root, sqliteFile).startsWith('.aidn' + path.sep));
+      for (const suffix of ['', '-shm', '-wal']) expectedWrites.add(sqliteFile + suffix);
+      canonicalBefore = canonicalSnapshot(root);
+    }
+    const before = checkoutSnapshot(root, expectedWrites);
+    const refs = git(root, 'show-ref'), index = fs.readFileSync(path.join(root, '.git/index'));
     plan = await service().prepare(instance, input, op('2'));
     const result = await service().apply(instance, plan, { write: true, expectPlan: plan.plan_sha256, assertAuthorized() {} });
     assert.equal(result.outcome, 'completed', JSON.stringify(result)); assert.equal(result.effect_status, 'confirmed'); assertStandardOperationOutput(result);
     assert.equal(readRemote(), head); assert.equal(git(bare, 'for-each-ref', '--format=%(refname)'), 'refs/heads/S001-push');
     assert.equal(git(root, 'show-ref'), refs); assert.deepEqual(fs.readFileSync(path.join(root, '.git/index')), index);
-    assert.equal(fs.existsSync(marker), false); assert.equal(artifacts.ownerPending(), false); assert.equal(tree(root), before);
+    assert.equal(fs.existsSync(marker), false); assert.equal(artifacts.ownerPending(), false);
+    const released = fence.read().record;
+    assert.equal(released.state, 'released');
+    assert.equal(released.revision, (initialFence?.revision ?? 0) + 2);
+    assert.notEqual(released.token, initialFence?.token);
+    if (mode === 'db-only') assert.equal(fs.existsSync(fencePath), false);
+    else assert.deepEqual(JSON.parse(fs.readFileSync(fencePath, 'utf8')), released);
+    if (mode !== 'files') assert.deepEqual(canonicalSnapshot(root), canonicalBefore);
+    assert.deepEqual(checkoutSnapshot(root, expectedWrites), before);
   });
   await test('already present remote head is observed without replaying push', async () => {
     let calls = 0;

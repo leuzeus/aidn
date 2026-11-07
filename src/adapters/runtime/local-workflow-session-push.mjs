@@ -39,8 +39,8 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
     if (typeof branch !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$/.test(branch)) fail('WORKFLOW_PUSH_BRANCH_INVALID');
     const value = 'refs/heads/' + branch; git(['check-ref-format', value]); return value;
   }
-  function remoteHead(branch) {
-    config(); const target = ref(branch), output = git(['ls-remote', '--refs', '--', remoteUrl, target]);
+  function remoteHead(target) {
+    config(); const output = git(['ls-remote', '--refs', '--', remoteUrl, target]);
     if (!output) return null;
     const rows = output.split(/\r?\n/);
     if (rows.length !== 1) fail('WORKFLOW_PUSH_REMOTE_REF_AMBIGUOUS');
@@ -50,17 +50,20 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
   let localPort;
   const localIntegration = () => localPort ??= createLocalWorkflowBranchIntegration({ targetRoot: root, environment });
   function inspectLocal(branch) {
-    for (const name of ['HEAD.lock', 'packed-refs.lock', 'config.lock'])
-      if (fs.existsSync(agentRunPhysicalPath(path.resolve(root, git(['rev-parse', '--git-path', name])), { missing: true })))
-        fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
+    const names = ['HEAD.lock', 'packed-refs.lock', 'config.lock'];
+    const paths = git(['rev-parse', ...names.flatMap(name => ['--git-path', name])]).split(/\r?\n/);
+    if (paths.length !== names.length || paths.some(file => !file
+      || fs.existsSync(agentRunPhysicalPath(path.resolve(root, file), { missing: true })))) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
     return localIntegration().inspect({ source_branch: branch, target_branch: branch });
   }
   function inspectInternal(branch, assertLocal = null) {
     config(); const local = assertLocal ? inspectLocal(branch) : localIntegration().inspect({ source_branch: branch, target_branch: branch });
-    if ((!assertLocal && !local.clean) || local.current_ref !== ref(branch) || local.head !== local.source_head || local.source_symbolic || local.target_symbolic
+    if (!assertLocal && !local.clean) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
+    const target = ref(branch);
+    if (local.current_ref !== target || local.head !== local.source_head || local.source_symbolic || local.target_symbolic
       || local.lock_present || local.source_lock_present) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_BLOCKED');
     if (assertLocal) assertLocal(structuredClone(local));
-    const head = remoteHead(branch);
+    const head = remoteHead(target);
     // Reading objects directly is local qualification only; it changes no fetch
     // ref/FETCH_HEAD. An unrelated remote history is never force-pushed.
     let fastForward = head === null || head === local.head;
@@ -75,7 +78,7 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
       const after = inspectLocal(branch); assertLocal(structuredClone(after));
       if (shadowHash(after) !== shadowHash(local)) fail('WORKFLOW_PUSH_LOCAL_CONTEXT_CHANGED');
     }
-    return { profile: 'local-bare-remote.v1', remote_identity_sha256: remoteIdentity, branch, ref: ref(branch), head: local.head,
+    return { profile: 'local-bare-remote.v1', remote_identity_sha256: remoteIdentity, branch, ref: target, head: local.head,
       remote_head: head, local_sha256: shadowHash(local) };
   }
   const inspect = branch => inspectInternal(branch);
@@ -87,7 +90,7 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
   }
   function observeRemote(branch, { assertLocal } = {}) {
     if (typeof assertLocal !== 'function') fail('WORKFLOW_PUSH_OWNED_OBSERVATION_REQUIRED');
-    config(); const target = ref(branch); assertLocal(); const head = remoteHead(branch); assertLocal(); config();
+    config(); const target = ref(branch); assertLocal(); const head = remoteHead(target); assertLocal(); config();
     return { profile: 'local-bare-remote.v1', remote_identity_sha256: remoteIdentity, branch, ref: target, remote_head: head };
   }
   async function push(observed, { write = false, assertAuthorized } = {}) {
@@ -103,7 +106,7 @@ export function createLocalWorkflowSessionPush({ targetRoot, remoteRoot, environ
       attempted = true;
       git(['push', '--no-verify', '--porcelain', '--force-with-lease=' + observed.ref + ':' + (observed.remote_head ?? ''), '--', remoteUrl, observed.head + ':' + observed.ref]);
       await afterPush?.(); await assertAuthorized();
-      if (remoteHead(observed.branch) !== observed.head) throw Error('WORKFLOW_PUSH_POSTCONDITION_UNCONFIRMED');
+      if (remoteHead(ref(observed.branch)) !== observed.head) throw Error('WORKFLOW_PUSH_POSTCONDITION_UNCONFIRMED');
       const current = inspect(observed.branch);
       if (current.local_sha256 !== observed.local_sha256) throw Error('WORKFLOW_PUSH_LOCAL_CONTEXT_CHANGED');
       return { ...current, changed: true, effect_status: 'confirmed' };

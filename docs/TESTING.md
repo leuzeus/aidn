@@ -4458,6 +4458,17 @@ cached across guards. The existing real-port reopening suite remains required
 for the canonical/provider/authorization boundaries. Timings are separate
 diagnostics and do not replace the negative matrix or full composed recovery.
 
+The local and GitHub push adapters validate the explicit branch ref once per
+inspection and reuse it within that observation. Owned inspection batches the
+three Git lock paths into one fresh Git command per local sample. Physical path
+validation and separate samples on both sides of transport remain required.
+The local push fixture injects each lock before observation and a config lock
+between the samples. The GitHub fixture covers the three initial lock refusals
+and expiry after its second sample with transport doubles. Both suites verify
+the private resource fence release. The local suite compares all other
+checkout bytes and, in SQLite modes, the other canonical artifact rows.
+These checks are separate from qualification of the composed workflow.
+
 A separate disposable Git counterexample exposed the first retained-port
 candidate's stale physical binding after gitfile redirection. A retained port
 now resolves the checkout, physical gitdir and index again at each inspection,

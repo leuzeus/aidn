@@ -7,9 +7,13 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { createGithubSessionPush } from '../../src/adapters/git-provider/github-session-push.mjs';
 import { createStandardSessionPush } from '../../src/application/runtime/standard-session-push.mjs';
+import { LOCAL_ARTIFACT_FENCE_PATH } from '../../src/application/runtime/local-artifact-resource-fence.mjs';
 import { assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 const parent = fs.realpathSync(os.tmpdir()), owned = [], H = 'a'.repeat(64), op = n => 'op_' + n.repeat(40);
 const preparations = new Set();
+const fenceIgnore = '/docs/audit/' + LOCAL_ARTIFACT_FENCE_PATH;
+const installedIgnores = fs.readFileSync(new URL('../../scaffold/root/.gitignore.append', import.meta.url), 'utf8').split(/\r?\n/);
+assert.ok(installedIgnores.includes(fenceIgnore));
 const gitExecutable = fs.realpathSync(execFileSync(process.platform === 'win32' ? 'where.exe' : 'which', ['git'], { encoding: 'utf8', windowsHide: true }).split(/\r?\n/).find(Boolean));
 const sha = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const git = (root, ...args) => execFileSync(gitExecutable, ['-C', root, '-c', 'core.hooksPath=NUL', ...args], { encoding: 'utf8', stdio: 'pipe', windowsHide: true }).trim();
@@ -20,7 +24,8 @@ function fixture() {
   const base = fs.mkdtempSync(path.join(parent, 'aidn-github-push-')); owned.push(base); const root = path.join(base, 'project'), remote = path.join(base, 'remote.git');
   fs.mkdirSync(root); fs.mkdirSync(remote); git(root, 'init', '-b', 'dev'); git(root, 'config', 'user.name', 'Fixture'); git(root, 'config', 'user.email', 'fixture@example.invalid');
   fs.mkdirSync(path.join(root, '.aidn')); fs.writeFileSync(path.join(root, '.aidn/config.json'), JSON.stringify({ runtime: { stateMode: 'files' } }));
-  fs.writeFileSync(path.join(root, '.gitignore'), '.aidn/runtime/\n'); fs.writeFileSync(path.join(root, 'app.txt'), 'base\n'); git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture base');
+  fs.writeFileSync(path.join(root, '.gitignore'), '.aidn/runtime/\n' + fenceIgnore + '\n');
+  fs.writeFileSync(path.join(root, 'app.txt'), 'base\n'); git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture base');
   git(remote, 'init', '--bare'); git(root, 'push', remote, 'HEAD:refs/heads/dev'); const initial = git(root, 'rev-parse', 'HEAD');
   git(root, 'switch', '-c', 'S001-host'); fs.writeFileSync(path.join(root, 'app.txt'), 'delivery\n'); git(root, 'add', 'app.txt'); git(root, 'commit', '-m', 'fixture delivery');
   const head = git(root, 'rev-parse', 'HEAD'), state = { actor: structuredClone(actor), repository_id: repository.node_id, push_permission: true, pushes: 0, calls: 0,
@@ -98,6 +103,8 @@ try {
     assert.equal(result.outcome, 'completed', JSON.stringify(result)); assert.equal(result.effect_status, 'confirmed'); assertStandardOperationOutput(result);
     assert.equal(f.ref('S001-host'), f.head); assert.equal(f.state.pushes, 1); assert.equal(result.observations.git.profile, 'github-https-git.v1');
     assert.ok(!JSON.stringify(result).includes(token)); assert.equal(git(f.root, 'status', '--porcelain'), '');
+    const fence = JSON.parse(fs.readFileSync(path.join(f.root, 'docs/audit', LOCAL_ARTIFACT_FENCE_PATH), 'utf8'));
+    assert.equal(fence.state, 'released'); assert.equal(fence.revision, 2);
     assert.ok([...preparations].every(directory => !fs.existsSync(directory)));
   });
   await test('an already equal tip observes no effect and an inconsistent API tip cannot confirm Git', async () => {
@@ -144,6 +151,16 @@ try {
   });
   await test('owned observation requires a host function, checks real dirty bytes twice and never weakens push', async () => {
     const u = fixture(), port = u.port(), file = path.join(u.root, 'app.txt'); let baseline, observations = 0;
+    for (const name of ['HEAD.lock', 'packed-refs.lock', 'config.lock']) {
+      const lock = path.resolve(u.root, git(u.root, 'rev-parse', '--git-path', name));
+      fs.writeFileSync(lock, 'fixture lock', { flag: 'wx' });
+      const calls = u.state.calls;
+      try {
+        assert.throws(() => port.observeOwned('S001-host', { assertLocal() { assert.fail('lock must block before transport'); } }),
+          { code: 'GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED' });
+        assert.equal(u.state.calls, calls);
+      } finally { fs.unlinkSync(lock); }
+    }
     port.observeOwned('S001-host', { assertLocal(view) { baseline = view; } });
     fs.writeFileSync(file, 'exact owned postimage\n');
     const assertLocal = view => {
@@ -153,6 +170,13 @@ try {
     assert.throws(() => port.observeOwned('S001-host', { assertLocal: true }));
     assert.throws(() => port.observeOwned('S001-host', { clean: true, approved_paths: ['app.txt'] }));
     const observed = port.observeOwned('S001-host', { assertLocal }); assert.equal(observations, 2);
+    let clock = 1000000, clockChecks = 0;
+    const expiring = u.port({ now: () => clock });
+    assert.throws(() => expiring.observeOwned('S001-host', { assertLocal(view) {
+      assertLocal(view);
+      if (++clockChecks === 2) clock += 60001;
+    } }), { code: 'GITHUB_PUSH_LIMIT' });
+    assert.equal(clockChecks, 2);
     assert.throws(() => port.inspect('S001-host'), { code: 'GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED' });
     await assert.rejects(port.push(observed, { write: true, assertAuthorized() {} }), { code: 'GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED' });
     const racing = u.port({ runRemoteGit(...args) { const result = u.seams.runRemoteGit(...args); fs.writeFileSync(file, 'foreign postimage\n'); return result; } });
