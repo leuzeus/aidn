@@ -3,8 +3,9 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { assertAgenticProcessModel } from "../../src/core/workflow/agentic-process-model.mjs";
+import { processModelIdentity, processModels } from "../../src/core/workflow/process-call-model.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
-import { standardAssetHash } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
+import { standardAssetHash, verifyStandardWorkflowComponentAssets } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
 
 const root = new URL("../../", import.meta.url);
 const read = name => fs.readFileSync(new URL(name, root));
@@ -411,21 +412,33 @@ if (existing) {
   model.revision = existing.revision;
 }
 assertAgenticProcessModel(model);
-const catalog = { contract_version: "standard-workflow-catalog.v2", component_id: "aidn-standard", revision: model.revision,
+const components = processModels(model);
+const specification = read("docs/SPEC.md");
+const skillSource = path => ({ path, sha256: standardAssetHash(read(path)) });
+const catalog = { contract_version: components.length > 1 ? "standard-workflow-catalog.v3" : "standard-workflow-catalog.v2",
+  component_id: "aidn-standard", revision: model.revision,
   scope: { kind: "composed_committing_cycle_component", complete_standard_workflow: false,
     entry_conditions: ["fresh_session_admission", "single_new_cycle"], remaining_activities: ["existing_session_resume", "thinking_session_closure", "exploring_experiments_and_spike_conversion",
       "cycle_choice_and_carryover", "governed_git_checkpoints", "startup_and_work_drift_routes", "incidents_and_recovery", "session_close", "pr_review_and_merge", "post_merge_sync", "full_mixed_resume"] },
   model: { path: modelPath, sha256: shadowHash(model), model_id: model.model_id, revision: model.revision },
-  specification: { path: "docs/SPEC.md", sha256: standardAssetHash(read("docs/SPEC.md")) },
-  bindings: nodes.filter(row => row.kind === "operation").map(row => {
-    const binding = bindings.find(binding => binding.id === row.binding_ref), path = `scaffold/codex/aidn-${binding.skill_id}/SKILL.md`;
-    return { node_id: row.id, binding, skill_source: { path, sha256: standardAssetHash(read(path)) } };
+  specification: { path: "docs/SPEC.md", sha256: standardAssetHash(specification) },
+  bindings: components.flatMap(component => {
+    const identity = component === model ? {} : { model_ref: processModelIdentity(component) };
+    return component.nodes.filter(row => row.kind === "operation").map(row => {
+      const binding = bindings.find(binding => binding.id === row.binding_ref);
+      if (!binding) throw Error("STANDARD_AUTHORING_BINDING_MISSING");
+      return { node_id: row.id, ...identity, binding, skill_source: skillSource(`scaffold/codex/aidn-${binding.skill_id}/SKILL.md`) };
+    });
   }), activities };
 const catalogPath = "package/catalogs/standard-workflow.v1.json";
 const existingCatalog = fs.existsSync(new URL(catalogPath, root)) ? json(catalogPath) : null;
 if (existing && (shadowHash(model) !== shadowHash(existing) || shadowHash(catalog) !== shadowHash(existingCatalog))) {
   model.revision++; catalog.revision = model.revision; catalog.model.revision = model.revision; catalog.model.sha256 = shadowHash(model);
 }
+const skillPaths = new Set([...catalog.bindings.map(row => row.skill_source.path),
+  ...catalog.activities.flatMap(row => row.skill_sources.map(source => source.path))]);
+verifyStandardWorkflowComponentAssets({ catalog, model, specification, bindings,
+  skills: Object.fromEntries([...skillPaths].map(path => [path, read(path)])) });
 if (process.argv.some(arg => arg.startsWith("--") && arg !== "--write")) throw Error("STANDARD_AUTHORING_ARGUMENT_INVALID");
 if (process.argv.includes("--write")) {
   for (const [name, value] of [[modelPath, model], ["package/catalogs/standard-workflow.v1.json", catalog]])

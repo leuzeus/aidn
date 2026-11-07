@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { loadStandardWorkflowAssets, STANDARD_WORKFLOW_MODEL_PATH, STANDARD_WORKFLOW_CATALOG_PATH } from "../../src/application/runtime/standard-workflow-composition.mjs";
 import { standardWorkflowOperationBindings } from "../../src/application/runtime/standard-workflow-operations.mjs";
-import { verifyStandardWorkflowComponentAssets, assertStandardWorkflowActivityOutputs } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
+import { verifyStandardWorkflowComponentAssets, assertStandardWorkflowActivityOutputs, refreshStandardWorkflowComponentBindings } from "../../src/core/workflow/standard-workflow-model-catalog.mjs";
+import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
+import catalogSchemaV3 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v3.schema.json" with { type: "json" };
+import { processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
 import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
@@ -281,6 +284,191 @@ test("native configuration must use exactly the declared typed activity reports"
   assert.throws(() => assertStandardWorkflowActivityOutputs(assets.source, assets.model, { ...outputs, implement: outputs.plan }), { code: "STANDARD_ACTIVITY_OUTPUT_CONTRACT_CHANGED" });
   assert.throws(() => assertStandardWorkflowActivityOutputs(assets.source, assets.model, { ...outputs, extra: outputs.plan }), { code: "STANDARD_ACTIVITY_OUTPUT_CONTRACT_CHANGED" });
 });
+// Extract both occurrences in memory only. These are loader fixtures with
+// published bindings, not a new distributed graph or a business execution.
+function finalVerificationFixture() {
+  const input = fresh(), { catalog, model } = input;
+  const sequenceIds = ["final_verification", "correction_final_verification"];
+  const sequences = sequenceIds.map(id => model.nodes.find(row => row.id === id));
+  const [entry, validation, verification] = [sequences[0], ...sequences[0].children.map(id => model.nodes.find(row => row.id === id))];
+  const moved = new Set(sequences.flatMap(row => row.children));
+  const parameterKeys = ["validation_operation_id", "progress_operation_id"];
+  const target = { contract_version: model.contract_version, model_id: "aidn-standard-final-verification", revision: 1,
+    participants: structuredClone(model.participants), roles: [], policies: [], entry: entry.id,
+    nodes: [entry, validation, verification], operation_pins: Object.fromEntries([validation, verification]
+      .map(node => [node.binding_ref, model.operation_pins[node.binding_ref]])),
+    call_interface: { parameters: Object.fromEntries(parameterKeys.map(key => [key, "string"])), returns: {} },
+    data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: parameterKeys, inputs: [
+      { node_id: validation.id, fields: Object.fromEntries(parameterKeys.map(key => [key, { source: "parameter", key, path: [] }])) },
+      structuredClone(model.data_bindings.inputs.find(row => row.node_id === verification.id)),
+    ] } };
+  const parameters = sequences.map(sequence => ({ node_id: sequence.id,
+    fields: model.data_bindings.inputs.find(row => row.node_id === sequence.children[0]).fields }));
+  const ref = processModelIdentity(target);
+  model.nodes = model.nodes.filter(node => !moved.has(node.id)).map(node => sequenceIds.includes(node.id)
+    ? { id: node.id, kind: "call", participant_ref: node.participant_ref, target: ref } : node);
+  model.operation_pins = Object.fromEntries(Object.entries(model.operation_pins)
+    .filter(([id]) => model.nodes.some(node => node.binding_ref === id)));
+  model.data_bindings.contract_version = "process-data-bindings.v4";
+  model.data_bindings.inputs = [...model.data_bindings.inputs.filter(row => !moved.has(row.node_id)), ...parameters];
+  model.call_targets = [{ ...ref, model: target }];
+  catalog.contract_version = "standard-workflow-catalog.v3";
+  catalog.bindings = [...catalog.bindings.filter(row => !moved.has(row.node_id)),
+    ...catalog.bindings.filter(row => [validation.id, verification.id].includes(row.node_id)).map(row => ({ ...row, model_ref: ref }))];
+  catalog.model.sha256 = shadowHash(model);
+  return input;
+}
+function loadFixture({ catalog, model }) {
+  const original = fs.readFileSync;
+  const overrides = new Map([[STANDARD_WORKFLOW_CATALOG_PATH, catalog], [STANDARD_WORKFLOW_MODEL_PATH, model]]
+    .map(([name, value]) => [new URL(name, root).href, Buffer.from(JSON.stringify(value))]));
+  fs.readFileSync = (file, ...args) => overrides.get(String(file)) ?? Reflect.apply(original, fs, [file, ...args]);
+  try { return loadStandardWorkflowAssets(); }
+  finally { fs.readFileSync = original; }
+}
+function reauthorTarget({ catalog, model }, change) {
+  const [previous] = model.call_targets, target = previous.model;
+  change(target);
+  const identity = processModelIdentity(target);
+  model.call_targets[0] = { ...identity, model: target };
+  for (const node of model.nodes) if (node.target?.model_id === previous.model_id) node.target = identity;
+  for (const row of catalog.bindings) if (row.model_ref?.model_id === previous.model_id) row.model_ref = identity;
+  catalog.model.sha256 = shadowHash(model);
+}
+const targetRow = input => input.catalog.bindings.find(row => row.model_ref);
+const rejectFixture = (name, change, code) => test(name, () => {
+  const input = finalVerificationFixture();
+  change(input);
+  const before = shadowHash({ catalog: input.catalog, model: input.model });
+  assert.throws(() => loadFixture(input), { code });
+  assert.equal(shadowHash({ catalog: input.catalog, model: input.model }), before);
+});
+test("the ordinary loader authenticates the two final-verification operations for both calls", () => {
+  assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV3, "#", { contractKind: "workflow-definition" }), []);
+  const input = finalVerificationFixture(), loaded = loadFixture(input);
+  assert.equal(loaded.model.nodes.length, 252);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 2);
+  assert.equal(loaded.model.nodes.filter(node => node.target).length, 2);
+  assert.deepEqual(loaded.model, input.model); assert.deepEqual(loaded.catalog, input.catalog);
+  assert.ok(Object.isFrozen(loaded.model.call_targets[0].model.operation_pins));
+  assert.deepEqual(loaded.catalog.activities, assets.catalog.activities);
+  const outputs = Object.fromEntries(assets.catalog.activities.map(row => [row.node_id, row.output_contract]));
+  assertStandardWorkflowActivityOutputs(loaded.source, loaded.model, outputs);
+  assert.throws(() => assertStandardWorkflowActivityOutputs(loaded.source, loaded.model, {}), { code: "STANDARD_ACTIVITY_OUTPUT_CONTRACT_CHANGED" });
+  assert.deepEqual(refreshStandardWorkflowComponentBindings(input).changed, []);
+  const binding = input.bindings.find(row => row.id === targetRow(input).binding.id);
+  binding.implementation_sha256 = "f".repeat(64);
+  assert.throws(() => refreshStandardWorkflowComponentBindings(input), { code: "STANDARD_EMBEDDED_PIN_REAUTHOR_REQUIRED" });
+  assert.deepEqual(loaded.model, input.model); assert.deepEqual(loaded.catalog, input.catalog);
+});
+test("distinct pinned targets may share both local operation IDs", () => {
+  const input = finalVerificationFixture(), { catalog, model } = input;
+  const second = structuredClone(model.call_targets[0].model);
+  second.model_id += "-alternate";
+  const identity = processModelIdentity(second);
+  model.call_targets.push({ ...identity, model: second });
+  model.nodes.find(node => node.id === "correction_final_verification").target = identity;
+  catalog.bindings.push(...catalog.bindings.filter(row => row.model_ref).map(row => ({ ...row, model_ref: identity })));
+  catalog.model.sha256 = shadowHash(model);
+  assert.equal(loadFixture(input).catalog.bindings.filter(row => row.model_ref && row.node_id === "final_validation").length, 2);
+});
+test("a target operation may share a root node ID while pinning a different binding", () => {
+  const input = finalVerificationFixture(), row = targetRow(input);
+  const localId = row.node_id, rootRow = input.catalog.bindings.find(row => row.node_id === "validate");
+  assert.notEqual(row.binding.id, rootRow.binding.id);
+  reauthorTarget(input, target => {
+    target.nodes.find(node => node.id === localId).id = rootRow.node_id;
+    target.nodes[0].children[0] = rootRow.node_id;
+    target.data_bindings.inputs[0].node_id = rootRow.node_id;
+    target.data_bindings.inputs[1].fields.evaluation_operation_id.node_id = rootRow.node_id;
+  });
+  row.node_id = rootRow.node_id;
+  const matches = loadFixture(input).catalog.bindings.filter(row => row.node_id === rootRow.node_id);
+  assert.deepEqual(matches.map(row => row.binding.id), [rootRow.binding.id, row.binding.id]);
+});
+test("catalog v1 still loads and retains its exact root rows and activity contracts", () => {
+  const input = fresh(), { catalog, model } = input;
+  const [operation] = catalog.bindings, [activity] = catalog.activities;
+  const children = [operation.node_id, activity.node_id];
+  model.nodes = [{ id: model.entry, kind: "sequence", participant_ref: "project", children },
+    ...model.nodes.filter(node => children.includes(node.id))];
+  model.operation_pins = { [operation.binding.id]: model.operation_pins[operation.binding.id] };
+  delete model.data_bindings;
+  catalog.contract_version = "standard-workflow-catalog.v1";
+  catalog.bindings = [operation];
+  catalog.activities = [activity];
+  catalog.model.sha256 = shadowHash(model);
+  const loaded = loadFixture(input);
+  assert.deepEqual(loaded.source.catalog, catalog);
+  assertStandardWorkflowActivityOutputs(loaded.source, loaded.model, { [activity.node_id]: activity.output_contract });
+});
+rejectFixture("catalog v2 keeps its closed rows", x => { x.catalog.contract_version = "standard-workflow-catalog.v2"; }, "STANDARD_STARTUP_CATALOG_INVALID");
+rejectFixture("legacy catalog rows cannot cover the embedded operations", x => {
+  x.catalog.contract_version = "standard-workflow-catalog.v2";
+  for (const row of x.catalog.bindings) delete row.model_ref;
+}, "STANDARD_STARTUP_COVERAGE_INVALID");
+rejectFixture("historical rows do not cover the moved operations", x => {
+  x.catalog.contract_version = "standard-workflow-catalog.v2";
+  x.catalog.bindings = structuredClone(assets.catalog.bindings);
+}, "STANDARD_STARTUP_COVERAGE_INVALID");
+rejectFixture("a missing embedded row fails coverage", x => x.catalog.bindings.pop(), "STANDARD_STARTUP_COVERAGE_INVALID");
+rejectFixture("an embedded row cannot replace a different row with a duplicate", x => {
+  x.catalog.bindings[x.catalog.bindings.length - 1] = structuredClone(targetRow(x));
+}, "STANDARD_STARTUP_COVERAGE_INVALID");
+rejectFixture("an unqualified v3 row only addresses a root operation", x => { delete targetRow(x).model_ref; }, "STANDARD_STARTUP_BINDING_CHANGED");
+for (const [field, value] of [["model_id", "unknown"], ["revision", 2], ["model_sha256", "f".repeat(64)]])
+  rejectFixture("an incorrect target " + field + " fails identity", x => {
+    const row = targetRow(x); row.model_ref = { ...row.model_ref, [field]: value };
+  }, "STANDARD_STARTUP_TARGET_CHANGED");
+rejectFixture("a target reference cannot inject a path", x => {
+  const row = targetRow(x); row.model_ref = { ...row.model_ref, path: "other.json" };
+}, "STANDARD_STARTUP_CATALOG_INVALID");
+rejectFixture("changed target bytes with a stale embedded reference are never repaired", x => {
+  x.model.call_targets[0].model.revision++;
+  x.catalog.model.sha256 = shadowHash(x.model);
+}, "PROCESS_CALL_TARGET_CHANGED");
+rejectFixture("a target operation must use its exact binding pin", x => {
+  targetRow(x).binding.implementation_sha256 = "f".repeat(64);
+}, "STANDARD_STARTUP_BINDING_CHANGED");
+rejectFixture("a repinned target cannot override the implementation registry", x => {
+  const binding = targetRow(x).binding;
+  binding.implementation_sha256 = "f".repeat(64);
+  reauthorTarget(x, target => { target.operation_pins[binding.id] = shadowHash(binding); });
+}, "STANDARD_STARTUP_IMPLEMENTATION_CHANGED");
+rejectFixture("an embedded operation must pin actual skill bytes", x => {
+  targetRow(x).skill_source.sha256 = "f".repeat(64);
+}, "STANDARD_STARTUP_SKILL_CHANGED");
+rejectFixture("an embedded operation cannot redirect to a different skill", x => {
+  targetRow(x).skill_source.path = "scaffold/codex/aidn-start-session/SKILL.md";
+}, "STANDARD_STARTUP_BINDING_CHANGED");
+rejectFixture("even a repinned target must cite an existing SPEC rule", x => {
+  const binding = targetRow(x).binding;
+  binding.rule_refs = ["SPEC-R99"];
+  reauthorTarget(x, target => { target.operation_pins[binding.id] = shadowHash(binding); });
+}, "STANDARD_STARTUP_RULE_MISSING");
+rejectFixture("STANDARD refuses an embedded activity before resolving its output contract", x => {
+  reauthorTarget(x, target => {
+    const activity = structuredClone(x.model.nodes.find(node => node.kind === "activity"));
+    target.roles = structuredClone(x.model.roles);
+    target.policies = structuredClone(x.model.policies);
+    target.nodes.push(activity);
+    target.nodes[0].children.push(activity.id);
+  });
+}, "STANDARD_EMBEDDED_ACTIVITY_UNSUPPORTED");
+rejectFixture("STANDARD v3 refuses a repinned embedded event before it can reach a control wait", x => {
+  reauthorTarget(x, target => {
+    const entry = target.nodes[0], participant_ref = entry.participant_ref;
+    const id = "embedded_review_wait";
+    const branches = [
+      { flow_id: "review", node_id: "embedded_reviewed", event_key: "review_snapshot" },
+      { flow_id: "checks", node_id: "embedded_checked", event_key: "checks_snapshot" },
+    ];
+    entry.children.push(id);
+    target.nodes.push({ id, kind: "event", participant_ref, branches },
+      ...branches.map(branch => ({ id: branch.node_id, kind: "sequence", participant_ref, children: [] })));
+  });
+}, "STANDARD_EMBEDDED_EVENT_UNSUPPORTED");
 test("execution and simulation start the same model and reducer with the same durable identity", () => {
   const options = { instanceId: "standard-composition-fixture", model: assets.model, scopeId: "offline-composition", policyPins: agenticPolicyPins(assets.model), facts: {},
     parameters: { session: { session_id: "S900", session_branch: "session/example", objective: "Disposable composition qualification" },

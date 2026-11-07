@@ -469,8 +469,38 @@ application. The service checks the original prefix, live authority and
 authenticated journal witnesses, compares the predicted result before writing,
 and uses the existing canonical CAS. The returned projection status retains
 reconciliation when applicable. A call action starts no native allocation and
-dispatches no business operation. Catalogue coverage for embedded STANDARD
-operations and qualification of the distributed model are separate.
+dispatches no business operation.
+
+### Catalog coverage for embedded call targets
+
+`standard-workflow-catalog.v3` covers every operation in the root and in the
+validated embedded call library. A root binding row inherits the identity of
+the catalog's pinned model. An embedded binding row supplies a closed
+`model_ref` with `model_id`, `revision` and `model_sha256`. The loader requires
+exactly one row per model identity and local operation node. It checks each row
+against that model's operation pin, the fixed implementation registry, the
+SPEC and the allowed skill-source bytes. Distinct models may reuse local node
+IDs. The model and the catalog supply no target file, registry or adapter.
+
+The explicit v1 and v2 readers retain their original schemas and root-row
+semantics. They cannot attest embedded operations. The v3 activity rows still
+cover the root's typed activity outputs. STANDARD rejects activities inside
+call targets with `STANDARD_EMBEDDED_ACTIVITY_UNSUPPORTED` because its
+activity-output mapping addresses local root node IDs. The v3 catalog also
+rejects embedded event nodes with `STANDARD_EMBEDDED_EVENT_UNSUPPORTED`.
+The ordinary STANDARD control entry and its specialized PR capture resolve
+root nodes. Root event handling and the common process model keep their
+existing behavior.
+
+To change an embedded operation pin, update the authored target's own
+`operation_pins` and revision, recompute its digest, and update the embedded
+entry and every referencing call to the new identity. If another target
+contains a changed reference, update that target and its dependants in turn.
+The explicit composed author emits the qualified binding rows and advances
+the parent model and catalog revision and digest. The component binding
+refresh rejects a stale embedded implementation with
+`STANDARD_EMBEDDED_PIN_REAUTHOR_REQUIRED`. Loading and historical source
+validation leave the retained models, references and descriptors intact.
 
 `AIDN_STANDARD_HOST_HOME` belongs to the embedding environment. Its existing
 physical directory must be explicitly protected in the native configuration.

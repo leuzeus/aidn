@@ -3664,7 +3664,18 @@ execution, even when the fixed binding is registered.
 
 `verify-standard-workflow-composition-fixtures.mjs` validates the distributed
 partial standard JSON, fixed operation/source pins and exact typed native
-outputs. It does not execute the declared business cycle.
+outputs. It also substitutes a candidate model and catalog in memory at the
+ordinary loader's two package reads. The fixture moves the two
+`final_verification` operations into a pinned target referenced by both the
+main and correction paths. It checks the exact v3 coverage, repeated local
+IDs across models, v1/v2 compatibility, root activity contracts, rejection of
+embedded activities and events, and tampering with target, binding,
+implementation, skill or SPEC pins. The embedded-event fixture repins the
+target and parent exactly before checking the loader refusal. The
+binding-refresh check requires explicit reauthoring of a
+stale target pin. The fixture exercises loading and validation only. Execution
+of the candidate, persistent replay and qualification of distributed calls
+require separate evidence.
 
 `verify-agentic-process-execution-fixtures.mjs --standard-composed-mode=files --standard-composed-stop=cycle_admit`
 loads that same published JSON through `createStandardWorkflowExecution`. The
