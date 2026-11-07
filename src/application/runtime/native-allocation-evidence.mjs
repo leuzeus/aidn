@@ -6,6 +6,11 @@ import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const json = file => readAgentRunFile(file, { maxBytes: 262144 });
+// Match the file-backed artifact inventory for the canonical projection. A
+// checkpoint also carries bounded resource and result inventories and receipts.
+const NATIVE_PROJECTION_MAX_BYTES = 1024 * 1024;
+export const NATIVE_CHECKPOINT_MAX_BYTES = 2 * 1024 * 1024;
+export const readNativeCheckpointFile = file => readAgentRunFile(file, { maxBytes: NATIVE_CHECKPOINT_MAX_BYTES });
 // A dot cannot occur in a process instance ID, so an allocation namespace cannot
 // collide with another valid instance's initial output directory.
 export const nativeAllocationOutputId = (instanceId, generation) => generation === 1 ? instanceId : `${instanceId}.g${generation}`;
@@ -25,7 +30,7 @@ export function readNativeAllocationCheckpoint(entry, configuration, { scopeId, 
   if (path.dirname(entry.checkpoint.path) !== path.join(configuration.control_root, output)
     || !/^[0-9]{5}-native-host-state\.json$/.test(path.basename(entry.checkpoint.path))
     || entry.closure_ref.path !== path.join(configuration.control_root, output + "-CLOSURE.json")) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
-  const data = json(entry.checkpoint.path), closure = json(entry.closure_ref.path);
+  const data = readNativeCheckpointFile(entry.checkpoint.path), closure = json(entry.closure_ref.path);
   if (data.sha256 !== entry.checkpoint.sha256 || closure.sha256 !== entry.closure_ref.sha256
     || shadowHash(closure.value) !== entry.owned_result_sha256 || shadowHash(closure.value.process_tree) !== entry.tree_proof_sha256) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
   if (entry.phase === "closed" && (closure.value.first_failure !== null || closure.value.status !== entry.owned_status
@@ -40,7 +45,8 @@ export function readNativeAllocationCheckpoint(entry, configuration, { scopeId, 
 export function assertNativeAllocationProjection(current, configuration, required) {
   if (!required || !current) return;
   try {
-    const visible = json(path.join(configuration.target_root, "docs/audit/workflows/process-instances", configuration.instance_id + ".json")).value;
+    const visible = readAgentRunFile(path.join(configuration.target_root, "docs/audit/workflows/process-instances", configuration.instance_id + ".json"),
+      { maxBytes: NATIVE_PROJECTION_MAX_BYTES }).value;
     if (shadowHash(visible) !== shadowHash(current)) fail("NATIVE_ALLOCATION_PROJECTION_RECONCILIATION_REQUIRED");
   } catch { fail("NATIVE_ALLOCATION_PROJECTION_RECONCILIATION_REQUIRED"); }
 }

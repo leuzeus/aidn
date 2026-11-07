@@ -234,6 +234,20 @@ The direct implementation pin includes every new module and contract.
 
 ## Limits and validation
 
+The worker and both allocation readers allow up to 2 MiB for the typed
+`native-host-state.v1` checkpoint envelope, including its trailing newline.
+The native projection check allows up to 1 MiB for the visible instance,
+matching the file-backed artifact inventory's per-artifact read limit. The
+checkpoint also carries bounded executor and result inventories and response
+digests, so it gets additional headroom within the reconciliation inventory's
+16 MiB per-file limit. Existing structural limits and the 256 KiB generic
+evidence limit still apply to their respective records. The full checkpoint
+counts against the worker's remaining storage budget before the 256 KiB footer
+reserve, then against cumulative allocation storage. These bounds are owned by
+the implementation. Resume still verifies the exact checkpoint, protected
+evidence, canonical instance and required projection under the signed journal
+and supervisor closure.
+
 The focused `--native-epoch-mode=files|dual|db-only` execution fixtures cover
 actual allocation/worker ports, retained original history, current-state refusal,
 incomplete/foreign closure, missing/unverified/reused consent, exact grant and

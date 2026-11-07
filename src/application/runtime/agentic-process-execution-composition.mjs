@@ -22,7 +22,7 @@ import { agenticProcessPersistence, createAgenticProcessWorkerEnvironment } from
 import { assertAgenticControlScenario } from "../../core/workflow/agentic-process-control-scenario.mjs";
 import { republishBrokerProductFile } from "../../adapters/runtime/broker-product-file.mjs";
 import { assertAgenticProcessStart } from "../../core/workflow/agentic-process-start.mjs";
-import { nativeEvidenceFile } from "./native-allocation-evidence.mjs";
+import { nativeEvidenceFile, NATIVE_CHECKPOINT_MAX_BYTES } from "./native-allocation-evidence.mjs";
 
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
 const digest = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
@@ -263,21 +263,22 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
         try { if (used() > authorization.max_bytes - 262144) requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); }
         catch { requestStop("PROCESS_EXECUTION_STORAGE_UNVERIFIABLE"); }
       }, 100);
-      const save = (name, value) => {
+      const nextEvidenceFile = kind => `${String(++sequence).padStart(5, "0")}-${kind}.json`;
+      const save = (name, value, maxBytes = 262144) => {
         const data = Buffer.from(JSON.stringify(value) + "\n");
-        if (data.length > 262144 || used() + data.length > authorization.max_bytes - 262144) { requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); fail("PROCESS_EXECUTION_STORAGE_LIMIT"); }
+        if (data.length > maxBytes || used() + data.length > authorization.max_bytes - 262144) { requestStop("PROCESS_EXECUTION_STORAGE_LIMIT"); fail("PROCESS_EXECUTION_STORAGE_LIMIT"); }
         const file = path.join(output, name); fs.writeFileSync(file, data, { flag: "wx" }); retainedBytes += data.length;
         return { ref: `execution/${outputId}/${name}`, sha256: hash(data) };
       };
       const evidence = {
-        async retain(kind, value) { return save(`${String(++sequence).padStart(5, "0")}-${kind}.json`, value); },
+        async retain(kind, value) { return save(nextEvidenceFile(kind), value); },
         async verify(ref) {
           const file = nativeEvidenceFile(config, ref, admitted?.generation ?? 1);
           if (hash(bytes(file)) !== ref.sha256) fail("PROCESS_EXECUTION_EVIDENCE_CHANGED");
         },
         diagnostic(value) {
           if (++diagnostics > 4096) { requestStop("PROCESS_EXECUTION_DIAGNOSTIC_LIMIT"); fail("PROCESS_EXECUTION_DIAGNOSTIC_LIMIT"); }
-          save(`${String(++sequence).padStart(5, "0")}-transport.json`, value);
+          save(nextEvidenceFile("transport"), value);
         },
       };
       const budget = {
@@ -461,15 +462,18 @@ export function createProjectAgenticProcessExecution(configuration, { rpcFactory
       }
       let nativeCheckpoint = null;
       if (current?.record) {
-        try { nativeCheckpoint = await evidence.retain("native-host-state", {
-          state: await host.checkpoint(current.record),
-          response_sha256: [...responseIds].map(id => hash(Buffer.from(id))),
-          responses_observed: responseIds.size,
-          authorized_budget_sha256: shadowHash(authorization),
-          authorized_limits: Object.fromEntries(["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms",
-            "max_turn_ms", "max_responses", "max_bytes"].map(key => [key, authorization[key]])),
-          resume_authority: "NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED",
-        }); }
+        try {
+          const state = await host.checkpoint(current.record);
+          nativeCheckpoint = save(nextEvidenceFile("native-host-state"), {
+            state,
+            response_sha256: [...responseIds].map(id => hash(Buffer.from(id))),
+            responses_observed: responseIds.size,
+            authorized_budget_sha256: shadowHash(authorization),
+            authorized_limits: Object.fromEntries(["configuration_sha256", "authorized_at_ms", "global_deadline_ms", "workflow_deadline_ms",
+              "max_turn_ms", "max_responses", "max_bytes"].map(key => [key, authorization[key]])),
+            resume_authority: "NOT_ESTABLISHED_SUPERVISOR_AND_AUTHENTICATED_JOURNAL_REQUIRED",
+          }, NATIVE_CHECKPOINT_MAX_BYTES);
+        }
         catch (error) { firstFailure ??= /^(PROCESS_|ARTIFACT_|WORKFLOW_INSTANCE_)[A-Z_]+$/.test(error.code ?? "") ? error.code : "PROCESS_EXECUTION_CHECKPOINT_UNCONFIRMED"; }
       }
       let retained = null, debit = null;

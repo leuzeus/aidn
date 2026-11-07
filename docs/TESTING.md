@@ -912,6 +912,17 @@ Its approval, resource discovery and native transport remain fixture doubles.
 Existing `--journal-only`, `--resume-only` and `--mixed-only` remain separate
 regression checks. See ADR-0026 for the source and persistence contract.
 
+Run `node tools/perf/verify-agentic-process-execution-fixtures.mjs
+--large-checkpoint-only --retain-on-failure` for the checkpoint size boundary.
+The dual SQLite case writes and collects a checkpoint and instance projection
+both larger than 256 KiB, rejects substitution of either file and oversized
+generic evidence, then resumes in a fresh Node process with the original debit.
+The files case consumes enough
+retained storage at native close to refuse the checkpoint while preserving the
+footer reserve and blocking another allocation. The allocator, worker
+composition, signed journal and canonical stores are real. The fixture uses
+the existing RPC, process-controller and external control source doubles.
+
 
 `node tools/perf/verify-standard-expired-plan-fixtures.mjs` checks a restricted
 explicit preparation path after an accepted `STANDARD_PLAN_EXPIRED` refusal.

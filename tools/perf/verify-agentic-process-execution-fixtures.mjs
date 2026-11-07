@@ -230,6 +230,7 @@ async function check(name, callback) { if (process.argv.includes("--drift-object
   if (selectedChangeRequestMode && !name.startsWith(`drift CR ${selectedChangeRequestMode}:`)) return;
   if (selectedRecoveryCycleMode && !name.startsWith(`drift cycle ${selectedRecoveryCycleMode}:`)) return;
   if (process.argv.includes("--checkpoint-only") && !name.startsWith("checkpoint ")) return;
+  if (process.argv.includes("--large-checkpoint-only") && !name.startsWith("journal large checkpoint")) return;
   if (process.argv.includes("--journal-only") && !name.startsWith("journal ")) return;
   if (process.argv.includes("--owned-only") && !/^(journal |owned )/.test(name)) return;
   if (process.argv.includes("--resume-only") && !name.startsWith("resume ")) return;
@@ -343,6 +344,12 @@ function journalFixture(options = {}) {
   const f = fixture({ git: options.git }), model = JSON.parse(fs.readFileSync(f.configuration.model.path));
   if (options.stateMode) persistenceFixture(f, "sqlite", options.stateMode);
   model.contract_version = "agentic-process-model.v2"; model.operation_pins = {};
+  if (options.largeCheckpoint) {
+    // Keep the authored model below 256 KiB. Three actual results and their
+    // assignments grow the canonical instance past that boundary.
+    const permissions = Array.from({ length: 123 }, (_, i) => `read:${i}:`.padEnd(256, "x"));
+    for (let i = 0; i < 8; i++) model.policies.push({ ...model.policies[0], id: `unused_${i}`, allowed_permissions: ["read:product", ...permissions] });
+  }
   if (options.waitAtEntry) {
     const activity = model.nodes.find(node => node.kind === "activity");
     model.nodes.push({ id: "external_wait", kind: "event", participant_ref: activity.participant_ref, branches: [
@@ -401,7 +408,8 @@ async function readyResumeFixture(options = {}) {
   } };
   const f = journalFixture({ ...options, wait: true, resumeReview: true, git: true, controlSource });
   f.auth = f.authorize(); f.auth.global_deadline_ms += 180000; f.auth.workflow_deadline_ms += 180000;
-  assert.equal((await f.actor.run({ execute: true, authorization: f.auth })).status, "WAITING");
+  const first = await f.actor.run({ execute: true, authorization: f.auth });
+  assert.equal(first.status, "WAITING", first.first_failure ?? first.owned_result?.first_failure);
   const state = f.actor.readCheckpoint(1).state.instance, frame = inspectAgenticProcess(state).occurrences.find(row => row.node_id === "external_wait");
   f.request = f.actor.prepareControl(frame.occurrence_id);
   claim = { contract_version: "process-control-source.v1", source_kind: "external", authority_id: "fixture_review", source_event_id: "review-1",
@@ -2284,6 +2292,76 @@ if (process.argv[2] === "--mixed-continue") {
         : path.join(f.dirs.control, "case", fs.readdirSync(path.join(f.dirs.control, "case")).find(name => name.endsWith("-native-result.json")));
       fs.appendFileSync(file, "\n"); assert.throws(() => f.open().readCheckpoint(1), /EVIDENCE_CHANGED/);
     }
+  });
+  await check("journal large checkpoint survives allocation closure and a fresh dual resume", async () => {
+    const f = await readyResumeFixture({ stateMode: "dual", largeCheckpoint: true });
+    const first = f.actor.inspect().allocations[0], checkpoint = fs.readFileSync(first.checkpoint.path);
+    const visible = path.join(f.configuration.target_root, "docs/audit/workflows/process-instances/case.json");
+    const projection = fs.readFileSync(visible);
+    assert.equal(first.phase, "closed");
+    assert.ok(fs.statSync(f.configuration.model.path).size < 262144);
+    assert.ok(checkpoint.length > 262144 && projection.length > 262144, JSON.stringify({ checkpoint: checkpoint.length, projection: projection.length }));
+    assert.equal(sha(checkpoint), first.checkpoint.sha256);
+
+    const substituted = JSON.parse(checkpoint); substituted.response_sha256[0] = "f".repeat(64);
+    fs.writeFileSync(first.checkpoint.path, JSON.stringify(substituted) + "\n");
+    assert.throws(() => f.open().readCheckpoint(1), /NATIVE_ALLOCATION_EVIDENCE_CHANGED/);
+    await assert.rejects(f.open().run({ execute: true, authorization: f.auth, resume: true }), /NATIVE_ALLOCATION_EVIDENCE_CHANGED/);
+    fs.writeFileSync(first.checkpoint.path, checkpoint);
+    const genericRef = substituted.state.results[0].reference.ref;
+    const genericFile = path.join(path.dirname(first.checkpoint.path), path.posix.basename(genericRef));
+    const genericEvidence = fs.readFileSync(genericFile);
+    fs.appendFileSync(genericFile, " ".repeat(262144));
+    assert.throws(() => f.open().readCheckpoint(1), /AGENT_RUN_FILE_INVALID/);
+    fs.writeFileSync(genericFile, genericEvidence);
+    const changed = JSON.parse(projection); changed.revision++;
+    fs.writeFileSync(visible, JSON.stringify(changed) + "\n");
+    await assert.rejects(f.open().run({ execute: true, authorization: f.auth, resume: true }), /NATIVE_ALLOCATION_PROJECTION_RECONCILIATION_REQUIRED/);
+    fs.writeFileSync(visible, projection);
+    assert.equal(f.launches, 1); assert.deepEqual(f.actor.inspect().allocations, [first]);
+
+    const input = put(f.base, "resume-input.json", JSON.stringify({ fixture: { configuration: f.configuration, dirs: f.dirs, base: f.base }, key_hex: f.key.toString("hex"), authorization: f.auth }));
+    const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--resume-allocation", input], { encoding: "utf8", shell: false, timeout: 120000 });
+    assert.equal(child.status, 0, child.stderr);
+    const { result, launches, sessions, closed } = JSON.parse(child.stdout);
+    assert.equal(result.status, "COMPLETED", JSON.stringify(result));
+    assert.equal(result.journal_phase, "closed");
+    assert.deepEqual({ launches, sessions, closed }, { launches: 1, sessions: 1, closed: true });
+    const allocations = f.open().inspect().allocations;
+    assert.deepEqual(allocations[0], first);
+    assert.equal(allocations[1].limits.max_bytes, f.auth.max_bytes - first.consumption.storage_debit_bytes);
+    assert.equal(allocations[1].limits.max_responses, f.auth.max_responses - first.consumption.responses_observed);
+    assert.equal(f.open().readCheckpoint(2).state.results.length, 4);
+    console.log(JSON.stringify({ checkpoint_bytes: checkpoint.length, projection_bytes: projection.length }));
+  });
+  await check("journal large checkpoint cannot spend the aggregate footer reserve", async () => {
+    const f = journalFixture({ largeCheckpoint: true }), { rpcFactory } = f.t;
+    f.t.rpcFactory = configuration => {
+      const rpc = rpcFactory(configuration);
+      return { ...rpc, async close() {
+        // Grow retained bytes after the final canonical write so the refusal
+        // must come from saving the checkpoint, not an earlier CAS guard.
+        put(f.dirs.control, "case/fixture-retained.bin", Buffer.alloc(1408 * 1024));
+        return rpc.close();
+      } };
+    };
+    const authorization = { ...f.authorize(), max_bytes: 2 * 1024 * 1024 };
+    const result = await f.actor.run({ execute: true, authorization });
+    const worker = result.owned_result.worker_result;
+    assert.equal(result.journal_phase, "failed", JSON.stringify(result));
+    assert.equal(worker.first_failure, "PROCESS_EXECUTION_STORAGE_LIMIT");
+    assert.equal(worker.native_checkpoint, null);
+    assert.equal(worker.responses_observed, 3);
+    assert.equal(worker.native_parent_closure.closed, true);
+    const current = createAgenticProcessStore({ targetRoot: f.configuration.target_root, stateMode: "files" }).read("case").record;
+    assert.equal(inspectAgenticProcess(current).status, "COMPLETED");
+    assert.ok(worker.storage_budget_debit_bytes <= authorization.max_bytes - 262144);
+    assert.ok(worker.storage_budget_debit_bytes + 262144 > authorization.max_bytes - 262144);
+    assert.ok(fs.existsSync(path.join(f.dirs.control, "case/RESULT.json")));
+    assert.equal(f.open().inspect().allocations[0].checkpoint, null);
+    await assert.rejects(f.open().run({ execute: true, authorization, resume: true }), /NATIVE_ALLOCATION_TERMINAL_FAILURE/);
+    assert.equal(f.launches, 1);
+    console.log(JSON.stringify({ debit_bytes: worker.storage_budget_debit_bytes, authorized_bytes: authorization.max_bytes }));
   });
   await check("journal retains reconciliation when canonical state disappears after the native worker", async () => {
     const f = journalFixture({ afterWorker(f) { fs.unlinkSync(path.join(f.configuration.target_root, "docs/audit/workflows/process-instances/case.json")); } });

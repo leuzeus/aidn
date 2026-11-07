@@ -14,7 +14,7 @@ import { assertAgenticProcessStart } from "../../core/workflow/agentic-process-s
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createProcessControlInboxStore } from "../../adapters/runtime/process-control-inbox-store.mjs";
-import { readNativeAllocationCheckpoint, readNativeAllocationHistory, verifyNativeResultEvidence, nativeAllocationOutputId, assertNativeAllocationProjection } from "./native-allocation-evidence.mjs";
+import { readNativeAllocationCheckpoint, readNativeAllocationHistory, readNativeCheckpointFile, verifyNativeResultEvidence, nativeAllocationOutputId, assertNativeAllocationProjection } from "./native-allocation-evidence.mjs";
 import { createNativeAllocationControls, readNativeControlContext } from "./native-allocation-controls.mjs";
 import { createNativeAuthorizationEpochs } from "./native-authorization-epochs.mjs";
 import { effectiveNativeEpochAuthorization } from "../../core/workflow/native-authorization-epoch.mjs";
@@ -185,9 +185,9 @@ export function createJournaledNativeAllocation({ configuration, readSigningKey,
             if (shadowHash(closure.value) !== shadowHash(result)) fail("NATIVE_ALLOCATION_CLOSURE_CHANGED");
             entry.closure_ref = { path: closurePath, sha256: closure.sha256 };
             const worker = result.worker_result, ref = worker?.native_checkpoint;
-            const match = ref && new RegExp("^execution/" + outputId + "/([0-9]{5}-native-host-state\\.json)$").exec(ref.ref);
-            if (!match) fail("NATIVE_ALLOCATION_CHECKPOINT_UNAVAILABLE");
-            const file = path.join(config.control_root, outputId, match[1]), data = json(file);
+            const match = /^execution\/([^/]+)\/([0-9]{5}-native-host-state\.json)$/.exec(ref?.ref ?? "");
+            if (match?.[1] !== outputId) fail("NATIVE_ALLOCATION_CHECKPOINT_UNAVAILABLE");
+            const file = path.join(config.control_root, outputId, match[2]), data = readNativeCheckpointFile(file);
             if (data.sha256 !== ref.sha256) fail("NATIVE_ALLOCATION_EVIDENCE_CHANGED");
             assertNativeCheckpointEvidence(data.value, { instanceId: config.instance_id, scopeId: preview.scope_id, modelSha256: preview.model_sha256,
               authorizationSha256: last.authorization_sha256, limits: last.limits });
