@@ -45,8 +45,8 @@ function model({ parallel = false, size = 120 } = {}) {
       ...(parallel ? [] : [{ node_id: "consume", fields: { value: expression("call_output", "second") } }])] } };
 }
 const mac = body => createHmac("sha256", KEY).update(canonicalShadowJson(body)).digest("hex");
-function fixture(arena, m) {
-  const store = () => createAgenticProcessStore({ targetRoot: arena, stateMode: "files" });
+function fixture(arena, m, processStore) {
+  const store = () => processStore ?? createAgenticProcessStore({ targetRoot: arena, stateMode: "files" });
   const file = id => path.join(arena, "journal", id + ".json");
   function read(id) {
     const { authentication, ...record } = JSON.parse(fs.readFileSync(file(id), "utf8"));
@@ -92,9 +92,10 @@ function initialize(arena, m) {
   fixture(arena, m).service().initialize({ instanceId: "fixture", model: m, write: true });
 }
 async function step(arena, phase = "complete") {
-  const m = createAgenticProcessStore({ targetRoot: arena, stateMode: "files" }).read("fixture").record.model;
-  const f = fixture(arena, m), service = f.service();
-  let state = service.inspect("fixture");
+  const store = createAgenticProcessStore({ targetRoot: arena, stateMode: "files" });
+  let state = createAgenticProcessService({ store }).inspect("fixture");
+  const m = state.record.model;
+  const f = fixture(arena, m, store), service = f.service();
   if (["COMPLETED", "FAILED", "CANCELLED"].includes(state.cursor.status)) return state;
   const call = state.cursor.occurrences.find(row => row.status === "WAITING" && ["call_entry", "call_return"].includes(row.wait_reason));
   if (call) {

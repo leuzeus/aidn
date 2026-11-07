@@ -117,6 +117,12 @@ refusal for data-binding versions 1 through 4. The indirect-recursion fixture
 uses `call_output` after converting its source operation to a call, so an invalid
 operation-output reference does not mask the recursion assertion.
 
+Each fixture step takes its model and cursor from one fresh canonical service
+inspection, including in cold workers. The operation service uses that same
+store and retains its own validated reads, authority checks and CAS. The full
+five-case cohort is NOT_RUN for this fixture change pending a fresh immutable
+READY and exact ROOT GO, under the original order and bounds.
+
 The initial SOURCE83 contract run failed nominal validation with
 `PROCESS_INPUT_SOURCE_SCOPE_INVALID`; the other four cases were NOT_STARTED.
 That original result remains retained. On the corrected source these selectors
