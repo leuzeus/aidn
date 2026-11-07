@@ -45,7 +45,10 @@ function model({ parallel = false, size = 120 } = {}) {
       ...(parallel ? [] : [{ node_id: "consume", fields: { value: expression("call_output", "second") } }])] } };
 }
 const mac = body => createHmac("sha256", KEY).update(canonicalShadowJson(body)).digest("hex");
-function fixture(arena, m, processStore) {
+const fixtureAuthority = model => ({
+  scope_id: "fixture-scope", model_sha256: shadowHash(model), policy_pins: agenticPolicyPins(model),
+});
+function fixture(arena, m, processStore, readAuthority = () => fixtureAuthority(m)) {
   const store = () => processStore ?? createAgenticProcessStore({ targetRoot: arena, stateMode: "files" });
   const file = id => path.join(arena, "journal", id + ".json");
   function read(id) {
@@ -54,7 +57,7 @@ function fixture(arena, m, processStore) {
     return record;
   }
   const service = () => createAgenticProcessService({ store: store(), authorityTimeoutMs: 5000,
-    readAuthority: () => ({ scope_id: "fixture-scope", model_sha256: shadowHash(m), policy_pins: agenticPolicyPins(m) }),
+    readAuthority,
     operationAuthority: {
       prepare({ instance, occurrence }) {
         const input = resolveProcessOperationInput({ instance, occurrenceId: occurrence.occurrence_id, readOperation: read }).input;
@@ -95,7 +98,9 @@ async function step(arena, phase = "complete") {
   const store = createAgenticProcessStore({ targetRoot: arena, stateMode: "files" });
   let state = createAgenticProcessService({ store }).inspect("fixture");
   const m = state.record.model;
-  const f = fixture(arena, m, store), service = f.service();
+  let authority;
+  const f = fixture(arena, m, store, () => structuredClone(authority ??= fixtureAuthority(m)));
+  const service = f.service();
   if (["COMPLETED", "FAILED", "CANCELLED"].includes(state.cursor.status)) return state;
   const call = state.cursor.occurrences.find(row => row.status === "WAITING" && ["call_entry", "call_return"].includes(row.wait_reason));
   if (call) {

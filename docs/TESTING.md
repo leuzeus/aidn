@@ -119,9 +119,12 @@ operation-output reference does not mask the recursion assertion.
 
 Each fixture step takes its model and cursor from one fresh canonical service
 inspection, including in cold workers. The operation service uses that same
-store and retains its own validated reads, authority checks and CAS. The full
-five-case cohort is NOT_RUN for this fixture change pending a fresh immutable
-READY and exact ROOT GO, under the original order and bounds.
+store and retains its own validated reads, authority checks and CAS. On the
+first authority check within a step, the fixture derives its synthetic scope,
+model hash and validated policy pins from that inspected model. Each check
+receives an independent copy. The preceding cohort remains FAIL at the cold
+deadline, with negative NOT_STARTED. The revised fixture is NOT_RUN pending
+a fresh immutable READY and exact ROOT GO under the original order and bounds.
 
 The initial SOURCE83 contract run failed nominal validation with
 `PROCESS_INPUT_SOURCE_SCOPE_INVALID`; the other four cases were NOT_STARTED.
