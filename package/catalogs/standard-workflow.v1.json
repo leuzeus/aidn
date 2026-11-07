@@ -1,7 +1,7 @@
 {
-  "contract_version": "standard-workflow-catalog.v2",
+  "contract_version": "standard-workflow-catalog.v3",
   "component_id": "aidn-standard",
-  "revision": 185,
+  "revision": 186,
   "scope": {
     "kind": "composed_committing_cycle_component",
     "complete_standard_workflow": false,
@@ -25,9 +25,9 @@
   },
   "model": {
     "path": "package/catalogs/process-models/aidn-standard.v1.json",
-    "sha256": "d89466a53b2e5e574e4130ee63fa94d62cf0ece0309b4f6f32ffbb7b7fd6ff85",
+    "sha256": "a1246c5c3b976a9a8e4856674d31870fa5a30b249342e5641368f1539ecc8c15",
     "model_id": "aidn-standard",
-    "revision": 185
+    "revision": 186
   },
   "specification": {
     "path": "docs/SPEC.md",
@@ -2001,56 +2001,6 @@
       }
     },
     {
-      "node_id": "final_validation",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "cycle_validation_evaluate",
-        "revision": 2,
-        "executor_kind": "deterministic",
-        "effect_class": "read-only",
-        "skill_id": "cycle-close",
-        "input_contract": "standard-cycle-validation-evaluate-input.v2",
-        "output_contract": "standard-cycle-verification-output.v1",
-        "rule_refs": [
-          "SPEC-R04",
-          "SPEC-R07"
-        ],
-        "allowed_modes": [
-          "COMMITTING"
-        ],
-        "implementation_sha256": "9f5e20ad9236f95f0e1bfd8d4e7be8041f2803b147b843ceaccd154c3e24c032"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
-        "sha256": "0b0fdf7c398ba6ef0ee60b0d11e435a87fa579063cf2b148873f508085638855"
-      }
-    },
-    {
-      "node_id": "verification_enter",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "cycle_verification_enter",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "mutating",
-        "skill_id": "cycle-close",
-        "input_contract": "standard-cycle-verification-enter-input.v1",
-        "output_contract": "standard-cycle-verification-output.v1",
-        "rule_refs": [
-          "SPEC-R04",
-          "SPEC-R07"
-        ],
-        "allowed_modes": [
-          "COMMITTING"
-        ],
-        "implementation_sha256": "9f5e20ad9236f95f0e1bfd8d4e7be8041f2803b147b843ceaccd154c3e24c032"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
-        "sha256": "0b0fdf7c398ba6ef0ee60b0d11e435a87fa579063cf2b148873f508085638855"
-      }
-    },
-    {
       "node_id": "audit_select",
       "binding": {
         "contract_version": "process-operation-binding.v1",
@@ -2759,56 +2709,6 @@
       "skill_source": {
         "path": "scaffold/codex/aidn-start-session/SKILL.md",
         "sha256": "9ac22075bcfe9407059e693db9d0dd43c1d0e0e50b81667bff8685e1d7c7b814"
-      }
-    },
-    {
-      "node_id": "correction_final_validation",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "cycle_validation_evaluate",
-        "revision": 2,
-        "executor_kind": "deterministic",
-        "effect_class": "read-only",
-        "skill_id": "cycle-close",
-        "input_contract": "standard-cycle-validation-evaluate-input.v2",
-        "output_contract": "standard-cycle-verification-output.v1",
-        "rule_refs": [
-          "SPEC-R04",
-          "SPEC-R07"
-        ],
-        "allowed_modes": [
-          "COMMITTING"
-        ],
-        "implementation_sha256": "9f5e20ad9236f95f0e1bfd8d4e7be8041f2803b147b843ceaccd154c3e24c032"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
-        "sha256": "0b0fdf7c398ba6ef0ee60b0d11e435a87fa579063cf2b148873f508085638855"
-      }
-    },
-    {
-      "node_id": "correction_verification_enter",
-      "binding": {
-        "contract_version": "process-operation-binding.v1",
-        "id": "cycle_verification_enter",
-        "revision": 1,
-        "executor_kind": "deterministic",
-        "effect_class": "mutating",
-        "skill_id": "cycle-close",
-        "input_contract": "standard-cycle-verification-enter-input.v1",
-        "output_contract": "standard-cycle-verification-output.v1",
-        "rule_refs": [
-          "SPEC-R04",
-          "SPEC-R07"
-        ],
-        "allowed_modes": [
-          "COMMITTING"
-        ],
-        "implementation_sha256": "9f5e20ad9236f95f0e1bfd8d4e7be8041f2803b147b843ceaccd154c3e24c032"
-      },
-      "skill_source": {
-        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
-        "sha256": "0b0fdf7c398ba6ef0ee60b0d11e435a87fa579063cf2b148873f508085638855"
       }
     },
     {
@@ -4147,6 +4047,66 @@
           "SPEC-R05",
           "SPEC-R07",
           "SPEC-R11"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "9f5e20ad9236f95f0e1bfd8d4e7be8041f2803b147b843ceaccd154c3e24c032"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "0b0fdf7c398ba6ef0ee60b0d11e435a87fa579063cf2b148873f508085638855"
+      }
+    },
+    {
+      "node_id": "final_validation",
+      "model_ref": {
+        "model_id": "aidn-standard-final-verification",
+        "revision": 1,
+        "model_sha256": "71bd452cd44590841d30ddc017704822c77ebbd542ea2f10de093a9062b93b5d"
+      },
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_validation_evaluate",
+        "revision": 2,
+        "executor_kind": "deterministic",
+        "effect_class": "read-only",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-validation-evaluate-input.v2",
+        "output_contract": "standard-cycle-verification-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
+        ],
+        "allowed_modes": [
+          "COMMITTING"
+        ],
+        "implementation_sha256": "9f5e20ad9236f95f0e1bfd8d4e7be8041f2803b147b843ceaccd154c3e24c032"
+      },
+      "skill_source": {
+        "path": "scaffold/codex/aidn-cycle-close/SKILL.md",
+        "sha256": "0b0fdf7c398ba6ef0ee60b0d11e435a87fa579063cf2b148873f508085638855"
+      }
+    },
+    {
+      "node_id": "verification_enter",
+      "model_ref": {
+        "model_id": "aidn-standard-final-verification",
+        "revision": 1,
+        "model_sha256": "71bd452cd44590841d30ddc017704822c77ebbd542ea2f10de093a9062b93b5d"
+      },
+      "binding": {
+        "contract_version": "process-operation-binding.v1",
+        "id": "cycle_verification_enter",
+        "revision": 1,
+        "executor_kind": "deterministic",
+        "effect_class": "mutating",
+        "skill_id": "cycle-close",
+        "input_contract": "standard-cycle-verification-enter-input.v1",
+        "output_contract": "standard-cycle-verification-output.v1",
+        "rule_refs": [
+          "SPEC-R04",
+          "SPEC-R07"
         ],
         "allowed_modes": [
           "COMMITTING"

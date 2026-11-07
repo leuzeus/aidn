@@ -1,22 +1,24 @@
 # Appels de sous-modèles pour le workflow STANDARD
 
-Statut : **conception de référence ; premier candidat exécutable ajouté à la
-source, non qualifié**. Les contrats explicites sont décrits dans ADR-0022 et
-les sélecteurs de qualification dans `docs/TESTING.md`. Le raccordement complet
-à STANDARD, les bornes et profils encore non couverts restent à achever.
+La révision STANDARD 186 distribue la première extraction, `final_verification`,
+et ses deux appels épinglés. La matrice de trace figure dans
+[ADR-0025](ADR/ADR-0025-standard-workflow-runtime-binding.md#catalog-coverage-for-embedded-call-targets).
+Le préflight synthétique couvre les parcours principal et de correction.
+La qualification persistante, Native, fournisseur et package installé reste
+à établir pour ce modèle.
 Ce document prépare le contrat restant de L3. Il ne remplace ni
 [SPEC](SPEC.md), ni les décisions et autorisations d'exécution existantes.
 Le [plan complet](PLAN_STANDARD_WORKFLOW_PROCESS_IR_2026-11-01.md) conserve
 tous ses lots L1–L8 et critères A1–A10.
 
-## Problème vérifié dans la source
+## Problème observé avant l'extraction
 
-Le modèle composé courant contient 256 nœuds et déclare encore
+Le modèle composé avant extraction contenait 256 nœuds et déclarait
 `complete_standard_workflow: false`. L'auteur retire ou développe déjà des
 groupes séquentiels pour respecter cette borne. Une nouvelle activité ne doit
 pas être obtenue en retirant un chemin applicable ou son admission.
 
-Le `call` actuel référence un `child` du même tableau `nodes`.
+Le `call.child` historique référence un nœud du même tableau `nodes`.
 `agentic-process-model.mjs` impose un parent unique à chaque nœud non racine et
 refuse une seconde visite. Ce contrat représente un arbre, y compris ses appels.
 Il ne constitue pas une bibliothèque de sous-modèles réutilisables.

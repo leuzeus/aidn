@@ -12,7 +12,11 @@ const read = name => fs.readFileSync(new URL(name, root));
 const json = name => JSON.parse(read(name));
 const startup = json("package/catalogs/process-models/aidn-standard-startup.v1.json");
 const cycle = json("package/catalogs/process-models/aidn-standard-cycle-create.v1.json");
+const modelPath = "package/catalogs/process-models/aidn-standard.v1.json";
+const existing = fs.existsSync(new URL(modelPath, root)) ? assertAgenticProcessModel(json(modelPath)) : null;
 const bindings = standardWorkflowOperationBindings();
+const pinsFor = nodes => Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id))
+  .map(binding => [binding.id, shadowHash(binding)]));
 const nodes = [], inputs = [], activities = [];
 const node = (id, kind, body = {}) => (nodes.push({ id, kind, participant_ref: "project", ...body }), id);
 const seq = (id, children) => node(id, "sequence", { children });
@@ -181,9 +185,29 @@ op("task_validation", "cycle_validation_evaluate", operation("task_validation", 
 op("task_advance", "cycle_task_advance", operation("task_advance", "evaluation_operation_id", "task_validation"));
 xor("task_route", [["finished", "final_verification", "cycle_tasks_finished"], ["continue", "task_continue", null]]);
 seq("task_continue", []);
+// Author the target once, before the correction graph clones the call site.
+// The two cycle scopes provide their own validation and task progress IDs.
+const firstTargetNode = nodes.length, firstTargetInput = inputs.length;
+const verificationParameters = ["validation_operation_id", "progress_operation_id"];
 seq("final_verification", ["final_validation", "verification_enter"]);
-op("final_validation", "cycle_validation_evaluate", { ...operation("final_validation", "validation_operation_id", "validate"), ...operation("final_validation", "progress_operation_id", "task_advance") });
+op("final_validation", "cycle_validation_evaluate", Object.fromEntries(verificationParameters.map(key => [key, { source: "parameter", key, path: [] }])));
 op("verification_enter", "cycle_verification_enter", operation("verification_enter", "evaluation_operation_id", "final_validation"));
+const verificationNodes = nodes.splice(firstTargetNode);
+const verificationTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-final-verification", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "final_verification", nodes: verificationNodes,
+  operation_pins: pinsFor(verificationNodes),
+  call_interface: { parameters: Object.fromEntries(verificationParameters.map(key => [key, "string"])), returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: verificationParameters, inputs: inputs.splice(firstTargetInput) } };
+const previousTarget = existing?.call_targets?.find(row => row.model_id === verificationTarget.model_id);
+if (previousTarget) {
+  verificationTarget.revision = previousTarget.revision;
+  if (shadowHash(verificationTarget) !== previousTarget.model_sha256) verificationTarget.revision++;
+}
+const verificationRef = processModelIdentity(verificationTarget);
+node("final_verification", "call", { target: verificationRef });
+inputs.push({ node_id: "final_verification", fields: {
+  ...operation(null, "validation_operation_id", "validate"), ...operation(null, "progress_operation_id", "task_advance"),
+} });
 op("audit_select", "cycle_audit_select", operation("audit_select", "implementation_operation_id", "implementation_enter"));
 native("audit_review", "auditor", "audit", "standard-cycle-audit-report.v1", ["cycle-close"], ["SPEC-R04", "SPEC-R06"]);
 inputs.push({ node_id: "audit_review", fields: operation("audit_review", "audit_operation_id", "audit_select") });
@@ -404,10 +428,8 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...policy("exploring_analysis_policy", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" },
     { ...policy("exploring_planning", "compatible-work.v1", ["read:product"]), mode: "EXPLORING" }, policy("drift", "compatible-work.v1", ["read:product"]), policy("planning", "compatible-work.v1", ["read:product"]), policy("implementation", "compatible-work.v1", ["read:product", "write:product"]),
     policy("audit", "independent-review.v1", ["read:product"], true)], entry: "standard", nodes,
-  operation_pins: Object.fromEntries(bindings.filter(binding => nodes.some(row => row.binding_ref === binding.id)).map(binding => [binding.id, shadowHash(binding)])),
-  data_bindings: { contract_version: "process-data-bindings.v3", parameter_keys: ["session", "cycle"], inputs } };
-const modelPath = "package/catalogs/process-models/aidn-standard.v1.json";
-const existing = fs.existsSync(new URL(modelPath, root)) ? json(modelPath) : null;
+  operation_pins: pinsFor(nodes), call_targets: [{ ...verificationRef, model: verificationTarget }],
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
 if (existing) {
   model.revision = existing.revision;
 }

@@ -3,10 +3,15 @@ import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model
 import { evaluateAgentReuse, fingerprintAgentReuse } from "../../src/core/agents/agent-reuse-policy.mjs";
 import { iterateAgenticProcessSimulation } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
+import { processFrameModel, processFrameNode } from "../../src/core/workflow/process-call-model.mjs";
+import { resolveProcessCallData } from "../../src/core/workflow/process-call-data.mjs";
+import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
 
 const H = "a".repeat(64), fail = code => { throw Object.assign(Error(code), { code }); };
 const stops = { session_pr_correction_decide: "session_pr_correction_decide", plan: "plan", cycle_admit: "cycle_admit", closure_decide: "closure_decide", promotion_decide: "promotion_decide" };
 const keys = (v, names) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join() === [...names].sort().join();
+const verificationTargetId = "aidn-standard-final-verification";
+const verificationSites = ["final_verification", "correction_final_verification"];
 
 // Test planning only. Synthetic receipts/control/assignments never authenticate
 // a human, native producer, provider or effect. Routing uses the execution reducer.
@@ -22,17 +27,20 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     || typeof scenario.cold_resume !== "boolean" || !Number.isSafeInteger(scenario.max_responses) || scenario.max_responses < 1
     || ![...Object.keys(stops), "component_complete"].includes(stop)) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
   const interruption = scenario.interruption;
+  const target = model.model_id === "aidn-standard" ? model.call_targets?.find(row => row.model_id === verificationTargetId)?.model : null;
+  const targetLabels = verificationSites.flatMap((site, index) => model.nodes.some(node => node.id === site && node.target?.model_id === verificationTargetId)
+    ? (target?.nodes ?? []).filter(node => node.kind === "operation").map(node => (index === 0 ? "" : "correction_") + node.id) : []);
   if (interruption !== null && (!keys(interruption, ["node_id", "outcome"])
-    || !model.nodes.some(n => n.id === interruption.node_id && ["operation", "activity"].includes(n.kind))
+    || !(targetLabels.includes(interruption.node_id) || model.nodes.some(n => n.id === interruption.node_id && ["operation", "activity"].includes(n.kind)))
     || !["blocked", "deferred", "rejected", "failed", "cancelled"].includes(interruption.outcome))) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
   const initial = { instanceId: "budget-preflight", scopeId: "synthetic-fixture", model, policyPins: agenticPolicyPins(model), facts: {},
     parameters: { session: { session_id: "S001", session_branch: "S001-standard", objective: "Synthetic fixture budget planning" },
       cycle: { cycle_id: "C001", cycle_type: "feature", title: "standard-prefix", objective: "Synthetic fixture budget planning" } } };
   let state = createAgenticProcess(initial), serial = 0, advanced = 0, deferred = false, interrupted = false;
-  const native = [], operations = [], checkpoints = [];
+  const native = [], operations = [], checkpoints = [], callTransitions = [], verificationInputs = [];
   const emit = value => { state = advanceAgenticProcess(state, { event_id: "preflight-" + ++serial, ...value }); };
-  const opIntent = (frame, node) => ({ contract_version: "process-operation-intent.v1", operation_id: "op-" + serial,
-    binding_ref: node.binding_ref, binding_sha256: model.operation_pins[node.binding_ref], input_sha256: H, preconditions_sha256: H,
+  const opIntent = (frame, node, inputSha = H) => ({ contract_version: "process-operation-intent.v1", operation_id: "op-" + serial,
+    binding_ref: node.binding_ref, binding_sha256: processFrameModel(model, frame).operation_pins[node.binding_ref], input_sha256: inputSha, preconditions_sha256: H,
     authorization_sha256: null, authority_id: "synthetic-host", scope_id: state.scope_id, instance_id: state.instance_id,
     instance_sha256: state.instance_sha256, model_sha256: state.model_sha256, occurrence_id: frame.occurrence_id, instance_revision: state.revision });
   function opResult(frame, intent, outcome, facts = {}) {
@@ -44,15 +52,34 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   for (let step = 0; step < 200; step++) {
     const cursor = inspectAgenticProcess(state);
     if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) break;
+    const call = target && cursor.occurrences.find(frame => frame.status === "WAITING"
+      && ["call_entry", "call_return"].includes(frame.wait_reason) && verificationSites.includes(frame.node_id)
+      && processFrameNode(model, frame).target?.model_id === verificationTargetId);
+    if (call) {
+      const returning = call.wait_reason === "call_return", occurrence_id = call.occurrence_id;
+      // Only accepted operation IDs enter this fixture call. It supplies no
+      // arbitrary journal reader for targets that require output witnesses.
+      const data = resolveProcessCallData({ instance: state, cursor, occurrenceId: occurrence_id, returning });
+      emit({ kind: returning ? "call_return" : "call_enter", occurrence_id, ...data });
+      callTransitions.push({ node_id: call.node_id, occurrence_id, kind: state.events.at(-1).kind, ...data });
+      continue;
+    }
     const frame = cursor.occurrences.find(f => f.status === "READY") ?? cursor.occurrences.find(f => f.wait_reason === "event");
     if (!frame) throw Object.assign(Error("STANDARD_FIXTURE_PREFLIGHT_UNPLANNED_WAIT"), { code: "STANDARD_FIXTURE_PREFLIGHT_UNPLANNED_WAIT",
       waiting: cursor.occurrences.filter(row => row.status === "WAITING").map(row => ({ node_id: row.node_id, wait_reason: row.wait_reason })) });
-    const node = model.nodes.find(n => n.id === frame.node_id);
+    const node = processFrameNode(model, frame);
     if (node.id === stops[stop]) break;
     if (node.kind === "operation") {
-      const intent = opIntent(frame, node);
+      const site = frame.call_scope_id && cursor.occurrences.find(row => row.occurrence_id === frame.call_scope_id);
+      const label = site?.node_id === "correction_final_verification" ? "correction_" + node.id : node.id;
+      const verificationLeaf = model.model_id === "aidn-standard" &&
+        ["final_validation", "verification_enter", "correction_final_validation", "correction_verification_enter"].includes(label);
+      const resolution = verificationLeaf ? resolveProcessFrameInput({ instance: state, cursor, occurrenceId: frame.occurrence_id }) : null;
+      const intent = opIntent(frame, node, resolution ? shadowHash(resolution.input) : H);
+      if (resolution) verificationInputs.push({ node_id: label, occurrence_id: frame.occurrence_id, binding_ref: node.binding_ref,
+        operation_id: intent.operation_id, input: resolution.input, sources: resolution.sources });
       emit({ kind: "operation_intent", occurrence_id: frame.occurrence_id, intent });
-      if (interruption?.node_id === node.id) { opResult(frame, intent, interruption.outcome); interrupted = true; break; }
+      if (interruption?.node_id === label) { opResult(frame, intent, interruption.outcome); interrupted = true; break; }
       if (node.id === "closure_decide" && scenario.cold_resume && !deferred) {
         opResult(frame, intent, "deferred");
         checkpoints.push({ event_count: state.events.length, responses: native.length, instance_sha256: state.instance_sha256 });
@@ -81,7 +108,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
           session_pr_responses_required: node.id === "session_pr_triage_evaluate" && scenario.review_disposition === "valid_finding" };
         opResult(frame, intent, "completed", facts);
       }
-      operations.push(node.id);
+      operations.push(label);
     } else if (node.kind === "event") {
       const delivery = { contract_version: "process-control-event.v1", delivery_id: "delivery-" + serial, authority_id: "synthetic-host",
         source_kind: "external", source_event_id: "synthetic-event-" + serial, subject_sha256: H, scope_id: state.scope_id,
@@ -120,7 +147,8 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   if (replay.instance_sha256 !== state.instance_sha256) fail("STANDARD_FIXTURE_PREFLIGHT_REPLAY_CHANGED");
   const result = { proof_class: "synthetic-fixture-only", model_sha256: state.model_sha256, scenario_sha256: shadowHash(scenario), stop,
     responses_required: native.length, original_max_responses: scenario.max_responses, native_occurrences: native,
-    cold_resume_checkpoints: checkpoints, planned_status: cursor.status, interrupted, operations, replay_exact: true,
+    cold_resume_checkpoints: checkpoints, planned_status: cursor.status, interrupted, operations, event_count: state.events.length,
+    call_transitions: callTransitions, verification_inputs: verificationInputs, replay_exact: true,
     write_authorization: false, product_qualification: "NOT_ESTABLISHED" };
   if (scenario.max_responses < native.length) throw Object.assign(Error("STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT"), { code: "STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT", preflight: result });
   return result;

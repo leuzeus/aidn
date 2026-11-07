@@ -1003,6 +1003,58 @@ if (process.argv[2] === "--mixed-continue") {
     for (let step = 0; step < (fullCorrection ? 160 : 80); step++) {
       const state = f.open().inspect();
       if (runsPromotion && state.cursor.status === "COMPLETED") break;
+      const call = state.cursor.occurrences.find(row => row.status === "WAITING" && ["call_entry", "call_return"].includes(row.wait_reason));
+      if (call) {
+        const host = f.open(), expectedSha256 = state.record.instance_sha256, prefix = state.record.events;
+        const allocations = host.inspectAllocations(), nativeSessions = f.t.sessions.length;
+        const proposed = await host.step({ expectedInstanceSha256: expectedSha256 });
+        assert.equal(proposed.kind, "call");
+        assert.equal(proposed.written, false);
+        assert.equal(proposed.transition.transition, call.wait_reason);
+        const event = proposed.record.events.at(-1), entering = call.wait_reason === "call_entry";
+        assert.equal(event.kind, entering ? "call_enter" : "call_return");
+        assert.equal(event.occurrence_id, call.occurrence_id);
+        assert.deepEqual(event.witnesses, []);
+        const journals = new Map();
+        const accepted = (id, binding) => {
+          const journal = host.readOperation(id), receipt = journal.results.at(-1)?.receipt;
+          assert.equal(journal.intent.binding_ref, binding);
+          assert.equal(receipt?.outcome, "completed");
+          assert.ok(prefix.some(row => row.kind === "operation_result" && shadowHash(row.receipt) === shadowHash(receipt)));
+          journals.set(id, shadowHash(journal));
+          return journal;
+        };
+        if (entering) {
+          const { validation_operation_id, progress_operation_id } = event.resolution.input;
+          accepted(validation_operation_id, "cycle_validation_execute");
+          const progress = accepted(progress_operation_id, "cycle_task_advance");
+          assert.equal(progress.results.at(-1).output.observations.validation_operation_id, validation_operation_id);
+        } else {
+          const entry = prefix.find(row => row.kind === "call_enter" && row.occurrence_id === call.occurrence_id);
+          const operations = state.cursor.occurrences.filter(row => row.call_scope_id === call.occurrence_id && row.operation?.intent);
+          assert.equal(operations.length, 2);
+          const evaluation = accepted(operations.find(row => row.node_id === "final_validation").operation.intent.operation_id, "cycle_validation_evaluate");
+          const verification = accepted(operations.find(row => row.node_id === "verification_enter").operation.intent.operation_id, "cycle_verification_enter");
+          assert.deepEqual(evaluation.preview.input, entry.resolution.input);
+          assert.deepEqual(verification.preview.input, { evaluation_operation_id: evaluation.intent.operation_id });
+          assert.deepEqual(event.resolution.input, {});
+        }
+        assert.equal(host.inspect().record.instance_sha256, expectedSha256);
+        const result = await host.applyCall(proposed.transition, { expectedSha256, write: true });
+        assert.equal(result.written, true);
+        assert.notEqual(result.projection, "reconciliation_required");
+        assert.equal(result.record.instance_sha256, proposed.transition.result_sha256);
+        const reopened = f.reopen(), retained = reopened.inspect().record;
+        assert.equal(retained.instance_sha256, result.record.instance_sha256);
+        assert.equal(retained.revision, state.record.revision + 1);
+        assert.deepEqual(retained.events, [...prefix, event]);
+        assert.deepEqual(reopened.inspectAllocations(), allocations);
+        assert.equal(f.t.sessions.length, nativeSessions);
+        for (const [id, sha256] of journals) assert.equal(shadowHash(reopened.readOperation(id)), sha256);
+        console.log(JSON.stringify({ composed_call: event.kind, occurrence_id: event.occurrence_id, prefix_sha256: expectedSha256,
+          result_sha256: retained.instance_sha256, events_appended: 1, preserved_operation_journals: journals.size, new_native_allocations: 0 }));
+        continue;
+      }
       const frame = state.cursor.occurrences.find(row => row.status === "READY")
         ?? state.cursor.occurrences.find(row => row.status === "WAITING" && row.operation?.receipt?.outcome === "deferred");
       const reviewWait = state.cursor.occurrences.find(row => ['session_pr_review_wait', 'correction_pr_review_wait'].includes(row.node_id) && row.status === "WAITING");
@@ -1189,6 +1241,9 @@ if (process.argv[2] === "--mixed-continue") {
     if (runsPromotion && !stopsBeforeCorrectionChoice) assert.equal(final.cursor.status, "COMPLETED");
     else assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
+    const callEvents = final.record.events.filter(row => ["call_enter", "call_return"].includes(row.kind));
+    assert.deepEqual(callEvents.map(({ kind, occurrence_id }) => ({ kind, occurrence_id })),
+      standardPreflight.call_transitions.map(({ kind, occurrence_id }) => ({ kind, occurrence_id })));
     const acceptedOperations = final.record.events.filter(event => event.kind === "operation_intent").map(event => f.open().readOperation(event.intent.operation_id));
     const correctionStart = acceptedOperations.findIndex(row => row.intent.binding_ref === 'session_pr_correction_decision');
     const firstCycleOperations = fullCorrection && correctionStart >= 0 ? acceptedOperations.slice(0, correctionStart) : acceptedOperations;
@@ -1371,7 +1426,7 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(replayLast.instance_sha256, final.record.instance_sha256);
     if (replayBefore) assert.equal(replayWitness(), replayBefore);
     console.log(JSON.stringify({ standard_composed_proof: true, model_sha256: final.record.model_sha256, instance_sha256: final.record.instance_sha256,
-      events: final.record.events.length, application_operations: acceptedOperations.length, native_sessions_started: f.t.sessions.length,
+      events: final.record.events.length, call_transitions: callEvents.length, application_operations: acceptedOperations.length, native_sessions_started: f.t.sessions.length,
       scenario_sha256: standardPreflight.scenario_sha256, planned_responses: standardPreflight.responses_required,
       original_max_responses: auth.max_responses, original_deadline_ms: auth.global_deadline_ms,
       native_sessions_started_in_child: childNativeSessions, native_prior_results: priorNativeResults, cold_resume: Boolean(resumed),

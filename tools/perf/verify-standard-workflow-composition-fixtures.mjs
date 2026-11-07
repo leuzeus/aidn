@@ -53,19 +53,22 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 155); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 153); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
   assert.deepEqual(fields("correction_task_select").implementation_operation_id, { source: "operation_id", node_id: "correction_implementation_enter" });
   assert.deepEqual(fields("correction_audit_select").implementation_operation_id, { source: "operation_id", node_id: "correction_implementation_enter" });
   assert.deepEqual(fields("correction_validate").work_operation_id, { source: "operation_id", node_id: "correction_work_evaluate" });
-  assert.deepEqual(fields("correction_final_validation").validation_operation_id, { source: "operation_id", node_id: "correction_validate" });
+  assert.deepEqual(fields("correction_final_verification"), {
+    validation_operation_id: { source: "operation_id", node_id: "correction_validate" },
+    progress_operation_id: { source: "operation_id", node_id: "correction_task_advance" },
+  });
   assert.deepEqual(fields("correction_close_record").decision_operation_id, { source: "operation_id", node_id: "correction_closure_decide" });
   assert.deepEqual(fields("correction_cycle_terminal_checkpoint").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
   assert.deepEqual(fields("correction_close_finalize").closure_operation_id, { source: "operation_id", node_id: "correction_close_record" });
   const operations = assets.catalog.bindings.filter(row => row.node_id.startsWith("correction_") && !["correction_initialize", "correction_branch_audit", "correction_cycle_checkpoint", "correction_cycle_drift_evaluate", "correction_cycle_drift_finalize", "correction_plan_evaluate", "correction_plan_record", "correction_readiness", "correction_implementation_enter"].includes(row.node_id));
-  assert.equal(operations.length, 38);
+  assert.equal(operations.length, 36);
   assert.ok(operations.every(row => row.binding.id !== "session_pr_open" && row.binding.id !== "session_push"));
   const audit = assets.model.nodes.find(row => row.id === "correction_audit_review"); assert.equal(audit.policy_ref, "audit");
   const sequence = assets.model.nodes.find(row => row.id === "correction_cycle").children;
@@ -284,40 +287,7 @@ test("native configuration must use exactly the declared typed activity reports"
   assert.throws(() => assertStandardWorkflowActivityOutputs(assets.source, assets.model, { ...outputs, implement: outputs.plan }), { code: "STANDARD_ACTIVITY_OUTPUT_CONTRACT_CHANGED" });
   assert.throws(() => assertStandardWorkflowActivityOutputs(assets.source, assets.model, { ...outputs, extra: outputs.plan }), { code: "STANDARD_ACTIVITY_OUTPUT_CONTRACT_CHANGED" });
 });
-// Extract both occurrences in memory only. These are loader fixtures with
-// published bindings, not a new distributed graph or a business execution.
-function finalVerificationFixture() {
-  const input = fresh(), { catalog, model } = input;
-  const sequenceIds = ["final_verification", "correction_final_verification"];
-  const sequences = sequenceIds.map(id => model.nodes.find(row => row.id === id));
-  const [entry, validation, verification] = [sequences[0], ...sequences[0].children.map(id => model.nodes.find(row => row.id === id))];
-  const moved = new Set(sequences.flatMap(row => row.children));
-  const parameterKeys = ["validation_operation_id", "progress_operation_id"];
-  const target = { contract_version: model.contract_version, model_id: "aidn-standard-final-verification", revision: 1,
-    participants: structuredClone(model.participants), roles: [], policies: [], entry: entry.id,
-    nodes: [entry, validation, verification], operation_pins: Object.fromEntries([validation, verification]
-      .map(node => [node.binding_ref, model.operation_pins[node.binding_ref]])),
-    call_interface: { parameters: Object.fromEntries(parameterKeys.map(key => [key, "string"])), returns: {} },
-    data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: parameterKeys, inputs: [
-      { node_id: validation.id, fields: Object.fromEntries(parameterKeys.map(key => [key, { source: "parameter", key, path: [] }])) },
-      structuredClone(model.data_bindings.inputs.find(row => row.node_id === verification.id)),
-    ] } };
-  const parameters = sequences.map(sequence => ({ node_id: sequence.id,
-    fields: model.data_bindings.inputs.find(row => row.node_id === sequence.children[0]).fields }));
-  const ref = processModelIdentity(target);
-  model.nodes = model.nodes.filter(node => !moved.has(node.id)).map(node => sequenceIds.includes(node.id)
-    ? { id: node.id, kind: "call", participant_ref: node.participant_ref, target: ref } : node);
-  model.operation_pins = Object.fromEntries(Object.entries(model.operation_pins)
-    .filter(([id]) => model.nodes.some(node => node.binding_ref === id)));
-  model.data_bindings.contract_version = "process-data-bindings.v4";
-  model.data_bindings.inputs = [...model.data_bindings.inputs.filter(row => !moved.has(row.node_id)), ...parameters];
-  model.call_targets = [{ ...ref, model: target }];
-  catalog.contract_version = "standard-workflow-catalog.v3";
-  catalog.bindings = [...catalog.bindings.filter(row => !moved.has(row.node_id)),
-    ...catalog.bindings.filter(row => [validation.id, verification.id].includes(row.node_id)).map(row => ({ ...row, model_ref: ref }))];
-  catalog.model.sha256 = shadowHash(model);
-  return input;
-}
+// Substitute only the fixed package reads when exercising adversarial assets.
 function loadFixture({ catalog, model }) {
   const original = fs.readFileSync;
   const overrides = new Map([[STANDARD_WORKFLOW_CATALOG_PATH, catalog], [STANDARD_WORKFLOW_MODEL_PATH, model]]
@@ -337,7 +307,7 @@ function reauthorTarget({ catalog, model }, change) {
 }
 const targetRow = input => input.catalog.bindings.find(row => row.model_ref);
 const rejectFixture = (name, change, code) => test(name, () => {
-  const input = finalVerificationFixture();
+  const input = fresh();
   change(input);
   const before = shadowHash({ catalog: input.catalog, model: input.model });
   assert.throws(() => loadFixture(input), { code });
@@ -345,11 +315,19 @@ const rejectFixture = (name, change, code) => test(name, () => {
 });
 test("the ordinary loader authenticates the two final-verification operations for both calls", () => {
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV3, "#", { contractKind: "workflow-definition" }), []);
-  const input = finalVerificationFixture(), loaded = loadFixture(input);
+  const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 252);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
   assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 2);
-  assert.equal(loaded.model.nodes.filter(node => node.target).length, 2);
+  const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
+  assert.equal(loaded.model.call_targets.length, 1);
+  assert.equal(child.model_id, "aidn-standard-final-verification");
+  assert.deepEqual(identity, processModelIdentity(child));
+  const sites = loaded.model.nodes.filter(node => node.target);
+  assert.deepEqual(sites.map(node => node.id), ["final_verification", "correction_final_verification"]);
+  for (const site of sites) assert.deepEqual(site.target, identity);
+  assert.deepEqual(child.nodes.map(node => node.id), ["final_verification", "final_validation", "verification_enter"]);
+  assert.deepEqual(child.call_interface.returns, {});
   assert.deepEqual(loaded.model, input.model); assert.deepEqual(loaded.catalog, input.catalog);
   assert.ok(Object.isFrozen(loaded.model.call_targets[0].model.operation_pins));
   assert.deepEqual(loaded.catalog.activities, assets.catalog.activities);
@@ -363,7 +341,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(loaded.model, input.model); assert.deepEqual(loaded.catalog, input.catalog);
 });
 test("distinct pinned targets may share both local operation IDs", () => {
-  const input = finalVerificationFixture(), { catalog, model } = input;
+  const input = fresh(), { catalog, model } = input;
   const second = structuredClone(model.call_targets[0].model);
   second.model_id += "-alternate";
   const identity = processModelIdentity(second);
@@ -374,7 +352,7 @@ test("distinct pinned targets may share both local operation IDs", () => {
   assert.equal(loadFixture(input).catalog.bindings.filter(row => row.model_ref && row.node_id === "final_validation").length, 2);
 });
 test("a target operation may share a root node ID while pinning a different binding", () => {
-  const input = finalVerificationFixture(), row = targetRow(input);
+  const input = fresh(), row = targetRow(input);
   const localId = row.node_id, rootRow = input.catalog.bindings.find(row => row.node_id === "validate");
   assert.notEqual(row.binding.id, rootRow.binding.id);
   reauthorTarget(input, target => {
@@ -387,7 +365,7 @@ test("a target operation may share a root node ID while pinning a different bind
   const matches = loadFixture(input).catalog.bindings.filter(row => row.node_id === rootRow.node_id);
   assert.deepEqual(matches.map(row => row.binding.id), [rootRow.binding.id, row.binding.id]);
 });
-test("catalog v1 still loads and retains its exact root rows and activity contracts", () => {
+for (const version of [1, 2]) test("catalog v" + version + " still retains exact root rows and activity contracts", () => {
   const input = fresh(), { catalog, model } = input;
   const [operation] = catalog.bindings, [activity] = catalog.activities;
   const children = [operation.node_id, activity.node_id];
@@ -395,7 +373,8 @@ test("catalog v1 still loads and retains its exact root rows and activity contra
     ...model.nodes.filter(node => children.includes(node.id))];
   model.operation_pins = { [operation.binding.id]: model.operation_pins[operation.binding.id] };
   delete model.data_bindings;
-  catalog.contract_version = "standard-workflow-catalog.v1";
+  delete model.call_targets;
+  catalog.contract_version = "standard-workflow-catalog.v" + version;
   catalog.bindings = [operation];
   catalog.activities = [activity];
   catalog.model.sha256 = shadowHash(model);
@@ -410,14 +389,16 @@ rejectFixture("legacy catalog rows cannot cover the embedded operations", x => {
 }, "STANDARD_STARTUP_COVERAGE_INVALID");
 rejectFixture("historical rows do not cover the moved operations", x => {
   x.catalog.contract_version = "standard-workflow-catalog.v2";
-  x.catalog.bindings = structuredClone(assets.catalog.bindings);
+  const formerTargets = x.catalog.bindings.filter(row => row.model_ref);
+  for (const row of formerTargets) delete row.model_ref;
+  x.catalog.bindings.push(...formerTargets.map(row => ({ ...row, node_id: "correction_" + row.node_id })));
 }, "STANDARD_STARTUP_COVERAGE_INVALID");
 rejectFixture("a missing embedded row fails coverage", x => x.catalog.bindings.pop(), "STANDARD_STARTUP_COVERAGE_INVALID");
 rejectFixture("an embedded row cannot replace a different row with a duplicate", x => {
   x.catalog.bindings[x.catalog.bindings.length - 1] = structuredClone(targetRow(x));
 }, "STANDARD_STARTUP_COVERAGE_INVALID");
 rejectFixture("an unqualified v3 row only addresses a root operation", x => { delete targetRow(x).model_ref; }, "STANDARD_STARTUP_BINDING_CHANGED");
-for (const [field, value] of [["model_id", "unknown"], ["revision", 2], ["model_sha256", "f".repeat(64)]])
+for (const [field, value] of [["model_id", "unknown"], ["revision", assets.model.call_targets[0].revision + 1], ["model_sha256", "f".repeat(64)]])
   rejectFixture("an incorrect target " + field + " fails identity", x => {
     const row = targetRow(x); row.model_ref = { ...row.model_ref, [field]: value };
   }, "STANDARD_STARTUP_TARGET_CHANGED");

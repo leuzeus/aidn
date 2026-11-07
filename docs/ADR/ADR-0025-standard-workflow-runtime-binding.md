@@ -502,6 +502,26 @@ refresh rejects a stale embedded implementation with
 `STANDARD_EMBEDDED_PIN_REAUTHOR_REQUIRED`. Loading and historical source
 validation leave the retained models, references and descriptors intact.
 
+The authored composed STANDARD revision 186 uses catalog v3 and shares
+`aidn-standard-final-verification@1` between the main and correction cycles.
+The following paths are relative to each cycle's own call-site occurrence
+`C`. The binding and SPEC columns apply to both cycles.
+
+| Previous root node | Binding | SPEC | Target node and occurrence | Authority and effect |
+| --- | --- | --- | --- | --- |
+| `final_validation`, `correction_final_validation` (`C/0`) | `cycle_validation_evaluate` | `SPEC-R04`, `SPEC-R07` | `final_validation` at `C/call/0` | Read-only evaluation using the accepted `validate` and `task_advance` IDs from the caller's iteration |
+| `verification_enter`, `correction_verification_enter` (`C/1`) | `cycle_verification_enter` | `SPEC-R04`, `SPEC-R07` | `verification_enter` at `C/call/1` | Mutating entry to VERIFYING using the accepted evaluation ID from this call, with its existing admission |
+
+The parent graph has no data reference to the four former operation nodes.
+Its branches and loops consume none of the evaluation and verification
+facts. The child receipts keep those facts in the call scope and the return
+is empty. The audit still uses `readCycleVerificationExecution` and
+`acceptedOperation` to authenticate verification, evaluation, validation,
+progress and work journals against the current cycle context. It consumes
+the existing audit input. The author derives target pins from the registry
+and uses the previous embedded revision as the baseline for a content
+change. Both calls and catalog rows receive the new identity together.
+
 `AIDN_STANDARD_HOST_HOME` belongs to the embedding environment. Its existing
 physical directory must be explicitly protected in the native configuration.
 The versioned principals registry pins independent Ed25519 public keys and

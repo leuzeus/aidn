@@ -10,8 +10,32 @@ import { preflightStandardComposedFixture } from "./standard-composed-preflight-
 const model = loadStandardWorkflowAssets().model;
 const scenario = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-positive.v1.json", import.meta.url)));
 let checks = 0;
-const test = (name, run) => { run(); checks++; console.log("PASS " + name); };
+const finalVerificationOnly = process.argv.includes("--final-verification");
+const test = (name, run, finalVerification = false) => {
+  if (finalVerificationOnly && !finalVerification) return;
+  run(); checks++; console.log("PASS " + name);
+};
 const plan = (changes = {}, stop = "component_complete") => preflightStandardComposedFixture({ model, scenario: { ...scenario, ...changes }, stop });
+function verifyFinalVerificationCalls(result, sites) {
+  assert.deepEqual(result.call_transitions.map(row => [row.node_id, row.kind]),
+    sites.flatMap(site => [[site, "call_enter"], [site, "call_return"]]));
+  assert.equal(result.verification_inputs.length, sites.length * 2);
+  for (let index = 0; index < sites.length; index++) {
+    const [entry, returned] = result.call_transitions.slice(index * 2, index * 2 + 2);
+    const [evaluation, verification] = result.verification_inputs.slice(index * 2, index * 2 + 2);
+    assert.deepEqual(entry.resolution.sources.map(source => [source.field, source.source, source.operation_id]),
+      ["progress_operation_id", "validation_operation_id"].map(field => [field, "operation_id", entry.resolution.input[field]]));
+    assert.deepEqual(evaluation.input, entry.resolution.input);
+    assert.equal(evaluation.occurrence_id, entry.occurrence_id + "/call/0");
+    assert.deepEqual(verification.input, { evaluation_operation_id: evaluation.operation_id });
+    assert.equal(verification.occurrence_id, entry.occurrence_id + "/call/1");
+    assert.equal(returned.occurrence_id, entry.occurrence_id);
+    assert.deepEqual(returned.resolution.input, {});
+    assert.deepEqual([entry.witnesses, returned.witnesses], [[], []]);
+  }
+  const inputs = result.call_transitions.filter(row => row.kind === "call_enter").flatMap(row => Object.values(row.resolution.input));
+  assert.equal(new Set(inputs).size, inputs.length);
+}
 test("positive path selects nine native turns; its cold prefix keeps the same cumulative ceiling", () => {
   const result = plan();
   assert.equal(result.responses_required, 9); assert.equal(result.original_max_responses, 9);
@@ -19,8 +43,10 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.cold_resume_checkpoints.length, 1); assert.equal(result.cold_resume_checkpoints[0].responses, 5);
   assert.equal(result.responses_required - result.cold_resume_checkpoints[0].responses, 4);
   assert.equal(result.planned_status, "COMPLETED"); assert.equal(result.replay_exact, true);
+  assert.equal(result.operations.length, 68); assert.equal(result.event_count, 159);
+  verifyFinalVerificationCalls(result, ["final_verification"]);
   assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
-});
+}, true);
 test("correction prefix stops at a real undecided human occurrence without inventing a negative decision", () => {
   const correction = JSON.parse(fs.readFileSync(new URL("../../tests/fixtures/standard-workflow/composed-correction.v2.json", import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "session_pr_correction_decide" });
@@ -52,12 +78,17 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'COMPLETED');
+  assert.equal(result.operations.length, 118); assert.equal(result.event_count, 278);
+  verifyFinalVerificationCalls(result, ["final_verification", "correction_final_verification"]);
   assert.ok(result.operations.includes('correction_initialize'));
   assert.ok(result.operations.includes('correction_session_branch_integrate'));
   assert.ok(result.operations.includes('correction_pr_redelivery_push'));
   assert.ok(result.operations.includes('correction_pr_triage_evaluate'));
   assert.equal(result.native_occurrences.filter(row => row.node_id === 'correction_implement').length, 1);
   assert.equal(result.replay_exact, true); assert.equal(result.write_authorization, false);
+}, true);
+test("correction retains its original budget refusal and interruption choices", () => {
+  const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   assert.throws(() => preflightStandardComposedFixture({ model, scenario: { ...correction, max_responses: 16 } }), { code: 'STANDARD_FIXTURE_RESPONSE_BUDGET_INSUFFICIENT' });
   for (const outcome of ['blocked', 'deferred', 'rejected', 'failed', 'cancelled']) {
     const stopped = preflightStandardComposedFixture({ model, scenario: { ...correction, interruption: { node_id: 'session_pr_correction_decide', outcome } } });
@@ -66,6 +97,13 @@ test('v3 plans both cycles through the same published model, new closure, redeli
     assert.notEqual(stopped.planned_status, 'COMPLETED');
   }
 });
+test("an interrupted final evaluation retains its entry without returning or entering verification", () => {
+  const result = plan({ interruption: { node_id: "final_validation", outcome: "blocked" } });
+  assert.equal(result.interrupted, true);
+  assert.deepEqual(result.call_transitions.map(row => row.kind), ["call_enter"]);
+  assert.deepEqual(result.verification_inputs.map(row => row.node_id), ["final_validation"]);
+  assert.ok(!result.operations.includes("verification_enter"));
+}, true);
 test("skipped promotion selects eight turns despite nine catalog activities", () => {
   const result = plan({ promotion: "skip", max_responses: 8 }); assert.equal(result.responses_required, 8);
   assert.ok(!result.native_occurrences.some(n => n.node_id === "promotion_drift_report"));
