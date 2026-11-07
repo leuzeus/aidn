@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { loadStandardWorkflowAssets, STANDARD_WORKFLOW_MODEL_PATH, STANDARD_WORKFLOW_CATALOG_PATH } from "../../src/application/runtime/standard-workflow-composition.mjs";
@@ -13,7 +14,11 @@ import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { assertStandardOperationInput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
-import { standardWorkflowControlOccurrence } from "../../src/application/runtime/standard-workflow-entry.mjs";
+import { resolveStandardWorkflowConfiguration, standardWorkflowControlOccurrence } from "../../src/application/runtime/standard-workflow-entry.mjs";
+import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
+import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from "../../src/core/agents/codex-startup-arguments.mjs";
+import { PR_TRIAGE_CONTRACT } from "../../src/core/workflow/standard-pr-triage.mjs";
+import { CYCLE_WORK_CONTRACT } from "../../src/core/workflow/standard-cycle-work.mjs";
 
 const root = new URL("../../", import.meta.url), read = name => fs.readFileSync(new URL(name, root));
 const assets = loadStandardWorkflowAssets();
@@ -24,6 +29,31 @@ let checks = 0;
 const test = (name, run) => { run(); checks++; console.log("PASS " + name); };
 const reject = (name, change, code) => test(name, () => {
   const input = fresh(); change(input); assert.throws(() => verifyStandardWorkflowComponentAssets(input), { code });
+});
+
+test("the published activity outputs pass project composition, which refuses mismatched bindings", () => {
+  const physical = name => fs.realpathSync(new URL(name, root));
+  const criteria = { path: physical("AGENTS.md"), sha256: createHash("sha256").update(read("AGENTS.md")).digest("hex") };
+  const home = physical("scaffold"), hook = "sha256:" + "0".repeat(64);
+  const { configuration } = resolveStandardWorkflowConfiguration({
+    contract_version: "standard-workflow-execution.v1", parameters: {},
+    execution: { instance_id: "standard-activity-output-fixture", target_root: physical("tests/fixtures"),
+      product_root: physical("tests/fixtures/standard-workflow"), control_root: physical("tools"), review_root: physical("docs"),
+      product_files: ["composed-positive.v1.json"], criteria, authorities: {}, controller: {},
+      native: { executable: process.execPath, sha256: "0".repeat(64), home, tool_roots: [], model: "unused", effort: "low",
+        hook_hashes: { work: [hook, hook], review: [] }, startup: { mcp_server_ids: [], plugin_ids: [], app_ids: [],
+          environment_names: CODEX_STARTUP_ENVIRONMENT_PROFILES.worker, environment_override_names: [], log_dir: home, sqlite_home: home } } },
+  });
+  const compose = config => createProjectAgenticProcessExecution(config, {
+    processAuthority: { profile: "standard-mixed.v1", read() { assert.fail("Unexpected authority read"); } },
+  });
+  // Stop at the project authority precondition after validating every published
+  // output. The fixture needs neither project activation nor an executor.
+  assert.throws(() => compose(configuration), { code: "PROCESS_EXECUTION_PROJECT_AUTHORITY_REQUIRED" });
+  for (const [node, contract] of [["audit_review", PR_TRIAGE_CONTRACT], ["implement", CYCLE_WORK_CONTRACT]]) {
+    const mismatched = { ...configuration, activity_outputs: { ...configuration.activity_outputs, [node]: contract } };
+    assert.throws(() => compose(mismatched), { code: "PROCESS_ACTIVITY_OUTPUT_BINDING_INVALID" });
+  }
 });
 
 test("ordinary entry selects the common reducer's event wait and refuses absent or ambiguous waits", () => {

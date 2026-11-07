@@ -3672,10 +3672,13 @@ IDs across models, v1/v2 compatibility, root activity contracts, rejection of
 embedded activities and events, and tampering with target, binding,
 implementation, skill or SPEC pins. The embedded-event fixture repins the
 target and parent exactly before checking the loader refusal. The
-binding-refresh check requires explicit reauthoring of a
-stale target pin. The fixture exercises loading and validation only. Execution
-of the candidate, persistent replay and qualification of distributed calls
-require separate evidence.
+binding-refresh check requires explicit reauthoring of a stale target pin.
+The suite also passes the ordinary STANDARD configuration for the published
+v4 data bindings to the project execution constructor. It verifies that
+all root activity outputs pass validation before the project authority
+precondition, and that mismatched audit and task work output bindings are
+refused. Execution of the candidate, persistent replay and qualification of
+distributed calls require separate evidence.
 
 `node tools/perf/verify-standard-composed-preflight-fixtures.mjs --final-verification`
 uses the common reducer and call-data resolver with the distributed assets.
