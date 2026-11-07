@@ -861,15 +861,22 @@ catalog still declares complete_standard_workflow=false.
 
 The initial and corrective delivery paths pass their own accepted triage
 operation ID to the same pinned aidn-standard-pr-review-completion target.
-Inside the call, the deterministic session_pr_review_effects_verify and
-session_pr_merge_observe bindings resolve that ID through a typed parameter.
-The host reads the delivered event and current update receipts, then compares
-fresh authenticated thread and review evidence for the exact PR, HEAD and base.
-Submitted replies with the accepted body and actor and observed thread
-resolution can satisfy the receipt. Missing or changed proof keeps the
-occurrence waiting or blocked. The receipt allows merge observation while
-authorization, provider writes, exceptions and post-merge synchronization
-remain separate. Existing historical observation receipts stay readable.
+Inside the call, session_pr_review_reply_select authenticates the current
+delivery, review event and accepted triage chain. Fresh review and thread
+evidence selects one missing invalid root reply. The IR supplies the triage
+and selection operation IDs to session_pr_review_reply_publish. The protected
+host prepares the exact reply and requires a matching operator grant and a
+durable owner before transport. Recovery reads the same target and appends
+only an exact visible reply. An absent or ambiguous postimage preserves the
+pending dispatch or UNKNOWN receipt and the original authorization history.
+
+The bounded reply loop leads to the existing session_pr_review_effects_verify
+and session_pr_merge_observe operations after observing every reply obligation.
+The independent effects verifier still requires resolved threads on the
+exact PR, HEAD and base. A changed review or unresolved thread keeps the
+call waiting. Thread resolution writes, exceptions, renewed review routing,
+checks, merge consent and post-merge synchronization remain separate.
+Historical direct observation receipts stay readable.
 
 ## SPIKE canonical projection finalization, 2026-11-04
 

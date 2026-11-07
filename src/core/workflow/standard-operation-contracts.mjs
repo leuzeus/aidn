@@ -29,6 +29,10 @@ import prCorrectionOutput from "../contracts/workflow-definition/standard-pr-cor
 import prTriageEvaluateInput from "../contracts/workflow-definition/standard-pr-triage-evaluate-input.v1.schema.json" with { type: "json" };
 import prTriageSelectOutput from "../contracts/workflow-definition/standard-pr-triage-select-output.v1.schema.json" with { type: "json" };
 import prTriageOutput from "../contracts/workflow-definition/standard-pr-triage-output.v1.schema.json" with { type: "json" };
+import prReplySelectInput from "../contracts/workflow-definition/standard-pr-review-reply-select-input.v1.schema.json" with { type: "json" };
+import prReplySelectOutput from "../contracts/workflow-definition/standard-pr-review-reply-select-output.v1.schema.json" with { type: "json" };
+import prReplyPublishInput from "../contracts/workflow-definition/standard-pr-review-reply-publish-input.v1.schema.json" with { type: "json" };
+import prReplyPublishOutput from "../contracts/workflow-definition/standard-pr-review-reply-publish-output.v1.schema.json" with { type: "json" };
 import prReviewEffectsInput from "../contracts/workflow-definition/standard-session-pr-review-effects-input.v1.schema.json" with { type: "json" };
 import prReviewEffectsOutput from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v1.schema.json" with { type: "json" };
 import prMergeProvider from "../contracts/workflow-definition/github-pr-merge-observation.v1.schema.json" with { type: "json" };
@@ -175,6 +179,12 @@ export function assertStandardOperationInput(operation, value) {
     if (checkShadowJson(value) || validateJsonSchema(value, operation === "session_pr_triage_select" ? prTriageSelectInput : prTriageEvaluateInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
+  if (["session_pr_review_reply_select", "session_pr_review_reply_publish"].includes(operation)) {
+    const schema = operation === "session_pr_review_reply_select" ? prReplySelectInput : prReplyPublishInput;
+    if (checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
   if (operation === "session_pr_review_effects_verify") {
     if (checkShadowJson(value) || validateJsonSchema(value, prReviewEffectsInput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -282,6 +292,23 @@ export function assertStandardOperationOutput(value) {
         : value.facts.session_pr_findings_classified !== true || !["session_pr_corrections_required", "session_pr_responses_required"].every(key => typeof value.facts[key] === "boolean")
           || value.observations.triage_completion !== "pending-effects-and-verification" || value.observations.checks_acceptance !== "not-established"
           || value.observations.merge_authorization !== "not-established")) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
+  if (["standard-pr-review-reply-select-output.v1", "standard-pr-review-reply-publish-output.v1"].includes(value?.contract_version)) {
+    const select = value.contract_version === "standard-pr-review-reply-select-output.v1";
+    if (checkShadowJson(value) || validateJsonSchema(value, select ? prReplySelectOutput : prReplyPublishOutput, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    const { observations, outcome, facts, effect_status, evidence_refs } = value;
+    const { reason_code, selection, reply } = observations;
+    if (outcome !== "completed") {
+      if (!reason_code || Object.keys(facts).length || evidence_refs.length
+        || effect_status !== (outcome === "reconciliation_required" ? "unknown" : "no_effect")) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    } else if (select) {
+      if (reason_code || facts.session_pr_replies_observed !== (selection === null)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    } else if (!reply || reply.reply_id === reply.target_comment_id || !(Date.parse(reply.published_at) <= Date.parse(reply.observed_until))
+      || (reply.action === "published" ? reply.effect_status !== "confirmed" || effect_status !== "confirmed" : reply.effect_status !== "no_effect" || effect_status === "unknown")
+      || evidence_refs.length !== 1 || evidence_refs[0].ref !== "github:pr-review-reply/" + reply.reply_id
+      || evidence_refs[0].sha256 !== shadowHash(reply)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
   if (value?.contract_version === "standard-session-pr-review-effects-output.v1") {

@@ -362,7 +362,10 @@ finalization; `--verify` retains its read-only verification behavior.
     `input.preparedAction`. Save this returned request and resubmit it with
     `--execute --expect-plan <outer action_sha256>`. The browser retains the same
     request under its explicit approval. The original operation or call plan is preserved;
-    current authority, freshness and CAS are still checked. A prepared action and
+    current authority, freshness and CAS are still checked. A retained R08
+    dispatch uses the same explicit action to record a reply through read-only
+    provider recovery. An absent postimage keeps the occurrence waiting.
+    A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`
 - `aidn runtime agent-run-status --configuration <file> --run <id> --json`

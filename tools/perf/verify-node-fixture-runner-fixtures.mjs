@@ -8,14 +8,14 @@ import manifest from "../../package/catalogs/agentic-process-fixtures.v1.json" w
 import { runNodeFixtureCases } from "../verify/node-fixture-runner-lib.mjs";
 import { verifyWindowsVerificationTree } from "./verification-windows-tree-fixture-lib.mjs";
 
-// Historical e29b9aed argv, independently pinned before replacing the shell
-// body. A dropped, reordered, regrouped or changed argument breaks equivalence.
-assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 187))).digest("hex"),
-  "0665f82da423d0fd610dea1540d78d6df3ab961e4229e0df7c0467c64c61634b");
-assert.deepEqual(manifest.cases.slice(187), [["tools/perf/verify-node-fixture-runner-fixtures.mjs"],
+// Accepted febbb020 argv prefix, including the merge fixture and bounded
+// composed stop points added in 81b1783e. Later cases remain explicit below.
+assert.equal(createHash("sha256").update(JSON.stringify(manifest.cases.slice(0, 188))).digest("hex"),
+  "c14ad5423a7644ee7a7098b58f1400443d059191329a22b5a3d0066658aad555");
+assert.deepEqual(manifest.cases.slice(188), [["tools/perf/verify-node-fixture-runner-fixtures.mjs"],
   ["tools/perf/verify-standard-host-source-fixtures.mjs"], ["tools/perf/verify-workflow-execution-authority-fixtures.mjs"],
   ...["files", "dual", "db-only"].map(mode => ["tools/perf/verify-standard-ordinary-entry-fixtures.mjs", "--mode=" + mode])]);
-console.log("PASS all 187 historical argv/order retained exactly; six required checks appended");
+console.log("PASS accepted 188-case prefix and six exact supplemental cases");
 
 const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "aidn fixture runner "));
 const log = path.join(base, "events.jsonl"), script = path.join(base, "child with spaces.mjs");

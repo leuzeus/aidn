@@ -143,16 +143,17 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
         const id = event.intent?.operation_id ?? event.receipt.operation_id;
         if (!seen.has(id)) {
           const record = operationStore.read(id).record; signer.verify(record); signer.verify(record.preview);
+          const component = processFrameModel(model, frames.get(event.occurrence_id));
           assertProcessOperationBinding(record.preview.binding);
           if (validateJsonSchema(record.preview, previewSchema, "$", { contractKind: "workflow-definition" }).length
             || record.preview.binding.id !== record.intent.binding_ref
-            || shadowHash(record.preview.binding) !== processFrameModel(model, frames.get(event.occurrence_id)).operation_pins[record.intent.binding_ref]
+            || shadowHash(record.preview.binding) !== component.operation_pins[record.intent.binding_ref]
             || !diagnostic && shadowHash(bindings.get(record.intent.binding_ref)) !== shadowHash(record.preview.binding)
             || ["instance_id", "instance_sha256", "scope_id", "model_sha256", "occurrence_id"].some(key => record.preview[key] !== record.intent[key])
             || record.intent.binding_sha256 !== shadowHash(record.preview.binding)
             || record.intent.input_sha256 !== shadowHash(record.preview.input)
             || record.intent.preconditions_sha256 !== shadowHash({ snapshot: record.preview.snapshot, prepared: record.preview.prepared })) fail("STANDARD_PROCESS_OPERATION_NOT_AUTHENTICATED");
-          if (diagnostic) assertHistoricalPreviewInput(record.preview, model);
+          if (diagnostic) assertHistoricalPreviewInput(record.preview, component);
           else { assertStandardOperationInput(record.intent.binding_ref, record.preview.input); assertStandardResolvedPreview(record.preview, model); }
           if (record.preview.binding.executor_kind === "human" && record.results.length) human.captured(record);
           seen.set(id, record);

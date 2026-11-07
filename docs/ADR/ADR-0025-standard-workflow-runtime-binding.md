@@ -3124,15 +3124,16 @@ reconciliation remain separate work.
 The initial and corrective deliveries call the same embedded
 aidn-standard-pr-review-completion target. Its model identity and operation
 bindings are pinned in the published catalog. Each call passes its own
-accepted triage operation ID through a closed string parameter. The two
-read-only operations resolve the parameter in the child scope. The host still
+accepted triage operation ID through a closed string parameter. The verification and merge observation
+resolve the parameter in the child scope. The host still
 authenticates the accepted triage, delivery and review at execution.
 
 The parent remains waiting while a child receipt is deferred or blocked.
 The common engine retains call entry and child occurrence identity in the
 instance so a restart resumes the same child. The target has an empty return
 interface. A call transition carries no authorization or successful review
-outcome. The historical direct operation shape retains its original reader.
+outcome. Historical diagnostics validate a signed child input against the bindings of
+its pinned call model. Historical direct operations retain their root binding.
 
 ### Protected publication of an inline review reply
 
@@ -3150,8 +3151,31 @@ subject or uncertain response after dispatch yields an unknown result for
 reconciliation. Recovery reads the same subject and returns an exact visible
 published reply when present. An absent reply supplies no evidence that a
 prior dispatch failed. The GraphQL nonce correlates an acknowledgement and
-supplies no idempotency guarantee. The protected capability still needs its
-published operation, accepted triage selection and durable dispatch fence.
+supplies no idempotency guarantee. The published child first selects an outstanding invalid inline obligation
+from authenticated triage, selection, reception, inbox and latest delivery
+records. It compares fresh provider reviews and threads with the delivered
+inventory. The IR passes accepted operation IDs. The host derives the body,
+target and actor from those records and the protected provider. The exact
+preview binds the selection, source, provider plan, repository, PR, HEAD/base
+and refs, root comment, actor and body before the operator grants it.
+
+The bounded loop publishes one root reply per granted occurrence. It allows
+up to 31 outstanding replies and reserves a final read-only selection to
+prove that none are missing. Unsupported targets and lots beyond the bound
+keep the call waiting. Previously accepted publication receipts require the
+same reply identity to remain observable. Fresh review changes defer or
+block progress, with the existing read-only effects verifier still required
+for thread resolution before merge observation.
+
+The canonical operation intent and CAS dispatch owner precede the protected
+send. The final transport authorization checks the exact original grant,
+live source, owner and host snapshot. A dispatching owner or an UNKNOWN
+receipt can only enter the protected read-only recovery. A proved postimage
+appends a confirmed result under the original intent and owner. This records
+the visible reply and cannot establish which request created it after a lost
+acknowledgement. An absent postimage leaves the prior journal and occurrence
+intact for another observation. The ordinary exact dispatch action reuses the
+retained preview and journal digest for this recovery.
 
 [GitHub reply mutation](https://docs.github.com/en/graphql/reference/pulls#addpullrequestreviewthreadreply)
 

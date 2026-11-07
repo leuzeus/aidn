@@ -13,7 +13,7 @@ function originalComment({ reply_to_node_id, state, is_minimized, published_at, 
   return comment;
 }
 
-function inspectReplies(original, current, dispositions, actor, notBefore) {
+function inspectStandardPrReviewReplies(original, current, dispositions, actor, notBefore) {
   const previous = new Map(original.threads.map(thread => [thread.node_id, thread]));
   if (previous.size !== current.threads.length) return { reason: 'STANDARD_PR_EFFECTS_REVIEW_CHANGED' };
   const expected = new Map(dispositions.filter(item => item.disposition === 'invalid').map(item => [item.node_id, item]));
@@ -44,81 +44,92 @@ function inspectReplies(original, current, dispositions, actor, notBefore) {
     }
     unresolved ||= !thread.is_resolved;
   }
-  if (proofs.size !== expected.size) return { reason: 'STANDARD_PR_EFFECTS_REPLY_REQUIRED' };
-  if (unresolved) return { reason: 'STANDARD_PR_EFFECTS_RESOLUTION_REQUIRED' };
-  return { replies: [...proofs.values()] };
+  return { replies: [...proofs.values()], missing: [...expected.values()].filter(item => !proofs.has(item.node_id)), unresolved };
 }
 
-export function createStandardPrReviewEffectsVerification({ readAccepted, readAcceptedUpdate, readDelivered, verifyEvent, readCurrent, reviewPort, now = Date.now }) {
+export function createStandardPrReviewEffectsReader({ readAccepted, readAcceptedUpdate, readDelivered, verifyEvent, readCurrent, reviewPort, now = Date.now }) {
   const readSource = createStandardPrAcceptedReviewSource({ readAccepted, readAcceptedUpdate, readDelivered, sourceChanged });
   function source(instance, input) {
-    assertStandardOperationInput(operation, input);
     const review = readSource(instance, input);
     const preparedAt = review.triage.record.preview.prepared_at_ms;
     if (!Number.isSafeInteger(preparedAt)) fail(sourceChanged);
     return { ...review, notBefore: Math.max(preparedAt, review.preMergeObservedUntil),
       sha256: shadowHash([review.sha256, preparedAt]) };
   }
+  async function observe(instance, before, { signal } = {}) {
+    const active = () => { if (signal?.aborted) fail('STANDARD_PR_EFFECTS_ABORTED'); };
+    if (signal !== undefined && !(signal instanceof AbortSignal)) fail('STANDARD_PR_EFFECTS_SIGNAL_INVALID');
+    active();
+    const p = before.pullRequest, start = now();
+    if (!Number.isSafeInteger(start) || start < before.notBefore) fail('STANDARD_PR_EFFECTS_STALE_OBSERVATION');
+    const { dispositions } = before.triage.output.observations;
+    if (before.correctionsRequired || dispositions.some(item => ['valid', 'uncertain'].includes(item.disposition)))
+      return { reason: 'STANDARD_PR_EFFECTS_CORRECTION_OR_TRIAGE_REQUIRED' };
+    if (dispositions.some(item => item.disposition === 'invalid' && (item.kind !== 'comment' || !item.thread_id)))
+      return { reason: 'STANDARD_PR_EFFECTS_REPLY_CHANNEL_REQUIRED' };
+    const actor = reviewPort?.reviewEffectActor;
+    if (!actor?.node_id || !actor.login || typeof reviewPort.observePrReviewEffects !== 'function'
+      || typeof reviewPort.observeReviewContent !== 'function') return { reason: 'STANDARD_PR_EFFECTS_PROVIDER_REQUIRED' };
+    await verifyEvent(before.capture, { signal });
+    active();
+    const request = { contract_version: 'github-pr-observation-request.v2', pull_request_number: p.number,
+      expected_pull_request_id: p.node_id, expected_head_oid: p.head_oid, expected_base_oid: p.base_oid,
+      expected_head_ref: p.head_branch, expected_base_ref: p.base_branch };
+    const url = new URL(p.url);
+    function checkSubject(observed) {
+      active();
+      const pr = observed.pull_request, repo = observed.repository, from = Date.parse(observed.observed_from), until = Date.parse(observed.observed_until);
+      if (repo.node_id !== p.repository_id || url.origin !== 'https://github.com'
+        || url.pathname.toLowerCase() !== ('/' + repo.owner + '/' + repo.name + '/pull/' + p.number).toLowerCase()
+        || pr.node_id !== p.node_id || pr.number !== p.number || pr.head_oid !== p.head_oid || pr.base_oid !== p.base_oid
+        || pr.head_ref !== p.head_branch || pr.base_ref !== p.base_branch || pr.state !== 'OPEN' || pr.is_draft !== false)
+        fail(sourceChanged);
+      if (!(start <= from && from <= until && until <= now())) fail('STANDARD_PR_EFFECTS_STALE_OBSERVATION');
+      return observed;
+    }
+    const readThreads = async () => checkSubject(assertGithubPrReviewEffects(await reviewPort.observePrReviewEffects(request, { signal })));
+    const first = await readThreads();
+    const reviewRequest = { ...request, contract_version: 'github-review-evidence-request.v1' };
+    const evidence = checkSubject(assertGithubReviewContent(await reviewPort.observeReviewContent(reviewRequest, { signal })));
+    const last = await readThreads();
+    await verifyEvent(before.capture, { signal });
+    active();
+    const end = now();
+    if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || source(instance, { triage_operation_id: before.triage.record.operation_id }).sha256 !== before.sha256)
+      fail(sourceChanged);
+    if (!Number.isSafeInteger(end) || end < Date.parse(last.observed_until) || end - start > 300000)
+      fail('STANDARD_PR_EFFECTS_STALE_OBSERVATION');
+    if (first.observation_sha256 !== last.observation_sha256 || shadowHash(evidence.reviews) !== shadowHash(before.review.evidence.reviews))
+      return { reason: 'STANDARD_PR_EFFECTS_REVIEW_CHANGED' };
+    return { first, last, evidence, actor, request, ...inspectStandardPrReviewReplies(before.review.threads, last, dispositions, actor, before.notBefore) };
+  }
+  return { source, observe };
+}
+
+export function createStandardPrReviewEffectsVerification(ports) {
+  const reader = createStandardPrReviewEffectsReader(ports);
   function emit(outcome, reason, proof) {
     return assertStandardOperationOutput({ contract_version: 'standard-session-pr-review-effects-output.v1', operation_ref: operation,
       outcome, effect_status: 'no_effect', facts: proof ? { session_pr_review_effects_verified: true } : {},
       observations: proof ? { proof } : { reason_code: reason },
       evidence_refs: proof ? [{ ref: 'github:pr-review-effects/' + proof.pull_request_id, sha256: shadowHash(proof) }] : [] });
   }
-  const active = signal => { if (signal?.aborted) fail('STANDARD_PR_EFFECTS_ABORTED'); };
+  const source = (instance, input) => {
+    assertStandardOperationInput(operation, input);
+    return reader.source(instance, input);
+  };
   return Object.freeze({
     prepare(instance, input) {
       return { can_apply: true, input, source_sha256: source(instance, input).sha256 };
     },
     async observe(instance, input, { signal, sourceSha256 } = {}) {
       try {
-        if (signal !== undefined && !(signal instanceof AbortSignal)) fail('STANDARD_PR_EFFECTS_SIGNAL_INVALID');
-        active(signal);
-        const before = source(instance, input), p = before.pullRequest, start = now();
+        const before = source(instance, input), p = before.pullRequest;
         if (before.sha256 !== sourceSha256) fail(sourceChanged);
-        if (!Number.isSafeInteger(start) || start < before.notBefore) fail('STANDARD_PR_EFFECTS_STALE_OBSERVATION');
-        const { dispositions } = before.triage.output.observations;
-        if (before.correctionsRequired || dispositions.some(item => ['valid', 'uncertain'].includes(item.disposition)))
-          return emit('deferred', 'STANDARD_PR_EFFECTS_CORRECTION_OR_TRIAGE_REQUIRED');
-        if (dispositions.some(item => item.disposition === 'invalid' && (item.kind !== 'comment' || !item.thread_id)))
-          return emit('deferred', 'STANDARD_PR_EFFECTS_REPLY_CHANNEL_REQUIRED');
-        const actor = reviewPort?.reviewEffectActor;
-        if (!actor?.node_id || !actor.login || typeof reviewPort.observePrReviewEffects !== 'function'
-          || typeof reviewPort.observeReviewContent !== 'function') return emit('deferred', 'STANDARD_PR_EFFECTS_PROVIDER_REQUIRED');
-        await verifyEvent(before.capture, { signal });
-        active(signal);
-        const request = { contract_version: 'github-pr-observation-request.v2', pull_request_number: p.number,
-          expected_pull_request_id: p.node_id, expected_head_oid: p.head_oid, expected_base_oid: p.base_oid,
-          expected_head_ref: p.head_branch, expected_base_ref: p.base_branch };
-        const url = new URL(p.url);
-        function checkSubject(observed) {
-          active(signal);
-          const pr = observed.pull_request, repo = observed.repository, from = Date.parse(observed.observed_from), until = Date.parse(observed.observed_until);
-          if (repo.node_id !== p.repository_id || url.origin !== 'https://github.com'
-            || url.pathname.toLowerCase() !== ('/' + repo.owner + '/' + repo.name + '/pull/' + p.number).toLowerCase()
-            || pr.node_id !== p.node_id || pr.number !== p.number || pr.head_oid !== p.head_oid || pr.base_oid !== p.base_oid
-            || pr.head_ref !== p.head_branch || pr.base_ref !== p.base_branch || pr.state !== 'OPEN' || pr.is_draft !== false)
-            fail(sourceChanged);
-          if (!(start <= from && from <= until && until <= now())) fail('STANDARD_PR_EFFECTS_STALE_OBSERVATION');
-          return observed;
-        }
-        const readThreads = async () => checkSubject(assertGithubPrReviewEffects(await reviewPort.observePrReviewEffects(request, { signal })));
-        const first = await readThreads();
-        const reviewRequest = { ...request, contract_version: 'github-review-evidence-request.v1' };
-        const evidence = checkSubject(assertGithubReviewContent(await reviewPort.observeReviewContent(reviewRequest, { signal })));
-        const last = await readThreads();
-        await verifyEvent(before.capture, { signal });
-        active(signal);
-        const end = now();
-        if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256 || source(instance, input).sha256 !== before.sha256)
-          fail(sourceChanged);
-        if (!Number.isSafeInteger(end) || end < Date.parse(last.observed_until) || end - start > 300000)
-          fail('STANDARD_PR_EFFECTS_STALE_OBSERVATION');
-        if (first.observation_sha256 !== last.observation_sha256) return emit('deferred', 'STANDARD_PR_EFFECTS_REVIEW_CHANGED');
-        if (shadowHash(evidence.reviews) !== shadowHash(before.review.evidence.reviews))
-          return emit('deferred', 'STANDARD_PR_EFFECTS_REVIEW_CHANGED');
-        const { reason, replies } = inspectReplies(before.review.threads, last, dispositions, actor, before.notBefore);
+        const { reason, first, last, evidence, replies, missing, unresolved } = await reader.observe(instance, before, { signal });
         if (reason) return emit('deferred', reason);
+        if (missing.length) return emit('deferred', 'STANDARD_PR_EFFECTS_REPLY_REQUIRED');
+        if (unresolved) return emit('deferred', 'STANDARD_PR_EFFECTS_RESOLUTION_REQUIRED');
         return emit('completed', null, { triage_operation_id: input.triage_operation_id, update_operation_id: before.updateId,
           source_sha256: before.sha256, repository_id: p.repository_id, pull_request_id: p.node_id, head_oid: p.head_oid, base_oid: p.base_oid,
           observed_from: first.observed_from, observed_until: last.observed_until, thread_observation_sha256: last.observation_sha256,

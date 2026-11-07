@@ -119,6 +119,13 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
         if (!write) return { kind: "operation_wait", written: false, status: "WAITING", operation_id: deterministic.operation.intent.operation_id };
         return finishOperation(deterministic.operation.intent.operation_id, signal);
       }
+      const replyRecovery = cursor.occurrences.find(frame => frame.operation?.receipt?.outcome === "reconciliation_required"
+        && frame.operation.intent.binding_ref === "session_pr_review_reply_publish");
+      if (replyRecovery) {
+        const id = replyRecovery.operation.intent.operation_id;
+        if (!write) return { kind: "operation_wait", written: false, status: "WAITING", operation_id: id };
+        return finishOperation(id, signal);
+      }
       if (cursor.occurrences.some(frame => frame.operation?.receipt?.outcome === "reconciliation_required")) return { kind: "reconciliation", status: "WAITING", written: false };
       if (ready.some(frame => nodeFor(frame).kind === "activity")) {
         if (!write) return { kind: "native_preview", status: cursor.status, ...nativeHost().preview() };

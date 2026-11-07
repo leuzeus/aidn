@@ -22,6 +22,13 @@ export function assertGithubPrReviewReplyResult(value) {
   return value;
 }
 
+export function githubPrReviewReplyBasis(observation, threadId, replyId) {
+  const { updated_at, ...pr } = observation.pull_request;
+  const threads = observation.threads.map(thread => thread.node_id !== threadId || !replyId ? thread
+    : { ...thread, comments: thread.comments.filter(comment => comment.node_id !== replyId) });
+  return shadowHash({ repository: observation.repository, pr, threads });
+}
+
 export function createGithubPrReviewReply({ repository, actor, hostContextSha256, observe, runMutation, now = Date.now }) {
   if (!id.test(repository?.node_id ?? '') || typeof repository.owner !== 'string' || typeof repository.name !== 'string'
     || !id.test(actor?.node_id ?? '') || typeof actor.login !== 'string' || !actor.login || !digest.test(hostContextSha256 ?? '')
@@ -44,7 +51,7 @@ export function createGithubPrReviewReply({ repository, actor, hostContextSha256
     const start = now(), expected = request.pull_request;
     const value = assertGithubPrReviewEffects(await observe(expected, { signal }));
     assertSignal(signal);
-    const { updated_at, ...pr } = value.pull_request;
+    const pr = value.pull_request;
     const repository = value.repository;
     if (repository.node_id !== repo.node_id || repository.owner !== repo.owner || repository.name !== repo.name
       || pr.node_id !== expected.expected_pull_request_id || pr.number !== expected.pull_request_number
@@ -66,8 +73,7 @@ export function createGithubPrReviewReply({ repository, actor, hostContextSha256
     const [reply] = matches;
     if (reply && (reply.state !== 'SUBMITTED' || reply.is_minimized || !(Date.parse(reply.published_at) >= request.not_before_ms)))
       fail('GITHUB_PR_REPLY_EXISTING_UNPROVEN');
-    const threads = value.threads.map(row => row !== thread || !reply ? row : { ...row, comments: row.comments.filter(comment => comment !== reply) });
-    return { basis_sha256: shadowHash({ repository, pr, threads }), reply, thread, observed_until: value.observed_until };
+    return { basis_sha256: githubPrReviewReplyBasis(value, thread.node_id, reply?.node_id), reply, thread, observed_until: value.observed_until };
   }
   function checked(prepared, expectPlan) {
     const { plan, plan_sha256 } = prepared ?? {};
@@ -125,7 +131,7 @@ export function createGithubPrReviewReply({ repository, actor, hostContextSha256
       try {
         const response = await runMutation({ query, variables: { input: { pullRequestReviewThreadId: request.thread_id, body: request.body,
           clientMutationId: nonce } } }, { signal, assertAuthorized: async () => {
-          await assertAuthorized();
+          await assertAuthorized('before-transport');
           assertSignal(signal);
           assertFresh(plan.prepared_at_ms);
         } });

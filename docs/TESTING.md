@@ -4193,6 +4193,23 @@ signed upstream chain on a separate frozen source. A new source branch is seeded
 on its remote during fixture arrangement; only later session delivery is a
 workflow push receipt. GitHub/native/exact-archive qualification remains NOT_RUN.
 
+Run `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs` for the
+published R08 child at the initial and corrective sites on disposable FILES
+projects. A signed synthetic prefix seeds delivery, review inbox and triage.
+From the published call onward, the real application ports handle selection,
+exact grants, intent/owner CAS, result acceptance and recovery. Only the
+GitHub transport is doubled. The retained fixture roots include the journals
+and provider state. The cases exercise multiple obligations, refusal at the
+send edge, lost acknowledgement, absent postimage, a dispatching owner
+reopened in another Node process, and effect-free replay/simulation.
+Use --case=normal, --case=lost, --case=missing or --case=interrupted for one
+case. Use --verify-retained with the printed evidence directory to recheck the
+signed journals without another dispatch.
+Run these cases as a separate qualification. The recorded initial attempt
+took 950 seconds on Windows, above the 900-second deadline for the entire
+required runtime family. This scope leaves upstream composed execution and
+live GitHub behavior open.
+
 The PR creation component retains its link in the authenticated process journal.
 A separate session_pr_record now consumes that receipt, its historical delivery
 postimages and current physical/provider evidence. It advances the canonical

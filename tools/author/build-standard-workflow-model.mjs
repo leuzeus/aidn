@@ -140,7 +140,14 @@ op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("se
 // pinned continuation. A deferred child operation keeps its call open.
 const firstPrNode = nodes.length, firstPrInput = inputs.length;
 const triageId = { triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] } };
-seq("pr_review_completion", ["pr_review_effects_verify", "pr_merge_observe"]);
+seq("pr_review_completion", ["pr_reply_loop", "pr_review_effects_verify", "pr_merge_observe"]);
+node("pr_reply_loop", "loop", { child: "pr_reply_iteration", until: "session_pr_replies_observed", max_iterations: 32 });
+seq("pr_reply_iteration", ["pr_reply_select", "pr_reply_route"]);
+op("pr_reply_select", "session_pr_review_reply_select", triageId);
+xor("pr_reply_route", [["observed", "pr_replies_observed", "session_pr_replies_observed"], ["publish", "pr_reply_publish", null]]);
+seq("pr_replies_observed", []);
+op("pr_reply_publish", "session_pr_review_reply_publish", { ...triageId,
+  ...operation(null, "selection_operation_id", "pr_reply_select") });
 op("pr_review_effects_verify", "session_pr_review_effects_verify", triageId);
 op("pr_merge_observe", "session_pr_merge_observe", triageId);
 const prReviewNodes = nodes.splice(firstPrNode);

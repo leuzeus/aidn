@@ -3,6 +3,7 @@ import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
 import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.mjs";
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
+import { createStandardPrReviewReply } from "./standard-session-pr-review-reply.mjs";
 import { createStandardPrReviewEffectsVerification } from "./standard-session-pr-review-effects.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
@@ -539,6 +540,20 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readDelivered: readDeliveredPrReview, verifyEvent: verifyPrReviewEvent };
   const sessionPrMerge = createStandardSessionPrMergeObservation(acceptedReviewPorts);
   const sessionPrEffects = createStandardPrReviewEffectsVerification(acceptedReviewPorts);
+  const sessionPrReply = createStandardPrReviewReply({ ...acceptedReviewPorts,
+    readAcceptedReplies(instance, triageId) {
+      const receipts = new Map(instance.events.filter(event => event.kind === "operation_result" && event.receipt.outcome === "completed")
+        .map(event => [event.receipt.operation_id, event.receipt]));
+      return instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "session_pr_review_reply_publish"
+        && receipts.has(event.intent.operation_id)).flatMap(({ intent }) => {
+        const record = retained(intent.operation_id).record, last = record.results.at(-1);
+        if (record.phase !== "receipted" || shadowHash(record.intent) !== shadowHash(intent)
+          || shadowHash(last.receipt) !== shadowHash(receipts.get(intent.operation_id))) fail("STANDARD_PR_REPLY_HISTORY_CHANGED");
+        if (record.preview.input.triage_operation_id !== triageId) return [];
+        return [assertStandardOperationOutput(last.output).observations.reply];
+      });
+    },
+  });
   const prTriage = processAuthority && sessionPrReviewReceiver ? createStandardPrTriageSource({
     readReceived: (instance, id) => acceptedForPromotion(instance, id, "session_pr_review_receive", "STANDARD_PR_TRIAGE_RECEIVED_REQUIRED"),
     observeReceived: (instance, input, options) => sessionPrReviewReceiver.observe(instance, input, options),
@@ -740,16 +755,19 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return value;
   }
   function readDispatchedCheckpoint(instance, id) {
+    return readDispatchedOperation(instance, id, 'session_pr_correction_checkpoint', 'STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');
+  }
+  function readDispatchedOperation(instance, id, binding, reason) {
     const record = retained(id).record, state = current(instance.instance_id);
     const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
     const receipt = record.results.at(-1)?.receipt;
     const unknown = record.phase === 'receipted' && receipt?.outcome === 'reconciliation_required' && receipt.effect_status === 'unknown';
-    if (record.intent.binding_ref !== 'session_pr_correction_checkpoint' || !(record.phase === 'dispatching' && !record.results.length || unknown)
+    if (record.intent.binding_ref !== binding || !(record.phase === 'dispatching' && !record.results.length || unknown)
       || record.intent.instance_id !== instance.instance_id || record.intent.scope_id !== instance.scope_id
       || state.record.instance_sha256 !== instance.instance_sha256 || frame?.status !== 'WAITING'
       || !frame.operation || frame.operation.receipt && shadowHash(frame.operation.receipt) !== shadowHash(receipt)
       || shadowHash(frame.operation.intent) !== shadowHash(record.intent))
-      fail('STANDARD_PR_CORRECTION_CHECKPOINT_DISPATCH_REQUIRED');
+      fail(reason);
     return record;
   }
   function persist(body, expected) {
@@ -1090,6 +1108,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_correction_decision" ? await prCorrectionReview?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_checkpoint" ? await prCorrectionCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_correction_reopen" ? await prCorrectionReopen?.prepare(state.record, input) ?? fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED")
+        : binding.id === "session_pr_review_reply_select" ? sessionPrReply.prepareSelection(state.record, input)
+        : binding.id === "session_pr_review_reply_publish" ? await sessionPrReply.prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
         : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
@@ -1195,6 +1215,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async dispatch(id, { write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
+      if (record.intent.binding_ref === "session_pr_review_reply_publish"
+        && (record.phase === "dispatching" || record.results.at(-1)?.receipt.outcome === "reconciliation_required"))
+        return operationHost.reconcilePrReviewReply(id, { write, signal });
       if (record.phase === "receipted") return { status: "retained_result", receipt: record.results.at(-1).receipt };
       if (record.phase !== "staged") return { status: "reconciliation_required", operation_id: id };
       const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
@@ -1245,6 +1268,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record), signal });
         else if (record.intent.binding_ref === "session_pr_correction_reopen") output = await prCorrectionReopen.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record, signal), signal });
+        else if (record.intent.binding_ref === "session_pr_review_reply_select") output = await sessionPrReply.select(state.record, record.preview.input,
+          record.preview.prepared, { signal });
+        else if (record.intent.binding_ref === "session_pr_review_reply_publish") output = await sessionPrReply.apply(state.record, record.preview.input,
+          record.preview.prepared, { signal, assertAuthorized: async () => {
+            await verifyGrant(record, signal);
+            if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
+              || shadowHash(retained(id).record) !== shadowHash(claimed)
+              || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot))
+              throw Object.assign(Error("STANDARD_PR_REPLY_OWNER_CHANGED"), { code: "STANDARD_PR_REPLY_OWNER_CHANGED", effect_status: "no_effect" });
+          } });
         else if (record.intent.binding_ref === "session_pr_review_effects_verify") output = await sessionPrEffects.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
         else if (record.intent.binding_ref === "session_pr_merge_observe") output = await sessionPrMerge.observe(state.record, record.preview.input,
@@ -1351,6 +1384,22 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (shadowHash(retainedClaim.record) !== shadowHash(claimed)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       const { authentication: oldMac, key_id: oldKey, ...claimedBody } = claimed;
       persist({ ...claimedBody, phase: "receipted", revision: claimed.revision + 1, results: [{ output, receipt }] }, retainedClaim.content_sha256);
+      return { status: "receipted", receipt };
+    },
+    async reconcilePrReviewReply(id, { write = false, signal } = {}) {
+      if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
+      const before = retained(id), record = before.record, state = current(record.intent.instance_id);
+      readDispatchedOperation(state.record, id, "session_pr_review_reply_publish", "STANDARD_PR_REPLY_DISPATCH_REQUIRED");
+      if (record.results.length >= 32) fail("PROCESS_JOURNAL_RESULTS_LIMIT");
+      const output = await sessionPrReply.recover(state.record, record.preview.input, record.preview.prepared, { signal });
+      if (!output?.contract_version) return { status: "reconciliation_required", operation_id: id, effect_status: "unknown",
+        reason_code: output?.reason_code ?? "STANDARD_PR_REPLY_POSTIMAGE_UNAVAILABLE" };
+      await verifyGrant(record, signal);
+      if (signal?.aborted || current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
+        || shadowHash(retained(id).record) !== shadowHash(record)
+        || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      const receipt = resultReceipt(record, output), { authentication, key_id, ...body } = record;
+      persist({ ...body, phase: "receipted", revision: record.revision + 1, results: [...record.results, { output, receipt }] }, before.content_sha256);
       return { status: "receipted", receipt };
     },
     async reconcileCorrectionCheckpoint(id, { write = false, signal } = {}) {
