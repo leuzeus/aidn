@@ -13,13 +13,15 @@ const key = value => process.platform === "win32" ? value.toLowerCase() : value;
 // The target becomes the already checked-out source commit. One Git reference
 // transaction CASes the target and symbolic HEAD while the source/index are
 // locked; no checkout, filter, hook, merge driver or worktree-file overwrite.
-export function createLocalWorkflowBranchIntegration({ targetRoot, environment = process.env }, { beforeTransaction = null, afterTransaction = null } = {}) {
+export function createLocalWorkflowBranchIntegration({ targetRoot, environment = process.env }, { beforeTransaction = null, afterTransaction = null, gitExecutable = "git", isolatedConfig = false } = {}) {
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   if (Object.keys(environment).some(name => /^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|CONFIG(?:_.*)?)$/i.test(name))) fail("WORKFLOW_BRANCH_ENV_SCOPE_CONFLICT");
   const env = { ...Object.fromEntries(Object.entries(environment).filter(([name]) => !/^GIT_/i.test(name))), GIT_OPTIONAL_LOCKS: "0" };
+  if (isolatedConfig) Object.assign(env, { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+    GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" });
   const fixed = ["--literal-pathspecs", "-C", root, "-c", "core.fsmonitor=false", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null")];
   function git(args, input) {
-    try { return execFileSync("git", [...fixed, ...args], { input, env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 1048576, stdio: ["pipe", "pipe", "pipe"] }); }
+    try { return execFileSync(gitExecutable, [...fixed, ...args], { input, env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, maxBuffer: 1048576, stdio: ["pipe", "pipe", "pipe"] }); }
     catch (cause) { throw Object.assign(Error("WORKFLOW_BRANCH_GIT_FAILED"), { code: "WORKFLOW_BRANCH_GIT_FAILED", command: args[0], exit_code: cause.status }); }
   }
   function repositoryBinding() {
@@ -32,7 +34,7 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
   // Read effective repository filters without our disabling overrides. Comparing
   // the overridden configuration to this preimage would reject every LFS repo.
   const configArguments = [...fixed];
-  const configuredFilters = spawnSync("git", [...configArguments, "config", "--null", "--get-regexp", "^filter\\..*\\.(clean|smudge|process|required)$"],
+  const configuredFilters = spawnSync(gitExecutable, [...configArguments, "config", "--null", "--get-regexp", "^filter\\..*\\.(clean|smudge|process|required)$"],
     { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
   if (![0, 1].includes(configuredFilters.status)) fail("WORKFLOW_BRANCH_FILTER_CONTEXT_UNAVAILABLE");
   const filterContextSha256 = hash(configuredFilters.stdout);
@@ -74,7 +76,7 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
   }
   function inspect({ source_branch, target_branch }) {
     if (shadowHash(repositoryBinding()) !== shadowHash(binding)) fail("WORKFLOW_BRANCH_REPOSITORY_BINDING_CHANGED");
-    const currentFilters = spawnSync("git", [...configArguments, "config", "--null", "--get-regexp", "^filter\\..*\\.(clean|smudge|process|required)$"],
+    const currentFilters = spawnSync(gitExecutable, [...configArguments, "config", "--null", "--get-regexp", "^filter\\..*\\.(clean|smudge|process|required)$"],
       { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
     if (![0, 1].includes(currentFilters.status) || hash(currentFilters.stdout) !== filterContextSha256) fail("WORKFLOW_BRANCH_FILTER_CONTEXT_CHANGED");
     if (git(["ls-files", "--stage", "-z"]).split("\0").some(row => row.startsWith("160000 "))) fail("WORKFLOW_BRANCH_SUBMODULE_SCOPE_UNSUPPORTED");
@@ -87,12 +89,12 @@ export function createLocalWorkflowBranchIntegration({ targetRoot, environment =
     if (resolved.length !== refs.length || resolved.some(value => !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value))) fail("WORKFLOW_BRANCH_GIT_REFS_INVALID");
     const heads = new Map(refs.map((ref, index) => [ref, resolved[index]]));
     const sourceHead = heads.get(sourceRef), targetHead = heads.get(targetRef);
-    const ancestor = spawnSync("git", [...fixed, "merge-base", "--is-ancestor", targetHead, sourceHead], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
+    const ancestor = spawnSync(gitExecutable, [...fixed, "merge-base", "--is-ancestor", targetHead, sourceHead], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" });
     if (![0, 1].includes(ancestor.status)) fail("WORKFLOW_BRANCH_ANCESTRY_UNAVAILABLE");
     const rows = worktrees(), status = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
-    const sourceSymbolic = spawnSync("git", [...fixed, "symbolic-ref", "--quiet", sourceRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
+    const sourceSymbolic = spawnSync(gitExecutable, [...fixed, "symbolic-ref", "--quiet", sourceRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
     const targetSymbolic = targetRef === sourceRef ? sourceSymbolic
-      : spawnSync("git", [...fixed, "symbolic-ref", "--quiet", targetRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
+      : spawnSync(gitExecutable, [...fixed, "symbolic-ref", "--quiet", targetRef], { env, shell: false, windowsHide: true, timeout: 10000, stdio: "pipe" }).status !== 1;
     const [sourceLockPath, headLogPath, targetLogPath] = gitPaths([sourceRef + ".lock", "logs/HEAD", "logs/" + targetRef]);
     return { source_branch, target_branch, source_ref: sourceRef, target_ref: targetRef, source_head: sourceHead, target_head: targetHead,
       current_ref: currentRef, head: heads.get("HEAD"), index_sha256: indexHash(), clean: status === "", lock_present: fs.existsSync(lock),

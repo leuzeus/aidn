@@ -15,17 +15,20 @@ const oid = x => typeof x === 'string' && /^[a-f0-9]{40}$/.test(x);
 // Fixed REST calls via an authenticated, host-pinned gh executable. A run seam
 // doubles only the transport in offline tests, never business admission.
 // https://cli.github.com/manual/gh_api
-export function createGithubPullRequestOpen({ executable, executableSha256, workingDirectory, repository, environment = process.env }, { run = spawnSync, now = Date.now } = {}) {
+export function createGithubPullRequestOpen({ executable, executableSha256, workingDirectory, repository, environment = process.env,
+  hostContextSha256 = null }, { run = spawnSync, now = Date.now } = {}) {
   if (!path.isAbsolute(executable ?? '') || !path.isAbsolute(workingDirectory ?? '') || !/^[a-f0-9]{64}$/.test(executableSha256 ?? '')
     || !repository || Object.keys(repository).sort().join(',') !== 'name,node_id,owner'
     || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(repository.owner ?? '')
     || !/^[A-Za-z0-9_.-]{1,100}$/.test(repository.name ?? '') || ['.', '..'].includes(repository.name)
     || typeof repository.node_id !== 'string' || !/^[A-Za-z0-9_=-]{1,256}$/.test(repository.node_id)
+    || hostContextSha256 !== null && !/^[a-f0-9]{64}$/.test(hostContextSha256)
     || typeof run !== 'function' || typeof now !== 'function') fail('GITHUB_PR_OPEN_HOST_CONFIGURATION_INVALID');
   const binary = fs.realpathSync(executable), cwd = fs.realpathSync(workingDirectory), repo = structuredClone(repository);
   const env = { ...environment, GH_HOST: 'github.com', GH_PROMPT_DISABLED: '1', GH_DEBUG: '', GH_FORCE_TTY: '', GH_PAGER: '' };
   const prefix = 'repos/' + repo.owner + '/' + repo.name;
-  const context = shadowHash({ executable_sha256: executableSha256, binary, cwd, repository: repo, profile: 'github.com-rest-pr-open.v1' });
+  const context = shadowHash({ executable_sha256: executableSha256, binary, cwd, repository: repo, profile: 'github.com-rest-pr-open.v1',
+    ...(hostContextSha256 === null ? {} : { host_context_sha256: hostContextSha256 }) });
   function pinned() {
     if (fs.realpathSync(executable) !== binary || fs.realpathSync(workingDirectory) !== cwd || !fs.statSync(binary).isFile()
       || !fs.statSync(cwd).isDirectory() || sha(fs.readFileSync(binary)) !== executableSha256) fail('GITHUB_PR_OPEN_HOST_PIN_CHANGED');

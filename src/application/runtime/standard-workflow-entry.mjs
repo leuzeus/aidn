@@ -43,12 +43,15 @@ export function resolveStandardWorkflowConfiguration(request) {
 }
 
 export async function runStandardWorkflowEntry({ request, actionFile = null, preparedAction = null, decisionSource = null, controlSource = null, observation = null,
-  authorization = null, execute = false, expectPlan = null, environment = process.env, signal } = {}) {
+  authorization = null, execute = false, expectPlan = null, environment = process.env, signal } = {}, { providerTransport } = {}) {
   const resolved = resolveStandardWorkflowConfiguration(request), { configuration, parameters, modelSource, validationProfile } = resolved;
-  const authority = createStandardHostAuthority({ configuration, environment });
+  const authority = createStandardHostAuthority({ configuration, environment }, { providerTransport, useProvider: observation === null });
+  const provider = authority.githubProvider;
   const compose = authorize => createStandardWorkflowExecution({ configuration, readSigningKey: () => authority.keyId() === null ? Buffer.alloc(32) : authority.readKey(),
     authorize, environment, validationProfile, humanSource: authority.humanSource, controlSource: authority.controlSource,
-    nativeAuthorizationSource: authority.nativeAuthorizationSource });
+    nativeAuthorizationSource: authority.nativeAuthorizationSource,
+    sessionPushPort: provider?.sessionPushPort, sessionPullRequestPort: provider?.sessionPullRequestPort,
+    sessionReviewPort: provider?.sessionReviewPort });
   return runStandardWorkflowAction({ request, configuration, parameters, modelSource, actionFile, preparedAction, decisionSource, controlSource,
     observation, authorization, execute, expectPlan, signal }, { authority, compose });
 }
@@ -139,6 +142,10 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     output.result = { status: "HOST_READY", key_id: authority.keyId(), instance_created: false, native_started: false };
     output.written = true;
   } else if (action.kind === "initialize") {
+    if (authority.githubProvider) {
+      await authority.githubProvider.verifyIdentity(signal);
+      if (authority.keyId() !== context.key_id || authority.trustSha() !== context.trust_sha256) fail("STANDARD_ENTRY_PRECONDITIONS_CHANGED");
+    }
     output.result = host.initialize({ parameters, write: true, expectedResultSha256: action.payload.instance_sha256 });
     output.written = true;
   } else if (action.kind === "operation" || action.kind === "dispatch" || action.kind === "decision") {

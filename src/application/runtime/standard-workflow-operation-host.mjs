@@ -89,6 +89,7 @@ import { createStandardReconciliationInventory } from "./standard-reconciliation
 import { createStandardOperationDisposition } from "./standard-operation-disposition.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
+const prReviewWaitNodes = new Set(["session_pr_review_wait", "correction_pr_review_wait"]);
 const receiptId = (id, index) => "receipt_" + id.slice(3) + (index ? "_" + index : "");
 function controlCheckpoint(instance, eventId) {
   let replay = createAgenticProcess({ instanceId: instance.instance_id, model: instance.model, policyPins: instance.policy_pins,
@@ -487,7 +488,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (signal?.aborted) fail("PROCESS_CONTROL_PR_ABORTED");
       const actual = controlRequest({ instanceId: request.instance_id, expectedSha256: request.instance_sha256, occurrenceId: request.occurrence_id });
       const state = current(request.instance_id), frame = state.cursor.occurrences.find(row => row.occurrence_id === request.occurrence_id);
-      if (!["session_pr_review_wait", "correction_pr_review_wait"].includes(frame?.node_id) || shadowHash(actual) !== shadowHash(request)) fail("PROCESS_CONTROL_PR_CONTEXT_CHANGED");
+      if (!prReviewWaitNodes.has(frame?.node_id) || shadowHash(actual) !== shadowHash(request)) fail("PROCESS_CONTROL_PR_CONTEXT_CHANGED");
       const latest = state.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_pr_review_content_observe").at(-1);
       const accepted = acceptedForPromotion(state.record, latest?.intent.operation_id, "session_pr_review_content_observe", "PROCESS_CONTROL_PR_OBSERVATION_REQUIRED");
       const input = accepted.record.preview.input;
@@ -504,7 +505,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const frames = inspectAgenticProcess(instance).occurrences;
       const candidates = instance.events.filter(row => row.kind === "control")
         .map(event => ({ event, frame: frames.find(row => row.occurrence_id === event.occurrence_id), capture: controls.read(event.delivery.delivery_id) }))
-        .filter(row => ["session_pr_review_wait", "correction_pr_review_wait"].includes(row.frame?.node_id) && row.capture.contract_version === "process-control-inbox.v2"
+        .filter(row => prReviewWaitNodes.has(row.frame?.node_id) && row.capture.contract_version === "process-control-inbox.v2"
           && row.capture.payload.observation.observations.update_operation_id === input.update_operation_id);
       if (candidates.length !== 1 || candidates[0].frame.status !== "COMPLETED") fail("STANDARD_PR_RECEIVE_EVENT_REQUIRED");
       const { event, capture } = candidates[0];
@@ -999,9 +1000,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, captureKind = null, write = false }) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const request = controlRequest({ instanceId, expectedSha256, occurrenceId });
-      const standardReview = current(instanceId).cursor.occurrences.some(row => row.occurrence_id === occurrenceId && row.node_id === "session_pr_review_wait");
+      const standardReview = current(instanceId).cursor.occurrences.some(row => row.occurrence_id === occurrenceId && prReviewWaitNodes.has(row.node_id));
       const kind = captureKind ?? (standardReview ? "pr-review-content" : "claim");
-      if (!["claim", "pr-review-content"].includes(kind) || standardReview && (kind !== "pr-review-content" || !reviewControlSource)) fail("PROCESS_CONTROL_CAPTURE_KIND_INVALID");
+      if (!["claim", "pr-review-content"].includes(kind) || standardReview && kind !== "pr-review-content") fail("PROCESS_CONTROL_CAPTURE_KIND_INVALID");
+      if (standardReview && !reviewControlSource) fail("PROCESS_CONTROL_PR_EVENT_SOURCE_REQUIRED");
       const capture = await (kind === "pr-review-content" ? controls.reserveReview : controls.reserve)(request, sourceRef, { signal });
       if (!capture) return { status: "waiting_for_control", request };
       // A retained capture survives races/crashes, but may not wake a changed
@@ -1026,6 +1028,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         return { ...state, retained: true, projection };
       }
       if (capture.phase !== "reserved" || state.record.instance_sha256 !== capture.request.instance_sha256) fail("PROCESS_CONTROL_INSTANCE_CHANGED");
+      if (state.cursor.occurrences.some(row => row.occurrence_id === capture.request.occurrence_id && prReviewWaitNodes.has(row.node_id))
+        && (capture.contract_version !== "process-control-inbox.v2" || !reviewControlSource)) fail("PROCESS_CONTROL_PR_EVENT_SOURCE_REQUIRED");
       const result = await service.deliverControl({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
         occurrenceId: capture.request.occurrence_id, deliveryId: capture.delivery.delivery_id, eventId, write: true });
       controls.acknowledge(id, result.record.instance_sha256);

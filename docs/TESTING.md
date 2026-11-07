@@ -659,6 +659,19 @@ Each new decision envelope declares ten minutes of validity, covering two
 forgery assertion independently requires the envelope still be fresh. Invocation
 timings are descriptive wall times under the reported concurrent load.
 
+`node tools/perf/verify-standard-ordinary-github-fixtures.mjs` uses the same
+application entry as the CLI and console on a fresh FILES project. Only the
+external GitHub subprocess transports are doubled. Exact initialization reads
+the expected actor and repository. A mismatched actor and a changed manifest
+refuse before the instance write. The fixture also checks ambiguous origin,
+foreign instance, executable drift, request injection and offline replay/SIM
+with an invalid provider configuration. A separate host read exercises the
+real merge adapter protocol with the same transport double. The effect ports
+refuse missing grants before transport, and both review waits retain their
+instance when the dedicated event source is absent. The fixture does not
+advance a PR workflow or qualify production credentials, network effects,
+event capture, Native, installed archive, or full STANDARD.
+
 The SPIKE wrapper-precondition suite also exercises both session checkpoint
 inventories with real initializer CAS postimages and synthetic signed writer
 records. It checks the exact finite path/hash set, signature tampering, wrong

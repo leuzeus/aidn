@@ -17,23 +17,27 @@ const oid = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value ?? '');
 // Only remote transports are replaceable for offline qualification. Local Git
 // inspection, ancestry and ref/index/worktree guards use actual Git.
 export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, githubExecutable, githubSha256, repository, actor,
-  environment = process.env }, { runGithub = spawnSync, runRemoteGit = spawnSync, now = Date.now } = {}) {
+  environment = process.env, hostContextSha256 = null }, { runGithub = spawnSync, runRemoteGit = spawnSync, now = Date.now } = {}) {
   const pattern = /^[a-f0-9]{64}$/;
   if (![gitExecutable, githubExecutable].every(name => path.isAbsolute(name ?? '')) || !pattern.test(gitSha256 ?? '') || !pattern.test(githubSha256 ?? '')
     || !repository || Object.keys(repository).sort().join(',') !== 'name,node_id,owner' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(repository.owner ?? '')
     || !/^[A-Za-z0-9_.-]{1,100}$/.test(repository.name ?? '') || ['.', '..'].includes(repository.name) || !/^[A-Za-z0-9_=-]{1,256}$/.test(repository.node_id ?? '')
     || !actor || Object.keys(actor).sort().join(',') !== 'login,node_id' || !/^[A-Za-z0-9_=-]{1,256}$/.test(actor.node_id ?? '')
     || !/^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/.test(actor.login ?? '') || ![runGithub, runRemoteGit, now].every(fn => typeof fn === 'function')
+    || hostContextSha256 !== null && !pattern.test(hostContextSha256)
     || Object.keys(environment).some(name => /^GIT_/i.test(name))) fail('GITHUB_PUSH_HOST_CONFIGURATION_INVALID');
   const root = agentRunPhysicalPath(path.resolve(targetRoot), { directory: true });
   const gitBinary = fs.realpathSync(gitExecutable), githubBinary = fs.realpathSync(githubExecutable), repo = structuredClone(repository), owner = structuredClone(actor);
   const transportCwd = path.dirname(gitBinary), temporary = agentRunPhysicalPath(os.tmpdir(), { directory: true });
   const remoteUrl = 'https://github.com/' + repo.owner + '/' + repo.name + '.git', prefix = 'repos/' + repo.owner + '/' + repo.name;
-  const context = shadowHash({ profile: 'github-https-git.v1', root, gitBinary, gitSha256, githubBinary, githubSha256, repository: repo, actor: owner, remoteUrl });
+  const context = shadowHash({ profile: 'github-https-git.v1', root, gitBinary, gitSha256, githubBinary, githubSha256, repository: repo, actor: owner, remoteUrl,
+    ...(hostContextSha256 === null ? {} : { host_context_sha256: hostContextSha256 }) });
   const localEnv = { ...environment, PATH: path.dirname(gitBinary) + path.delimiter + (environment.PATH ?? ''),
     GIT_OPTIONAL_LOCKS: '0', GIT_NO_LAZY_FETCH: '1', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null', GIT_TERMINAL_PROMPT: '0' };
   // The reused local inspector rejects caller-supplied Git scope variables.
   const inspectionEnv = { ...environment, PATH: localEnv.PATH };
+  const localInspector = () => createLocalWorkflowBranchIntegration({ targetRoot: root, environment: inspectionEnv },
+    { gitExecutable: gitBinary, isolatedConfig: hostContextSha256 !== null });
   const fixed = ['--literal-pathspecs', '-C', root, '-c', 'core.fsmonitor=false', '-c', 'gc.auto=0', '-c', 'maintenance.auto=false',
     '-c', 'core.hooksPath=' + (process.platform === 'win32' ? 'NUL' : '/dev/null'), '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always',
     '-c', 'http.sslVerify=true', '-c', 'http.followRedirects=false', '-c', 'http.proxy=', '-c', 'credential.helper=', '-c', 'core.askPass=',
@@ -137,11 +141,11 @@ export function createGithubSessionPush({ targetRoot, gitExecutable, gitSha256, 
     const paths = local(['rev-parse', ...names.flatMap(name => ['--git-path', name])], state).stdout.trimEnd().split(/\r?\n/);
     if (paths.length !== names.length || paths.some(file => !file
       || fs.existsSync(agentRunPhysicalPath(path.resolve(root, file), { missing: true })))) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
-    return createLocalWorkflowBranchIntegration({ targetRoot: root, environment: inspectionEnv }).inspect({ source_branch: branch, target_branch: branch });
+    return localInspector().inspect({ source_branch: branch, target_branch: branch });
   }
   function inspectInternal(branch, assertLocal = null) {
     const state = budget(); configuration(state);
-    const localView = assertLocal ? inspectLocal(branch, state) : createLocalWorkflowBranchIntegration({ targetRoot: root, environment: inspectionEnv }).inspect({ source_branch: branch, target_branch: branch });
+    const localView = assertLocal ? inspectLocal(branch, state) : localInspector().inspect({ source_branch: branch, target_branch: branch });
     if (!assertLocal && !localView.clean) fail('GITHUB_PUSH_LOCAL_CONTEXT_BLOCKED');
     const target = ref(branch, state);
     if (localView.current_ref !== target || localView.head !== localView.source_head || localView.source_symbolic

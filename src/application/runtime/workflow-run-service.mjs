@@ -20,7 +20,7 @@ export function workflowRunEnvelope(effect = "preview") {
 // allocates a native session. Execution retains the owned host and its budgets.
 export async function runProjectWorkflow({ targetRoot, engine, configuration, authorization, plan,
   actionFile = null, preparedAction = null, decisionSource = null, controlSource = null, observation = null,
-  execute = false, syncRelay = false, expectPlan = null } = {}, { runOwned = runOwnedAgenticProcess, lifecycle = createPublicAgentRunLifecycle } = {}) {
+  execute = false, syncRelay = false, expectPlan = null } = {}, { runOwned = runOwnedAgenticProcess, lifecycle = createPublicAgentRunLifecycle, providerTransport } = {}) {
   const output = workflowRunEnvelope(execute ? "executor" : "preview");
   try {
     if (typeof execute !== "boolean" || typeof syncRelay !== "boolean" || !execute && (syncRelay || expectPlan)) fail("WORKFLOW_RUN_EXPLICIT_EFFECT_REQUIRED");
@@ -52,7 +52,7 @@ export async function runProjectWorkflow({ targetRoot, engine, configuration, au
       const consent = authorization ? readAgentRunFile(path.resolve(authorization), { maxBytes: 16384 }).value : null;
       if (execute) output.dry_run = false;
       const result = await runStandardWorkflowEntry({ request: config, actionFile, preparedAction, decisionSource, controlSource, observation,
-        authorization: consent, execute, expectPlan });
+        authorization: consent, execute, expectPlan }, { providerTransport });
       output.preview = result.preview; output.action_sha256 = result.action_sha256; output.can_apply = result.can_apply;
       output.result = result.result; output.requirements = result.requirements;
       output.written = result.written; output.dry_run = !execute;

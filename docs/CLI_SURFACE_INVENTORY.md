@@ -351,8 +351,10 @@ finalization; `--verify` retains its read-only verification behavior.
     Native allocation. The console run action forwards these same selectors.
     Custom native-only v1/v2 graphs keep their owned runner; raw v2 control facts
     remain refused. Historical instances are not converted. Source wiring is
-    not full STANDARD, genuine actor or installation qualification; absent
-    provider/renewal capabilities remain blocking.
+    partial. An optional protected host manifest binds GitHub push, PR opening
+    and read capabilities as specified in ADR-0025. Exact initialization checks
+    the configured identity. PR review waits require a separate authenticated
+    event source. Replay and simulation perform no GitHub or credential I/O.
 - `aidn runtime workflow-action --target <root> --request <file> --json`
   - A STANDARD run preview returns `action.request` with its closed
     `input.preparedAction`. Save this returned request and resubmit it with

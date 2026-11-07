@@ -2960,6 +2960,46 @@ route needs a separate accepted R08 effects-and-verification result for the
 current HEAD, including replies/resolutions or documented exceptions and
 impacted validations, before it can advance. Explicit consent and AIDN merge
 effects are separate, as are R09 fetch, divergence and reconciliation.
+
+### GitHub capabilities in the shared STANDARD entry
+
+The ordinary CLI and console use the same STANDARD host. An operator opts in
+by provisioning `<identity>.github.json` and a physical `<identity>.github/`
+gh configuration directory under the existing protected
+`AIDN_STANDARD_HOST_HOME`. The identity is the same hash as the host key file,
+over the physical target path (lowercase on Windows) and instance ID. The
+closed `standard-host-github.v1` manifest contains `contract_version`,
+`target_root`, `instance_id`, `repository` (`host: github.com`, `owner`, `name`,
+`node_id`), `actor` (`login`, `node_id`), and the `git` and `gh` executable
+pins (absolute physical `path` and `sha256`). The worktree must have exactly
+one effective HTTPS `origin` URL for that repository, with optional `.git`
+suffix. A push URL or URL rewrite is ambiguous and refuses. The manifest and
+profile are provisioned independently of the checkout and native writable roots.
+
+The entry binds the host selection into the exact action digest. The existing
+push and PR-open plans also bind it, including the actor, executables, Git
+binding and transport profile. An exact initialization authenticates the
+configured actor and repository before creating an instance. Subsequent reads
+use the fixed REST or GraphQL adapters with the same verified credential for the
+provider operation. The GitHub push adapter retains its own identity, push
+permission, ancestry and exact remote-ref lease checks. Transport rechecks the
+protected configuration, binary pins and repository binding. Ambient Git and
+GitHub credentials, proxy and executable selection are excluded from the child
+environment. Credentials are kept out of the action and operation evidence.
+Provider initialization and reads grant no push or PR creation. Existing effect
+admission and authorization still apply.
+
+An absent manifest preserves local STANDARD behavior with unavailable provider
+ports. Replay and simulation need only retained history. They skip the provider
+configuration and contact neither provider nor credential source. An external
+merge read is available to the operation host. Both PR-review waits require an
+independent authenticated provider-event reader and verifier
+(`sessionReviewEventPort.readEvent` and `verifyEvent`). The ordinary host has
+no producer for this capability. A generic signed control claim or an API
+snapshot cannot deliver that event. The durable wait and the R08
+reply/resolution or documented exception, separate human consent and merge, and
+R09 fetch/divergence/sync requirements stay explicit.
+`complete_standard_workflow` remains false.
 The observer uses the existing operation journal and establishes no new
 canonical PR lifecycle state. Historical readers and scope remain versioned.
 

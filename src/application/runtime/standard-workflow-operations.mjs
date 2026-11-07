@@ -53,6 +53,7 @@ const files = [...["standard-cycle-close-hook-output.v2", "standard-cycle-close-
   "standard-cycle-operations.mjs", "standard-cycle-checkpoint.mjs", "standard-cycle-plan-context.mjs", "standard-cycle-plan-record.mjs", "runtime-state-projector-use-case.mjs", "cycle-create-admit-use-case.mjs", "cycle-close-admit-use-case.mjs", "branch-cycle-audit-admit-use-case.mjs",
   "standard-drift-recovery.mjs", "standard-drift-change-request.mjs", "standard-drift-cycle.mjs", "requirements-delta-admit-use-case.mjs", "runtime-head-resolution-service.mjs", "agent-run-configuration-service.mjs",
   "standard-workflow-operation-host.mjs", "standard-workflow-entry.mjs", new URL("../../adapters/runtime/standard-host-authority.mjs", import.meta.url),
+  new URL("../../adapters/runtime/standard-github-provider-host.mjs", import.meta.url),
   ...["standard-workflow-execution.v1", "standard-workflow-action.v1", "standard-workflow-entry-result.v1", "standard-workflow-call-action.v1", "standard-workflow-call-result.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "gating-evaluate-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",

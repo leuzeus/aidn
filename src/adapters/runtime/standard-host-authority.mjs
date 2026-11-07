@@ -3,6 +3,7 @@ import path from "node:path";
 import { createHash, createHmac, createPublicKey, randomBytes, verify } from "node:crypto";
 import { agentRunPhysicalPath, readAgentRunFile } from "../../application/runtime/agent-run-configuration-service.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
+import { createStandardGithubProviderHost } from "./standard-github-provider-host.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const inside = (root, file) => { const r = path.relative(root, file); return r === "" || !path.isAbsolute(r) && r !== ".." && !r.startsWith(".." + path.sep); };
@@ -13,7 +14,7 @@ const bytes = file => readAgentRunFile(file, { json: false, maxBytes: 262144 }).
 // by the embedding process and must be outside every native writable root.
 // MAC keys authenticate journals; only independent Ed25519 principals can supply
 // human/control/renewal claims. Possessing a journal key grants no human role.
-export function createStandardHostAuthority({ configuration, environment = process.env }) {
+export function createStandardHostAuthority({ configuration, environment = process.env }, { providerTransport, useProvider = true } = {}) {
   const configured = environment.AIDN_STANDARD_HOST_HOME;
   if (!path.isAbsolute(configured ?? "")) fail("STANDARD_HOST_HOME_REQUIRED");
   const home = agentRunPhysicalPath(configured, { directory: true });
@@ -21,6 +22,7 @@ export function createStandardHostAuthority({ configuration, environment = proce
     if (inside(root, home) || inside(home, root)) fail("STANDARD_HOST_HOME_OVERLAP");
   if (!(configuration.native.protected_roots ?? []).includes(home)) fail("STANDARD_HOST_HOME_PROTECTION_REQUIRED");
   const identity = shadowHash({ target: process.platform === "win32" ? configuration.target_root.toLowerCase() : configuration.target_root, instance: configuration.instance_id });
+  const githubProvider = useProvider ? createStandardGithubProviderHost({ configuration, environment, home, identity }, providerTransport) : null;
   const keyFile = path.join(home, `${identity}.key`);
   const readKey = () => {
     const key = bytes(keyFile);
@@ -48,7 +50,10 @@ export function createStandardHostAuthority({ configuration, environment = proce
       || typeof row.public_key !== "string" || createPublicKey(row.public_key).asymmetricKeyType !== "ed25519") fail("STANDARD_HOST_PRINCIPALS_INVALID");
     return value;
   }
-  const trustSha = () => shadowHash(registry());
+  const trustSha = () => {
+    const principals = registry();
+    return shadowHash(githubProvider ? { principals, github: githubProvider.contextSha } : principals);
+  };
   function capture(kind, sourceRef, subject, fresh) {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}$/.test(sourceRef ?? "")) fail("STANDARD_HOST_SOURCE_REF_INVALID");
     const file = path.join(home, "inbox", `${sourceRef}.json`);
@@ -77,9 +82,9 @@ export function createStandardHostAuthority({ configuration, environment = proce
       return { outcome: "verified", authority_id: claim.authority_id, source_sha256: shadowHash(claim),
         ...(kind === "native-renewal" ? { grant_sha256: shadowHash(claim), evidence_class: claim.closure?.evidence_class } : {}) };
     };
-    return Object.freeze({ read, verify: check, readReview: read, verifyReview: check });
+    return Object.freeze({ read, verify: check });
   }
-  return Object.freeze({ home, keyId, readKey, ensureKey, trustSha,
+  return Object.freeze({ home, keyId, readKey, ensureKey, trustSha, githubProvider,
     humanSource: source("human"), controlSource: source("control"), nativeAuthorizationSource: source("native-renewal"),
     authorizeOperation(preview, permittedSha) {
       if (preview.preview_sha256 !== permittedSha) fail("STANDARD_HOST_EXACT_OPERATION_REQUIRED");
