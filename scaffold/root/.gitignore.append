@@ -29,6 +29,8 @@
 .aidn/runtime/standard-workflow/
 docs/audit/workflows/process-instances/
 docs/audit/workflows/operation-records/
+/docs/audit/workflows/dispatch-records/
+/docs/audit/workflows/resource-fences/local-artifacts.json
 docs/audit/workflows/decision-inbox/
 docs/audit/workflows/control-inbox/
 

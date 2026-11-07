@@ -2336,6 +2336,14 @@ When a change affects the simplified install/upgrade orchestrator, run:
 - `npm run perf:verify-project-config`
 - `npm run perf:verify-install-idempotence`
 
+The install idempotence fixture checks that a core install and reinstall
+preserve user ignore rules and add the private dispatch directory and exact
+local artifact fence path. On a disposable source-installed FILES project,
+the signed dispatch writer and local fence leave the real Git drift observation
+stable. Product changes, sibling audit artifacts and modifications to files
+already tracked under an ignored path remain visible. Run this case alone with
+`npm run perf:verify-install-idempotence -- --runtime-gitignore-only`.
+
 The bootstrap and Codex integration composites also run
 `tools/perf/verify-multi-project-setup-fixtures.mjs` for registry isolation,
 version detection, no-op/downgrade behavior, candidate-before-package ordering
