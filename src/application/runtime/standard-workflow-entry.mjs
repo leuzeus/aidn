@@ -12,6 +12,8 @@ import { validateJsonSchema } from "../../core/contracts/json-schema-validator.m
 import requestSchema from "../../core/contracts/workflow-definition/standard-workflow-execution.v1.schema.json" with { type: "json" };
 import actionSchema from "../../core/contracts/workflow-definition/standard-workflow-action.v1.schema.json" with { type: "json" };
 import resultSchema from "../../core/contracts/workflow-definition/standard-workflow-entry-result.v1.schema.json" with { type: "json" };
+import callActionSchema from "../../core/contracts/workflow-definition/standard-workflow-call-action.v1.schema.json" with { type: "json" };
+import callResultSchema from "../../core/contracts/workflow-definition/standard-workflow-call-result.v1.schema.json" with { type: "json" };
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const packageRoot = fileURLToPath(new URL("../../../", import.meta.url));
@@ -44,18 +46,28 @@ export async function runStandardWorkflowEntry({ request, actionFile = null, pre
   authorization = null, execute = false, expectPlan = null, environment = process.env, signal } = {}) {
   const resolved = resolveStandardWorkflowConfiguration(request), { configuration, parameters, modelSource, validationProfile } = resolved;
   const authority = createStandardHostAuthority({ configuration, environment });
+  const compose = authorize => createStandardWorkflowExecution({ configuration, readSigningKey: () => authority.keyId() === null ? Buffer.alloc(32) : authority.readKey(),
+    authorize, environment, validationProfile, humanSource: authority.humanSource, controlSource: authority.controlSource,
+    nativeAuthorizationSource: authority.nativeAuthorizationSource });
+  return runStandardWorkflowAction({ request, configuration, parameters, modelSource, actionFile, preparedAction, decisionSource, controlSource,
+    observation, authorization, execute, expectPlan, signal }, { authority, compose });
+}
+
+// Composition supplies these ports. Request data cannot select them.
+export async function runStandardWorkflowAction({ request, configuration, parameters, modelSource, actionFile = null, preparedAction = null,
+  decisionSource = null, controlSource = null, observation = null, authorization = null, execute = false, expectPlan = null, signal }, { authority, compose }) {
+  if (typeof execute !== "boolean") fail("STANDARD_ENTRY_ACTION_INVALID");
   if ([decisionSource, controlSource, observation].filter(value => value !== null).length > 1 || observation && !["replay", "simulate"].includes(observation)
     || execute && observation) fail("STANDARD_ENTRY_ACTION_CONFLICT");
   if (actionFile && preparedAction !== null) fail("STANDARD_ENTRY_ACTION_CONFLICT");
-  const supplied = actionFile ? readAgentRunFile(path.resolve(actionFile), { maxBytes: 4194304 }).value : preparedAction;
-  if (preparedAction !== null && (!supplied || typeof supplied !== "object" || Array.isArray(supplied))) fail("STANDARD_ENTRY_ACTION_INVALID");
-  if (supplied && (checkShadowJson(supplied) || validateJsonSchema(supplied, actionSchema, "$", { contractKind: "workflow-definition" }).length)) fail("STANDARD_ENTRY_ACTION_INVALID");
+  const candidate = actionFile ? readAgentRunFile(path.resolve(actionFile), { maxBytes: 4194304 }).value : preparedAction;
+  if (candidate === null && actionFile || candidate !== null && (checkShadowJson(candidate) || validateJsonSchema(candidate,
+    candidate?.contract_version === callActionSchema["x-aidn-contract-version"] ? callActionSchema : actionSchema,
+    "$", { contractKind: "workflow-definition" }).length)) fail("STANDARD_ENTRY_ACTION_INVALID");
+  const supplied = candidate === null ? null : structuredClone(candidate);
   if (execute && (!supplied || expectPlan !== shadowHash(supplied))) fail("STANDARD_ENTRY_EXACT_ACTION_REQUIRED");
   let permittedOperation = null;
-  const compose = () => createStandardWorkflowExecution({ configuration, readSigningKey: () => authority.keyId() === null ? Buffer.alloc(32) : authority.readKey(),
-    authorize: input => authority.authorizeOperation(input, permittedOperation), environment, validationProfile,
-    humanSource: authority.humanSource, controlSource: authority.controlSource, nativeAuthorizationSource: authority.nativeAuthorizationSource });
-  let host = compose();
+  const host = compose(input => authority.authorizeOperation(input, permittedOperation));
   let state = null;
   try { state = host.inspect(); } catch (cause) { if (cause.code !== "PROCESS_INSTANCE_NOT_FOUND") throw cause; }
   const initial = state ? null : host.initialize({ parameters });
@@ -72,11 +84,13 @@ export async function runStandardWorkflowEntry({ request, actionFile = null, pre
       return { kind: "control", payload: { request: host.prepareControl({ expectedSha256: state.record.instance_sha256,
         occurrenceId: standardWorkflowControlOccurrence(state) }), source_ref: controlSource } };
     }
-    const next = await host.step({ write: false });
+    const next = await host.step({ write: false, expectedInstanceSha256: state.record.instance_sha256 });
     if (decisionSource) {
       if (next.kind !== "human_wait") fail("STANDARD_ENTRY_HUMAN_WAIT_REQUIRED");
       return { kind: "decision", payload: { operation_id: next.operation_id, question: host.prepareDecision(next.operation_id), source_ref: decisionSource } };
     }
+    if (next.kind === "call") return { kind: "call", payload: { ...next.transition, instance_id: state.record.instance_id,
+      model_sha256: state.record.model_sha256 } };
     if (next.kind === "operation_preview") return { kind: "operation", payload: { preview: next.preview } };
     if (["human_wait", "operation_wait"].includes(next.kind)) return { kind: "dispatch", payload: { operation_id: next.operation_id,
       journal_sha256: shadowHash(host.readOperation(next.operation_id)), ...(next.kind === "human_wait" ? { question: host.prepareDecision(next.operation_id) } : {}) } };
@@ -92,9 +106,15 @@ export async function runStandardWorkflowEntry({ request, actionFile = null, pre
     if (action.kind !== "operation" && shadowHash(await currentKind()) !== shadowHash({ kind: action.kind, payload: action.payload })) fail("STANDARD_ENTRY_ACTION_CHANGED");
     if (action.kind === "operation" && (decisionSource || controlSource || observation || !state
       || action.payload.preview.instance_sha256 !== state.record.instance_sha256)) fail("STANDARD_ENTRY_ACTION_CHANGED");
-  } else action = { contract_version: "standard-workflow-action.v1", context, ...await currentKind() };
+  } else {
+    const next = await currentKind();
+    action = { contract_version: next.kind === "call" ? callActionSchema["x-aidn-contract-version"] : "standard-workflow-action.v1", context, ...next };
+    if (next.kind === "call" && validateJsonSchema(action, callActionSchema, "$", { contractKind: "workflow-definition" }).length)
+      fail("STANDARD_ENTRY_ACTION_INVALID");
+  }
   const payloadKeys = { prepare_host: [], initialize: ["instance_sha256"], operation: ["preview"], decision: ["operation_id", "question", "source_ref"],
-    control: ["request", "source_ref"], native: ["authorization_sha256"], observe: ["status", "reason"], replay: [], simulate: [] };
+    control: ["request", "source_ref"], native: ["authorization_sha256"], observe: ["status", "reason"], replay: [], simulate: [],
+    call: ["transition", "occurrence_id", "event_id", "result_sha256", "instance_id", "model_sha256"] };
   if (action.kind === "dispatch") payloadKeys.dispatch = Object.hasOwn(action.payload, "question") ? ["operation_id", "journal_sha256", "question"] : ["operation_id", "journal_sha256"];
   if (Object.keys(action.payload).sort().join(",") !== payloadKeys[action.kind].sort().join(",")) fail("STANDARD_ENTRY_ACTION_INVALID");
   const output = { preview: action, action_sha256: shadowHash(action), can_apply: !["observe", "replay", "simulate"].includes(action.kind) && (action.kind !== "native" || authorization !== null), written: false, result: null,
@@ -136,9 +156,20 @@ export async function runStandardWorkflowEntry({ request, actionFile = null, pre
       sourceRef: action.payload.source_ref, write: true, signal });
     output.result = result.status === "reserved" ? await host.deliverControl(result.inbox_id, { write: true }) : result;
     output.written = result.status === "reserved";
+  } else if (action.kind === "call") {
+    if (authority.keyId() !== context.key_id || authority.trustSha() !== context.trust_sha256) fail("STANDARD_ENTRY_PRECONDITIONS_CHANGED");
+    const changed = await host.applyCall(action.payload, { write: true, expectedSha256: context.instance_sha256 });
+    output.written = changed.written;
+    output.can_apply = false;
+    output.result = { contract_version: callResultSchema["x-aidn-contract-version"], action_kind: "call",
+      process_status: changed.cursor.status, workflow_completed: changed.cursor.status === "COMPLETED",
+      operation_outcome: null, effect_status: null, written: output.written, native_started: false,
+      details: { ...action.payload, projection: changed.projection ?? null } };
+    if (validateJsonSchema(output.result, callResultSchema, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_ENTRY_RESULT_INVALID");
+    return output;
   } else if (action.kind === "native") {
     if (!authorization || shadowHash(authorization) !== action.payload.authorization_sha256) fail("STANDARD_ENTRY_NATIVE_AUTHORIZATION_REQUIRED");
-    output.result = await host.step({ write: true, authorization, signal }); output.written = true;
+    output.result = await host.step({ write: true, authorization, signal, expectedInstanceSha256: context.instance_sha256 }); output.written = true;
   }
   output.can_apply = false;
   const current = action.kind === "prepare_host" ? null : host.inspect();

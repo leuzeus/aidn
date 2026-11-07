@@ -8,6 +8,27 @@ import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/s
 import { processModels, processFrameNode } from "../../core/workflow/process-call-model.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
+
+// Both mixed-host stepping and ordinary action application use this port.
+export function standardWorkflowCallPort(operations, instanceId) {
+  function dispatch({ transition, occurrence_id, event_id }, { expectedSha256, write, expectedResultSha256 }) {
+    const method = transition === "call_entry" ? "enterCall" : transition === "call_return" ? "returnCall" : null;
+    if (!method) fail("STANDARD_HOST_CALL_TRANSITION_INVALID");
+    return operations[method]({ instanceId, expectedSha256, occurrenceId: occurrence_id, eventId: event_id, write, expectedResultSha256 });
+  }
+  return Object.freeze({
+    async step(state, frame, write) {
+      const transition = { transition: frame.wait_reason, occurrence_id: frame.occurrence_id, event_id: `call_${state.record.revision}` };
+      const changed = await dispatch(transition, { expectedSha256: state.record.instance_sha256, write });
+      return { kind: "call", status: changed.cursor.status, ...changed,
+        transition: { ...transition, result_sha256: changed.record.instance_sha256 } };
+    },
+    apply(transition, { expectedSha256, write }) {
+      if (write !== true || !/^[a-f0-9]{64}$/.test(transition.result_sha256)) fail("STANDARD_HOST_CALL_EXACT_WRITE_REQUIRED");
+      return dispatch(transition, { expectedSha256, write, expectedResultSha256: transition.result_sha256 });
+    },
+  });
+}
 // The common reducer owns control flow. This adapter selects a port for the
 // cursor's ready leaf; it contains no standard-workflow routing decisions.
 export function createStandardWorkflowMixedHost({ configuration: suppliedConfiguration, modelSource = null, readSigningKey, authorize, humanSource, controlSource,
@@ -31,6 +52,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     authorize, humanSource, controlSource, processAuthority, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
     reconciliationConfiguration: configuration, dispositionSource }, { validationBoundaryFactory });
   const inspect = () => operations.inspect(configuration.instance_id);
+  const callTransition = standardWorkflowCallPort(operations, configuration.instance_id);
   const nodeFor = frame => processFrameNode(model, frame);
   async function finishOperation(id, signal) {
     const output = await operations.dispatch(id, { write: true, signal });
@@ -63,18 +85,16 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     captureControl: input => operations.captureControl({ ...input, instanceId: configuration.instance_id }),
     deliverControl: (id, input) => operations.deliverControl(id, input),
     readControl: id => operations.readControl(id),
-    async step({ write = false, input = {}, authorization, signal } = {}) {
+    applyCall: callTransition.apply,
+    async step({ write = false, input = {}, authorization, signal, expectedInstanceSha256 = null } = {}) {
       if (typeof write !== "boolean") fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       if (model.data_bindings && (checkShadowJson(input) || !input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).length)) fail("PROCESS_INPUT_OVERRIDE_FORBIDDEN");
       const state = inspect(), cursor = state.cursor;
+      if (expectedInstanceSha256 !== null && state.record.instance_sha256 !== expectedInstanceSha256)
+        fail("STANDARD_ENTRY_PRECONDITIONS_CHANGED");
       if (["COMPLETED", "FAILED", "CANCELLED"].includes(cursor.status)) return { kind: "terminal", ...state, written: false, status: cursor.status };
       const call = cursor.occurrences.find(frame => frame.status === "WAITING" && ["call_entry", "call_return"].includes(frame.wait_reason));
-      if (call) {
-        const request = { instanceId: configuration.instance_id, expectedSha256: state.record.instance_sha256,
-          occurrenceId: call.occurrence_id, eventId: `call_${state.record.revision}`, write };
-        const changed = await operations[call.wait_reason === "call_entry" ? "enterCall" : "returnCall"](request);
-        return { kind: "call", status: changed.cursor.status, ...changed };
-      }
+      if (call) return callTransition.step(state, call, write);
       const ready = cursor.ready.map(id => cursor.occurrences.find(row => row.occurrence_id === id));
       const operation = ready.find(frame => nodeFor(frame).kind === "operation")
         // inspect() validates the entire cursor first. Ineligible occurrences

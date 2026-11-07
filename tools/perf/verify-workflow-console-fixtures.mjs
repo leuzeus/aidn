@@ -20,6 +20,7 @@ import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { validateJsonSchema, validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import { resolveCliEffectClass } from "../../src/core/cli/effect-policy.mjs";
 import { verifyStandardConsoleExactAction } from "./standard-console-action-test-lib.mjs";
+import { verifyStandardWorkflowCallAction } from "./standard-workflow-call-action-test-lib.mjs";
 import { verifyStandardConsoleEntry } from "./verify-standard-console-entry-fixtures.mjs";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "aidn-workflow-console-")), repo = fileURLToPath(new URL("../../", import.meta.url));
@@ -40,6 +41,7 @@ const put = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: tru
 let checks = 0;
 async function check(name, action) { await action(); checks++; console.log("PASS " + name); }
 try {
+  await check("STANDARD call actions retain exact entry and return through the service", verifyStandardWorkflowCallAction);
   await check("STANDARD console retains the exact timed action and browser consent subject", verifyStandardConsoleExactAction);
   await check("public console CLI applies the published STANDARD operation and cold replay/SIM", verifyStandardConsoleEntry);
   await check("public contracts validate and help/JSON cannot start a dashboard", async () => {

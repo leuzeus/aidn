@@ -459,6 +459,19 @@ preview creates a key, directory, cache, instance or Native allocation. No share
 synchronization or external publication is inferred. Partial failures retain the
 existing journals and report uncertainty instead of allowing a blind retry.
 
+For pinned call waits the ordinary entry uses the closed
+`standard-workflow-call-action.v1` and `standard-workflow-call-result.v1`
+envelopes. Other actions retain their original v1 contracts. CLI and console
+carry the same action, binding the request, model/source, authority, current
+instance prefix, occurrence, transition, event and predicted instance hash.
+The mixed host reuses the process service for read-only preview and explicit
+application. The service checks the original prefix, live authority and
+authenticated journal witnesses, compares the predicted result before writing,
+and uses the existing canonical CAS. The returned projection status retains
+reconciliation when applicable. A call action starts no native allocation and
+dispatches no business operation. Catalogue coverage for embedded STANDARD
+operations and qualification of the distributed model are separate.
+
 `AIDN_STANDARD_HOST_HOME` belongs to the embedding environment. Its existing
 physical directory must be explicitly protected in the native configuration.
 The versioned principals registry pins independent Ed25519 public keys and

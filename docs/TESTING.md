@@ -1,5 +1,19 @@
 # Testing Guide
 
+## Ordinary STANDARD call actions
+
+The workflow-console fixture runs `verifyStandardWorkflowCallAction` from
+`tools/perf/standard-workflow-call-action-test-lib.mjs`. That check can also be
+called directly. It uses the ordinary action handler, mixed-host call adapter,
+process service and common reducer with an in-memory CAS, synthetic signing
+key and an accepted fixture journal. It checks both call directions, stable
+preview, console resubmission, two single-event commits, stale and tampered
+actions, predicted-result mismatch, journal authentication and occurrence
+correlation, and revoked authority before commit. No child effect is
+dispatched. Persistent FILES/DUAL/DB-only, full CLI/console execution,
+distributed STANDARD, native, providers and installed package qualification
+remain separate.
+
 ## Exact committed whitespace verification, 2026-11-06
 
 The earlier working-tree whitespace check excluded the three then-untracked

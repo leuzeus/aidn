@@ -51,7 +51,10 @@ The classification keeps automation from confusing output format with write perm
   A STANDARD execution configuration selects the published mixed composition.
   Its saved action-file plus execute/expect-plan admits one exact action;
   preparing a durable host key and initializing an instance are separate actions.
-  Decision/control selectors never imply writes. Replay/SIM remain preview-only.
+  A pinned call entry or return uses that same exact-action consent boundary.
+  Its preview writes nothing. Apply records only the canonical process
+  transition through the existing CAS. Decision/control selectors never imply
+  writes. Replay/SIM remain preview-only.
   For STANDARD console actions, the returned `action.request` retains the closed
   prepared action. Resubmitting that request and its outer digest preserves the
   original plan; the host still rechecks freshness, authority and CAS. This JSON

@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-workflow-call-action.v1",
+  "x-aidn-contract-version": "standard-workflow-call-action.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "context",
+    "kind",
+    "payload"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-workflow-call-action.v1"
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_sha256",
+        "configuration_sha256",
+        "model_source_sha256",
+        "instance_sha256",
+        "native",
+        "key_id",
+        "trust_sha256"
+      ],
+      "properties": {
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "configuration_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "model_source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "instance_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "native": {
+          "type": "object"
+        },
+        "key_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "trust_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "kind": {
+      "const": "call"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transition",
+        "occurrence_id",
+        "event_id",
+        "result_sha256",
+        "instance_id",
+        "model_sha256"
+      ],
+      "properties": {
+        "transition": {
+          "enum": [
+            "call_entry",
+            "call_return"
+          ]
+        },
+        "occurrence_id": {
+          "type": "string",
+          "pattern": "^root(?:/[a-z0-9_-]+)*$",
+          "maxLength": 256
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^call_[0-9]+$"
+        },
+        "result_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "instance_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "model_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

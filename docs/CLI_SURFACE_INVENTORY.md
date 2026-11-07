@@ -337,7 +337,12 @@ finalization; `--verify` retains its read-only verification behavior.
     supplies project/native pins and roots; the host supplies the model, skills,
     typed activity outputs and implementation pins. Save the returned `preview`
     object and apply it with `--action-file <file> --execute --expect-plan <sha256>`.
-    Each invocation admits one exact action. A missing durable key first offers
+    Each invocation admits one exact action. A pinned call entry or return
+    previews as `standard-workflow-call-action.v1`. The saved action binds the
+    instance, model, authority context, occurrence, event and predicted hash.
+    Explicit application records one canonical call transition and reports
+    `standard-workflow-call-result.v1`. It uses no native authorization or
+    business operation. A missing durable key first offers
     a separate `prepare_host` action; initialization follows with the real key
     identity. `AIDN_STANDARD_HOST_HOME` is an existing external protected host
     directory, never a request-selected authority. Decisions use
@@ -352,7 +357,7 @@ finalization; `--verify` retains its read-only verification behavior.
   - A STANDARD run preview returns `action.request` with its closed
     `input.preparedAction`. Save this returned request and resubmit it with
     `--execute --expect-plan <outer action_sha256>`. The browser retains the same
-    request under its explicit approval. The original operation plan is preserved;
+    request under its explicit approval. The original operation or call plan is preserved;
     current authority, freshness and CAS are still checked. A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`
