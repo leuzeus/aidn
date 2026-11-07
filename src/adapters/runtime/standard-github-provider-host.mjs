@@ -7,7 +7,7 @@ import { agentRunPhysicalPath, readAgentRunFile } from "../../application/runtim
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { createGithubSessionPush } from "../git-provider/github-session-push.mjs";
 import { createGithubPullRequestOpen } from "../git-provider/github-pull-request-open.mjs";
-import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter, createGithubPrReviewEventAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
+import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter, createGithubPrReviewEventAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
 import { createGithubReviewEvidenceAsyncAdapter, createGithubReviewContentAsyncAdapter } from "../git-provider/github-review-evidence.mjs";
 import { driveGithubObservation, driveGithubObservationAsync, runGithubObservationCommand } from "../git-provider/github-observation-transport.mjs";
 
@@ -237,6 +237,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       observeReviewEvidence: readPort(createGithubReviewEvidenceAsyncAdapter, "observeReviewEvidence"),
       observePrContent: content, observeReviewContent: evidence,
       observePrMerge: readPort(createGithubPrMergeAsyncAdapter, "observePrMerge"),
+      observePrReviewEffects: readPort(createGithubPrReviewEffectsAsyncAdapter, "observePrReviewEffects"),
     }),
     ...(reviewer ? { sessionReviewEventPort: Object.freeze({ ...reviewEvents(readReviewEvent), withReviewReads }) } : {}),
   });

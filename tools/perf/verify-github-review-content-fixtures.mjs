@@ -4,10 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createGithubReviewContentAsyncAdapter, assertGithubReviewContent, createGithubReviewEvidenceAdapter } from '../../src/adapters/git-provider/github-review-evidence.mjs';
-import { createGithubPrContentAsyncAdapter, assertGithubPrContent, createGithubWorkflowAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
+import { createGithubPrContentAsyncAdapter, assertGithubPrContent, createGithubPrReviewEffectsAsyncAdapter, assertGithubPrReviewEffects, createGithubWorkflowAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
 import { validateJsonSchemaDefinition } from '../../src/core/contracts/json-schema-validator.mjs';
 import evidenceSchema from '../../src/core/contracts/workflow-definition/github-review-evidence.v2.schema.json' with { type: 'json' };
 import threadSchema from '../../src/core/contracts/workflow-definition/github-pr-observation-output.v2.schema.json' with { type: 'json' };
+import effectsSchema from '../../src/core/contracts/workflow-definition/github-pr-observation-output.v3.schema.json' with { type: 'json' };
 import requestSchema from '../../src/core/contracts/workflow-definition/github-pr-observation-request.v2.schema.json' with { type: 'json' };
 const sha = text => createHash('sha256').update(text).digest('hex'), head = 'a'.repeat(40), base = 'b'.repeat(40), date = '2026-11-03T00:00:00Z';
 const parent = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(parent, 'aidn-review-content-'));
@@ -30,8 +31,27 @@ function response(input, mutate) {
 const checks = [], check = async (name, fn) => { await fn(); checks.push(name); console.log('PASS ' + name); };
 function review(mutate) { let calls = 0; return createGithubReviewContentAsyncAdapter(config, { run: async (_e, _a, input) => response(input, (r, q) => mutate?.(r, q, ++calls)) }); }
 function threads(mutate) { let calls = 0; return createGithubPrContentAsyncAdapter(config, { run: async (_e, _a, input) => response(input, (r, q) => mutate?.(r, q, ++calls)) }); }
+function effects(mutate) {
+  return createGithubPrReviewEffectsAsyncAdapter(config, {
+    run: async (_e, _a, input) => response(input, (r, q) => {
+      const p = r.data.repository.pullRequest;
+      p.headRepository = { id: 'R_fixture' };
+      assert.match(q.query, /headRepository \{ id \}/);
+      if (p.reviewThreads) {
+        assert.match(q.query, /replyTo \{ id \} state isMinimized publishedAt/);
+        const thread = p.reviewThreads.nodes[0], original = thread.comments.nodes[0];
+        const root = { ...original, replyTo: null, state: 'SUBMITTED', isMinimized: false, publishedAt: date };
+        const reply = { ...root, id: 'C2', replyTo: { id: root.id }, author: { id: 'U2', login: 'responder', __typename: 'User' },
+          body: 'Technical response.', state: 'SUBMITTED' };
+        thread.comments = page([root, reply]);
+        thread.isResolved = true;
+      }
+      mutate?.(r, q);
+    }),
+  }).observePrReviewEffects(threadRequest);
+}
 try {
-  await check('new closed schemas use supported vocabulary', () => { for (const schema of [evidenceSchema, threadSchema, requestSchema]) assert.deepEqual(validateJsonSchemaDefinition(schema, '#', { contractKind: 'workflow-definition' }), []); });
+  await check('new closed schemas use supported vocabulary', () => { for (const schema of [evidenceSchema, threadSchema, effectsSchema, requestSchema]) assert.deepEqual(validateJsonSchemaDefinition(schema, '#', { contractKind: 'workflow-definition' }), []); });
   await check('complete review bodies and immutable actor IDs survive typed observation', async () => {
     const r = await review().observeReviewEvidence(request), t = await threads().observePullRequest(threadRequest);
     assertGithubReviewContent(r); assertGithubPrContent(t);
@@ -92,6 +112,45 @@ try {
       Object.assign(p, page(p.nodes, q.variables.cursor ? null : 'page2', 2));
     }).observeReviewEvidence(request);
     assert.equal(value.reviews.length, 2); assert.equal(value.requests, 6); assert.equal(value.reviews[1].body_chunks.join(''), 'second page body');
+  });
+  await check('review effects read-back binds reply linkage, publication, actor and exact resolved thread', async () => {
+    const result = await effects();
+    assertGithubPrReviewEffects(result);
+    assert.equal(result.contract_version, 'github-pr-observation.v3');
+    const [thread] = result.threads, [original, reply] = thread.comments;
+    assert.equal(thread.is_resolved, true);
+    assert.equal(original.reply_to_node_id, null);
+    assert.equal(reply.reply_to_node_id, original.node_id);
+    assert.equal(reply.author_node_id, 'U2');
+    assert.equal(reply.state, 'SUBMITTED');
+    assert.equal(reply.is_minimized, false);
+    assert.equal(reply.published_at, date);
+    assert.equal(reply.body_sha256, sha('Technical response.'));
+    assert.throws(() => assertGithubPrContent(result), { code: 'GITHUB_PR_OBSERVATION_INVALID' });
+    assert.equal(Object.hasOwn((await threads().observePullRequest(threadRequest)).threads[0].comments[0], 'reply_to_node_id'), false);
+    const tampered = structuredClone(result);
+    tampered.threads[0].comments[1].reply_to_node_id = 'C_other';
+    assert.throws(() => assertGithubPrReviewEffects(tampered), { code: 'GITHUB_PR_OBSERVATION_INVALID' });
+  });
+  await check('unpublished and minimized comments stay explicit and malformed publication refuses', async () => {
+    function change(reply, r) {
+      const row = r.data.repository.pullRequest.reviewThreads?.nodes[0].comments.nodes[1];
+      if (row) reply(row);
+    }
+    const result = await effects(r => change(row => Object.assign(row, { state: 'PENDING', isMinimized: true, publishedAt: null }), r));
+    const reply = result.threads[0].comments[1];
+    assert.equal(reply.state, 'PENDING');
+    assert.equal(reply.is_minimized, true);
+    assert.equal(reply.published_at, null);
+    for (const mutate of [row => { delete row.replyTo; }, row => { row.replyTo = { id: row.id }; },
+      row => { row.state = 'PENDING'; }, row => { row.publishedAt = '2099-01-01T00:00:00Z'; }]) {
+      await assert.rejects(effects(r => change(mutate, r)), { code: 'GITHUB_PR_OBSERVATION_INVALID' });
+    }
+  });
+  await check('review effects refuse fork, draft and closed PRs', async () => {
+    for (const fields of [{ headRepository: { id: 'R_other' } }, { isDraft: true }, { state: 'CLOSED' }]) {
+      await assert.rejects(effects(r => Object.assign(r.data.repository.pullRequest, fields)), { code: 'GITHUB_PR_SOURCE_CHANGED' });
+    }
   });
   await check('historical readers retain v1 envelopes without content fields or implicit conversion', () => {
     const run = (_e, _a, input) => response(input);

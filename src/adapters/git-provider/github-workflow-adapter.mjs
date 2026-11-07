@@ -11,8 +11,10 @@ import requestSchema from "../../core/contracts/workflow-definition/github-pr-ob
 import outputSchema from "../../core/contracts/workflow-definition/github-pr-observation-output.v1.schema.json" with { type: "json" };
 import contentRequestSchema from "../../core/contracts/workflow-definition/github-pr-observation-request.v2.schema.json" with { type: "json" };
 import contentSchema from "../../core/contracts/workflow-definition/github-pr-observation-output.v2.schema.json" with { type: "json" };
+import reviewEffectsSchema from "../../core/contracts/workflow-definition/github-pr-observation-output.v3.schema.json" with { type: "json" };
 import mergeSchema from "../../core/contracts/workflow-definition/github-pr-merge-observation.v1.schema.json" with { type: "json" };
 const contentCommentSchema = { $schema: contentSchema.$schema, $id: contentSchema.$id + "/comment", ...contentSchema.properties.threads.items.properties.comments.items };
+const reviewEffectsCommentSchema = { $schema: reviewEffectsSchema.$schema, $id: reviewEffectsSchema.$id + "/comment", ...reviewEffectsSchema.properties.threads.items.properties.comments.items };
 const commentSchema = { $schema: outputSchema.$schema, $id: outputSchema.$id + "/comment", ...outputSchema.properties.threads.items.properties.comments.items };
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const sha = data => createHash("sha256").update(data).digest("hex");
@@ -62,6 +64,9 @@ const contentCommentFields = commentFields.replace('author { login __typename }'
 const contentQueries = Object.freeze(Object.fromEntries(Object.entries(queries).map(([kind, text]) => [kind,
   text.replaceAll(commentFields, contentCommentFields).replaceAll(metadataFields, metadataFields + ' baseRefOid')
     .replace('pullRequest { id headRefOid }', 'pullRequest { id headRefOid baseRefOid headRefName baseRefName }')])));
+const reviewEffectsQueries = Object.freeze(Object.fromEntries(Object.entries(contentQueries).map(([kind, text]) => [kind,
+  text.replaceAll(contentCommentFields, contentCommentFields + " replyTo { id } state isMinimized publishedAt")
+    .replaceAll(metadataFields + " baseRefOid", metadataFields + " baseRefOid headRepository { id }")])));
 function chunks(text) {
   const result = []; let part = "";
   for (const c of text) { if (part.length + c.length > 8192) { result.push(part); part = ""; } part += c; }
@@ -78,8 +83,11 @@ function assertObservation(value, schema) {
     if (threads.has(thread.node_id)) fail("GITHUB_PR_OBSERVATION_INVALID"); threads.add(thread.node_id);
     for (const row of thread.comments) {
       if (comments.has(row.node_id)) fail("GITHUB_PR_OBSERVATION_INVALID"); comments.add(row.node_id);
-      if (schema === contentSchema && [row.author_node_id, row.author_login, row.author_type].some(v => v === null)
+      if (schema !== outputSchema && [row.author_node_id, row.author_login, row.author_type].some(v => v === null)
         && ![row.author_node_id, row.author_login, row.author_type].every(v => v === null)) fail("GITHUB_PR_OBSERVATION_INVALID");
+      if (schema === reviewEffectsSchema && (row.reply_to_node_id === row.node_id
+        || row.published_at !== null && (row.state !== "SUBMITTED" || Date.parse(row.published_at) < Date.parse(row.created_at)
+          || Date.parse(row.published_at) > Date.parse(value.observed_until)))) fail("GITHUB_PR_OBSERVATION_INVALID");
       const body = row.body_chunks.join(""), size = Buffer.byteLength(body);
       if (size > githubObservationLimits.commentBytes || sha(body) !== row.body_sha256) fail("GITHUB_PR_OBSERVATION_INVALID"); bytes += size;
     }
@@ -89,6 +97,7 @@ function assertObservation(value, schema) {
 }
 export const assertGithubPrObservation = value => assertObservation(value, outputSchema);
 export const assertGithubPrContent = value => assertObservation(value, contentSchema);
+export const assertGithubPrReviewEffects = value => assertObservation(value, reviewEffectsSchema);
 export function assertGithubPrMergeObservation(value) {
   if (!valid(value, mergeSchema)) fail("GITHUB_PR_MERGE_OBSERVATION_INVALID");
   const p = value.pull_request, from = Date.parse(value.observed_from), until = Date.parse(value.observed_until);
@@ -158,7 +167,11 @@ function normalizeReviewEvent(node, { request, sourceRef, subject }, repo, revie
 // The embedding host pins the executable/repository. The runner is a test seam,
 // never configuration, an IR binding parameter or an authenticated-result flag.
 function createGithubWorkflowProtocol({ executable, executableSha256, workingDirectory, repository, reviewer, environment = process.env }, { run = spawnSync, now = Date.now } = {}, view = "review") {
-  const includeContent = view === "content", mergeOnly = view === "merge", eventOnly = view === "review-event";
+  const reviewEffects = view === "review-effects", includeContent = view === "content" || reviewEffects;
+  const mergeOnly = view === "merge", eventOnly = view === "review-event";
+  const threadQueries = reviewEffects ? reviewEffectsQueries : includeContent ? contentQueries : queries;
+  const observationSchema = reviewEffects ? reviewEffectsSchema : includeContent ? contentSchema : outputSchema;
+  const rowSchema = reviewEffects ? reviewEffectsCommentSchema : includeContent ? contentCommentSchema : commentSchema;
   if (!path.isAbsolute(executable ?? "") || !/^[a-f0-9]{64}$/.test(executableSha256 ?? "") || !path.isAbsolute(workingDirectory ?? "")
     || !repository || Object.keys(repository).some(key => !["owner", "name", "node_id"].includes(key))
     || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(repository.owner ?? "")
@@ -181,7 +194,7 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
       if (++requests > githubObservationLimits.requests) fail("GITHUB_PR_OBSERVATION_LIMIT");
       let result;
       try { result = yield [binary, ["api", "graphql", "--hostname", "github.com", "--input", "-"], {
-        cwd, env, shell: false, windowsHide: true, encoding: "utf8", input: JSON.stringify({ query: eventOnly ? reviewEventQuery : mergeOnly ? mergeQuery : (includeContent ? contentQueries : queries)[kind], variables }), timeout: remaining, maxBuffer: 4194304,
+        cwd, env, shell: false, windowsHide: true, encoding: "utf8", input: JSON.stringify({ query: eventOnly ? reviewEventQuery : mergeOnly ? mergeQuery : threadQueries[kind], variables }), timeout: remaining, maxBuffer: 4194304,
       }]; } catch { fail("GITHUB_PR_OBSERVATION_UNAVAILABLE"); }
       if (result?.error || result?.status !== 0 || result?.signal) fail("GITHUB_PR_OBSERVATION_UNAVAILABLE");
       let response;
@@ -210,6 +223,8 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
         || p.headRefOid !== request.expected_head_oid || !oid(p.headRefOid)) fail("GITHUB_PR_SOURCE_CHANGED");
       if (includeContent && (p.baseRefOid !== request.expected_base_oid || p.headRefName !== request.expected_head_ref
         || p.baseRefName !== request.expected_base_ref)) fail("GITHUB_PR_SOURCE_CHANGED");
+      if (reviewEffects && (p.headRepository?.id !== r.id || p.state !== "OPEN" || p.isDraft !== false))
+        fail("GITHUB_PR_SOURCE_CHANGED");
       const [owner, name] = r.nameWithOwner.split("/");
       return { repository: { host: "github.com", owner, name, node_id: r.id }, pull_request: { node_id: p.id, number: p.number,
         head_oid: p.headRefOid, head_ref: p.headRefName, base_ref: p.baseRefName, state: p.state, is_draft: p.isDraft,
@@ -245,7 +260,11 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
       const normalized = { node_id: row.id, ...(includeContent ? { author_node_id: row.author === null ? null : row.author?.id } : {}), author_login: row.author?.login ?? null, author_type: row.author?.__typename ?? null,
         body_chunks: chunks(row.body), body_sha256: sha(row.body), created_at: row.createdAt, updated_at: row.updatedAt,
         commit_oid: row.commit?.oid ?? null, original_commit_oid: row.originalCommit?.oid ?? null };
-      if (!valid(normalized, includeContent ? contentCommentSchema : commentSchema)) fail("GITHUB_PR_OBSERVATION_INVALID");
+      if (reviewEffects) Object.assign(normalized, {
+        reply_to_node_id: row.replyTo === null ? null : row.replyTo?.id,
+        state: row.state, is_minimized: row.isMinimized, published_at: row.publishedAt,
+      });
+      if (!valid(normalized, rowSchema)) fail("GITHUB_PR_OBSERVATION_INVALID");
       return normalized;
     }
     const threads = [], seenThreads = new Set(), threadCursors = new Set(); let cursor = null, expectedTotal = null, original = null;
@@ -274,9 +293,9 @@ function createGithubWorkflowProtocol({ executable, executableSha256, workingDir
     if (shadowHash(metadata(yield* call("metadata", variables))) !== shadowHash(original)) fail("GITHUB_PR_SOURCE_CHANGED");
     pinned(); const end = now(); if (!Number.isSafeInteger(end) || end < start || Math.max(end - start, performance.now() - mono) > githubObservationLimits.deadlineMs) fail("GITHUB_PR_OBSERVATION_DEADLINE");
     threads.sort((a, b) => compareId(a.node_id, b.node_id));
-    const observation = { contract_version: includeContent ? "github-pr-observation.v2" : "github-pr-observation.v1", ...original, threads, observed_from: new Date(start).toISOString(), observed_until: new Date(end).toISOString(),
+    const observation = { contract_version: observationSchema.properties.contract_version.const, ...original, threads, observed_from: new Date(start).toISOString(), observed_until: new Date(end).toISOString(),
       pagination: { requests, thread_pages: threadPages, comment_pages: commentPages, complete: true }, consistency: "head-and-pr-metadata-rechecked" };
-    return (includeContent ? assertGithubPrContent : assertGithubPrObservation)({ ...observation, observation_sha256: shadowHash(content(observation)) });
+    return assertObservation({ ...observation, observation_sha256: shadowHash(content(observation)) }, observationSchema);
   };
 }
 
@@ -297,6 +316,11 @@ export function createGithubPrMergeAsyncAdapter(configuration, { run = runGithub
 export function createGithubPrReviewEventAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
   const observe = createGithubWorkflowProtocol(configuration, { run, now }, "review-event");
   return Object.freeze({ readEvent: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
+}
+
+export function createGithubPrReviewEffectsAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {
+  const observe = createGithubWorkflowProtocol(configuration, { run, now }, "review-effects");
+  return Object.freeze({ observePrReviewEffects: (request, { signal } = {}) => driveGithubObservationAsync(observe(request), run, signal) });
 }
 
 export function createGithubPrContentAsyncAdapter(configuration, { run = runGithubObservationCommand, now = Date.now } = {}) {

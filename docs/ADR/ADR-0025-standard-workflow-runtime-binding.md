@@ -3089,6 +3089,23 @@ Qualification with an injected fixture clock is offline expiry evidence only.
 Actual wall-clock expiry and genuine Native/Human/resource closure remain unproved.
 
 
+### Provider read-back for R08 review effects
+
+The protected STANDARD GitHub host exposes a dedicated read-only port for
+current review threads. Its fixed query retains each comment's reply target,
+publication timestamp and state, visibility, immutable author identity and body
+digest alongside the thread resolution state. It reuses the existing bounded
+pagination, exact PR/head/base/ref fences and pinned authentication. This view
+requires an open non-draft PR whose head repository matches the protected
+repository. The private github-pr-observation.v3 envelope leaves both historical
+observation versions and the delivered review inbox payload intact.
+
+This port supplies inputs for R08 effect verification. The published workflow
+still waits at the existing review effects boundary. An accepted result still
+requires matching replies and resolutions to the accepted triage and current
+delivery, with a separate documented exception path. The read-back provides no
+provider mutation, check acceptance or merge consent.
+
 ### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
 
 The authored IR routes an accepted COMMITTING SPIKE plan into the same existing

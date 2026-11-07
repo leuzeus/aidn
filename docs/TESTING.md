@@ -1307,6 +1307,14 @@ inputs and continued waiting with no review or sync facts. The companion
 composition fixture verifies the shipped graph and implementation pins.
 Live provider, installed execution and the long corrective journey are
 separate qualifications.
+The GitHub content fixture checks the separate review-effect read-back schema
+through the fixed provider transport. It covers the reply target, published and
+pending comments, minimized comments, author IDs, body digest, resolution,
+malformed or altered evidence, and refusal on foreign repository, draft and
+closed PRs. The ordinary host fixture exercises the authenticated port with the
+GitHub transport doubled. Published R08 effect verification and GitHub network
+qualification remain separate.
+
 `verify-standard-composed-cycle-fixtures.mjs --retain-always` separately checks
 context-derived identities and the two actual Node verifiers: each must reject
 the other cycle's value. It does not run admission or the full composed journey.

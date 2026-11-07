@@ -75,12 +75,15 @@ const providerTransport = {
     if (args[1] === "graphql") {
       assert.deepEqual(args, ["api", "graphql", "--hostname", "github.com", "--input", "-"]);
       const query = JSON.parse(options.input);
-      assert.match(query.query, /^query AidnPrMerge/);
-      assert.deepEqual(query.variables, { owner: "fixture", name: "repository", number: 7 });
+      assert.match(query.query, /^query Aidn(?:PrMerge|ReviewThreads|ReviewMetadata)/);
+      const threads = query.query.startsWith("query AidnReviewThreads");
+      if (threads) assert.match(query.query, /replyTo \{ id \}/);
+      assert.deepEqual(query.variables, { owner: "fixture", name: "repository", number: 7, ...(threads ? { cursor: null } : {}) });
       return output({ data: { repository: { id: "R_fixture", nameWithOwner: "fixture/repository",
         pullRequest: { id: "PR_fixture", number: 7, headRefOid: head, headRefName: "topic", baseRefName: "dev",
           headRepository: { id: "R_fixture" }, isDraft: false, state: "OPEN", merged: false, mergedAt: null,
-          mergeCommit: null, baseRef: { target: { oid: tip } } } } } });
+          mergeCommit: null, baseRef: { target: { oid: tip } }, baseRefOid: tip, updatedAt: new Date(0).toISOString(),
+          reviewThreads: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } } });
     }
     assert.deepEqual(args.slice(0, -1), ["api", "--hostname", "github.com", "--method", "GET"]);
     if (args.at(-1) === "user") {
@@ -150,13 +153,20 @@ console.log("PASS ordinary entry refuses ambiguous origin, foreign instance, cha
 
 put(binding);
 const host = createStandardHostAuthority({ configuration: request.execution }, { providerTransport });
-const merged = await host.githubProvider.sessionReviewPort.observePrMerge({ contract_version: "github-pr-observation-request.v2", pull_request_number: 7,
-  expected_pull_request_id: "PR_fixture", expected_head_oid: head, expected_base_oid: tip, expected_head_ref: "topic", expected_base_ref: "dev" });
+const observationRequest = { contract_version: "github-pr-observation-request.v2", pull_request_number: 7,
+  expected_pull_request_id: "PR_fixture", expected_head_oid: head, expected_base_oid: tip, expected_head_ref: "topic", expected_base_ref: "dev" };
+const merged = await host.githubProvider.sessionReviewPort.observePrMerge(observationRequest);
 assert.equal(merged.pull_request.state, "OPEN");
 assert.equal(merged.repository.node_id, "R_fixture");
 assert.equal(host.controlSource.readReview, undefined);
 assert.equal(host.githubProvider.sessionReviewEventPort, undefined);
 console.log("PASS host composes the real read-only merge protocol independently of event authentication");
+const effects = await host.githubProvider.sessionReviewPort.observePrReviewEffects(observationRequest);
+assert.equal(effects.contract_version, "github-pr-observation.v3");
+assert.equal(effects.pull_request.head_oid, head);
+assert.equal(effects.pull_request.base_oid, tip);
+assert.deepEqual(effects.threads, []);
+console.log("PASS host authenticates the dedicated read-only review effects protocol");
 
 const beforeEffects = calls.length;
 await assert.rejects(host.githubProvider.sessionPushPort.push({}, { write: true }), { code: "GITHUB_PUSH_EXPLICIT_WRITE_REQUIRED" });
