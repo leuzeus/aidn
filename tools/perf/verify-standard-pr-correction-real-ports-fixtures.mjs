@@ -183,6 +183,32 @@ try {
       abort.abort(); release(); await assert.rejects(pending, { code: 'STANDARD_PR_CORRECTION_ABORTED' });
       f.state.beforeReview = null; assert.deepEqual(snapshot(f), original); assert.equal(f.artifacts.ownerPending(), false);
     });
+    await test(mode + ': a changed prior receipt at the same prefix is refused before the first CAS', async () => {
+      prepared = await f.port.prepare(f.instance, f.input);
+      assert.equal(prepared.can_apply, true);
+      const prior = signer.seal({ receipt: { outcome: 'completed' } });
+      const remoteHead = git(f.remoteRoot, 'rev-parse', 'refs/heads/' + f.p.head_branch);
+      let observations = 0;
+      f.state.verifyHistory = () => signer.verify(prior);
+      f.state.afterOwnedObservation = () => {
+        if (++observations === 2) prior.receipt.outcome = 'blocked';
+      };
+      try {
+        const result = await f.port.apply(f.instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
+        assert.equal(observations, 2);
+        assert.equal(f.state.prefix, f.instance.instance_sha256);
+        assert.equal(result.outcome, 'blocked');
+        assert.equal(result.effect_status, 'no_effect');
+        assert.equal(result.observations.reason_code, 'PROCESS_JOURNAL_NOT_AUTHENTICATED');
+        assert.deepEqual(result.observations.committed, []);
+        assert.deepEqual(snapshot(f), original);
+        assert.equal(f.artifacts.ownerPending(), false);
+        assert.equal(git(f.remoteRoot, 'rev-parse', 'refs/heads/' + f.p.head_branch), remoteHead);
+      } finally {
+        f.state.verifyHistory = null;
+        f.state.afterOwnedObservation = null;
+      }
+    });
     await test(mode + ': grant revoked during provider await is rechecked before the first CAS', async () => {
       prepared = await f.port.prepare(f.instance, f.input); let revoked = false, observed = false;
       f.state.beforeReview = async () => { if (!f.state.readingSource) { observed = true; revoked = true; } };

@@ -7,6 +7,9 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createCorrectionRealPortFixture, bindCorrectionRealPorts, acceptFixtureReopen,
   correctionFixtureSigner as signer, fixtureOp } from './standard-pr-correction-real-port-fixture-lib.mjs';
+import { LOCAL_ARTIFACT_FENCE_PATH } from '../../src/application/runtime/local-artifact-resource-fence.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
+import { resolveRuntimeSqliteFile } from '../../src/application/runtime/runtime-persistence-service.mjs';
 
 const here = fileURLToPath(import.meta.url), owned = [];
 const mode = process.argv.find(arg => arg.startsWith('--mode='))?.slice(7) ?? 'files';
@@ -20,18 +23,27 @@ if (child) {
 }
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, stdio: 'pipe' }).trim();
 const hash = data => createHash('sha256').update(data).digest('hex');
-function bytes(root) {
+function bytes(root, expectedWrites = new Set()) {
   const rows = [];
   function walk(directory) {
     const info = fs.lstatSync(directory); assert.equal(info.isSymbolicLink(), false);
     rows.push({ path: path.relative(root, directory), directory: true });
     for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const file = path.join(directory, entry.name); assert.equal(entry.isSymbolicLink(), false);
+      if (expectedWrites.has(file)) continue;
       if (entry.isDirectory()) walk(file);
       else { assert.equal(entry.isFile(), true); const value = fs.readFileSync(file); rows.push({ path: path.relative(root, file), size: value.length, sha256: hash(value) }); }
     }
   }
   walk(root); return rows;
+}
+function canonicalSnapshot(root) {
+  const store = createProjectArtifactStore({ targetRoot: root, readOnly: true, existingOnly: true });
+  try {
+    const rows = store.listArtifacts(1000);
+    assert.ok(rows.length < 1000, 'snapshot must include all canonical fixture rows');
+    return rows.filter(row => row.path !== LOCAL_ARTIFACT_FENCE_PATH).sort((a, b) => a.path.localeCompare(b.path));
+  } finally { store.close(); }
 }
 const evidenceDirectory = f => {
   const dir = path.join(f.root, '.aidn/runtime/standard-workflow/correction-expiry'); fs.mkdirSync(dir, { recursive: true }); return dir;
@@ -88,13 +100,33 @@ try {
     assert.ok(Date.now() - current.plan.prepared_at_ms < 300000);
     assert.deepEqual(current.plan.input, input); pass(action + ' cold fresh preparation preserves the same subject');
     if (action === 'reopen') {
-      clock = Date.now(); const duringProvider = await prepare(), before = bytes(f.root), remoteBefore = bytes(f.remoteRoot);
+      clock = Date.now();
+      const duringProvider = await prepare();
+      const fence = f.artifacts.resourceFence(), initialFence = fence.read().record;
+      const fencePath = path.join(f.root, 'docs/audit', LOCAL_ARTIFACT_FENCE_PATH);
+      const expectedWrites = new Set(mode === 'db-only' ? [] : [fencePath]);
+      let canonicalBefore;
+      if (mode !== 'files') {
+        const sqliteFile = resolveRuntimeSqliteFile({ targetRoot: f.root });
+        assert.ok(path.relative(f.root, sqliteFile).startsWith('.aidn' + path.sep));
+        for (const suffix of ['', '-shm', '-wal']) expectedWrites.add(sqliteFile + suffix);
+        canonicalBefore = canonicalSnapshot(f.root);
+      }
+      const before = bytes(f.root, expectedWrites), remoteBefore = bytes(f.remoteRoot);
       bound.state.beforeReview = () => { if (!bound.state.readingSource) clock = duringProvider.plan.prepared_at_ms + 300001; };
       const expired = await apply(duringProvider, { write: true, expectPlan: duringProvider.plan_sha256, assertAuthorized() {} });
       assert.equal(expired.outcome, 'blocked'); assert.equal(expired.effect_status, 'no_effect');
       assert.equal(expired.observations.reason_code, 'STANDARD_PLAN_EXPIRED'); assert.equal(f.artifacts.ownerPending(), false);
-      assert.deepEqual(bytes(f.root), before); assert.deepEqual(bytes(f.remoteRoot), remoteBefore);
-      save(f, 'expired-during-provider', { prepared: duringProvider, output: expired });
+      const released = fence.read().record;
+      assert.equal(released.state, 'released');
+      assert.equal(released.revision, (initialFence?.revision ?? 0) + 2);
+      assert.notEqual(released.token, initialFence?.token);
+      if (mode === 'db-only') assert.equal(fs.existsSync(fencePath), false);
+      else assert.deepEqual(JSON.parse(fs.readFileSync(fencePath, 'utf8')), released);
+      if (mode !== 'files') assert.deepEqual(canonicalSnapshot(f.root), canonicalBefore);
+      assert.equal(hash(JSON.stringify(bytes(f.root, expectedWrites))), hash(JSON.stringify(before)), 'business and checkout bytes changed');
+      assert.deepEqual(bytes(f.remoteRoot), remoteBefore);
+      save(f, 'expired-during-provider', { prepared: duringProvider, output: expired, fence: released });
       pass('reopen expires during provider observation before first CAS and releases its owner without business writes');
       bound.state.beforeReview = null; clock = Date.now(); const fresh = await prepare();
       const output = await apply(fresh, { write: true, expectPlan: fresh.plan_sha256, assertAuthorized() {} });

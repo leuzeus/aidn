@@ -536,7 +536,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     },
     readCurrent: id => current(id).record, reviewPort: sessionReviewPort, now }) : null;
   const prCorrectionReopen = prCorrectionAuthority ? createStandardPrCorrectionReopen({ targetRoot, now,
-    authority: prCorrectionAuthority, readCurrent: id => current(id).record }) : null;
+    authority: prCorrectionAuthority, readCurrent: id => current(id).record,
+    readCurrentPrefix: id => service.inspect(id).record }) : null;
   const prCorrectionCheckpoint = prCorrectionAuthority ? createStandardPrCorrectionCheckpoint({ targetRoot, now,
     authority: prCorrectionAuthority, readAcceptedOperation: acceptedForPromotion, readDispatchedOperation: readDispatchedCheckpoint,
     readCurrent: id => current(id).record }) : null;

@@ -2857,7 +2857,11 @@ caller-authored path allowance. The component proves the exact plan, current
 instance/accepted prefix, active owner and canonical metadata/physical prefix
 before and after remote/provider reads. The writer rechecks authorization after
 those asynchronous reads before each synchronous CAS. Lost freshness after a
-partial write retains UNKNOWN and its owner.
+partial write retains UNKNOWN and its owner. Each intermediate Git sample reads
+and validates the canonical instance through the reducer for prefix equality.
+The surrounding component checks authenticate the full history before and after
+the provider read. The final check still authenticates receipts and enforces
+authorization, plan age, ownership and exact postimages before a CAS.
 
 The correction checkpoint derives its observation scope from the authenticated
 accepted reopen plan/output/postimages, including read-only cold preparation.

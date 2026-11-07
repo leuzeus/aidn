@@ -4313,8 +4313,10 @@ configured PostgreSQL or exact installed-package acceptance.
 `node tools/perf/verify-standard-pr-correction-real-ports-fixtures.mjs
 --mode=files|dual|db-only --retain-always` selects the new deterministic preflight.
 The default required family runs each mode once. `--positive-only` is a narrow
-positive diagnostic; `--grant-only` checks the provider-await revocation boundary
-and cannot qualify the full matrix. Each case derives a fresh plan normally;
+positive diagnostic. `--grant-only` checks revocation during the provider
+await and a changed authenticated prior receipt at the same instance prefix
+after the second remote read. Both must refuse before the first CAS. This
+subset cannot qualify the full matrix. Each case derives a fresh plan normally;
 expiry cannot stand in for the injected refusal. Partial failures retain their
 owner and UNKNOWN, and cold preparation refuses to replay them.
 
@@ -4351,7 +4353,9 @@ before acquiring an owner or consulting authorization. Missing intent/callbacks
 and a wrong digest preserve their specific refusal. Every physical project and
 remote file/directory is compared around those direct refusals, including DB
 bytes. Reopen expiry during provider verification before its first CAS returns
-blocked/no_effect and releases the owner. Cold fresh preparation reads the same
+blocked/no_effect and releases the owner. The oracle verifies the released
+fence separately and compares the remaining physical bytes and canonical rows.
+Cold fresh preparation reads the same
 subject without writes; it never executes a successor.
 
 These are direct application-port guards with a signed synthetic accepted

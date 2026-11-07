@@ -17,8 +17,9 @@ const text = row => row.text_chunks.join('');
 // The candidate standard graph selects this internal component. Only the
 // authenticated source factory may bridge an unchanged provider/product source
 // over these exact canonical writes; ordinary native admission is unchanged.
-export function createStandardPrCorrectionReopen({ targetRoot, authority, readCurrent, now = Date.now }) {
-  if (![authority?.readSource, authority?.verifySource, readCurrent].every(fn => typeof fn === 'function')) fail('STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED');
+export function createStandardPrCorrectionReopen({ targetRoot, authority, readCurrent, readCurrentPrefix = readCurrent, now = Date.now }) {
+  if (![authority?.readSource, authority?.verifySource, readCurrent, readCurrentPrefix].every(fn => typeof fn === 'function'))
+    fail('STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED');
   const artifacts = createStandardWorkflowArtifacts({ targetRoot });
   const gitScopes = new Map();
   const git = source => {
@@ -85,10 +86,10 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
           if (!fresh.can_apply || fresh.plan_sha256 !== expectPlan) fail('STANDARD_PR_CORRECTION_PREVIEW_CHANGED');
         } catch (cause) { cause.effect_status = 'no_effect'; throw cause; }
         const committed = []; let attempted = false, pushIdentity = null;
-        function local(localView) {
+        function local(localView, readInstance = readCurrent) {
           active(signal); artifacts.assertLocalEffectOwner(expectPlan);
           if (artifacts.describe().state_mode !== plan.state_mode) fail('STANDARD_PR_CORRECTION_DOCUMENT_CHANGED');
-          if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
+          if (readInstance(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
           const currentAge = now() - plan.prepared_at_ms;
           if (!Number.isSafeInteger(currentAge) || currentAge < 0) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
           if (currentAge > 300000) fail('STANDARD_PLAN_EXPIRED');
@@ -105,7 +106,11 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
         }
         async function unchanged() {
           active(signal); await assertAuthorized(); local();
-          const proof = await authority.verifySource(instance, plan.source, { signal, assertLocal: local }); active(signal);
+          // Git samples only check that the canonical prefix is still current.
+          // Authenticate all receipts again at the effect boundary below.
+          const proof = await authority.verifySource(instance, plan.source,
+            { signal, assertLocal: view => local(view, readCurrentPrefix) });
+          active(signal);
           if (proof?.origin_source_sha256 !== plan.source_sha256) fail('STANDARD_PR_CORRECTION_CAUSAL_SOURCE_CHANGED');
           // Provider observation can await arbitrary time. Revalidate the grant
           // after that boundary and immediately fence the synchronous CAS.

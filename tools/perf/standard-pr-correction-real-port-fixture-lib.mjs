@@ -26,7 +26,11 @@ export function bindCorrectionRealPorts(saved, { now = Date.now, authorityNow = 
   const provider = createGithubReviewFixture({ workingDirectory: os.tmpdir(), pullRequest: p });
   provider.state.reviews[0].state = 'CHANGES_REQUESTED';
   provider.state.beforeCall = (...args) => state.hook?.(...args);
-  const readCurrent = () => ({ ...instance, instance_sha256: state.prefix });
+  const readCurrentPrefix = () => ({ ...instance, instance_sha256: state.prefix });
+  const readCurrent = () => {
+    state.verifyHistory?.();
+    return readCurrentPrefix();
+  };
   const readAcceptedOperation = (_instance, id, binding) => {
     assert.equal(_instance.instance_sha256, state.prefix, 'FIXTURE_ACCEPTED_PREFIX_CHANGED');
     const value = signer.verify(saved.rows[id]);
@@ -41,14 +45,18 @@ export function bindCorrectionRealPorts(saved, { now = Date.now, authorityNow = 
     readControl: id => { assert.equal(id, 'fixture-capture'); return structuredClone(signer.verify(saved.capture)); },
     verifyEvent: async capture => { signer.verify(capture); if (!state.eventCurrent) throw Error('FIXTURE_EVENT_NOT_CURRENT'); },
     observeProduct: () => productHash(root), inspectPush: branch => push.inspect(branch),
-    observeOwnedPush: (branch, options) => push.observeOwned(branch, options) });
+    observeOwnedPush: (branch, options) => {
+      const result = push.observeOwned(branch, options);
+      state.afterOwnedObservation?.();
+      return result;
+    } });
   const componentAuthority = { ...authority, async readSource(...args) {
     state.readingSource = true;
     try { return await authority.readSource(...args); } finally { state.readingSource = false; }
   } };
   return { root, remoteRoot, instance, input, p, saved, state, provider, push, authority,
     artifacts: createStandardWorkflowArtifacts({ targetRoot: root }),
-    port: createStandardPrCorrectionReopen({ targetRoot: root, authority: componentAuthority, readCurrent, now }),
+    port: createStandardPrCorrectionReopen({ targetRoot: root, authority: componentAuthority, readCurrent, readCurrentPrefix, now }),
     checkpoint: createStandardPrCorrectionCheckpoint({ targetRoot: root, authority, readCurrent, readAcceptedOperation, now }) };
 }
 export async function createCorrectionRealPortFixture(mode, owned, makeRemote) {
