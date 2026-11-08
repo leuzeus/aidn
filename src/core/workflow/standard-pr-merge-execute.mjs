@@ -9,6 +9,7 @@ import waitOutputSchema from '../contracts/workflow-definition/standard-pr-post-
 export const mergeExecuteOperation = 'session_pr_merge_execute';
 export const mergeExecuteOutputVersion = 'standard-pr-merge-execute-output.v2';
 export const mergeCompletedFact = 'session_pr_merge_completed';
+export const mergeSendWindowExhausted = 'GITHUB_PR_MERGE_SEND_WINDOW_EXHAUSTED';
 export const postMergeWaitOperation = 'session_pr_post_merge_wait';
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const valid = (value, schema) => !checkShadowJson(value)
@@ -26,7 +27,8 @@ export function assertMergeExecuteOutput(value) {
   if (renewal && outcome === 'completed') {
     if (value.facts[mergeCompletedFact] !== Boolean(merge)) fail('STANDARD_OPERATION_OUTPUT_INVALID');
     if (!merge) {
-      if (value.observations.reason_code !== 'STANDARD_PLAN_EXPIRED' || effect_status !== 'no_effect' || evidence_refs.length)
+      if (!['STANDARD_PLAN_EXPIRED', mergeSendWindowExhausted].includes(value.observations.reason_code)
+        || effect_status !== 'no_effect' || evidence_refs.length)
         fail('STANDARD_OPERATION_OUTPUT_INVALID');
       return value;
     }

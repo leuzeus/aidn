@@ -1,7 +1,8 @@
 import { assertGithubPrMergePlan, assertGithubPrMergePostimage } from '../../adapters/git-provider/github-pr-merge.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { checksOperation, mergeConsentOperation, mergeConsentQuestion } from '../../core/workflow/standard-pr-merge-consent.mjs';
-import { assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeCompletedFact, mergeExecuteOperation, mergeExecuteOutputVersion, postMergeWaitOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
+import { assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeCompletedFact, mergeExecuteOperation, mergeExecuteOutputVersion,
+  mergeSendWindowExhausted, postMergeWaitOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
 import { createStandardPrReviewEffectsReader, prObservationRequest } from './standard-session-pr-review-effects.mjs';
 
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
@@ -51,10 +52,10 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
     return cause.effect_status === 'no_effect'
       && ['STANDARD_PLAN_EXPIRED', 'STANDARD_PR_MERGE_CONSENT_EXPIRED'].includes(cause.code) && consentExpired(b);
   }
-  function renewal() {
+  function renewal(reason = 'STANDARD_PLAN_EXPIRED') {
     return assertMergeExecuteOutput({ contract_version: mergeExecuteOutputVersion, operation_ref: mergeExecuteOperation,
       outcome: 'completed', effect_status: 'no_effect', facts: { [mergeCompletedFact]: false },
-      observations: { reason_code: 'STANDARD_PLAN_EXPIRED' }, evidence_refs: [] });
+      observations: { reason_code: reason }, evidence_refs: [] });
   }
   function assertProvider(provider, b, id) {
     const plan = assertGithubPrMergePlan(provider?.plan);
@@ -118,6 +119,7 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
             assertAge(b);
           } });
       } catch (cause) {
+        if (cause.effect_status === 'no_effect' && cause.code === mergeSendWindowExhausted) return renewal(cause.code);
         if (expiredBeforeSend(cause, b)) return renewal();
         throw cause;
       }

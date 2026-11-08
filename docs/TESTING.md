@@ -1450,6 +1450,12 @@ source, a fresh signed answer admits one merge and the R09 basis uses only
 that accepted merge. This case waits for the actual expiry and retains the
 earlier question and receipt for replay. It uses a reduced graph, a signed
 synthetic upstream prefix and a doubled GitHub transport.
+Run `--case=merge-consent-send-window` for the protected transport boundary.
+It advances the provider clock to leave 9,999 ms before expiry while the host
+retains its signed consent. The existing 10,000 ms transport timeout no longer
+fits. The oracle is zero sends, a typed no-effect receipt and the next consent
+question through the same reducer. The controlled clock qualifies the branch,
+with elapsed-time qualification kept separate.
 Run `verify-cycle-create-admission-fixtures.mjs --pr-continuity` separately
 for the direct cycle-admission guard and the reopened correction path.
 

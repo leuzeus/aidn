@@ -248,20 +248,23 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   const content = readPort(createGithubPrContentAsyncAdapter, "observePullRequest");
   const evidence = readPort(createGithubReviewContentAsyncAdapter, "observeReviewEvidence");
   const reviewEffects = readPort(createGithubPrReviewEffectsAsyncAdapter, "observePrReviewEffects");
-  const protectedReviewMutation = (run, kind) => async (payload, { signal, assertAuthorized }) => {
-    let guard, authenticated;
+  const protectedReviewMutation = (run, kind) => async (payload, { signal, assertAuthorized, assertSendFresh }) => {
+    let guard, request;
     try {
       guard = transportGuard();
-      authenticated = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
+      const authenticated = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
       await assertAuthorized();
       guard();
       if (signal?.aborted) fail(kind + "_ABORTED");
+      request = { ...options, env: authenticated, input: JSON.stringify(payload), signal };
+      // No awaited work or repository observation can consume the remaining
+      // consent window between this final check and the transport invocation.
+      assertSendFresh?.(request.timeout);
     } catch (cause) {
       fail(/^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? "") ? cause.code : kind + "_PRECONDITION_REQUIRED");
     }
     try {
-      const result = await run(gh.path, ["api", "graphql", "--hostname", host, "--input", "-"],
-        { ...options, env: authenticated, input: JSON.stringify(payload), signal });
+      const result = await run(gh.path, ["api", "graphql", "--hostname", host, "--input", "-"], request);
       guard();
       if (result?.status !== 0 || result.signal || result.error || typeof result.stdout !== "string"
         || Buffer.byteLength(result.stdout) > options.maxBuffer) fail(kind + "_TRANSPORT_UNAVAILABLE");

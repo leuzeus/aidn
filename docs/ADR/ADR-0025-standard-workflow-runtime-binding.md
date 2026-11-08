@@ -30,6 +30,13 @@ or a signed external disposition. The v1 merge result reader stays available
 for earlier models. The five-minute ceiling and any shorter exception limit
 apply to each question.
 
+The protected merge transport checks freshness synchronously after the final
+credential and repository guard. The remaining consent must cover the
+existing transport timeout. Insufficient time produces
+`GITHUB_PR_MERGE_SEND_WINDOW_EXHAUSTED` with `no_effect` and can follow the same
+one-question renewal. A possibly sent mutation still requires reconciliation,
+including when its provider timestamp falls outside the authorized window.
+
 ## Mixed instance scope and history observation, 2026-11-08
 
 The mixed operation host checks its current bindings, then the process

@@ -134,7 +134,7 @@ function fixtureModel(prefix, fetchOnly, external = false, pretriage = false) {
   return { model, update, observe, wait, receive, select, triage, call };
 }
 
-function open(base, { initializeKey = false } = {}) {
+function open(base, { initializeKey = false, providerNow } = {}) {
   const configurationFile = path.join(base, 'configuration.json');
   const data = json(configurationFile);
   const { configuration, binding, pr, prefix, behavior, submittedAt, fetchFixture } = data;
@@ -315,11 +315,16 @@ function open(base, { initializeKey = false } = {}) {
     },
   };
   const environment = { ...process.env, AIDN_STANDARD_HOST_HOME: data.home };
-  const authority = createStandardHostAuthority({ configuration, environment }, { providerTransport });
+  const wallClock = Date.now;
+  let authority;
+  try {
+    if (providerNow) Date.now = providerNow;
+    authority = createStandardHostAuthority({ configuration, environment }, { providerTransport });
+  } finally { Date.now = wallClock; }
   const { githubProvider: provider, readKey } = authority;
   if (initializeKey) authority.ensureKey();
   const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture) && !external, external, pretriage), { model } = graph;
-  const wallClock = Date.now, now = () => json(configurationFile).clock_ms ?? wallClock();
+  const now = () => json(configurationFile).clock_ms ?? wallClock();
   // The protected reader is synchronous. Use the same fixture time for
   // envelope authentication and the H host, while leaving process deadlines
   // and real Git/transport timing on the wall clock.
@@ -518,7 +523,8 @@ function arrange(prefix, behavior) {
     git: pin(gitPath), gh: pin(fs.realpathSync(process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32', 'where.exe') : '/usr/bin/env')) };
   if (behavior.includes('consent') || behavior === 'merge-refusals' || behavior === 'external-checks') binding.required_checks = { contract_version: 'standard-github-required-checks.v1',
     base_ref: pr.base_branch, entries: [{ name: 'Required CI', kind: 'check_run', producer_id: 'A_ci' }] };
-  if (['merge-consent-session', 'merge-consent-correction', 'merge-consent-renewal', 'merge-refusals', 'exception-merge-consent-correction', 'external-checks'].includes(behavior)) binding.merge_method = 'MERGE';
+  if (['merge-consent-session', 'merge-consent-correction', 'merge-consent-renewal', 'merge-consent-send-window',
+    'merge-refusals', 'exception-merge-consent-correction', 'external-checks'].includes(behavior)) binding.merge_method = 'MERGE';
   const key = shadowHash({ target: process.platform === 'win32' ? targetRoot.toLowerCase() : targetRoot, instance: configuration.instance_id });
   fs.mkdirSync(path.join(dirs.host, key + '.github'));
   save(path.join(dirs.host, key + '.github.json'), binding);
@@ -827,6 +833,10 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
     await f.host.accept(id, { write: true });
   }
   if (approved && binding.merge_method) {
+    if (behavior === 'merge-consent-send-window') {
+      await qualifyMergeSendWindow(base);
+      return;
+    }
     if (behavior === 'merge-consent-renewal') {
       await qualifyMergeRenewal(f, { base, id, checks, question, sourceRef, authority_id, privateKey, authorityInbox });
       return;
@@ -857,6 +867,27 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
     assert.equal(resumed.inspect().record.instance_sha256, state.record.instance_sha256);
   }
   console.log('PASS published R08 exact checks and signed ' + choice + ' at ' + prefix + ', FILES, GitHub transport doubled');
+}
+
+async function qualifyMergeSendWindow(base) {
+  const wallClock = Date.now;
+  let observedAt = null;
+  const f = open(base, { providerNow: () => observedAt ?? wallClock() });
+  const preview = await f.preview();
+  const { expires_at_ms } = preview.prepared.plan.provider.plan;
+  // Only the provider clock advances. The local host still sees the accepted
+  // consent and all authority checks before the protected send remain active.
+  observedAt = expires_at_ms - 9999;
+  const output = (await f.run(preview)).results[0].output;
+  assert.equal(output.outcome, 'completed');
+  assert.equal(output.effect_status, 'no_effect');
+  assert.equal(output.observations.reason_code, 'GITHUB_PR_MERGE_SEND_WINDOW_EXHAUSTED');
+  assert.deepEqual(output.facts, { session_pr_merge_completed: false });
+  assert.deepEqual(f.state.mergeSends, []);
+  const frame = f.inspect().cursor.occurrences.find(row => row.status === 'READY');
+  assert.equal(frame.node_id, 'pr_merge_consent');
+  replay(f);
+  console.log('PASS protected merge declines a remaining window shorter than its transport timeout, without sending');
 }
 
 async function qualifyMergeRenewal(f, { base, id, checks, question, sourceRef, authority_id, privateKey, authorityInbox }) {
@@ -2007,7 +2038,8 @@ if (process.argv[2] === '--deliver-pretriage') {
   const mode = process.argv[2].slice('--case=post-merge-fetch-'.length);
   await qualifyPostMergeFetch(mode === 'correction' ? 'correction' : 'session',
     ['session', 'correction'].includes(mode) ? 'reconcile' : mode);
-} else if (['--case=merge-consent-session', '--case=merge-consent-correction', '--case=merge-consent-renewal', '--case=merge-refusals'].includes(process.argv[2])) {
+} else if (['--case=merge-consent-session', '--case=merge-consent-correction', '--case=merge-consent-renewal',
+  '--case=merge-consent-send-window', '--case=merge-refusals'].includes(process.argv[2])) {
   await qualifyNominalConsent(process.argv[2].endsWith('correction') ? 'correction' : 'session', 'approve_merge', process.argv[2].slice('--case='.length));
 } else if (process.argv[2] === '--case=exception-merge-consent-correction') {
   await qualifyException('exception-merge-consent-correction');

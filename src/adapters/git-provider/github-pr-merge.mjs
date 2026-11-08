@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { validateJsonSchema } from '../../core/contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash } from '../../core/workflow/shadow-json.mjs';
+import { mergeSendWindowExhausted } from '../../core/workflow/standard-pr-merge-execute.mjs';
 import { assertGithubPrMergeEffectObservation } from './github-workflow-adapter.mjs';
 import planSchema from '../../core/contracts/workflow-definition/github-pr-merge-plan.v1.schema.json' with { type: 'json' };
 
@@ -46,6 +47,7 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
     const time = now();
     if (!Number.isSafeInteger(time) || time < plan.prepared_at_ms || time >= plan.expires_at_ms)
       fail('STANDARD_PLAN_EXPIRED');
+    return time;
   }
   async function read(plan, signal) {
     active(signal);
@@ -96,7 +98,10 @@ export function createGithubPrMerge({ repository, actor, method, hostContextSha2
       try {
         const response = await runMutation({ query, variables: { input: { pullRequestId: request.expected_pull_request_id,
           expectedHeadOid: request.expected_head_oid, mergeMethod: plan.method, commitBody: commitBody(plan), clientMutationId: nonce } } },
-        { signal, assertAuthorized: async () => {
+        { signal, assertSendFresh: timeout => {
+          if (!Number.isSafeInteger(timeout) || timeout <= 0) fail('GITHUB_PR_MERGE_SEND_WINDOW_INVALID');
+          if (plan.expires_at_ms - fresh(plan) <= timeout) fail(mergeSendWindowExhausted);
+        }, assertAuthorized: async () => {
           await assertReviewFresh();
           await assertOpen(plan, signal);
           await assertAuthorized();
