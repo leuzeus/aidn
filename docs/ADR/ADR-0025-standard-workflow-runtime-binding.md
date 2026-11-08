@@ -1,5 +1,17 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Mixed instance scope and history observation, 2026-11-08
+
+The mixed operation host checks its current bindings, then the process
+authority checks scope, model, policy pins and signed history in one
+synchronous observation of the canonical instance. Scope checking and
+history authentication use the same fresh project and persistence authority.
+The host retains its scope refusal code. Legacy and historical diagnostic
+readers keep their separate paths. Each later operation admission, call
+witness read and pre-CAS authority check observes its own inputs again.
+The observation stays inside history authentication, with no cache or
+caller-supplied authority. Published assets require explicit repinning.
+
 ## Eligible occurrence lookup, 2026-11-06
 
 After the common service validates the complete cursor, the mixed host checks

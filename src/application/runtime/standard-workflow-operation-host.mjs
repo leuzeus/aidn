@@ -124,7 +124,8 @@ function controlCheckpoint(instance, eventId) {
 // neither model routing nor human decisions. Signing/authorization capabilities
 // must come from a trusted outer host, never authored JSON or a model tool.
 export function createStandardWorkflowOperationHost({ targetRoot, model: suppliedModel, modelSource = null, readSigningKey, authorize, humanSource, controlSource, now = Date.now, processAuthority, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, reconciliationConfiguration = null, dispositionSource = null }, { validationBoundaryFactory, dispatchCheckpoint } = {}) {
-  if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
+  if (processAuthority != null && (processAuthority.profile !== "standard-mixed.v1" || typeof processAuthority.authenticate !== "function"
+    || typeof processAuthority.authenticateOperationHost !== "function")) fail("STANDARD_HOST_CONFIGURATION_INVALID");
   const model = freezeShadow(structuredClone(suppliedModel)); assertAgenticProcessModel(model);
   const driftFinalization = processAuthority ? createStandardDriftFinalization({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
@@ -954,11 +955,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   } : undefined;
   service = createAgenticProcessService({ store, readAuthority, operationAuthority: authority, controlAuthority, authorityTimeoutMs: 5000 });
   const current = id => {
-    const value = service.inspect(id); scope(value.record);
+    const value = service.inspect(id);
+    if (processAuthority) {
+      assertCurrentBindings();
+      processAuthority.authenticateOperationHost(value.record);
+      return value;
+    }
+    scope(value.record);
     return authenticateState(value);
   };
   function authenticateState(value) {
-    if (processAuthority) { processAuthority.authenticate(value.record); return value; }
     if (Object.keys(value.record.initial_facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
     // Replay proves structure, not origin. Reopening a host must authenticate
     // every earlier operation result against its durable host journal as well.

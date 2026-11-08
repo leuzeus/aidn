@@ -107,16 +107,23 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
   function authenticate(instance, options = {}) {
     return authenticateHistory(instance, options, false).native;
   }
+  // The operation host checks the same scope tuple as history authentication.
+  // Read it here once, with the host's existing scope refusal code.
+  function authenticateOperationHost(instance) {
+    authenticateHistory(instance, {}, false, "STANDARD_HOST_AUTHORITY_CHANGED");
+  }
   // Only the diagnostic port selects this private mode. Execution options,
   // process JSON, grants and model facts cannot weaken allocation exclusion.
-  function authenticateHistory(instance, { reservation = null, productSha256, checkControlContext = false, forNative = false } = {}, diagnostic = false) {
+  function authenticateHistory(instance, { reservation = null, productSha256, checkControlContext = false, forNative = false } = {},
+    diagnostic = false, scopeMismatch = "STANDARD_PROCESS_AUTHORITY_CHANGED") {
     assertAgenticProcessInstance(instance);
     // Diagnostic authentication uses the immutable model and signed historical
     // bindings. Only execution requires that model's pins to match today's code.
     // This private selection is never taken from caller options or process JSON.
     const authority = diagnostic ? readAuthorityObservation().authority : read();
-    if (instance.instance_id !== configuration.instance_id || instance.scope_id !== authority.scope_id || instance.model_sha256 !== authority.model_sha256 || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)
-      || Object.keys(instance.initial_facts).length) fail("STANDARD_PROCESS_AUTHORITY_CHANGED");
+    if (instance.scope_id !== authority.scope_id || instance.model_sha256 !== authority.model_sha256
+      || shadowHash(instance.policy_pins) !== shadowHash(authority.policy_pins)) fail(scopeMismatch);
+    if (instance.instance_id !== configuration.instance_id || Object.keys(instance.initial_facts).length) fail("STANDARD_PROCESS_AUTHORITY_CHANGED");
     const journal = allocations.read(nativeJournalId(instance)).record;
     let native = null, covered = 0;
     if (journal) {
@@ -758,6 +765,6 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, inspectDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
+  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
     verifyNativeHumanSource, admitNativeActivity, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }
