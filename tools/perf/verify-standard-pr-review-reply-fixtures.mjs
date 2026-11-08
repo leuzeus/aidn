@@ -49,7 +49,7 @@ function fixtureModel(prefix, fetchOnly) {
   const input = (id, fields) => ({ node_id: id, fields: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, literal(value)])) });
   const fields = id => published.data_bindings.inputs.find(row => row.node_id === id);
   if (fetchOnly) {
-    const children = ['pr_merge_execute', 'pr_post_merge_fetch', 'pr_post_merge_wait'];
+    const children = ['pr_merge_execute', 'pr_post_merge_fetch', 'pr_post_merge_alignment', 'pr_post_merge_wait'];
     const exact = target.model.nodes.filter(row => children.includes(row.id));
     const child = { ...target.model, model_id: 'fixture-post-merge-target', nodes: [
       { ...target.model.nodes.find(row => row.id === target.model.entry), children }, ...exact,
@@ -847,7 +847,7 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFil
 
 async function qualifyPostMergeFetch(prefix) {
   const base = arrange(prefix, 'post-merge-fetch'), f = open(base, { initializeKey: true });
-  const { configuration: { instance_id: instanceId }, binding, pr, fetchFixture } = json(path.join(base, 'configuration.json'));
+  const { configuration: { instance_id: instanceId, target_root: targetRoot }, binding, pr, fetchFixture } = json(path.join(base, 'configuration.json'));
   const initial = f.host.initialize({ instanceId });
   f.host.initialize({ instanceId, write: true, expectedResultSha256: initial.record.instance_sha256 });
   f.seed(f.graph.triage, { facts: {}, observations: {} });
@@ -888,7 +888,8 @@ async function qualifyPostMergeFetch(prefix) {
       { encoding: 'utf8', timeout: 240000, windowsHide: true }));
     assert.deepEqual(cold, { status: 'receipted', sends: 1, reads: 0, results: 1 });
   }
-  const resumed = open(base), record = resumed.host.readJournal(id), output = record.results[0].output, { fetch } = output.observations;
+  let resumed = open(base);
+  const record = resumed.host.readJournal(id), output = record.results[0].output, { fetch } = output.observations;
   assert.equal(output.outcome, 'completed');
   assert.equal(output.effect_status, prefix === 'session' ? 'confirmed' : 'no_effect');
   assert.equal(fetch.confirmation, prefix === 'session' ? 'executed' : 'observed');
@@ -900,6 +901,53 @@ async function qualifyPostMergeFetch(prefix) {
   assert.deepEqual(output.facts, {});
   assert.throws(() => assertStandardOperationOutput({ ...output, facts: { post_merge_sync_complete: true } }),
     { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
+  const alignmentPreview = await resumed.preview();
+  assert.deepEqual(alignmentPreview.input, { contract_version: 'standard-pr-post-merge-alignment-input.v1', fetch_operation_id: id });
+  assert.equal(alignmentPreview.prepared.fetch_receipt_sha256, shadowHash(record.results[0].receipt));
+  const first = (await resumed.run(alignmentPreview)).results[0].output;
+  const { alignment } = first.observations;
+  assert.equal(first.outcome, 'deferred');
+  assert.equal(first.effect_status, 'no_effect');
+  assert.equal(first.observations.reason_code, 'STANDARD_PR_POST_MERGE_DIVERGENCE');
+  assert.equal(alignment.fetch_operation_id, id);
+  assert.equal(alignment.fetch_receipt_sha256, shadowHash(record.results[0].receipt));
+  assert.equal(alignment.ahead, 0);
+  assert.equal(alignment.behind, 2);
+  assert.equal(alignment.remote_head, fetch.fetched_head);
+  assert.deepEqual(first.facts, {});
+  assert.throws(() => assertStandardOperationOutput({ ...first, outcome: 'completed' }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
+  assert.equal(resumed.inspect().cursor.occurrences.find(row => row.node_id === 'pr_post_merge_alignment').status, 'WAITING');
+  replay(resumed);
+  if (prefix === 'correction') {
+    assert.equal(resumed.state.fetchSends, 1);
+    console.log('PASS R09 correction call, cold fetch recovery, real Git divergence, durable wait and replay, one transfer');
+    return;
+  }
+
+  const git = (...args) => execFileSync(binding.git.path, ['-C', targetRoot, ...args], { encoding: 'utf8', windowsHide: true }).trim();
+  const bare = '--git-dir=' + fetchFixture.remote;
+  const tree = git(bare, 'rev-parse', fetchFixture.merged + '^{tree}');
+  const advanced = git(bare, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+    'commit-tree', tree, '-p', fetchFixture.merged, '-m', 'fixture target advances');
+  git(bare, 'update-ref', 'refs/heads/dev', advanced, fetchFixture.merged);
+  const missing = (await resumed.run()).results[0].output;
+  assert.equal(missing.outcome, 'deferred');
+  assert.equal(missing.observations.reason_code, 'WORKFLOW_POST_MERGE_FRESH_FETCH_REQUIRED');
+  assert.equal(resumed.state.fetchSends, 1);
+  // Exercise the observation after a separate manual fixture reconciliation.
+  git('fetch', '--no-write-fetch-head', '--refmap=', '--', pathToFileURL(fetchFixture.remote).href, advanced);
+  git('merge', '--ff-only', advanced);
+  resumed = open(base);
+  const confirmed = (await resumed.run()).results[0].output;
+  assert.equal(confirmed.outcome, 'completed');
+  assert.equal(confirmed.effect_status, 'no_effect');
+  assert.equal(confirmed.observations.reason_code, 'STANDARD_PR_POST_MERGE_ALIGNED');
+  assert.equal(confirmed.observations.alignment.fetch_receipt_sha256, shadowHash(record.results[0].receipt));
+  assert.equal(confirmed.observations.alignment.local_head, advanced);
+  assert.equal(confirmed.observations.alignment.remote_head, advanced);
+  assert.equal(confirmed.observations.alignment.fetched_head, fetchFixture.merged);
+  assert.deepEqual(confirmed.facts, {});
+  const beforeBarrier = resumed.calls();
   const barrier = (await resumed.run()).results[0].output;
   assert.equal(barrier.outcome, 'deferred');
   assert.deepEqual(barrier.facts, {});
@@ -909,10 +957,10 @@ async function qualifyPostMergeFetch(prefix) {
   assert.equal(cursor.status, 'WAITING');
   assert.equal(cursor.occurrences.find(row => row.node_id === 'pr_post_merge_wait').status, 'WAITING');
   assert.ok(['RUNNING', 'WAITING'].includes(cursor.occurrences.find(row => row.node_id.endsWith('_pr_effects_pending')).status));
-  assert.equal(resumed.calls(), 0);
+  assert.equal(resumed.calls(), beforeBarrier);
   replay(resumed);
   assert.equal(resumed.state.fetchSends, 1);
-  console.log('PASS R09 ' + prefix + ' call, accepted merge, real Git and FILES, wait and exact replay, one transfer');
+  console.log('PASS R09 session call, divergence, missing object, fresh aligned observation, final wait and exact replay');
 }
 
 async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session') {

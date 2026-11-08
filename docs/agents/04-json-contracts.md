@@ -59,6 +59,12 @@ observed recovery results. Refusal and UNKNOWN carry diagnostics without
 a success fact. These contracts use the existing operation journal.
 Historical post-merge wait contracts retain their readers.
 
+`standard-pr-post-merge-alignment-{input,output}.v1` binds the fresh
+read-only measurement to the accepted fetch receipt. The output distinguishes
+aligned, divergent and unavailable observations. A divergent measurement
+retains exact local and remote OIDs, ahead/behind and the original witness.
+The aligned result supplies evidence for a later canonical reconciliation.
+
 ## Original dispatch and disposition records
 
 Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,

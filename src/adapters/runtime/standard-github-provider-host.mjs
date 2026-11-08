@@ -358,6 +358,13 @@ export function createStandardGithubProviderHost({ configuration, home, identity
           guard();
           return result;
         },
+        async observeAlignment(prepared, input) {
+          const guard = transportGuard();
+          guard();
+          const result = await postMergeFetch().observeAlignment(prepared, input);
+          guard();
+          return result;
+        },
       }),
     }),
     ...(reviewer ? { sessionReviewEventPort: Object.freeze({ ...reviewEvents(readReviewEvent), withReviewReads }) } : {}),

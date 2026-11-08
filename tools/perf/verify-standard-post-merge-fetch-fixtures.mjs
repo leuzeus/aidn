@@ -205,7 +205,17 @@ try {
   assert.deepEqual(protectedPort.recover(protectedPlan, { expectPlan: protectedPlan.plan_sha256 }), protectedResult);
   assert.equal(protectedTransfers, 1);
   assert.equal(protectedReads, 3);
+  const fresh = await protectedPort.observeAlignment(protectedPlan, { expectPlan: protectedPlan.plan_sha256 });
+  assert.equal(fresh.ahead, 1);
+  assert.equal(fresh.behind, 1);
+  assert.equal(fresh.local_head, divergent.head);
+  assert.equal(fresh.remote_head, advanced);
+  assert.equal(fresh.proof_ref, protectedResult.proof_ref);
+  assert.deepEqual(observation(), divergent);
+  assert.equal(protectedTransfers, 1);
+  assert.equal(protectedReads, 5);
   console.log('PASS protected host checks repository, rejects Git overrides and separates the authenticated fetch effect');
+  console.log('PASS protected read-only alignment retains real 1/1 divergence and performs no transfer');
 } finally {
   const verified = fs.realpathSync(root);
   assert.equal(path.dirname(verified), tmp);

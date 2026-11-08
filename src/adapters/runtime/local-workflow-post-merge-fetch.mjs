@@ -93,26 +93,33 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
     if (view.ref !== plan.source_ref || view.head !== plan.local_head || view.sha256 !== plan.local_sha256)
       fail('WORKFLOW_POST_MERGE_LOCAL_CHANGED');
   }
-  function proveHistory(plan) {
-    const relation = git(['merge-base', '--is-ancestor', plan.merge_oid, plan.remote_head], [0, 1]);
+  function proveHistory(mergeOid, head) {
+    const relation = git(['merge-base', '--is-ancestor', mergeOid, head], [0, 1]);
     if (relation.status !== 0) fail('WORKFLOW_POST_MERGE_REMOTE_EXCLUDES_MERGE');
   }
-  function postimage(plan, planSha) {
-    requireLocal(plan);
+  function requireWitness(plan, planSha) {
     if (readRef(plan.proof_ref) !== plan.remote_head) fail('WORKFLOW_POST_MERGE_PROOF_MISSING');
     const log = gitPath('logs/' + plan.proof_ref);
     const rows = readAgentRunFile(log, { maxBytes: 8192, json: false }).value.toString('utf8').split(/\r?\n/);
     const prefix = '0'.repeat(plan.remote_head.length) + ' ' + plan.remote_head + ' ';
     if (rows.length !== 2 || rows[1] || !rows[0].startsWith(prefix) || !rows[0].endsWith('\t' + marker(planSha)))
       fail('WORKFLOW_POST_MERGE_PROOF_INVALID');
-    proveHistory(plan);
-    const count = /^(\d+)\s+(\d+)$/.exec(git(['rev-list', '--left-right', '--count', plan.local_head + '...' + plan.remote_head]).value);
+    proveHistory(plan.merge_oid, plan.remote_head);
+  }
+  function divergence(left, right) {
+    const count = /^(\d+)\s+(\d+)$/.exec(git(['rev-list', '--left-right', '--count', left + '...' + right]).value);
     const [ahead, behind] = count ? count.slice(1).map(Number) : [];
-    if (![ahead, behind].every(Number.isSafeInteger) || readRef(plan.proof_ref) !== plan.remote_head)
-      fail('WORKFLOW_POST_MERGE_DIVERGENCE_UNAVAILABLE');
+    if (![ahead, behind].every(Number.isSafeInteger)) fail('WORKFLOW_POST_MERGE_DIVERGENCE_UNAVAILABLE');
+    return { ahead, behind };
+  }
+  function postimage(plan, planSha) {
+    requireLocal(plan);
+    requireWitness(plan, planSha);
+    const counts = divergence(plan.local_head, plan.remote_head);
+    if (readRef(plan.proof_ref) !== plan.remote_head) fail('WORKFLOW_POST_MERGE_PROOF_MISSING');
     requireLocal(plan);
     return { source_ref: plan.source_ref, local_head: plan.local_head, fetched_head: plan.remote_head, merge_oid: plan.merge_oid,
-      proof_ref: plan.proof_ref, ahead, behind, plan_sha256: planSha };
+      proof_ref: plan.proof_ref, ...counts, plan_sha256: planSha };
   }
   return Object.freeze({
     async prepare({ sourceBranch, mergeOid, operationId }, { signal } = {}) {
@@ -142,7 +149,7 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
         attempted = true;
         await remote.transfer(plan.remote_head, { signal, assertAuthorized: assertTransferAuthorized });
         if (await remoteTip(plan.source_ref, signal) !== plan.remote_head) fail('WORKFLOW_POST_MERGE_REMOTE_MOVED');
-        proveHistory(plan);
+        proveHistory(plan.merge_oid, plan.remote_head);
         await assertAuthorized();
         active(signal);
         requireLocal(plan);
@@ -158,6 +165,24 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
       active(signal);
       const plan = checked(prepared, expectPlan);
       return postimage(plan, expectPlan);
+    },
+    async observeAlignment(prepared, { expectPlan, signal } = {}) {
+      active(signal);
+      const plan = checked(prepared, expectPlan), before = localView(plan.branch);
+      if (before.ref !== plan.source_ref) fail('WORKFLOW_POST_MERGE_LOCAL_CHANGED');
+      requireWitness(plan, expectPlan);
+      const remoteHead = await remoteTip(plan.source_ref, signal);
+      // An independently fetched new tip can be measured locally. Unknown
+      // objects require an explicit fetch, never a lazy network transfer.
+      if (git(['cat-file', '-e', remoteHead + '^{commit}'], [0, 1, 128]).status !== 0)
+        fail('WORKFLOW_POST_MERGE_FRESH_FETCH_REQUIRED');
+      proveHistory(plan.merge_oid, remoteHead);
+      const counts = divergence(before.head, remoteHead);
+      if (await remoteTip(plan.source_ref, signal) !== remoteHead) fail('WORKFLOW_POST_MERGE_REMOTE_MOVED');
+      if (localView(plan.branch).sha256 !== before.sha256) fail('WORKFLOW_POST_MERGE_LOCAL_CHANGED');
+      requireWitness(plan, expectPlan);
+      return { source_ref: plan.source_ref, local_head: before.head, remote_head: remoteHead, fetched_head: plan.remote_head,
+        merge_oid: plan.merge_oid, proof_ref: plan.proof_ref, ...counts };
     },
   });
 }

@@ -3341,11 +3341,17 @@ state at fetch time. Final reconciliation requires a fresh check.
 Both published R08 call sites reach the deterministic R09 fetch executor
 after their accepted merge. The operation binds that receipt and exact
 host plan to a separate grant and durable owner. Recovery retains the
-original operation and reads its Git witness. Every fetch receipt proceeds
-to the existing reconciliation wait, including a measurement of zero
-divergence. The current binding covers merges accepted by the R08 executor.
-Routing an externally observed merge, obtaining a decision on ambiguous
-divergence, and recording a fresh canonical reconciliation remain separate.
+original operation and reads its Git witness. The read-only alignment
+operation consumes the accepted fetch receipt and verifies the original
+witness. It samples the protected remote twice, checks that the remote
+commit contains the merge and measures exact ahead/behind against a stable
+local source checkout. A remote commit missing from the local object store
+requires an explicit fetch. Divergence retains a resumable wait with the
+observed OIDs and counts. Zero divergence reaches the separate reconciliation
+wait and carries no canonical completion fact. The current binding covers
+merges accepted by the R08 executor. Routing an externally observed merge,
+obtaining a decision on ambiguous divergence, and recording canonical
+reconciliation with a fresh final fence remain separate.
 The fixtures distinguish a real disposable Git remote and FILES application
 execution from the doubled GitHub transport and signed upstream inputs.
 

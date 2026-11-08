@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-post-merge-alignment-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "operation_ref", "outcome", "effect_status", "facts", "observations", "evidence_refs"],
+  "properties": {
+    "contract_version": { "const": "standard-pr-post-merge-alignment-output.v1" },
+    "operation_ref": { "const": "session_pr_post_merge_alignment" },
+    "outcome": { "enum": ["completed", "deferred", "blocked"] },
+    "effect_status": { "const": "no_effect" },
+    "facts": { "type": "object", "maxProperties": 0 },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason_code"],
+      "properties": {
+        "reason_code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$" },
+        "alignment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fetch_operation_id", "fetch_receipt_sha256", "source_ref", "local_head", "remote_head",
+            "fetched_head", "merge_oid", "proof_ref", "ahead", "behind"],
+          "properties": {
+            "fetch_operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" },
+            "fetch_receipt_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "source_ref": { "type": "string", "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$" },
+            "local_head": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
+            "remote_head": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
+            "fetched_head": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
+            "merge_oid": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
+            "proof_ref": { "type": "string", "pattern": "^refs/aidn/post-merge/[a-f0-9]{32}$" },
+            "ahead": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "behind": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          }
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "sha256"],
+        "properties": {
+          "ref": { "type": "string", "pattern": "^git:refs/aidn/post-merge/[a-f0-9]{32}$" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    }
+  }
+}

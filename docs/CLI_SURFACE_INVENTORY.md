@@ -377,8 +377,9 @@ finalization; `--verify` retains its read-only verification behavior.
     `merge_method: "MERGE"` can prepare the separate exact merge action.
     Applying that action requires its reviewed digest and host grant. A
     confirmed or exactly recovered merge enables a distinct authorized R09
-    fetch on the local source branch. Its result leaves the workflow waiting
-    for final local reconciliation.
+    fetch on the local source branch. The next read-only observation
+    measures current divergence. Divergence stays pending. An aligned
+    observation leaves the workflow waiting for final local reconciliation.
     A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`

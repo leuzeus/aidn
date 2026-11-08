@@ -1,6 +1,7 @@
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { assertMergeExecuteOutput, mergeExecuteOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
-import { assertPostMergeFetchOutput, postMergeFetchOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
+import { alignedReason, assertPostMergeAlignmentOutput, assertPostMergeFetchOutput, divergentReason, pendingAlignmentReasons,
+  postMergeAlignmentOperation, postMergeFetchOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
 
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
 
@@ -39,6 +40,21 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
       outcome: 'completed', effect_status: confirmation === 'executed' ? 'confirmed' : 'no_effect', facts: {},
       observations: { fetch }, evidence_refs: [{ ref: 'git:' + fetch.proof_ref, sha256: shadowHash(fetch) }] });
   }
+  function alignmentSource(instance, input) {
+    const { record, output } = readAccepted(instance, input.fetch_operation_id, postMergeFetchOperation,
+      'STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_REQUIRED');
+    const { observations: { fetch } } = assertPostMergeFetchOutput(output);
+    const plan = checked(instance, record.preview.input, record.preview.prepared, input.fetch_operation_id);
+    if (!fetch || shadowHash(result(plan, fetch, fetch.confirmation)) !== shadowHash(output))
+      fail('STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_CHANGED');
+    return { git: plan.git, fetch, receiptSha: shadowHash(record.results.at(-1).receipt) };
+  }
+  function alignmentOutput(outcome, reason, alignment = null) {
+    return assertPostMergeAlignmentOutput({ contract_version: 'standard-pr-post-merge-alignment-output.v1',
+      operation_ref: postMergeAlignmentOperation, outcome, effect_status: 'no_effect', facts: {},
+      observations: { reason_code: reason, ...(alignment ? { alignment } : {}) },
+      evidence_refs: alignment ? [{ ref: 'git:' + alignment.proof_ref, sha256: shadowHash(alignment) }] : [] });
+  }
   return Object.freeze({
     async prepare(instance, input, id) {
       const { merge, receiptSha } = source(instance, input);
@@ -65,6 +81,30 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
       } catch {
         return { reason_code: 'STANDARD_PR_POST_MERGE_FETCH_WITNESS_UNAVAILABLE' };
       }
+    },
+    prepareAlignment(instance, input) {
+      const { receiptSha } = alignmentSource(instance, input);
+      return { can_apply: true, fetch_receipt_sha256: receiptSha };
+    },
+    async observeAlignment(instance, input, prepared, { signal }) {
+      const { git, fetch, receiptSha } = alignmentSource(instance, input);
+      if (prepared.fetch_receipt_sha256 !== receiptSha) fail('STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_CHANGED');
+      if (typeof port?.observeAlignment !== 'function') fail('STANDARD_PR_POST_MERGE_ALIGNMENT_HOST_REQUIRED');
+      let value;
+      try {
+        value = await port.observeAlignment(git, { expectPlan: git.plan_sha256, signal });
+      } catch (cause) {
+        if (pendingAlignmentReasons.includes(cause.code)) return alignmentOutput('deferred', cause.code);
+        throw cause;
+      }
+      if (signal?.aborted || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
+        || alignmentSource(instance, input).receiptSha !== receiptSha) fail('STANDARD_PR_POST_MERGE_ALIGNMENT_CONTEXT_CHANGED');
+      if (value?.source_ref !== fetch.source_ref || value.merge_oid !== fetch.merge_oid
+        || value.fetched_head !== fetch.fetched_head || value.proof_ref !== fetch.proof_ref)
+        fail('STANDARD_PR_POST_MERGE_ALIGNMENT_WITNESS_CHANGED');
+      const alignment = { ...value, fetch_operation_id: input.fetch_operation_id, fetch_receipt_sha256: receiptSha };
+      return alignment.ahead === 0 && alignment.behind === 0
+        ? alignmentOutput('completed', alignedReason, alignment) : alignmentOutput('deferred', divergentReason, alignment);
     },
   });
 }

@@ -900,8 +900,12 @@ dispatch and uses read-only recovery at the same occurrence for UNKNOWN.
 each call and binds a separate grant to the exact local Git plan. For
 SPEC-R09 the protected host transfers the remote commit and measures
 divergence against that OID. Recovery reads the durable Git witness.
-`session_pr_post_merge_wait` holds the call open until the remaining
-divergence handling and final reconciliation receipt are integrated.
+`session_pr_post_merge_alignment` consumes the accepted fetch receipt and
+checks a fresh protected remote tip, a stable source checkout and merge
+ancestry. Divergence or a missing remote object retains a resumable wait.
+Zero divergence reaches `session_pr_post_merge_wait` for the remaining
+canonical reconciliation. The human strategy decision and permitted effect
+for divergence remain separate.
 Historical direct observation and wait receipts stay readable.
 
 ## SPIKE canonical projection finalization, 2026-11-04

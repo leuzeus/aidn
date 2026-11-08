@@ -1443,9 +1443,11 @@ Use `--case=post-merge-fetch-session` and
 `verify-standard-pr-review-reply-fixtures.mjs` for the two R09 call sites.
 The tests use the published fetch and wait bindings with a synthetic signed
 merge prefix, real FILES application ports and disposable Git. They check
-the exact grant, cold recovery after transfer, the durable reconciliation
-wait and reducer replay. Final IR reconciliation, real GitHub, Native and
-installed proof remain separate.
+the exact grant, cold recovery after transfer, read-only divergence, a
+remote tip missing from the local object store and retry after explicit
+fixture reconciliation. The same reducer retains the divergence wait or the
+final reconciliation wait and replays without effects. Canonical IR
+reconciliation, real GitHub, Native and installed proof remain separate.
 
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as
