@@ -896,14 +896,13 @@ resolve triage, check and consent operation IDs into `session_pr_merge_execute`.
 The executor requires a distinct exact-action grant and the protected
 `MERGE` capability. It verifies GitHub's exact postimage after the claimed
 dispatch and uses read-only recovery at the same occurrence for UNKNOWN.
-`session_pr_post_merge_wait` consumes the accepted merge operation and holds
-the call open pending R09. Historical direct observation receipts stay readable.
-
-For SPEC-R09, `local-workflow-post-merge-fetch.mjs` supplies the protected host
-with an authorized Git fetch and a replayable local witness for the exact
-remote tip. It measures divergence against that OID. The IR still requires
-an execution binding that consumes an authenticated merge receipt, followed by
-divergence handling and a final reconciliation receipt for the admissions.
+`session_pr_post_merge_fetch` consumes the accepted merge operation from
+each call and binds a separate grant to the exact local Git plan. For
+SPEC-R09 the protected host transfers the remote commit and measures
+divergence against that OID. Recovery reads the durable Git witness.
+`session_pr_post_merge_wait` holds the call open until the remaining
+divergence handling and final reconciliation receipt are integrated.
+Historical direct observation and wait receipts stay readable.
 
 ## SPIKE canonical projection finalization, 2026-11-04
 

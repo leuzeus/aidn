@@ -3338,11 +3338,16 @@ An interruption without that witness is UNKNOWN. Recovery reads the original
 witness and never transfers objects again. A receipt describes the measured
 state at fetch time. Final reconciliation requires a fresh check.
 
-The published IR still waits at the R09 barrier. The next source revision
-must bind the accepted merge receipt and exact host plan to the executor,
-retain divergent and human dispositions, and record a final canonical
-reconciliation before enabling a new cycle. The fixture qualifies real Git
-on a disposable bare remote and the protected host with doubled GitHub.
+Both published R08 call sites reach the deterministic R09 fetch executor
+after their accepted merge. The operation binds that receipt and exact
+host plan to a separate grant and durable owner. Recovery retains the
+original operation and reads its Git witness. Every fetch receipt proceeds
+to the existing reconciliation wait, including a measurement of zero
+divergence. The current binding covers merges accepted by the R08 executor.
+Routing an externally observed merge, obtaining a decision on ambiguous
+divergence, and recording a fresh canonical reconciliation remain separate.
+The fixtures distinguish a real disposable Git remote and FILES application
+execution from the doubled GitHub transport and signed upstream inputs.
 
 [GitHub GraphQL pull requests](https://docs.github.com/en/graphql/reference/pulls)
 and [GitHub GraphQL commits](https://docs.github.com/en/graphql/reference/commits).

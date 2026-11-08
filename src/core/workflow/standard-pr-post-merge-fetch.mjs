@@ -1,0 +1,30 @@
+import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
+import { checkShadowJson, shadowHash } from './shadow-json.mjs';
+import inputSchema from '../contracts/workflow-definition/standard-pr-post-merge-fetch-input.v1.schema.json' with { type: 'json' };
+import outputSchema from '../contracts/workflow-definition/standard-pr-post-merge-fetch-output.v1.schema.json' with { type: 'json' };
+
+export const postMergeFetchOperation = 'session_pr_post_merge_fetch';
+const fail = code => { throw Object.assign(Error(code), { code }); };
+const valid = (value, schema) => !checkShadowJson(value)
+  && !validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length;
+
+export function assertPostMergeFetchInput(value) {
+  if (!valid(value, inputSchema)) fail('STANDARD_OPERATION_INPUT_INVALID');
+  return value;
+}
+
+export function assertPostMergeFetchOutput(value) {
+  if (!valid(value, outputSchema)) fail('STANDARD_OPERATION_OUTPUT_INVALID');
+  const { outcome, effect_status, observations: { fetch }, evidence_refs } = value;
+  if (outcome !== 'completed') {
+    if (fetch || evidence_refs.length || effect_status !== (outcome === 'blocked' ? 'no_effect' : 'unknown'))
+      fail('STANDARD_OPERATION_OUTPUT_INVALID');
+    return value;
+  }
+  const [proof] = evidence_refs;
+  if (!fetch || effect_status !== (fetch.confirmation === 'executed' ? 'confirmed' : 'no_effect')
+    || (fetch.ahead === 0 && fetch.behind === 0) !== (fetch.local_head === fetch.fetched_head)
+    || proof?.ref !== 'git:' + fetch.proof_ref || proof.sha256 !== shadowHash(fetch))
+    fail('STANDARD_OPERATION_OUTPUT_INVALID');
+  return value;
+}

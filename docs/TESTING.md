@@ -1424,8 +1424,8 @@ They use the two published child call sites, synthetic upstream receipts,
 real FILES host, inbox, CAS and journal, a fixture signer and doubled GitHub
 transport. The cases cover direct merge after the exact checks and consent,
 substitutions and refusal before dispatch, missing postimage and lost
-acknowledgement, read-only recovery in a new process, and the deferred R09
-boundary. These cases run outside the required family and preserve the
+acknowledgement, read-only recovery in a new process, and the ready R09
+fetch operation. These cases run outside the required family and preserve the
 five-minute consent and exception limits. Use the composition and historical
 merge-reader fixtures for binding and reader regressions.
 Run `verify-cycle-create-admission-fixtures.mjs --pr-continuity` separately
@@ -1438,8 +1438,14 @@ control. It covers an authorized fetch, refusal, remote movement, dirty or
 wrong checkout, a missing or substituted recovery witness and read-only
 recovery. A second case exercises the protected host with GitHub and HTTPS
 transport doubled and Git still real. This gate qualifies the adapter.
-Published IR reconciliation, real GitHub, Native and installed proof remain
-separate.
+Use `--case=post-merge-fetch-session` and
+`--case=post-merge-fetch-correction` with
+`verify-standard-pr-review-reply-fixtures.mjs` for the two R09 call sites.
+The tests use the published fetch and wait bindings with a synthetic signed
+merge prefix, real FILES application ports and disposable Git. They check
+the exact grant, cold recovery after transfer, the durable reconciliation
+wait and reducer replay. Final IR reconciliation, real GitHub, Native and
+installed proof remain separate.
 
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as

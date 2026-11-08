@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-post-merge-fetch-input.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "merge_operation_id"],
+  "properties": {
+    "contract_version": { "const": "standard-pr-post-merge-fetch-input.v1" },
+    "merge_operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" }
+  }
+}

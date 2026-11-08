@@ -140,7 +140,7 @@ op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("se
 // pinned continuation. A deferred child operation keeps its call open.
 const firstPrNode = nodes.length, firstPrInput = inputs.length;
 const triageId = { triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] } };
-seq("pr_review_completion", ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_wait"]);
+seq("pr_review_completion", ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_fetch", "pr_post_merge_wait"]);
 op("pr_premerge_observe", "session_pr_premerge_observe", triageId);
 node("pr_reply_loop", "loop", { child: "pr_reply_iteration", until: "session_pr_replies_observed", max_iterations: 32 });
 seq("pr_reply_iteration", ["pr_reply_select", "pr_reply_route"]);
@@ -163,6 +163,7 @@ op("pr_checks_accept", "session_pr_checks_accept", triageId);
 op("pr_merge_consent", "session_pr_merge_consent", { ...triageId, ...operation(null, "checks_operation_id", "pr_checks_accept") });
 op("pr_merge_execute", "session_pr_merge_execute", { ...triageId, ...operation(null, "checks_operation_id", "pr_checks_accept"),
   ...operation(null, "consent_operation_id", "pr_merge_consent") });
+op("pr_post_merge_fetch", "session_pr_post_merge_fetch", operation(null, "merge_operation_id", "pr_merge_execute"));
 op("pr_post_merge_wait", "session_pr_post_merge_wait", operation(null, "merge_operation_id", "pr_merge_execute"));
 const prReviewNodes = nodes.splice(firstPrNode);
 const prReviewTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-pr-review-completion", revision: 1,

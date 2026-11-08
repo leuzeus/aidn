@@ -50,6 +50,15 @@ links the R09 wait to the accepted merge receipt. These contracts reuse the
 existing operation journal and preserve the earlier inbox and observation
 readers.
 
+## R09 fetch contracts
+
+Private `standard-pr-post-merge-fetch-{input,output}.v1` bind the accepted
+merge receipt to the host's Git plan and exact fetched commit. The result
+records ahead/behind and the local proof ref, with separate executed and
+observed recovery results. Refusal and UNKNOWN carry diagnostics without
+a success fact. These contracts use the existing operation journal.
+Historical post-merge wait contracts retain their readers.
+
 ## Original dispatch and disposition records
 
 Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,

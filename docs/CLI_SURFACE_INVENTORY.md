@@ -376,8 +376,9 @@ finalization; `--verify` retains its read-only verification behavior.
     question. Approval is time-limited. A protected host that opts in with
     `merge_method: "MERGE"` can prepare the separate exact merge action.
     Applying that action requires its reviewed digest and host grant. A
-    confirmed or exactly recovered merge keeps the workflow waiting for
-    local R09 reconciliation.
+    confirmed or exactly recovered merge enables a distinct authorized R09
+    fetch on the local source branch. Its result leaves the workflow waiting
+    for final local reconciliation.
     A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`

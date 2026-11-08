@@ -4,6 +4,8 @@ import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
 import { createStandardPrMergeExecute } from "./standard-session-pr-merge-execute.mjs";
+import { createStandardSessionPrPostMergeFetch } from "./standard-session-pr-post-merge-fetch.mjs";
+import { postMergeFetchOperation } from "../../core/workflow/standard-pr-post-merge-fetch.mjs";
 import { mergeExecuteOperation, postMergeWaitOperation } from "../../core/workflow/standard-pr-merge-execute.mjs";
 import { createStandardPrMergeConsent } from "./standard-session-pr-merge-consent.mjs";
 import { checksOperation, mergeConsentOperation } from "../../core/workflow/standard-pr-merge-consent.mjs";
@@ -573,6 +575,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const reviewEffects = new Map([
     [mergeExecuteOperation, sessionPrMergeEffect],
+    [postMergeFetchOperation, createStandardSessionPrPostMergeFetch(acceptedReviewPorts)],
     ["session_pr_review_reply_publish", sessionPrReply],
     ["session_pr_review_thread_resolve", sessionPrResolution],
   ]);
@@ -1431,7 +1434,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const binding = record.intent.binding_ref, effect = reviewEffects.get(binding);
       if (!effect) fail("STANDARD_PR_REVIEW_EFFECT_DISPATCH_REQUIRED");
       const reply = binding === "session_pr_review_reply_publish";
-      const kind = reply ? "REPLY" : binding === mergeExecuteOperation ? "MERGE" : "RESOLUTION";
+      const kind = reply ? "REPLY" : binding === mergeExecuteOperation ? "MERGE" : binding === postMergeFetchOperation ? "POST_MERGE_FETCH" : "RESOLUTION";
       readDispatchedOperation(state.record, id, binding, "STANDARD_PR_" + kind + "_DISPATCH_REQUIRED");
       if (record.results.length >= 32) fail("PROCESS_JOURNAL_RESULTS_LIMIT");
       const output = await effect.recover(state.record, record.preview.input, record.preview.prepared, { signal, operationId: id });
