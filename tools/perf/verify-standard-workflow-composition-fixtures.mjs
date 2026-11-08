@@ -85,7 +85,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 169); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 170); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -222,7 +222,7 @@ test("R08 exception contracts bind the exact question, signed capture shape and 
 });
 test("both PR effects boundaries pass their own accepted triage to the same pinned continuation", () => {
   for (const kind of ["fetch-input", "fetch-output", "alignment-input", "alignment-output",
-    "measure-output", "decision-input", "decision-question", "decision-output"]) {
+    "measure-output", "decision-input", "decision-question", "decision-output", "fast-forward-input", "fast-forward-plan", "fast-forward-output"]) {
     const contract = JSON.parse(read("src/core/contracts/workflow-definition/standard-pr-post-merge-" + kind + ".v1.schema.json"));
     assert.deepEqual(validateJsonSchemaDefinition(contract, "#", { contractKind: "workflow-definition" }), []);
   }
@@ -240,7 +240,11 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
     { flow_id: "aligned", node_id: "pr_post_merge_complete", condition: null },
   ]);
   assert.deepEqual(child.nodes.find(row => row.id === "pr_post_merge_reconcile").children,
-    ["pr_post_merge_decision", "pr_post_merge_alignment", "pr_post_merge_reconciled_complete"]);
+    ["pr_post_merge_decision", "pr_post_merge_strategy", "pr_post_merge_alignment", "pr_post_merge_reconciled_complete"]);
+  assert.deepEqual(child.nodes.find(row => row.id === "pr_post_merge_strategy").branches, [
+    { flow_id: "fast_forward", node_id: "pr_post_merge_fast_forward", condition: "session_pr_post_merge_fast_forward" },
+    { flow_id: "manual", node_id: "pr_post_merge_manual", condition: null },
+  ]);
   for (const prefix of ["session", "correction"]) {
     const id = prefix + "_pr_effects_pending";
     const call = assets.model.nodes.find(row => row.id === id);
@@ -264,6 +268,10 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
     }],
     ["pr_post_merge_decision", "read-only", ["SPEC-R09", "SPEC-R11"], {
       measurement_operation_id: { source: "operation_id", node_id: "pr_post_merge_measure" },
+      allow_fast_forward: { source: "literal", value: true },
+    }],
+    ["pr_post_merge_fast_forward", "executor", ["SPEC-R09", "SPEC-R11"], {
+      decision_operation_id: { source: "operation_id", node_id: "pr_post_merge_decision" },
     }],
     ["pr_post_merge_alignment", "read-only", ["SPEC-R09"], {
       fetch_operation_id: { source: "operation_id", node_id: "pr_post_merge_fetch" },
@@ -523,7 +531,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 252);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 18);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 19);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 2);
   assert.equal(child.model_id, "aidn-standard-final-verification");

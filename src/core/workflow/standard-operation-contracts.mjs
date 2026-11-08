@@ -48,6 +48,7 @@ import { assertMergeConsentOutput, assertRequiredChecksOutput, checksOperation, 
 import postMergeDecisionInput from "../contracts/workflow-definition/standard-pr-post-merge-decision-input.v1.schema.json" with { type: "json" };
 import { assertPostMergeDecisionOutput, assertPostMergeRecoveryOutput, postMergeDecisionOperation, postMergeRecoveryOutputVersion } from "./standard-pr-post-merge-decision.mjs";
 import { assertPostMergeMeasureOutput, postMergeMeasureOperation, assertPostMergeAlignmentInput, assertPostMergeAlignmentOutput, assertPostMergeFetchInput, assertPostMergeFetchOutput, postMergeAlignmentOperation, postMergeFetchOperation } from "./standard-pr-post-merge-fetch.mjs";
+import { assertPostMergeFastForwardInput, assertPostMergeFastForwardOutput, postMergeFastForwardOperation } from "./standard-pr-post-merge-fast-forward.mjs";
 import { assertPostMergeCompleteInput, assertPostMergeCompleteOutput, postMergeCompleteOperation } from "./standard-pr-post-merge-complete.mjs";
 import { assertMergeExecuteInput, assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeExecuteOperation, postMergeWaitOperation } from "./standard-pr-merge-execute.mjs";
 import prReviewEffectsOutput from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v1.schema.json" with { type: "json" };
@@ -219,6 +220,7 @@ export function assertStandardOperationInput(operation, value) {
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
+  if (operation === postMergeFastForwardOperation) return assertPostMergeFastForwardInput(value);
   if (operation === postMergeCompleteOperation) return assertPostMergeCompleteInput(value);
   if (operation === postMergeFetchOperation) return assertPostMergeFetchInput(value);
   if ([mergeExecuteOperation, postMergeWaitOperation].includes(operation)) return assertMergeExecuteInput(operation, value);
@@ -354,6 +356,7 @@ export function assertStandardOperationOutput(value) {
   if (value?.contract_version === "standard-pr-post-merge-decision-output.v1") return assertPostMergeDecisionOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-measure-output.v1") return assertPostMergeMeasureOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-alignment-output.v1") return assertPostMergeAlignmentOutput(value);
+  if (value?.contract_version === "standard-pr-post-merge-fast-forward-output.v1") return assertPostMergeFastForwardOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-complete-output.v1") return assertPostMergeCompleteOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-fetch-output.v1") return assertPostMergeFetchOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-wait-output.v1") return assertPostMergeWaitOutput(value);

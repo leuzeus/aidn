@@ -6,6 +6,8 @@ import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-c
 import { createStandardPrMergeExecute } from "./standard-session-pr-merge-execute.mjs";
 import { createStandardSessionPrPostMergeFetch } from "./standard-session-pr-post-merge-fetch.mjs";
 import { createStandardPostMergeCompletion, postMergeProjectScope } from "./standard-session-pr-post-merge-completion.mjs";
+import { postMergeFastForwardOperation } from "../../core/workflow/standard-pr-post-merge-fast-forward.mjs";
+import { createStandardPostMergeFastForward } from "./standard-session-pr-post-merge-fast-forward.mjs";
 import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post-merge-complete.mjs";
 import { createStandardPostMergeDecision } from "./standard-session-pr-post-merge-decision.mjs";
 import { alignedPostMergeSubject, assertPostMergeRecoveryPlan, postMergeDecisionMaxAgeMs, postMergeDecisionOperation,
@@ -585,7 +587,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     instance, record.preview.input, record.preview.prepared, signal);
   const postMergeCompletion = createStandardPostMergeCompletion({ ...acceptedReviewPorts, artifacts,
     readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
+  const postMergeFastForward = createStandardPostMergeFastForward({ ...acceptedReviewPorts, postMerge, decision: postMergeDecision,
+    verifyDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const reviewEffects = new Map([
+    [postMergeFastForwardOperation, postMergeFastForward],
     [mergeExecuteOperation, sessionPrMergeEffect],
     [postMergeFetchOperation, postMerge],
     [postMergeCompleteOperation, postMergeCompletion],
@@ -1164,7 +1169,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (signal?.aborted || recoveryTarget(plan.operation_id, plan.instance_sha256).before.content_sha256 !== before.content_sha256)
         fail("PROCESS_JOURNAL_OWNER_CHANGED");
       if (now() - plan.observed_at_ms >= postMergeDecisionMaxAgeMs) fail("STANDARD_PR_POST_MERGE_RECOVERY_PLAN_EXPIRED");
-      const output = postMergeRecoveryOutput(plan, grant), receipt = resultReceipt(record, output);
+      const output = postMergeRecoveryOutput(plan, grant, record.preview.input.allow_fast_forward === true), receipt = resultReceipt(record, output);
       const { authentication, key_id, ...body } = record;
       persist({ ...body, phase: "receipted", revision: record.revision + 1, owner: { generation, pid: process.pid },
         results: [{ output, receipt }] }, before.content_sha256);
@@ -1550,9 +1555,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (!effect) fail("STANDARD_PR_REVIEW_EFFECT_DISPATCH_REQUIRED");
       const reply = binding === "session_pr_review_reply_publish";
       const kind = reply ? "REPLY" : binding === mergeExecuteOperation ? "MERGE"
-        : binding === postMergeFetchOperation ? "POST_MERGE_FETCH" : binding === postMergeCompleteOperation ? "POST_MERGE_COMPLETION" : "RESOLUTION";
+        : binding === postMergeFetchOperation ? "POST_MERGE_FETCH"
+          : binding === postMergeFastForwardOperation ? "POST_MERGE_FAST_FORWARD" : binding === postMergeCompleteOperation ? "POST_MERGE_COMPLETION" : "RESOLUTION";
       readDispatchedOperation(state.record, id, binding, "STANDARD_PR_" + kind + "_DISPATCH_REQUIRED");
       if (record.results.length >= 32) fail("PROCESS_JOURNAL_RESULTS_LIMIT");
+      const fastForward = binding === postMergeFastForwardOperation;
+      const expectedSnapshot = fastForward ? snapshot() : record.preview.snapshot;
+      if (fastForward && shadowHash(expectedSnapshot.context) !== shadowHash({
+        ...record.preview.snapshot.context, head: record.preview.prepared.plan.git.remote_head,
+      })) return { status: "reconciliation_required", operation_id: id, effect_status: "unknown",
+        reason_code: "STANDARD_PR_POST_MERGE_FAST_FORWARD_POSTIMAGE_UNAVAILABLE" };
       const output = await effect.recover(state.record, record.preview.input, record.preview.prepared, { signal, operationId: id,
         ...(binding === postMergeCompleteOperation ? { assertAuthorized: () => verifyGrant(record, signal) } : {}) });
       if (!output?.contract_version) return { status: "reconciliation_required", operation_id: id, effect_status: "unknown",
@@ -1560,7 +1572,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       await verifyGrant(record, signal);
       if (signal?.aborted || current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
         || shadowHash(retained(id).record) !== shadowHash(record)
-        || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+        || shadowHash(snapshot()) !== shadowHash(expectedSnapshot)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       const receipt = resultReceipt(record, output), { authentication, key_id, ...body } = record;
       persist({ ...body, phase: "receipted", revision: record.revision + 1, results: [...record.results, { output, receipt }] }, before.content_sha256);
       return { status: "receipted", receipt };

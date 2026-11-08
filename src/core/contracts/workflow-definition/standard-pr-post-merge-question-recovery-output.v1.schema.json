@@ -31,7 +31,8 @@
     },
     "facts": {
       "type": "object",
-      "maxProperties": 0
+      "additionalProperties": false,
+      "properties": { "session_pr_post_merge_fast_forward": { "const": false } }
     },
     "observations": {
       "type": "object",

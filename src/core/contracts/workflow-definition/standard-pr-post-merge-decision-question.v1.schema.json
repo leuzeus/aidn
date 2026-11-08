@@ -45,10 +45,11 @@
     "choices": {
       "type": "array",
       "minItems": 4,
-      "maxItems": 4,
+      "maxItems": 5,
       "items": {
         "enum": [
           "reconcile_manually",
+          "fast_forward",
           "refused",
           "deferred",
           "cancelled"

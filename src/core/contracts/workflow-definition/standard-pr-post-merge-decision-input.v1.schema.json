@@ -8,6 +8,7 @@
     "measurement_operation_id"
   ],
   "properties": {
+    "allow_fast_forward": { "const": true },
     "contract_version": {
       "const": "standard-pr-post-merge-decision-input.v1"
     },

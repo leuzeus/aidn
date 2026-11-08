@@ -74,6 +74,7 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
   return Object.freeze({
     alignmentSource,
     measure,
+    supportsFastForward: typeof port?.prepareFastForward === 'function',
     async prepare(instance, input, id) {
       const { merge, receiptSha } = source(instance, input);
       if (!['prepare', 'apply', 'recover'].every(method => typeof port?.[method] === 'function'))

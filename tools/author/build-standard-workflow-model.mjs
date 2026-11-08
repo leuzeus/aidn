@@ -168,8 +168,15 @@ op("pr_post_merge_measure", "session_pr_post_merge_measure", operation(null, "fe
 xor("pr_post_merge_route", [["diverged", "pr_post_merge_reconcile", "session_pr_post_merge_diverged"],
   ["aligned", "pr_post_merge_complete", null]]);
 op("pr_post_merge_complete", "session_pr_post_merge_complete", operation(null, "alignment_operation_id", "pr_post_merge_measure"));
-seq("pr_post_merge_reconcile", ["pr_post_merge_decision", "pr_post_merge_alignment", "pr_post_merge_reconciled_complete"]);
-op("pr_post_merge_decision", "session_pr_post_merge_decision", operation(null, "measurement_operation_id", "pr_post_merge_measure"));
+seq("pr_post_merge_reconcile", ["pr_post_merge_decision", "pr_post_merge_strategy", "pr_post_merge_alignment", "pr_post_merge_reconciled_complete"]);
+op("pr_post_merge_decision", "session_pr_post_merge_decision", {
+  ...operation(null, "measurement_operation_id", "pr_post_merge_measure"),
+  allow_fast_forward: { source: "literal", value: true },
+});
+xor("pr_post_merge_strategy", [["fast_forward", "pr_post_merge_fast_forward", "session_pr_post_merge_fast_forward"],
+  ["manual", "pr_post_merge_manual", null]]);
+seq("pr_post_merge_manual", []);
+op("pr_post_merge_fast_forward", "session_pr_post_merge_fast_forward", operation(null, "decision_operation_id", "pr_post_merge_decision"));
 op("pr_post_merge_alignment", "session_pr_post_merge_alignment", operation(null, "fetch_operation_id", "pr_post_merge_fetch"));
 op("pr_post_merge_reconciled_complete", "session_pr_post_merge_complete", operation(null, "alignment_operation_id", "pr_post_merge_alignment"));
 const prReviewNodes = nodes.splice(firstPrNode);

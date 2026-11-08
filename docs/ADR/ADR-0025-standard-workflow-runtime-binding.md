@@ -3386,12 +3386,28 @@ separate Git action, then the process retries the read-only alignment gate.
 Git movement after acceptance is evaluated from a new sample. Alignment
 still requires equal exact tips and merge ancestry. A zero sample on the
 initial measurement goes directly to the same canonical completion binding.
-The existing branch integration adapter switches from a distinct source to
-its target, so it provides no authorized fast-forward of the checked-out R09
-source. Even 0/N waits for manual reconciliation in this route. There is no
-Git mutation, reset, rebase or push attached to the decision. The historical
-R09 wait and alignment readers preserve their contracts. External merge during
-an earlier R08 wait remains a separate observation and incident path.
+For a fresh 0/N sample with positive N, the published R09 question also
+offers a fast-forward of the checked-out source. The signed choice pins the
+subject, including both tips, the source ref and the accepted fetch evidence.
+A separate executor grant pins the local Git plan and the accepted choice.
+The operation journal CAS claims a single dispatch before any Git write.
+
+The local port admits a clean, ordinary single worktree, with a regular index
+and a bounded set of regular changed paths. It checks configuration, locks,
+operation state, file collisions, both ancestry relations and the exact
+remote tip. The port holds the real index lock and prepares a native Git ref
+transaction, then uses Git's two-tree checkout with the reserved index.
+The transaction compares the source ref with its old OID. The checkout must
+produce the planned index and files before the ref transaction commits and
+the new index is published. HEAD stays on the source branch.
+
+Recovery reads the checked-out tip, index, files and the two correlated reflog
+appends under the retained plan. An interrupted or ambiguous postimage keeps
+the operation in reconciliation, with any owned incomplete index lock
+retained. A confirmed local postimage leads to fresh alignment and canonical
+completion before admission. Historical R09 readers retain their contracts.
+External merge during an earlier R08 wait remains a separate observation and
+incident path.
 The fixtures distinguish a real disposable Git remote and FILES application
 execution from the doubled GitHub transport and signed upstream inputs.
 

@@ -903,10 +903,13 @@ divergence against that OID. Recovery reads the durable Git witness.
 `session_pr_post_merge_alignment` consumes the accepted fetch receipt and
 checks a fresh protected remote tip, a stable source checkout and merge
 ancestry. Divergence or a missing remote object retains a resumable wait.
-Zero divergence reaches `session_pr_post_merge_wait` for the remaining
-canonical reconciliation. The human strategy decision and permitted effect
-for divergence remain separate.
-Historical direct observation and wait receipts stay readable.
+The current shared call routes a divergent measurement through
+`session_pr_post_merge_decision`. For a fresh behind-only sample, an authenticated
+fast-forward choice can reach `session_pr_post_merge_fast_forward` with its
+own executor grant and journal owner. The manual and fast-forward routes
+converge at fresh alignment and then canonical completion. An initially
+aligned sample goes straight to canonical completion. Historical direct
+observation and wait receipts stay readable.
 
 ## SPIKE canonical projection finalization, 2026-11-04
 

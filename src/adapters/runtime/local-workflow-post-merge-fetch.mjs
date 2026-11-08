@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { agentRunPhysicalPath, readAgentRunFile } from '../../application/runtime/agent-run-configuration-service.mjs';
 import { checkShadowJson, shadowHash } from '../../core/workflow/shadow-json.mjs';
+import { createLocalWorkflowPostMergeFastForward } from './local-workflow-post-merge-fast-forward.mjs';
 import { createLocalWorkflowBranchIntegration } from './local-workflow-branch-integration.mjs';
 
 const oid = value => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value ?? '');
@@ -15,7 +16,7 @@ const marker = hash => 'AIDN post-merge fetch ' + hash;
 
 // The host owns the remote identity and transfer. Transfer imports objects for
 // the exact OID without writing FETCH_HEAD, tracking refs or worktree files.
-export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environment = process.env, gitExecutable = 'git' }) {
+export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environment = process.env, gitExecutable = 'git', beforeFastForwardRefCommit }) {
   if (!digest(remote?.context_sha256) || typeof remote.observeTip !== 'function' || typeof remote.transfer !== 'function')
     fail('WORKFLOW_POST_MERGE_REMOTE_REQUIRED');
   const remoteIdentity = remote.context_sha256;
@@ -26,8 +27,8 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
     GIT_OPTIONAL_LOCKS: '0', GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1',
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: nullPath, GIT_TERMINAL_PROMPT: '0' };
   const fixed = ['-C', root, '-c', 'core.hooksPath=' + nullPath, '-c', 'core.fsmonitor=false', '-c', 'core.logAllRefUpdates=true'];
-  function git(args, statuses = [0]) {
-    const result = spawnSync(gitExecutable, [...fixed, ...args], { env, encoding: 'utf8', windowsHide: true,
+  function git(args, statuses = [0], { input, indexFile } = {}) {
+    const result = spawnSync(gitExecutable, [...fixed, ...args], { env: indexFile ? { ...env, GIT_INDEX_FILE: indexFile } : env, input, encoding: 'utf8', windowsHide: true,
       timeout: 10000, maxBuffer: 262144, stdio: 'pipe' });
     if (result.error || result.signal || !statuses.includes(result.status) || typeof result.stdout !== 'string')
       fail('WORKFLOW_POST_MERGE_GIT_UNAVAILABLE');
@@ -46,13 +47,13 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
     }));
   }
   const repoIdentity = repository();
-  function localView(branch) {
+  function localView(branch, { indexOwned = false, sourceLocked = false } = {}) {
     if (repository() !== repoIdentity) fail('WORKFLOW_POST_MERGE_REPOSITORY_CHANGED');
     const view = local.inspect({ source_branch: branch, target_branch: branch });
     if (view.current_ref !== view.source_ref || view.head !== view.source_head || view.source_symbolic
-      || !view.clean || view.lock_present || view.source_lock_present)
+      || !view.clean || view.lock_present !== indexOwned || view.source_lock_present !== sourceLocked)
       fail('WORKFLOW_POST_MERGE_SOURCE_CHECKOUT_REQUIRED');
-    return { ref: view.current_ref, head: view.head, sha256: shadowHash(view) };
+    return { ref: view.current_ref, head: view.head, sha256: shadowHash({ ...view, lock_present: false, source_lock_present: false }) };
   }
   function active(signal) {
     if (signal !== undefined && !(signal instanceof AbortSignal)) fail('WORKFLOW_POST_MERGE_SIGNAL_INVALID');
@@ -121,7 +122,30 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
     return { source_ref: plan.source_ref, local_head: plan.local_head, fetched_head: plan.remote_head, merge_oid: plan.merge_oid,
       proof_ref: plan.proof_ref, ...counts, plan_sha256: planSha };
   }
+  const ff = createLocalWorkflowPostMergeFastForward({ root, git, gitExecutable, fixed, env, localView, remoteTip,
+    active, repository, requireWitness, divergence, proveHistory, gitPath, beforeRefCommit: beforeFastForwardRefCommit });
+  function fastForwardSource(gitPlan, fetchPrepared) {
+    const fetchSha = fetchPrepared?.plan_sha256, fetchPlan = checked(fetchPrepared, fetchSha);
+    if (gitPlan.fetch_plan_sha256 !== fetchSha || gitPlan.source_ref !== fetchPlan.source_ref)
+      fail('WORKFLOW_POST_MERGE_FAST_FORWARD_FETCH_CHANGED');
+    return { fetchPlan, fetchSha };
+  }
   return Object.freeze({
+    prepareFastForward(fetchPrepared, { alignment, operationId, signal }) {
+      const fetchSha = fetchPrepared?.plan_sha256;
+      return ff.prepare(checked(fetchPrepared, fetchSha), fetchSha, alignment, operationId, signal);
+    },
+    applyFastForward(gitPlan, fetchPrepared, { write, expectPlan, signal, assertAuthorized }) {
+      if (write !== true || typeof assertAuthorized !== 'function' || shadowHash(gitPlan) !== expectPlan)
+        fail('WORKFLOW_POST_MERGE_FAST_FORWARD_EXPLICIT_WRITE_REQUIRED');
+      const { fetchPlan, fetchSha } = fastForwardSource(gitPlan, fetchPrepared);
+      return ff.apply(gitPlan, expectPlan, fetchPlan, fetchSha, { signal, assertAuthorized });
+    },
+    recoverFastForward(gitPlan, fetchPrepared, { expectPlan, signal }) {
+      if (shadowHash(gitPlan) !== expectPlan) fail('WORKFLOW_POST_MERGE_FAST_FORWARD_PLAN_CHANGED');
+      const { fetchPlan, fetchSha } = fastForwardSource(gitPlan, fetchPrepared);
+      return ff.recover(gitPlan, expectPlan, fetchPlan, fetchSha, signal);
+    },
     async prepare({ sourceBranch, mergeOid, operationId }, { signal } = {}) {
       if (!oid(mergeOid) || !/^op_[a-f0-9]{40}$/.test(operationId)) fail('WORKFLOW_POST_MERGE_SUBJECT_INVALID');
       const view = localView(sourceBranch), remoteHead = await remoteTip(view.ref, signal);

@@ -341,6 +341,25 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       reply: replyPort, resolution: resolutionPort,
       ...(mergePort ? { merge: mergePort } : {}),
       postMergeFetch: Object.freeze({
+        async prepareFastForward(fetchPrepared, input) {
+          const guard = transportGuard();
+          guard();
+          const plan = await postMergeFetch().prepareFastForward(fetchPrepared, input);
+          guard();
+          return plan;
+        },
+        applyFastForward(plan, fetchPrepared, input) {
+          const guard = transportGuard();
+          guard();
+          return postMergeFetch().applyFastForward(plan, fetchPrepared, authorized(guard, input));
+        },
+        recoverFastForward(plan, fetchPrepared, input) {
+          const guard = transportGuard();
+          guard();
+          const result = postMergeFetch().recoverFastForward(plan, fetchPrepared, input);
+          guard();
+          return result;
+        },
         prepare({ providerRepository, ...subject }, options) {
           revalidate();
           if (!providerRepository || shadowHash(providerRepository) !== shadowHash(repo)) fail("STANDARD_GITHUB_POST_MERGE_REPOSITORY_CHANGED");

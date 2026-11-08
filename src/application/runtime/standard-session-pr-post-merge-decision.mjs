@@ -1,6 +1,6 @@
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { assertPostMergeMeasureOutput, divergentReason, postMergeMeasureOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
-import { alignedPostMergeSubject, postMergeDecisionMaxAgeMs } from '../../core/workflow/standard-pr-post-merge-decision.mjs';
+import { alignedPostMergeSubject, behindOnly, postMergeDecisionMaxAgeMs } from '../../core/workflow/standard-pr-post-merge-decision.mjs';
 import { assertPostMergeSessionLink, postMergeSessionSource } from './standard-session-pr-post-merge-completion.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
@@ -41,7 +41,9 @@ export function createStandardPostMergeDecision({ postMerge, readAccepted, artif
   return Object.freeze({
     async prepare(instance, input, replaces = null, signal) {
       const { subject, observedAt } = await observe(instance, input, signal);
-      return { can_apply: true, subject, prepared_at_ms: observedAt, expires_at_ms: observedAt + postMergeDecisionMaxAgeMs,
+      return { can_apply: true, subject, ...(input.allow_fast_forward === true
+        ? { fast_forward_offered: behindOnly(subject.alignment) && postMerge.supportsFastForward } : {}),
+        prepared_at_ms: observedAt, expires_at_ms: observedAt + postMergeDecisionMaxAgeMs,
         ...(replaces ? { replaces } : {}) };
     },
     assertAge,

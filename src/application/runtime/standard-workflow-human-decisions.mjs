@@ -157,7 +157,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     },
     output(record, capture) {
       const request = question(record);
-      if (record.intent.binding_ref === postMergeDecisionOperation) return postMergeDecisionOutput(request, capture);
+      if (record.intent.binding_ref === postMergeDecisionOperation) return postMergeDecisionOutput(request, capture, record.preview.input.allow_fast_forward === true);
       if (record.intent.binding_ref === mergeConsentOperation) return mergeConsentOutput(request, capture);
       if (resolutionException(record)) return resolutionExceptionOutput(request, capture);
       if (spike(record)) {

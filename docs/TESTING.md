@@ -4364,6 +4364,20 @@ head; fixture cleanup explicitly removes its own retained preparations.
 These are bounded component checks, not real GitHub network/native/archive or
 full standard qualification.
 
+### R09 authorized local fast-forward
+
+Run `node tools/perf/verify-standard-post-merge-fast-forward-fixtures.mjs`
+for disposable Git checkout and refusal evidence. Run
+`node tools/perf/verify-standard-pr-review-reply-fixtures.mjs` with
+`--case=post-merge-fast-forward-session` or
+`--case=post-merge-fast-forward-correction` for the two published call sites.
+These bounded FILES fixtures use the actual signed decision inbox, effect
+journal and disposable Git checkout. They seed upstream receipts and double
+GitHub transport. The corrective selector interrupts after the Git postimage
+and reopens the journal in a new Node process. The final gate measures alignment,
+records canonical completion, checks admissions and replays the events.
+These selectors run separately from the required family.
+
 ### Canonical process-prefix replay
 
 `verify-process-operation-fixtures.mjs` also runs

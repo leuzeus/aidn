@@ -1262,9 +1262,14 @@ l’entrée STANDARD, après une mesure Git fraîche et sous plan, grant et CAS
 exacts. Une nouvelle question lie l’intention et le reçu de disposition
 précédents au sujet courant. Une capture commencée reste liée à sa source
 authentifiée et à son entrée inbox. Une convergence externe passe par
-l’alignement et la clôture canonique avant toute admission. Le fast-forward
-autorisé et la fusion externe pendant une autre attente R08 restent des
-tranches séparées.
+l’alignement et la clôture canonique avant toute admission. Pour un 0/N
+fraîchement mesuré, les deux sites proposent aussi l’avance de la branche
+source checkoutée. Le choix signé et le grant Git exact sont distincts.
+Le port borne les chemins du checkout et corrèle la preuve locale au plan
+dans les reflogs HEAD et source. Une interruption sans postimage vérifiable
+conserve l’état UNKNOWN et les verrous incomplets. La reprise lit la preuve
+sans répéter l’effet. La fusion externe pendant une autre attente R08 reste
+une tranche séparée.
 
 | A10 — Stockage et histoires | files/dual/db-only sur SQLite réel ; PostgreSQL configuré via adaptateur réel et transport simulé hors ligne, puis preuve PostgreSQL réel avant affirmation de ce backend. Projection en panne conservée comme telle. Lecteurs workflow-instance.v1 et agentic-process-instance.v1 préservés, historique non converti. |
 

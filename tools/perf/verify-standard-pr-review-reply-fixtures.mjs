@@ -902,7 +902,9 @@ function qualifyPostMergeDecision({ base, home, measurement, fetch, localBefore,
       const { operation_id: id } = await f.stage(preview);
       const { status, question } = await f.host.dispatch(id, { write: true });
       assert.equal(status, 'waiting_for_human');
-      assert.deepEqual(question.choices, ['reconcile_manually', 'refused', 'deferred', 'cancelled']);
+      assert.deepEqual(question.choices, alignment.ahead === 0
+        ? ['reconcile_manually', 'fast_forward', 'refused', 'deferred', 'cancelled']
+        : ['reconcile_manually', 'refused', 'deferred', 'cancelled']);
       assert.equal(question.scope_id, f.inspect().record.scope_id);
       assert.equal(question.intent_sha256, shadowHash(f.host.readJournal(id).intent));
       const sourceRef = 'r09_' + choice;
@@ -967,7 +969,8 @@ function qualifyPostMergeDecision({ base, home, measurement, fetch, localBefore,
       assert.deepEqual(capture.source, claim);
       assert.equal(capture.receipt_sha256, shadowHash(result.receipt));
       assert.equal(result.output.effect_status, 'no_effect');
-      assert.deepEqual(result.output.facts, {});
+      assert.deepEqual(result.output.facts, result.output.outcome === 'completed'
+        ? { session_pr_post_merge_fast_forward: choice === 'fast_forward' } : {});
       assert.equal(result.output.observations.choice, choice);
       assert.equal(continuity().completion, null);
       assert.equal(git('rev-parse', 'HEAD'), localBefore);
@@ -1182,16 +1185,38 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   for (const document of renderStandardSessionPrRecord({ source: { session_id: 'S001', session_path: sessionPath,
     open_operation_id: openId, pull_request: link }, documents, preparedAt: Date.now() }))
     fs.writeFileSync(path.join(audit, document.path), document.text_chunks.join(''));
+  const fastForward = scenario === 'fast-forward';
+  if (fastForward) {
+    fs.writeFileSync(path.join(targetRoot, 'fixture-update.txt'), 'before\n');
+    fs.writeFileSync(path.join(targetRoot, 'fixture-remove.txt'), 'remove\n');
+    git('add', '--', 'fixture-update.txt', 'fixture-remove.txt');
+    fs.appendFileSync(path.join(targetRoot, '.git/info/exclude'), '\nfixture-ignore.txt\n');
+    fs.writeFileSync(path.join(targetRoot, 'fixture-ignore.txt'), 'preserve\n');
+  }
   git('add', '--', 'docs/audit');
   git('commit', '-m', 'fixture PR opening marker');
   const sourceHead = git('rev-parse', 'HEAD'), sourceTree = git('rev-parse', 'HEAD^{tree}');
-  const merged = git('commit-tree', sourceTree, '-p', sourceHead, '-p', pr.head_oid, '-m', 'fixture accepted merge');
+  let mergedTree = sourceTree;
+  if (fastForward) {
+    const altIndex = path.join(base, 'remote.index');
+    const alt = (...args) => execFileSync(binding.git.path, ['-C', targetRoot, ...args],
+      { env: { ...process.env, GIT_INDEX_FILE: altIndex }, encoding: 'utf8', windowsHide: true }).trim();
+    const blob = path.join(base, 'remote-blob');
+    fs.writeFileSync(blob, 'after\n');
+    const blobOid = git('hash-object', '-w', blob);
+    alt('read-tree', sourceTree);
+    alt('update-index', '--add', '--cacheinfo', '100644,' + blobOid + ',fixture-update.txt');
+    alt('update-index', '--add', '--cacheinfo', '100644,' + blobOid + ',fixture-add.txt');
+    alt('update-index', '--force-remove', '--', 'fixture-remove.txt');
+    mergedTree = alt('write-tree');
+  }
+  const merged = git('commit-tree', mergedTree, '-p', sourceHead, '-p', pr.head_oid, '-m', 'fixture accepted merge');
   git(bare, 'fetch', '--no-write-fetch-head', '--', targetRoot, merged);
   git(bare, 'update-ref', 'refs/heads/dev', merged, fetchFixture.merged);
   fetchFixture.merged = merged;
   save(configurationFile, data);
   // The corrective case has two lines of history and therefore no FF strategy.
-  const ambiguous = prefix === 'correction';
+  const ambiguous = prefix === 'correction' && !fastForward;
   if (ambiguous) git('commit', '--allow-empty', '-m', 'fixture local-only source commit');
   if (scenario === 'nominal') git('merge', '--ff-only', merged);
   const localBefore = git('rev-parse', 'HEAD');
@@ -1232,8 +1257,9 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   assert.equal(preview.prepared.plan.git.plan.source_ref, 'refs/heads/dev');
   assert.equal(f.state.fetchSends ?? 0, 0);
   await assert.rejects(f.stage(preview), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
+  const interruptFetch = prefix === 'correction' && !fastForward;
   let id;
-  if (prefix === 'session') {
+  if (!interruptFetch) {
     id = (await f.run(preview)).operation_id;
   } else {
     f.allow(shadowHash(preview));
@@ -1249,8 +1275,8 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   let resumed = open(base);
   const record = resumed.host.readJournal(id), output = record.results[0].output, { fetch } = output.observations;
   assert.equal(output.outcome, 'completed');
-  assert.equal(output.effect_status, prefix === 'session' ? 'confirmed' : 'no_effect');
-  assert.equal(fetch.confirmation, prefix === 'session' ? 'executed' : 'observed');
+  assert.equal(output.effect_status, interruptFetch ? 'no_effect' : 'confirmed');
+  assert.equal(fetch.confirmation, interruptFetch ? 'observed' : 'executed');
   assert.equal(fetch.merge_operation_id, mergeId);
   assert.equal(fetch.merge_receipt_sha256, shadowHash(mergeReceipt));
   assert.equal(fetch.fetched_head, fetchFixture.merged);
@@ -1301,6 +1327,53 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
           advanced = converged;
         } else git('merge', '--ff-only', advanced);
       }
+    } else if (fastForward) {
+      const human = qualifyPostMergeDecision({ base, home: data.home, measurement, fetch, localBefore, merged, git, bare, tip, continuity });
+      assert.equal(await human.answer('fast_forward'), 'completed');
+      resumed = open(base);
+      const ff = await resumed.preview();
+      assert.equal(ff.binding.id, 'session_pr_post_merge_fast_forward');
+      assert.equal(ff.prepared.plan.git.source_ref, tip);
+      assert.equal(ff.prepared.plan.git.local_head, localBefore);
+      assert.equal(ff.prepared.plan.git.remote_head, merged);
+      assert.equal(ff.prepared.plan.git.behind, 2);
+      await assert.rejects(resumed.stage(ff), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
+      resumed.allow(shadowHash(ff));
+      const { operation_id: effectId } = await resumed.stage(ff);
+      resumed.deny(true);
+      await assert.rejects(resumed.host.dispatch(effectId, { write: true }), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
+      assert.equal(git('rev-parse', 'HEAD'), localBefore);
+      assert.equal(resumed.host.readJournal(effectId).phase, 'staged');
+      resumed.deny(false);
+      const marker = 'AIDN post-merge fast-forward ' + shadowHash(ff.prepared.plan.git);
+      if (prefix === 'correction') {
+        resumed.interrupt();
+        await assert.rejects(resumed.host.dispatch(effectId, { write: true }), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
+        assert.equal(resumed.host.readJournal(effectId).phase, 'dispatching');
+        assert.equal(git('rev-parse', 'HEAD'), merged);
+        const cold = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--recover-post-merge-fetch', base, effectId],
+          { encoding: 'utf8', timeout: 240000, windowsHide: true }));
+        assert.deepEqual(cold, { status: 'receipted', sends: 1, reads: 0, results: 1 });
+      } else {
+        const dispatch = await resumed.host.dispatch(effectId, { write: true });
+        assert.equal(dispatch.receipt.outcome, 'completed', JSON.stringify(resumed.host.readJournal(effectId).results));
+        assert.equal(dispatch.receipt.effect_status, 'confirmed');
+        await resumed.host.accept(effectId, { write: true });
+      }
+      assert.equal(git('symbolic-ref', 'HEAD'), tip);
+      assert.equal(git('rev-parse', 'HEAD'), merged);
+      assert.equal(git(bare, 'rev-parse', tip), merged);
+      assert.equal(git('write-tree'), mergedTree);
+      assert.equal(git('status', '--porcelain'), '');
+      assert.equal(git('reflog', '--format=%gs', 'HEAD').split(/\r?\n/).filter(row => row === marker).length, 1);
+      assert.equal(git('reflog', '--format=%gs', tip).split(/\r?\n/).filter(row => row === marker).length, 1);
+      assert.equal(fs.readFileSync(path.join(targetRoot, 'fixture-update.txt'), 'utf8').trim(), 'after');
+      assert.equal(fs.readFileSync(path.join(targetRoot, 'fixture-add.txt'), 'utf8').trim(), 'after');
+      assert.equal(fs.existsSync(path.join(targetRoot, 'fixture-remove.txt')), false);
+      assert.equal(fs.readFileSync(path.join(targetRoot, 'fixture-ignore.txt'), 'utf8'), 'preserve\n');
+      assert.equal(continuity().completion, null);
+      assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+      console.log('PASS R09 ' + prefix + ' exact signed choice, separate grant, real checkout and one local ref advance');
     } else {
       const human = qualifyPostMergeDecision({ base, home: data.home, measurement, fetch, localBefore, merged, git, bare, tip, continuity });
       const outcome = await human.answer(scenario === 'reconcile' ? (ambiguous ? 'reconcile_manually' : 'deferred') : scenario,
@@ -1366,7 +1439,7 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   await assert.rejects(resumed.stage(completionPreview), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
   resumed.allow(shadowHash(completionPreview));
   const { operation_id: completionId } = await resumed.stage(completionPreview);
-  if (prefix === 'correction') {
+  if (prefix === 'correction' && !fastForward) {
     resumed.interrupt();
     await assert.rejects(resumed.host.dispatch(completionId, { write: true }), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
   } else {
@@ -1476,6 +1549,8 @@ if (/^--case=post-merge-recover-(expired|moved|aligned)$/.test(process.argv[2]))
   assert.equal(result.result.workflow_completed, false);
   console.log(JSON.stringify({ status: result.result.details.status, outcome: result.result.operation_outcome,
     receiptId: result.result.details.receipt.receipt_id }));
+} else if (/^--case=post-merge-fast-forward-(session|correction)$/.test(process.argv[2])) {
+  await qualifyPostMergeFetch(process.argv[2].split('-').at(-1), 'fast-forward');
 } else if (/^--case=post-merge-fetch-(session|correction|nominal|refused|cancelled)$/.test(process.argv[2])) {
   const mode = process.argv[2].slice('--case=post-merge-fetch-'.length);
   await qualifyPostMergeFetch(mode === 'correction' ? 'correction' : 'session',

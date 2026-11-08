@@ -76,12 +76,19 @@ continuity fact. Historical inbox readers retain their versioned contracts.
 
 R09 question recovery adds a signed plan and an operation output that describe
 the previous intent and the current Git subject. The ordinary STANDARD action
-and result support the additive `question_recovery` kind. Its receipt has empty
-facts. The optional `replaces` field binds a successor question to the prior
+and result support the additive `question_recovery` kind. Its receipt can
+select the manual alignment route after explicit recognition of convergence. The optional `replaces` field binds a successor question to the prior
 intent and accepted disposition receipt. Historical questions omit that field
 and retain their original hashes. R09 claims may add an authenticated source
 digest to the operation journal before inbox reservation. Inbox v15 and the
-human source contract keep their existing shapes.
+human source contract also admit the fast-forward choice for a question that
+offered it. Historical question hashes and receipt bodies remain readable.
+
+Private `standard-pr-post-merge-fast-forward-{input,plan,output}.v1` contracts
+bind the accepted decision to its own effect grant and local checkout plan.
+The result distinguishes execution from read-only recovery of a correlated
+postimage. UNKNOWN carries a reason and no success fact. Both published
+call sites still require a new alignment receipt and canonical acceptance.
 
 Private `standard-pr-post-merge-complete-{input,plan,output}.v1` contracts bind
 the accepted alignment to the opening, merge and fetch receipts, the project
