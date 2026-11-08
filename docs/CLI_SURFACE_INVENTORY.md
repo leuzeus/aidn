@@ -370,6 +370,11 @@ finalization; `--verify` retains its read-only verification behavior.
     human source for the exact question and documented rationale. Applying the
     reviewed action records a typed no-effect receipt. The receipt covers only
     the unresolved thread gate and leaves checks and merge consent separate.
+    A protected GitHub manifest can pin required checks to its target ref.
+    STANDARD records a read-only check receipt on the exact HEAD. A separate
+    `--decision-source` selects a signed merge decision for the current
+    question. Approval is time-limited and advances to a read-only wait for
+    provider merge observation.
     A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`

@@ -25,6 +25,19 @@ IDs and provider evidence. The rationale is retained in the signed
 capture and routes only the resolution gate. The inbox and operation journal
 keep their existing authorities and storage.
 
+## R08 required checks and merge consent contracts
+
+`standard-github-required-checks.v1` is a private policy within the protected
+GitHub host manifest. `standard-pr-checks-accept-{input,output}.v1` retains the
+exact R08 receipt, delivery and PR subject, policy digest and successful check
+result identities. `standard-pr-merge-consent-{input,question,output}.v1`
+binds that acceptance to a separate `human-pr-merge-consent.v1` signed source
+in `process-decision-inbox.v14`. The no-effect receipt carries the decision
+and question deadline. Earlier inbox versions retain their readers.
+`standard-pr-premerge-observe-output.v1` preserves the provider fact of an
+already merged PR on a deferred receipt with empty routing facts. Historical
+merge observation retains its v1 contract.
+
 ## Original dispatch and disposition records
 
 Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,

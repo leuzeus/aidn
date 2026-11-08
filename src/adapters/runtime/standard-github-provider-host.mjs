@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { agentRunPhysicalPath, readAgentRunFile } from "../../application/runtime/agent-run-configuration-service.mjs";
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
+import { assertGithubRequiredChecksPolicy, observeGithubRequiredChecks } from "../git-provider/github-required-checks.mjs";
 import { createGithubSessionPush } from "../git-provider/github-session-push.mjs";
 import { createGithubPrReviewResolution } from "../git-provider/github-pr-review-resolution.mjs";
 import { createGithubPrReviewReply } from "../git-provider/github-pr-review-reply.mjs";
@@ -39,11 +40,11 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     if (!snapshot) return null;
     binding = snapshot.value;
   } catch { fail("STANDARD_GITHUB_HOST_CONFIGURATION_INVALID"); }
-  const { repository, actor, git, gh, reviewer } = binding ?? {};
+  const { repository, actor, git, gh, reviewer, required_checks: requiredChecks } = binding ?? {};
   const principal = (value, login = /^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/) => matches(value.login, login) && matches(value.node_id, nodeId);
   const executable = value => exact(value, "path,sha256") && typeof value.path === "string"
     && path.isAbsolute(value.path) && matches(value.sha256, hash);
-  if (!exact(binding, "actor,contract_version,gh,git,instance_id,repository," + (reviewer === undefined ? "" : "reviewer,") + "target_root")
+  if (!exact(binding, "actor,contract_version,gh,git,instance_id,repository," + (requiredChecks === undefined ? "" : "required_checks,") + (reviewer === undefined ? "" : "reviewer,") + "target_root")
     || binding.contract_version !== "standard-host-github.v1"
     || binding.target_root !== configuration.target_root || binding.instance_id !== configuration.instance_id
     || !exact(repository, "host,name,node_id,owner") || repository.host !== "github.com"
@@ -54,6 +55,8 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       || !principal(reviewer, reviewer.type === "Bot" ? /^[A-Za-z0-9][A-Za-z0-9-]{0,99}(?:\[bot\])?$/ : undefined))
     || !executable(git) || !executable(gh) || key(git.path) === key(gh.path))
     fail("STANDARD_GITHUB_HOST_CONFIGURATION_INVALID");
+
+  if (requiredChecks !== undefined) assertGithubRequiredChecksPolicy(requiredChecks);
 
   const root = configuration.target_root, configDir = path.join(home, identity + ".github");
   const { host, ...repo } = repository, fullName = repo.owner + "/" + repo.name;
@@ -180,6 +183,22 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       return result;
     };
   }
+  async function observeRequiredChecks(request, { signal } = {}) {
+    const guard = transportGuard();
+    const authenticated = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
+    const run = guardedRun(guard, runGithubRead);
+    const get = async endpoint => {
+      const result = await run(gh.path, ["api", "--hostname", host, "--method", "GET", endpoint],
+        { ...options, env: authenticated, signal });
+      guard();
+      if (signal?.aborted || result?.status !== 0 || result.signal || result.error || typeof result.stdout !== "string"
+        || Buffer.byteLength(result.stdout) > options.maxBuffer) fail("STANDARD_PR_CHECK_INVENTORY_UNAVAILABLE");
+      try { return JSON.parse(result.stdout); } catch { fail("STANDARD_PR_CHECK_INVENTORY_INVALID"); }
+    };
+    const checks = await observeGithubRequiredChecks({ get, repository: repo, policy: requiredChecks, request });
+    return { policy_sha256: shadowHash({ manifest_sha256: snapshot.sha256, policy: requiredChecks }),
+      actor_id: actor.node_id, checks };
+  }
   const content = readPort(createGithubPrContentAsyncAdapter, "observePullRequest");
   const evidence = readPort(createGithubReviewContentAsyncAdapter, "observeReviewEvidence");
   const reviewEffects = readPort(createGithubPrReviewEffectsAsyncAdapter, "observePrReviewEffects");
@@ -269,6 +288,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       observePrMerge: readPort(createGithubPrMergeAsyncAdapter, "observePrMerge"),
       reviewEffectActor: Object.freeze({ ...actor }),
       observePrReviewEffects: reviewEffects,
+      ...(requiredChecks ? { observeRequiredChecks } : {}),
       reply: replyPort, resolution: resolutionPort,
     }),
     ...(reviewer ? { sessionReviewEventPort: Object.freeze({ ...reviewEvents(readReviewEvent), withReviewReads }) } : {}),

@@ -47,6 +47,12 @@ function inspectStandardPrReviewReplies(original, current, dispositions, actor, 
   return { replies: [...proofs.values()], missing: [...expected.values()].filter(item => !proofs.has(item.node_id)), unresolved };
 }
 
+export function prObservationRequest(p) {
+  return { contract_version: 'github-pr-observation-request.v2', pull_request_number: p.number,
+    expected_pull_request_id: p.node_id, expected_head_oid: p.head_oid, expected_base_oid: p.base_oid,
+    expected_head_ref: p.head_branch, expected_base_ref: p.base_branch };
+}
+
 export function createStandardPrReviewEffectsReader({ readAccepted, readAcceptedUpdate, readDelivered, verifyEvent, readCurrent, reviewPort, readAcceptedReplies = () => [], now = Date.now }) {
   const readSource = createStandardPrAcceptedReviewSource({ readAccepted, readAcceptedUpdate, readDelivered, sourceChanged });
   function source(instance, input) {
@@ -72,9 +78,7 @@ export function createStandardPrReviewEffectsReader({ readAccepted, readAccepted
       || typeof reviewPort.observeReviewContent !== 'function') return { reason: 'STANDARD_PR_EFFECTS_PROVIDER_REQUIRED' };
     await verifyEvent(before.capture, { signal });
     active();
-    const request = { contract_version: 'github-pr-observation-request.v2', pull_request_number: p.number,
-      expected_pull_request_id: p.node_id, expected_head_oid: p.head_oid, expected_base_oid: p.base_oid,
-      expected_head_ref: p.head_branch, expected_base_ref: p.base_branch };
+    const request = prObservationRequest(p);
     const url = new URL(p.url);
     function checkSubject(observed) {
       active();

@@ -1108,7 +1108,7 @@ if (process.argv[2] === "--mixed-continue") {
       }
       assert.ok(frame, JSON.stringify({ status: state.cursor.status, waits: state.cursor.occurrences.filter(row => row.status === "WAITING") }));
       if (frame.node_id === standardComposedStop) break;
-      if (stopsAtPrEffects && frame.node_id === "pr_reply_select") {
+      if (stopsAtPrEffects && frame.node_id === "pr_premerge_observe") {
         const observed = await f.open().step({ write: true, authorization: auth });
         assert.equal(observed.status, "WAITING");
         break;
@@ -1262,7 +1262,7 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(final.cursor.status, "WAITING");
       const call = final.cursor.occurrences.find(row => row.node_id === (fullCorrection ? "correction_pr_effects_pending" : "session_pr_effects_pending"));
       assert.equal(call.status, "WAITING");
-      const frame = final.cursor.occurrences.find(row => row.node_id === "pr_reply_select" && row.call_scope_id === call.occurrence_id);
+      const frame = final.cursor.occurrences.find(row => row.node_id === "pr_premerge_observe" && row.call_scope_id === call.occurrence_id);
       assert.equal(frame.operation.receipt.outcome, "deferred");
       assert.equal(frame.operation.receipt.effect_status, "no_effect");
       assert.deepEqual(frame.operation.receipt.facts, {});

@@ -861,7 +861,9 @@ catalog still declares complete_standard_workflow=false.
 
 The initial and corrective delivery paths pass their own accepted triage
 operation ID to the same pinned aidn-standard-pr-review-completion target.
-Inside the call, session_pr_review_reply_select authenticates the current
+The preflight merge observer checks the provider before the reply loop. A
+premature merge remains a deferred provider observation. Once the exact PR
+is observed open, session_pr_review_reply_select authenticates the current
 delivery, review event and accepted triage chain. Fresh review and thread
 evidence selects one missing invalid root reply. The IR supplies the triage
 and selection operation IDs to session_pr_review_reply_publish. The protected
@@ -886,9 +888,12 @@ resolved thread on the exact PR, HEAD and base on the nominal path. The
 exception path reuses the reply and correction checks and requires fresh
 provider evidence at decision delivery and receipt acceptance. Its signed
 decision records the reason and exact open set, leaving each thread's observed
-status intact. Both paths reach the following operation.
-`session_pr_merge_observe` only observes. Checks, merge consent, merge effect
-and R09 remain separate. Historical direct observation receipts stay readable.
+status intact. Both paths reach `session_pr_checks_accept`, which revalidates
+the resolution receipt and compares exact-HEAD results against the protected
+check policy. `session_pr_merge_consent` consumes the accepted operation ID and
+binds a fresh signed decision to the same exact subject. The call then waits
+at the read-only `session_pr_merge_observe` boundary. Merge execution and R09
+are separate. Historical direct observation receipts stay readable.
 
 ## SPIKE canonical projection finalization, 2026-11-04
 

@@ -41,6 +41,10 @@ import prReviewEffectsInput from "../contracts/workflow-definition/standard-sess
 import prResolutionSelectOutputV2 from "../contracts/workflow-definition/standard-pr-review-resolution-select-output.v2.schema.json" with { type: "json" };
 import prResolutionExceptionInput from "../contracts/workflow-definition/standard-pr-review-resolution-exception-input.v1.schema.json" with { type: "json" };
 import { assertResolutionExceptionOutput, resolutionExceptionOperation } from "./standard-pr-resolution-exception.mjs";
+import checksAcceptInput from "../contracts/workflow-definition/standard-pr-checks-accept-input.v1.schema.json" with { type: "json" };
+import mergeConsentInput from "../contracts/workflow-definition/standard-pr-merge-consent-input.v1.schema.json" with { type: "json" };
+import premergeOutput from "../contracts/workflow-definition/standard-pr-premerge-observe-output.v1.schema.json" with { type: "json" };
+import { assertMergeConsentOutput, assertRequiredChecksOutput, checksOperation, mergeConsentOperation } from "./standard-pr-merge-consent.mjs";
 import prReviewEffectsOutput from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v1.schema.json" with { type: "json" };
 import prMergeProvider from "../contracts/workflow-definition/github-pr-merge-observation.v1.schema.json" with { type: "json" };
 import prMergeInput from "../contracts/workflow-definition/standard-session-pr-merge-observe-input.v1.schema.json" with { type: "json" };
@@ -204,7 +208,12 @@ export function assertStandardOperationInput(operation, value) {
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
-  if (operation === "session_pr_merge_observe") {
+  if ([checksOperation, mergeConsentOperation].includes(operation)) {
+    if (checkShadowJson(value) || validateJsonSchema(value, operation === checksOperation ? checksAcceptInput : mergeConsentInput,
+      "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
+    return value;
+  }
+  if (["session_pr_premerge_observe", "session_pr_merge_observe"].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, prMergeInput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
@@ -325,6 +334,8 @@ export function assertStandardOperationOutput(value) {
       || evidence_refs[0].sha256 !== shadowHash(reply)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
+  if (value?.contract_version === "standard-pr-merge-consent-output.v1") return assertMergeConsentOutput(value);
+  if (value?.contract_version === "standard-pr-checks-accept-output.v1") return assertRequiredChecksOutput(value);
   if (value?.contract_version === "standard-pr-review-resolution-exception-output.v1") return assertResolutionExceptionOutput(value);
   if (["standard-pr-review-resolution-select-output.v1", "standard-pr-review-resolution-select-output.v2", "standard-pr-review-thread-resolve-output.v1"].includes(value?.contract_version)) {
     const select = value.contract_version !== "standard-pr-review-thread-resolve-output.v1";
@@ -357,10 +368,13 @@ export function assertStandardOperationOutput(value) {
       : proof || Object.keys(value.facts).length || value.evidence_refs.length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
-  if (value?.contract_version === "standard-session-pr-merge-observe-output.v1") {
-    if (checkShadowJson(value) || validateJsonSchema(value, prMergeOutput, "$", { contractKind: "workflow-definition" }).length)
+  if (["standard-session-pr-merge-observe-output.v1", "standard-pr-premerge-observe-output.v1"].includes(value?.contract_version)) {
+    const preflight = value.contract_version === "standard-pr-premerge-observe-output.v1";
+    if (checkShadowJson(value) || validateJsonSchema(value, preflight ? premergeOutput : prMergeOutput, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_OUTPUT_INVALID");
     const proof = value.observations.merge_observation;
+    if (preflight && ((value.outcome === "completed") !== (value.observations.reason_code === "STANDARD_PR_PREMERGE_OPEN")))
+      fail("STANDARD_OPERATION_OUTPUT_INVALID");
     if (proof ? validateJsonSchema(proof.provider, prMergeProvider, "$", { contractKind: "workflow-definition" }).length
       || value.outcome !== "deferred" || value.observations.reason_code !== "STANDARD_PR_MERGE_REVIEW_EFFECTS_REQUIRED"
       || proof.provider.pull_request.state !== "MERGED" || !proof.provider.pull_request.merged

@@ -4,11 +4,11 @@ import { assertStandardOperationInput, assertStandardOperationOutput } from '../
 import { createStandardPrAcceptedReviewSource } from './standard-session-pr-review-source.mjs';
 import { assertGithubPrMergeObservation } from '../../adapters/git-provider/github-workflow-adapter.mjs';
 
-const operation = 'session_pr_merge_observe';
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 const reviewPending = 'STANDARD_PR_MERGE_REVIEW_EFFECTS_REQUIRED';
 
-export function createStandardSessionPrMergeObservation({ readAccepted, readAcceptedUpdate, readDelivered, verifyEvent, readCurrent, reviewPort, now = Date.now }) {
+export function createStandardSessionPrMergeObservation({ readAccepted, readAcceptedUpdate, readDelivered, verifyEvent, readCurrent, reviewPort, now = Date.now }, { preflight = false } = {}) {
+  const operation = preflight ? 'session_pr_premerge_observe' : 'session_pr_merge_observe';
   const readSource = createStandardPrAcceptedReviewSource({ readAccepted, readAcceptedUpdate, readDelivered,
     sourceChanged: 'STANDARD_PR_MERGE_SOURCE_CHANGED' });
   function source(instance, input) {
@@ -16,7 +16,7 @@ export function createStandardSessionPrMergeObservation({ readAccepted, readAcce
     return readSource(instance, input);
   }
   function emit(outcome, reasonCode, proof) {
-    return assertStandardOperationOutput({ contract_version: 'standard-session-pr-merge-observe-output.v1',
+    return assertStandardOperationOutput({ contract_version: preflight ? 'standard-pr-premerge-observe-output.v1' : 'standard-session-pr-merge-observe-output.v1',
       operation_ref: operation, outcome, effect_status: 'no_effect', facts: {},
       observations: { reason_code: reasonCode, ...(proof ? { merge_observation: proof } : {}) },
       evidence_refs: proof ? [{ ref: 'github:pr-merge/' + proof.provider.pull_request.node_id, sha256: shadowHash(proof) }] : [] });
@@ -66,7 +66,8 @@ export function createStandardSessionPrMergeObservation({ readAccepted, readAcce
         const end = now();
         if (!unchanged || !Number.isSafeInteger(end) || end < Date.parse(provider.observed_until) || end - start > 300000) fail('STANDARD_PR_MERGE_CONTEXT_CHANGED');
         if (provider.pull_request.state === 'CLOSED') fail('STANDARD_PR_MERGE_CLOSED_UNMERGED');
-        if (provider.pull_request.state === 'OPEN') return emit('deferred', 'STANDARD_PR_MERGE_AWAITING_PROVIDER');
+        if (provider.pull_request.state === 'OPEN') return preflight
+          ? emit('completed', 'STANDARD_PR_PREMERGE_OPEN') : emit('deferred', 'STANDARD_PR_MERGE_AWAITING_PROVIDER');
 
         // The authentic fact is retained on a deferred receipt, with no
         // routing facts. R08 effects and their verification still gate progress.

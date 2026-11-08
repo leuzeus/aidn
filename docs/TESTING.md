@@ -1399,6 +1399,21 @@ published model uses that content binding without changing the historical one.
 Full text availability still establishes neither triage nor policy acceptance,
 resolution, merge consent or a completed PR orchestration skill.
 
+For the R08 check and consent boundary, run
+`node tools/perf/verify-github-required-checks-fixtures.mjs` for contract and
+inventory refusals. The standalone
+`verify-standard-pr-review-reply-fixtures.mjs --case=consent-refused`
+and `--case=consent-correction` exercise the two published call sites
+with signed synthetic upstream records, real FILES ports, an Ed25519 fixture
+authority and doubled GitHub transport. The corrective case resumes the signed
+decision in a fresh process. A separate `--case=exception-consent-correction`
+exercises check acceptance with a current documented exception and refusal
+with an expired signed source. Replay and SIM perform no provider calls. These
+cases remain outside the required 900-second family. The composed driver's
+existing partial PR milestone now waits at the preflight merge observation
+when its provider fixture lacks that port. Provider, Native,
+PostgreSQL and installed behavior require separate qualification.
+
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as
 their historical synchronous interfaces. It compares complete typed outputs,

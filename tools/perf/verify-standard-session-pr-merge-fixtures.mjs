@@ -31,7 +31,7 @@ const asMerged = () => ({ state: 'MERGED', merged: true, mergedAt,
   mergeCommit: { oid: merge, parents: { totalCount: 2, nodes: [{ oid: base }, { oid: head }], pageInfo: { hasNextPage: false } } },
   baseRef: { target: { oid: tip } } });
 
-function fixture(prefix = 'session', correctionsRequired = false, effects = null) {
+function fixture(prefix = 'session', correctionsRequired = false, effects = null, { preflight = false } = {}) {
   const updateBinding = prefix === 'session' ? 'session_pr_update_push' : 'session_pr_redelivery_push';
   const target = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-completion');
   const callSite = prefix + '_pr_effects_pending', triageNode = prefix + '_pr_triage_evaluate';
@@ -40,7 +40,7 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     effects ? callSite : prefix + '_pr_merge_observe'];
   const nodes = nodeIds.map(id => published.nodes.find(node => node.id === id));
   // Exercise the historical direct operation shape separately from the call.
-  if (!effects) nodes[nodes.length - 1] = { ...target.model.nodes.find(node => node.id === 'pr_merge_observe'), id: nodeIds.at(-1) };
+  if (!effects) nodes[nodes.length - 1] = { ...target.model.nodes.find(node => node.id === (preflight ? 'pr_premerge_observe' : 'pr_merge_observe')), id: nodeIds.at(-1) };
   const terminal = effects ? published.data_bindings.inputs.find(row => row.node_id === callSite) : {
     node_id: nodeIds.at(-1), fields: { contract_version: { source: 'literal', value: 'standard-session-pr-merge-observe-input.v1' },
       triage_operation_id: { source: 'operation_id', node_id: triageNode } },
@@ -113,6 +113,8 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     instance = advanceAgenticProcess(instance, event);
     // This verifier fixture starts from synthetic accepted selections. The
     // R08 FILES fixtures exercise selection, dispatch and recovery.
+    accept('session_pr_premerge_observe', { contract_version: 'standard-session-pr-merge-observe-input.v1', triage_operation_id: triage },
+      {}, { reason_code: 'STANDARD_PR_PREMERGE_OPEN' });
     accept('session_pr_review_reply_select', { contract_version: 'standard-pr-review-reply-select-input.v1', triage_operation_id: triage },
       { session_pr_replies_observed: true }, { selection: null });
     accept('session_pr_review_resolution_select', { contract_version: 'standard-pr-review-resolution-select-input.v1', triage_operation_id: triage },
@@ -142,7 +144,7 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     verifyEvent(value) {
       signer.verify(value);
       if (!provider.current) throw Object.assign(Error('fixture event revoked'), { code: 'PROCESS_CONTROL_PR_NOT_AUTHENTICATED' });
-    } });
+    } }, { preflight });
   const attempt = async (observer = open()) => {
     const cursor = inspectAgenticProcess(instance);
     const frame = cursor.occurrences.find(row => effects ? row.node_id === 'pr_review_effects_verify'
@@ -151,14 +153,14 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     assert.equal(input.triage_operation_id, triage);
     const prepared = observer.prepare(instance, input);
     const output = await observer.observe(instance, input, { sourceSha256: prepared.source_sha256 });
-    const id = apply(effects ? 'session_pr_review_effects_verify' : 'session_pr_merge_observe', input, output, prepared);
+    const id = apply(effects ? 'session_pr_review_effects_verify' : preflight ? 'session_pr_premerge_observe' : 'session_pr_merge_observe', input, output, prepared);
     const next = inspectAgenticProcess(instance);
     if (output.outcome === 'completed') {
       const merge = next.occurrences.find(row => row.status === 'READY');
-      assert.equal(merge.node_id, 'pr_merge_observe');
+      assert.equal(merge.node_id, 'pr_checks_accept');
       assert.equal(merge.call_scope_id, callOccurrence);
       assert.deepEqual(resolveProcessFrameInput({ instance, cursor: next, occurrenceId: merge.occurrence_id }).input,
-        { contract_version: 'standard-session-pr-merge-observe-input.v1', triage_operation_id: triage });
+        { contract_version: 'standard-pr-checks-accept-input.v1', triage_operation_id: triage });
       assert.deepEqual(instance.events.at(-1).receipt.facts, { session_pr_review_effects_verified: true });
     } else {
       assert.equal(next.status, 'WAITING');
@@ -207,6 +209,14 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
 }
 
 for (const prefix of ['session', 'correction']) {
+  const premature = fixture(prefix, false, null, { preflight: true });
+  Object.assign(premature.provider.pr, asMerged());
+  const deferred = (await premature.attempt()).output;
+  assert.equal(deferred.outcome, 'deferred');
+  assert.equal(deferred.observations.merge_observation.provider.pull_request.merge_oid, merge);
+  assert.deepEqual(deferred.facts, {});
+  premature.replay();
+
   const f = fixture(prefix);
   const pending = await f.attempt();
   assert.equal(pending.output.observations.reason_code, 'STANDARD_PR_MERGE_AWAITING_PROVIDER');

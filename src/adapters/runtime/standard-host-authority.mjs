@@ -65,6 +65,9 @@ export function createStandardHostAuthority({ configuration, environment = proce
       || envelope.issued_at_ms > Date.now() || envelope.expires_at_ms <= envelope.issued_at_ms
       || envelope.expires_at_ms - envelope.issued_at_ms > 10800000 || fresh && envelope.expires_at_ms <= Date.now()
       || !/^[A-Za-z0-9+/]{86}==$/.test(envelope.signature ?? "")) fail("STANDARD_HOST_SOURCE_INVALID");
+    if (kind === "human" && subject.contract_version === "standard-pr-merge-consent-question.v1"
+      && (envelope.issued_at_ms < subject.issued_at_ms || envelope.issued_at_ms >= subject.expires_at_ms
+        || envelope.expires_at_ms < subject.expires_at_ms)) fail("STANDARD_HOST_SOURCE_INVALID");
     const principal = registry()?.principals.find(row => row.authority_id === envelope.authority_id && row.kinds.includes(kind));
     const { signature, ...body } = envelope;
     if (!principal || !verify(null, Buffer.from(shadowHash(body)), createPublicKey(principal.public_key), Buffer.from(signature, "base64"))) fail("STANDARD_HOST_SOURCE_NOT_AUTHENTICATED");

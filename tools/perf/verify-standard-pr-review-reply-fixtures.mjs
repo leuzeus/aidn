@@ -89,7 +89,29 @@ function open(base, { initializeKey = false } = {}) {
       if (args[0] === 'auth') return ok('fixture-only-token');
       if (args.at(-1) === 'user') return ok({ node_id: binding.actor.node_id, login: binding.actor.login });
       if (args.at(-1) === 'repos/fixture/repository') return ok({ node_id: pr.repository_id, full_name: 'fixture/repository' });
+      const endpoint = args.at(-1);
+      if (args[0] === 'api' && args[1] === '--hostname') {
+        assert.deepEqual(args.slice(0, -1), ['api', '--hostname', 'github.com', '--method', 'GET']);
+        const commit = 'repos/fixture/repository/commits/' + pr.head_oid;
+        if (endpoint === commit + '/check-runs?filter=all&per_page=100') {
+          const runs = [{ name: 'Required CI', node_id: state.checkId ?? 'CR_ci',
+            head_sha: pr.head_oid, app: { node_id: 'A_ci' }, details_url: state.checkDetails ?? 'https://example.com/ci',
+            status: state.pendingCheck ? 'in_progress' : 'completed', conclusion: state.pendingCheck ? null : 'success' }];
+          return ok({ total_count: runs.length, check_runs: runs });
+        }
+        if (endpoint === commit + '/status?per_page=100') return ok({ sha: pr.head_oid, total_count: 0, statuses: [] });
+        assert.equal(endpoint, 'repos/fixture/repository/pulls/' + pr.number);
+        return ok({ node_id: pr.node_id, number: pr.number, state: 'open', draft: false, merged: false,
+          head: { ref: pr.head_branch, sha: pr.head_oid, repo: { node_id: pr.repository_id } },
+          base: { ref: pr.base_branch, sha: pr.base_oid, repo: { node_id: pr.repository_id } } });
+      }
       const { query, variables } = JSON.parse(options.input);
+      if (query.startsWith('query AidnPrMerge')) return ok({ data: { repository: {
+        id: pr.repository_id, nameWithOwner: 'fixture/repository',
+        pullRequest: { id: pr.node_id, number: pr.number, headRefOid: pr.head_oid, headRefName: pr.head_branch,
+          baseRefName: pr.base_branch, headRepository: { id: pr.repository_id }, isDraft: false, state: 'OPEN',
+          merged: false, mergedAt: null, mergeCommit: null, baseRef: { target: { oid: pr.base_oid } } },
+      } } });
       if (query.startsWith('query AidnPrReviewEvent')) {
         assert.deepEqual(variables, { id: eventRef });
         return ok({ data: { node: { __typename: 'PullRequestReview', ...review, isMinimized: false,
@@ -270,7 +292,9 @@ function open(base, { initializeKey = false } = {}) {
     const waiting = inspect(), call = waiting.cursor.occurrences.find(row => row.node_id === graph.call);
     await host.enterCall({ instanceId, expectedSha256: waiting.record.instance_sha256, occurrenceId: call.occurrence_id,
       eventId: 'call_review', write: true });
-    assert.equal((await preview()).input.triage_operation_id, triage);
+    const premerge = await preview();
+    assert.equal(premerge.input.triage_operation_id, triage);
+    assert.equal((await run(premerge)).results[0].output.observations.reason_code, 'STANDARD_PR_PREMERGE_OPEN');
   }
   function observePublishedReply() {
     const date = new Date().toISOString();
@@ -305,6 +329,8 @@ function arrange(prefix, behavior) {
     repository: { host: 'github.com', owner: 'fixture', name: 'repository', node_id: pr.repository_id },
     actor: { login: 'fixture-actor', node_id: 'U_actor' }, reviewer: { login: 'fixture-reviewer', node_id: 'U_reviewer', type: 'User' },
     git: pin(gitPath), gh: pin(fs.realpathSync(process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32', 'where.exe') : '/usr/bin/env')) };
+  if (behavior.includes('consent')) binding.required_checks = { contract_version: 'standard-github-required-checks.v1',
+    base_ref: pr.base_branch, entries: [{ name: 'Required CI', kind: 'check_run', producer_id: 'A_ci' }] };
   const key = shadowHash({ target: process.platform === 'win32' ? targetRoot.toLowerCase() : targetRoot, instance: configuration.instance_id });
   fs.mkdirSync(path.join(dirs.host, key + '.github'));
   save(path.join(dirs.host, key + '.github.json'), binding);
@@ -333,7 +359,9 @@ function verifyRetained(base) {
   assert.equal(f.state.replies.length, behavior === 'missing' ? 0 : f.state.sent.length);
   assert.equal(replies.length, f.state.replies.length);
   if (behavior === 'normal') {
-    assert.equal(cursor.occurrences.find(row => row.status === 'READY')?.node_id, 'pr_merge_observe');
+    const retainedTarget = record.model.call_targets.find(row => row.model_id === target.model_id);
+    const boundary = retainedTarget.model.nodes.some(row => row.id === 'pr_checks_accept') ? 'pr_checks_accept' : 'pr_merge_observe';
+    assert.equal(cursor.occurrences.find(row => row.status === 'READY')?.node_id, boundary);
     assert.deepEqual(rows.flatMap(row => row.results.filter(result => result.receipt.outcome === 'blocked')
       .map(result => result.output.observations.reason_code)),
     ['STANDARD_HOST_EXACT_OPERATION_REQUIRED', 'STANDARD_PR_EFFECTS_REVIEW_CHANGED']);
@@ -427,7 +455,7 @@ async function qualifyResolution(behavior) {
 }
 
 async function qualifyException(behavior) {
-  const prefix = behavior === 'exception-correction' ? 'correction' : 'session';
+  const prefix = behavior.includes('correction') ? 'correction' : 'session';
   const choice = ['refused', 'deferred', 'cancelled'].find(value => behavior === 'exception-' + value) ?? 'accept_resolution_exception';
   const base = arrange(prefix, behavior), f = open(base, { initializeKey: true });
   const { home, pr } = json(path.join(base, 'configuration.json'));
@@ -508,7 +536,7 @@ async function qualifyException(behavior) {
     session_pr_resolution_exception_accepted: true, session_pr_resolution_gate_met: true,
   } : {});
   assert.equal(result.receipt.outcome, approved ? 'completed' : choice === 'refused' ? 'rejected' : choice);
-  assert.equal(cursor.occurrences.some(row => row.node_id === 'pr_merge_observe' && row.status === 'READY'), approved);
+  assert.equal(cursor.occurrences.some(row => row.node_id === 'pr_checks_accept' && row.status === 'READY'), approved);
   assert.deepEqual(resumed.state.sent, []);
   assert.deepEqual(resumed.state.resolutionSends, []);
   assert.deepEqual(resumed.state.resolvedThreads, ['T_C_root']);
@@ -519,9 +547,137 @@ async function qualifyException(behavior) {
   replay(resumed);
   assert.equal(resumed.calls(), 0);
   console.log('PASS published R08 ' + prefix + ' ' + choice + ', signed authority, FILES inbox/journal, offline replay');
+  if (behavior === 'exception-consent-correction') await qualifyConsent(base, privateKey, authority_id, { exceptionSource: sourceRef });
 }
 
-if (/^--case=exception-(session|correction|refused|deferred|cancelled)$/.test(process.argv[2])) {
+async function qualifyConsent(base, privateKey, authority_id, { exceptionSource, choice = 'approve_merge' } = {}) {
+  const { home, pr, prefix } = json(path.join(base, 'configuration.json'));
+  const f = open(base), authorityInbox = path.join(home, 'inbox'), sourceRef = 'merge_consent';
+  if (!exceptionSource) {
+    f.state.pendingCheck = true;
+    const pending = (await f.run()).results[0].output;
+    assert.equal(pending.outcome, 'deferred');
+    assert.equal(pending.observations.reason_code, 'STANDARD_PR_CHECK_PENDING');
+    assert.deepEqual(pending.facts, {});
+    f.state.pendingCheck = false;
+  }
+  const checks = await f.run(), evidence = checks.results[0].output;
+  assert.equal(evidence.outcome, 'completed', evidence.observations.reason_code);
+  assert.deepEqual(evidence.facts, { session_pr_required_checks_accepted: true });
+  if (exceptionSource) {
+    assert.ok(evidence.observations.subject.resolution_expires_at_ms > evidence.observations.observed_at_ms);
+    assert.equal(f.host.readJournal(evidence.observations.subject.resolution_operation_id).intent.binding_ref,
+      'session_pr_review_resolution_exception');
+    const file = path.join(authorityInbox, exceptionSource + '.json'), envelope = json(file);
+    const { signature, ...body } = envelope;
+    const expired = { ...body, issued_at_ms: Date.now() - 2000, expires_at_ms: Date.now() - 1000 };
+    save(file, { ...expired, signature: sign(null, Buffer.from(shadowHash(expired)), privateKey).toString('base64') });
+    const before = f.inspect().record.instance_sha256;
+    try {
+      await assert.rejects(f.preview, { code: 'STANDARD_HOST_SOURCE_INVALID' });
+      assert.equal(f.inspect().record.instance_sha256, before);
+    } finally {
+      save(file, envelope);
+    }
+    replay(f);
+    assert.deepEqual(f.state.sent, []);
+    assert.deepEqual(f.state.resolutionSends, []);
+    console.log('PASS published R08 corrective checks refuse an expired signed source and bind an active documented exception');
+    return;
+  }
+  const { operation_id: id } = await f.stage(await f.preview());
+  const { status, question } = await f.host.dispatch(id, { write: true });
+  assert.equal(status, 'waiting_for_human');
+  assert.equal(question.checks_operation_id, checks.operation_id);
+  assert.deepEqual(question.subject, evidence.observations.subject);
+  for (const [key, value] of Object.entries({ head_oid: pr.head_oid, base_oid: pr.base_oid, head_ref: pr.head_branch,
+    base_ref: pr.base_branch, repository_id: pr.repository_id, pull_request_id: pr.node_id, actor_id: 'U_actor' }))
+    assert.equal(question.subject[key], value);
+  assert.deepEqual(question.subject.checks.map(({ result_sha256, ...check }) => {
+    assert.match(result_sha256, /^[a-f0-9]{64}$/);
+    return check;
+  }), [{ name: 'Required CI', kind: 'check_run', producer_id: 'A_ci', result_id: 'CR_ci' }]);
+  assert.equal(question.subject.resolution_expires_at_ms !== null, Boolean(exceptionSource));
+  const claim = { contract_version: 'human-pr-merge-consent.v1', source_kind: 'human', authority_id,
+    source_event_id: 'r08_fixture_merge_consent', question_sha256: shadowHash(question), subject_sha256: shadowHash(question.subject),
+    choice, rationale: 'I reviewed the exact published checks and R08 proof.',
+    evidence_refs: evidence.evidence_refs };
+  const deliver = () => f.host.receiveDecision(id, { sourceRef, write: true });
+  assert.equal((await deliver()).status, 'waiting_for_human');
+  const body = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id, source_ref: sourceRef,
+    subject_sha256: shadowHash(question), payload: claim, issued_at_ms: Date.now(), expires_at_ms: question.expires_at_ms };
+  const publish = (value = body) => save(path.join(authorityInbox, sourceRef + '.json'),
+    { ...value, signature: sign(null, Buffer.from(shadowHash(value)), privateKey).toString('base64') });
+  {
+    publish({ ...body, issued_at_ms: question.issued_at_ms - 1 });
+    await assert.rejects(deliver, { code: 'STANDARD_HOST_SOURCE_INVALID' });
+    publish({ ...body, payload: { ...claim, subject_sha256: shadowHash({ ...question.subject, head_oid: 'e'.repeat(40) }) } });
+    await assert.rejects(deliver, { code: 'PROCESS_HUMAN_QUESTION_CHANGED' });
+    publish();
+    f.state.checkDetails = 'https://example.com/changed';
+    await assert.rejects(deliver, { code: 'STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED' });
+    assert.equal(f.inbox.read(decisionInboxId(claim)).record, null);
+    assert.equal(f.host.readJournal(id).phase, 'staged');
+    delete f.state.checkDetails;
+  }
+  save(f.providerFile, f.state);
+  const approved = choice === 'approve_merge';
+  if (prefix === 'correction') {
+    const outcome = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--receive-exception', base, id, sourceRef],
+      { encoding: 'utf8', timeout: 240000, windowsHide: true }));
+    assert.equal(outcome.outcome, 'completed');
+  } else {
+    assert.equal((await deliver()).status, 'receipted');
+    await f.host.accept(id, { write: true });
+  }
+  const resumed = open(base), capture = resumed.inbox.read(decisionInboxId(claim)).record;
+  const result = resumed.host.readJournal(id).results[0];
+  resumed.signer.verify(capture);
+  assert.equal(capture.contract_version, 'process-decision-inbox.v14');
+  assert.equal(capture.receipt_sha256, shadowHash(result.receipt));
+  assert.equal(result.output.outcome, approved ? 'completed' : 'rejected');
+  assert.deepEqual(result.output.facts, approved ? { session_pr_merge_consent_accepted: true } : {});
+  assert.equal(result.output.effect_status, 'no_effect');
+  assert.equal(result.output.observations.expires_at_ms, question.expires_at_ms);
+  const state = resumed.inspect();
+  assert.equal(state.cursor.occurrences.some(row => row.node_id === 'pr_merge_observe' && row.status === 'READY'), approved);
+  await resumed.host.accept(id, { write: true });
+  assert.equal(resumed.inspect().record.instance_sha256, state.record.instance_sha256);
+  replay(resumed);
+  assert.equal(resumed.host.inspectDiagnostic('r08-' + prefix).content_sha256, state.content_sha256);
+  assert.equal(resumed.calls(), 0);
+  assert.deepEqual(resumed.state.sent, []);
+  assert.deepEqual(resumed.state.resolutionSends, []);
+  if (approved) {
+    const barrier = (await resumed.run()).results[0].output;
+    assert.equal(barrier.outcome, 'deferred');
+    assert.deepEqual(barrier.facts, {});
+    assert.equal(barrier.observations.reason_code, 'STANDARD_PR_MERGE_AWAITING_PROVIDER');
+  }
+  console.log('PASS published R08 exact checks and signed ' + choice + ' at ' + prefix + ', FILES, GitHub transport doubled');
+}
+
+async function qualifyNominalConsent(prefix, choice) {
+  const base = arrange(prefix, 'consent-session'), f = open(base, { initializeKey: true });
+  const { home } = json(path.join(base, 'configuration.json'));
+  const authority_id = 'fixture-human-r08', { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  fs.mkdirSync(path.join(home, 'inbox'));
+  save(path.join(home, 'principals.json'), { contract_version: 'standard-host-principals.v1',
+    principals: [{ authority_id, kinds: ['human'], public_key: publicKey.export({ type: 'spki', format: 'pem' }) }] });
+  await f.seedPrefix();
+  f.observePublishedReply();
+  f.state.resolvedThreads.push('T_C_root');
+  save(f.providerFile, f.state);
+  assert.equal((await f.run()).results[0].output.facts.session_pr_replies_observed, true);
+  assert.equal((await f.run()).results[0].output.facts.session_pr_threads_observed_resolved, true);
+  assert.equal((await f.run()).results[0].output.facts.session_pr_review_effects_verified, true);
+  await qualifyConsent(base, privateKey, authority_id, { choice });
+}
+
+if (['--case=consent-session', '--case=consent-refused', '--case=consent-correction'].includes(process.argv[2])) {
+  await qualifyNominalConsent(process.argv[2] === '--case=consent-correction' ? 'correction' : 'session',
+    process.argv[2] === '--case=consent-refused' ? 'refused' : 'approve_merge');
+} else if (/^--case=exception-(session|correction|consent-correction|refused|deferred|cancelled)$/.test(process.argv[2])) {
   await qualifyException(process.argv[2].slice('--case='.length));
 } else if (process.argv[2] === '--receive-exception') {
   const [, , , base, id, sourceRef] = process.argv, f = open(base);

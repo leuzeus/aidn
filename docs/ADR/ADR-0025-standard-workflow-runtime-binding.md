@@ -3243,6 +3243,50 @@ threads open. Check acceptance, merge consent, merge effects and R09 have their 
 read-only merge observer remains a separate operation. V1 selection and
 historical inbox records remain readable.
 
+### Required checks and explicit merge consent
+
+Both call sites use the same published sequence. A separate preflight observer
+records an already merged PR on a deferred no-effect receipt. The open case
+advances with empty routing facts. The final merge observer remains a blocking
+read-only boundary after the consent operation.
+
+The protected per-project and per-instance GitHub manifest accepts a
+`required_checks` field with `standard-github-required-checks.v1`. A host
+operator pins one target ref and a nonempty list of up to 32 unique names.
+Each entry supplies `kind` (`check_run` or `commit_status`), `name` and
+the immutable GitHub app or status creator node ID as `producer_id`. The
+manifest bytes and policy enter the retained digest. A v1 manifest without the
+field still loads and the check operation defers. The authenticated GitHub
+actor and repository are fenced by the same protected transport used by the
+review readers.
+
+Two bounded inventories on the exact HEAD bracket a fresh review effects
+read. Each includes a final PR identity and open-state read. Full first pages
+and ambiguous names, including collisions between the two kinds, are refused.
+Check runs must be completed and successful. Commit statuses must be
+successful on that exact commit. A rerun with a new identity changes the
+subject. The policy is deliberately conservative when historical check runs
+share a required name. Profile admission does not discover or override GitHub
+branch protection rules.
+
+The host authenticates the accepted resolution proof, or the precise
+documented exception and its still-valid signature, against live thread,
+reply and review evidence. Acceptance binds the latest delivery, accepted
+triage and resolution receipt, exact repository and PR, HEAD/base/refs,
+protected policy, provider actor, and the identities and digests of the check
+results. The question
+binds that accepted operation and the same subject. The window is at most five
+minutes and ends no later than the retained exception question. The host
+checks the signed source's issue time and expiry, and observes the subject
+again before reserving the decision and before accepting its receipt. Missing
+source, refusal, deferral, cancellation and stale evidence preserve distinct
+outcomes. A signed approval is a no-effect record for this subject and window.
+The separate provider observer can record a merge fact with empty routing
+facts, regardless of consent.
+
+[GitHub check runs](https://docs.github.com/en/rest/checks/runs)
+and [GitHub commit statuses](https://docs.github.com/en/rest/commits/statuses).
+
 ### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
 
 The authored IR routes an accepted COMMITTING SPIKE plan into the same existing

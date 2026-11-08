@@ -2,7 +2,7 @@ import { assertGithubPrReviewResolutionResult, githubPrReviewResolutionBasis } f
 import { assertStandardOperationOutput } from '../../core/workflow/standard-operation-contracts.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { createStandardPrReviewEffectsReader } from './standard-session-pr-review-effects.mjs';
-import { assertResolutionExceptionSubject, resolutionExceptionMaxAgeMs } from '../../core/workflow/standard-pr-resolution-exception.mjs';
+import { assertResolutionExceptionSubject, resolutionExceptionMaxAgeMs, resolutionExceptionOperation, resolutionExceptionQuestion } from '../../core/workflow/standard-pr-resolution-exception.mjs';
 
 const select = 'session_pr_review_resolution_select';
 const resolve = 'session_pr_review_thread_resolve';
@@ -107,6 +107,43 @@ export function createStandardPrReviewResolution({ readAcceptedResolutions, ...p
   }
 
   return Object.freeze({
+    async readGate(instance, input, { signal, beforeReview }) {
+      const readLatest = binding => {
+        const id = instance.events.findLast(row => row.kind === 'operation_intent' && row.intent.binding_ref === binding)?.intent.operation_id;
+        if (!id) fail('STANDARD_PR_RESOLUTION_GATE_REQUIRED');
+        return ports.readAccepted(instance, id, binding);
+      };
+      const selection = readLatest(select);
+      if (selection.record.preview.input.triage_operation_id !== input.triage_operation_id)
+        fail('STANDARD_PR_RESOLUTION_GATE_REQUIRED');
+      const source = reader.source(instance, input);
+      const before = await beforeReview(source.pullRequest);
+      const observed = await inspect(instance, source, input, signal);
+      if (observed.reason) fail(observed.reason);
+      let accepted, expires = null;
+      if (observed.exceptionRequired) {
+        accepted = readLatest(resolutionExceptionOperation);
+        const question = resolutionExceptionQuestion(accepted.record), subject = exceptionSubject(source, observed);
+        expires = question.expires_at_ms;
+        if (accepted.output.facts.session_pr_resolution_exception_accepted !== true
+          || question.selection_operation_id !== selection.record.operation_id
+          || selection.output.observations.exception_subject_sha256 !== shadowHash(subject)
+          || shadowHash(question.subject) !== shadowHash(subject)
+          || accepted.output.observations.question_sha256 !== shadowHash(question)
+          || (ports.now ?? Date.now)() >= expires) fail('STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
+      } else {
+        if (observed.outstanding.length || selection.output.facts.session_pr_threads_observed_resolved !== true)
+          fail('STANDARD_PR_RESOLUTION_GATE_REQUIRED');
+        accepted = readLatest('session_pr_review_effects_verify');
+        const proof = accepted.output.observations.proof;
+        if (accepted.output.facts.session_pr_review_effects_verified !== true || proof.triage_operation_id !== input.triage_operation_id
+          || proof.source_sha256 !== source.sha256 || proof.thread_observation_sha256 !== observed.last.observation_sha256
+          || proof.review_evidence_sha256 !== observed.evidence.evidence_sha256 || proof.reply_proof_sha256 !== shadowHash(observed.replies))
+          fail('STANDARD_PR_RESOLUTION_PROOF_CHANGED');
+      }
+      return { source, observed, before, decision: expires === null ? null : accepted.record, operationId: accepted.record.operation_id,
+        receiptSha256: shadowHash(accepted.record.results.at(-1).receipt), expires };
+    },
     prepareSelection(instance, input) {
       return { can_apply: true, source_sha256: reader.source(instance, input).sha256 };
     },

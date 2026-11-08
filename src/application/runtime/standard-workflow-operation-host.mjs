@@ -3,6 +3,8 @@ import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
 import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.mjs";
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
+import { createStandardPrMergeConsent } from "./standard-session-pr-merge-consent.mjs";
+import { checksOperation, mergeConsentOperation } from "../../core/workflow/standard-pr-merge-consent.mjs";
 import { createStandardPrReviewResolution } from "./standard-session-pr-review-resolution.mjs";
 import { resolutionExceptionOperation } from "../../core/workflow/standard-pr-resolution-exception.mjs";
 import { createStandardPrReviewReply } from "./standard-session-pr-review-reply.mjs";
@@ -554,11 +556,16 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readDelivered: readDeliveredPrReview, verifyEvent: verifyPrReviewEvent,
     readAcceptedReplies: (instance, triageId) => acceptedReviewEffects(instance, triageId, "session_pr_review_reply_publish", "reply") };
   const sessionPrMerge = createStandardSessionPrMergeObservation(acceptedReviewPorts);
+  const sessionPrPremerge = createStandardSessionPrMergeObservation(acceptedReviewPorts, { preflight: true });
   const sessionPrEffects = createStandardPrReviewEffectsVerification(acceptedReviewPorts);
   const sessionPrReply = createStandardPrReviewReply(acceptedReviewPorts);
   const sessionPrResolution = createStandardPrReviewResolution({ ...acceptedReviewPorts,
     readAcceptedResolutions: (instance, triageId) => acceptedReviewEffects(instance, triageId, "session_pr_review_thread_resolve", "resolution") });
   const assertResolutionExceptionFresh = (instance, record, signal) => sessionPrResolution.assertExceptionFresh(
+    instance, record.preview.input, record.preview.prepared, signal);
+  const sessionPrConsent = createStandardPrMergeConsent({ ...acceptedReviewPorts, resolution: sessionPrResolution,
+    verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
+  const assertMergeConsentFresh = (instance, record, signal) => sessionPrConsent.assertFresh(
     instance, record.preview.input, record.preview.prepared, signal);
   const reviewEffects = new Map([
     ["session_pr_review_reply_publish", sessionPrReply],
@@ -839,6 +846,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
       if (record.preview.binding.executor_kind === "human") await verifyHumanRecord(record, signal);
       if (record.intent.binding_ref === resolutionExceptionOperation) await assertResolutionExceptionFresh(instance, record, signal);
+      if (record.intent.binding_ref === mergeConsentOperation) {
+        if (now() >= record.preview.prepared.expires_at_ms) fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
+        if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      }
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(instance, record.preview.prepared.plan);
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(instance, record.preview.input, record.preview.prepared);
       if (record.intent.binding_ref === "mode_work_continue_decision") processAuthority.assertModeWorkContinuationFresh(instance, record.preview.input, record.preview.prepared);
@@ -1124,6 +1135,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === resolutionExceptionOperation ? await sessionPrResolution.prepareException(state.record, input)
         : reviewEffects.has(binding.id) ? await reviewEffects.get(binding.id).prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
+        : binding.id === "session_pr_premerge_observe" ? sessionPrPremerge.prepare(state.record, input)
+        : binding.id === checksOperation ? { can_apply: true }
+        : binding.id === mergeConsentOperation ? await sessionPrConsent.prepare(state.record, input)
         : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_review_content_observe" ? await sessionPrReviewContent?.prepare(state.record, input) ?? fail("STANDARD_PR_REVIEW_AUTHORITY_REQUIRED")
@@ -1295,6 +1309,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           } });
         else if (record.intent.binding_ref === "session_pr_review_effects_verify") output = await sessionPrEffects.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
+        else if (record.intent.binding_ref === "session_pr_premerge_observe") output = await sessionPrPremerge.observe(state.record, record.preview.input,
+          { signal, sourceSha256: record.preview.prepared.source_sha256 });
+        else if (record.intent.binding_ref === checksOperation) output = await sessionPrConsent.acceptChecks(state.record, record.preview.input, signal);
         else if (record.intent.binding_ref === "session_pr_merge_observe") output = await sessionPrMerge.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
         else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });
@@ -1445,7 +1462,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async receiveDecision(id, { sourceRef, write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.preview.binding.executor_kind !== "human" || ![resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.preview.binding.executor_kind !== "human" || ![mergeConsentOperation, resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
       if (record.phase === "receipted") {
         const capture = human.captured(record);
         if (capture.source_ref !== sourceRef) fail("PROCESS_HUMAN_DECISION_ALREADY_CAPTURED");
@@ -1463,9 +1480,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(state.record, record.preview.prepared.plan, { signal });
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
-      const resolutionException = record.intent.binding_ref === resolutionExceptionOperation;
+      const assertFreshDecision = record.intent.binding_ref === mergeConsentOperation ? assertMergeConsentFresh
+        : record.intent.binding_ref === resolutionExceptionOperation ? assertResolutionExceptionFresh : null;
       const capture = await human.reserve(record, sourceRef, { signal,
-        ...(resolutionException ? { assertCurrent: () => assertResolutionExceptionFresh(state.record, record, signal) } : {}) });
+        ...(assertFreshDecision ? { assertCurrent: () => assertFreshDecision(state.record, record, signal) } : {}) });
       if (!capture) return { status: "waiting_for_human", question: human.question(record) };
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref)) await recovery.assertFresh(state.record, record.preview.prepared.plan);
@@ -1476,8 +1494,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(state.record, record.preview.prepared.plan, { signal });
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
-      if (resolutionException) {
+      if (assertFreshDecision) {
         await human.verifyReserved(record, capture, signal);
+        if (record.intent.binding_ref === mergeConsentOperation && now() >= record.preview.prepared.expires_at_ms)
+          fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
         if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256
           || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }
@@ -1497,13 +1517,19 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       human.acknowledge(capture.inbox_id, receipt);
       return { status: "receipted", receipt };
     },
-    async accept(id, { write = false, receiptId: selectedReceiptId } = {}) {
+    async accept(id, { write = false, receiptId: selectedReceiptId, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const record = retained(id).record, state = current(record.intent.instance_id);
       const index = selectedReceiptId === undefined ? record.results.length - 1 : record.results.findIndex(row => row.receipt.receipt_id === selectedReceiptId);
       const receipt = record.results[index]?.receipt;
       if (!receipt) fail("PROCESS_OPERATION_RECEIPT_UNAVAILABLE");
       if (state.record.events.some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(receipt))) return state;
+      if (record.intent.binding_ref === mergeConsentOperation) {
+        // Keep network observations outside the reducer's bounded authority
+        // callback. Its acceptance still fences this exact instance and receipt.
+        await assertMergeConsentFresh(state.record, record, signal);
+        if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      }
       return disposition.withReceiptAcceptance(id, () => service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,
         eventId: "result_" + id.slice(3) + (index ? "_" + index : ""), receiptId: receipt.receipt_id, write: true }));
     },

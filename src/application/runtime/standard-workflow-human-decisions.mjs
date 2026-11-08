@@ -6,6 +6,7 @@ import { assertCycleClosureQuestion, assertHumanCycleClosureDecision, observeHum
 import { assertHumanModeDecision, assertModeQuestion, assertRecoveryQuestion, assertHumanRecoveryDecision, decisionInboxId } from "../../core/workflow/process-decision-inbox.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 import { assertModeWorkQuestion, assertHumanModeWorkDecision, observeHumanModeWorkDecision, assertModeWorkDecisionOutput } from "../../core/workflow/standard-mode-work-continuation.mjs";
+import { mergeConsentOperation, mergeConsentQuestion, assertHumanMergeConsent, mergeConsentOutput } from "../../core/workflow/standard-pr-merge-consent.mjs";
 import { resolutionExceptionOperation, resolutionExceptionQuestion, assertHumanResolutionException, resolutionExceptionOutput } from "../../core/workflow/standard-pr-resolution-exception.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
@@ -20,6 +21,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
   const closure = record => record.intent.binding_ref === "cycle_closure_decision";
   const resolutionException = record => record.intent.binding_ref === resolutionExceptionOperation;
   const question = record => {
+    if (record.intent.binding_ref === mergeConsentOperation) return mergeConsentQuestion(record);
     if (resolutionException(record)) return resolutionExceptionQuestion(record);
     if (!["spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
     if (spike(record)) return assertSpikeQuestion({ contract_version: "standard-spike-question.v1", operation_id: record.operation_id,
@@ -85,6 +87,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
   async function verify(claim, sourceRef, request, signal, historical = false) {
     if (request.contract_version === "standard-spike-question.v1") assertHumanSpikeDecision(claim, request);
     else if (request.contract_version === "standard-mode-work-question.v1") assertHumanModeWorkDecision(claim, request);
+    else if (request.contract_version === "standard-pr-merge-consent-question.v1") assertHumanMergeConsent(claim, request);
     else if (request.contract_version === "standard-pr-review-resolution-exception-question.v1") assertHumanResolutionException(claim, request);
     else if (["standard-pr-correction-question.v1", "standard-pr-correction-question.v2", "standard-pr-correction-question.v3"].includes(request.contract_version)) assertHumanPrCorrectionDecision(claim, request);
     else if (request.contract_version === "standard-session-branch-integration-question.v1") assertHumanSessionBranchIntegrationDecision(claim, request);
@@ -126,7 +129,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
-      const version = resolutionException(record) ? "process-decision-inbox.v13" : spike(record) ? "process-decision-inbox.v11" : modeWork(record) ? "process-decision-inbox.v10" : correction(record) ? (claim.contract_version === "human-pr-correction-decision.v3" ? "process-decision-inbox.v9" : claim.contract_version === "human-pr-correction-decision.v2" ? "process-decision-inbox.v8" : "process-decision-inbox.v7") : integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? (claim.contract_version === "human-drift-recovery-decision.v2" ? "process-decision-inbox.v12" : "process-decision-inbox.v2") : "process-decision-inbox.v1";
+      const version = record.intent.binding_ref === mergeConsentOperation ? "process-decision-inbox.v14" : resolutionException(record) ? "process-decision-inbox.v13" : spike(record) ? "process-decision-inbox.v11" : modeWork(record) ? "process-decision-inbox.v10" : correction(record) ? (claim.contract_version === "human-pr-correction-decision.v3" ? "process-decision-inbox.v9" : claim.contract_version === "human-pr-correction-decision.v2" ? "process-decision-inbox.v8" : "process-decision-inbox.v7") : integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? (claim.contract_version === "human-drift-recovery-decision.v2" ? "process-decision-inbox.v12" : "process-decision-inbox.v2") : "process-decision-inbox.v1";
       return write({ contract_version: version, inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
         source: claim, phase: "reserved", receipt_sha256: null }, null);
     },
@@ -140,11 +143,14 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       const { authentication, key_id, ...body } = record;
       write({ ...body, phase: "receipted", receipt_sha256: shadowHash(receipt) }, before.content_sha256);
     },
-    async verifyCaptured(record, signal, { historical = false } = {}) {
-      const value = captured(record); await verify(value.source, value.source_ref, question(record), signal, historical);
+    async verifyCaptured(record, signal, { historical = false, acknowledged = false } = {}) {
+      const value = captured(record);
+      if (acknowledged && value.phase !== "receipted") fail("PROCESS_HUMAN_CAPTURE_MISSING");
+      await verify(value.source, value.source_ref, question(record), signal, historical);
     },
     output(record, capture) {
       const request = question(record);
+      if (record.intent.binding_ref === mergeConsentOperation) return mergeConsentOutput(request, capture);
       if (resolutionException(record)) return resolutionExceptionOutput(request, capture);
       if (spike(record)) {
         const observed = observeHumanSpikeDecision({ question: request, decision: capture.source });

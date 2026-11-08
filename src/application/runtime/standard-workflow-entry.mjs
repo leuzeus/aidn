@@ -156,7 +156,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     if (action.kind === "operation") id = (await host.stageOperation(preview, { write: true, expectedPreviewSha256: permittedOperation })).operation_id;
     const result = action.kind === "decision" ? await host.receiveDecision(id, { sourceRef: action.payload.source_ref, write: true, signal })
       : await host.dispatchOperation(id, { write: true, signal });
-    output.result = ["receipted", "retained_result"].includes(result.status) ? { ...result, accepted: await host.acceptOperation(id, { write: true }) } : result;
+    output.result = ["receipted", "retained_result"].includes(result.status) ? { ...result, accepted: await host.acceptOperation(id, { write: true, signal }) } : result;
     output.written = beforeJournal !== shadowHash(host.readOperation(id)) || host.inspect().record.instance_sha256 !== state.record.instance_sha256;
   } else if (action.kind === "control") {
     const result = await host.captureControl({ expectedSha256: state.record.instance_sha256, occurrenceId: action.payload.request.occurrence_id,

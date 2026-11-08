@@ -47,7 +47,7 @@ function verifyReviewCall(result, prefix) {
   assert.ok(triage_operation_id);
   assert.deepEqual(entry.resolution.sources.map(({ field, source, operation_id }) => [field, source, operation_id]),
     [["triage_operation_id", "operation_id", triage_operation_id]]);
-  assert.equal(result.operations.at(-1), prefix + "_pr_reply_select");
+  assert.equal(result.operations.at(-1), prefix + "_pr_premerge_observe");
 }
 test("positive path selects nine native turns; its cold prefix keeps the same cumulative ceiling", () => {
   const result = plan();
