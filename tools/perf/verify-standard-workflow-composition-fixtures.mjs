@@ -85,7 +85,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 163); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 164); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -225,7 +225,7 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
   const { model: child, ...identity } = target;
   assert.deepEqual(identity, processModelIdentity(child));
   assert.deepEqual(child.call_interface, { parameters: { triage_operation_id: "string" }, returns: {} });
-  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_observe"]);
+  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_wait"]);
   for (const prefix of ["session", "correction"]) {
     const id = prefix + "_pr_effects_pending";
     const call = assets.model.nodes.find(row => row.id === id);
@@ -233,6 +233,25 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
     assert.deepEqual(call.target, identity);
     assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === id).fields, {
       triage_operation_id: { source: "operation_id", node_id: prefix + "_pr_triage_evaluate" },
+    });
+  }
+  for (const [id, effect, rules, fields] of [
+    ["pr_merge_execute", "executor", ["SPEC-R08", "SPEC-R11"], {
+      triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] },
+      checks_operation_id: { source: "operation_id", node_id: "pr_checks_accept" },
+      consent_operation_id: { source: "operation_id", node_id: "pr_merge_consent" },
+    }],
+    ["pr_post_merge_wait", "read-only", ["SPEC-R09"], {
+      merge_operation_id: { source: "operation_id", node_id: "pr_merge_execute" },
+    }],
+  ]) {
+    const row = assets.catalog.bindings.find(row => row.node_id === id), { binding } = row;
+    assert.deepEqual(row.model_ref, identity);
+    assert.equal(binding.effect_class, effect);
+    assert.deepEqual(binding.rule_refs, rules);
+    assert.equal(child.operation_pins[binding.id], shadowHash(binding));
+    assert.deepEqual(child.data_bindings.inputs.find(row => row.node_id === id).fields, {
+      contract_version: { source: "literal", value: binding.input_contract }, ...fields,
     });
   }
   const loop = child.nodes.find(row => row.id === "pr_reply_loop");
@@ -283,7 +302,6 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
     ["pr_review_effects_verify", "session_pr_review_effects_verify", "standard-session-pr-review-effects-input.v1", ["SPEC-R08", "SPEC-R11"]],
     ["pr_premerge_observe", "session_pr_premerge_observe", "standard-session-pr-merge-observe-input.v1", ["SPEC-R08", "SPEC-R09"]],
     ["pr_checks_accept", "session_pr_checks_accept", "standard-pr-checks-accept-input.v1", ["SPEC-R08", "SPEC-R11"]],
-    ["pr_merge_observe", "session_pr_merge_observe", "standard-session-pr-merge-observe-input.v1", ["SPEC-R08", "SPEC-R09"]],
   ]) {
     const row = assets.catalog.bindings.find(row => row.node_id === node_id);
     assert.deepEqual(row.model_ref, identity);
@@ -474,7 +492,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 252);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 12);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 13);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 2);
   assert.equal(child.model_id, "aidn-standard-final-verification");

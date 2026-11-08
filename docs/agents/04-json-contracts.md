@@ -38,6 +38,18 @@ and question deadline. Earlier inbox versions retain their readers.
 already merged PR on a deferred receipt with empty routing facts. Historical
 merge observation retains its v1 contract.
 
+## R08 merge execution contracts
+
+`github-pr-merge-plan.v1` pins the protected method and actor, exact PR
+subject, consent expiry and provider correlation marker. The v2 merge reader
+adds the provider actor and commit body digest to the v1 facts. The private
+`standard-pr-merge-execute-{input,output}.v1` records the accepted decision and
+check receipt hashes and separates acknowledged confirmation, observed
+recovery, and UNKNOWN. The private `standard-pr-post-merge-wait-{input,output}.v1`
+links the R09 wait to the accepted merge receipt. These contracts reuse the
+existing operation journal and preserve the earlier inbox and observation
+readers.
+
 ## Original dispatch and disposition records
 
 Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,

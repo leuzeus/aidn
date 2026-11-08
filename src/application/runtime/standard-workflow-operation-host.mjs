@@ -3,6 +3,8 @@ import { createStandardSpikeConversion } from "./standard-spike-conversion.mjs";
 import { createStandardPrCorrectionCycle } from "./standard-pr-correction-cycle.mjs";
 import { createStandardPrCorrectionReview } from "./standard-pr-correction-review.mjs";
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
+import { createStandardPrMergeExecute } from "./standard-session-pr-merge-execute.mjs";
+import { mergeExecuteOperation, postMergeWaitOperation } from "../../core/workflow/standard-pr-merge-execute.mjs";
 import { createStandardPrMergeConsent } from "./standard-session-pr-merge-consent.mjs";
 import { checksOperation, mergeConsentOperation } from "../../core/workflow/standard-pr-merge-consent.mjs";
 import { createStandardPrReviewResolution } from "./standard-session-pr-review-resolution.mjs";
@@ -567,7 +569,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const assertMergeConsentFresh = (instance, record, signal) => sessionPrConsent.assertFresh(
     instance, record.preview.input, record.preview.prepared, signal);
+  const sessionPrMergeEffect = createStandardPrMergeExecute({ ...acceptedReviewPorts, assertConsentFresh: assertMergeConsentFresh,
+    verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const reviewEffects = new Map([
+    [mergeExecuteOperation, sessionPrMergeEffect],
     ["session_pr_review_reply_publish", sessionPrReply],
     ["session_pr_review_thread_resolve", sessionPrResolution],
   ]);
@@ -1136,6 +1141,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : reviewEffects.has(binding.id) ? await reviewEffects.get(binding.id).prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
         : binding.id === "session_pr_premerge_observe" ? sessionPrPremerge.prepare(state.record, input)
+        : binding.id === postMergeWaitOperation ? { can_apply: true }
         : binding.id === checksOperation ? { can_apply: true }
         : binding.id === mergeConsentOperation ? await sessionPrConsent.prepare(state.record, input)
         : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
@@ -1300,7 +1306,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_pr_review_resolution_select") output = await sessionPrResolution.select(state.record, record.preview.input,
           record.preview.prepared, { signal });
         else if (reviewEffects.has(record.intent.binding_ref)) output = await reviewEffects.get(record.intent.binding_ref).apply(state.record, record.preview.input,
-          record.preview.prepared, { signal, assertAuthorized: async () => {
+          record.preview.prepared, { signal, operationId: id, assertAuthorized: async () => {
             await verifyGrant(record, signal);
             if (current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
               || shadowHash(retained(id).record) !== shadowHash(claimed)
@@ -1312,6 +1318,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_pr_premerge_observe") output = await sessionPrPremerge.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
         else if (record.intent.binding_ref === checksOperation) output = await sessionPrConsent.acceptChecks(state.record, record.preview.input, signal);
+        else if (record.intent.binding_ref === postMergeWaitOperation) output = sessionPrMergeEffect.waitForSync(state.record, record.preview.input);
         else if (record.intent.binding_ref === "session_pr_merge_observe") output = await sessionPrMerge.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
         else if (record.intent.binding_ref === "session_pr_review_receive") output = await sessionPrReviewReceiver.observe(state.record, record.preview.input, { signal });
@@ -1424,11 +1431,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const binding = record.intent.binding_ref, effect = reviewEffects.get(binding);
       if (!effect) fail("STANDARD_PR_REVIEW_EFFECT_DISPATCH_REQUIRED");
       const reply = binding === "session_pr_review_reply_publish";
-      readDispatchedOperation(state.record, id, binding, reply ? "STANDARD_PR_REPLY_DISPATCH_REQUIRED" : "STANDARD_PR_RESOLUTION_DISPATCH_REQUIRED");
+      const kind = reply ? "REPLY" : binding === mergeExecuteOperation ? "MERGE" : "RESOLUTION";
+      readDispatchedOperation(state.record, id, binding, "STANDARD_PR_" + kind + "_DISPATCH_REQUIRED");
       if (record.results.length >= 32) fail("PROCESS_JOURNAL_RESULTS_LIMIT");
-      const output = await effect.recover(state.record, record.preview.input, record.preview.prepared, { signal });
+      const output = await effect.recover(state.record, record.preview.input, record.preview.prepared, { signal, operationId: id });
       if (!output?.contract_version) return { status: "reconciliation_required", operation_id: id, effect_status: "unknown",
-        reason_code: output?.reason_code ?? (reply ? "STANDARD_PR_REPLY_POSTIMAGE_UNAVAILABLE" : "STANDARD_PR_RESOLUTION_POSTIMAGE_UNAVAILABLE") };
+        reason_code: output?.reason_code ?? ("STANDARD_PR_" + kind + "_POSTIMAGE_UNAVAILABLE") };
       await verifyGrant(record, signal);
       if (signal?.aborted || current(state.record.instance_id).record.instance_sha256 !== state.record.instance_sha256
         || shadowHash(retained(id).record) !== shadowHash(record)

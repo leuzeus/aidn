@@ -11,6 +11,7 @@ import { createAgenticProcessStore } from '../../src/adapters/runtime/agentic-pr
 import { createProcessControlInboxStore } from '../../src/adapters/runtime/process-control-inbox-store.mjs';
 import { createProcessDecisionInboxStore } from '../../src/adapters/runtime/process-decision-inbox-store.mjs';
 import { createProcessOperationJournalStore } from '../../src/adapters/runtime/process-operation-journal-store.mjs';
+import { assertStandardOperationOutput } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { createStandardHostAuthority } from '../../src/adapters/runtime/standard-host-authority.mjs';
 import { createStandardProcessAuthority } from '../../src/application/runtime/standard-process-authority.mjs';
 import { resolveStandardProcessInput } from '../../src/application/runtime/standard-process-inputs.mjs';
@@ -31,6 +32,7 @@ const bindings = new Map(standardWorkflowOperationBindings().map(binding => [bin
 const target = published.call_targets.find(row => row.model_id === 'aidn-standard-pr-review-completion');
 const eventRef = 'REVIEW_fixture';
 const response = 'Technical reply from the accepted fixture triage.';
+const mergeOid = 'c'.repeat(40), baseTip = 'd'.repeat(40);
 const dummy = 'op_' + 'a'.repeat(40);
 const pin = path => ({ path, sha256: createHash('sha256').update(fs.readFileSync(path)).digest('hex') });
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -110,7 +112,13 @@ function open(base, { initializeKey = false } = {}) {
         id: pr.repository_id, nameWithOwner: 'fixture/repository',
         pullRequest: { id: pr.node_id, number: pr.number, headRefOid: pr.head_oid, headRefName: pr.head_branch,
           baseRefName: pr.base_branch, headRepository: { id: pr.repository_id }, isDraft: false, state: 'OPEN',
-          merged: false, mergedAt: null, mergeCommit: null, baseRef: { target: { oid: pr.base_oid } } },
+          merged: false, mergedAt: null, mergeCommit: null, mergeQueue: state.queued ? { url: 'https://example.com/queue' } : null,
+          autoMergeRequest: null, baseRef: { target: { oid: state.baseMoved ? baseTip : pr.base_oid } },
+          ...(state.mergeVisible ? { state: 'MERGED', merged: true, mergedAt: state.mergedAt,
+            mergedBy: { id: binding.actor.node_id, login: binding.actor.login },
+            mergeCommit: { oid: mergeOid, messageBody: state.external ? 'External merge' : state.mergeBody,
+              parents: connection([{ oid: pr.base_oid }, { oid: pr.head_oid }]) },
+            baseRef: { target: { oid: baseTip } } } : {}) },
       } } });
       if (query.startsWith('query AidnPrReviewEvent')) {
         assert.deepEqual(variables, { id: eventRef });
@@ -130,6 +138,29 @@ function open(base, { initializeKey = false } = {}) {
         value.data.repository.pullRequest.reviews.nodes[0].body += ' changed';
       value.data.repository.pullRequest.headRepository = { id: pr.repository_id };
       return ok(value);
+    },
+    async runGithubMerge(binary, args, options) {
+      assert.equal(binary, binding.gh.path);
+      assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
+      const { query, variables: { input } } = JSON.parse(options.input);
+      assert.match(query, /^mutation AidnMergePullRequest/);
+      const waiting = inspect().cursor.occurrences.find(row => row.node_id === 'pr_merge_execute');
+      const record = host.readJournal(waiting.operation.intent.operation_id);
+      assert.equal(record.phase, 'dispatching');
+      assert.equal(record.owner.pid, process.pid);
+      assert.equal(record.intent.authorization_sha256, shadowHash(record.grant));
+      const plan = record.preview.prepared.plan.provider.plan;
+      assert.deepEqual(input, { pullRequestId: pr.node_id, expectedHeadOid: pr.head_oid, mergeMethod: 'MERGE',
+        commitBody: 'AIDN-Merge: ' + plan.correlation_id, clientMutationId: plan.correlation_id });
+      assert.deepEqual(state.mergeSends, []);
+      state.mergeSends.push(input.clientMutationId);
+      state.mergedAt = new Date().toISOString();
+      state.mergeBody = input.commitBody;
+      state.mergeVisible = behavior === 'merge-consent-session';
+      save(providerFile, state);
+      if (!state.mergeVisible) throw Error('Fixture lost the merge acknowledgement');
+      return ok({ data: { mergePullRequest: { clientMutationId: input.clientMutationId,
+        pullRequest: { id: pr.node_id, merged: true, mergeCommit: { oid: mergeOid } } } } });
     },
     async runGithubResolution(binary, args, options) {
       assert.ok(!exception, 'Unexpected resolution during exception fixture');
@@ -329,13 +360,14 @@ function arrange(prefix, behavior) {
     repository: { host: 'github.com', owner: 'fixture', name: 'repository', node_id: pr.repository_id },
     actor: { login: 'fixture-actor', node_id: 'U_actor' }, reviewer: { login: 'fixture-reviewer', node_id: 'U_reviewer', type: 'User' },
     git: pin(gitPath), gh: pin(fs.realpathSync(process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32', 'where.exe') : '/usr/bin/env')) };
-  if (behavior.includes('consent')) binding.required_checks = { contract_version: 'standard-github-required-checks.v1',
+  if (behavior.includes('consent') || behavior === 'merge-refusals') binding.required_checks = { contract_version: 'standard-github-required-checks.v1',
     base_ref: pr.base_branch, entries: [{ name: 'Required CI', kind: 'check_run', producer_id: 'A_ci' }] };
+  if (['merge-consent-session', 'merge-consent-correction', 'merge-refusals', 'exception-merge-consent-correction'].includes(behavior)) binding.merge_method = 'MERGE';
   const key = shadowHash({ target: process.platform === 'win32' ? targetRoot.toLowerCase() : targetRoot, instance: configuration.instance_id });
   fs.mkdirSync(path.join(dirs.host, key + '.github'));
   save(path.join(dirs.host, key + '.github.json'), binding);
   save(path.join(base, 'configuration.json'), { configuration, home: dirs.host, binding, pr, prefix, behavior, submittedAt: new Date(Date.now() - 1000).toISOString() });
-  save(path.join(base, 'provider.json'), { sent: [], replies: [], resolved: false, reviewChanged: false, resolvedThreads: [], resolutionSends: [] });
+  save(path.join(base, 'provider.json'), { sent: [], replies: [], resolved: false, reviewChanged: false, resolvedThreads: [], resolutionSends: [], mergeSends: [] });
   console.log(JSON.stringify({ evidence: base, project: targetRoot, prefix, behavior }));
   return base;
 }
@@ -449,7 +481,7 @@ async function qualifyResolution(behavior) {
   assert.equal(result.thread_id, 'T_C_root');
   assert.equal((await resumed.run()).results[0].output.facts.session_pr_threads_observed_resolved, true);
   assert.equal((await resumed.run()).results[0].output.facts.session_pr_review_effects_verified, true);
-  assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_merge_observe');
+  assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_checks_accept');
   replay(resumed);
   console.log('PASS published R08 resolution ' + prefix + ' ' + behavior + ' with seeded signed upstream receipts and real FILES operation ports');
 }
@@ -522,6 +554,10 @@ async function qualifyException(behavior) {
     assert.equal((await deliver()).status, 'receipted');
     await f.host.accept(id, { write: true });
   }
+  if (behavior === 'exception-merge-consent-correction') {
+    await qualifyConsent(base, privateKey, authority_id, { exceptionSource: sourceRef, fixture: f });
+    return;
+  }
   const resumed = open(base), { record, cursor } = resumed.inspect();
   const result = resumed.host.readJournal(id).results[0], capture = resumed.inbox.read(decisionInboxId(claim)).record;
   resumed.signer.verify(capture);
@@ -550,10 +586,10 @@ async function qualifyException(behavior) {
   if (behavior === 'exception-consent-correction') await qualifyConsent(base, privateKey, authority_id, { exceptionSource: sourceRef });
 }
 
-async function qualifyConsent(base, privateKey, authority_id, { exceptionSource, choice = 'approve_merge' } = {}) {
-  const { home, pr, prefix } = json(path.join(base, 'configuration.json'));
-  const f = open(base), authorityInbox = path.join(home, 'inbox'), sourceRef = 'merge_consent';
-  if (!exceptionSource) {
+async function qualifyConsent(base, privateKey, authority_id, { exceptionSource, choice = 'approve_merge', fixture } = {}) {
+  const { home, pr, prefix, binding, behavior } = json(path.join(base, 'configuration.json'));
+  const f = fixture ?? open(base), authorityInbox = path.join(home, 'inbox'), sourceRef = 'merge_consent';
+  if (!exceptionSource && !binding.merge_method) {
     f.state.pendingCheck = true;
     const pending = (await f.run()).results[0].output;
     assert.equal(pending.outcome, 'deferred');
@@ -568,6 +604,8 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
     assert.ok(evidence.observations.subject.resolution_expires_at_ms > evidence.observations.observed_at_ms);
     assert.equal(f.host.readJournal(evidence.observations.subject.resolution_operation_id).intent.binding_ref,
       'session_pr_review_resolution_exception');
+  }
+  if (exceptionSource && !binding.merge_method) {
     const file = path.join(authorityInbox, exceptionSource + '.json'), envelope = json(file);
     const { signature, ...body } = envelope;
     const expired = { ...body, issued_at_ms: Date.now() - 2000, expires_at_ms: Date.now() - 1000 };
@@ -603,12 +641,12 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
     choice, rationale: 'I reviewed the exact published checks and R08 proof.',
     evidence_refs: evidence.evidence_refs };
   const deliver = () => f.host.receiveDecision(id, { sourceRef, write: true });
-  assert.equal((await deliver()).status, 'waiting_for_human');
+  if (!binding.merge_method) assert.equal((await deliver()).status, 'waiting_for_human');
   const body = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id, source_ref: sourceRef,
     subject_sha256: shadowHash(question), payload: claim, issued_at_ms: Date.now(), expires_at_ms: question.expires_at_ms };
   const publish = (value = body) => save(path.join(authorityInbox, sourceRef + '.json'),
     { ...value, signature: sign(null, Buffer.from(shadowHash(value)), privateKey).toString('base64') });
-  {
+  if (!binding.merge_method) {
     publish({ ...body, issued_at_ms: question.issued_at_ms - 1 });
     await assert.rejects(deliver, { code: 'STANDARD_HOST_SOURCE_INVALID' });
     publish({ ...body, payload: { ...claim, subject_sha256: shadowHash({ ...question.subject, head_oid: 'e'.repeat(40) }) } });
@@ -619,16 +657,20 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
     assert.equal(f.inbox.read(decisionInboxId(claim)).record, null);
     assert.equal(f.host.readJournal(id).phase, 'staged');
     delete f.state.checkDetails;
-  }
+  } else publish();
   save(f.providerFile, f.state);
   const approved = choice === 'approve_merge';
-  if (prefix === 'correction') {
+  if (prefix === 'correction' && !binding.merge_method) {
     const outcome = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--receive-exception', base, id, sourceRef],
       { encoding: 'utf8', timeout: 240000, windowsHide: true }));
     assert.equal(outcome.outcome, 'completed');
   } else {
     assert.equal((await deliver()).status, 'receipted');
     await f.host.accept(id, { write: true });
+  }
+  if (approved && binding.merge_method) {
+    await qualifyMerge(f, { base, id, checks, question, behavior, sourceFile: path.join(authorityInbox, sourceRef + '.json') });
+    return;
   }
   const resumed = open(base), capture = resumed.inbox.read(decisionInboxId(claim)).record;
   const result = resumed.host.readJournal(id).results[0];
@@ -640,7 +682,7 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
   assert.equal(result.output.effect_status, 'no_effect');
   assert.equal(result.output.observations.expires_at_ms, question.expires_at_ms);
   const state = resumed.inspect();
-  assert.equal(state.cursor.occurrences.some(row => row.node_id === 'pr_merge_observe' && row.status === 'READY'), approved);
+  assert.equal(state.cursor.occurrences.some(row => row.node_id === 'pr_merge_execute' && row.status === 'READY'), approved);
   await resumed.host.accept(id, { write: true });
   assert.equal(resumed.inspect().record.instance_sha256, state.record.instance_sha256);
   replay(resumed);
@@ -648,17 +690,116 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
   assert.equal(resumed.calls(), 0);
   assert.deepEqual(resumed.state.sent, []);
   assert.deepEqual(resumed.state.resolutionSends, []);
-  if (approved) {
-    const barrier = (await resumed.run()).results[0].output;
-    assert.equal(barrier.outcome, 'deferred');
-    assert.deepEqual(barrier.facts, {});
-    assert.equal(barrier.observations.reason_code, 'STANDARD_PR_MERGE_AWAITING_PROVIDER');
+  if (approved && !binding.merge_method) {
+    await assert.rejects(resumed.preview, { code: 'STANDARD_PR_MERGE_METHOD_AUTHORITY_REQUIRED' });
+    assert.equal(resumed.inspect().record.instance_sha256, state.record.instance_sha256);
   }
   console.log('PASS published R08 exact checks and signed ' + choice + ' at ' + prefix + ', FILES, GitHub transport doubled');
 }
 
-async function qualifyNominalConsent(prefix, choice) {
-  const base = arrange(prefix, 'consent-session'), f = open(base, { initializeKey: true });
+async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFile }) {
+  const initial = behavior === 'merge-consent-session', refusals = behavior === 'merge-refusals';
+  const waiting = () => {
+    const { cursor } = f.inspect();
+    assert.notEqual(cursor.status, 'COMPLETED');
+    assert.ok(['RUNNING', 'WAITING'].includes(cursor.occurrences.find(row => row.node_id.endsWith('_pr_effects_pending')).status));
+    assert.ok(!cursor.occurrences.some(row => row.status === 'READY' && row.node_id.includes('cycle')));
+  };
+  const preview = await f.preview();
+  if (refusals) waiting();
+  if (refusals) {
+    await assert.rejects(f.stage(preview), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
+    const tampered = structuredClone(preview);
+    tampered.prepared.plan.provider.plan.request.expected_head_oid = 'e'.repeat(40);
+    await assert.rejects(f.stage(tampered), { code: 'PROCESS_JOURNAL_NOT_AUTHENTICATED' });
+    const envelope = json(sourceFile);
+    save(sourceFile, { ...envelope, payload: { ...envelope.payload, rationale: 'Changed after signature' } });
+    try {
+      await assert.rejects(f.preview, { code: 'STANDARD_HOST_SOURCE_NOT_AUTHENTICATED' });
+    } finally { save(sourceFile, envelope); }
+
+    f.state.checkId = 'CR_replaced';
+    const changed = (await f.run(preview)).results[0].output;
+    assert.equal(changed.effect_status, 'no_effect');
+    assert.equal(changed.observations.reason_code, 'STANDARD_PR_MERGE_CONSENT_SUBJECT_CHANGED');
+    delete f.state.checkId;
+
+    const beforeBase = await f.preview();
+    f.state.baseMoved = true;
+    const moved = (await f.run(beforeBase)).results[0].output;
+    assert.equal(moved.effect_status, 'no_effect');
+    assert.equal(moved.observations.reason_code, 'GITHUB_PR_SOURCE_CHANGED');
+    delete f.state.baseMoved;
+
+    f.state.queued = true;
+    await assert.rejects(f.preview, { code: 'GITHUB_PR_MERGE_DIRECT_REQUIRED' });
+    delete f.state.queued;
+    assert.deepEqual(f.state.mergeSends, []);
+    replay(f);
+    console.log('PASS published R08 refused substituted plan, grant, signed consent, checks, base and queued merge with zero sends');
+    return;
+  }
+  const applied = await f.run(preview), outcome = applied.results[0].output;
+  const plan = preview.prepared.plan, provider = plan.provider.plan;
+  assert.equal(preview.input.consent_operation_id, id);
+  assert.equal(preview.input.checks_operation_id, checks.operation_id);
+  assert.equal(provider.expires_at_ms, question.expires_at_ms);
+  assert.equal(plan.consent_receipt_sha256, shadowHash(f.host.readJournal(id).results[0].receipt));
+  assert.equal(plan.checks_receipt_sha256, shadowHash(checks.results[0].receipt));
+  assert.equal(provider.request.expected_base_oid, question.subject.base_oid);
+  assert.equal(f.state.mergeSends.length, 1);
+  if (initial) {
+    assert.equal(outcome.outcome, 'completed');
+    assert.equal(outcome.effect_status, 'confirmed');
+    assert.equal(outcome.observations.merge.confirmation, 'acknowledged');
+  } else {
+    assert.equal(outcome.outcome, 'reconciliation_required');
+    assert.equal(outcome.effect_status, 'unknown');
+    waiting();
+    const operation = applied.operation_id, before = f.inspect().record.instance_sha256;
+    const recover = () => JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--recover-merge', base, operation],
+      { encoding: 'utf8', timeout: 240000, windowsHide: true }));
+    assert.deepEqual(recover(), { status: 'reconciliation_required', sends: 1, results: 1, instance: before });
+    f.state.mergeVisible = true;
+    f.state.external = true;
+    save(f.providerFile, f.state);
+    assert.deepEqual(recover(), { status: 'reconciliation_required', sends: 1, results: 1, instance: before });
+    delete f.state.external;
+    save(f.providerFile, f.state);
+    const recovered = recover();
+    assert.equal(recovered.status, 'receipted');
+    assert.equal(recovered.sends, 1);
+    assert.equal(recovered.results, 2);
+    assert.deepEqual(recover(), { ...recovered, status: 'retained_result' });
+  }
+  const resumed = open(base), retained = resumed.host.readJournal(applied.operation_id);
+  const result = retained.results.at(-1).output, { merge } = result.observations;
+  assert.equal(result.effect_status, initial ? 'confirmed' : 'no_effect');
+  assert.equal(merge.confirmation, initial ? 'acknowledged' : 'observed');
+  assert.deepEqual(result.facts, {});
+  assert.equal(merge.provider.pull_request.merge_oid, mergeOid);
+  assert.equal(merge.provider.pull_request.observed_base_tip_oid, baseTip);
+  assert.deepEqual(merge.provider.pull_request.merge_parent_oids, [question.subject.base_oid, question.subject.head_oid]);
+  assert.throws(() => assertStandardOperationOutput({ ...result, effect_status: 'unknown' }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
+  assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_post_merge_wait');
+  const barrier = (await resumed.run()).results[0].output;
+  assert.equal(barrier.outcome, 'deferred');
+  assert.deepEqual(barrier.facts, {});
+  assert.equal(barrier.observations.reason_code, 'STANDARD_PR_POST_MERGE_SYNC_REQUIRED');
+  assert.equal(barrier.observations.merge_receipt_sha256, shadowHash(retained.results.at(-1).receipt));
+  const { cursor } = resumed.inspect();
+  assert.equal(cursor.status, 'WAITING');
+  assert.equal(cursor.occurrences.find(row => row.node_id === 'pr_post_merge_wait').status, 'WAITING');
+  assert.ok(['RUNNING', 'WAITING'].includes(cursor.occurrences.find(row => row.node_id.endsWith('_pr_effects_pending')).status));
+  assert.equal(resumed.calls(), 0);
+  replay(resumed);
+  assert.equal(resumed.state.mergeSends.length, 1);
+  console.log('PASS published R08 merge ' + (initial ? 'acknowledged' : 'observed after lost ACK and cold recovery' + (question.subject.resolution_expires_at_ms ? ' with documented exception' : ''))
+    + ', exact postimage and durable R09 wait, no second send');
+}
+
+async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session') {
+  const base = arrange(prefix, behavior), f = open(base, { initializeKey: true });
   const { home } = json(path.join(base, 'configuration.json'));
   const authority_id = 'fixture-human-r08', { publicKey, privateKey } = generateKeyPairSync('ed25519');
   fs.mkdirSync(path.join(home, 'inbox'));
@@ -674,7 +815,11 @@ async function qualifyNominalConsent(prefix, choice) {
   await qualifyConsent(base, privateKey, authority_id, { choice });
 }
 
-if (['--case=consent-session', '--case=consent-refused', '--case=consent-correction'].includes(process.argv[2])) {
+if (['--case=merge-consent-session', '--case=merge-consent-correction', '--case=merge-refusals'].includes(process.argv[2])) {
+  await qualifyNominalConsent(process.argv[2].endsWith('correction') ? 'correction' : 'session', 'approve_merge', process.argv[2].slice('--case='.length));
+} else if (process.argv[2] === '--case=exception-merge-consent-correction') {
+  await qualifyException('exception-merge-consent-correction');
+} else if (['--case=consent-session', '--case=consent-refused', '--case=consent-correction'].includes(process.argv[2])) {
   await qualifyNominalConsent(process.argv[2] === '--case=consent-correction' ? 'correction' : 'session',
     process.argv[2] === '--case=consent-refused' ? 'refused' : 'approve_merge');
 } else if (/^--case=exception-(session|correction|consent-correction|refused|deferred|cancelled)$/.test(process.argv[2])) {
@@ -690,6 +835,19 @@ if (['--case=consent-session', '--case=consent-refused', '--case=consent-correct
   await qualifyResolution(process.argv[2].slice('--case='.length));
 } else if (process.argv[2] === '--verify-retained') {
   verifyRetained(process.argv[3]);
+} else if (process.argv[2] === '--recover-merge') {
+  const f = open(process.argv[3]), id = process.argv[4], before = f.host.readJournal(id);
+  f.allow(shadowHash(before.preview));
+  const result = await f.host.dispatch(id, { write: true });
+  if (result.status === 'receipted') await f.host.accept(id, { write: true });
+  const after = f.host.readJournal(id);
+  assert.deepEqual(after.owner, before.owner);
+  assert.deepEqual(after.intent, before.intent);
+  assert.deepEqual(after.grant, before.grant);
+  assert.deepEqual(after.results.slice(0, before.results.length), before.results);
+  replay(f);
+  console.log(JSON.stringify({ status: result.status, sends: f.state.mergeSends.length,
+    results: after.results.length, instance: f.inspect().record.instance_sha256 }));
 } else if (process.argv[2] === '--recover') {
   const f = open(process.argv[3]), id = process.argv[4], before = f.host.readJournal(id);
   f.allow(shadowHash(before.preview));
@@ -743,7 +901,7 @@ if (['--case=consent-session', '--case=consent-refused', '--case=consent-correct
       f.state.resolved = true;
       assert.equal((await f.run()).results[0].output.facts.session_pr_threads_observed_resolved, true);
       assert.equal((await f.run()).results[0].output.facts.session_pr_review_effects_verified, true);
-      assert.equal(f.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_merge_observe');
+      assert.equal(f.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_checks_accept');
     } else {
       const { operation_id: id } = await f.stage(publish);
       if (behavior === 'interrupted') {

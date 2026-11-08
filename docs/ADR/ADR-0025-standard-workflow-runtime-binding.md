@@ -3247,8 +3247,8 @@ historical inbox records remain readable.
 
 Both call sites use the same published sequence. A separate preflight observer
 records an already merged PR on a deferred no-effect receipt. The open case
-advances with empty routing facts. The final merge observer remains a blocking
-read-only boundary after the consent operation.
+advances with empty routing facts. The historical direct merge observer
+retains its read-only contract.
 
 The protected per-project and per-instance GitHub manifest accepts a
 `required_checks` field with `standard-github-required-checks.v1`. A host
@@ -3286,6 +3286,46 @@ facts, regardless of consent.
 
 [GitHub check runs](https://docs.github.com/en/rest/checks/runs)
 and [GitHub commit statuses](https://docs.github.com/en/rest/commits/statuses).
+
+### Exact authorized GitHub merge and R09 wait
+
+Both sites of the published review continuation use the accepted triage, check
+and merge consent operation IDs. The host authenticates their journal receipts,
+the latest delivery, signed inbox and applicable R08 resolution proof or
+unexpired documented exception. A protected per-instance GitHub manifest opts
+into direct merge with `merge_method: "MERGE"` and a required check policy.
+The exact reviewed action and separate host grant bind this method, the pinned
+actor and repository, the PR number and node ID, HEAD/base/refs, the consent and
+check receipt hashes, the consent deadline and a unique commit body marker.
+The existing journal CAS claims the dispatch before any provider mutation.
+
+The transport revalidates review evidence, checks, signed consent and an open
+PR with the expected base immediately before invoking GitHub. A queue or active
+auto-merge blocks direct execution. GraphQL `expectedHeadOid` supplies the
+provider's atomic HEAD precondition. The base is checked by observation and
+then by parentage. Two fresh reads must agree on the merged PR, actor, marker and ordered
+parents [accepted base, accepted HEAD]. The observed remote tip is retained
+separately from the merge OID and may differ. Confirmation also matches the
+mutation acknowledgement to the observed merge OID.
+
+An uncertain dispatch retains UNKNOWN and its original owner and grant.
+Recovery repeats only the protected reads, even after the consent window, and
+requires the original plan's exact correlated postimage. A recovered receipt
+records an observation with no effect in the recovery action. The original
+marker is mandatory even when an external merge has the same actor and parents.
+External observations carry provider facts only. Consent comes from the signed
+inbox. The historical v1 reader remains available.
+
+A separate deferred R09 operation consumes the accepted merge receipt and
+holds the call open. The canonical session remains at the PR gate until local
+reconciliation. Direct cycle admission also blocks a closed session with an
+open PR and a merged session whose local sync is still outstanding. An
+explicitly reopened correction session retains its separate admission path.
+R09 owns the local fetch, divergence check and reconciliation proof required
+before the call can return.
+
+[GitHub GraphQL pull requests](https://docs.github.com/en/graphql/reference/pulls)
+and [GitHub GraphQL commits](https://docs.github.com/en/graphql/reference/commits).
 
 ### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
 

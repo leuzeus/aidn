@@ -45,6 +45,7 @@ import checksAcceptInput from "../contracts/workflow-definition/standard-pr-chec
 import mergeConsentInput from "../contracts/workflow-definition/standard-pr-merge-consent-input.v1.schema.json" with { type: "json" };
 import premergeOutput from "../contracts/workflow-definition/standard-pr-premerge-observe-output.v1.schema.json" with { type: "json" };
 import { assertMergeConsentOutput, assertRequiredChecksOutput, checksOperation, mergeConsentOperation } from "./standard-pr-merge-consent.mjs";
+import { assertMergeExecuteInput, assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeExecuteOperation, postMergeWaitOperation } from "./standard-pr-merge-execute.mjs";
 import prReviewEffectsOutput from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v1.schema.json" with { type: "json" };
 import prMergeProvider from "../contracts/workflow-definition/github-pr-merge-observation.v1.schema.json" with { type: "json" };
 import prMergeInput from "../contracts/workflow-definition/standard-session-pr-merge-observe-input.v1.schema.json" with { type: "json" };
@@ -208,6 +209,7 @@ export function assertStandardOperationInput(operation, value) {
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
+  if ([mergeExecuteOperation, postMergeWaitOperation].includes(operation)) return assertMergeExecuteInput(operation, value);
   if ([checksOperation, mergeConsentOperation].includes(operation)) {
     if (checkShadowJson(value) || validateJsonSchema(value, operation === checksOperation ? checksAcceptInput : mergeConsentInput,
       "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_INPUT_INVALID");
@@ -335,6 +337,8 @@ export function assertStandardOperationOutput(value) {
     return value;
   }
   if (value?.contract_version === "standard-pr-merge-consent-output.v1") return assertMergeConsentOutput(value);
+  if (value?.contract_version === "standard-pr-merge-execute-output.v1") return assertMergeExecuteOutput(value);
+  if (value?.contract_version === "standard-pr-post-merge-wait-output.v1") return assertPostMergeWaitOutput(value);
   if (value?.contract_version === "standard-pr-checks-accept-output.v1") return assertRequiredChecksOutput(value);
   if (value?.contract_version === "standard-pr-review-resolution-exception-output.v1") return assertResolutionExceptionOutput(value);
   if (["standard-pr-review-resolution-select-output.v1", "standard-pr-review-resolution-select-output.v2", "standard-pr-review-thread-resolve-output.v1"].includes(value?.contract_version)) {

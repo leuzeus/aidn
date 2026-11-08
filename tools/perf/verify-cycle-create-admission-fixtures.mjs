@@ -7,6 +7,31 @@ import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-
 import { copyFixtureToTmp, initGitRepo, removePathWithRetry } from "./test-git-fixture-lib.mjs";
 import { prepareActivationFixture } from "./test-activation-fixture-lib.mjs";
 
+const PR_CONTINUITY_CASES = [
+  ["closed_session_open_pr", "open", "not_needed", true, true],
+  ["merged_session_sync_required", "merged", "required", true, true],
+  ["merged_session_without_sync_record", "merged", "not_needed", true, true],
+  ["reopened_correction_session", "open", "not_needed", false, false],
+].map(([id, prStatus, syncStatus, closed, blocked]) => ({
+  id,
+  fixture: "tests/fixtures/perf-structure/session-multi-cycle-explicit",
+  workingBranch: "S103-multi",
+  mutate(targetRoot) {
+    writeDualConfig(targetRoot);
+    fs.appendFileSync(path.join(targetRoot, "docs/audit/sessions/S103-multi.md"),
+      "\n- pr_status: " + prStatus + "\n- post_merge_sync_status: " + syncStatus
+      + "\n\n### Session close gate satisfied?\n\n- [" + (closed ? "x" : " ") + "] Yes\n");
+    if (closed) for (const name of ["C103-feature-gamma", "C104-feature-delta"]) {
+      const status = path.join(targetRoot, "docs/audit/cycles", name, "status.md");
+      const body = fs.readFileSync(status, "utf8");
+      fs.writeFileSync(status, body.replace(/^state: (?:IMPLEMENTING|VERIFYING)$/m, "state: DONE"));
+    }
+  },
+  expectedAction: blocked ? "stop_pr_continuity" : "proceed_r2_session_base_with_import",
+  expectedResult: blocked ? "stop" : "ok",
+  expectsCheckpoint: !blocked,
+}));
+
 const CASES = [
   {
     id: "source_branch_requires_choice",
@@ -393,6 +418,7 @@ function parseArgs(argv) {
   const args = {
     tmpRoot: "tests/fixtures",
     keepTmp: false,
+    prContinuity: false,
     json: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -402,6 +428,8 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--keep-tmp") {
       args.keepTmp = true;
+    } else if (token === "--pr-continuity") {
+      args.prContinuity = true;
     } else if (token === "--json") {
       args.json = true;
     } else if (token === "--help" || token === "-h") {
@@ -562,13 +590,13 @@ async function main() {
   try {
     const args = parseArgs(process.argv.slice(2));
     const tmpRoot = path.resolve(process.cwd(), args.tmpRoot);
-    const fileRuns = CASES.map((testCase) => {
+    const fileRuns = (args.prContinuity ? PR_CONTINUITY_CASES : CASES).map((testCase) => {
       const run = runCase(tmpRoot, testCase);
       createdTargets.push(run.target_root);
       return run;
     });
     const canonicalRuns = [];
-    for (const testCase of CANONICAL_CASES) {
+    for (const testCase of args.prContinuity ? [] : CANONICAL_CASES) {
       const run = await runCanonicalCase(tmpRoot, testCase);
       createdTargets.push(run.target_root);
       canonicalRuns.push(run);

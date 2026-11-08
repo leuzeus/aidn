@@ -363,7 +363,7 @@ finalization; `--verify` retains its read-only verification behavior.
     `--execute --expect-plan <outer action_sha256>`. The browser retains the same
     request under its explicit approval. The original operation or call plan is preserved;
     current authority, freshness and CAS are still checked. A retained R08
-    reply or resolution dispatch uses the same explicit action to record the
+    reply, resolution or merge dispatch uses the same explicit action to record the
     postimage through read-only provider recovery. An absent postimage keeps
     the occurrence waiting.
     For an R08 resolution exception, `--decision-source` selects an authenticated
@@ -373,8 +373,11 @@ finalization; `--verify` retains its read-only verification behavior.
     A protected GitHub manifest can pin required checks to its target ref.
     STANDARD records a read-only check receipt on the exact HEAD. A separate
     `--decision-source` selects a signed merge decision for the current
-    question. Approval is time-limited and advances to a read-only wait for
-    provider merge observation.
+    question. Approval is time-limited. A protected host that opts in with
+    `merge_method: "MERGE"` can prepare the separate exact merge action.
+    Applying that action requires its reviewed digest and host grant. A
+    confirmed or exactly recovered merge keeps the workflow waiting for
+    local R09 reconciliation.
     A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`

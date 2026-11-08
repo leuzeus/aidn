@@ -7,10 +7,11 @@ import { agentRunPhysicalPath, readAgentRunFile } from "../../application/runtim
 import { shadowHash } from "../../core/workflow/shadow-json.mjs";
 import { assertGithubRequiredChecksPolicy, observeGithubRequiredChecks } from "../git-provider/github-required-checks.mjs";
 import { createGithubSessionPush } from "../git-provider/github-session-push.mjs";
+import { createGithubPrMerge } from "../git-provider/github-pr-merge.mjs";
 import { createGithubPrReviewResolution } from "../git-provider/github-pr-review-resolution.mjs";
 import { createGithubPrReviewReply } from "../git-provider/github-pr-review-reply.mjs";
 import { createGithubPullRequestOpen } from "../git-provider/github-pull-request-open.mjs";
-import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter, createGithubPrReviewEventAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
+import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter, createGithubPrMergeEffectAsyncAdapter, createGithubPrReviewEventAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
 import { createGithubReviewEvidenceAsyncAdapter, createGithubReviewContentAsyncAdapter } from "../git-provider/github-review-evidence.mjs";
 import { driveGithubObservation, driveGithubObservationAsync, runGithubObservationCommand } from "../git-provider/github-observation-transport.mjs";
 
@@ -31,7 +32,7 @@ function optionalFile(name, options) {
 // subprocess transports; the action, IR and project configuration select none.
 export function createStandardGithubProviderHost({ configuration, home, identity, environment }, {
   runGithub = spawnSync, runGithubRead = runGithubObservationCommand, runGithubReply = runGithubObservationCommand,
-  runGithubResolution = runGithubObservationCommand, runRemoteGit = spawnSync,
+  runGithubResolution = runGithubObservationCommand, runGithubMerge = runGithubObservationCommand, runRemoteGit = spawnSync,
 } = {}) {
   const manifest = path.join(home, identity + ".github.json");
   let snapshot, binding;
@@ -40,11 +41,12 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     if (!snapshot) return null;
     binding = snapshot.value;
   } catch { fail("STANDARD_GITHUB_HOST_CONFIGURATION_INVALID"); }
-  const { repository, actor, git, gh, reviewer, required_checks: requiredChecks } = binding ?? {};
+  const { repository, actor, git, gh, reviewer, merge_method: mergeMethod, required_checks: requiredChecks } = binding ?? {};
   const principal = (value, login = /^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/) => matches(value.login, login) && matches(value.node_id, nodeId);
   const executable = value => exact(value, "path,sha256") && typeof value.path === "string"
     && path.isAbsolute(value.path) && matches(value.sha256, hash);
-  if (!exact(binding, "actor,contract_version,gh,git,instance_id,repository," + (requiredChecks === undefined ? "" : "required_checks,") + (reviewer === undefined ? "" : "reviewer,") + "target_root")
+  if (!exact(binding, "actor,contract_version,gh,git,instance_id," + (mergeMethod === undefined ? "" : "merge_method,") + "repository," + (requiredChecks === undefined ? "" : "required_checks,") + (reviewer === undefined ? "" : "reviewer,") + "target_root")
+    || mergeMethod !== undefined && (mergeMethod !== "MERGE" || requiredChecks === undefined)
     || binding.contract_version !== "standard-host-github.v1"
     || binding.target_root !== configuration.target_root || binding.instance_id !== configuration.instance_id
     || !exact(repository, "host,name,node_id,owner") || repository.host !== "github.com"
@@ -228,6 +230,9 @@ export function createStandardGithubProviderHost({ configuration, home, identity
   const reviewHost = { repository: repo, actor, hostContextSha256: contextSha, observe: reviewEffects };
   const replyPort = createGithubPrReviewReply({ ...reviewHost, runMutation: protectedReviewMutation(runGithubReply, "GITHUB_PR_REPLY") });
   const resolutionPort = createGithubPrReviewResolution({ ...reviewHost, runMutation: protectedReviewMutation(runGithubResolution, "GITHUB_PR_RESOLUTION") });
+  const mergePort = mergeMethod === undefined ? null : createGithubPrMerge({ ...reviewHost, method: mergeMethod,
+    observe: readPort(createGithubPrMergeEffectAsyncAdapter, "observePrMerge"),
+    runMutation: protectedReviewMutation(runGithubMerge, "GITHUB_PR_MERGE") });
   const readReviewEvent = readPort(createGithubPrReviewEventAsyncAdapter, "readEvent");
   function reviewEvents(read) {
     async function readEvent({ request, sourceRef, subject, signal }) {
@@ -290,6 +295,7 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       observePrReviewEffects: reviewEffects,
       ...(requiredChecks ? { observeRequiredChecks } : {}),
       reply: replyPort, resolution: resolutionPort,
+      ...(mergePort ? { merge: mergePort } : {}),
     }),
     ...(reviewer ? { sessionReviewEventPort: Object.freeze({ ...reviewEvents(readReviewEvent), withReviewReads }) } : {}),
   });

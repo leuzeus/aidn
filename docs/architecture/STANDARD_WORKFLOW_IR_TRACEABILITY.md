@@ -891,9 +891,13 @@ decision records the reason and exact open set, leaving each thread's observed
 status intact. Both paths reach `session_pr_checks_accept`, which revalidates
 the resolution receipt and compares exact-HEAD results against the protected
 check policy. `session_pr_merge_consent` consumes the accepted operation ID and
-binds a fresh signed decision to the same exact subject. The call then waits
-at the read-only `session_pr_merge_observe` boundary. Merge execution and R09
-are separate. Historical direct observation receipts stay readable.
+binds a fresh signed decision to the same exact subject. Both calls then
+resolve triage, check and consent operation IDs into `session_pr_merge_execute`.
+The executor requires a distinct exact-action grant and the protected
+`MERGE` capability. It verifies GitHub's exact postimage after the claimed
+dispatch and uses read-only recovery at the same occurrence for UNKNOWN.
+`session_pr_post_merge_wait` consumes the accepted merge operation and holds
+the call open pending R09. Historical direct observation receipts stay readable.
 
 ## SPIKE canonical projection finalization, 2026-11-04
 

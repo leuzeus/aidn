@@ -370,6 +370,20 @@ export async function runCycleCreateAdmitUseCase({
     });
   }
 
+  const prior = (branchKind === AIDN_BRANCH_KIND.SOURCE ? sessions.at(-1) : targetSession)?.metadata;
+  const awaitingMerge = prior?.pr_status === "open" && prior.close_gate_satisfied === true;
+  const awaitingSync = prior?.pr_status === "merged" && prior.post_merge_sync_status !== "done";
+  if (awaitingMerge || awaitingSync) {
+    return makeResult(base, {
+      action: "stop_pr_continuity",
+      reason_code: awaitingMerge ? "CYCLE_CREATE_SESSION_PR_OPEN" : "CYCLE_CREATE_POST_MERGE_SYNC_REQUIRED",
+      blocking_reasons: [awaitingMerge
+        ? "The closed session still has an open PR in canonical state."
+        : "The merged session still requires local source-branch reconciliation."],
+      recommended_next_action: "Continue the PR lifecycle and record local reconciliation before creating a new cycle.",
+    });
+  }
+
   if ([AIDN_BRANCH_KIND.UNKNOWN, AIDN_BRANCH_KIND.OTHER].includes(branchKind)) {
     return applyModeGate(base, makeResult(base, {
       action: "blocked_non_compliant_branch",

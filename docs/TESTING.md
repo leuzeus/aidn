@@ -1414,6 +1414,23 @@ existing partial PR milestone now waits at the preflight merge observation
 when its provider fixture lacks that port. Provider, Native,
 PostgreSQL and installed behavior require separate qualification.
 
+For the merge executor, run the same standalone script with
+`--case=merge-consent-session` for the acknowledged merge and
+`--case=merge-consent-correction` for lost acknowledgement and cold recovery.
+`--case=merge-refusals` exercises pre-send refusals.
+`--case=exception-merge-consent-correction` exercises the corrective route
+with a documented exception and its original five-minute bound.
+They use the two published child call sites, synthetic upstream receipts,
+real FILES host, inbox, CAS and journal, a fixture signer and doubled GitHub
+transport. The cases cover direct merge after the exact checks and consent,
+substitutions and refusal before dispatch, missing postimage and lost
+acknowledgement, read-only recovery in a new process, and the deferred R09
+boundary. These cases run outside the required family and preserve the
+five-minute consent and exception limits. Use the composition and historical
+merge-reader fixtures for binding and reader regressions.
+Run `verify-cycle-create-admission-fixtures.mjs --pr-continuity` separately
+for the direct cycle-admission guard and the reopened correction path.
+
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as
 their historical synchronous interfaces. It compares complete typed outputs,

@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { createAgenticProcessStore } from '../../src/adapters/runtime/agentic-process-store.mjs';
 import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
 import { createGithubPrMergeAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from '../../src/adapters/git-provider/github-workflow-adapter.mjs';
+import { standardWorkflowOperationBindings } from '../../src/application/runtime/standard-workflow-operations.mjs';
 import { loadStandardWorkflowAssets } from '../../src/application/runtime/standard-workflow-composition.mjs';
 import { createStandardPrReviewEffectsVerification } from '../../src/application/runtime/standard-session-pr-review-effects.mjs';
 import { createStandardSessionPrMergeObservation } from '../../src/application/runtime/standard-session-pr-merge-observe.mjs';
@@ -40,7 +41,8 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     effects ? callSite : prefix + '_pr_merge_observe'];
   const nodes = nodeIds.map(id => published.nodes.find(node => node.id === id));
   // Exercise the historical direct operation shape separately from the call.
-  if (!effects) nodes[nodes.length - 1] = { ...target.model.nodes.find(node => node.id === (preflight ? 'pr_premerge_observe' : 'pr_merge_observe')), id: nodeIds.at(-1) };
+  const direct = standardWorkflowOperationBindings().find(binding => binding.id === (preflight ? 'session_pr_premerge_observe' : 'session_pr_merge_observe'));
+  if (!effects) nodes[nodes.length - 1] = { id: nodeIds.at(-1), kind: 'operation', participant_ref: 'project', binding_ref: direct.id };
   const terminal = effects ? published.data_bindings.inputs.find(row => row.node_id === callSite) : {
     node_id: nodeIds.at(-1), fields: { contract_version: { source: 'literal', value: 'standard-session-pr-merge-observe-input.v1' },
       triage_operation_id: { source: 'operation_id', node_id: triageNode } },
@@ -49,7 +51,7 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     participants: [{ id: 'project' }], roles: [], policies: [], entry: 'sequence',
     nodes: [{ id: 'sequence', kind: 'sequence', participant_ref: 'project', children: nodeIds }, ...nodes],
     operation_pins: Object.fromEntries(nodes.filter(node => node.kind === 'operation')
-      .map(node => [node.binding_ref, published.operation_pins[node.binding_ref] ?? target.model.operation_pins[node.binding_ref]])),
+      .map(node => [node.binding_ref, node.binding_ref === direct.id ? shadowHash(direct) : published.operation_pins[node.binding_ref]])),
     ...(effects ? { call_targets: [target] } : {}),
     data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [],
       inputs: nodeIds.map(node_id => node_id === terminal.node_id ? terminal : { node_id, fields: {} }) } };
