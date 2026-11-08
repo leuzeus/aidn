@@ -2,7 +2,7 @@ import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { validateJsonSchema } from '../../core/contracts/json-schema-validator.mjs';
 import linkSchema from '../../core/contracts/workflow-definition/github-pr-link.v1.schema.json' with { type: 'json' };
 import { assertStandardOperationOutput } from '../../core/workflow/standard-operation-contracts.mjs';
-import { alignedReason, assertPostMergeAlignmentOutput, postMergeAlignmentOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
+import { alignedReason, assertPostMergeAlignmentOutput, assertPostMergeMeasureOutput, postMergeAlignmentOperation, postMergeMeasureOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
 import { assertPostMergeCompleteOutput, assertPostMergeCompletePlan, postMergeCompleteOperation } from '../../core/workflow/standard-pr-post-merge-complete.mjs';
 import { readSourceBranch, parseSessionMetadata } from '../../lib/workflow/session-context-lib.mjs';
 import { readWorkflowProjectExecutionAuthority } from './workflow-instance-composition.mjs';
@@ -34,7 +34,7 @@ export function postMergeProjectScope(targetRoot, env) {
 
 // The opening marker supplies a lookup key. The accepted opening supplies
 // identity, including the original delivery (which can differ after correction).
-export function postMergeCompletionSource({ instance, input, readAccepted, readAlignmentSource, artifacts, scopeSha }) {
+export function postMergeSessionSource({ instance, readAccepted, artifacts }) {
   const openId = latestIntent(instance, 'session_pr_open')?.operation_id;
   if (!openId) fail(required);
   const opening = readAccepted(instance, openId, 'session_pr_open', required);
@@ -52,17 +52,30 @@ export function postMergeCompletionSource({ instance, input, readAccepted, readA
     || link.base_branch !== sourceBranch || Number(metadata.pr_number) !== link.number || metadata.pr_url !== link.url)
     fail(required);
 
-  const alignment = readAccepted(instance, input.alignment_operation_id, postMergeAlignmentOperation, required);
-  const { observations: { reason_code, alignment: measured } } = assertPostMergeAlignmentOutput(alignment.output);
-  if (reason_code !== alignedReason || !measured || alignment.record.preview.input.fetch_operation_id !== measured.fetch_operation_id
-    || alignment.record.preview.prepared.fetch_receipt_sha256 !== measured.fetch_receipt_sha256) fail(required);
-  const { git, fetch, receiptSha, merge } = readAlignmentSource(instance, alignment.record.preview.input);
+  return { openId, opening, sessionId, link, sourceBranch };
+}
+
+export function assertPostMergeSessionLink({ link, sourceBranch }, merge, measured) {
   const pull = merge.provider.pull_request;
   const repositoryUrl = 'https://github.com/' + merge.provider.repository.owner + '/' + merge.provider.repository.name + '/pull/' + pull.number;
   if (link.repository_id !== merge.provider.repository.node_id || link.node_id !== pull.node_id
     || link.number !== pull.number || link.url.toLowerCase() !== repositoryUrl.toLowerCase()
-    || link.head_branch !== pull.head_ref || link.base_branch !== pull.base_ref || measured.source_ref !== 'refs/heads/' + sourceBranch
-    || measured.fetch_receipt_sha256 !== receiptSha || ['source_ref', 'merge_oid', 'fetched_head', 'proof_ref'].some(key => measured[key] !== fetch[key]))
+    || link.head_branch !== pull.head_ref || link.base_branch !== pull.base_ref || measured.source_ref !== 'refs/heads/' + sourceBranch)
+    fail(required);
+}
+
+export function postMergeCompletionSource({ instance, input, readAccepted, readAlignmentSource, artifacts, scopeSha }) {
+  const session = postMergeSessionSource({ instance, readAccepted, artifacts });
+  const { openId, opening, sessionId, link } = session;
+  const measurement = latestIntent(instance, postMergeMeasureOperation)?.operation_id === input.alignment_operation_id;
+  const alignment = readAccepted(instance, input.alignment_operation_id, measurement ? postMergeMeasureOperation : postMergeAlignmentOperation, required);
+  const checkOutput = measurement ? assertPostMergeMeasureOutput : assertPostMergeAlignmentOutput;
+  const { observations: { reason_code, alignment: measured } } = checkOutput(alignment.output);
+  if (reason_code !== alignedReason || !measured || alignment.record.preview.input.fetch_operation_id !== measured.fetch_operation_id
+    || alignment.record.preview.prepared.fetch_receipt_sha256 !== measured.fetch_receipt_sha256) fail(required);
+  const { git, fetch, receiptSha, merge } = readAlignmentSource(instance, alignment.record.preview.input);
+  assertPostMergeSessionLink(session, merge, measured);
+  if (measured.fetch_receipt_sha256 !== receiptSha || ['source_ref', 'merge_oid', 'fetched_head', 'proof_ref'].some(key => measured[key] !== fetch[key]))
     fail(required);
 
   const ids = [openId, fetch.merge_operation_id, measured.fetch_operation_id, input.alignment_operation_id];

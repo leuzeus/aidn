@@ -1441,16 +1441,24 @@ transport doubled and Git still real. This gate qualifies the adapter.
 Use `--case=post-merge-fetch-session` and
 `--case=post-merge-fetch-correction` with
 `verify-standard-pr-review-reply-fixtures.mjs` for the two R09 call sites.
-The tests use the published R09 bindings in a reduced graph with a synthetic
-signed opening and merge prefix, real FILES application ports, disposable
-Git and a doubled GitHub transport. They check the exact grant, cold recovery
-after transfer, divergence, a remote tip missing from the local object store,
-and retry after explicit fixture reconciliation. The same reducer accepts
-the canonical completion and replays without effects. Session and cycle
-admission, the fresh pre-write check with stale tracking, and receipt and
-witness substitution are verified separately. DUAL and DB-only completion,
-real GitHub, Native and installed archive qualification require their own
-evidence.
+These cases keep the two published call sites and the exact R09 subtree in a
+reduced graph with synthetic signed opening, triage and merge receipts. They
+use disposable Git, real FILES journals and inbox, an Ed25519 fixture principal
+and a doubled GitHub transport. The session case covers 0/2, absence of a
+decision, a tampered subject, movement before receipt and acceptance, report
+and a fresh question in a new Node process. After an accepted strategy, it
+covers a deleted remote ref, an unknown object and external fetch/fast-forward.
+The correction case recovers the fetch in a new process, measures 1/2 and
+requires the signed manual strategy. An external merge and an independent
+bare-remote fixture update bring the tips together. Both cases keep admissions
+blocked until a fresh 0/0 and the accepted canonical receipt. The same reducer
+replays the journal and runs SIM without effects. Use
+`--case=post-merge-fetch-nominal` to exercise direct 0/0 and
+`--case=post-merge-fetch-refused` and `--case=post-merge-fetch-cancelled` for
+the other signed outcomes. The composition suite checks the exact child pins
+and both call sites. Run the historical readers separately. DUAL and DB-only
+completion, real GitHub, Native and installed archive qualification require
+their own evidence.
 
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as

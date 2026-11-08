@@ -1,3 +1,4 @@
+import { postMergeQuestionVersion } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash, createHmac, createPublicKey, randomBytes, verify } from "node:crypto";
@@ -85,7 +86,7 @@ export function createStandardHostAuthority({ configuration, environment = proce
       || envelope.issued_at_ms > Date.now() || envelope.expires_at_ms <= envelope.issued_at_ms
       || envelope.expires_at_ms - envelope.issued_at_ms > 10800000 || fresh && envelope.expires_at_ms <= Date.now()
       || !/^[A-Za-z0-9+/]{86}==$/.test(envelope.signature ?? "")) fail("STANDARD_HOST_SOURCE_INVALID");
-    if (kind === "human" && subject.contract_version === "standard-pr-merge-consent-question.v1"
+    if (kind === "human" && ["standard-pr-merge-consent-question.v1", postMergeQuestionVersion].includes(subject.contract_version)
       && (envelope.issued_at_ms < subject.issued_at_ms || envelope.issued_at_ms >= subject.expires_at_ms
         || envelope.expires_at_ms < subject.expires_at_ms)) fail("STANDARD_HOST_SOURCE_INVALID");
     const principal = registry()?.principals.find(row => row.authority_id === envelope.authority_id && row.kinds.includes(kind));

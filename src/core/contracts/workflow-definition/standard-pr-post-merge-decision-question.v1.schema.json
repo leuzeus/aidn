@@ -1,0 +1,200 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-post-merge-decision-question.v1",
+  "x-aidn-contract-version": "standard-pr-post-merge-decision-question.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_id",
+    "instance_id",
+    "scope_id",
+    "occurrence_id",
+    "intent_sha256",
+    "choices",
+    "expires_at_ms",
+    "subject",
+    "issued_at_ms"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-post-merge-decision-question.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "instance_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "scope_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "occurrence_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "intent_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "enum": [
+          "reconcile_manually",
+          "refused",
+          "deferred",
+          "cancelled"
+        ]
+      }
+    },
+    "expires_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository_id",
+        "pull_request_id",
+        "pull_request_number",
+        "head_oid",
+        "head_ref",
+        "project_scope_sha256",
+        "session_id",
+        "opening_operation_id",
+        "measurement_operation_id",
+        "measurement_receipt_sha256",
+        "merge_operation_id",
+        "merge_receipt_sha256",
+        "alignment"
+      ],
+      "properties": {
+        "repository_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+        },
+        "pull_request_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_=-]{1,256}$"
+        },
+        "pull_request_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "head_oid": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "head_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "project_scope_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{3,6}$"
+        },
+        "opening_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "measurement_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "measurement_receipt_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "merge_operation_id": {
+          "type": "string",
+          "pattern": "^op_[a-f0-9]{40}$"
+        },
+        "merge_receipt_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "alignment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fetch_operation_id",
+            "fetch_receipt_sha256",
+            "source_ref",
+            "local_head",
+            "remote_head",
+            "fetched_head",
+            "merge_oid",
+            "proof_ref",
+            "ahead",
+            "behind"
+          ],
+          "properties": {
+            "fetch_operation_id": {
+              "type": "string",
+              "pattern": "^op_[a-f0-9]{40}$"
+            },
+            "fetch_receipt_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "source_ref": {
+              "type": "string",
+              "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]{0,191}$"
+            },
+            "local_head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "remote_head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "fetched_head": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "merge_oid": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "proof_ref": {
+              "type": "string",
+              "pattern": "^refs/aidn/post-merge/[a-f0-9]{32}$"
+            },
+            "ahead": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "behind": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        }
+      }
+    },
+    "issued_at_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    }
+  }
+}

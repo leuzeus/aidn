@@ -7,7 +7,9 @@ import { createStandardPrMergeExecute } from "./standard-session-pr-merge-execut
 import { createStandardSessionPrPostMergeFetch } from "./standard-session-pr-post-merge-fetch.mjs";
 import { createStandardPostMergeCompletion, postMergeProjectScope } from "./standard-session-pr-post-merge-completion.mjs";
 import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post-merge-complete.mjs";
-import { postMergeAlignmentOperation, postMergeFetchOperation } from "../../core/workflow/standard-pr-post-merge-fetch.mjs";
+import { createStandardPostMergeDecision } from "./standard-session-pr-post-merge-decision.mjs";
+import { postMergeDecisionOperation } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
+import { postMergeAlignmentOperation, postMergeFetchOperation, postMergeMeasureOperation } from "../../core/workflow/standard-pr-post-merge-fetch.mjs";
 import { mergeExecuteOperation, postMergeWaitOperation } from "../../core/workflow/standard-pr-merge-execute.mjs";
 import { createStandardPrMergeConsent } from "./standard-session-pr-merge-consent.mjs";
 import { checksOperation, mergeConsentOperation } from "../../core/workflow/standard-pr-merge-consent.mjs";
@@ -576,9 +578,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const sessionPrMergeEffect = createStandardPrMergeExecute({ ...acceptedReviewPorts, assertConsentFresh: assertMergeConsentFresh,
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const postMerge = createStandardSessionPrPostMergeFetch(acceptedReviewPorts);
+  const postMergeScope = () => postMergeProjectScope(targetRoot);
+  const postMergeDecision = createStandardPostMergeDecision({ ...acceptedReviewPorts, artifacts, postMerge, scopeSha: postMergeScope });
+  const assertPostMergeDecisionFresh = (instance, record, signal) => postMergeDecision.assertFresh(
+    instance, record.preview.input, record.preview.prepared, signal);
   const postMergeCompletion = createStandardPostMergeCompletion({ ...acceptedReviewPorts, artifacts,
-    readAlignmentSource: postMerge.alignmentSource,
-    scopeSha: () => postMergeProjectScope(targetRoot) });
+    readAlignmentSource: postMerge.alignmentSource, scopeSha: postMergeScope });
   const reviewEffects = new Map([
     [mergeExecuteOperation, sessionPrMergeEffect],
     [postMergeFetchOperation, postMerge],
@@ -861,6 +866,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(instance, record.preview.prepared.plan, { signal });
       if (record.preview.binding.executor_kind === "human") await verifyHumanRecord(record, signal);
       if (record.intent.binding_ref === resolutionExceptionOperation) await assertResolutionExceptionFresh(instance, record, signal);
+      if (record.intent.binding_ref === postMergeDecisionOperation) {
+        postMergeDecision.assertAge(record.preview.prepared);
+        if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+      }
       if (record.intent.binding_ref === mergeConsentOperation) {
         if (now() >= record.preview.prepared.expires_at_ms) fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
         if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
@@ -1151,7 +1160,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : reviewEffects.has(binding.id) ? await reviewEffects.get(binding.id).prepare(state.record, input, operationJournalId(state.record, occurrenceId))
         : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
         : binding.id === "session_pr_premerge_observe" ? sessionPrPremerge.prepare(state.record, input)
-        : binding.id === postMergeAlignmentOperation ? postMerge.prepareAlignment(state.record, input)
+        : [postMergeAlignmentOperation, postMergeMeasureOperation].includes(binding.id) ? postMerge.prepareAlignment(state.record, input)
+        : binding.id === postMergeDecisionOperation ? await postMergeDecision.prepare(state.record, input)
         : binding.id === postMergeWaitOperation ? { can_apply: true }
         : binding.id === checksOperation ? { can_apply: true }
         : binding.id === mergeConsentOperation ? await sessionPrConsent.prepare(state.record, input)
@@ -1329,8 +1339,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (record.intent.binding_ref === "session_pr_premerge_observe") output = await sessionPrPremerge.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
         else if (record.intent.binding_ref === checksOperation) output = await sessionPrConsent.acceptChecks(state.record, record.preview.input, signal);
-        else if (record.intent.binding_ref === postMergeAlignmentOperation) output = await postMerge.observeAlignment(
-          state.record, record.preview.input, record.preview.prepared, { signal });
+        else if ([postMergeAlignmentOperation, postMergeMeasureOperation].includes(record.intent.binding_ref)) output = await postMerge.observeAlignment(
+          state.record, record.preview.input, record.preview.prepared, { signal, operation: record.intent.binding_ref });
         else if (record.intent.binding_ref === postMergeWaitOperation) output = sessionPrMergeEffect.waitForSync(state.record, record.preview.input);
         else if (record.intent.binding_ref === "session_pr_merge_observe") output = await sessionPrMerge.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
@@ -1485,7 +1495,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async receiveDecision(id, { sourceRef, write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.preview.binding.executor_kind !== "human" || ![mergeConsentOperation, resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.preview.binding.executor_kind !== "human" || ![postMergeDecisionOperation, mergeConsentOperation, resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
       if (record.phase === "receipted") {
         const capture = human.captured(record);
         if (capture.source_ref !== sourceRef) fail("PROCESS_HUMAN_DECISION_ALREADY_CAPTURED");
@@ -1504,7 +1514,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(state.record, record.preview.prepared.plan, { signal });
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       const assertFreshDecision = record.intent.binding_ref === mergeConsentOperation ? assertMergeConsentFresh
-        : record.intent.binding_ref === resolutionExceptionOperation ? assertResolutionExceptionFresh : null;
+        : record.intent.binding_ref === resolutionExceptionOperation ? assertResolutionExceptionFresh
+        : record.intent.binding_ref === postMergeDecisionOperation ? assertPostMergeDecisionFresh : null;
       const capture = await human.reserve(record, sourceRef, { signal,
         ...(assertFreshDecision ? { assertCurrent: () => assertFreshDecision(state.record, record, signal) } : {}) });
       if (!capture) return { status: "waiting_for_human", question: human.question(record) };
@@ -1519,6 +1530,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       if (assertFreshDecision) {
         await human.verifyReserved(record, capture, signal);
+        if (record.intent.binding_ref === postMergeDecisionOperation) postMergeDecision.assertAge(record.preview.prepared);
         if (record.intent.binding_ref === mergeConsentOperation && now() >= record.preview.prepared.expires_at_ms)
           fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
         if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256
@@ -1551,6 +1563,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         // Keep network observations outside the reducer's bounded authority
         // callback. Its acceptance still fences this exact instance and receipt.
         await assertMergeConsentFresh(state.record, record, signal);
+        if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      }
+      if (record.intent.binding_ref === postMergeDecisionOperation) {
+        await human.verifyCaptured(record, signal, { acknowledged: true });
+        await assertPostMergeDecisionFresh(state.record, record, signal);
         if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       }
       if (record.intent.binding_ref === postMergeCompleteOperation && receipt.outcome === "completed") {

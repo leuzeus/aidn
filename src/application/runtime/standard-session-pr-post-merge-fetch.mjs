@@ -1,7 +1,7 @@
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { assertMergeExecuteOutput, mergeExecuteOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
-import { alignedReason, assertPostMergeAlignmentOutput, assertPostMergeFetchOutput, divergentReason, pendingAlignmentReasons,
-  postMergeAlignmentOperation, postMergeFetchOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
+import { alignedReason, assertPostMergeAlignmentOutput, assertPostMergeFetchOutput, divergentReason, pendingAlignmentReasons, assertPostMergeMeasureOutput,
+  postMergeAlignmentOperation, postMergeFetchOperation, postMergeMeasureOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
 
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
 
@@ -49,14 +49,31 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
       fail('STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_CHANGED');
     return { git: plan.git, fetch, merge, receiptSha: shadowHash(record.results.at(-1).receipt) };
   }
-  function alignmentOutput(outcome, reason, alignment = null) {
-    return assertPostMergeAlignmentOutput({ contract_version: 'standard-pr-post-merge-alignment-output.v1',
-      operation_ref: postMergeAlignmentOperation, outcome, effect_status: 'no_effect', facts: {},
+  function alignmentOutput(operation, outcome, reason, alignment = null) {
+    const measurement = operation === postMergeMeasureOperation;
+    const diverged = measurement && reason === divergentReason;
+    const assertOutput = measurement ? assertPostMergeMeasureOutput : assertPostMergeAlignmentOutput;
+    return assertOutput({
+      contract_version: measurement ? 'standard-pr-post-merge-measure-output.v1' : 'standard-pr-post-merge-alignment-output.v1',
+      operation_ref: operation, outcome: diverged ? 'completed' : outcome, effect_status: 'no_effect',
+      facts: measurement && (diverged || outcome === 'completed') ? { session_pr_post_merge_diverged: diverged } : {},
       observations: { reason_code: reason, ...(alignment ? { alignment } : {}) },
       evidence_refs: alignment ? [{ ref: 'git:' + alignment.proof_ref, sha256: shadowHash(alignment) }] : [] });
   }
+  async function measure(instance, input, source, signal) {
+    const { git, fetch, receiptSha } = source;
+    if (typeof port?.observeAlignment !== 'function') fail('STANDARD_PR_POST_MERGE_ALIGNMENT_HOST_REQUIRED');
+    const value = await port.observeAlignment(git, { expectPlan: git.plan_sha256, signal });
+    if (signal?.aborted || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
+      || alignmentSource(instance, input).receiptSha !== receiptSha) fail('STANDARD_PR_POST_MERGE_ALIGNMENT_CONTEXT_CHANGED');
+    if (value?.source_ref !== fetch.source_ref || value.merge_oid !== fetch.merge_oid
+      || value.fetched_head !== fetch.fetched_head || value.proof_ref !== fetch.proof_ref)
+      fail('STANDARD_PR_POST_MERGE_ALIGNMENT_WITNESS_CHANGED');
+    return { ...value, fetch_operation_id: input.fetch_operation_id, fetch_receipt_sha256: receiptSha };
+  }
   return Object.freeze({
     alignmentSource,
+    measure,
     async prepare(instance, input, id) {
       const { merge, receiptSha } = source(instance, input);
       if (!['prepare', 'apply', 'recover'].every(method => typeof port?.[method] === 'function'))
@@ -87,25 +104,21 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
       const { receiptSha } = alignmentSource(instance, input);
       return { can_apply: true, fetch_receipt_sha256: receiptSha };
     },
-    async observeAlignment(instance, input, prepared, { signal }) {
-      const { git, fetch, receiptSha } = alignmentSource(instance, input);
-      if (prepared.fetch_receipt_sha256 !== receiptSha) fail('STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_CHANGED');
-      if (typeof port?.observeAlignment !== 'function') fail('STANDARD_PR_POST_MERGE_ALIGNMENT_HOST_REQUIRED');
-      let value;
+    async observeAlignment(instance, input, prepared, { signal, operation = postMergeAlignmentOperation }) {
+      const source = alignmentSource(instance, input);
+      if (prepared.fetch_receipt_sha256 !== source.receiptSha) fail('STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_CHANGED');
+      let alignment;
       try {
-        value = await port.observeAlignment(git, { expectPlan: git.plan_sha256, signal });
+        alignment = await measure(instance, input, source, signal);
       } catch (cause) {
-        if (pendingAlignmentReasons.includes(cause.code)) return alignmentOutput('deferred', cause.code);
+        if (pendingAlignmentReasons.includes(cause.code)
+          || operation === postMergeMeasureOperation && cause.code === 'WORKFLOW_POST_MERGE_REMOTE_REF_REQUIRED')
+          return alignmentOutput(operation, 'deferred', cause.code);
         throw cause;
       }
-      if (signal?.aborted || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256
-        || alignmentSource(instance, input).receiptSha !== receiptSha) fail('STANDARD_PR_POST_MERGE_ALIGNMENT_CONTEXT_CHANGED');
-      if (value?.source_ref !== fetch.source_ref || value.merge_oid !== fetch.merge_oid
-        || value.fetched_head !== fetch.fetched_head || value.proof_ref !== fetch.proof_ref)
-        fail('STANDARD_PR_POST_MERGE_ALIGNMENT_WITNESS_CHANGED');
-      const alignment = { ...value, fetch_operation_id: input.fetch_operation_id, fetch_receipt_sha256: receiptSha };
       return alignment.ahead === 0 && alignment.behind === 0
-        ? alignmentOutput('completed', alignedReason, alignment) : alignmentOutput('deferred', divergentReason, alignment);
+        ? alignmentOutput(operation, 'completed', alignedReason, alignment)
+        : alignmentOutput(operation, 'deferred', divergentReason, alignment);
     },
   });
 }

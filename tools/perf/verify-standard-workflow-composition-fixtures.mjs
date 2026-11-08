@@ -85,7 +85,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 166); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 169); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -221,15 +221,26 @@ test("R08 exception contracts bind the exact question, signed capture shape and 
   }
 });
 test("both PR effects boundaries pass their own accepted triage to the same pinned continuation", () => {
-  for (const kind of ["fetch-input", "fetch-output", "alignment-input", "alignment-output"]) {
+  for (const kind of ["fetch-input", "fetch-output", "alignment-input", "alignment-output",
+    "measure-output", "decision-input", "decision-question", "decision-output"]) {
     const contract = JSON.parse(read("src/core/contracts/workflow-definition/standard-pr-post-merge-" + kind + ".v1.schema.json"));
     assert.deepEqual(validateJsonSchemaDefinition(contract, "#", { contractKind: "workflow-definition" }), []);
+  }
+  for (const name of ["human-pr-post-merge-decision.v1", "process-decision-inbox.v15"]) {
+    const schema = JSON.parse(read("src/core/contracts/workflow-definition/" + name + ".schema.json"));
+    assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
   }
   const target = assets.model.call_targets.find(row => row.model_id === "aidn-standard-pr-review-completion");
   const { model: child, ...identity } = target;
   assert.deepEqual(identity, processModelIdentity(child));
   assert.deepEqual(child.call_interface, { parameters: { triage_operation_id: "string" }, returns: {} });
-  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_fetch", "pr_post_merge_alignment", "pr_post_merge_complete"]);
+  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route"]);
+  assert.deepEqual(child.nodes.find(row => row.id === "pr_post_merge_route").branches, [
+    { flow_id: "diverged", node_id: "pr_post_merge_reconcile", condition: "session_pr_post_merge_diverged" },
+    { flow_id: "aligned", node_id: "pr_post_merge_complete", condition: null },
+  ]);
+  assert.deepEqual(child.nodes.find(row => row.id === "pr_post_merge_reconcile").children,
+    ["pr_post_merge_decision", "pr_post_merge_alignment", "pr_post_merge_reconciled_complete"]);
   for (const prefix of ["session", "correction"]) {
     const id = prefix + "_pr_effects_pending";
     const call = assets.model.nodes.find(row => row.id === id);
@@ -248,10 +259,19 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
     ["pr_post_merge_fetch", "executor", ["SPEC-R09", "SPEC-R11"], {
       merge_operation_id: { source: "operation_id", node_id: "pr_merge_execute" },
     }],
+    ["pr_post_merge_measure", "read-only", ["SPEC-R09"], {
+      fetch_operation_id: { source: "operation_id", node_id: "pr_post_merge_fetch" },
+    }],
+    ["pr_post_merge_decision", "read-only", ["SPEC-R09", "SPEC-R11"], {
+      measurement_operation_id: { source: "operation_id", node_id: "pr_post_merge_measure" },
+    }],
     ["pr_post_merge_alignment", "read-only", ["SPEC-R09"], {
       fetch_operation_id: { source: "operation_id", node_id: "pr_post_merge_fetch" },
     }],
     ["pr_post_merge_complete", "mutating", ["SPEC-R09"], {
+      alignment_operation_id: { source: "operation_id", node_id: "pr_post_merge_measure" },
+    }],
+    ["pr_post_merge_reconciled_complete", "mutating", ["SPEC-R09"], {
       alignment_operation_id: { source: "operation_id", node_id: "pr_post_merge_alignment" },
     }],
   ]) {
@@ -264,6 +284,7 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
       contract_version: { source: "literal", value: binding.input_contract }, ...fields,
     });
   }
+  assert.equal(assets.catalog.bindings.find(row => row.node_id === "pr_post_merge_decision").binding.executor_kind, "human");
   const loop = child.nodes.find(row => row.id === "pr_reply_loop");
   assert.equal(loop.max_iterations, 32);
   assert.equal(loop.until, "session_pr_replies_observed");
@@ -502,7 +523,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 252);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 15);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 18);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 2);
   assert.equal(child.model_id, "aidn-standard-final-verification");

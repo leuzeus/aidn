@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/process-decision-inbox.v15",
+  "x-aidn-contract-version": "process-decision-inbox.v15",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "inbox_id",
+    "operation_id",
+    "source_ref",
+    "source",
+    "phase",
+    "receipt_sha256",
+    "key_id",
+    "authentication"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "process-decision-inbox.v15"
+    },
+    "inbox_id": {
+      "type": "string",
+      "pattern": "^decision_[a-f0-9]{40}$"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[a-f0-9]{40}$"
+    },
+    "source_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "source_kind",
+        "authority_id",
+        "source_event_id",
+        "subject_sha256",
+        "question_sha256",
+        "choice",
+        "evidence_refs",
+        "rationale"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "human-pr-post-merge-decision.v1"
+        },
+        "source_kind": {
+          "const": "human"
+        },
+        "authority_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "source_event_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+        },
+        "subject_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "question_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "choice": {
+          "enum": [
+            "reconcile_manually",
+            "refused",
+            "deferred",
+            "cancelled"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ref",
+              "sha256"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "phase": {
+      "enum": [
+        "reserved",
+        "receipted"
+      ]
+    },
+    "receipt_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "authentication": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

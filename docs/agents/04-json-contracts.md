@@ -65,6 +65,15 @@ aligned, divergent and unavailable observations. A divergent measurement
 retains exact local and remote OIDs, ahead/behind and the original witness.
 The aligned result supplies evidence for a later canonical reconciliation.
 
+The published route uses a separate `standard-pr-post-merge-measure-output.v1`
+for a complete measurement. It records the divergence predicate for routing.
+The alignment v1 receipt still defers divergence. The private
+`standard-pr-post-merge-decision-{input,question,output}.v1` contracts bind
+the measurement and the fresh Git sample to the exact process and PR subject.
+The host authenticates `human-pr-post-merge-decision.v1` in
+`process-decision-inbox.v15`. The decision receipt carries no Git effect or
+continuity fact. Historical inbox readers retain their versioned contracts.
+
 Private `standard-pr-post-merge-complete-{input,plan,output}.v1` contracts bind
 the accepted alignment to the opening, merge and fetch receipts, the project
 scope, the source ref and the exact reconciled OIDs. The closed output records

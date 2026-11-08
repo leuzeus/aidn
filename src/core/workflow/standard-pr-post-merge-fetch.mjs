@@ -5,6 +5,9 @@ import outputSchema from '../contracts/workflow-definition/standard-pr-post-merg
 import alignmentInputSchema from '../contracts/workflow-definition/standard-pr-post-merge-alignment-input.v1.schema.json' with { type: 'json' };
 import alignmentOutputSchema from '../contracts/workflow-definition/standard-pr-post-merge-alignment-output.v1.schema.json' with { type: 'json' };
 
+import measurementSchema from '../contracts/workflow-definition/standard-pr-post-merge-measure-output.v1.schema.json' with { type: 'json' };
+
+export const postMergeMeasureOperation = 'session_pr_post_merge_measure';
 export const postMergeFetchOperation = 'session_pr_post_merge_fetch';
 export const postMergeAlignmentOperation = 'session_pr_post_merge_alignment';
 export const alignedReason = 'STANDARD_PR_POST_MERGE_ALIGNED';
@@ -58,5 +61,20 @@ export function assertPostMergeAlignmentOutput(value) {
     || (aligned ? outcome !== 'completed' || reason !== alignedReason : outcome !== 'deferred' || reason !== divergentReason)
     || proof?.ref !== 'git:' + alignment.proof_ref || proof.sha256 !== shadowHash(alignment))
     fail('STANDARD_OPERATION_OUTPUT_INVALID');
+  return value;
+}
+
+export function assertPostMergeMeasureOutput(value) {
+  if (!valid(value, measurementSchema)) fail('STANDARD_OPERATION_OUTPUT_INVALID');
+  const { observations: { reason_code: reason, alignment }, outcome, facts } = value;
+  const diverged = reason === divergentReason;
+  const expectedFacts = outcome === 'completed' ? { session_pr_post_merge_diverged: diverged } : {};
+  if (diverged && outcome !== 'completed' || shadowHash(facts) !== shadowHash(expectedFacts))
+    fail('STANDARD_OPERATION_OUTPUT_INVALID');
+  // Use the historical shape to check exact witness and count semantics.
+  if (reason === 'WORKFLOW_POST_MERGE_REMOTE_REF_REQUIRED' && !alignment && outcome === 'deferred'
+    && value.evidence_refs.length === 0) return value;
+  assertPostMergeAlignmentOutput({ ...value, contract_version: 'standard-pr-post-merge-alignment-output.v1',
+    operation_ref: postMergeAlignmentOperation, outcome: diverged ? 'deferred' : outcome, facts: {} });
   return value;
 }

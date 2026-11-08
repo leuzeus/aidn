@@ -1249,8 +1249,17 @@ explicitement autorisée. Les deux appels au modèle commun relient la preuve
 finale à la session et au journal de l’instance d’origine. La lecture par les
 admissions de session et de cycle exige ce résultat accepté. Le contrôle
 pré-écriture de cycle sur la branche source mesure le distant protégé
-lorsqu’une preuve STANDARD est présente. Une divergence ambiguë et le
-routage d’une fusion observée à l’extérieur restent à traiter.
+lorsqu’une preuve STANDARD est présente.
+
+Les deux appels classent maintenant une divergence mesurée comme une observation
+acceptée qui ouvre une question R09. Le sujet signé lie la session, la PR, la
+fusion, le reçu de fetch et les pointes relues. Le choix de rapprochement manuel
+laisse à l’opérateur l’exécution Git. Une nouvelle mesure 0/0 avec preuve
+d’ascendance, suivie du reçu canonique accepté, ouvre les admissions. Le report
+permet une nouvelle question. Le refus et l’annulation arrêtent l’instance. Une
+réponse expirée ou liée à une autre mesure laisse l’occurrence bloquée. La
+qualification du fast-forward automatique et la fusion externe pendant une
+autre attente R08 restent ouvertes.
 
 | A10 — Stockage et histoires | files/dual/db-only sur SQLite réel ; PostgreSQL configuré via adaptateur réel et transport simulé hors ligne, puis preuve PostgreSQL réel avant affirmation de ce backend. Projection en panne conservée comme telle. Lecteurs workflow-instance.v1 et agentic-process-instance.v1 préservés, historique non converti. |
 

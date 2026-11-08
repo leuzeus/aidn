@@ -3346,10 +3346,32 @@ operation consumes the accepted fetch receipt and verifies the original
 witness. It samples the protected remote twice, checks that the remote
 commit contains the merge and measures exact ahead/behind against a stable
 local source checkout. A remote commit missing from the local object store
-requires an explicit fetch. Divergence retains a resumable wait with the observed OIDs and counts. Zero
-divergence reaches the separate STANDARD completion operation. The same
-operation and model binding serve both PR paths. The historical R09 wait
-retains its reader and original semantics.
+requires an explicit fetch. The historical alignment receipt retains its v1
+semantics, with a divergent measurement recorded as deferred.
+
+The shared published route uses a separate read-only measurement operation.
+A complete sample may carry a divergence fact and exact OIDs/counts. That fact
+opens a human operation and leaves continuity blocked. The host derives a five-minute
+question from its authenticated journal bound to the process scope and occurrence, the
+canonical opening and session, PR and merge, accepted measurement and fetch
+receipts, and the current protected Git sample. The host checks the signed
+answer, nonblank rationale and fresh subject at capture and at acceptance.
+The v15 decision inbox reserves the source before receipting. An absent source
+keeps the question pending. Report permits another question through the
+ordinary deferred-operation retry. Refusal and cancellation stop the process.
+A changed or expired subject cannot be accepted.
+
+The manual strategy is a decision with no effect. The operator controls the
+separate Git action, then the process retries the read-only alignment gate.
+Git movement after acceptance is evaluated from a new sample. Alignment
+still requires equal exact tips and merge ancestry. A zero sample on the
+initial measurement goes directly to the same canonical completion binding.
+The existing branch integration adapter switches from a distinct source to
+its target, so it provides no authorized fast-forward of the checked-out R09
+source. Even 0/N waits for manual reconciliation in this route. There is no
+Git mutation, reset, rebase or push attached to the decision. The historical
+R09 wait and alignment readers preserve their contracts. External merge during
+an earlier R08 wait remains a separate observation and incident path.
 The fixtures distinguish a real disposable Git remote and FILES application
 execution from the doubled GitHub transport and signed upstream inputs.
 
