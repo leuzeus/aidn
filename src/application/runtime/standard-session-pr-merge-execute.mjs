@@ -1,7 +1,7 @@
 import { assertGithubPrMergePlan, assertGithubPrMergePostimage } from '../../adapters/git-provider/github-pr-merge.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { checksOperation, mergeConsentOperation, mergeConsentQuestion } from '../../core/workflow/standard-pr-merge-consent.mjs';
-import { assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeExecuteOperation, postMergeWaitOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
+import { assertMergeExecuteOutput, assertPostMergeWaitOutput, mergeCompletedFact, mergeExecuteOperation, mergeExecuteOutputVersion, postMergeWaitOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
 import { createStandardPrReviewEffectsReader, prObservationRequest } from './standard-session-pr-review-effects.mjs';
 
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
@@ -39,10 +39,22 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
     return { consent: consent.record, question, request: prObservationRequest(p), source,
       consent_receipt_sha256: receiptHash(consent.record), checks_receipt_sha256: receiptHash(checks.record) };
   }
-  function assertAge(b) {
+  function consentExpired(b) {
     const time = now();
-    if (!Number.isSafeInteger(time) || time < b.question.issued_at_ms || time >= b.question.expires_at_ms)
-      fail('STANDARD_PLAN_EXPIRED');
+    if (!Number.isSafeInteger(time) || time < b.question.issued_at_ms) fail('STANDARD_PLAN_EXPIRED');
+    return time >= b.question.expires_at_ms;
+  }
+  function assertAge(b) {
+    if (consentExpired(b)) fail('STANDARD_PLAN_EXPIRED');
+  }
+  function expiredBeforeSend(cause, b) {
+    return cause.effect_status === 'no_effect'
+      && ['STANDARD_PLAN_EXPIRED', 'STANDARD_PR_MERGE_CONSENT_EXPIRED'].includes(cause.code) && consentExpired(b);
+  }
+  function renewal() {
+    return assertMergeExecuteOutput({ contract_version: mergeExecuteOutputVersion, operation_ref: mergeExecuteOperation,
+      outcome: 'completed', effect_status: 'no_effect', facts: { [mergeCompletedFact]: false },
+      observations: { reason_code: 'STANDARD_PLAN_EXPIRED' }, evidence_refs: [] });
   }
   function assertProvider(provider, b, id) {
     const plan = assertGithubPrMergePlan(provider?.plan);
@@ -60,7 +72,7 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
     if (prepared?.can_apply !== true || prepared.plan_sha256 !== shadowHash(plan) || !same(plan.input, input)
       || plan.consent_receipt_sha256 !== b.consent_receipt_sha256 || plan.checks_receipt_sha256 !== b.checks_receipt_sha256)
       fail('STANDARD_PR_MERGE_PLAN_CHANGED');
-    assertProvider(plan.provider, b, id);
+    if (plan.provider !== null) assertProvider(plan.provider, b, id);
     return { plan, b };
   }
   function output(prepared, value, confirmation) {
@@ -69,19 +81,24 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
     const merge = { operation_id: providerPlan.operation_id, plan_sha256: prepared.plan_sha256,
       consent_receipt_sha256: prepared.plan.consent_receipt_sha256, checks_receipt_sha256: prepared.plan.checks_receipt_sha256,
       method: providerPlan.method, confirmation, provider };
-    return assertMergeExecuteOutput({ contract_version: 'standard-pr-merge-execute-output.v1', operation_ref: mergeExecuteOperation,
+    return assertMergeExecuteOutput({ contract_version: mergeExecuteOutputVersion, operation_ref: mergeExecuteOperation,
       outcome: 'completed', effect_status: confirmation === 'acknowledged' ? 'confirmed' : 'no_effect',
-      facts: {}, observations: { merge }, evidence_refs: [{ ref: 'github:pr-merge/' + p.node_id, sha256: shadowHash(merge) }] });
+      facts: { [mergeCompletedFact]: true }, observations: { merge }, evidence_refs: [{ ref: 'github:pr-merge/' + p.node_id, sha256: shadowHash(merge) }] });
   }
   return Object.freeze({
     async prepare(instance, input, id) {
       if (!['prepare', 'apply', 'recover'].every(method => typeof port?.[method] === 'function'))
         fail('STANDARD_PR_MERGE_METHOD_AUTHORITY_REQUIRED');
       const b = basis(instance, input);
-      assertAge(b);
-      await verifyFreshDecision(b.consent);
-      const provider = await port.prepare(b.request, id, { expiresAt: b.question.expires_at_ms });
-      assertProvider(provider, b, id);
+      let provider = null;
+      if (!consentExpired(b)) {
+        await verifyFreshDecision(b.consent);
+        if (!consentExpired(b)) {
+          try { provider = await port.prepare(b.request, id, { expiresAt: b.question.expires_at_ms }); }
+          catch (cause) { if (!expiredBeforeSend(cause, b)) throw cause; }
+          if (provider !== null) assertProvider(provider, b, id);
+        }
+      }
       if (readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_MERGE_CONTEXT_CHANGED');
       const plan = { input: structuredClone(input), consent_receipt_sha256: b.consent_receipt_sha256,
         checks_receipt_sha256: b.checks_receipt_sha256, provider };
@@ -89,14 +106,21 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
     },
     async apply(instance, input, prepared, { signal, assertAuthorized, operationId }) {
       const { plan, b } = checked(instance, input, prepared, operationId);
-      assertAge(b);
-      const value = await port.apply(plan.provider, { write: true, expectPlan: plan.provider.plan_sha256, signal, assertAuthorized,
-        assertReviewFresh: async () => {
-          assertAge(b);
-          await assertConsentFresh(instance, b.consent, signal);
-          await verifyFreshDecision(b.consent, signal);
-          assertAge(b);
-        } });
+      if (consentExpired(b)) return renewal();
+      if (plan.provider === null) fail('STANDARD_PR_MERGE_PLAN_CHANGED');
+      let value;
+      try {
+        value = await port.apply(plan.provider, { write: true, expectPlan: plan.provider.plan_sha256, signal, assertAuthorized,
+          assertReviewFresh: async () => {
+            assertAge(b);
+            await assertConsentFresh(instance, b.consent, signal);
+            await verifyFreshDecision(b.consent, signal);
+            assertAge(b);
+          } });
+      } catch (cause) {
+        if (expiredBeforeSend(cause, b)) return renewal();
+        throw cause;
+      }
       try { return output(prepared, value, 'acknowledged'); }
       catch { fail('STANDARD_PR_MERGE_POSTIMAGE_CHANGED', 'unknown'); }
     },
@@ -105,6 +129,7 @@ export function createStandardPrMergeExecute({ now, reviewPort, readAccepted, re
         // The frozen accepted evidence identifies the original attempt. A later
         // observation may settle it without reopening review or renewing consent.
         const { plan } = checked(instance, input, prepared, operationId);
+        if (plan.provider === null) fail('STANDARD_PR_MERGE_PLAN_CHANGED');
         const value = await port.recover(plan.provider, { expectPlan: plan.provider.plan_sha256, signal });
         return output(prepared, value, 'observed');
       } catch {

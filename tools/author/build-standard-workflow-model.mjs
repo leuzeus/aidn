@@ -180,7 +180,8 @@ xor("pr_merge_route", [["external", "pr_external_delivery", "session_pr_external
 for (const prefix of ["pr_external", "pr_premerge_external"]) {
   op(prefix + "_delivery", "session_pr_external_merge_disposition", triageId);
 }
-seq("pr_authorized_delivery", ["pr_merge_consent", "pr_merge_execute"]);
+node("pr_authorized_delivery", "loop", { child: "pr_authorized_attempt", until: "session_pr_merge_completed", max_iterations: 2 });
+seq("pr_authorized_attempt", ["pr_merge_consent", "pr_merge_execute"]);
 op("pr_merge_consent", "session_pr_merge_consent", { ...triageId, ...operation(null, "checks_operation_id", "pr_checks_accept") });
 op("pr_merge_execute", "session_pr_merge_execute", { ...triageId, ...operation(null, "checks_operation_id", "pr_checks_accept"),
   ...operation(null, "consent_operation_id", "pr_merge_consent") });

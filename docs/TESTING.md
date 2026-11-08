@@ -1443,6 +1443,13 @@ acknowledgement, read-only recovery in a new process, and the ready R09
 fetch operation. These cases run outside the required family and preserve the
 five-minute consent and exception limits. Use the composition and historical
 merge-reader fixtures for binding and reader regressions.
+Run `--case=merge-consent-renewal` to stage an exact merge and let its
+original five-minute consent expire before dispatch. The FILES fixture checks
+that the first attempt sends nothing, a reopened host rejects the expired
+source, a fresh signed answer admits one merge and the R09 basis uses only
+that accepted merge. This case waits for the actual expiry and retains the
+earlier question and receipt for replay. It uses a reduced graph, a signed
+synthetic upstream prefix and a doubled GitHub transport.
 Run `verify-cycle-create-admission-fixtures.mjs --pr-continuity` separately
 for the direct cycle-admission guard and the reopened correction path.
 

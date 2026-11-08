@@ -129,6 +129,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
           if (node.binding_ref === "session_pr_review_reply_select") facts = { session_pr_replies_observed: true };
           if (node.binding_ref === "session_pr_review_resolution_select") facts = {
             session_pr_threads_observed_resolved: true, session_pr_resolution_exception_required: false, session_pr_resolution_gate_met: true };
+          if (node.binding_ref === "session_pr_merge_execute") facts = { session_pr_merge_completed: true };
           if (node.binding_ref === "session_pr_post_merge_measure") facts = { session_pr_post_merge_diverged: true };
           if (node.binding_ref === "session_pr_post_merge_decision") facts = { session_pr_post_merge_fast_forward: true };
         }

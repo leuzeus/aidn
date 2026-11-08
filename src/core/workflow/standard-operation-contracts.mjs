@@ -364,7 +364,7 @@ export function assertStandardOperationOutput(value) {
     return value;
   }
   if (value?.contract_version === "standard-pr-merge-consent-output.v1") return assertMergeConsentOutput(value);
-  if (value?.contract_version === "standard-pr-merge-execute-output.v1") return assertMergeExecuteOutput(value);
+  if (["standard-pr-merge-execute-output.v1", "standard-pr-merge-execute-output.v2"].includes(value?.contract_version)) return assertMergeExecuteOutput(value);
   if (value?.contract_version === postMergeRecoveryOutputVersion) return assertPostMergeRecoveryOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-decision-output.v1") return assertPostMergeDecisionOutput(value);
   if (value?.contract_version === "standard-pr-post-merge-measure-output.v1") return assertPostMergeMeasureOutput(value);

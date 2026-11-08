@@ -1,5 +1,18 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Renewal after a proven pre-send merge expiry, 2026-11-08
+
+The shared R08 child permits one new consent question after an accepted
+`standard-pr-merge-execute-output.v2` receipt records expiry and
+`no_effect`. The next occurrence reobserves the accepted checks and review
+subject and requires a new signed decision and exact execution grant.
+Both questions and the first attempt remain in the journal. A second expiry
+reaches the existing loop limit. A possible send keeps the same operation in
+reconciliation. The R09 basis selects a confirmed or recovered merge result,
+or a signed external disposition. The v1 merge result reader stays available
+for earlier models. The five-minute ceiling and any shorter exception limit
+apply to each question.
+
 ## Mixed instance scope and history observation, 2026-11-08
 
 The mixed operation host checks its current bindings, then the process

@@ -2,10 +2,13 @@ import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash } from './shadow-json.mjs';
 import inputSchema from '../contracts/workflow-definition/standard-pr-merge-execute-input.v1.schema.json' with { type: 'json' };
 import outputSchema from '../contracts/workflow-definition/standard-pr-merge-execute-output.v1.schema.json' with { type: 'json' };
+import renewalOutputSchema from '../contracts/workflow-definition/standard-pr-merge-execute-output.v2.schema.json' with { type: 'json' };
 import waitInputSchema from '../contracts/workflow-definition/standard-pr-post-merge-wait-input.v1.schema.json' with { type: 'json' };
 import waitOutputSchema from '../contracts/workflow-definition/standard-pr-post-merge-wait-output.v1.schema.json' with { type: 'json' };
 
 export const mergeExecuteOperation = 'session_pr_merge_execute';
+export const mergeExecuteOutputVersion = 'standard-pr-merge-execute-output.v2';
+export const mergeCompletedFact = 'session_pr_merge_completed';
 export const postMergeWaitOperation = 'session_pr_post_merge_wait';
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const valid = (value, schema) => !checkShadowJson(value)
@@ -17,8 +20,17 @@ export function assertMergeExecuteInput(operation, value) {
 }
 
 export function assertMergeExecuteOutput(value) {
-  if (!valid(value, outputSchema)) fail('STANDARD_OPERATION_OUTPUT_INVALID');
+  const renewal = value?.contract_version === mergeExecuteOutputVersion;
+  if (!valid(value, renewal ? renewalOutputSchema : outputSchema)) fail('STANDARD_OPERATION_OUTPUT_INVALID');
   const { observations: { merge }, outcome, effect_status, evidence_refs } = value;
+  if (renewal && outcome === 'completed') {
+    if (value.facts[mergeCompletedFact] !== Boolean(merge)) fail('STANDARD_OPERATION_OUTPUT_INVALID');
+    if (!merge) {
+      if (value.observations.reason_code !== 'STANDARD_PLAN_EXPIRED' || effect_status !== 'no_effect' || evidence_refs.length)
+        fail('STANDARD_OPERATION_OUTPUT_INVALID');
+      return value;
+    }
+  } else if (renewal && Object.keys(value.facts).length) fail('STANDARD_OPERATION_OUTPUT_INVALID');
   if (outcome !== 'completed') {
     if (merge || evidence_refs.length || effect_status !== (outcome === 'reconciliation_required' ? 'unknown' : 'no_effect'))
       fail('STANDARD_OPERATION_OUTPUT_INVALID');

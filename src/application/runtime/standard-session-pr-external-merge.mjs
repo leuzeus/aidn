@@ -1,7 +1,7 @@
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { externalMergeDisposition, externalMergeMaxAgeMs, externalMergeObservationVersion, externalMergeQuestion, externalMergeMaterial,
   assertExternalMergeDisposition, assertExternalMergeObservation } from '../../core/workflow/standard-pr-external-merge.mjs';
-import { assertMergeExecuteOutput, mergeExecuteOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
+import { assertMergeExecuteOutput, mergeCompletedFact, mergeExecuteOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
 import { inspectAgenticProcess } from '../../core/workflow/agentic-process.mjs';
 
 const required = 'STANDARD_PR_EXTERNAL_MERGE_OBSERVATION_REQUIRED';
@@ -52,7 +52,8 @@ export function createStandardExternalMergeDisposition({ readAccepted, now, obse
       const scope = cursor.occurrences.find(row => row.occurrence_id === occurrenceId)?.call_scope_id;
       if (!scope) fail(required);
       const sources = cursor.occurrences.filter(row => row.call_scope_id === scope && row.status === 'COMPLETED'
-        && [mergeExecuteOperation, externalMergeDisposition].includes(row.operation?.intent.binding_ref));
+        && [mergeExecuteOperation, externalMergeDisposition].includes(row.operation?.intent.binding_ref)
+        && row.operation.receipt?.facts[mergeCompletedFact] !== false);
       if (sources.length !== 1) fail(required);
       const { operation_id, binding_ref } = sources[0].operation.intent;
       const { record, output } = readAccepted(instance, operation_id, binding_ref, required);
