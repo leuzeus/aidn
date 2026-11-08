@@ -3852,9 +3852,11 @@ distributed calls require separate evidence.
 
 `node tools/perf/verify-standard-composed-preflight-fixtures.mjs --final-verification`
 uses the common reducer and call-data resolver with the distributed assets.
-The positive route plans 68 operations and 9 Native slots, with 159 events.
-The complete correction route plans 118 operations and 17 Native slots, with
-278 events. It checks the per-iteration input IDs, the scoped evaluation ID,
+The positive route plans 70 operations and 9 response slots, with 166 events.
+The correction route through the pre-merge wait plans 121 operations and
+17 response slots, with 289 events. Both routes check entry and return of
+the shared review-capture call with empty parameters and no result witnesses.
+The suite also checks the per-iteration input IDs, the scoped evaluation ID,
 the empty return, exact replay, and a blocked evaluation that cannot return.
 The real composed driver previews and applies the exact call transition
 through the host, then checks the single appended event, preserved journals,

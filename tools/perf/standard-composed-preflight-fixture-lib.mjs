@@ -12,7 +12,10 @@ const stops = { session_pr_correction_decide: "session_pr_correction_decide", pl
 const keys = (v, names) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join() === [...names].sort().join();
 const effectsPendingNode = "pr_premerge_observe";
 const verificationTargetId = "aidn-standard-final-verification", reviewTargetId = "aidn-standard-pr-review-completion";
+const reviewCaptureTargetId = "aidn-standard-pr-review-capture";
 const callSites = new Map([
+  ["session_pr_review_capture", { model_id: reviewCaptureTargetId, prefix: "session_" }],
+  ["correction_pr_review_capture", { model_id: reviewCaptureTargetId, prefix: "correction_" }],
   ["final_verification", { model_id: verificationTargetId, prefix: "" }],
   ["correction_final_verification", { model_id: verificationTargetId, prefix: "correction_" }],
   ["session_pr_effects_pending", { model_id: reviewTargetId, prefix: "session_" }],
@@ -117,6 +120,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (node.binding_ref === "drift_check_finalize") facts = { drift_check_completed: true };
         if (node.binding_ref === "cycle_close_finalize") facts = { cycle_close_completed: true, cycle_retained: scenario.closure === "retain" };
         if (node.binding_ref === "baseline_promotion_decision") facts = { baseline_promotion_requested: scenario.promotion === "promote", baseline_promotion_not_requested: scenario.promotion === "skip" };
+        if (node.binding_ref === "session_pr_review_event_route") facts = { session_pr_pretriage_external: false };
         if (node.binding_ref === "session_pr_triage_evaluate") facts = { session_pr_findings_classified: true,
           session_pr_corrections_required: node.id === "session_pr_triage_evaluate" && scenario.review_disposition === "valid_finding",
           session_pr_responses_required: node.id === "session_pr_triage_evaluate" && scenario.review_disposition === "valid_finding" };

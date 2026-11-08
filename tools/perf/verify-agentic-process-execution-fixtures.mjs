@@ -1033,7 +1033,10 @@ if (process.argv[2] === "--mixed-continue") {
           journals.set(id, shadowHash(journal));
           return journal;
         };
-        if (["session_pr_effects_pending", "correction_pr_effects_pending"].includes(call.node_id)) {
+        if (["session_pr_review_capture", "correction_pr_review_capture"].includes(call.node_id)) {
+          assert.deepEqual(event.resolution.input, {});
+          assert.deepEqual(event.resolution.sources, []);
+        } else if (["session_pr_effects_pending", "correction_pr_effects_pending"].includes(call.node_id)) {
           assert.equal(entering, true);
           const triage = accepted(event.resolution.input.triage_operation_id, "session_pr_triage_evaluate");
           const triageNode = call.node_id.replace("_effects_pending", "_triage_evaluate");

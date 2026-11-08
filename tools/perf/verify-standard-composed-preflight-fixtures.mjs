@@ -38,6 +38,15 @@ function verifyFinalVerificationCalls(result, sites) {
   assert.equal(new Set(inputs).size, inputs.length);
 }
 function verifyReviewCall(result, prefix) {
+  const captureSites = prefix === "correction" ? ["session_pr_review_capture", "correction_pr_review_capture"] : ["session_pr_review_capture"];
+  const captures = result.call_transitions.filter(row => captureSites.includes(row.node_id));
+  assert.deepEqual(captures.map(({ node_id, kind }) => [node_id, kind]),
+    captureSites.flatMap(site => [[site, "call_enter"], [site, "call_return"]]));
+  for (const capture of captures) {
+    assert.deepEqual(capture.resolution.input, {});
+    assert.deepEqual(capture.resolution.sources, []);
+    assert.deepEqual(capture.witnesses, []);
+  }
   const [entry] = result.call_transitions.slice(-1);
   assert.equal(entry.node_id, prefix + "_pr_effects_pending");
   assert.equal(entry.kind, "call_enter");
@@ -56,7 +65,7 @@ test("positive path selects nine native turns; its cold prefix keeps the same cu
   assert.equal(result.cold_resume_checkpoints.length, 1); assert.equal(result.cold_resume_checkpoints[0].responses, 5);
   assert.equal(result.responses_required - result.cold_resume_checkpoints[0].responses, 4);
   assert.equal(result.planned_status, "WAITING"); assert.equal(result.replay_exact, true);
-  assert.equal(result.operations.length, 69); assert.equal(result.event_count, 162);
+  assert.equal(result.operations.length, 70); assert.equal(result.event_count, 166);
   verifyFinalVerificationCalls(result, ["final_verification"]);
   verifyReviewCall(result, "session");
   assert.equal(result.write_authorization, false); assert.equal(result.product_qualification, "NOT_ESTABLISHED");
@@ -92,7 +101,7 @@ test('v3 plans both cycles through the same published model, new closure, redeli
   const correction = JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/standard-workflow/composed-correction.v3.json', import.meta.url)));
   const result = preflightStandardComposedFixture({ model, scenario: correction, stop: "pr_effects_pending" });
   assert.equal(result.responses_required, 17); assert.equal(result.planned_status, 'WAITING');
-  assert.equal(result.operations.length, 119); assert.equal(result.event_count, 281);
+  assert.equal(result.operations.length, 121); assert.equal(result.event_count, 289);
   verifyFinalVerificationCalls(result, ["final_verification", "correction_final_verification"]);
   verifyReviewCall(result, "correction");
   assert.ok(result.operations.includes('correction_initialize'));
