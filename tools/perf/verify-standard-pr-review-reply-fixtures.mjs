@@ -871,14 +871,21 @@ async function qualifyConsent(base, privateKey, authority_id, { exceptionSource,
 
 async function qualifyMergeSendWindow(base) {
   const wallClock = Date.now;
-  let observedAt = null;
-  const f = open(base, { providerNow: () => observedAt ?? wallClock() });
+  let atSend = null, sampled = false;
+  const f = open(base, { providerNow: () => {
+    if (atSend !== null && /\bassertSendFresh\b/.test(new Error().stack)) {
+      sampled = true;
+      return atSend;
+    }
+    return wallClock();
+  } });
   const preview = await f.preview();
   const { expires_at_ms } = preview.prepared.plan.provider.plan;
-  // Only the provider clock advances. The local host still sees the accepted
-  // consent and all authority checks before the protected send remain active.
-  observedAt = expires_at_ms - 9999;
+  // Move the last clock observation only. Earlier GitHub observations use the
+  // wall clock and must still agree with the host's freshness checks.
+  atSend = expires_at_ms - 9999;
   const output = (await f.run(preview)).results[0].output;
+  assert.equal(sampled, true);
   assert.equal(output.outcome, 'completed');
   assert.equal(output.effect_status, 'no_effect');
   assert.equal(output.observations.reason_code, 'GITHUB_PR_MERGE_SEND_WINDOW_EXHAUSTED');
