@@ -50,11 +50,11 @@ function acceptedOperation(read, instance, id, binding) {
 // arrived yet. Database authority continues through the canonical session store.
 export function hasInvisibleStandardPrOpening({ targetRoot, sourceBranch, environment = process.env }) {
   try {
-    const directory = agentRunPhysicalPath(path.join(targetRoot, 'docs/audit/workflows/process-instances'), { missing: true });
-    if (!fs.existsSync(directory)) return false;
     const artifacts = createStandardWorkflowArtifacts({ targetRoot, env: environment });
     const state = artifacts.describe();
     if (state.database) return false;
+    const directory = agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit/workflows/process-instances'), { missing: true });
+    if (!fs.existsSync(directory)) return false;
     const entries = fs.readdirSync(directory, { withFileTypes: true }).filter(entry => entry.name.endsWith('.json'));
     if (entries.length > 1024 || entries.some(entry => !entry.isFile() || !/^[a-z][a-z0-9_-]{0,95}\.json$/.test(entry.name))) fail();
     const options = { targetRoot: artifacts.root, stateMode: state.state_mode, env: environment };
