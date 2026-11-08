@@ -1456,6 +1456,8 @@ retains its signed consent. The existing 10,000 ms transport timeout no longer
 fits. The oracle is zero sends, a typed no-effect receipt and the next consent
 question through the same reducer. The controlled clock qualifies the branch,
 with elapsed-time qualification kept separate.
+The elapsed-time nominal case reads the fixture check evidence before issuing
+the question. Missing-source probes remain in the focused consent and R09 cases.
 Run `verify-cycle-create-admission-fixtures.mjs --pr-continuity` separately
 for the direct cycle-admission guard and the reopened correction path.
 

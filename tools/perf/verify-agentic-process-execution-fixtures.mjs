@@ -1194,6 +1194,12 @@ if (process.argv[2] === "--mixed-continue") {
           console.log(JSON.stringify({ composed_external_operator_checkout: "refs/heads/dev", instance_preserved: true }));
         }
       }
+      // The provider subject is signed after the question is issued. Gather
+      // fixture evidence beforehand so inspection does not spend consent time.
+      const mergeEvidence = f.r09 && frame.node_id === "pr_merge_consent"
+        ? f.open().readOperation(state.record.events.findLast(row => row.kind === "operation_intent"
+          && row.intent.binding_ref === "session_pr_checks_accept").intent.operation_id).results.at(-1).output.evidence_refs
+        : null;
       let result;
       if (standardCheckpointOwnerAckLoss && frame.node_id === 'session_pr_correction_checkpoint') {
         const lost = await loseCheckpointOwnerReleaseAck({ targetRoot: f.configuration.target_root }, () => f.open().step({ write: true, authorization: auth }));
@@ -1267,13 +1273,11 @@ if (process.argv[2] === "--mixed-continue") {
               rationale: "Explicit fixture request after authenticated R05 and canonical admission", session_report: { summary: "Verified cycle retained",
                 open_loops: [], blockers: [], next_entry_point: "Finish the governed session close chain" }, evidence_refs: [{ ref: "fixture:operator-session-close", sha256: "a".repeat(64) }] };
           } else if (f.r09 && ["session_pr_merge_consent", "session_pr_post_merge_decision"].includes(binding)) {
-            const before = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
-            assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "missing-r09-choice", write: true })).status, "waiting_for_human");
-            assert.equal(f.open().inspect().record.instance_sha256, before);
-            assert.equal(f.t.sessions.length, nativeCount);
+            // Missing-source probes live in the focused consent and R09 cases.
+            // The nominal operator answers the exact question immediately.
             const question = result.question, merge = binding === "session_pr_merge_consent";
-            const checks = state.record.events.findLast(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_pr_checks_accept");
-            const evidence = merge ? f.open().readOperation(checks.intent.operation_id).results.at(-1).output.evidence_refs
+            if (merge) assert.ok(mergeEvidence?.length);
+            const evidence = merge ? mergeEvidence
               : [{ ref: "git:" + question.subject.alignment.proof_ref, sha256: shadowHash(question.subject.alignment) }];
             const choice = merge ? "approve_merge" : "fast_forward";
             assert.ok(question.choices.includes(choice));
