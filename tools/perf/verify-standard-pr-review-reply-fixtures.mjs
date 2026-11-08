@@ -241,8 +241,10 @@ function open(base, { initializeKey = false } = {}) {
       assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
       const { query, variables: { input } } = JSON.parse(options.input);
       assert.match(query, /^mutation AidnMergePullRequest/);
-      const waiting = inspect().cursor.occurrences.find(row => row.node_id === 'pr_merge_execute');
-      const record = host.readJournal(waiting.operation.intent.operation_id);
+      const active = inspect().cursor.occurrences.filter(row => row.node_id === 'pr_merge_execute'
+        && row.status === 'WAITING' && row.operation?.intent && !row.operation.receipt);
+      assert.equal(active.length, 1);
+      const record = host.readJournal(active[0].operation.intent.operation_id);
       assert.equal(record.phase, 'dispatching');
       assert.equal(record.owner.pid, process.pid);
       assert.equal(record.intent.authorization_sha256, shadowHash(record.grant));
