@@ -3,7 +3,7 @@ import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.
 import { resolvePromotedSharedPlanningContext } from "./shared-planning-resolution-service.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
-import { readStandardPostMergeContinuity } from "./standard-post-merge-continuity.mjs";
+import { hasInvisibleStandardPrOpening, readStandardPostMergeContinuity } from "./standard-post-merge-continuity.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveBranchMapping } from "../../lib/workflow/branch-mapping-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
@@ -380,7 +380,8 @@ export async function runCycleCreateAdmitUseCase({
   const awaitingMerge = prior?.pr_status === "open" && prior.close_gate_satisfied === true && !reconciliation?.completion;
   const awaitingSync = prior?.pr_status === "merged" && !reconciliation?.completion
     && (reconciliation?.managed || prior.post_merge_sync_status !== "done");
-  if (awaitingMerge || awaitingSync) {
+  if (awaitingMerge || awaitingSync || branchKind === AIDN_BRANCH_KIND.SOURCE
+    && hasInvisibleStandardPrOpening({ targetRoot: absoluteTargetRoot, sourceBranch })) {
     return makeResult(base, {
       action: "stop_pr_continuity",
       reason_code: awaitingMerge ? "CYCLE_CREATE_SESSION_PR_OPEN" : "CYCLE_CREATE_POST_MERGE_SYNC_REQUIRED",

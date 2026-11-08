@@ -382,6 +382,13 @@ export function createStandardGithubProviderHost({ configuration, home, identity
           postMergeFetch().verifyCompletedSource(prepared, input);
           revalidate();
         },
+        readMergedSession(prepared, input) {
+          const guard = transportGuard();
+          guard();
+          const content = postMergeFetch().readMergedSession(prepared, input);
+          guard();
+          return content;
+        },
         async observeAlignment(prepared, input) {
           const guard = transportGuard();
           guard();

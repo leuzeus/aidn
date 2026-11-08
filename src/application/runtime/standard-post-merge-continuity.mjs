@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { readStandardHostInstance } from '../../adapters/runtime/standard-host-authority.mjs';
 import { createStandardGithubProviderHost } from '../../adapters/runtime/standard-github-provider-host.mjs';
 import { createAgenticProcessStore } from '../../adapters/runtime/agentic-process-store.mjs';
@@ -7,6 +9,8 @@ import { createProcessOperationJournalStore } from '../../adapters/runtime/proce
 import { createOperationJournalSigner, operationJournalId } from '../../core/workflow/process-operation-journal.mjs';
 import { assertPostMergeCompleteInput, assertPostMergeCompleteOutput, postMergeCompleteOperation } from '../../core/workflow/standard-pr-post-merge-complete.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
+import { assertStandardOperationOutput } from '../../core/workflow/standard-operation-contracts.mjs';
+import { agentRunPhysicalPath } from './agent-run-configuration-service.mjs';
 import { createStandardWorkflowArtifacts } from './standard-workflow-artifacts.mjs';
 import { createStandardSessionPrPostMergeFetch } from './standard-session-pr-post-merge-fetch.mjs';
 import { latestIntent, postMergeCompletionSource, postMergeProjectScope, readPrOpeningLocator } from './standard-session-pr-post-merge-completion.mjs';
@@ -16,6 +20,16 @@ const fail = () => { throw Object.assign(Error(required), { code: required }); }
 const exact = (left, right) => shadowHash(left) === shadowHash(right);
 
 export const hasPrOpeningLocator = content => /^## Process PR opening[ \t]*\r?$/m.test(content ?? '');
+
+function authenticatedJournal(journal, signer) {
+  return id => {
+    const record = journal.read(id).record;
+    if (!record) fail();
+    signer.verify(record);
+    signer.verify(record.preview);
+    return record;
+  };
+}
 
 function acceptedOperation(read, instance, id, binding) {
   const record = read(id), result = record?.results.at(-1), intent = record?.intent, preview = record?.preview;
@@ -29,6 +43,42 @@ function acceptedOperation(read, instance, id, binding) {
     || !instance.events.some(event => event.kind === 'operation_intent' && exact(event.intent, intent))
     || !instance.events.some(event => event.kind === 'operation_result' && exact(event.receipt, result.receipt))) fail();
   return { record, output: result.output };
+}
+
+// FILES delivery journals stay in the checkout when Git switches from the PR
+// branch back to its base. Discover openings whose session artifact has not
+// arrived yet. Database authority continues through the canonical session store.
+export function hasInvisibleStandardPrOpening({ targetRoot, sourceBranch, environment = process.env }) {
+  try {
+    const directory = agentRunPhysicalPath(path.join(targetRoot, 'docs/audit/workflows/process-instances'), { missing: true });
+    if (!fs.existsSync(directory)) return false;
+    const artifacts = createStandardWorkflowArtifacts({ targetRoot, env: environment });
+    const state = artifacts.describe();
+    if (state.database) return false;
+    const entries = fs.readdirSync(directory, { withFileTypes: true }).filter(entry => entry.name.endsWith('.json'));
+    if (entries.length > 1024 || entries.some(entry => !entry.isFile() || !/^[a-z][a-z0-9_-]{0,95}\.json$/.test(entry.name))) fail();
+    const options = { targetRoot: artifacts.root, stateMode: state.state_mode, env: environment };
+    const instances = createAgenticProcessStore(options), journals = createProcessOperationJournalStore(options);
+    for (const { name } of entries) {
+      const instance = instances.read(name.slice(0, -5)).record;
+      if (!instance) fail();
+      const opening = latestIntent(instance, 'session_pr_open');
+      if (!opening || !instance.events.some(event => event.kind === 'operation_result'
+        && event.receipt.operation_id === opening.operation_id && event.receipt.outcome === 'completed')) continue;
+      const host = readStandardHostInstance({ targetRoot: artifacts.root, instanceId: instance.instance_id, environment });
+      const read = authenticatedJournal(journals, createOperationJournalSigner(host.readKey));
+      const accepted = acceptedOperation(read, instance, opening.operation_id, 'session_pr_open');
+      const { observations: { session_id: sessionId, pull_request: link }, facts } = assertStandardOperationOutput(accepted.output);
+      if (!/^S[0-9]{3,6}$/.test(sessionId ?? '') || link?.state !== 'OPEN' || link.draft || facts.session_pr_open_confirmed !== true) fail();
+      if (link.base_branch !== sourceBranch) continue;
+      const session = artifacts.read('sessions/' + sessionId + '.md');
+      const marker = readPrOpeningLocator(session.content);
+      if (!marker || marker.open_operation_id !== opening.operation_id || marker.observation_sha256 !== shadowHash(link)) return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 function completionPort({ host, targetRoot, instanceId }, environment, providerTransport) {
@@ -56,13 +106,7 @@ export function readStandardPostMergeContinuity({ targetRoot, sessionId, session
     const instanceId = opening.intent.instance_id;
     const host = readStandardHostInstance({ targetRoot: target, instanceId, environment });
     const signer = createOperationJournalSigner(host.readKey);
-    const read = id => {
-      const record = journal.read(id).record;
-      if (!record) fail();
-      signer.verify(record);
-      signer.verify(record.preview);
-      return record;
-    };
+    const read = authenticatedJournal(journal, signer);
     const instance = createAgenticProcessStore(options).read(instanceId).record;
     if (!instance || !exact(read(marker.open_operation_id), opening)) fail();
     const completionIntent = latestIntent(instance, postMergeCompleteOperation);

@@ -4,7 +4,7 @@ import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
-import { readStandardPostMergeContinuity } from "./standard-post-merge-continuity.mjs";
+import { hasInvisibleStandardPrOpening, readStandardPostMergeContinuity } from "./standard-post-merge-continuity.mjs";
 import { resolveEffectiveRuntimePersistence } from "./runtime-persistence-service.mjs";
 import {
   resolveBranchMapping,
@@ -165,7 +165,7 @@ export async function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN"
       targetRoot: absoluteTargetRoot, sessionId: latestSession.session_id, content: latestSession.text, sourceBranch,
       sessionPath: path.relative(auditRoot, latestSession.file_path).replaceAll("\\", "/"),
     });
-    return makeResult(base, evaluateSourceBranchTransition({
+    const transition = evaluateSourceBranchTransition({
       activeSessionArtifact: reconciliation?.completion && activeSessionArtifact === latestSession ? null : activeSessionArtifact,
       latestSession,
       reconciliation,
@@ -174,7 +174,17 @@ export async function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN"
       resumableOpenCycles,
       sourceBranch,
       staleOpenCycles,
-    }));
+    });
+    if (transition.action === WORKFLOW_ACTION.CREATE_SESSION_ALLOWED
+      && hasInvisibleStandardPrOpening({ targetRoot: absoluteTargetRoot, sourceBranch })) {
+      return makeResult(base, {
+        action: WORKFLOW_ACTION.BLOCKED_SESSION_BASE_GATE,
+        reason_code: WORKFLOW_REASON.START_SESSION_POST_MERGE_SYNC_REQUIRED,
+        blocking_reasons: ["The source branch lacks the session record for a managed PR, or its delivery history is unavailable."],
+        recommended_next_action: "Resolve the managed PR and accept its local reconciliation before starting a session.",
+      });
+    }
+    return makeResult(base, transition);
   }
 
   return makeResult(base, evaluateMappedBranchTransition({

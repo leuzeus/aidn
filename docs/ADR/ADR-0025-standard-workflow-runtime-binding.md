@@ -1,5 +1,22 @@
 # ADR-0025 — Typed host operations in the common process IR
 
+## Session artifact delivered on a branch ahead of the FILES source, 2026-11-08
+
+Before source reconciliation, the session document may exist only in the
+delivered merge. The divergence decision can read that regular Git blob if
+the local FILES artifact is absent and the source is behind. The read binds
+the repository, exact merge, retained fetch ref and reflog, and observed
+local checkout. The opening receipt, document marker and PR subject must
+agree. This read creates no projection. Completion still requires the
+canonical session document on the aligned source. DUAL, DB-only and configured
+PostgreSQL continue to require their canonical artifact store.
+
+When a FILES source checkout lacks the marker for an accepted managed
+opening, source-branch session and cycle admissions consult the bounded local
+instance inventory and authenticate its opening receipt. The pending or
+unverifiable delivery blocks creation. Once the marker arrives, the existing
+canonical completion check applies.
+
 ## Renewal after a proven pre-send merge expiry, 2026-11-08
 
 The shared R08 child permits one new consent question after an accepted

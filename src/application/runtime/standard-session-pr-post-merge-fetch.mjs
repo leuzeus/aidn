@@ -82,6 +82,10 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readPretri
   return Object.freeze({
     alignmentSource,
     measure,
+    readMergedSession({ git }, alignment, sessionId, signal) {
+      if (typeof port?.readMergedSession !== 'function') fail('STANDARD_PR_POST_MERGE_SESSION_HOST_REQUIRED');
+      return port.readMergedSession(git, { expectPlan: git.plan_sha256, sessionId, alignment, signal });
+    },
     supportsFastForward: typeof port?.prepareFastForward === 'function',
     async prepare(instance, input, id) {
       const { merge, receiptSha } = source(instance, input);

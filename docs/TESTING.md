@@ -1483,6 +1483,15 @@ completion, real GitHub, Native and installed archive qualification require
 their own evidence.
 
 Run `verify-standard-pr-review-reply-fixtures.mjs` with
+`--case=post-merge-delivered-session` for the FILES source branch whose
+session exists only in the delivered Git tree. Before the signed choice,
+both creation admissions must block. The question reads the fetched session
+without materializing it. The separate grant permits one real fast-forward
+and the canonical document then participates in completion. Admissions stay
+closed until the accepted receipt. The fixture uses a signed synthetic
+opening and merge, a doubled provider transport, real Git and FILES journals.
+
+Run `verify-standard-pr-review-reply-fixtures.mjs` with
 `--case=post-merge-recover-expired`, `--case=post-merge-recover-moved` and
 `--case=post-merge-recover-aligned` separately. They exercise the ordinary
 action dispatcher and mixed host over the reduced published R09 call sites,

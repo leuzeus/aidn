@@ -18,7 +18,8 @@ export function createStandardPostMergeDecision({ postMerge, readAccepted, artif
       || record.preview.prepared.fetch_receipt_sha256 !== fetch.receiptSha) fail(required);
 
     const alignment = await postMerge.measure(instance, fetchInput, fetch, signal);
-    const session = postMergeSessionSource({ instance, readAccepted, artifacts });
+    const session = postMergeSessionSource({ instance, readAccepted, artifacts,
+      readMissingSession: alignment.behind > 0 ? id => postMerge.readMergedSession(fetch, alignment, id, signal) : null });
     const { merge } = fetch, pull = merge.provider.pull_request;
     assertPostMergeSessionLink(session, merge, alignment);
     const subject = { project_scope_sha256: scopeSha(), session_id: session.sessionId, opening_operation_id: session.openId,

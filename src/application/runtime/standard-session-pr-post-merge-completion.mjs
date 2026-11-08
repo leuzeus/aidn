@@ -34,7 +34,7 @@ export function postMergeProjectScope(targetRoot, env) {
 
 // The opening marker supplies a lookup key. The accepted opening supplies
 // identity, including the original delivery (which can differ after correction).
-export function postMergeSessionSource({ instance, readAccepted, artifacts }) {
+export function postMergeSessionSource({ instance, readAccepted, artifacts, readMissingSession = null }) {
   const openId = latestIntent(instance, 'session_pr_open')?.operation_id;
   if (!openId) fail(required);
   const opening = readAccepted(instance, openId, 'session_pr_open', required);
@@ -42,8 +42,12 @@ export function postMergeSessionSource({ instance, readAccepted, artifacts }) {
   if (!/^S[0-9]{3,6}$/.test(sessionId ?? '') || validateJsonSchema(link, linkSchema, '$', { contractKind: 'workflow-definition' }).length
     || link.state !== 'OPEN' || link.draft || opening.output.facts.session_pr_open_confirmed !== true)
     fail(required);
-  const session = artifacts.read('sessions/' + sessionId + '.md', { required: true });
-  const metadata = parseSessionMetadata(session.content), marker = readPrOpeningLocator(session.content);
+  const session = artifacts.read('sessions/' + sessionId + '.md', { required: readMissingSession === null });
+  // A FILES source branch can still be behind the delivery that introduced the
+  // session. Only the decision may inspect that exact fetched Git postimage.
+  const content = session.content ?? (session.source === 'files' ? readMissingSession?.(sessionId) : null);
+  if (typeof content !== 'string') fail(required);
+  const metadata = parseSessionMetadata(content), marker = readPrOpeningLocator(content);
   const sourceBranch = readSourceBranch(artifacts.root);
   if (!marker || marker.open_operation_id !== openId || marker.repository_id !== link.repository_id || marker.pull_request_id !== link.node_id
     || marker.observation_sha256 !== shadowHash(link) || marker.observed_delivery_head !== link.head_oid

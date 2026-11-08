@@ -27,12 +27,12 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
     GIT_OPTIONAL_LOCKS: '0', GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1',
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: nullPath, GIT_TERMINAL_PROMPT: '0' };
   const fixed = ['-C', root, '-c', 'core.hooksPath=' + nullPath, '-c', 'core.fsmonitor=false', '-c', 'core.logAllRefUpdates=true'];
-  function git(args, statuses = [0], { input, indexFile } = {}) {
+  function git(args, statuses = [0], { input, indexFile, raw = false } = {}) {
     const result = spawnSync(gitExecutable, [...fixed, ...args], { env: indexFile ? { ...env, GIT_INDEX_FILE: indexFile } : env, input, encoding: 'utf8', windowsHide: true,
-      timeout: 10000, maxBuffer: 262144, stdio: 'pipe' });
+      timeout: 10000, maxBuffer: raw ? 1048576 : 262144, stdio: 'pipe' });
     if (result.error || result.signal || !statuses.includes(result.status) || typeof result.stdout !== 'string')
       fail('WORKFLOW_POST_MERGE_GIT_UNAVAILABLE');
-    return { status: result.status, value: result.stdout.trimEnd() };
+    return { status: result.status, value: raw ? result.stdout : result.stdout.trimEnd() };
   }
   function repository() {
     const [top, gitDir, commonDir, shallow, ...extra] = git(['rev-parse', '--path-format=absolute',
@@ -198,6 +198,25 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
       if (!oid(current) || expectedHead && current !== expectedHead) fail('WORKFLOW_POST_MERGE_LOCAL_CHANGED');
       proveHistory(alignedHead, current);
       if (readRef(plan.source_ref) !== current || repository() !== repoIdentity) fail('WORKFLOW_POST_MERGE_LOCAL_CHANGED');
+    },
+    readMergedSession(prepared, { expectPlan, sessionId, alignment, signal } = {}) {
+      active(signal);
+      const plan = checked(prepared, expectPlan), before = localView(plan.branch);
+      if (!/^S[0-9]{3,6}$/.test(sessionId ?? '') || alignment?.source_ref !== plan.source_ref
+        || alignment.local_head !== before.head || alignment.merge_oid !== plan.merge_oid
+        || alignment.fetched_head !== plan.remote_head || alignment.proof_ref !== plan.proof_ref
+        || !Number.isSafeInteger(alignment.behind) || alignment.behind <= 0)
+        fail('WORKFLOW_POST_MERGE_SESSION_SOURCE_CHANGED');
+      requireWitness(plan, expectPlan);
+      const name = 'docs/audit/sessions/' + sessionId + '.md';
+      const entry = git(['ls-tree', '-z', '--full-tree', plan.merge_oid, '--', name]).value;
+      const match = /^100(?:644|755) blob ([a-f0-9]+)\t([^\0]+)\0$/.exec(entry);
+      if (!match || !oid(match[1]) || match[2] !== name) fail('WORKFLOW_POST_MERGE_SESSION_BLOB_REQUIRED');
+      const content = git(['cat-file', 'blob', match[1]], [0], { raw: true }).value;
+      requireWitness(plan, expectPlan);
+      if (localView(plan.branch).sha256 !== before.sha256) fail('WORKFLOW_POST_MERGE_LOCAL_CHANGED');
+      active(signal);
+      return content;
     },
     async observeAlignment(prepared, { expectPlan, signal } = {}) {
       active(signal);
