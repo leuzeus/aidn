@@ -2,6 +2,9 @@ import requestSchema from "../contracts/workflow-definition/process-control-requ
 import sourceSchema from "../contracts/workflow-definition/process-control-source.v1.schema.json" with { type: "json" };
 import inboxSchema from "../contracts/workflow-definition/process-control-inbox.v1.schema.json" with { type: "json" };
 import inboxV2 from "../contracts/workflow-definition/process-control-inbox.v2.schema.json" with { type: "json" };
+import inboxV3 from "../contracts/workflow-definition/process-control-inbox.v3.schema.json" with { type: "json" };
+import reservationSchema from "../contracts/workflow-definition/process-control-reservation.v1.schema.json" with { type: "json" };
+import { assertExternalMergeControl, externalMergeControlRef, externalMergeEventKey } from "./standard-pr-external-merge.mjs";
 import reviewPayloadSchema from "../contracts/workflow-definition/standard-session-pr-review-content-output.v1.schema.json" with { type: "json" };
 import eventSchema from "../contracts/workflow-definition/github-pr-review-event.v1.schema.json" with { type: "json" };
 import payloadSchema from "../contracts/workflow-definition/process-pr-review-payload.v1.schema.json" with { type: "json" };
@@ -39,10 +42,27 @@ export function controlDelivery(request, source) {
     subject_sha256: source.subject_sha256, event_key: source.event_key, payload_sha256: source.payload_sha256,
     evidence_refs: structuredClone(source.evidence_refs) };
 }
+// Both source types arbitrate the same durable occurrence before a source-keyed
+// capture is written. The source-keyed record still prevents cross-wait reuse.
+export const controlReservationId = ({ scope_id, instance_id, model_sha256, occurrence_id }) =>
+  "control_" + shadowHash({ kind: "review-wait", scope_id, instance_id, model_sha256, occurrence_id }).slice(0, 40);
+
 export function assertControlInbox(value) {
-  schema(value, value?.contract_version === "process-control-inbox.v2" ? inboxV2 : inboxSchema, "PROCESS_CONTROL_INBOX_INVALID");
+  if (value?.contract_version === "process-control-reservation.v1") {
+    schema(value, reservationSchema, "PROCESS_CONTROL_INBOX_INVALID");
+    assertControlRequest(value.request);
+    if (!value.request.event_keys.includes(externalMergeEventKey) || value.inbox_id !== controlReservationId(value.request)
+      || value.capture_id === value.inbox_id) fail("PROCESS_CONTROL_INBOX_BINDING_CHANGED");
+    return value;
+  }
+  schema(value, value?.contract_version === "process-control-inbox.v3" ? inboxV3
+    : value?.contract_version === "process-control-inbox.v2" ? inboxV2 : inboxSchema, "PROCESS_CONTROL_INBOX_INVALID");
   assertControlSource(value.source, value.request);
   if (value.contract_version === "process-control-inbox.v2") assertControlReviewPayload(value.payload, value.source, value.request);
+  if (value.contract_version === "process-control-inbox.v3") {
+    if (value.source_ref !== externalMergeControlRef) fail("PROCESS_CONTROL_INBOX_BINDING_CHANGED");
+    assertExternalMergeControl(value.payload, value.source, value.request);
+  }
   if (value.inbox_id !== controlInboxId(value.source) || shadowHash(value.delivery) !== shadowHash(controlDelivery(value.request, value.source))
     || (value.phase === "delivered") !== (value.delivered_instance_sha256 !== null)) fail("PROCESS_CONTROL_INBOX_BINDING_CHANGED");
   assertProcessControlEvent(value.delivery, { instance: { ...value.request, instance_sha256: value.request.instance_sha256, revision: value.request.instance_revision },

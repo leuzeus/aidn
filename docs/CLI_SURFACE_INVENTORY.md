@@ -346,7 +346,13 @@ finalization; `--verify` retains its read-only verification behavior.
     a separate `prepare_host` action; initialization follows with the real key
     identity. `AIDN_STANDARD_HOST_HOME` is an existing external protected host
     directory, never a request-selected authority. Decisions use
-    `--decision-source <ref>`; control delivery uses `--control-source <ref>`.
+    `--decision-source <ref>`. Control delivery uses `--control-source <ref>`.
+    At a published initial or corrective review wait, `aidn:external-merge`
+    selects a protected, read-only merge observation. Exact action-file
+    execution with the same selector reserves and delivers the external
+    observation. The incident disposition and R09 effects have separate
+    authorization. An open PR waits, and a closure without merge is reported
+    separately.
     With no source selector, a recoverable R09 question previews a
     `question_recovery` action. Apply the saved action with the same exact
     `--action-file --execute --expect-plan` boundary. The action records the

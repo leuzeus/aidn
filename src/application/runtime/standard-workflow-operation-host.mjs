@@ -21,7 +21,8 @@ import { resolutionExceptionOperation } from "../../core/workflow/standard-pr-re
 import { createStandardPrReviewReply } from "./standard-session-pr-review-reply.mjs";
 import { createStandardPrReviewEffectsVerification } from "./standard-session-pr-review-effects.mjs";
 import { createStandardExternalMergeDisposition } from "./standard-session-pr-external-merge.mjs";
-import { externalMergeDisposition, externalMergeObservationVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
+import { createPretriageMergeControl, createPretriageMergeSource } from "./standard-session-pr-pretriage-merge.mjs";
+import { externalMergeControlRef, externalMergeEventKey, externalMergeDisposition, externalMergeObservationVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
 import { createStandardPrTriageSource } from "./standard-pr-triage-source.mjs";
@@ -529,7 +530,32 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         head_oid: p.head_oid, base_oid: p.base_oid, head_ref: p.head_branch, base_ref: p.base_branch, not_before_ms: notBefore };
       return { instance: state.record, request_sha256: shadowHash(actual), input, reviewSubject };
     } });
-  const activeControlSource = reviewControlSource ? { ...controlSource, ...reviewControlSource } : controlSource;
+  const { readPretriageDelivery, readPretriageEvent, readPretriage } = createPretriageMergeSource({
+    readAcceptedUpdate: readAcceptedPrUpdate, readControl: id => controls.read(id),
+  });
+  const pretriageMerge = sessionReviewPort?.observePrMerge ? createPretriageMergeControl({ now, reviewPort: sessionReviewPort,
+    readContext(request) {
+      const { request: actual, state, frame } = observeControlRequest({ instanceId: request.instance_id,
+        expectedSha256: request.instance_sha256, occurrenceId: request.occurrence_id });
+      if (!prReviewWaitNodes.has(frame.node_id) || !actual.event_keys.includes(externalMergeEventKey)
+        || shadowHash(actual) !== shadowHash(request)) fail("PROCESS_CONTROL_PR_CONTEXT_CHANGED");
+      if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+      const subject = readPretriageDelivery(state, frame);
+      if (subject.pullRequest.head_oid !== request.head || subject.pullRequest.head_branch !== request.branch)
+        fail("STANDARD_PR_EXTERNAL_MERGE_DELIVERY_REQUIRED");
+      return subject;
+    } }) : null;
+  const activeControlSource = controlSource || reviewControlSource || pretriageMerge
+    ? { ...controlSource, ...reviewControlSource, ...pretriageMerge } : null;
+
+  function pretriageRoute(state, occurrenceId) {
+    const frame = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId);
+    const { event, capture } = readPretriageEvent(state.record, frame?.parent_id, state.cursor);
+    const external = event.delivery.event_key === externalMergeEventKey;
+    if (capture.contract_version !== (external ? "process-control-inbox.v3" : "process-control-inbox.v2"))
+      fail("STANDARD_HOST_CONTROL_HISTORY_NOT_AUTHENTICATED");
+    return { can_apply: true, external, delivery_sha256: shadowHash(event.delivery) };
+  }
   function verifyPrReviewEvent(capture, options) {
     return reviewControlSource?.verifyCapturedEvent(capture, options) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED");
   }
@@ -564,13 +590,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return [assertStandardOperationOutput(last.output).observations[observation]];
     });
   }
-  const acceptedReviewPorts = { now, reviewPort: sessionReviewPort, readAccepted: acceptedForPromotion,
+  const acceptedReviewPorts = { now, readPretriage, reviewPort: sessionReviewPort, readAccepted: acceptedForPromotion,
     readAcceptedUpdate: readAcceptedPrUpdate, readCurrent: id => current(id).record,
     readDelivered: readDeliveredPrReview, verifyEvent: verifyPrReviewEvent,
     readAcceptedReplies: (instance, triageId) => acceptedReviewEffects(instance, triageId, "session_pr_review_reply_publish", "reply") };
   const sessionPrMerge = createStandardSessionPrMergeObservation(acceptedReviewPorts);
   const sessionPrPremerge = createStandardSessionPrMergeObservation(acceptedReviewPorts, { preflight: true });
-  const externalDisposition = createStandardExternalMergeDisposition({ ...acceptedReviewPorts, observeMerge: sessionPrPremerge });
+  const externalDisposition = createStandardExternalMergeDisposition({ ...acceptedReviewPorts, pretriageMerge, observeMerge: sessionPrPremerge });
   const assertExternalDispositionFresh = (instance, record, signal) => externalDisposition.assertFresh(instance, record, signal);
   const checksMayObserveMerge = input => input.contract_version === "standard-pr-checks-accept-input.v2";
   const mergeObservationInput = input => ({ contract_version: "standard-session-pr-merge-observe-input.v2",
@@ -966,18 +992,20 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     return { instance: record, ...observed };
   }
   function requireWrite(write, expected, actual) { if (write !== true || expected !== actual) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED"); }
-  function controlRequest({ instanceId, expectedSha256, occurrenceId }) {
+  function observeControlRequest({ instanceId, expectedSha256, occurrenceId }) {
     if (!activeControlSource) fail("PROCESS_CONTROL_AUTHORITY_UNAVAILABLE");
     const state = current(instanceId);
     if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
     const frame = state.cursor.occurrences.find(row => row.occurrence_id === occurrenceId), node = frame && processFrameNode(model, frame);
     if (node?.kind !== "event" || frame.status !== "WAITING") fail("PROCESS_CONTROL_ORDER_INVALID");
     const context = snapshot();
-    return assertControlRequest({ contract_version: "process-control-request.v1", scope_id: state.record.scope_id,
+    const request = assertControlRequest({ contract_version: "process-control-request.v1", scope_id: state.record.scope_id,
       instance_id: state.record.instance_id, instance_sha256: state.record.instance_sha256, model_sha256: state.record.model_sha256,
       instance_revision: state.record.revision, occurrence_id: occurrenceId, correlation_id: frame.correlation_id,
       event_keys: node.branches.map(row => row.event_key), context_sha256: shadowHash(context), branch: context.context.branch, head: context.context.head });
+    return { request, state, frame };
   }
+  const controlRequest = input => observeControlRequest(input).request;
   function decisionInput(instance, input) {
     const latest = instance.events.filter(event => event.kind === "operation_intent" && event.intent.binding_ref === "mode_decision").at(-1);
     if (!latest || latest.intent.operation_id !== input.decision_operation_id) fail("STANDARD_MODE_DECISION_REQUIRED");
@@ -1183,15 +1211,32 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       return { status: "receipted", receipt };
     },
     prepareControl: input => structuredClone(controlRequest(input)),
-    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, captureKind = null, write = false }) {
+    async previewExternalMerge({ instanceId, expectedSha256, occurrenceId, signal }) {
+      if (!pretriageMerge) fail("STANDARD_PR_MERGE_PROVIDER_REQUIRED");
+      const request = controlRequest({ instanceId, expectedSha256, occurrenceId });
+      controls.assertAvailable(request, externalMergeControlRef);
+      const capture = await pretriageMerge.readMerge({ request, sourceRef: externalMergeControlRef, signal });
+      return { request, merge_subject_sha256: capture?.source.subject_sha256 ?? null };
+    },
+    async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, expectedSubjectSha256, signal, captureKind = null, write = false }) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const request = controlRequest({ instanceId, expectedSha256, occurrenceId });
       const standardReview = current(instanceId).cursor.occurrences.some(row => row.occurrence_id === occurrenceId && prReviewWaitNodes.has(row.node_id));
+      const merge = sourceRef === externalMergeControlRef;
       const kind = captureKind ?? (standardReview ? "pr-review-content" : "claim");
       if (!["claim", "pr-review-content"].includes(kind) || standardReview && kind !== "pr-review-content") fail("PROCESS_CONTROL_CAPTURE_KIND_INVALID");
-      if (standardReview && !reviewControlSource) fail("PROCESS_CONTROL_PR_EVENT_SOURCE_REQUIRED");
-      const capture = await (kind === "pr-review-content" ? controls.reserveReview : controls.reserve)(request, sourceRef, { signal });
+      if (merge && (!standardReview || !pretriageMerge || !request.event_keys.includes(externalMergeEventKey)
+        || !/^[a-f0-9]{64}$/.test(expectedSubjectSha256))) fail("PROCESS_CONTROL_EXTERNAL_MERGE_EXACT_PLAN_REQUIRED");
+      if (standardReview && !merge && !reviewControlSource) fail("PROCESS_CONTROL_PR_EVENT_SOURCE_REQUIRED");
+      const reserve = merge ? controls.reserveMerge : kind === "pr-review-content" ? controls.reserveReview : controls.reserve;
+      const assertCurrent = () => {
+        if (shadowHash(controlRequest({ instanceId, expectedSha256, occurrenceId })) !== shadowHash(request)) fail("PROCESS_CONTROL_CONTEXT_CHANGED");
+        if (request.event_keys.includes(externalMergeEventKey) && artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+      };
+      const capture = await reserve(request, sourceRef, { signal, expectedSubjectSha256, assertCurrent });
+      if (!capture && merge) fail("PROCESS_CONTROL_EXTERNAL_MERGE_PLAN_CHANGED");
       if (!capture) return { status: "waiting_for_control", request };
+      if (request.event_keys.includes(externalMergeEventKey)) await dispatchCheckpoint?.("pr_review_control_reserved");
       // A retained capture survives races/crashes, but may not wake a changed
       // instance or business context. Such a capture needs explicit reconciliation.
       const currentRequest = controlRequest({ instanceId, expectedSha256, occurrenceId });
@@ -1215,7 +1260,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       }
       if (capture.phase !== "reserved" || state.record.instance_sha256 !== capture.request.instance_sha256) fail("PROCESS_CONTROL_INSTANCE_CHANGED");
       if (state.cursor.occurrences.some(row => row.occurrence_id === capture.request.occurrence_id && prReviewWaitNodes.has(row.node_id))
-        && (capture.contract_version !== "process-control-inbox.v2" || !reviewControlSource)) fail("PROCESS_CONTROL_PR_EVENT_SOURCE_REQUIRED");
+        && !(capture.contract_version === "process-control-inbox.v2" && reviewControlSource
+          || capture.contract_version === "process-control-inbox.v3" && pretriageMerge)) fail("PROCESS_CONTROL_PR_EVENT_SOURCE_REQUIRED");
+      if (capture.contract_version === "process-control-inbox.v3") pretriageMerge.assertCaptureFresh(capture.payload);
       const result = await service.deliverControl({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256,
         occurrenceId: capture.request.occurrence_id, deliveryId: capture.delivery.delivery_id, eventId, write: true });
       controls.acknowledge(id, result.record.instance_sha256);
@@ -1268,6 +1315,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : [postMergeAlignmentOperation, postMergeMeasureOperation].includes(binding.id) ? postMerge.prepareAlignment(state.record, input)
         : binding.id === postMergeDecisionOperation ? await postMergeDecision.prepare(state.record, input, predecessorFor(occurrence))
         : binding.id === postMergeWaitOperation ? { can_apply: true }
+        : binding.id === "session_pr_review_event_route" ? pretriageRoute(state, occurrenceId)
         : binding.id === "session_pr_merge_basis" ? externalDisposition.prepareBasis(state, input, occurrenceId)
         : binding.id === externalMergeDisposition ? externalDisposition.prepare(state.record, input, occurrenceId)
         : binding.id === checksOperation ? (checksMayObserveMerge(input)
@@ -1446,6 +1494,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           } });
         else if (record.intent.binding_ref === "session_pr_review_effects_verify") output = await sessionPrEffects.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
+        else if (record.intent.binding_ref === "session_pr_review_event_route") {
+          const selected = pretriageRoute(state, record.intent.occurrence_id);
+          if (shadowHash(selected) !== shadowHash(record.preview.prepared)) fail("STANDARD_PR_REVIEW_WAIT_CHANGED");
+          output = { contract_version: "standard-pr-review-event-route-output.v1", operation_ref: record.intent.binding_ref,
+            outcome: "completed", effect_status: "no_effect", facts: { session_pr_pretriage_external: selected.external },
+            observations: {}, evidence_refs: [] };
+        }
         else if (record.intent.binding_ref === "session_pr_merge_basis") {
           const selected = externalDisposition.prepareBasis(state, record.preview.input, record.intent.occurrence_id);
           if (shadowHash(selected) !== shadowHash(record.preview.prepared)) fail("STANDARD_PR_MERGE_BASIS_CHANGED");

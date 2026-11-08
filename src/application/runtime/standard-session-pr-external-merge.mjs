@@ -1,5 +1,5 @@
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
-import { externalMergeDisposition, externalMergeMaxAgeMs, externalMergeObservationVersion, externalMergeQuestion,
+import { externalMergeDisposition, externalMergeMaxAgeMs, externalMergeObservationVersion, externalMergeQuestion, externalMergeMaterial,
   assertExternalMergeDisposition, assertExternalMergeObservation } from '../../core/workflow/standard-pr-external-merge.mjs';
 import { assertMergeExecuteOutput, mergeExecuteOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
 import { inspectAgenticProcess } from '../../core/workflow/agentic-process.mjs';
@@ -19,20 +19,24 @@ function observationSubject(instance, input, id, binding, readAccepted) {
     incident: 'R08_PREMERGE_CONTROLS_UNESTABLISHED' };
 }
 
-export function readExternalMergeForFetch(instance, id, readAccepted) {
+export function readExternalMergeForFetch(instance, id, readAccepted, readPretriage) {
   const { record, output } = readAccepted(instance, id, externalMergeDisposition, required);
   const question = externalMergeQuestion(record), subject = question.subject;
-  const observation = instance.events.find(event => event.kind === 'operation_intent'
-    && event.intent.operation_id === subject.observation_operation_id);
-  if (!observation || assertExternalMergeDisposition(output).outcome !== 'completed'
+  const pretriage = Object.hasOwn(record.preview.input, 'update_operation_id');
+  const original = pretriage
+    ? readPretriage(instance, record.preview.input, record.intent.occurrence_id).subject
+    : observationSubject(instance, record.preview.input, subject.observation_operation_id,
+      instance.events.find(event => event.kind === 'operation_intent'
+        && event.intent.operation_id === subject.observation_operation_id)?.intent.binding_ref, readAccepted);
+  if (assertExternalMergeDisposition(output).outcome !== 'completed'
     || output.observations.question_sha256 !== shadowHash(question) || output.observations.subject_sha256 !== shadowHash(subject)
-    || !same(subject, observationSubject(instance, record.preview.input, subject.observation_operation_id,
-      observation.intent.binding_ref, readAccepted))) fail(required);
+    || !same(subject, original)) fail(required);
   return { merge: subject.merge_observation, receiptSha: shadowHash(record.results.at(-1).receipt) };
 }
 
-export function createStandardExternalMergeDisposition({ readAccepted, now, observeMerge }) {
+export function createStandardExternalMergeDisposition({ readAccepted, now, observeMerge, readPretriage, pretriageMerge }) {
   function source(instance, input, occurrenceId) {
+    if (Object.hasOwn(input, 'update_operation_id')) return readPretriage(instance, input, occurrenceId).subject;
     const frames = inspectAgenticProcess(instance).occurrences;
     const frame = frames.find(row => row.occurrence_id === occurrenceId);
     if (!frame?.call_scope_id) fail(required);
@@ -43,9 +47,6 @@ export function createStandardExternalMergeDisposition({ readAccepted, now, obse
     const { operation_id, binding_ref } = eligible[0].operation.intent;
     return observationSubject(instance, input, operation_id, binding_ref, readAccepted);
   }
-  function comparable({ provider, ...proof }) {
-    return { ...proof, provider: { repository: provider.repository, pull_request: provider.pull_request } };
-  }
   return Object.freeze({
     prepareBasis({ record: instance, cursor }, input, occurrenceId) {
       const scope = cursor.occurrences.find(row => row.occurrence_id === occurrenceId)?.call_scope_id;
@@ -55,9 +56,10 @@ export function createStandardExternalMergeDisposition({ readAccepted, now, obse
       if (sources.length !== 1) fail(required);
       const { operation_id, binding_ref } = sources[0].operation.intent;
       const { record, output } = readAccepted(instance, operation_id, binding_ref, required);
-      if (record.preview.input.triage_operation_id !== input.triage_operation_id) fail(required);
-      if (binding_ref === externalMergeDisposition) readExternalMergeForFetch(instance, operation_id, readAccepted);
-      else if (assertMergeExecuteOutput(output).observations.merge?.operation_id !== operation_id) fail(required);
+      const key = Object.hasOwn(input, 'update_operation_id') ? 'update_operation_id' : 'triage_operation_id';
+      if (record.preview.input[key] !== input[key]) fail(required);
+      if (binding_ref === externalMergeDisposition) readExternalMergeForFetch(instance, operation_id, readAccepted, readPretriage);
+      else if (key !== 'triage_operation_id' || assertMergeExecuteOutput(output).observations.merge?.operation_id !== operation_id) fail(required);
       return { can_apply: true, merge_operation_id: operation_id, receipt_sha256: shadowHash(record.results.at(-1).receipt) };
     },
     prepare(instance, input, occurrenceId) {
@@ -75,11 +77,18 @@ export function createStandardExternalMergeDisposition({ readAccepted, now, obse
       this.assertAge(prepared);
       const subject = source(instance, input, record.intent.occurrence_id);
       if (!same(subject, prepared.subject)) fail(required);
+      if (Object.hasOwn(input, 'update_operation_id')) {
+        const { delivery } = readPretriage(instance, input, record.intent.occurrence_id);
+        if (!pretriageMerge) fail('STANDARD_PR_MERGE_PROVIDER_REQUIRED');
+        await pretriageMerge.assertPostimage(delivery, subject.merge_observation, signal);
+        this.assertAge(prepared);
+        return;
+      }
       const sourceInput = { contract_version: 'standard-session-pr-merge-observe-input.v2', triage_operation_id: input.triage_operation_id };
       const observed = await observeMerge.observe(instance, sourceInput, { signal,
         sourceSha256: subject.merge_observation.source_sha256, externalOperation: 'session_pr_premerge_observe' });
       if (observed.contract_version !== externalMergeObservationVersion
-        || !same(comparable(observed.observations.merge_observation), comparable(subject.merge_observation)))
+        || !same(externalMergeMaterial(observed.observations.merge_observation), externalMergeMaterial(subject.merge_observation)))
         fail('STANDARD_PR_EXTERNAL_MERGE_POSTIMAGE_CHANGED');
       this.assertAge(prepared);
     },

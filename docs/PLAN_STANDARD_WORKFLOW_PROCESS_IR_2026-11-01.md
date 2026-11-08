@@ -5280,3 +5280,15 @@ retain UNKNOWN and no positive facts. Serialized projection evidence identifies
 its source; historical raw import stdout and failed arenas stay immutable.
 This is source wiring pending exact-source nominal and tamper qualification,
 not full SPIKE, ordinary-entry, installed or L1-L8/A1-A10 acceptance.
+
+### Pre-triage review waits
+
+The published initial and corrective review waits share a pinned capture
+component. An exact action may adopt a fresh protected two-parent merge
+observation linked to the site's accepted update or redelivery. Nominal
+review and external merge captures arbitrate on the same occurrence
+reservation before delivery to the common reducer. The external branch
+presents the signed R08 incident question and then reuses the R09 suffix,
+including the canonical completion lock. Other pre-triage activities,
+human waits, already reserved expired captures, committed or UNKNOWN
+owners and other provider postimages remain separate recovery cases.

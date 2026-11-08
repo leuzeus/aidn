@@ -1,5 +1,13 @@
 # 04 JSON Contracts
 
+At the two published pre-triage waits, `--control-source aidn:external-merge`
+adds a stable `merge_subject_sha256` to the existing control action preview.
+Exact apply rechecks fresh protected observations. The control reservation v1
+arbitrates with the nominal v2 capture. The v3 capture retains the external
+postimage and the v2 incident question binds its exact delivery. The signed
+decision envelope still binds the question and subject digests. Historical
+triage-bound questions and control records retain their original readers.
+
 New private `process-dispatch-record.v2` retains bounded signed normal-writer
 owner/fence intentions before allocation. Its v1 reader remains explicit, with
 no persisted conversion. A proposal is not a held lease, effect authorization,

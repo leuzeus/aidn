@@ -487,7 +487,9 @@ semantics. They cannot attest embedded operations. The v3 activity rows still
 cover the root's typed activity outputs. STANDARD rejects activities inside
 call targets with `STANDARD_EMBEDDED_ACTIVITY_UNSUPPORTED` because its
 activity-output mapping addresses local root node IDs. The v3 catalog also
-rejects embedded event nodes with `STANDARD_EMBEDDED_EVENT_UNSUPPORTED`.
+rejects embedded event nodes with `STANDARD_EMBEDDED_EVENT_UNSUPPORTED`,
+except for the pinned, single-wait STANDARD review-capture component described
+below.
 The ordinary STANDARD control entry and its specialized PR capture resolve
 root nodes. Root event handling and the common process model keep their
 existing behavior.
@@ -3506,3 +3508,30 @@ retain UNKNOWN and no positive facts. Serialized projection evidence identifies
 its source; historical raw import stdout and failed arenas stay immutable.
 This is source wiring pending exact-source nominal and tamper qualification,
 not full SPIKE, ordinary-entry, installed or L1-L8/A1-A10 acceptance.
+
+### External merge before triage
+
+The initial and corrective review sites pass through the same pinned capture
+component. The local-tree depth limit remains 16. The expanded pinned-call
+depth limit is 20 so the corrective review and R09 continuations fit. The
+expanded occurrence and occurrence-ID bounds still apply. Embedded event
+admission is limited to the structured STANDARD review-capture component.
+
+At the review event, an exact control action can adopt a protected observation
+of the already completed provider merge. Its material digest binds the accepted
+delivery, repository, PR, refs, expected HEAD and base, and the exact
+two-parent merge at the base tip. The preview is read-only. The apply path
+reobserves the postimage, checks the current process and outstanding local
+effect owner, and uses a signed reservation keyed to the occurrence.
+Both capture types compete for that reservation, then retain their
+source-keyed inbox record. A different source cannot replace a reservation.
+An expired or changed reserved proof requires reconciliation.
+
+The selected external event retains its own provider payload and proceeds to
+a signed incident disposition bound to the accepted delivery and control
+event. Nominal delivery continues to the existing review receiver. The
+external branch skips review receipt, triage, checks and merge execution,
+then selects the accepted disposition as the basis for the common R09 fetch,
+measurement, decision and completion sequence. The R09 lock releases on
+canonical completion. Other human waits and uncertain effect owners remain
+separate recovery boundaries.

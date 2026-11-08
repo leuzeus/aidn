@@ -7,13 +7,13 @@ import { alignedReason, assertPostMergeAlignmentOutput, assertPostMergeFetchOutp
 
 const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(code), { code, effect_status }); };
 
-export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurrent, reviewPort }) {
+export function createStandardSessionPrPostMergeFetch({ readAccepted, readPretriage, readCurrent, reviewPort }) {
   const port = reviewPort?.postMergeFetch;
   function source(instance, input) {
     const intent = instance.events.find(event => event.kind === 'operation_intent'
       && event.intent.operation_id === input.merge_operation_id)?.intent;
     if (intent?.binding_ref === externalMergeDisposition)
-      return readExternalMergeForFetch(instance, input.merge_operation_id, readAccepted);
+      return readExternalMergeForFetch(instance, input.merge_operation_id, readAccepted, readPretriage);
     const { record, output } = readAccepted(instance, input.merge_operation_id, mergeExecuteOperation,
       'STANDARD_PR_POST_MERGE_FETCH_MERGE_REQUIRED');
     const merge = assertMergeExecuteOutput(output).observations.merge;

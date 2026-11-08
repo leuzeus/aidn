@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aidn://contracts/workflow-definition/standard-pr-review-event-route-output.v1",
+  "x-aidn-contract-version": "standard-pr-review-event-route-output.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation_ref",
+    "outcome",
+    "effect_status",
+    "facts",
+    "observations",
+    "evidence_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "standard-pr-review-event-route-output.v1"
+    },
+    "operation_ref": {
+      "const": "session_pr_review_event_route"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "blocked"
+      ]
+    },
+    "effect_status": {
+      "const": "no_effect"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_pr_pretriage_external": {
+          "type": "boolean"
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason_code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]+$"
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 0
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "outcome": {
+          "const": "completed"
+        },
+        "facts": {
+          "required": [
+            "session_pr_pretriage_external"
+          ]
+        },
+        "observations": {
+          "maxProperties": 0
+        }
+      }
+    },
+    {
+      "properties": {
+        "outcome": {
+          "const": "blocked"
+        },
+        "facts": {
+          "maxProperties": 0
+        },
+        "observations": {
+          "required": [
+            "reason_code"
+          ]
+        }
+      }
+    }
+  ]
+}

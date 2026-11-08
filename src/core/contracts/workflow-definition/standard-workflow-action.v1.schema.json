@@ -24,7 +24,7 @@
         "instance_sha256": { "type": "string" }, "preview": { "type": "object" }, "recovery_plan": { "type": "object" },
         "operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" },
         "journal_sha256": { "type": "string" }, "question": { "type": "object" }, "request": { "type": "object" },
-        "source_ref": { "type": "string" }, "authorization_sha256": { "type": ["string", "null"] },
+        "source_ref": { "type": "string" }, "merge_subject_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "authorization_sha256": { "type": ["string", "null"] },
         "status": { "type": "string" }, "reason": { "type": "string" }
       }
     }

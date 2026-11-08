@@ -1,5 +1,11 @@
 # Standard workflow IR traceability
 
+At the initial and corrective review waits, the pinned capture call selects
+a retained nominal review event or a protected external-merge observation.
+The latter enters the signed incident disposition before the shared R09
+operations. It consumes the accepted update or redelivery and its own inbox
+event. The nominal review receive and triage keep their original authorities.
+
 Ordinary entry now has an explicit STANDARD configuration route through
 `workflow-run-service` and `standard-workflow-entry`, shared by the console run
 operation. The entry loads the published model/catalog and composes the existing

@@ -9,7 +9,7 @@ import { assertModeWorkQuestion, assertHumanModeWorkDecision, observeHumanModeWo
 import { postMergeDecisionOperation, postMergeQuestionVersion, postMergeDecisionQuestion, assertHumanPostMergeDecision, postMergeDecisionOutput } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
 import { mergeConsentOperation, mergeConsentQuestion, assertHumanMergeConsent, mergeConsentOutput } from "../../core/workflow/standard-pr-merge-consent.mjs";
 import { resolutionExceptionOperation, resolutionExceptionQuestion, assertHumanResolutionException, resolutionExceptionOutput } from "../../core/workflow/standard-pr-resolution-exception.mjs";
-import { externalMergeDisposition, externalMergeQuestionVersion, externalMergeQuestion, assertHumanExternalMergeDisposition,
+import { externalMergeDisposition, externalMergeQuestionVersion, externalMergePretriageQuestionVersion, externalMergeQuestion, assertHumanExternalMergeDisposition,
   externalMergeDispositionOutput } from "../../core/workflow/standard-pr-external-merge.mjs";
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const choices = ["THINKING", "EXPLORING", "COMMITTING", "refused", "deferred", "cancelled"];
@@ -92,7 +92,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
   async function verify(claim, sourceRef, request, signal, historical = false) {
     if (request.contract_version === "standard-spike-question.v1") assertHumanSpikeDecision(claim, request);
     else if (request.contract_version === "standard-mode-work-question.v1") assertHumanModeWorkDecision(claim, request);
-    else if (request.contract_version === externalMergeQuestionVersion) assertHumanExternalMergeDisposition(claim, request);
+    else if ([externalMergeQuestionVersion, externalMergePretriageQuestionVersion].includes(request.contract_version)) assertHumanExternalMergeDisposition(claim, request);
     else if (request.contract_version === postMergeQuestionVersion) assertHumanPostMergeDecision(claim, request);
     else if (request.contract_version === "standard-pr-merge-consent-question.v1") assertHumanMergeConsent(claim, request);
     else if (request.contract_version === "standard-pr-review-resolution-exception-question.v1") assertHumanResolutionException(claim, request);

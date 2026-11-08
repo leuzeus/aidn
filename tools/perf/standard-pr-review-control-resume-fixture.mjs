@@ -18,6 +18,12 @@ const host = createStandardWorkflowExecution({ configuration, readSigningKey: ()
 const before = host.inspect(), allocations = host.inspectAllocations();
 assert.equal(host.readControl(process.argv[3]).phase, 'reserved');
 await host.deliverControl(process.argv[3], { write: true });
+if (host.inspect().cursor.occurrences.some(row => row.wait_reason === 'call_return')) {
+  const returned = await host.step({ write: true });
+  assert.equal(returned.kind, 'call');
+  const routed = await host.step({ write: true });
+  assert.equal(host.readOperation(routed.operation_id).results.at(-1).output.facts.session_pr_pretriage_external, false);
+}
 const result = await host.step({ write: true });
 assert.equal(result.kind, 'operation');
 assert.equal(host.readOperation(result.operation_id).intent.binding_ref, 'session_pr_review_receive');

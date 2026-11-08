@@ -1,6 +1,8 @@
 import { readStandardHostInstance } from '../../adapters/runtime/standard-host-authority.mjs';
 import { createStandardGithubProviderHost } from '../../adapters/runtime/standard-github-provider-host.mjs';
 import { createAgenticProcessStore } from '../../adapters/runtime/agentic-process-store.mjs';
+import { createProcessControlInboxStore } from '../../adapters/runtime/process-control-inbox-store.mjs';
+import { createPretriageMergeSource } from './standard-session-pr-pretriage-merge.mjs';
 import { createProcessOperationJournalStore } from '../../adapters/runtime/process-operation-journal-store.mjs';
 import { createOperationJournalSigner, operationJournalId } from '../../core/workflow/process-operation-journal.mjs';
 import { assertPostMergeCompleteInput, assertPostMergeCompleteOutput, postMergeCompleteOperation } from '../../core/workflow/standard-pr-post-merge-complete.mjs';
@@ -76,7 +78,17 @@ export function readStandardPostMergeContinuity({ targetRoot, sessionId, session
       if (latestIntent(state, binding)?.operation_id !== id) fail();
       return acceptedOperation(read, state, id, binding);
     };
-    const { alignmentSource } = createStandardSessionPrPostMergeFetch({ readAccepted });
+    const inbox = createProcessControlInboxStore(options);
+    const { readPretriage } = createPretriageMergeSource({ readAcceptedUpdate: readAccepted, readControl(id) {
+      const capture = inbox.read(id).record;
+      if (!capture) fail();
+      signer.verify(capture);
+      return capture;
+    } });
+    // The checked completion prefix is a slice for operation order. Use the
+    // already authenticated full reducer instance to resolve its control frames.
+    const { alignmentSource } = createStandardSessionPrPostMergeFetch({ readAccepted,
+      readPretriage: (_prefix, input, occurrenceId) => readPretriage(instance, input, occurrenceId) });
     const { plan, git } = postMergeCompletionSource({ instance: prefix,
       input: assertPostMergeCompleteInput(record.preview.input), readAccepted, readAlignmentSource: alignmentSource, artifacts,
       scopeSha: () => postMergeProjectScope(target, environment) });

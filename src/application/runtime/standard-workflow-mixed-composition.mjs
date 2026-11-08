@@ -84,6 +84,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     applyQuestionRecovery: (plan, input) => operations.applyQuestionRecovery(plan, input),
     receiveDecision: (id, input) => operations.receiveDecision(id, input),
     prepareControl: input => operations.prepareControl({ ...input, instanceId: configuration.instance_id }),
+    previewExternalMerge: input => operations.previewExternalMerge({ ...input, instanceId: configuration.instance_id }),
     captureControl: input => operations.captureControl({ ...input, instanceId: configuration.instance_id }),
     deliverControl: (id, input) => operations.deliverControl(id, input),
     readControl: id => operations.readControl(id),

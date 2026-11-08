@@ -34,8 +34,15 @@ export function assertStandardWorkflowComponentCatalog(catalog, model) {
     || catalog.model.model_id !== model.model_id || catalog.model.revision !== model.revision || catalog.revision !== model.revision) fail("STANDARD_STARTUP_MODEL_CHANGED");
   const [, ...targets] = processModels(model);
   if (targets.some(target => target.nodes.some(node => node.kind === "activity"))) fail("STANDARD_EMBEDDED_ACTIVITY_UNSUPPORTED");
-  if (schema === standardCatalogSchemaV3 && targets.some(target => target.nodes.some(node => node.kind === "event")))
-    fail("STANDARD_EMBEDDED_EVENT_UNSUPPORTED");
+  if (schema === standardCatalogSchemaV3) for (const target of targets) {
+    const events = target.nodes.filter(node => node.kind === "event");
+    if (!events.length) continue;
+    const [wait] = events;
+    if (target.model_id !== "aidn-standard-pr-review-capture" || events.length !== 1 || target.entry !== wait.id
+      || wait.id !== "session_pr_review_wait" || wait.branches.map(row => row.event_key).join(",") !== "review_snapshot,checks_snapshot,external_merge_observed"
+      || target.nodes.some(node => node !== wait && (node.kind !== "sequence" || node.children.length)))
+      fail("STANDARD_EMBEDDED_EVENT_UNSUPPORTED");
+  }
   const operations = component => new Map(component.nodes.filter(node => node.kind === "operation").map(node => [node.id, node]));
   const rootOperations = operations(model);
   const targetOperations = new Map(targets.map(target => {

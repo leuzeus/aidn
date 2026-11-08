@@ -92,13 +92,26 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
 seq("committing", ["cycle_create", "plan", "plan_evaluate", "plan_record"]);
 seq("cycle_work", ["plan_select", "readiness", "implementation_enter", "task_loop",
   "audit_select", "audit_review", "audit_evaluate", "closure_decide", "close_record", "cycle_terminal_checkpoint", "close_finalize", "promotion_eligibility", "session_preclose_checkpoint", "session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize", "session_delivery_checkpoint", "session_branch_integration_decide", "session_branch_integrate", "session_pr_delivery"]);
-seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_wait", "session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate", "session_pr_after_triage"]);
+seq("session_pr_delivery", ["session_pr_admit", "session_push", "session_pr_open", "session_pr_record", "session_pr_checkpoint", "session_pr_update_push", "session_pr_review_observe", "session_pr_review_capture", "session_pr_review_event_route", "session_pr_pretriage_route"]);
 op("session_pr_review_observe", "session_pr_review_content_observe", operation("session_pr_review_observe", "update_operation_id", "session_pr_update_push"));
+const firstCaptureNode = nodes.length;
 node("session_pr_review_wait", "event", { branches: [
   { flow_id: "review", node_id: "session_pr_review_arrived", event_key: "review_snapshot" },
   { flow_id: "checks", node_id: "session_pr_checks_arrived", event_key: "checks_snapshot" },
+  { flow_id: "external", node_id: "session_pr_external_arrived", event_key: "external_merge_observed" },
 ] });
-seq("session_pr_review_arrived", []); seq("session_pr_checks_arrived", []);
+seq("session_pr_review_arrived", []); seq("session_pr_checks_arrived", []); seq("session_pr_external_arrived", []);
+const captureTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-pr-review-capture", revision: 1,
+  participants: [{ id: "project" }], roles: [], policies: [], entry: "session_pr_review_wait",
+  nodes: nodes.splice(firstCaptureNode), operation_pins: {}, call_interface: { parameters: {}, returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: [], inputs: [] } };
+const captureRef = pinTarget(captureTarget);
+node("session_pr_review_capture", "call", { target: captureRef });
+inputs.push({ node_id: "session_pr_review_capture", fields: {} });
+op("session_pr_review_event_route", "session_pr_review_event_route");
+const reviewSteps = ["session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate"];
+xor("session_pr_pretriage_route", [["external", "session_pr_pretriage_completion", "session_pr_pretriage_external"], ["review", "session_pr_nominal_review", null]]);
+seq("session_pr_nominal_review", [...reviewSteps, "session_pr_after_triage"]);
 op("session_pr_review_receive", "session_pr_review_receive", operation("session_pr_review_receive", "update_operation_id", "session_pr_update_push"));
 op("session_pr_triage_select", "session_pr_triage_select", operation("session_pr_triage_select", "received_operation_id", "session_pr_review_receive"));
 native("session_pr_triage", "pr_reviewer", "audit", "standard-pr-triage-report.v1", ["pr-orchestrate"], ["SPEC-R08", "SPEC-R11"]);
@@ -196,6 +209,30 @@ const prReviewTarget = { contract_version: "agentic-process-model.v2", model_id:
   operation_pins: pinsFor(prReviewNodes), call_interface: { parameters: { triage_operation_id: "string" }, returns: {} },
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["triage_operation_id"], inputs: inputs.splice(firstPrInput) } };
 const prReviewRef = pinTarget(prReviewTarget);
+// The recovery entry uses the same disposition binding and exact R09 suffix.
+// No review receipt or triage parameter is available at this entry.
+const postMerge = prReviewNodes.slice(prReviewNodes.findIndex(row => row.id === "pr_merge_basis"));
+const pretriageNodes = [
+  { ...prReviewNodes[0], children: ["pr_pretriage_external_disposition", ...prReviewNodes[0].children.slice(2)] },
+  { id: "pr_pretriage_external_disposition", kind: "operation", participant_ref: "project", binding_ref: "session_pr_external_merge_disposition" },
+  ...postMerge,
+];
+const deliveryId = { source: "parameter", key: "update_operation_id", path: [] };
+const dispositionFields = { contract_version: { source: "literal", value: "standard-pr-external-merge-disposition-input.v2" },
+  update_operation_id: deliveryId };
+const pretriageTarget = { ...prReviewTarget, model_id: "aidn-standard-pr-pretriage-completion", revision: 1,
+  nodes: pretriageNodes, operation_pins: pinsFor(pretriageNodes), call_interface: { parameters: { update_operation_id: "string" }, returns: {} },
+  data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["update_operation_id"], inputs: [
+    { node_id: "pr_pretriage_external_disposition", fields: dispositionFields },
+    { node_id: "pr_merge_basis", fields: dispositionFields },
+    ...prReviewTarget.data_bindings.inputs.filter(row => row.node_id !== "pr_merge_basis" && postMerge.some(node => node.id === row.node_id)),
+  ] } };
+const pretriageRef = pinTarget(pretriageTarget);
+function callPretriage(id, update) {
+  node(id, "call", { target: pretriageRef });
+  inputs.push({ node_id: id, fields: operation(null, "update_operation_id", update) });
+}
+callPretriage("session_pr_pretriage_completion", "session_pr_update_push");
 function callPrReview(id, triage) {
   node(id, "call", { target: prReviewRef });
   inputs.push({ node_id: id, fields: operation(null, "triage_operation_id", triage) });
@@ -357,7 +394,7 @@ nodes.find(row => row.id === "correction_cycle").children.push(...correctionRoot
 op("correction_pr_redelivery_push", "session_pr_redelivery_push", {
   ...operation("correction_pr_redelivery_push", "integration_operation_id", "correction_session_branch_integrate"),
   ...operation("correction_pr_redelivery_push", "cycle_operation_id", "correction_initialize") });
-const reviewRoots = ["session_pr_review_observe", "session_pr_review_wait", "session_pr_review_receive", "session_pr_triage_select", "session_pr_triage", "session_pr_triage_evaluate"];
+const reviewRoots = ["session_pr_review_observe", "session_pr_review_capture", "session_pr_review_event_route", ...reviewSteps];
 const reviewNodes = new Set();
 function collectReview(id) {
   if (reviewNodes.has(id)) return;
@@ -381,7 +418,11 @@ for (const id of reviewNodes) {
   if (activity) activities.push({ ...structuredClone(activity), node_id: copy.id });
 }
 callPrReview("correction_pr_effects_pending", "correction_pr_triage_evaluate");
-seq("correction_pr_redelivery", ["correction_pr_redelivery_push", ...reviewRoots.map(reviewName), "correction_pr_effects_pending"]);
+callPretriage("correction_pr_pretriage_completion", "correction_pr_redelivery_push");
+xor("correction_pr_pretriage_route", [["external", "correction_pr_pretriage_completion", "session_pr_pretriage_external"], ["review", "correction_pr_nominal_review", null]]);
+seq("correction_pr_nominal_review", [...reviewSteps.map(reviewName), "correction_pr_effects_pending"]);
+seq("correction_pr_redelivery", ["correction_pr_redelivery_push", "correction_pr_review_observe", "correction_pr_review_capture",
+  "correction_pr_review_event_route", "correction_pr_pretriage_route"]);
 nodes.find(row => row.id === "correction_cycle").children.push("correction_pr_redelivery");
 
 // Analysis completion is only an input to closure. These occurrences use the
@@ -498,6 +539,8 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
   operation_pins: pinsFor(nodes), call_targets: [
     { ...verificationRef, model: verificationTarget },
     { ...prReviewRef, model: prReviewTarget },
+    { ...pretriageRef, model: pretriageTarget },
+    { ...captureRef, model: captureTarget },
   ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
 if (existing) {

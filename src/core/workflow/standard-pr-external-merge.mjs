@@ -1,6 +1,7 @@
 import { validateJsonSchema } from '../contracts/json-schema-validator.mjs';
 import { checkShadowJson, shadowHash } from './shadow-json.mjs';
 import questionSchema from '../contracts/workflow-definition/standard-pr-external-merge-disposition-question.v1.schema.json' with { type: 'json' };
+import pretriageQuestionSchema from '../contracts/workflow-definition/standard-pr-external-merge-disposition-question.v2.schema.json' with { type: 'json' };
 import sourceSchema from '../contracts/workflow-definition/human-pr-external-merge-disposition.v1.schema.json' with { type: 'json' };
 import outputSchema from '../contracts/workflow-definition/standard-pr-external-merge-disposition-output.v1.schema.json' with { type: 'json' };
 import observationSchema from '../contracts/workflow-definition/standard-pr-external-merge-observation-output.v1.schema.json' with { type: 'json' };
@@ -8,6 +9,9 @@ import providerSchema from '../contracts/workflow-definition/github-pr-merge-obs
 
 export const externalMergeDisposition = 'session_pr_external_merge_disposition';
 export const externalMergeQuestionVersion = 'standard-pr-external-merge-disposition-question.v1';
+export const externalMergePretriageQuestionVersion = 'standard-pr-external-merge-disposition-question.v2';
+export const externalMergeControlRef = 'aidn:external-merge';
+export const externalMergeEventKey = 'external_merge_observed';
 export const externalMergeObservationVersion = 'standard-pr-external-merge-observation-output.v1';
 export const externalMergeMaxAgeMs = 300000;
 const acknowledgment = 'acknowledge_external_merge_for_r09';
@@ -16,7 +20,7 @@ const fail = code => { throw Object.assign(Error(code), { code, effect_status: '
 const valid = (value, schema) => !checkShadowJson(value)
   && !validateJsonSchema(value, schema, '$', { contractKind: 'workflow-definition' }).length;
 
-function assertExternalProof(proof) {
+export function assertExternalProof(proof) {
   if (!valid(proof.provider, providerSchema)) fail('STANDARD_PR_EXTERNAL_MERGE_PROOF_INVALID');
   const p = proof.provider.pull_request;
   if (p.state !== 'MERGED' || !p.merged || p.is_draft || p.head_repository_id !== proof.provider.repository.node_id
@@ -37,14 +41,39 @@ export function assertExternalMergeObservation(value) {
   return value;
 }
 
+export function externalMergeMaterial({ provider, ...proof }) {
+  return { ...proof, provider: { repository: provider.repository, pull_request: provider.pull_request } };
+}
+
+export function externalMergeControlClaim(request, proof) {
+  const { repository, pull_request: pr } = proof.provider;
+  return { contract_version: 'process-control-source.v1', source_kind: 'external', authority_id: 'github',
+    source_event_id: 'merge_' + shadowHash([repository.node_id, pr.node_id, pr.merge_oid]),
+    subject_sha256: shadowHash(externalMergeMaterial(proof)), request_sha256: shadowHash(request),
+    event_key: externalMergeEventKey, payload_sha256: shadowHash(proof),
+    evidence_refs: [{ ref: 'github:pr-merge/' + pr.node_id, sha256: shadowHash(proof) }] };
+}
+
+export function assertExternalMergeControl(proof, claim, request) {
+  if (!proof || Object.keys(proof).sort().join(',') !== 'pre_merge_base_oid,provider,source_sha256,update_operation_id'
+    || !/^op_[a-f0-9]{40}$/.test(proof.update_operation_id) || !/^[a-f0-9]{64}$/.test(proof.source_sha256)
+    || !/^[a-f0-9]{40}$/.test(proof.pre_merge_base_oid)) fail('STANDARD_PR_EXTERNAL_MERGE_PROOF_INVALID');
+  assertExternalProof(proof);
+  if (proof.provider.pull_request.head_oid !== request.head || proof.provider.pull_request.head_ref !== request.branch
+    || shadowHash(claim) !== shadowHash(externalMergeControlClaim(request, proof))) fail('STANDARD_PR_EXTERNAL_MERGE_PROOF_INVALID');
+  return proof;
+}
+
 export function externalMergeQuestion(record) {
   const { intent, preview: { input, prepared } } = record;
-  const value = { contract_version: externalMergeQuestionVersion, operation_id: record.operation_id,
+  const pretriage = Object.hasOwn(input, 'update_operation_id');
+  const value = { contract_version: pretriage ? externalMergePretriageQuestionVersion : externalMergeQuestionVersion, operation_id: record.operation_id,
     instance_id: intent.instance_id, scope_id: intent.scope_id, occurrence_id: intent.occurrence_id, intent_sha256: shadowHash(intent),
     choices: [...choices], issued_at_ms: prepared.prepared_at_ms, expires_at_ms: prepared.expires_at_ms,
     subject: structuredClone(prepared.subject) };
-  if (!valid(value, questionSchema) || value.subject.triage_operation_id !== input.triage_operation_id
-    || value.subject.merge_observation.triage_operation_id !== input.triage_operation_id
+  const key = pretriage ? 'update_operation_id' : 'triage_operation_id';
+  if (!valid(value, pretriage ? pretriageQuestionSchema : questionSchema) || value.subject[key] !== input[key]
+    || value.subject.merge_observation[key] !== input[key]
     || value.expires_at_ms - value.issued_at_ms !== externalMergeMaxAgeMs)
     fail('STANDARD_PR_EXTERNAL_MERGE_QUESTION_INVALID');
   assertExternalProof(value.subject.merge_observation);

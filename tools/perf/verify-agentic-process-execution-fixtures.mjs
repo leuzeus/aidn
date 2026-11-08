@@ -1080,7 +1080,8 @@ if (process.argv[2] === "--mixed-continue") {
         assert.equal((await capture()).status, "waiting_for_control");
         assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
         await assert.rejects(f.open().captureControl({ ...control, sourceRef: "fixture:claim", captureKind: "claim", write: true }), { code: "PROCESS_CONTROL_CAPTURE_KIND_INVALID" });
-        const redelivery = reviewWait.node_id === 'correction_pr_review_wait';
+        const redelivery = reviewWait.node_id === 'correction_pr_review_wait' || state.cursor.occurrences.some(row =>
+          row.occurrence_id === reviewWait.call_scope_id && row.node_id === "correction_pr_review_capture");
         const intent = state.record.events.filter(row => row.kind === "operation_intent" && row.intent.binding_ref === (redelivery ? 'session_pr_redelivery_push' : 'session_pr_update_push')).at(-1).intent;
         const p = f.open().readOperation(intent.operation_id).results.at(-1).output.observations.pull_request;
         const event = { contract_version: "github-pr-review-event.v1", authority_id: "fixture_provider", source_event_id: redelivery ? 'standard-review-event-2' : "standard-review-event-1",

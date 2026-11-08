@@ -8,6 +8,8 @@ import { readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { agenticProcessImplementationPins } from "./agentic-process-implementation-pins.mjs";
 import { iterateAgenticProcessSimulation } from "../../core/workflow/agentic-process-simulation.mjs";
 import { shadowHash, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
+import { processFrameNode } from "../../core/workflow/process-call-model.mjs";
+import { externalMergeControlRef } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
 import requestSchema from "../../core/contracts/workflow-definition/standard-workflow-execution.v1.schema.json" with { type: "json" };
 import actionSchema from "../../core/contracts/workflow-definition/standard-workflow-action.v1.schema.json" with { type: "json" };
@@ -21,7 +23,7 @@ const pin = file => ({ path: file, sha256: createHash("sha256").update(fs.readFi
 
 export function standardWorkflowControlOccurrence(state) {
   const frames = state.cursor.occurrences.filter(row => row.status === "WAITING" && row.wait_reason === "event"
-    && state.record.model.nodes.find(node => node.id === row.node_id)?.kind === "event");
+    && processFrameNode(state.record.model, row)?.kind === "event");
   if (frames.length !== 1) fail("STANDARD_ENTRY_CONTROL_WAIT_REQUIRED");
   return frames[0].occurrence_id;
 }
@@ -83,6 +85,12 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     if (authority.keyId() === null) return { kind: "prepare_host", payload: {} };
     if (!state) return { kind: "initialize", payload: { instance_sha256: initial.record.instance_sha256 } };
     if (observation) return { kind: observation, payload: {} };
+    if (controlSource === externalMergeControlRef) {
+      const merge = await host.previewExternalMerge({ expectedSha256: state.record.instance_sha256,
+        occurrenceId: standardWorkflowControlOccurrence(state), signal });
+      return merge.merge_subject_sha256 ? { kind: "control", payload: { ...merge, source_ref: controlSource } }
+        : { kind: "observe", payload: { status: "WAITING", reason: "external_merge_open" } };
+    }
     if (controlSource) {
       return { kind: "control", payload: { request: host.prepareControl({ expectedSha256: state.record.instance_sha256,
         occurrenceId: standardWorkflowControlOccurrence(state) }), source_ref: controlSource } };
@@ -107,7 +115,14 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     action = supplied;
     // Stage revalidates the original exact prepared plan, age, bindings, CAS,
     // live snapshot and resolved data. Do not regenerate its timestamps.
-    if (!["operation", "question_recovery"].includes(action.kind) && shadowHash(await currentKind()) !== shadowHash({ kind: action.kind, payload: action.payload })) fail("STANDARD_ENTRY_ACTION_CHANGED");
+    const applyExternalMerge = execute && action.kind === "control" && action.payload.source_ref === externalMergeControlRef;
+    if (applyExternalMerge) {
+      if (controlSource !== externalMergeControlRef || !state
+        || shadowHash(host.prepareControl({ expectedSha256: state.record.instance_sha256,
+          occurrenceId: standardWorkflowControlOccurrence(state) })) !== shadowHash(action.payload.request))
+        fail("STANDARD_ENTRY_ACTION_CHANGED");
+    } else if (!["operation", "question_recovery"].includes(action.kind)
+      && shadowHash(await currentKind()) !== shadowHash({ kind: action.kind, payload: action.payload })) fail("STANDARD_ENTRY_ACTION_CHANGED");
     if (["operation", "question_recovery"].includes(action.kind) && (decisionSource || controlSource || observation || !state
       || (action.payload.preview ?? action.payload.recovery_plan)?.instance_sha256 !== state.record.instance_sha256))
       fail("STANDARD_ENTRY_ACTION_CHANGED");
@@ -120,6 +135,8 @@ export async function runStandardWorkflowAction({ request, configuration, parame
   const payloadKeys = { prepare_host: [], initialize: ["instance_sha256"], operation: ["preview"], decision: ["operation_id", "question", "source_ref"],
     question_recovery: ["recovery_plan"], control: ["request", "source_ref"], native: ["authorization_sha256"], observe: ["status", "reason"], replay: [], simulate: [],
     call: ["transition", "occurrence_id", "event_id", "result_sha256", "instance_id", "model_sha256"] };
+  if (action.kind === "control" && action.payload.source_ref === externalMergeControlRef)
+    payloadKeys.control = ["request", "source_ref", "merge_subject_sha256"];
   if (action.kind === "dispatch") payloadKeys.dispatch = Object.hasOwn(action.payload, "question") ? ["operation_id", "journal_sha256", "question"] : ["operation_id", "journal_sha256"];
   if (Object.keys(action.payload).sort().join(",") !== payloadKeys[action.kind].sort().join(",")) fail("STANDARD_ENTRY_ACTION_INVALID");
   const output = { preview: action, action_sha256: shadowHash(action), can_apply: !["observe", "replay", "simulate"].includes(action.kind) && (action.kind !== "native" || authorization !== null), written: false, result: null,
@@ -168,7 +185,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     output.written = true;
   } else if (action.kind === "control") {
     const result = await host.captureControl({ expectedSha256: state.record.instance_sha256, occurrenceId: action.payload.request.occurrence_id,
-      sourceRef: action.payload.source_ref, write: true, signal });
+      sourceRef: action.payload.source_ref, expectedSubjectSha256: action.payload.merge_subject_sha256, write: true, signal });
     output.result = result.status === "reserved" ? await host.deliverControl(result.inbox_id, { write: true }) : result;
     output.written = result.status === "reserved";
   } else if (action.kind === "call") {

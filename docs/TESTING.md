@@ -1,5 +1,20 @@
 # Testing Guide
 
+## External merge at the pre-triage review wait
+
+Run the targeted `--case=external-pretriage-session`,
+`--case=external-pretriage-correction` and `--case=external-pretriage-nominal`
+cases in `tools/perf/verify-standard-pr-review-reply-fixtures.mjs` on disposable
+projects. The reduced graphs retain the published capture call, route and
+incident/R09 call. The cases separate the signed synthetic upstream prefix,
+the real Git and FILES ports, and the doubled GitHub transport. The initial case
+follows the incident through both admissions and replay/SIM. The corrective
+case stops at the exact R09 fetch preview. Nominal review exercises the
+provider event and inbox against a fixture-resolved prefix and checks the
+transition to the review receiver. Recheck the older external checks and
+pre-merge paths separately. Native, real GitHub, PostgreSQL, installed package
+and the full required family are separate qualification gates.
+
 ## Ordinary STANDARD call actions
 
 The workflow-console fixture runs `verifyStandardWorkflowCallAction` from

@@ -172,7 +172,9 @@ export function assertAgenticProcessModel(model, options = {}) {
   const reached = new Set(); let expanded = 0;
   function visit(current, id, depth, occurrence, stack) {
     if (++expanded > 1024) fail("PROCESS_OCCURRENCE_LIMIT");
-    if (depth > 16) fail("PROCESS_NOT_STRUCTURED");
+    // Each local tree remains limited to depth 16. A pinned call adds the
+    // component's ancestry while preserving the global occurrence/path bounds.
+    if (depth > 20) fail("PROCESS_NOT_STRUCTURED");
     if (options.executable !== false && occurrence.length > 256) fail("PROCESS_OCCURRENCE_ID_LIMIT");
     const node = current.nodes.find(row => row.id === id);
     if (node.target) {

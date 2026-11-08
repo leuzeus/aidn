@@ -1,5 +1,12 @@
 # Runtime Surface Scope Matrix
 
+The initial and corrective STANDARD review waits share an authenticated event
+component. The pre-triage external merge uses the existing control inbox store
+with a signed occurrence reservation and a provider capture v3. The existing
+review capture v2 retains its source-keyed identity. The incident question v2
+binds the accepted delivery and delivered control event. Its decision and R09
+use the existing journal, decision inbox and effect ports.
+
 The R08 external merge observation and incident disposition reuse the signed
 operation journal and decision inbox v16 in the owning process. The R09 fetch
 and completion reuse their existing authority. Historical records keep their
