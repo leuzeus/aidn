@@ -4,7 +4,7 @@ import path from "node:path";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createWorkflowRecordStore } from "../../adapters/runtime/workflow-record-store.mjs";
 import { createProcessDispatchRecordStore } from "../../adapters/runtime/process-dispatch-record-store.mjs";
-import { observeLocalProcess } from "../../adapters/runtime/local-process-identity.mjs";
+import { observeLocalProcess, observeLocalProcessOwner } from "../../adapters/runtime/local-process-identity.mjs";
 import { assertProcessDispatchRecord } from "../../core/workflow/process-dispatch-record.mjs";
 import { assertStandardOperationOutput } from "../../core/workflow/standard-operation-contracts.mjs";
 import { validateJsonSchema } from "../../core/contracts/json-schema-validator.mjs";
@@ -43,9 +43,11 @@ function inventoryMaterial(retained, id) {
 // from JSON. Extend them only with a real adapter and its closure qualification.
 const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_close_admit"]);
 const artifactProfiles = new Set(["session_close_record"]);
+const prCheckpoint = "session_pr_checkpoint";
+const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
-  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt,
+  readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint,
   onBoundary = async () => {}, onLocalResource = () => {}, now = Date.now }) {
   const dispatches = createProcessDispatchRecordStore({ targetRoot, stateMode });
   const acceptance = new AsyncLocalStorage();
@@ -73,7 +75,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
     if (row.contract_version === "process-dispatch-record.v2" && row.local_owner_intentions.some(intention =>
       intention.owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root })
-      || artifactProfiles.has(record.intent.binding_ref) && intention.owner.plan_sha256 !== record.preview.prepared?.plan_sha256))
+      || planBoundOwner(record.intent.binding_ref) && intention.owner.plan_sha256 !== record.preview.prepared?.plan_sha256))
       fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
     return observed;
   }
@@ -124,7 +126,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     if (Buffer.byteLength(JSON.stringify(row)) > 900000) fail("PROCESS_CONTROL_INTENT_STORAGE_BOUND");
     return write(controls, row, before.content_sha256);
   }
-  function assessment(record, capsule) {
+  function assessment(instance, record, capsule) {
     if (!capsule || capsule.phase !== "returned" || capsule.leases.some(row => row.status !== "released")) return "unknown";
     if (capsule.contract_version === "process-dispatch-record.v2" && capsule.local_owner_intentions.some(intention =>
       !capsule.leases.some(lease => shadowHash(lease.owner) === shadowHash(intention.owner)
@@ -136,6 +138,18 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     if (output.operation_ref !== id || output.contract_version !== record.preview.binding.output_contract) fail("PROCESS_DISPOSITION_SUBJECT_CHANGED");
     if (readOnlyProfiles.has(id) && record.preview.binding.effect_class === "read-only" && capsule.leases.length === 0
       && output.effect_status === "no_effect") return "no_effect_original";
+    if (id === prCheckpoint) {
+      if (capsule.contract_version !== "process-dispatch-record.v2" || capsule.local_owner_intentions.length !== 1
+        || capsule.leases.length !== 1 || capsule.process_identity.pid !== record.owner?.pid
+        || capsule.leases[0].owner.pid !== record.owner.pid
+        || shadowHash(capsule.leases[0].resource_fence.process_identity) !== shadowHash(capsule.process_identity)
+        || observeLocalProcessOwner(capsule.process_identity) !== "terminated") return "unknown";
+      try {
+        return confirmPrCheckpoint?.(instance, record, output) === true ? "confirmed_original" : "unknown";
+      } catch {
+        return "unknown";
+      }
+    }
     if (!artifactProfiles.has(id)) return "unknown";
     if (output.effect_status === "no_effect" && capsule.leases.every(row => row.status === "released")) return "no_effect_original";
     if (output.effect_status !== "confirmed" || output.outcome !== "completed" || capsule.leases.length !== 1) return "unknown";
@@ -163,7 +177,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     // Exclude only their own artifact from the pre-append business-resource fence,
     // so a crash before the journal CAS can resume without rewriting an old plan.
     const material = inventoryMaterial(retained, id);
-    return { operation, instance, capsule, inventory_sha256: shadowHash(material), assessment: assessment(operation, capsule),
+    return { operation, instance, capsule, inventory_sha256: shadowHash(material), assessment: assessment(instance, operation, capsule),
       authority_sha256: shadowHash(readAuthority()), runtime_sha256: runtime(), physical_root_sha256: shadowHash(artifacts.root),
       fence_sha256: artifacts.resourceFence().read().content_sha256, inventory_record: retained };
   }
@@ -241,7 +255,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
           const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
           if (before.record.contract_version !== "process-dispatch-record.v2" || before.record.phase !== "running"
             || owner.pid !== processIdentity.pid || owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root })
-            || artifactProfiles.has(record.intent.binding_ref) && owner.plan_sha256 !== record.preview.prepared?.plan_sha256
+            || planBoundOwner(record.intent.binding_ref) && owner.plan_sha256 !== record.preview.prepared?.plan_sha256
             || shadowHash(readOperation(record.operation_id).record) !== shadowHash(record)
             || shadowHash(observed.authority) !== before.record.authority_sha256
             || before.record.local_owner_intentions.length >= 32
@@ -261,7 +275,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         },
         declareLocalOwner(owner, physical_identity, resource_fence) {
           const before = readDispatch(record.operation_id, record);
-          if (before.record.phase !== "running" || owner.pid !== processIdentity.pid || artifactProfiles.has(record.intent.binding_ref) && owner.plan_sha256 !== record.preview.prepared?.plan_sha256
+          if (before.record.phase !== "running" || owner.pid !== processIdentity.pid || planBoundOwner(record.intent.binding_ref) && owner.plan_sha256 !== record.preview.prepared?.plan_sha256
             || owner.scope_sha256 !== shadowHash({ physical_root: artifacts.root }) || before.record.leases.some(row => row.owner.token === owner.token))
             fail("PROCESS_DISPATCH_OWNER_CHANGED");
           saveDispatch(before, { leases: [...before.record.leases, { owner, physical_identity, resource_fence, status: "held" }] });
@@ -390,7 +404,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       signer.verify(before.record); signer.verify(before.record.plan);
       if (shadowHash(before.record.receipt) !== shadowHash(receipt)) return false;
       const instance = readInstance(record.intent.instance_id), capsule = readDispatch(record.operation_id, record).record;
-      if (assessment(record, capsule) === "unknown" || before.record.plan.output_sha256 !== receipt.output_sha256)
+      if (assessment(instance, record, capsule) === "unknown" || before.record.plan.output_sha256 !== receipt.output_sha256)
         fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
       const grant = await currentGrant({ action: "operation_disposition_accept", disposition_sha256: shadowHash(before.record),
         receipt_sha256: shadowHash(receipt), instance_sha256: instance.instance_sha256, scope_id: instance.scope_id }, signal);
@@ -401,7 +415,7 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
       if (readInstance(instance.instance_id).instance_sha256 !== instance.instance_sha256
         || shadowHash(readOperation(record.operation_id).record) !== shadowHash(record)
         || shadowHash(readDispatch(record.operation_id, record).record) !== shadowHash(capsule)
-        || assessment(record, capsule) === "unknown") fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
+        || assessment(instance, record, capsule) === "unknown") fail("PROCESS_DISPOSITION_OBSERVATION_CHANGED");
       if (before.record.admissions.length >= 32) fail("PROCESS_DISPOSITION_ADMISSION_LIMIT");
       write(dispositions, { ...bodyOf(before.record), revision: before.record.revision + 1, admissions: [...before.record.admissions,
         { instance_sha256: instance.instance_sha256, receipt_sha256: shadowHash(receipt), grant }] }, before.content_sha256);

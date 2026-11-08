@@ -16,8 +16,8 @@ export function createStandardSessionPrCheckpoint({ targetRoot, readSource, read
   if (typeof readSource !== "function" || typeof readCurrent !== "function") fail("STANDARD_PR_CHECKPOINT_AUTHORITY_REQUIRED");
   const artifacts = createStandardWorkflowArtifacts({ targetRoot }), root = artifacts.root;
   const port = source => createLocalWorkflowGitCheckpoint({ targetRoot: root }, { profile: "cycle-terminal", approvedPaths: source.postimages.map(row => "docs/audit/" + row.path) });
-  async function source(instance, input) {
-    const value = await readSource(instance, input), rows = value?.postimages;
+  function validateSource(value, input) {
+    const rows = value?.postimages;
     if (checkShadowJson(value) || value?.record_operation_id !== input.record_operation_id || !/^S[0-9]{3,6}$/.test(value.session_id ?? "")
       || !/^[a-f0-9]{64}$/.test(value.material_sha256 ?? "") || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value.parent_head ?? "")
       || typeof value.branch !== "string" || !Array.isArray(rows) || shadowHash(rows.map(row => row.path)) !== shadowHash(sessionPrRecordPaths(value.session_path)))
@@ -29,6 +29,9 @@ export function createStandardSessionPrCheckpoint({ targetRoot, readSource, read
         fail("STANDARD_PR_CHECKPOINT_PROJECTION_CHANGED");
     }
     return value;
+  }
+  async function source(instance, input) {
+    return validateSource(await readSource(instance, input), input);
   }
   async function prepare(instance, input, operationId, at, acquired = false) {
     if (!valid(input, inputSchema) || !/^op_[a-f0-9]{40}$/.test(operationId ?? "")) fail("STANDARD_PR_CHECKPOINT_INPUT_INVALID");
@@ -52,7 +55,29 @@ export function createStandardSessionPrCheckpoint({ targetRoot, readSource, read
     const output = { contract_version: "standard-session-pr-checkpoint-output.v1", operation_ref: "session_pr_checkpoint", outcome, effect_status, observations, facts, evidence_refs };
     if (!valid(output, outputSchema)) fail("STANDARD_PR_CHECKPOINT_OUTPUT_INVALID"); return output;
   }
+  function completed(plan, result) {
+    return emit("completed", result.effect_status, { record_operation_id: plan.input.record_operation_id, git: result },
+      { session_pr_checkpoint_completed: true }, [{ ref: "git:session-pr-checkpoint/" + plan.operation_id, sha256: shadowHash(result) },
+        { ref: "aidn:session-pr-record/" + plan.input.record_operation_id, sha256: plan.source_sha256 }]);
+  }
   return Object.freeze({ prepare: (instance, input, id) => prepare(instance, input, id, now()),
+    confirmsOriginal(instance, record, output) {
+      // Only adopt the original, signed return. A Git postimage alone cannot
+      // prove that the original application completed its final checks.
+      const { can_apply, plan, plan_sha256 } = record.preview.prepared;
+      if (!can_apply || !valid(plan, planSchema) || shadowHash(plan) !== plan_sha256
+        || plan.operation_id !== record.operation_id || shadowHash(plan.input) !== shadowHash(record.preview.input)
+        || !valid(output, outputSchema) || output.outcome !== "completed" || output.effect_status !== "confirmed"
+        || !plan.git.files.length) return false;
+      const value = validateSource(readSource(instance, plan.input), plan.input);
+      if (shadowHash(value) !== plan.source_sha256 || value.session_id !== plan.session_id
+        || value.branch !== plan.git.observed.branch || value.parent_head !== plan.git.observed.head
+        || artifacts.describe().state_mode !== plan.state_mode
+        || plan.git.files.some(file => !value.postimages.some(row => "docs/audit/" + row.path === file.path && row.sha256 === file.sha256))) return false;
+      const proof = port(value).inspectCommit({ ...plan.git, operation_id: plan.operation_id, prepared_at_ms: plan.prepared_at_ms, plan_sha256 });
+      if (proof.status !== "confirmed" || proof.lock_present) return false;
+      return shadowHash(output) === shadowHash(completed(plan, { ...proof, effect_status: "confirmed" }));
+    },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized } = {}) {
       const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
       if (!valid(plan, planSchema) || !prepared?.can_apply || write !== true || prepared.plan_sha256 !== expectPlan || shadowHash(plan) !== expectPlan
@@ -75,9 +100,7 @@ export function createStandardSessionPrCheckpoint({ targetRoot, readSource, read
             || now() - plan.prepared_at_ms > 300000)
             fail("STANDARD_PR_CHECKPOINT_UNCONFIRMED");
           await assertAuthorized();
-          return emit("completed", result.effect_status, { record_operation_id: plan.input.record_operation_id, git: result },
-            { session_pr_checkpoint_completed: true }, [{ ref: "git:session-pr-checkpoint/" + plan.operation_id, sha256: shadowHash(result) },
-              { ref: "aidn:session-pr-record/" + plan.input.record_operation_id, sha256: plan.source_sha256 }]);
+          return completed(plan, result);
         } catch (cause) {
           const noEffect = result?.effect_status !== "confirmed" && (!attempted || cause.effect_status === "no_effect");
           return emit(noEffect ? "blocked" : "reconciliation_required", noEffect ? "no_effect" : "unknown", { reason_code: cause.code ?? "STANDARD_PR_CHECKPOINT_UNCONFIRMED" });

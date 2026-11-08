@@ -2551,6 +2551,20 @@ readSessionDeliverySource remains strict. The successor is a separate authority
 path; CLOSED/open markers and predecessor hashes cannot substitute for it.
 DB-only preserves physical files and HEAD when no physical postimage changed.
 
+The common operation disposition can adopt a confirmed original checkpoint
+return from a signed dispatch v2 capsule after the owner has terminated and its
+matching local lease is recorded as released. It rechecks the accepted PR
+successor, exact commit parent, operation/plan trailers, changed blob bytes and
+modes, and the reconciled index and worktree. The return and its evidence hashes
+must match that proof. A commit by itself, an absent return, an active owner or
+an unconfirmed output remains UNKNOWN. The disposition and receipt acceptance
+require their own current scoped authorizations and fenced CAS. They reuse the
+original output and do not authorize another checkpoint or a Native allocation.
+The scaffold excludes the two private disposition record directories from Git
+status, just as it does for the dispatch journal and the local resource fence.
+Existing projects need the corresponding scaffold rules before they can
+dispose a checkpoint while preserving the clean Git postimage.
+
 session_pr_update_push consumes the accepted successor checkpoint and freshly
 observes the exact existing PR and remote tip. It uses the host-owned push port,
 then observes the same PR at the new HEAD. Repository, PR, head/base branch,

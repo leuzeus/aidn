@@ -30,6 +30,8 @@
 docs/audit/workflows/process-instances/
 docs/audit/workflows/operation-records/
 /docs/audit/workflows/dispatch-records/
+/docs/audit/workflows/operation-control-intents/
+/docs/audit/workflows/operation-dispositions/
 /docs/audit/workflows/resource-fences/local-artifacts.json
 docs/audit/workflows/decision-inbox/
 docs/audit/workflows/control-inbox/

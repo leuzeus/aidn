@@ -25,6 +25,7 @@ const callSites = new Map([
 // Test planning only. Synthetic receipts/control/assignments never authenticate
 // a human, native producer, provider or effect. Routing uses the execution reducer.
 export function preflightStandardComposedFixture({ model, scenario, stop = "component_complete" }) {
+  const nominalPostMerge = stop === "nominal_post_merge_complete";
   const fullCorrection = scenario?.contract_version === "fixture-standard-composed-scenario.v3";
   const correctionScenario = fullCorrection || scenario?.contract_version === "fixture-standard-composed-scenario.v2";
   if (!keys(scenario, ["contract_version", "mode", "closure", "promotion", "task_iterations", "cold_resume", "max_responses", "interruption", ...(correctionScenario ? ["review_disposition"] : [])])
@@ -34,7 +35,9 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
     || !["retain", "drop", "no_go"].includes(scenario.closure) || !["promote", "skip"].includes(scenario.promotion)
     || !Number.isSafeInteger(scenario.task_iterations) || scenario.task_iterations < 1 || scenario.task_iterations > 32
     || typeof scenario.cold_resume !== "boolean" || !Number.isSafeInteger(scenario.max_responses) || scenario.max_responses < 1
-    || ![...Object.keys(stops), "component_complete", "pr_effects_pending"].includes(stop)) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
+    || ![...Object.keys(stops), "component_complete", "pr_effects_pending", "nominal_post_merge_complete"].includes(stop)
+    || nominalPostMerge && (correctionScenario || scenario.mode !== "COMMITTING" || scenario.closure !== "retain"
+      || scenario.promotion !== "promote" || scenario.interruption !== null)) fail("STANDARD_FIXTURE_SCENARIO_INVALID");
   const interruption = scenario.interruption;
   const targetLabels = model.model_id === "aidn-standard" ? [...callSites].flatMap(([site, { model_id, prefix }]) => {
     const target = model.call_targets?.find(row => row.model_id === model_id)?.model;
@@ -91,7 +94,7 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         operation_id: intent.operation_id, input: resolution.input, sources: resolution.sources });
       emit({ kind: "operation_intent", occurrence_id: frame.occurrence_id, intent });
       if (interruption?.node_id === label) { opResult(frame, intent, interruption.outcome); interrupted = true; break; }
-      if (node.id === effectsPendingNode) {
+      if (node.id === effectsPendingNode && !nominalPostMerge) {
         if (stop !== "pr_effects_pending") fail("STANDARD_FIXTURE_PREFLIGHT_INCOMPLETE");
         opResult(frame, intent, "deferred");
         operations.push(label);
@@ -121,6 +124,14 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
         if (node.binding_ref === "cycle_close_finalize") facts = { cycle_close_completed: true, cycle_retained: scenario.closure === "retain" };
         if (node.binding_ref === "baseline_promotion_decision") facts = { baseline_promotion_requested: scenario.promotion === "promote", baseline_promotion_not_requested: scenario.promotion === "skip" };
         if (node.binding_ref === "session_pr_review_event_route") facts = { session_pr_pretriage_external: false };
+        if (nominalPostMerge) {
+          if (["session_pr_premerge_observe", "session_pr_checks_accept"].includes(node.binding_ref)) facts = { session_pr_external_merge_observed: false };
+          if (node.binding_ref === "session_pr_review_reply_select") facts = { session_pr_replies_observed: true };
+          if (node.binding_ref === "session_pr_review_resolution_select") facts = {
+            session_pr_threads_observed_resolved: true, session_pr_resolution_exception_required: false, session_pr_resolution_gate_met: true };
+          if (node.binding_ref === "session_pr_post_merge_measure") facts = { session_pr_post_merge_diverged: true };
+          if (node.binding_ref === "session_pr_post_merge_decision") facts = { session_pr_post_merge_fast_forward: true };
+        }
         if (node.binding_ref === "session_pr_triage_evaluate") facts = { session_pr_findings_classified: true,
           session_pr_corrections_required: node.id === "session_pr_triage_evaluate" && scenario.review_disposition === "valid_finding",
           session_pr_responses_required: node.id === "session_pr_triage_evaluate" && scenario.review_disposition === "valid_finding" };
@@ -158,7 +169,8 @@ export function preflightStandardComposedFixture({ model, scenario, stop = "comp
   }
   const cursor = inspectAgenticProcess(state);
   if (interruption && !interrupted) fail("STANDARD_FIXTURE_INTERRUPTION_NOT_REACHED");
-  if (!interrupted && stop === "component_complete" && cursor.status !== "COMPLETED") fail("STANDARD_FIXTURE_PREFLIGHT_INCOMPLETE");
+  if (!interrupted && (stop === "component_complete" || nominalPostMerge) && cursor.status !== "COMPLETED") fail("STANDARD_FIXTURE_PREFLIGHT_INCOMPLETE");
+  if (nominalPostMerge && operations.at(-1) !== "session_pr_post_merge_reconciled_complete") fail("STANDARD_FIXTURE_STOP_NOT_REACHED");
   if (!interrupted && stop === "pr_effects_pending" && !cursor.occurrences.some(f => f.status === "WAITING"
     && f.node_id === effectsPendingNode && f.operation?.receipt?.outcome === "deferred")) fail("STANDARD_FIXTURE_STOP_NOT_REACHED");
   if (!interrupted && Object.hasOwn(stops, stop) && !cursor.occurrences.some(f => f.status === "READY" && f.node_id === stops[stop]))

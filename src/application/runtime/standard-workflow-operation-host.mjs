@@ -1111,6 +1111,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   disposition = createStandardOperationDisposition({ targetRoot, stateMode: initial.stateMode, signer, artifacts, now,
     readOperation: retained, readInstance: id => current(id).record, readAuthority, readContext: snapshot, observeBoundary,
     inventory: reconciliationInventory, dispositionSource, onBoundary: dispatchCheckpoint,
+    confirmPrCheckpoint: (instance, record, output) => sessionPrCheckpoint?.confirmsOriginal(instance, record, output),
     appendResult(record, output) {
       const before = retained(record.operation_id);
       if (shadowHash(before.record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");

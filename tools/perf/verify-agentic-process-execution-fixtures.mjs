@@ -16,6 +16,11 @@ import { CYCLE_AUDIT_CONTRACT } from "../../src/core/workflow/standard-cycle-aud
 import { verifyCycleVerificationContracts } from "./cycle-verification-fixture-lib.mjs";
 import { cyclePlanProposal } from "./cycle-planning-fixture-lib.mjs";
 import assert from "node:assert/strict";
+import { attachComposedR09Provider } from "./standard-composed-r09-provider-fixture-lib.mjs";
+import { resolveStandardWorkflowConfiguration, runStandardWorkflowEntry } from "../../src/application/runtime/standard-workflow-entry.mjs";
+import { readStandardPostMergeContinuity } from "../../src/application/runtime/standard-post-merge-continuity.mjs";
+import { runStartSessionAdmitUseCase } from "../../src/application/runtime/start-session-admit-use-case.mjs";
+import { runCycleCreateAdmitUseCase } from "../../src/application/runtime/cycle-create-admit-use-case.mjs";
 import { createComposedGithubReviewFixture } from "./github-review-evidence-fixture-lib.mjs";
 import { CYCLE_PLAN_CONTRACT } from "../../src/core/workflow/standard-cycle-planning.mjs";
 import { taskProgressModel } from "./cycle-task-progress-fixture-lib.mjs";
@@ -104,7 +109,8 @@ if (selectedCycleCloseFinalizeMode !== undefined && !["contract", "files", "db-o
 const selectedCycleCloseRecordMode = process.argv.find(value => value.startsWith("--cycle-close-record-mode="))?.slice("--cycle-close-record-mode=".length);
 if (selectedCycleCloseRecordMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleCloseRecordMode)) throw Error("CYCLE_CLOSE_RECORD_FIXTURE_MODE_INVALID");
 const standardComposedStop = process.argv.find(value => value.startsWith("--standard-composed-stop="))?.slice("--standard-composed-stop=".length) ?? "plan";
-if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete", "pr_effects_pending", "session_pr_correction_decide"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
+if (!["plan", "cycle_admit", "closure_decide", "promotion_decide", "component_complete", "pr_effects_pending", "session_pr_correction_decide", "nominal_post_merge_complete"].includes(standardComposedStop)) throw Error("STANDARD_COMPOSED_STOP_INVALID");
+const nominalPostMerge = standardComposedStop === "nominal_post_merge_complete";
 const standardComposedResume = process.argv.find(value => value.startsWith("--standard-composed-resume="))?.slice("--standard-composed-resume=".length);
 const selectedStandardComposedMode = process.argv.find(value => value.startsWith("--standard-composed-mode="))?.slice("--standard-composed-mode=".length);
 const selectedModeWorkResumeMode = process.argv.find(value => value.startsWith("--standard-mode-work-resume-mode="))?.split("=")[1];
@@ -139,7 +145,7 @@ if ((standardHostTrace || standardCheckpointAckLoss || standardCheckpointOwnerAc
 if (selectedStandardComposedMode !== undefined && !["files", "dual", "db-only"].includes(selectedStandardComposedMode)) throw Error("STANDARD_COMPOSED_FIXTURE_MODE_INVALID");
 const standardComposedBudgetText = process.argv.find(value => value.startsWith("--standard-composed-budget-ms="))?.slice("--standard-composed-budget-ms=".length);
 const standardComposedBudgetMs = standardComposedBudgetText === undefined ? 7200000 : Number(standardComposedBudgetText);
-if (standardComposedBudgetText !== undefined && (!selectedStandardComposedMode || !['promotion_decide', 'component_complete', 'pr_effects_pending', 'session_pr_correction_decide'].includes(standardComposedStop) || !/^[0-9]+$/.test(standardComposedBudgetText)
+if (standardComposedBudgetText !== undefined && (!selectedStandardComposedMode || !['promotion_decide', 'component_complete', 'pr_effects_pending', 'session_pr_correction_decide', 'nominal_post_merge_complete'].includes(standardComposedStop) || !/^[0-9]+$/.test(standardComposedBudgetText)
   || !Number.isSafeInteger(standardComposedBudgetMs) || standardComposedBudgetMs < 3600000 || standardComposedBudgetMs > 10800000)) throw Error("STANDARD_COMPOSED_FIXTURE_BUDGET_INVALID");
 const selectedCycleClosureMode = process.argv.find(value => value.startsWith("--cycle-closure-mode="))?.slice("--cycle-closure-mode=".length);
 if (selectedCycleClosureMode !== undefined && !["contract", "files", "db-only"].includes(selectedCycleClosureMode)) throw Error("CYCLE_CLOSURE_FIXTURE_MODE_INVALID");
@@ -162,6 +168,8 @@ if (standardResponseText !== undefined && (!selectedStandardComposedMode || !/^[
 const standardScenarioName = process.argv.find(value => value.startsWith("--standard-composed-scenario="))?.slice("--standard-composed-scenario=".length) ?? "positive";
 if (!["positive", "correction", "correction-full"].includes(standardScenarioName) || standardScenarioName !== "positive" && !selectedStandardComposedMode) throw Error("STANDARD_FIXTURE_SCENARIO_INVALID");
 const fullCorrection = standardScenarioName === 'correction-full';
+if (nominalPostMerge && (selectedStandardComposedMode !== 'files' || standardScenarioName !== 'positive'))
+  throw Error('STANDARD_COMPOSED_NOMINAL_POST_MERGE_SCOPE_INVALID');
 if (standardCheckpointAckLoss && (selectedStandardComposedMode !== 'files' || standardScenarioName !== 'correction' || !['component_complete', 'session_pr_correction_decide'].includes(standardComposedStop)))
   throw Error('STANDARD_FIXTURE_CHECKPOINT_ACK_LOSS_SCOPE_INVALID');
 if (standardCheckpointOwnerAckLoss && (standardCheckpointAckLoss || !['files', 'dual'].includes(selectedStandardComposedMode)
@@ -633,12 +641,16 @@ function mixedFixture(stateMode = "files", options = {}) {
       { stdio: "pipe", windowsHide: true, timeout: 30000 });
   }
   const observe = host => options.hostTrace ? observeComposedHost(host, path.join(f.configuration.control_root, 'composed-host-' + process.pid + '.jsonl')) : host;
-  const compose = () => observe((options.standardModel ? createStandardWorkflowExecution : createStandardWorkflowMixedHost)({ configuration: f.configuration, readSigningKey: () => key,
-    authorize: options.authorize ?? (async () => grant), controlSource: options.controlSource, humanSource: options.humanSource, validationProfile: f.validationProfile, nativeAuthorizationSource: options.nativeAuthorizationSource,
+  if (options.r09) f.r09 = attachComposedR09Provider({ configuration: f.configuration, remoteRoot: f.sessionPushRemoteRoot, initialize: true });
+  const compose = () => observe((options.standardModel ? createStandardWorkflowExecution : createStandardWorkflowMixedHost)({ configuration: f.configuration,
+    readSigningKey: f.r09?.authority.readKey ?? (() => key), ...(f.r09 ? { environment: f.r09.environment } : {}),
+    authorize: f.r09 ? input => f.r09.authority.authorizeOperation(input, input.preview_sha256) : options.authorize ?? (async () => grant),
+    controlSource: options.controlSource, humanSource: f.r09?.authority.humanSource ?? options.humanSource,
+    validationProfile: f.validationProfile, nativeAuthorizationSource: options.nativeAuthorizationSource,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: projectRoot, remoteRoot: f.sessionPushRemoteRoot }) : null,
     sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
-    sessionReviewEventPort: f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null,
-    sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) }));
+    sessionReviewEventPort: f.r09?.provider.sessionReviewEventPort ?? (f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null),
+    sessionReviewPort: f.r09?.provider.sessionReviewPort ?? (f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null) }, { controllerFactory, ...(options.validation ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) }));
   // The human path also qualifies a retained common host. Authority/evidence
   // reads remain inside its methods; acceptance still restarts in a cold Node.
   let sharedHost;
@@ -654,12 +666,15 @@ function restoreComposedFixture(data, options) {
   const grant = { authorized: true, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) };
   let sharedHost;
   const observe = host => options.hostTrace ? observeComposedHost(host, path.join(f.configuration.control_root, 'composed-host-' + process.pid + '.jsonl')) : host;
-  const open = () => sharedHost ??= observe(createStandardWorkflowExecution({ configuration: f.configuration, readSigningKey: () => key,
-    authorize: async () => grant, humanSource: options.humanSource, validationProfile: f.validationProfile,
+  if (options.r09) f.r09 = attachComposedR09Provider({ configuration: f.configuration, remoteRoot: f.sessionPushRemoteRoot, initialize: false });
+  const open = () => sharedHost ??= observe(createStandardWorkflowExecution({ configuration: f.configuration,
+    readSigningKey: f.r09?.authority.readKey ?? (() => key), ...(f.r09 ? { environment: f.r09.environment } : {}),
+    authorize: f.r09 ? input => f.r09.authority.authorizeOperation(input, input.preview_sha256) : async () => grant,
+    humanSource: f.r09?.authority.humanSource ?? options.humanSource, validationProfile: f.validationProfile,
     sessionPushPort: f.sessionPushRemoteRoot ? createLocalWorkflowSessionPush({ targetRoot: f.configuration.target_root, remoteRoot: f.sessionPushRemoteRoot }) : null,
     sessionPullRequestPort: f.sessionPushRemoteRoot ? createGithubPrOpenTransportFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }).port : null,
-    sessionReviewEventPort: f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null,
-    sessionReviewPort: f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null },
+    sessionReviewEventPort: f.r09?.provider.sessionReviewEventPort ?? (f.sessionPushRemoteRoot ? createStandardReviewEventFixture(f.configuration.control_root) : null),
+    sessionReviewPort: f.r09?.provider.sessionReviewPort ?? (f.sessionPushRemoteRoot ? createComposedGithubReviewFixture({ remoteRoot: f.sessionPushRemoteRoot, controlRoot: f.configuration.control_root }) : null) },
     { controllerFactory, ...(f.validationProfile ? { validationBoundaryFactory: fixtureValidationBoundary } : {}) }));
   return Object.assign(f, { open, reopen: () => { sharedHost = undefined; return open(); }, key, t, model });
 }
@@ -925,11 +940,11 @@ if (process.argv[2] === "--mixed-continue") {
     const factory = standardComposedResume ? (_mode, options) => restoreComposedFixture(resumed, options) : mixedFixture;
     const stopsBeforeCorrectionChoice = standardComposedStop === "session_pr_correction_decide";
     const stopsAtPrEffects = standardComposedStop === "pr_effects_pending";
-    const runsPromotion = standardComposedStop === "component_complete" || stopsAtPrEffects || stopsBeforeCorrectionChoice;
+    const runsPromotion = standardComposedStop === "component_complete" || stopsAtPrEffects || stopsBeforeCorrectionChoice || nominalPostMerge;
     const runsClosure = runsPromotion || standardComposedStop === "promotion_decide";
     const runsCycle = runsClosure || standardComposedStop === "closure_decide";
     let nativeAnswerSource;
-    const f = factory(mode, { standardModel: true, validation: runsCycle, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
+    const f = factory(mode, { standardModel: true, validation: runsCycle, r09: nominalPostMerge, humanSource, hostTrace: standardHostTrace, async answer({ params }) {
       const observed = JSON.parse(params.input[0].text.split("\n").at(-1));
       if (observed.context.contract_version === "standard-cycle-plan-context.v1")
         return { outcome: "completed", summary: "Scoped read-only plan proposal", report: fullCorrection ? composedCyclePlan(observed) : cyclePlanProposal(observed) };
@@ -970,7 +985,8 @@ if (process.argv[2] === "--mixed-continue") {
     if (!resumed) arrangeStandardReviewScenario(f.configuration.control_root, fullCorrection ? 'correction' : standardScenarioName);
     if (!resumed) fs.writeFileSync(sourceFile, "{}");
     if (!fs.existsSync(sourceFile)) throw Error("STANDARD_FIXTURE_HUMAN_SOURCE_HISTORY_REQUIRED");
-    const publish = (ref, claim) => {
+    const publish = (ref, claim, question) => {
+      if (f.r09) return f.r09.publishDecision(ref, question, claim);
       const entries = JSON.parse(fs.readFileSync(sourceFile, "utf8"));
       if (entries[ref] && shadowHash(entries[ref]) !== shadowHash(claim)) throw Error("STANDARD_FIXTURE_HUMAN_SOURCE_CHANGED");
       fs.writeFileSync(sourceFile, JSON.stringify({ ...entries, [ref]: claim }));
@@ -987,6 +1003,25 @@ if (process.argv[2] === "--mixed-continue") {
       f.configuration.instructions.implement = "Implement only the host-selected task. Host validation, progression and governance writes remain separate.";
     }
     const resumeFile = path.join(f.configuration.control_root, "standard-resume.json");
+    let r09Request = resumed?.fixture.r09Request;
+    if (f.r09 && !resumed) {
+      const { contract_version, model, skills, activity_outputs, implementation_sha256, ...execution } = f.configuration;
+      r09Request = { contract_version: "standard-workflow-execution.v1", execution, parameters, validation_profile: f.validationProfile };
+      Object.assign(f.configuration, resolveStandardWorkflowConfiguration(r09Request).configuration);
+    }
+    const readAdmissions = async () => {
+      const targetRoot = f.configuration.target_root, key = "AIDN_STANDARD_HOST_HOME", previous = process.env[key];
+      process.env[key] = f.r09.environment[key];
+      try {
+        const content = createStandardWorkflowArtifacts({ targetRoot }).read("sessions/S001.md", { required: true }).content;
+        const continuity = readStandardPostMergeContinuity({ targetRoot, sessionId: "S001", content });
+        return { continuity, start: await runStartSessionAdmitUseCase({ targetRoot }), cycle: await runCycleCreateAdmitUseCase({ targetRoot }) };
+      } finally {
+        if (previous === undefined) delete process.env[key]; else process.env[key] = previous;
+      }
+    };
+    const ordinary = options => runStandardWorkflowEntry({ request: r09Request, environment: f.r09.environment, ...options },
+      { providerTransport: f.r09.providerTransport });
     let auth;
     if (resumed) {
       auth = resumed.authorization;
@@ -994,8 +1029,20 @@ if (process.argv[2] === "--mixed-continue") {
         || auth.workflow_deadline_ms !== auth.global_deadline_ms)) throw Error("STANDARD_COMPOSED_FIXTURE_ORIGINAL_BUDGET_CHANGED");
     }
     else {
-      const initial = f.open().initialize({ parameters });
-      f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
+      if (f.r09) {
+        for (const kind of ["prepare_host", "initialize"]) {
+          const proposed = await ordinary();
+          assert.equal(proposed.preview.kind, kind);
+          assert.equal(proposed.written, false);
+          const applied = await ordinary({ preparedAction: proposed.preview, expectPlan: proposed.action_sha256, execute: true });
+          assert.equal(applied.written, true);
+        }
+        assert.equal(f.open().inspect().record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
+        console.log(JSON.stringify({ composed_ordinary_entry: true, native_calls: 0 }));
+      } else {
+        const initial = f.open().initialize({ parameters });
+        f.open().initialize({ parameters, write: true, expectedResultSha256: initial.record.instance_sha256 });
+      }
       auth = f.authorize(); auth.global_deadline_ms += 1800000; auth.workflow_deadline_ms += 1800000; auth.max_turn_ms = 300000;
       auth.max_responses = standardScenario.max_responses;
       if (runsClosure) {
@@ -1003,7 +1050,7 @@ if (process.argv[2] === "--mixed-continue") {
         auth.max_bytes = 32 * 1024 * 1024;
       }
       fs.writeFileSync(resumeFile, JSON.stringify({ proof_class: "offline-fixture-only", fixture: { configuration: f.configuration, base: f.base, dirs: f.dirs,
-        human_source_file: sourceFile, sessionPushRemoteRoot: f.sessionPushRemoteRoot, ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) },
+        human_source_file: sourceFile, sessionPushRemoteRoot: f.sessionPushRemoteRoot, ...(r09Request ? { r09Request } : {}), ...(f.validationProfile ? { validationProfile: f.validationProfile } : {}) },
         scenario: standardScenario, preflight: standardPreflight, authorization: auth,
         experiment: { host_trace: standardHostTrace, checkpoint_ack_loss: standardCheckpointAckLoss, checkpoint_owner_ack_loss: standardCheckpointOwnerAckLoss } }));
     }
@@ -1037,11 +1084,19 @@ if (process.argv[2] === "--mixed-continue") {
           assert.deepEqual(event.resolution.input, {});
           assert.deepEqual(event.resolution.sources, []);
         } else if (["session_pr_effects_pending", "correction_pr_effects_pending"].includes(call.node_id)) {
-          assert.equal(entering, true);
-          const triage = accepted(event.resolution.input.triage_operation_id, "session_pr_triage_evaluate");
-          const triageNode = call.node_id.replace("_effects_pending", "_triage_evaluate");
-          assert.equal(state.cursor.occurrences.find(row => row.occurrence_id === triage.intent.occurrence_id)?.node_id, triageNode);
-          assert.deepEqual(event.resolution.input, { triage_operation_id: triage.intent.operation_id });
+          if (entering) {
+            const triage = accepted(event.resolution.input.triage_operation_id, "session_pr_triage_evaluate");
+            const triageNode = call.node_id.replace("_effects_pending", "_triage_evaluate");
+            assert.equal(state.cursor.occurrences.find(row => row.occurrence_id === triage.intent.occurrence_id)?.node_id, triageNode);
+            assert.deepEqual(event.resolution.input, { triage_operation_id: triage.intent.operation_id });
+          } else {
+            assert.equal(nominalPostMerge, true);
+            const completion = state.cursor.occurrences.find(row => row.call_scope_id === call.occurrence_id
+              && row.node_id === "pr_post_merge_reconciled_complete" && row.status === "COMPLETED");
+            assert.ok(completion);
+            accepted(completion.operation.intent.operation_id, "session_pr_post_merge_complete");
+            assert.deepEqual(event.resolution.input, {});
+          }
         } else if (entering) {
           const { validation_operation_id, progress_operation_id } = event.resolution.input;
           accepted(validation_operation_id, "cycle_validation_execute");
@@ -1078,7 +1133,8 @@ if (process.argv[2] === "--mixed-continue") {
       const reviewWait = state.cursor.occurrences.find(row => ['session_pr_review_wait', 'correction_pr_review_wait'].includes(row.node_id) && row.status === "WAITING");
       if (reviewWait) {
         const control = { instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: reviewWait.occurrence_id };
-        const request = f.open().prepareControl(control), capture = () => f.open().captureControl({ ...control, sourceRef: "fixture:standard-review", write: true });
+        const sourceRef = f.r09 ? "REVIEW_fixture" : "fixture:standard-review";
+        const request = f.open().prepareControl(control), capture = () => f.open().captureControl({ ...control, sourceRef, write: true });
         assert.equal((await f.open().step({ write: false })).kind, "wait");
         assert.equal((await capture()).status, "waiting_for_control");
         assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
@@ -1091,10 +1147,13 @@ if (process.argv[2] === "--mixed-continue") {
           repository_id: p.repository_id, pull_request_id: p.node_id, pull_request_number: p.number, head_oid: p.head_oid, base_oid: p.base_oid,
           head_ref: p.head_branch, base_ref: p.base_branch, event_key: "review_snapshot", revision: redelivery ? 'fixture-review-revision-2' : "fixture-review-revision-1",
           occurred_at: new Date().toISOString(), actor: { node_id: "U_fixture", login: "fixture-reviewer", type: "User" } };
-        const file = path.join(f.configuration.control_root, "standard-pr-review-event.json");
-        fs.writeFileSync(file, JSON.stringify({ event, authorized: false, current: true }));
-        await assert.rejects(capture(), { code: "PROCESS_CONTROL_PR_NOT_AUTHENTICATED" });
-        fs.writeFileSync(file, JSON.stringify({ event, authorized: true, current: true }));
+        if (f.r09) assert.equal(f.r09.publishReview(), sourceRef);
+        else {
+          const file = path.join(f.configuration.control_root, "standard-pr-review-event.json");
+          fs.writeFileSync(file, JSON.stringify({ event, authorized: false, current: true }));
+          await assert.rejects(capture(), { code: "PROCESS_CONTROL_PR_NOT_AUTHENTICATED" });
+          fs.writeFileSync(file, JSON.stringify({ event, authorized: true, current: true }));
+        }
         const reserved = await capture(); assert.equal(reserved.status, "reserved");
         const captured = f.open().readControl(reserved.inbox_id);
         assert.equal(captured.request.instance_sha256, request.instance_sha256);
@@ -1116,6 +1175,24 @@ if (process.argv[2] === "--mixed-continue") {
         const observed = await f.open().step({ write: true, authorization: auth });
         assert.equal(observed.status, "WAITING");
         break;
+      }
+      if (f.r09 && frame.node_id === "pr_post_merge_reconciled_complete") {
+        const admission = await readAdmissions();
+        assert.equal(admission.continuity.completion, null);
+        assert.notEqual(admission.start.action, "create_session_allowed");
+        assert.equal(admission.cycle.reason_code, "CYCLE_CREATE_SESSION_PR_OPEN");
+      }
+      if (f.r09 && frame.node_id === "pr_post_merge_fetch") {
+        const git = (...args) => execFileSync("git", ["-C", f.configuration.target_root, "-c", "core.hooksPath=NUL", ...args],
+          { encoding: "utf8", windowsHide: true, stdio: "pipe", timeout: 10000 }).trim();
+        if (git("branch", "--show-current") !== "dev") {
+          await assert.rejects(f.open().step({ write: false }), { code: "WORKFLOW_POST_MERGE_SOURCE_CHECKOUT_REQUIRED" });
+          assert.equal(f.open().inspect().record.instance_sha256, state.record.instance_sha256);
+          assert.equal(git("status", "--porcelain"), "");
+          git("switch", "dev");
+          assert.equal(f.reopen().inspect().record.instance_sha256, state.record.instance_sha256);
+          console.log(JSON.stringify({ composed_external_operator_checkout: "refs/heads/dev", instance_preserved: true }));
+        }
       }
       let result;
       if (standardCheckpointOwnerAckLoss && frame.node_id === 'session_pr_correction_checkpoint') {
@@ -1189,6 +1266,22 @@ if (process.argv[2] === "--mixed-continue") {
               source_event_id: "standard:" + ref, subject_sha256: shadowHash(result.question.review), question_sha256: shadowHash(result.question), choice: "close",
               rationale: "Explicit fixture request after authenticated R05 and canonical admission", session_report: { summary: "Verified cycle retained",
                 open_loops: [], blockers: [], next_entry_point: "Finish the governed session close chain" }, evidence_refs: [{ ref: "fixture:operator-session-close", sha256: "a".repeat(64) }] };
+          } else if (f.r09 && ["session_pr_merge_consent", "session_pr_post_merge_decision"].includes(binding)) {
+            const before = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
+            assert.equal((await f.open().receiveDecision(result.operation_id, { sourceRef: "missing-r09-choice", write: true })).status, "waiting_for_human");
+            assert.equal(f.open().inspect().record.instance_sha256, before);
+            assert.equal(f.t.sessions.length, nativeCount);
+            const question = result.question, merge = binding === "session_pr_merge_consent";
+            const checks = state.record.events.findLast(row => row.kind === "operation_intent" && row.intent.binding_ref === "session_pr_checks_accept");
+            const evidence = merge ? f.open().readOperation(checks.intent.operation_id).results.at(-1).output.evidence_refs
+              : [{ ref: "git:" + question.subject.alignment.proof_ref, sha256: shadowHash(question.subject.alignment) }];
+            const choice = merge ? "approve_merge" : "fast_forward";
+            assert.ok(question.choices.includes(choice));
+            ref = "choice_" + result.operation_id;
+            claim = { contract_version: merge ? "human-pr-merge-consent.v1" : "human-pr-post-merge-decision.v1",
+              source_kind: "human", authority_id: "fixture_operator", source_event_id: ref,
+              question_sha256: shadowHash(question), subject_sha256: shadowHash(question.subject), choice,
+              rationale: "The fixture operator authorizes the exact reviewed operation.", evidence_refs: evidence };
           } else if (binding === "baseline_promotion_decision") {
             assert.ok(runsPromotion); assert.ok(result.question.choices.includes("promote"));
             const beforeWait = f.open().inspect().record.instance_sha256, nativeCount = f.t.sessions.length;
@@ -1211,7 +1304,7 @@ if (process.argv[2] === "--mixed-continue") {
               rationale: choice === "deferred" ? "Explicit fixture deferral before a cold process resumes" : "Explicit fixture choice after reviewing the current audit",
               risk_acceptances: [], evidence_refs: [{ ref: "fixture:operator-closure", sha256: "a".repeat(64) }] };
           }
-          publish(ref, claim);
+          publish(ref, claim, result.question);
           await f.open().receiveDecision(result.operation_id, { sourceRef: ref, write: true });
           await f.open().acceptOperation(result.operation_id, { write: true });
         }
@@ -1270,7 +1363,7 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(frame.operation.receipt.outcome, "deferred");
       assert.equal(frame.operation.receipt.effect_status, "no_effect");
       assert.deepEqual(frame.operation.receipt.facts, {});
-    } else if (standardComposedStop === "component_complete") assert.equal(final.cursor.status, "COMPLETED");
+    } else if (standardComposedStop === "component_complete" || nominalPostMerge) assert.equal(final.cursor.status, "COMPLETED");
     else assert.equal(final.cursor.occurrences.find(row => row.status === "READY")?.node_id, standardComposedStop);
     assert.equal(final.record.model_sha256, loadStandardWorkflowAssets().source.model_sha256);
     const callEvents = final.record.events.filter(row => ["call_enter", "call_return"].includes(row.kind));
@@ -1282,12 +1375,31 @@ if (process.argv[2] === "--mixed-continue") {
     const last = binding => firstCycleOperations.filter(row => row.intent.binding_ref === binding).at(-1)?.results.at(-1)?.output;
     assert.equal(last("drift_check_finalize").facts.drift_check_completed, true);
     if (standardComposedStop !== "cycle_admit") assert.equal(last("cycle_checkpoint_finalize").outcome, "completed");
+    if (f.r09) {
+      const completion = last("session_pr_post_merge_complete"), merge = last("session_pr_merge_execute");
+      const admission = await readAdmissions(), aligned = admission.continuity.completion?.plan.aligned_head;
+      assert.equal(completion?.outcome, "completed");
+      assert.equal(aligned, merge.observations.merge.merge_oid);
+      assert.equal(admission.start.action, "create_session_allowed");
+      assert.notEqual(admission.cycle.reason_code, "CYCLE_CREATE_SESSION_PR_OPEN");
+      assert.deepEqual(f.r09.sends(), ["merge", "fetch"]);
+      for (const observation of ["replay", "simulate"]) {
+        const proof = await ordinary({ observation });
+        assert.equal(proof.result.instance_sha256, final.record.instance_sha256);
+        assert.equal(proof.result.native_started, false);
+        assert.equal(proof.written, false);
+      }
+      assert.deepEqual(f.r09.sends(), ["merge", "fetch"]);
+      console.log(JSON.stringify({ composed_nominal_post_merge: true, instance_sha256: final.record.instance_sha256,
+        model_sha256: final.record.model_sha256, aligned_head: aligned, sends: f.r09.sends(), ordinary_replay_sim: true,
+        source_admissions_released: true, provider: "transport-double", native: "transport-double" }));
+    }
     const expectedNative = standardPreflight.responses_required;
     assert.equal(f.t.sessions.length + childNativeSessions, expectedNative - priorNativeResults); assert.ok(f.t.sessions.every(row => row.closed));
     if (runsCycle) {
       for (const binding of ["cycle_plan_record", "cycle_implementation_enter", "cycle_validation_execute", "cycle_task_advance", "cycle_verification_enter", "cycle_audit_evaluate"])
         assert.equal(last(binding)?.outcome, "completed");
-      assert.equal(final.cursor.status, stopsAtPrEffects ? "WAITING" : standardComposedStop === "component_complete" ? "COMPLETED" : "RUNNING");
+      assert.equal(final.cursor.status, stopsAtPrEffects ? "WAITING" : standardComposedStop === "component_complete" || nominalPostMerge ? "COMPLETED" : "RUNNING");
       if (!runsClosure) assert.equal(acceptedOperations.filter(row => row.intent.binding_ref === "cycle_closure_decision").length, 0);
     }
     if (runsClosure) {
@@ -1462,7 +1574,7 @@ if (process.argv[2] === "--mixed-continue") {
       scenario_sha256: standardPreflight.scenario_sha256, planned_responses: standardPreflight.responses_required,
       original_max_responses: auth.max_responses, original_deadline_ms: auth.global_deadline_ms,
       native_sessions_started_in_child: childNativeSessions, native_prior_results: priorNativeResults, cold_resume: Boolean(resumed),
-      cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: stopsAtPrEffects || standardComposedStop === "component_complete" ? null : standardComposedStop, component_completed: final.cursor.status === "COMPLETED", full_standard_workflow: false, workflow_status: final.cursor.status, model_calls: 0,
+      cold_continuation: coldContinuation, prior_operation_journals_preserved: coldContinuation, simulation_trace_mode: "streamed-bounded-rows", simulation_steps: replaySteps, terminal_ready_node: stopsAtPrEffects || standardComposedStop === "component_complete" || nominalPostMerge ? null : standardComposedStop, component_completed: final.cursor.status === "COMPLETED", full_standard_workflow: false, workflow_status: final.cursor.status, model_calls: 0,
       verification_boundary: runsCycle ? "fixture-with-actual-Node-check" : "not-used", human_and_effect_authority: "fixture", session_push_transport: runsPromotion ? "actual-local-bare-git" : "not-used", pr_transport: runsPromotion ? "doubled-REST-reading-actual-bare-refs" : "not-used", replay_exact: true }));
   });
   await check("cycle closure contract: typed review and authenticated inbox preserve pending lifecycle", () => {

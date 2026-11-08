@@ -4287,6 +4287,17 @@ signed upstream chain on a separate frozen source. A new source branch is seeded
 on its remote during fixture arrangement; only later session delivery is a
 workflow push receipt. GitHub/native/exact-archive qualification remains NOT_RUN.
 
+For interruption after the PR successor checkpoint returns, distinguish the
+signed dispatch capsule from the operation journal receipt. Qualification uses a
+fresh FILES repository, the real Git checkpoint, an interruption at
+dispatch_returned, and the common disposition and acceptance ports. An active
+owner, missing disposition authority, or changed canonical postimage must block
+adoption. A valid disposition appends the identical original output once and
+accepts one result event. Compare the dispatch capsule, Git refs, reflogs, index,
+physical artifacts and Native allocations across recovery. The original
+interrupted case keeps its original terminal verdict. A DB-only no-change
+result and a dispatch without a retained return are outside this profile.
+
 Run `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs` for the
 published R08 child at the initial and corrective sites on disposable FILES
 projects. A signed synthetic prefix seeds delivery, review inbox and triage.

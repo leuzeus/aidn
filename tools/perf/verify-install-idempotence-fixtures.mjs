@@ -32,6 +32,8 @@ const PRESERVED_FILES = [
 
 const RUNTIME_IGNORES = [
   "/docs/audit/workflows/dispatch-records/",
+  "/docs/audit/workflows/operation-control-intents/",
+  "/docs/audit/workflows/operation-dispositions/",
   "/docs/audit/workflows/resource-fences/local-artifacts.json",
 ];
 
@@ -194,7 +196,7 @@ async function verifyInstalledRuntimeGitScope(repoRoot, tmpRoot, codexStubBin, i
   fs.mkdirSync(freshRoot);
   install(freshRoot);
   const freshIgnores = readText(path.join(freshRoot, ".gitignore")).split(/\r?\n/);
-  assert.ok(RUNTIME_IGNORES.every(rule => freshIgnores.includes(rule)), "fresh install must add both private runtime rules");
+  assert.ok(RUNTIME_IGNORES.every(rule => freshIgnores.includes(rule)), "fresh install must add every private runtime rule");
 
   fs.mkdirSync(targetRoot);
   fixtureGit(targetRoot, "init", "--initial-branch=dev");
@@ -211,7 +213,7 @@ async function verifyInstalledRuntimeGitScope(repoRoot, tmpRoot, codexStubBin, i
   const upgradedIgnores = readText(ignorePath);
   assert.ok(upgradedIgnores.startsWith(legacyIgnores));
   assert.ok(RUNTIME_IGNORES.every(rule => upgradedIgnores.split("\n").filter(line => line === rule).length === 1),
-    "reinstall must restore both private runtime rules exactly once");
+    "reinstall must restore every private runtime rule exactly once");
   install(targetRoot);
   assert.equal(readText(ignorePath), upgradedIgnores, "repeated installs must preserve the updated .gitignore");
   await verifyRuntimeGitScope(targetRoot);
