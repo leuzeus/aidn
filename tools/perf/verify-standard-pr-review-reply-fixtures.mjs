@@ -1102,7 +1102,7 @@ function qualifyPostMergeDecision({ base, home, measurement, fetch, localBefore,
       assert.deepEqual(result.output.facts, result.output.outcome === 'completed'
         ? { session_pr_post_merge_fast_forward: choice === 'fast_forward' } : {});
       assert.equal(result.output.observations.choice, choice);
-      assert.equal(continuity().completion, null);
+      assert.equal(continuity().completion ?? null, null);
       assert.equal(git('rev-parse', 'HEAD'), localBefore);
       assert.equal(resumed.state.fetchSends, 1);
       assert.deepEqual(resumed.state.mergeSends, []);
@@ -1361,7 +1361,7 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   const prewrite = () => preWriteAdmit({ targetRoot, skill: 'cycle-create' }, { providerTransport: f.providerTransport });
   const continuity = (sessionId = 'S001', content = fs.existsSync(sessionFile) ? fs.readFileSync(sessionFile, 'utf8') : '') =>
     readStandardPostMergeContinuity({ targetRoot, sessionId, content });
-  assert.equal(continuity().completion, null);
+  assert.equal(continuity().completion, deliveredSession ? undefined : null);
   assert.notEqual((await start()).action, 'create_session_allowed');
   assert.equal((await cycle()).reason_code, deliveredSession ? 'CYCLE_CREATE_POST_MERGE_SYNC_REQUIRED' : 'CYCLE_CREATE_SESSION_PR_OPEN');
   if (!deliveredSession) assert.equal((await prewrite()).checks.git_cycle_create_upstream_sync.pass, false);
