@@ -116,7 +116,8 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     accept('session_pr_review_reply_select', { contract_version: 'standard-pr-review-reply-select-input.v1', triage_operation_id: triage },
       { session_pr_replies_observed: true }, { selection: null });
     accept('session_pr_review_resolution_select', { contract_version: 'standard-pr-review-resolution-select-input.v1', triage_operation_id: triage },
-      { session_pr_threads_observed_resolved: true }, { selection: null });
+      { session_pr_threads_observed_resolved: true, session_pr_resolution_exception_required: false,
+        session_pr_resolution_gate_met: true }, { selection: null });
   }
   const transport = createGithubPrMergeAsyncAdapter({ executable: process.execPath, executableSha256, workingDirectory: os.tmpdir(),
     repository: { owner: 'fixture', name: 'repository', node_id: link.repository_id } }, { now: () => now,

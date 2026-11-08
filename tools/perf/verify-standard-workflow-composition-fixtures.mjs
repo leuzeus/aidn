@@ -12,7 +12,9 @@ import { processModelIdentity } from "../../src/core/workflow/process-call-model
 import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
-import { assertStandardOperationInput } from "../../src/core/workflow/standard-operation-contracts.mjs";
+import { assertStandardOperationInput, assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
+import { assertDecisionInbox, decisionInboxId } from "../../src/core/workflow/process-decision-inbox.mjs";
+import { assertHumanResolutionException, assertResolutionExceptionSubject, resolutionExceptionQuestion, resolutionExceptionOutput } from "../../src/core/workflow/standard-pr-resolution-exception.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
 import { resolveStandardWorkflowConfiguration, standardWorkflowControlOccurrence } from "../../src/application/runtime/standard-workflow-entry.mjs";
 import { createProjectAgenticProcessExecution } from "../../src/application/runtime/agentic-process-execution-composition.mjs";
@@ -83,7 +85,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 159); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 160); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -182,12 +184,48 @@ test("valid findings select an explicit granted canonical reopen with an accepte
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "session_pr_correction_checkpoint").fields,
     { contract_version: { source: "literal", value: "standard-pr-correction-checkpoint-input.v1" }, reopen_operation_id: { source: "operation_id", node_id: "session_pr_correction_reopen" } });
 });
+test("R08 exception contracts bind the exact question, signed capture shape and outcome", () => {
+  for (const name of ["standard-pr-review-resolution-select-output.v2", "standard-pr-review-resolution-exception-input.v1",
+    "standard-pr-review-resolution-exception-question.v1", "standard-pr-review-resolution-exception-output.v1",
+    "human-pr-review-resolution-exception.v1", "process-decision-inbox.v13"]) {
+    const schema = JSON.parse(read(`src/core/contracts/workflow-definition/${name}.schema.json`));
+    assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
+  }
+  const hash = "a".repeat(64), oid = "b".repeat(40), op = "op_" + oid;
+  const input = { triage_operation_id: op, selection_operation_id: op };
+  const subject = { triage_operation_id: op, update_operation_id: op, source_sha256: hash, repository_id: "R_1",
+    pull_request_id: "PR_1", pull_request_number: 7, head_oid: oid, base_oid: oid, head_ref: "session", base_ref: "dev",
+    unresolved_thread_ids: ["T_1", "T_2"], thread_observation_sha256: hash, review_evidence_sha256: hash, reply_proof_sha256: hash, actor_id: "U_1" };
+  const intent = { instance_id: "fixture", scope_id: "fixture", occurrence_id: "call/0" };
+  const prepared = { subject, prepared_at_ms: 1000 };
+  const question = resolutionExceptionQuestion({ intent, operation_id: op, preview: { input, prepared } });
+  for (const unresolved_thread_ids of [[], ["T_1", "T_1"], ["T_2", "T_1"], Array.from({ length: 32 }, (_, i) => "T_" + i)]) {
+    assert.throws(() => assertResolutionExceptionSubject({ ...subject, unresolved_thread_ids }),
+    { code: "STANDARD_PR_RESOLUTION_EXCEPTION_SUBJECT_INVALID" });
+  }
+  for (const [choice, outcome] of [["accept_resolution_exception", "completed"], ["refused", "rejected"], ["deferred", "deferred"], ["cancelled", "cancelled"]]) {
+    const source = { contract_version: "human-pr-review-resolution-exception.v1", source_kind: "human", authority_id: "fixture_human",
+      source_event_id: "decision_" + choice, choice, rationale: "The note repeats the accepted triage.",
+      question_sha256: shadowHash(question), subject_sha256: shadowHash(question.subject), evidence_refs: [{ ref: "github:thread/T_1", sha256: hash }] };
+    const capture = { contract_version: "process-decision-inbox.v13", inbox_id: decisionInboxId(source), operation_id: op,
+      source_ref: "fixture", source, phase: "reserved", receipt_sha256: null, key_id: hash, authentication: hash };
+    assert.deepEqual(assertDecisionInbox(capture), capture);
+    const output = resolutionExceptionOutput(question, capture);
+    assert.equal(assertStandardOperationOutput(output).outcome, outcome);
+    assert.throws(() => assertStandardOperationOutput({ ...output, facts: { session_pr_threads_observed_resolved: true } }),
+      { code: "STANDARD_OPERATION_OUTPUT_INVALID" });
+    assert.throws(() => assertHumanResolutionException({ ...source, rationale: "\t " }, question),
+      { code: "STANDARD_PR_RESOLUTION_EXCEPTION_DECISION_INVALID" });
+    assert.throws(() => assertHumanResolutionException(source, { ...question, subject: { ...subject, unresolved_thread_ids: ["T_2"] } }),
+      { code: "PROCESS_HUMAN_QUESTION_CHANGED" });
+  }
+});
 test("both PR effects boundaries pass their own accepted triage to the same pinned continuation", () => {
   const target = assets.model.call_targets.find(row => row.model_id === "aidn-standard-pr-review-completion");
   const { model: child, ...identity } = target;
   assert.deepEqual(identity, processModelIdentity(child));
   assert.deepEqual(child.call_interface, { parameters: { triage_operation_id: "string" }, returns: {} });
-  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_reply_loop", "pr_resolution_loop", "pr_review_effects_verify", "pr_merge_observe"]);
+  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_reply_loop", "pr_resolution_loop", "pr_merge_observe"]);
   for (const prefix of ["session", "correction"]) {
     const id = prefix + "_pr_effects_pending";
     const call = assets.model.nodes.find(row => row.id === id);
@@ -211,7 +249,21 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
   });
   const resolutionLoop = child.nodes.find(row => row.id === "pr_resolution_loop");
   assert.equal(resolutionLoop.max_iterations, 32);
-  assert.equal(resolutionLoop.until, "session_pr_threads_observed_resolved");
+  assert.equal(resolutionLoop.until, "session_pr_resolution_gate_met");
+  const route = child.nodes.find(row => row.id === "pr_resolution_route");
+  assert.equal(route.branches.find(row => row.flow_id === "observed").node_id, "pr_review_effects_verify");
+  assert.equal(route.branches.find(row => row.flow_id === "exception").node_id, "pr_resolution_exception");
+  const exception = assets.catalog.bindings.find(row => row.node_id === "pr_resolution_exception");
+  assert.deepEqual(exception.model_ref, identity);
+  assert.equal(exception.binding.id, "session_pr_review_resolution_exception");
+  assert.equal(exception.binding.effect_class, "read-only");
+  assert.equal(exception.binding.executor_kind, "human");
+  assert.deepEqual(exception.binding.allowed_modes, ["COMMITTING"]);
+  assert.deepEqual(child.data_bindings.inputs.find(row => row.node_id === "pr_resolution_exception").fields, {
+    contract_version: { source: "literal", value: "standard-pr-review-resolution-exception-input.v1" },
+    triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] },
+    selection_operation_id: { source: "operation_id", node_id: "pr_resolution_select" },
+  });
   const resolve = assets.catalog.bindings.find(row => row.node_id === "pr_thread_resolve");
   assert.deepEqual(resolve.model_ref, identity);
   assert.equal(resolve.binding.id, "session_pr_review_thread_resolve");
@@ -410,7 +462,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 252);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 8);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 9);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 2);
   assert.equal(child.model_id, "aidn-standard-final-verification");

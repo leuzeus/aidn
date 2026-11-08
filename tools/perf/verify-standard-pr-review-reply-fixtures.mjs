@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createFreshStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
 import { createGithubReviewFixture } from './github-review-evidence-fixture-lib.mjs';
 import { createAgenticProcessStore } from '../../src/adapters/runtime/agentic-process-store.mjs';
 import { createProcessControlInboxStore } from '../../src/adapters/runtime/process-control-inbox-store.mjs';
+import { createProcessDecisionInboxStore } from '../../src/adapters/runtime/process-decision-inbox-store.mjs';
 import { createProcessOperationJournalStore } from '../../src/adapters/runtime/process-operation-journal-store.mjs';
 import { createStandardHostAuthority } from '../../src/adapters/runtime/standard-host-authority.mjs';
 import { createStandardProcessAuthority } from '../../src/application/runtime/standard-process-authority.mjs';
@@ -21,6 +22,7 @@ import { standardWorkflowOperationBindings } from '../../src/application/runtime
 import { advanceAgenticProcess, inspectAgenticProcess } from '../../src/core/workflow/agentic-process.mjs';
 import { simulateAgenticProcess } from '../../src/core/workflow/agentic-process-simulation.mjs';
 import { controlDelivery } from '../../src/core/workflow/process-control-inbox.mjs';
+import { decisionInboxId } from '../../src/core/workflow/process-decision-inbox.mjs';
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from '../../src/core/workflow/process-operation-journal.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
 
@@ -61,6 +63,7 @@ function fixtureModel(prefix) {
 function open(base, { initializeKey = false } = {}) {
   const data = json(path.join(base, 'configuration.json'));
   const { configuration, binding, pr, prefix, behavior, submittedAt } = data;
+  const exception = behavior.startsWith('exception-');
   const instanceId = configuration.instance_id, targetRoot = configuration.target_root;
   const options = { targetRoot, stateMode: 'files' };
   const providerFile = path.join(base, 'provider.json'), state = json(providerFile);
@@ -72,7 +75,8 @@ function open(base, { initializeKey = false } = {}) {
   const author = { ...review.author };
   const rootComment = { id: 'C_root', author, body: 'Inline finding.', createdAt: submittedAt, updatedAt: submittedAt,
     publishedAt: submittedAt, state: 'SUBMITTED', isMinimized: false, commit: { oid: pr.head_oid }, originalCommit: { oid: pr.head_oid }, replyTo: null };
-  const roots = prefix === 'session' && behavior === 'normal' ? [rootComment, { ...rootComment, id: 'C_other' }] : [rootComment];
+  const roots = exception || prefix === 'session' && behavior === 'normal'
+    ? [rootComment, { ...rootComment, id: 'C_other' }] : [rootComment];
   const connection = nodes => ({ nodes, totalCount: nodes.length, pageInfo: { hasNextPage: false, endCursor: null } });
   const ok = value => ({ status: 0, stdout: typeof value === 'string' ? value : JSON.stringify(value) });
   let permitted, denied = false, revokeAt = null, grants = 0, calls = 0, crash = false;
@@ -106,6 +110,7 @@ function open(base, { initializeKey = false } = {}) {
       return ok(value);
     },
     async runGithubResolution(binary, args, options) {
+      assert.ok(!exception, 'Unexpected resolution during exception fixture');
       assert.equal(binary, binding.gh.path);
       assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
       const { query, variables: { input } } = JSON.parse(options.input);
@@ -131,6 +136,7 @@ function open(base, { initializeKey = false } = {}) {
       return ok({ data: { resolveReviewThread: { clientMutationId: input.clientMutationId, thread: { id: input.threadId, isResolved: true } } } });
     },
     async runGithubReply(binary, args, options) {
+      assert.ok(!exception, 'Unexpected reply during exception fixture');
       assert.equal(binary, binding.gh.path);
       assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
       const { query, variables: { input } } = JSON.parse(options.input);
@@ -164,6 +170,7 @@ function open(base, { initializeKey = false } = {}) {
   const processAuthority = createStandardProcessAuthority({ configuration, model, readSigningKey: readKey,
     readProductSha256: () => pin(path.join(targetRoot, 'AGENTS.md')).sha256 });
   const host = createStandardWorkflowOperationHost({ targetRoot, model, processAuthority, readSigningKey: readKey,
+    humanSource: authority.humanSource,
     sessionPushPort: provider.sessionPushPort, sessionPullRequestPort: provider.sessionPullRequestPort,
     sessionReviewPort: provider.sessionReviewPort, sessionReviewEventPort: provider.sessionReviewEventPort,
     authorize(input) {
@@ -257,8 +264,9 @@ function open(base, { initializeKey = false } = {}) {
       session_pr_corrections_required: false, session_pr_responses_required: true },
     observations: { selection_operation_id: selected, received_operation_id: received, payload_sha256, head_oid: pr.head_oid, base_oid: pr.base_oid,
       triage_completion: 'pending-effects-and-verification', merge_authorization: 'not-established', checks_acceptance: 'not-established',
-      dispositions: roots.map(root => ({ kind: 'comment', disposition: 'invalid', thread_id: 'T_' + root.id,
-        node_id: root.id, proposed_response: response })) } });
+      dispositions: roots.map(root => ({ kind: 'comment', thread_id: 'T_' + root.id, node_id: root.id,
+        ...(exception && root.id === 'C_other' ? { disposition: 'not_a_finding', proposed_response: '' }
+          : { disposition: 'invalid', proposed_response: response }) })) } });
     const waiting = inspect(), call = waiting.cursor.occurrences.find(row => row.node_id === graph.call);
     await host.enterCall({ instanceId, expectedSha256: waiting.record.instance_sha256, occurrenceId: call.occurrence_id,
       eventId: 'call_review', write: true });
@@ -271,6 +279,7 @@ function open(base, { initializeKey = false } = {}) {
     save(providerFile, state);
   }
   return { host, preview, stage, run, inspect, seedPrefix, observePublishedReply, state, providerFile, calls: () => calls, allow: sha => { permitted = sha; },
+    signer, inbox: createProcessDecisionInboxStore(options),
     deny: value => { denied = value; }, revokeAt: value => { revokeAt = grants + value; }, interrupt: () => { crash = true; } };
 }
 
@@ -417,7 +426,111 @@ async function qualifyResolution(behavior) {
   console.log('PASS published R08 resolution ' + prefix + ' ' + behavior + ' with seeded signed upstream receipts and real FILES operation ports');
 }
 
-if (['--case=resolve-missing', '--case=resolve-interrupted'].includes(process.argv[2])) {
+async function qualifyException(behavior) {
+  const prefix = behavior === 'exception-correction' ? 'correction' : 'session';
+  const choice = ['refused', 'deferred', 'cancelled'].find(value => behavior === 'exception-' + value) ?? 'accept_resolution_exception';
+  const base = arrange(prefix, behavior), f = open(base, { initializeKey: true });
+  const { home, pr } = json(path.join(base, 'configuration.json'));
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const authority_id = 'fixture-human-r08', sourceRef = 'documented_exception';
+  const authorityInbox = path.join(home, 'inbox');
+  fs.mkdirSync(authorityInbox);
+  save(path.join(home, 'principals.json'), { contract_version: 'standard-host-principals.v1',
+    principals: [{ authority_id, kinds: ['human'], public_key: publicKey.export({ type: 'spki', format: 'pem' }) }] });
+
+  await f.seedPrefix();
+  f.observePublishedReply();
+  f.state.resolvedThreads.push('T_C_root');
+  save(f.providerFile, f.state);
+  assert.equal((await f.run()).results[0].output.facts.session_pr_replies_observed, true);
+  const selection = await f.run();
+  assert.deepEqual(selection.results[0].output.facts, { session_pr_threads_observed_resolved: false,
+    session_pr_resolution_exception_required: true, session_pr_resolution_gate_met: false });
+  const { operation_id: id } = await f.stage(await f.preview());
+  const { status, question } = await f.host.dispatch(id, { write: true });
+  assert.equal(status, 'waiting_for_human');
+  assert.equal(question.selection_operation_id, selection.operation_id);
+  assert.equal(question.subject.head_oid, pr.head_oid);
+  assert.equal(question.subject.base_oid, pr.base_oid);
+  assert.equal(question.subject.head_ref, pr.head_branch);
+  assert.equal(question.subject.base_ref, pr.base_branch);
+  assert.equal(question.subject.repository_id, pr.repository_id);
+  assert.equal(question.subject.pull_request_id, pr.node_id);
+  assert.equal(question.subject.pull_request_number, pr.number);
+  assert.deepEqual(question.subject.unresolved_thread_ids, ['T_C_other']);
+  assert.equal(shadowHash(question.subject), selection.results[0].output.observations.exception_subject_sha256);
+  const deliver = () => f.host.receiveDecision(id, { sourceRef, write: true });
+  const claim = { contract_version: 'human-pr-review-resolution-exception.v1', source_kind: 'human', authority_id,
+    source_event_id: 'r08_fixture_decision', question_sha256: shadowHash(question), subject_sha256: shadowHash(question.subject),
+    choice, rationale: 'The remaining inline note is an informational duplicate documented by triage.',
+    evidence_refs: [{ ref: 'github:pr-review-thread/T_C_other', sha256: question.subject.thread_observation_sha256 }] };
+  function publish(payload, { subject = question, expired = false } = {}) {
+    const now = Date.now(), body = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id,
+      source_ref: sourceRef, subject_sha256: shadowHash(subject), payload, issued_at_ms: now - 2000, expires_at_ms: expired ? now - 1000 : now + 300000 };
+    save(path.join(authorityInbox, sourceRef + '.json'), { ...body,
+      signature: sign(null, Buffer.from(shadowHash(body)), privateKey).toString('base64') });
+  }
+  if (behavior === 'exception-session') {
+    assert.equal((await deliver()).status, 'waiting_for_human');
+    publish({ ...claim, rationale: '  \n  ' });
+    await assert.rejects(deliver, { code: 'STANDARD_PR_RESOLUTION_EXCEPTION_DECISION_INVALID' });
+    publish(claim, { expired: true });
+    await assert.rejects(deliver, { code: 'STANDARD_HOST_SOURCE_INVALID' });
+    publish({ ...claim, subject_sha256: shadowHash({ ...question.subject, head_oid: 'e'.repeat(40) }) });
+    await assert.rejects(deliver, { code: 'PROCESS_HUMAN_QUESTION_CHANGED' });
+    publish(claim);
+    f.state.resolvedThreads.length = 0;
+    await assert.rejects(deliver, { code: 'STANDARD_PR_RESOLUTION_EXCEPTION_STALE' });
+    f.state.resolvedThreads.push('T_C_root');
+    assert.equal(f.inbox.read(decisionInboxId(claim)).record, null);
+    assert.equal(f.host.readJournal(id).phase, 'staged');
+  }
+  publish(claim);
+  if (behavior === 'exception-correction') {
+    const accepted = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--receive-exception', base, id, sourceRef],
+      { encoding: 'utf8', timeout: 240000, windowsHide: true }));
+    assert.equal(accepted.outcome, 'completed');
+  } else {
+    assert.equal((await deliver()).status, 'receipted');
+    await f.host.accept(id, { write: true });
+  }
+  const resumed = open(base), { record, cursor } = resumed.inspect();
+  const result = resumed.host.readJournal(id).results[0], capture = resumed.inbox.read(decisionInboxId(claim)).record;
+  resumed.signer.verify(capture);
+  assert.equal(capture.contract_version, 'process-decision-inbox.v13');
+  assert.equal(capture.phase, 'receipted');
+  assert.deepEqual(capture.source, claim);
+  assert.equal(capture.receipt_sha256, shadowHash(result.receipt));
+  assert.equal(result.output.contract_version, 'standard-pr-review-resolution-exception-output.v1');
+  assert.equal(result.output.effect_status, 'no_effect');
+  const approved = choice === 'accept_resolution_exception';
+  assert.deepEqual(result.output.facts, approved ? {
+    session_pr_resolution_exception_accepted: true, session_pr_resolution_gate_met: true,
+  } : {});
+  assert.equal(result.receipt.outcome, approved ? 'completed' : choice === 'refused' ? 'rejected' : choice);
+  assert.equal(cursor.occurrences.some(row => row.node_id === 'pr_merge_observe' && row.status === 'READY'), approved);
+  assert.deepEqual(resumed.state.sent, []);
+  assert.deepEqual(resumed.state.resolutionSends, []);
+  assert.deepEqual(resumed.state.resolvedThreads, ['T_C_root']);
+  assert.ok(!record.events.some(row => row.intent?.binding_ref === 'session_pr_review_effects_verify'));
+  assert.equal((await resumed.host.receiveDecision(id, { sourceRef, write: true })).status, 'retained_result');
+  await resumed.host.accept(id, { write: true });
+  assert.equal(resumed.inspect().record.instance_sha256, record.instance_sha256);
+  replay(resumed);
+  assert.equal(resumed.calls(), 0);
+  console.log('PASS published R08 ' + prefix + ' ' + choice + ', signed authority, FILES inbox/journal, offline replay');
+}
+
+if (/^--case=exception-(session|correction|refused|deferred|cancelled)$/.test(process.argv[2])) {
+  await qualifyException(process.argv[2].slice('--case='.length));
+} else if (process.argv[2] === '--receive-exception') {
+  const [, , , base, id, sourceRef] = process.argv, f = open(base);
+  assert.equal((await f.host.dispatch(id, { write: true })).status, 'waiting_for_human');
+  const { status, receipt } = await f.host.receiveDecision(id, { sourceRef, write: true });
+  assert.equal(status, 'receipted');
+  await f.host.accept(id, { write: true });
+  console.log(JSON.stringify({ outcome: receipt.outcome }));
+} else if (['--case=resolve-missing', '--case=resolve-interrupted'].includes(process.argv[2])) {
   await qualifyResolution(process.argv[2].slice('--case='.length));
 } else if (process.argv[2] === '--verify-retained') {
   verifyRetained(process.argv[3]);

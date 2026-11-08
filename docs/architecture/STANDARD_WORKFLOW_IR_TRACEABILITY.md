@@ -876,11 +876,17 @@ selects an eligible open thread from the authenticated review.
 `session_pr_review_thread_resolve` uses the accepted selection and the same
 triage operation ID. The protected port checks the exact grant at transport
 and independently re-reads the postimage. Recovery of the durable dispatch
-only reads the provider. A reopened or unsupported thread needs a fresh review
-or a documented SPEC-R08 exception.
+only reads the provider. If the exact review includes an open thread outside
+automatic selection, the loop can enter `session_pr_review_resolution_exception`
+with the same triage and accepted selection IDs. An UNKNOWN reply or resolution
+dispatch stays at its original occurrence for reconciliation.
 
 `session_pr_review_effects_verify` independently requires every response and
-resolved thread on the exact PR, HEAD and base. The following operation
+resolved thread on the exact PR, HEAD and base on the nominal path. The
+exception path reuses the reply and correction checks and requires fresh
+provider evidence at decision delivery and receipt acceptance. Its signed
+decision records the reason and exact open set, leaving each thread's observed
+status intact. Both paths reach the following operation.
 `session_pr_merge_observe` only observes. Checks, merge consent, merge effect
 and R09 remain separate. Historical direct observation receipts stay readable.
 

@@ -16,6 +16,15 @@ under the existing operation journal. A recovery result reports the resolved
 postimage. The journal preserves the original dispatch and any UNKNOWN result.
 Historical reply and observation contracts remain readable.
 
+Resolution selection v2 adds a route for a documented exception and retains
+the v1 reader. The private `standard-pr-review-resolution-exception-{input,question,output}.v1`
+and `human-pr-review-resolution-exception.v1` contracts bind a signed decision
+to the accepted triage and latest delivery, exact PR subject, unresolved thread
+IDs and provider evidence. The rationale is retained in the signed
+`process-decision-inbox.v13` capture. The typed no-effect receipt links to that
+capture and routes only the resolution gate. The inbox and operation journal
+keep their existing authorities and storage.
+
 ## Original dispatch and disposition records
 
 Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,

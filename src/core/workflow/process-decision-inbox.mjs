@@ -17,6 +17,8 @@ import recoveryPlan from "../contracts/workflow-definition/standard-drift-recove
 import recoveryQuestionV2 from "../contracts/workflow-definition/standard-drift-recovery-question.v2.schema.json" with { type: "json" };
 import recoverySourceV2 from "../contracts/workflow-definition/human-drift-recovery-decision.v2.schema.json" with { type: "json" };
 import inboxV12 from "../contracts/workflow-definition/process-decision-inbox.v12.schema.json" with { type: "json" };
+import inboxV13 from "../contracts/workflow-definition/process-decision-inbox.v13.schema.json" with { type: "json" };
+import { assertHumanResolutionException } from "./standard-pr-resolution-exception.mjs";
 import { assertObjectiveReview } from "./standard-drift-objective-review.mjs";
 import inboxV3 from "../contracts/workflow-definition/process-decision-inbox.v3.schema.json" with { type: "json" };
 import { assertHumanCycleClosureDecision } from "./standard-cycle-closure-decision.mjs";
@@ -73,6 +75,13 @@ export function decisionInboxPath(id) {
   return `workflows/decision-inbox/${id}.json`;
 }
 export function assertDecisionInbox(value) {
+  if (value?.contract_version === "process-decision-inbox.v13") {
+    if (checkShadowJson(value) || validateJsonSchema(value, inboxV13, "$", { contractKind: "workflow-definition" }).length)
+      fail("PROCESS_DECISION_INBOX_INVALID");
+    assertHumanResolutionException(value.source);
+    if (value.inbox_id !== decisionInboxId(value.source) || (value.phase === "receipted") !== (value.receipt_sha256 !== null)) fail("PROCESS_DECISION_INBOX_BINDING_CHANGED");
+    return value;
+  }
   const definition = value?.contract_version === "process-decision-inbox.v12" ? inboxV12 : value?.contract_version === "process-decision-inbox.v11" ? inboxV11 : value?.contract_version === "process-decision-inbox.v10" ? inboxV10 : value?.contract_version === "process-decision-inbox.v9" ? inboxV9 : value?.contract_version === "process-decision-inbox.v8" ? inboxV8 : value?.contract_version === "process-decision-inbox.v7" ? inboxV7 : value?.contract_version === "process-decision-inbox.v6" ? inboxV6 : value?.contract_version === "process-decision-inbox.v5" ? inboxV5 : value?.contract_version === "process-decision-inbox.v4" ? inboxV4 : value?.contract_version === "process-decision-inbox.v3" ? inboxV3 : value?.contract_version === "process-decision-inbox.v2" ? inboxV2 : schema;
   if (checkShadowJson(value) || validateJsonSchema(value, definition, "$", { contractKind: "workflow-definition" }).length) fail("PROCESS_DECISION_INBOX_INVALID");
   if (value.contract_version === "process-decision-inbox.v12") {

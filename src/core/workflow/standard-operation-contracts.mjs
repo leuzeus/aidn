@@ -38,6 +38,9 @@ import prResolutionSelectOutput from "../contracts/workflow-definition/standard-
 import prThreadResolveInput from "../contracts/workflow-definition/standard-pr-review-thread-resolve-input.v1.schema.json" with { type: "json" };
 import prThreadResolveOutput from "../contracts/workflow-definition/standard-pr-review-thread-resolve-output.v1.schema.json" with { type: "json" };
 import prReviewEffectsInput from "../contracts/workflow-definition/standard-session-pr-review-effects-input.v1.schema.json" with { type: "json" };
+import prResolutionSelectOutputV2 from "../contracts/workflow-definition/standard-pr-review-resolution-select-output.v2.schema.json" with { type: "json" };
+import prResolutionExceptionInput from "../contracts/workflow-definition/standard-pr-review-resolution-exception-input.v1.schema.json" with { type: "json" };
+import { assertResolutionExceptionOutput, resolutionExceptionOperation } from "./standard-pr-resolution-exception.mjs";
 import prReviewEffectsOutput from "../contracts/workflow-definition/standard-session-pr-review-effects-output.v1.schema.json" with { type: "json" };
 import prMergeProvider from "../contracts/workflow-definition/github-pr-merge-observation.v1.schema.json" with { type: "json" };
 import prMergeInput from "../contracts/workflow-definition/standard-session-pr-merge-observe-input.v1.schema.json" with { type: "json" };
@@ -189,8 +192,9 @@ export function assertStandardOperationInput(operation, value) {
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
   }
-  if (["session_pr_review_resolution_select", "session_pr_review_thread_resolve"].includes(operation)) {
-    const schema = operation === "session_pr_review_resolution_select" ? prResolutionSelectInput : prThreadResolveInput;
+  if (["session_pr_review_resolution_select", "session_pr_review_thread_resolve", resolutionExceptionOperation].includes(operation)) {
+    const schema = operation === "session_pr_review_resolution_select" ? prResolutionSelectInput
+      : operation === resolutionExceptionOperation ? prResolutionExceptionInput : prThreadResolveInput;
     if (checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_INPUT_INVALID");
     return value;
@@ -321,16 +325,21 @@ export function assertStandardOperationOutput(value) {
       || evidence_refs[0].sha256 !== shadowHash(reply)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
-  if (["standard-pr-review-resolution-select-output.v1", "standard-pr-review-thread-resolve-output.v1"].includes(value?.contract_version)) {
-    const select = value.contract_version === "standard-pr-review-resolution-select-output.v1";
-    if (checkShadowJson(value) || validateJsonSchema(value, select ? prResolutionSelectOutput : prThreadResolveOutput, "$", { contractKind: "workflow-definition" }).length)
+  if (value?.contract_version === "standard-pr-review-resolution-exception-output.v1") return assertResolutionExceptionOutput(value);
+  if (["standard-pr-review-resolution-select-output.v1", "standard-pr-review-resolution-select-output.v2", "standard-pr-review-thread-resolve-output.v1"].includes(value?.contract_version)) {
+    const select = value.contract_version !== "standard-pr-review-thread-resolve-output.v1";
+    const currentSelect = value.contract_version === "standard-pr-review-resolution-select-output.v2";
+    const schema = currentSelect ? prResolutionSelectOutputV2 : select ? prResolutionSelectOutput : prThreadResolveOutput;
+    if (checkShadowJson(value) || validateJsonSchema(value, schema, "$", { contractKind: "workflow-definition" }).length)
       fail("STANDARD_OPERATION_OUTPUT_INVALID");
-    const { observations: { reason_code, selection, resolution }, outcome, facts, effect_status, evidence_refs } = value;
+    const { observations: { reason_code, selection, resolution, exception_subject_sha256 }, outcome, facts, effect_status, evidence_refs } = value;
     if (outcome !== "completed") {
       if (!reason_code || Object.keys(facts).length || evidence_refs.length
         || effect_status !== (outcome === "reconciliation_required" ? "unknown" : "no_effect")) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     } else if (select) {
-      if (reason_code || facts.session_pr_threads_observed_resolved !== (selection === null)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+      if (reason_code || facts.session_pr_threads_observed_resolved !== (selection === null)
+        || currentSelect && (facts.session_pr_resolution_gate_met !== (selection === null)
+          || facts.session_pr_resolution_exception_required !== Boolean(exception_subject_sha256))) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     } else if (!resolution || effect_status !== "confirmed"
       || resolution.effect_status !== (resolution.action === "resolved" ? "confirmed" : "no_effect")
       || evidence_refs.length !== 1 || evidence_refs[0].ref !== "github:pr-review-thread/" + resolution.thread_id

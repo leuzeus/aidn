@@ -366,6 +366,10 @@ finalization; `--verify` retains its read-only verification behavior.
     reply or resolution dispatch uses the same explicit action to record the
     postimage through read-only provider recovery. An absent postimage keeps
     the occurrence waiting.
+    For an R08 resolution exception, `--decision-source` selects an authenticated
+    human source for the exact question and documented rationale. Applying the
+    reviewed action records a typed no-effect receipt. The receipt covers only
+    the unresolved thread gate and leaves checks and merge consent separate.
     A prepared action and
     `actionFile` cannot be combined. JSON alone grants no effect.
 - `aidn runtime workflow-dashboard --target <root> --json`

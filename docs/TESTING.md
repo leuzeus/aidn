@@ -4225,6 +4225,17 @@ covers the published child from call entry through effects verification.
 Live GitHub, Native, PostgreSQL, installed-package and full workflow
 qualification are separate.
 
+Run the standalone `verify-standard-pr-review-reply-fixtures.mjs` cases
+`--case=exception-session`, `--case=exception-correction`,
+`--case=exception-refused`, `--case=exception-deferred` and
+`--case=exception-cancelled` for the documented exception. These exercise the
+published call sites with signed fixture predecessors, a protected fixture
+Ed25519 authority, real FILES journal and inbox, and doubled GitHub transport.
+The initial case checks missing, blank, expired and mismatched decisions and
+a changed open set. The corrective case resumes the staged decision in a new
+Node process. Each case retains its receipt and verifies replay without
+provider calls. Keep these cases outside the required runtime family.
+
 The PR creation component retains its link in the authenticated process journal.
 A separate session_pr_record now consumes that receipt, its historical delivery
 postimages and current physical/provider evidence. It advances the canonical

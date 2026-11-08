@@ -2,15 +2,17 @@ import { assertGithubPrReviewResolutionResult, githubPrReviewResolutionBasis } f
 import { assertStandardOperationOutput } from '../../core/workflow/standard-operation-contracts.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { createStandardPrReviewEffectsReader } from './standard-session-pr-review-effects.mjs';
+import { assertResolutionExceptionSubject, resolutionExceptionMaxAgeMs } from '../../core/workflow/standard-pr-resolution-exception.mjs';
 
 const select = 'session_pr_review_resolution_select';
 const resolve = 'session_pr_review_thread_resolve';
+const exceptionRequired = 'STANDARD_PR_RESOLUTION_EXCEPTION_OR_REVIEW_REQUIRED';
 const limit = 31; // Reserve one iteration to attest that no thread remains open.
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 const reasonCode = cause => /^[A-Z][A-Z0-9_]{0,127}$/.test(cause?.code ?? '') ? cause.code : 'STANDARD_PR_RESOLUTION_UNAVAILABLE';
 
 function output(operation, outcome, effect_status, facts, observations, evidence_refs = []) {
-  return assertStandardOperationOutput({ contract_version: operation === select ? 'standard-pr-review-resolution-select-output.v1'
+  return assertStandardOperationOutput({ contract_version: operation === select ? 'standard-pr-review-resolution-select-output.v2'
     : 'standard-pr-review-thread-resolve-output.v1', operation_ref: operation, outcome, effect_status, facts, observations, evidence_refs });
 }
 
@@ -33,14 +35,37 @@ export function createStandardPrReviewResolution({ readAcceptedResolutions, ...p
     const answered = new Set(observed.replies.map(reply => reply.thread_id));
     if (observed.replies.some(reply => !threads.get(reply.thread_id)?.comments.some(comment =>
       comment.node_id === reply.target_id && !comment.is_minimized)))
-      return { reason: 'STANDARD_PR_RESOLUTION_EXCEPTION_OR_REVIEW_REQUIRED' };
+      return { reason: 'STANDARD_PR_EFFECTS_REPLY_REQUIRED' };
     if (outstanding.some(thread => !eligible.has(thread.node_id) || !answered.has(thread.node_id)))
-      return { reason: 'STANDARD_PR_RESOLUTION_EXCEPTION_OR_REVIEW_REQUIRED' };
+      return { ...observed, outstanding, exceptionRequired: true };
     if (outstanding.length && !['prepare', 'apply', 'recover'].every(method => typeof port?.[method] === 'function')) return { reason: 'STANDARD_PR_RESOLUTION_PORT_REQUIRED' };
     return { ...observed, outstanding };
   }
 
   const replyProof = (observed, id) => shadowHash(observed.replies.filter(reply => reply.thread_id === id));
+
+  function exceptionSubject(source, observed) {
+    const p = source.pullRequest;
+    return assertResolutionExceptionSubject({ triage_operation_id: source.triage.record.operation_id,
+      update_operation_id: source.updateId, source_sha256: source.sha256, repository_id: p.repository_id,
+      pull_request_id: p.node_id, pull_request_number: p.number, head_oid: p.head_oid, base_oid: p.base_oid,
+      head_ref: p.head_branch, base_ref: p.base_branch, unresolved_thread_ids: observed.outstanding.map(thread => thread.node_id).sort(),
+      thread_observation_sha256: observed.last.observation_sha256, review_evidence_sha256: observed.evidence.evidence_sha256,
+      reply_proof_sha256: shadowHash(observed.replies), actor_id: observed.actor.node_id });
+  }
+
+  async function readException(instance, input, signal) {
+    const accepted = ports.readAccepted(instance, input.selection_operation_id, select);
+    const basis = accepted.output.observations.exception_subject_sha256;
+    if (!basis || accepted.output.facts.session_pr_resolution_exception_required !== true
+      || accepted.record.preview.input.triage_operation_id !== input.triage_operation_id) fail(exceptionRequired);
+    const source = reader.source(instance, input);
+    const observed = await inspect(instance, source, input, signal);
+    if (!observed.exceptionRequired) fail(observed.reason ?? 'STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
+    const subject = exceptionSubject(source, observed);
+    if (shadowHash(subject) !== basis) fail('STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
+    return subject;
+  }
 
   function selection(source, observed) {
     const thread = observed.outstanding[0];
@@ -59,7 +84,7 @@ export function createStandardPrReviewResolution({ readAcceptedResolutions, ...p
     const source = reader.source(instance, input);
     if (source.sha256 !== plan.source_sha256) fail('STANDARD_PR_RESOLUTION_SOURCE_CHANGED');
     const observed = await inspect(instance, source, input, signal);
-    if (observed.reason) fail(observed.reason);
+    if (observed.reason || observed.exceptionRequired) fail(observed.reason ?? exceptionRequired);
     const { request, actor, repository_id } = plan.provider.plan;
     if (source.pullRequest.repository_id !== repository_id || shadowHash(observed.actor) !== shadowHash(actor)
       || shadowHash(observed.request) !== shadowHash(request.pull_request)
@@ -91,11 +116,30 @@ export function createStandardPrReviewResolution({ readAcceptedResolutions, ...p
         if (source.sha256 !== prepared.source_sha256) fail('STANDARD_PR_RESOLUTION_SOURCE_CHANGED');
         const observed = await inspect(instance, source, input, signal);
         if (observed.reason) return output(select, 'deferred', 'no_effect', {}, { reason_code: observed.reason });
-        const chosen = selection(source, observed);
-        return output(select, 'completed', 'no_effect', { session_pr_threads_observed_resolved: chosen === null }, { selection: chosen });
+        if (observed.exceptionRequired)
+          return output(select, 'completed', 'no_effect', { session_pr_resolution_exception_required: true,
+            session_pr_threads_observed_resolved: false, session_pr_resolution_gate_met: false },
+          { exception_subject_sha256: shadowHash(exceptionSubject(source, observed)) });
+        const chosen = selection(source, observed), resolved = chosen === null;
+        return output(select, 'completed', 'no_effect', { session_pr_threads_observed_resolved: resolved,
+          session_pr_resolution_exception_required: false, session_pr_resolution_gate_met: resolved }, { selection: chosen });
       } catch (cause) {
         return output(select, 'blocked', 'no_effect', {}, { reason_code: reasonCode(cause) });
       }
+    },
+    async prepareException(instance, input) {
+      const subject = await readException(instance, input);
+      return { can_apply: true, subject, prepared_at_ms: (ports.now ?? Date.now)() };
+    },
+    async assertExceptionFresh(instance, input, prepared, signal) {
+      const assertAge = () => {
+        const age = (ports.now ?? Date.now)() - prepared.prepared_at_ms;
+        if (!Number.isSafeInteger(age) || age < 0 || age > resolutionExceptionMaxAgeMs) fail('STANDARD_PR_RESOLUTION_EXCEPTION_EXPIRED');
+      };
+      assertAge();
+      if (shadowHash(await readException(instance, input, signal)) !== shadowHash(prepared.subject))
+        fail('STANDARD_PR_RESOLUTION_EXCEPTION_STALE');
+      assertAge();
     },
     async prepare(instance, input, operationId) {
       const accepted = ports.readAccepted(instance, input.selection_operation_id, select);
@@ -103,7 +147,7 @@ export function createStandardPrReviewResolution({ readAcceptedResolutions, ...p
       if (!chosen || accepted.record.preview.input.triage_operation_id !== input.triage_operation_id)
         fail('STANDARD_PR_RESOLUTION_SELECTION_REQUIRED');
       const source = reader.source(instance, input), observed = await inspect(instance, source, input);
-      if (observed.reason) fail(observed.reason);
+      if (observed.reason || observed.exceptionRequired) fail(observed.reason ?? exceptionRequired);
       if (shadowHash(selection(source, observed)) !== shadowHash(chosen)) fail('STANDARD_PR_RESOLUTION_SELECTION_CHANGED');
       const request = { contract_version: 'github-pr-review-resolution-request.v1', pull_request: observed.request,
         thread_id: chosen.thread_id, basis_sha256: chosen.basis_sha256, not_before_ms: source.notBefore };

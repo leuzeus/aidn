@@ -140,7 +140,7 @@ op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("se
 // pinned continuation. A deferred child operation keeps its call open.
 const firstPrNode = nodes.length, firstPrInput = inputs.length;
 const triageId = { triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] } };
-seq("pr_review_completion", ["pr_reply_loop", "pr_resolution_loop", "pr_review_effects_verify", "pr_merge_observe"]);
+seq("pr_review_completion", ["pr_reply_loop", "pr_resolution_loop", "pr_merge_observe"]);
 node("pr_reply_loop", "loop", { child: "pr_reply_iteration", until: "session_pr_replies_observed", max_iterations: 32 });
 seq("pr_reply_iteration", ["pr_reply_select", "pr_reply_route"]);
 op("pr_reply_select", "session_pr_review_reply_select", triageId);
@@ -148,12 +148,14 @@ xor("pr_reply_route", [["observed", "pr_replies_observed", "session_pr_replies_o
 seq("pr_replies_observed", []);
 op("pr_reply_publish", "session_pr_review_reply_publish", { ...triageId,
   ...operation(null, "selection_operation_id", "pr_reply_select") });
-node("pr_resolution_loop", "loop", { child: "pr_resolution_iteration", until: "session_pr_threads_observed_resolved", max_iterations: 32 });
+node("pr_resolution_loop", "loop", { child: "pr_resolution_iteration", until: "session_pr_resolution_gate_met", max_iterations: 32 });
 seq("pr_resolution_iteration", ["pr_resolution_select", "pr_resolution_route"]);
 op("pr_resolution_select", "session_pr_review_resolution_select", triageId);
-xor("pr_resolution_route", [["observed", "pr_threads_observed", "session_pr_threads_observed_resolved"], ["resolve", "pr_thread_resolve", null]]);
-seq("pr_threads_observed", []);
+xor("pr_resolution_route", [["observed", "pr_review_effects_verify", "session_pr_threads_observed_resolved"],
+  ["exception", "pr_resolution_exception", "session_pr_resolution_exception_required"], ["resolve", "pr_thread_resolve", null]]);
 op("pr_thread_resolve", "session_pr_review_thread_resolve", { ...triageId,
+  ...operation(null, "selection_operation_id", "pr_resolution_select") });
+op("pr_resolution_exception", "session_pr_review_resolution_exception", { ...triageId,
   ...operation(null, "selection_operation_id", "pr_resolution_select") });
 op("pr_review_effects_verify", "session_pr_review_effects_verify", triageId);
 op("pr_merge_observe", "session_pr_merge_observe", triageId);

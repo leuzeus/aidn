@@ -3186,9 +3186,9 @@ reply loop. A read-only selection authenticates the exact triage, review
 delivery and latest confirmed update. It rechecks the complete review inventory
 and all required replies. A delivered open thread is eligible when it has a
 visible accepted inline response obligation with the exact published reply.
-A previously resolved thread that reopens, an open thread without that
-obligation, or unsupported response evidence needs a fresh review or a
-documented exception under SPEC-R08. Exception admission remains separate.
+An open thread outside that eligibility can reach the documented exception
+gate below. Unsupported response evidence or a changed retained resolution
+postimage keeps its separate review or response wait.
 Current valid findings and pending corrections still require the correction
 path, redelivery and fresh review. An expired or refused grant or changed
 review keeps the call waiting.
@@ -3216,6 +3216,32 @@ the merge effect and R09. Historical records retain their original contracts
 and bindings.
 
 [GitHub thread resolution mutation](https://docs.github.com/en/graphql/reference/pulls#resolvereviewthread)
+
+### Documented exception to the R08 resolution gate
+
+When the resolution selector observes an open thread outside the automatic
+resolution route, it retains a digest of the exact exception subject. Both
+published call sites then use the same read-only human operation. The question
+binds that accepted selection to the triage, latest confirmed delivery, exact
+repository, PR number and identity, HEAD, base, refs, sorted open thread IDs,
+and provider thread, review and reply evidence digests. The question expires
+after five minutes. A fresh signed decision must carry an explicit choice and a
+nonblank rationale. The host re-reads the protected provider at delivery and
+receipt acceptance, and compares the full subject to the accepted selection.
+
+The existing signed inbox reserves the source and acknowledges the receipt.
+Approval emits a typed no-effect receipt for the resolution gate. Missing
+source, refusal, deferral, cancellation and stale authority retain their own
+outcomes. A changed HEAD, thread set, provider evidence or delivery prevents
+acceptance of the old decision. The exact source can be acknowledged again
+after resume without a provider write. An uncertain provider dispatch must be
+reconciled at its original occurrence before this branch can be reached.
+
+The existing correction, reply, retained resolution and iteration checks
+apply before the question. The exception leaves the outstanding provider
+threads open. Check acceptance, merge consent, merge effects and R09 have their own gates. The
+read-only merge observer remains a separate operation. V1 selection and
+historical inbox records remain readable.
 
 ### SOURCE48 shared SPIKE COMMITTING work path, 2026-11-04
 
