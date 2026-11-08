@@ -3324,6 +3324,26 @@ explicitly reopened correction session retains its separate admission path.
 R09 owns the local fetch, divergence check and reconciliation proof required
 before the call can return.
 
+#### Bounded fetch and divergence adapter
+
+The protected host exposes an R09 fetch capability tied to the provider
+repository and pinned Git executable. Preparation observes the configured
+source branch and remote tip without a write. Application requires the exact
+plan and an authorization callback. It transfers the planned object without
+updating the checkout, tracking refs or FETCH_HEAD, checks that the remote tip
+still matches and contains the merge, then creates a private proof ref with a
+plan-correlated reflog entry under Git compare-and-swap. Git counts ahead and
+behind against the fetched OID. The proof ref and reflog remain local to Git.
+An interruption without that witness is UNKNOWN. Recovery reads the original
+witness and never transfers objects again. A receipt describes the measured
+state at fetch time. Final reconciliation requires a fresh check.
+
+The published IR still waits at the R09 barrier. The next source revision
+must bind the accepted merge receipt and exact host plan to the executor,
+retain divergent and human dispositions, and record a final canonical
+reconciliation before enabling a new cycle. The fixture qualifies real Git
+on a disposable bare remote and the protected host with doubled GitHub.
+
 [GitHub GraphQL pull requests](https://docs.github.com/en/graphql/reference/pulls)
 and [GitHub GraphQL commits](https://docs.github.com/en/graphql/reference/commits).
 

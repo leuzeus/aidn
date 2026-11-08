@@ -14,6 +14,7 @@ import { createGithubPullRequestOpen } from "../git-provider/github-pull-request
 import { createGithubWorkflowAsyncAdapter, createGithubPrContentAsyncAdapter, createGithubPrMergeAsyncAdapter, createGithubPrMergeEffectAsyncAdapter, createGithubPrReviewEventAsyncAdapter, createGithubPrReviewEffectsAsyncAdapter } from "../git-provider/github-workflow-adapter.mjs";
 import { createGithubReviewEvidenceAsyncAdapter, createGithubReviewContentAsyncAdapter } from "../git-provider/github-review-evidence.mjs";
 import { driveGithubObservation, driveGithubObservationAsync, runGithubObservationCommand } from "../git-provider/github-observation-transport.mjs";
+import { createLocalWorkflowPostMergeFetch } from "./local-workflow-post-merge-fetch.mjs";
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: "no_effect" }); };
 const exact = (value, fields) => value && typeof value === "object" && !Array.isArray(value)
@@ -70,12 +71,13 @@ export function createStandardGithubProviderHost({ configuration, home, identity
     GH_NO_UPDATE_NOTIFIER: "1", GH_NO_EXTENSION_UPDATE_NOTIFIER: "1" });
   const gitEnv = { ...env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
     GIT_OPTIONAL_LOCKS: "0", GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" };
-  function gitRead(args) {
+  function localGit(args, statuses = [0]) {
     const result = spawnSync(git.path, ["-C", root, ...args], { env: gitEnv, encoding: "utf8", shell: false,
       windowsHide: true, timeout: 10000, maxBuffer: 262144, stdio: "pipe" });
-    if (result.error || result.signal || result.status !== 0) fail("STANDARD_GITHUB_REPOSITORY_BINDING_INVALID");
-    return result.stdout;
+    if (result.error || result.signal || !statuses.includes(result.status)) fail("STANDARD_GITHUB_REPOSITORY_BINDING_INVALID");
+    return result;
   }
+  const gitRead = args => localGit(args).stdout;
   function repositoryBinding() {
     const [top, gitDir, commonDir, ...extra] = gitRead(["rev-parse", "--path-format=absolute",
       "--show-toplevel", "--absolute-git-dir", "--git-common-dir"]).trimEnd().split(/\r?\n/);
@@ -166,6 +168,48 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       githubExecutable: gh.path, githubSha256: gh.sha256, repository: repo, actor, environment: env, hostContextSha256: contextSha },
     { runGithub: guardedRun(guard, runGithub), runRemoteGit: guardedRun(guard, runRemoteGit) });
   }
+  async function postMergeGit(args, signal, assertAuthorized) {
+    function check() {
+      guard();
+      if (signal?.aborted) fail("STANDARD_GITHUB_POST_MERGE_FETCH_ABORTED");
+      const unsafe = localGit(["config", "--includes", "--null", "--get-regexp",
+        "^(url[.]|http[.]|credential[.]|fetch[.]bundleuri$|remote[.].*[.](uploadpack|proxy|promisor)$|extensions[.]partialclone$)"], [0, 1]);
+      if (unsafe.status !== 1 || unsafe.stdout) fail("STANDARD_GITHUB_POST_MERGE_CONFIG_UNSUPPORTED");
+    }
+    const guard = transportGuard();
+    check();
+    const { GH_TOKEN: token } = await driveGithubObservationAsync(authenticate(guard), runGithubRead, signal);
+    if (assertAuthorized) await assertAuthorized();
+    check();
+    const result = await runRemoteGit(git.path, ["-C", root,
+      "-c", "core.hooksPath=" + (process.platform === "win32" ? "NUL" : "/dev/null"),
+      "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "http.sslVerify=true",
+      "-c", "http.followRedirects=false", "-c", "http.proxy=", "-c", "credential.helper=", "-c", "core.askPass=",
+      "-c", "fetch.writeCommitGraph=false", "--config-env=http.extraHeader=AIDN_GITHUB_AUTH_HEADER", ...args],
+    { ...options, cwd: root, signal, env: { ...gitEnv, PATH: path.dirname(git.path), GIT_NO_REPLACE_OBJECTS: "1",
+      AIDN_GITHUB_AUTH_HEADER: "AUTHORIZATION: basic " + Buffer.from("x-access-token:" + token).toString("base64") } });
+    check();
+    if (result?.status !== 0 || result.signal || result.error || typeof result.stdout !== "string"
+      || Buffer.byteLength(result.stdout) > options.maxBuffer) fail("STANDARD_GITHUB_POST_MERGE_FETCH_UNAVAILABLE");
+    return result.stdout.trimEnd();
+  }
+  const postMergeRemote = Object.freeze({
+    context_sha256: contextSha,
+    async observeTip(ref, { signal }) {
+      const output = await postMergeGit(["ls-remote", "--refs", "--", url + ".git", ref], signal);
+      if (!output) return null;
+      const rows = output.split(/\r?\n/), [oid, name] = rows[0].split("\t");
+      if (rows.length !== 1 || name !== ref) fail("STANDARD_GITHUB_POST_MERGE_REF_INVALID");
+      return oid;
+    },
+    async transfer(oid, { signal, assertAuthorized }) {
+      await postMergeGit(["fetch", "--no-write-fetch-head", "--no-tags", "--no-prune", "--no-recurse-submodules",
+        "--no-auto-maintenance", "--refmap=", "--", url + ".git", oid], signal, assertAuthorized);
+    },
+  });
+  const postMergeFetch = () => createLocalWorkflowPostMergeFetch({
+    targetRoot: root, remote: postMergeRemote, environment: env, gitExecutable: git.path,
+  });
   function openPort(guard) {
     let authenticated;
     const run = guardedRun(() => {
@@ -296,6 +340,25 @@ export function createStandardGithubProviderHost({ configuration, home, identity
       ...(requiredChecks ? { observeRequiredChecks } : {}),
       reply: replyPort, resolution: resolutionPort,
       ...(mergePort ? { merge: mergePort } : {}),
+      postMergeFetch: Object.freeze({
+        prepare({ providerRepository, ...subject }, options) {
+          revalidate();
+          if (!providerRepository || shadowHash(providerRepository) !== shadowHash(repo)) fail("STANDARD_GITHUB_POST_MERGE_REPOSITORY_CHANGED");
+          return postMergeFetch().prepare(subject, options);
+        },
+        apply(prepared, input) {
+          const guard = transportGuard();
+          guard();
+          return postMergeFetch().apply(prepared, authorized(guard, input));
+        },
+        recover(prepared, input) {
+          const guard = transportGuard();
+          guard();
+          const result = postMergeFetch().recover(prepared, input);
+          guard();
+          return result;
+        },
+      }),
     }),
     ...(reviewer ? { sessionReviewEventPort: Object.freeze({ ...reviewEvents(readReviewEvent), withReviewReads }) } : {}),
   });

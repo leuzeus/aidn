@@ -899,6 +899,12 @@ dispatch and uses read-only recovery at the same occurrence for UNKNOWN.
 `session_pr_post_merge_wait` consumes the accepted merge operation and holds
 the call open pending R09. Historical direct observation receipts stay readable.
 
+For SPEC-R09, `local-workflow-post-merge-fetch.mjs` supplies the protected host
+with an authorized Git fetch and a replayable local witness for the exact
+remote tip. It measures divergence against that OID. The IR still requires
+an execution binding that consumes an authenticated merge receipt, followed by
+divergence handling and a final reconciliation receipt for the admissions.
+
 ## SPIKE canonical projection finalization, 2026-11-04
 
 A new real SQLite DUAL diagnostic observed unchanged content and metadata across

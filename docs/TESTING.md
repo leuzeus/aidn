@@ -1431,6 +1431,16 @@ merge-reader fixtures for binding and reader regressions.
 Run `verify-cycle-create-admission-fixtures.mjs --pr-continuity` separately
 for the direct cycle-admission guard and the reopened correction path.
 
+Run `node tools/perf/verify-standard-post-merge-fetch-fixtures.mjs` for the
+R09 adapter. It transfers objects from a disposable bare remote and checks
+divergence against the exact fetched OID, with a stale tracking ref as a
+control. It covers an authorized fetch, refusal, remote movement, dirty or
+wrong checkout, a missing or substituted recovery witness and read-only
+recovery. A second case exercises the protected host with GitHub and HTTPS
+transport doubled and Git still real. This gate qualifies the adapter.
+Published IR reconciliation, real GitHub, Native and installed proof remain
+separate.
+
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as
 their historical synchronous interfaces. It compares complete typed outputs,
