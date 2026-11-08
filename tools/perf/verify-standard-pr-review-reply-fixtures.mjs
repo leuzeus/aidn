@@ -995,7 +995,7 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFil
   const result = retained.results.at(-1).output, { merge } = result.observations;
   assert.equal(result.effect_status, initial ? 'confirmed' : 'no_effect');
   assert.equal(merge.confirmation, initial ? 'acknowledged' : 'observed');
-  assert.deepEqual(result.facts, {});
+  assert.deepEqual(result.facts, { session_pr_merge_completed: true });
   assert.equal(merge.provider.pull_request.merge_oid, mergeOid);
   assert.equal(merge.provider.pull_request.observed_base_tip_oid, baseTip);
   assert.deepEqual(merge.provider.pull_request.merge_parent_oids, [question.subject.base_oid, question.subject.head_oid]);
