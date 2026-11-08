@@ -3355,6 +3355,12 @@ reconciliation with a fresh final fence remain separate.
 The fixtures distinguish a real disposable Git remote and FILES application
 execution from the doubled GitHub transport and signed upstream inputs.
 
+Session and cycle admission both require a recorded sync status for a
+merged session. PR admission can report zero divergence against a local
+tracking ref while reconciliation is still required. Only the existing
+recorded `done` state reaches historical completion. The STANDARD
+alignment receipt awaits a canonical completion binding.
+
 [GitHub GraphQL pull requests](https://docs.github.com/en/graphql/reference/pulls)
 and [GitHub GraphQL commits](https://docs.github.com/en/graphql/reference/commits).
 

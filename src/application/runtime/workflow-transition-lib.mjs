@@ -4,7 +4,7 @@ import {
   toCycleSummary,
   toSessionSummary,
 } from "../../lib/workflow/branch-mapping-lib.mjs";
-import { normalizeSessionPrStatus } from "../../lib/workflow/session-context-lib.mjs";
+import { normalizePostMergeSyncStatus, normalizeSessionPrStatus } from "../../lib/workflow/session-context-lib.mjs";
 import {
   WORKFLOW_ACTION,
   WORKFLOW_ADMISSION_STATUS,
@@ -28,7 +28,7 @@ export function evaluateLatestSessionContinuation(latestSession, sourceBranch) {
     };
   }
   const prStatus = normalizeSessionPrStatus(latestSession.metadata.pr_status);
-  const postMergeSyncStatus = String(latestSession.metadata.post_merge_sync_status ?? "not_needed");
+  const postMergeSyncStatus = normalizePostMergeSyncStatus(latestSession.metadata.post_merge_sync_status);
 
   if (prStatus === "open") {
     return {
@@ -56,7 +56,7 @@ export function evaluateLatestSessionContinuation(latestSession, sourceBranch) {
     };
   }
 
-  if (prStatus === "merged" && postMergeSyncStatus === "required") {
+  if (prStatus === "merged" && postMergeSyncStatus !== "done") {
     return {
       action: WORKFLOW_ACTION.BLOCKED_SESSION_BASE_GATE,
       reason_code: WORKFLOW_REASON.START_SESSION_POST_MERGE_SYNC_REQUIRED,

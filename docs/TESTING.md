@@ -2222,6 +2222,10 @@ merge, and post-merge sync. CLI, in-process daemon and Codex wrapper must agree
 despite misleading local projections. Canonical identity conflicts, duplicate
 session artifacts and unavailable storage refuse. Default wrapper diagnosis
 must not synchronize projections or mutate the database. The dedicated
+FILES R09 regression requires the pending sync action even when a local
+tracking ref reports zero divergence. The workflow transition fixture
+requires recorded completion at session admission for missing, unknown and
+pending merged-session sync statuses. The dedicated
 PostgreSQL artifact-store smoke exercises the same paths, checks both owned
 scopes and retained local files, and proves cleanup separately from fixtures.
 Neither suite represents native provider/client execution.

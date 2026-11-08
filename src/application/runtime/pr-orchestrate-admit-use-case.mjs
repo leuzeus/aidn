@@ -341,18 +341,14 @@ export async function runPrOrchestrateAdmitUseCase({ targetRoot, mode = "UNKNOWN
         suggested_commands: sourceBranch ? [`git switch ${sourceBranch}`] : [],
       });
     }
-    if (!upstreamBranch || !upstreamDivergence.known || upstreamDivergence.ahead > 0 || upstreamDivergence.behind > 0) {
-      return makeResult(base, {
-        action: "post_merge_sync_required",
-        reason_code: "PR_ORCHESTRATE_POST_MERGE_SYNC_REQUIRED",
-        recommended_next_action: `Reconcile ${branch} with origin before opening a new session.`,
-        suggested_commands: buildPostMergeSyncCommands(branch),
-      });
-    }
+    const trackingAligned = upstreamBranch && upstreamDivergence.known && upstreamDivergence.ahead === 0 && upstreamDivergence.behind === 0;
     return makeResult(base, {
-      action: "post_merge_sync_complete",
-      reason_code: "PR_ORCHESTRATE_POST_MERGE_SYNC_DONE",
-      recommended_next_action: "Source branch is aligned; you may create the next session.",
+      action: "post_merge_sync_required",
+      reason_code: "PR_ORCHESTRATE_POST_MERGE_SYNC_REQUIRED",
+      recommended_next_action: trackingAligned
+        ? "Verify alignment against the fetched remote tip and record post-merge reconciliation before opening a new session."
+        : `Reconcile ${branch} with origin before opening a new session.`,
+      suggested_commands: trackingAligned ? [] : buildPostMergeSyncCommands(branch),
     });
   }
 
