@@ -1268,8 +1268,18 @@ source checkoutée. Le choix signé et le grant Git exact sont distincts.
 Le port borne les chemins du checkout et corrèle la preuve locale au plan
 dans les reflogs HEAD et source. Une interruption sans postimage vérifiable
 conserve l’état UNKNOWN et les verrous incomplets. La reprise lit la preuve
-sans répéter l’effet. La fusion externe pendant une autre attente R08 reste
-une tranche séparée.
+sans répéter l’effet.
+
+Les deux appels au sous-processus R08 ouvrent une disposition d’incident
+après une observation authentifiée au contrôle pré-fusion ou pendant
+l’attente des checks. Le cas admissible fixe le dépôt, la PR, le HEAD, les refs,
+les deux parents ordonnés et la pointe distante égale au commit de fusion.
+Le choix signé et motivé qualifie la gravité et reconnaît ce fait pour R09.
+Le fetch sous grant, la divergence, l’alignement et la clôture consomment
+cette disposition avec les ports existants. Les admissions exigent toujours
+le reçu canonique accepté. L’attente avant triage, les autres décisions R08,
+les captures expirées et les propriétaires ou effets incertains restent
+des cas de raccordement ou de réconciliation distincts.
 
 | A10 — Stockage et histoires | files/dual/db-only sur SQLite réel ; PostgreSQL configuré via adaptateur réel et transport simulé hors ligne, puis preuve PostgreSQL réel avant affirmation de ce backend. Projection en panne conservée comme telle. Lecteurs workflow-instance.v1 et agentic-process-instance.v1 préservés, historique non converti. |
 

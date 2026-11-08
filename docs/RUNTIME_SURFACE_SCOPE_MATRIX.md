@@ -1,5 +1,11 @@
 # Runtime Surface Scope Matrix
 
+The R08 external merge observation and incident disposition reuse the signed
+operation journal and decision inbox v16 in the owning process. The R09 fetch
+and completion reuse their existing authority. Historical records keep their
+original schema versions. The route adds no backend, shared sync, automatic
+export, or installed-runtime qualification.
+
 An authenticated objective disposition is derived from the existing accepted
 operation journal and receipted decision inbox. Finalization plan v3 and its
 retained diagnostic bind this source; the internal hook reuses the production

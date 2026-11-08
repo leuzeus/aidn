@@ -49,7 +49,7 @@ const pin = path => ({ path, sha256: createHash('sha256').update(fs.readFileSync
 const json = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 
-function fixtureModel(prefix, fetchOnly) {
+function fixtureModel(prefix, fetchOnly, external = false) {
   const corrective = prefix === 'correction';
   const update = corrective ? 'correction_pr_redelivery_push' : 'session_pr_update_push';
   const observe = prefix + '_pr_review_observe', wait = prefix + '_pr_review_wait', receive = prefix + '_pr_review_receive';
@@ -60,7 +60,7 @@ function fixtureModel(prefix, fetchOnly) {
   const fields = id => published.data_bindings.inputs.find(row => row.node_id === id);
   if (fetchOnly) {
     const entry = target.model.nodes.find(row => row.id === target.model.entry);
-    const children = entry.children.slice(entry.children.indexOf('pr_merge_execute'));
+    const children = ['pr_merge_execute', ...entry.children.slice(entry.children.indexOf('pr_merge_basis'))];
     const byId = new Map(target.model.nodes.map(row => [row.id, row]));
     const subtree = id => {
       const row = byId.get(id);
@@ -71,8 +71,9 @@ function fixtureModel(prefix, fetchOnly) {
       { ...entry, children }, ...exact,
     ], operation_pins: Object.fromEntries(exact.filter(row => row.binding_ref).map(row => [row.binding_ref, target.model.operation_pins[row.binding_ref]])),
     data_bindings: { ...target.model.data_bindings, inputs: [
-      input('pr_merge_execute', { contract_version: 'standard-pr-merge-execute-input.v1',
-        triage_operation_id: dummy, checks_operation_id: dummy, consent_operation_id: dummy }),
+      { node_id: 'pr_merge_execute', fields: { ...input('pr_merge_execute', {
+        contract_version: 'standard-pr-merge-execute-input.v1', checks_operation_id: dummy, consent_operation_id: dummy,
+      }).fields, triage_operation_id: { source: 'parameter', key: 'triage_operation_id', path: [] } } },
       ...target.model.data_bindings.inputs.filter(row => ids.has(row.node_id) && row.node_id !== 'pr_merge_execute'),
     ] } };
     const identity = processModelIdentity(child);
@@ -89,12 +90,13 @@ function fixtureModel(prefix, fetchOnly) {
       ] } };
     return { model, triage, call };
   }
-  const root = { id: 'fixture', kind: 'sequence', participant_ref: 'project', children: [update, observe, wait, receive, select, triage, call] };
+  const root = { id: 'fixture', kind: 'sequence', participant_ref: 'project', children: [...(external ? ['session_pr_open'] : []), update, observe, wait, receive, select, triage, call] };
   const nodes = [root, ...root.children.map(node), ...node(wait).branches.map(branch => node(branch.node_id))];
   const model = { contract_version: published.contract_version, model_id: 'fixture-r08', revision: 1, participants: published.participants,
     policies: [], roles: [], entry: root.id, nodes,
     operation_pins: Object.fromEntries(nodes.filter(row => row.binding_ref).map(row => [row.binding_ref, published.operation_pins[row.binding_ref]])),
     call_targets: [target], data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: [
+      ...(external ? [input('session_pr_open', { contract_version: bindings.get('session_pr_open').input_contract, push_operation_id: dummy })] : []),
       input(update, { contract_version: bindings.get(node(update).binding_ref).input_contract,
         ...(corrective ? { integration_operation_id: dummy, cycle_operation_id: dummy } : { checkpoint_operation_id: dummy }) }),
       fields(observe), fields(receive), fields(select),
@@ -108,7 +110,7 @@ function open(base, { initializeKey = false } = {}) {
   const configurationFile = path.join(base, 'configuration.json');
   const data = json(configurationFile);
   const { configuration, binding, pr, prefix, behavior, submittedAt, fetchFixture } = data;
-  const exception = behavior.startsWith('exception-');
+  const exception = behavior.startsWith('exception-'), external = behavior.startsWith('external-');
   const instanceId = configuration.instance_id, targetRoot = configuration.target_root;
   const options = { targetRoot, stateMode: 'files' };
   const providerFile = path.join(base, 'provider.json'), state = json(providerFile);
@@ -167,17 +169,24 @@ function open(base, { initializeKey = false } = {}) {
           base: { ref: pr.base_branch, sha: pr.base_oid, repo: { node_id: pr.repository_id } } });
       }
       const { query, variables } = JSON.parse(options.input);
+      const externalMerge = external && state.mergeVisible ? {
+        state: 'MERGED', merged: true, mergedAt: state.mergedAt,
+        mergeCommit: { oid: fetchFixture.merged, messageBody: 'External fixture merge',
+          parents: connection(state.squashed ? [{ oid: pr.base_oid }] : [{ oid: state.wrongBase ?? pr.base_oid }, { oid: pr.head_oid }]) },
+        baseRef: { target: { oid: state.advancedTip ?? fetchFixture.merged } },
+      } : {};
       if (query.startsWith('query AidnPrMerge')) return ok({ data: { repository: {
-        id: pr.repository_id, nameWithOwner: 'fixture/repository',
-        pullRequest: { id: pr.node_id, number: pr.number, headRefOid: pr.head_oid, headRefName: pr.head_branch,
+        id: state.wrongRepo ?? pr.repository_id, nameWithOwner: 'fixture/repository',
+        pullRequest: { id: pr.node_id, number: pr.number, headRefOid: state.wrongHead ?? pr.head_oid, headRefName: pr.head_branch,
           baseRefName: pr.base_branch, headRepository: { id: pr.repository_id }, isDraft: false, state: 'OPEN',
           merged: false, mergedAt: null, mergeCommit: null, mergeQueue: state.queued ? { url: 'https://example.com/queue' } : null,
           autoMergeRequest: null, baseRef: { target: { oid: state.baseMoved ? baseTip : pr.base_oid } },
-          ...(state.mergeVisible ? { state: 'MERGED', merged: true, mergedAt: state.mergedAt,
+          ...(state.mergeVisible && !external ? { state: 'MERGED', merged: true, mergedAt: state.mergedAt,
             mergedBy: { id: binding.actor.node_id, login: binding.actor.login },
             mergeCommit: { oid: mergeOid, messageBody: state.external ? 'External merge' : state.mergeBody,
               parents: connection([{ oid: pr.base_oid }, { oid: pr.head_oid }]) },
-            baseRef: { target: { oid: baseTip } } } : {}) },
+            baseRef: { target: { oid: baseTip } } } : {}),
+          ...(state.closed ? { state: 'CLOSED' } : {}), ...externalMerge },
       } } });
       if (query.startsWith('query AidnPrReviewEvent')) {
         assert.deepEqual(variables, { id: eventRef });
@@ -185,7 +194,7 @@ function open(base, { initializeKey = false } = {}) {
           repository: { id: pr.repository_id, nameWithOwner: 'fixture/repository' },
           pullRequest: { id: pr.node_id, number: pr.number, headRefOid: pr.head_oid, baseRefOid: pr.base_oid,
             headRefName: pr.head_branch, baseRefName: pr.base_branch, isDraft: false, state: 'OPEN', merged: false, mergedAt: null, mergeCommit: null,
-            baseRef: { target: { oid: pr.base_oid } }, headRepository: { id: pr.repository_id }, baseRepository: { id: pr.repository_id } },
+            baseRef: { target: { oid: pr.base_oid } }, headRepository: { id: pr.repository_id }, baseRepository: { id: pr.repository_id }, ...externalMerge },
         } } });
       }
       fixture.state.threads = roots.map((root, index) => ({
@@ -278,7 +287,7 @@ function open(base, { initializeKey = false } = {}) {
   const authority = createStandardHostAuthority({ configuration, environment }, { providerTransport });
   const { githubProvider: provider, readKey } = authority;
   if (initializeKey) authority.ensureKey();
-  const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture)), { model } = graph;
+  const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture) && !external, external), { model } = graph;
   const wallClock = Date.now, now = () => json(configurationFile).clock_ms ?? wallClock();
   // The protected reader is synchronous. Use the same fixture time for
   // envelope authentication and the H host, while leaving process deadlines
@@ -297,12 +306,12 @@ function open(base, { initializeKey = false } = {}) {
   const host = createStandardWorkflowOperationHost({ targetRoot, model, processAuthority, now, readSigningKey: readKey,
     humanSource,
     sessionPushPort: provider.sessionPushPort, sessionPullRequestPort: provider.sessionPullRequestPort,
-    sessionReviewPort: provider.sessionReviewPort, sessionReviewEventPort: fetchFixture ? null : provider.sessionReviewEventPort,
+    sessionReviewPort: provider.sessionReviewPort, sessionReviewEventPort: fetchFixture && !external ? null : provider.sessionReviewEventPort,
     authorize(input) {
       grants++;
       return authority.authorizeOperation(input, denied || grants === revokeAt ? null : permitted);
     } }, { dispatchCheckpoint(point) {
-      if (interruptCapture && point === 'post_merge_decision_reserved') throw Object.assign(Error('Fixture interrupted capture'), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
+      if (interruptCapture && ['post_merge_decision_reserved', 'external_merge_disposition_reserved'].includes(point)) throw Object.assign(Error('Fixture interrupted capture'), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
       if (crash && point === 'effect_returned') throw Object.assign(Error('Fixture interrupted owner'), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
     } });
   const instances = createAgenticProcessStore(options), journal = createProcessOperationJournalStore(options);
@@ -354,9 +363,11 @@ function open(base, { initializeKey = false } = {}) {
     instances.compareAndSwap(accepted, before.content_sha256);
     return operationId;
   }
-  async function seedPrefix() {
-    const initial = host.initialize({ instanceId });
-    host.initialize({ instanceId, write: true, expectedResultSha256: initial.record.instance_sha256 });
+  async function seedPrefix({ initialized = false, stopBeforePremerge = false } = {}) {
+    if (!initialized) {
+      const initial = host.initialize({ instanceId });
+      host.initialize({ instanceId, write: true, expectedResultSha256: initial.record.instance_sha256 });
+    }
     const update = seed(graph.update, { facts: { session_pr_head_confirmed: true }, observations: { pull_request: pr } },
       { plan: { prepared_at_ms: Date.parse(submittedAt) - 1000 } });
     const input = { contract_version: 'standard-session-pr-review-observe-input.v1', update_operation_id: update };
@@ -398,6 +409,7 @@ function open(base, { initializeKey = false } = {}) {
     const waiting = inspect(), call = waiting.cursor.occurrences.find(row => row.node_id === graph.call);
     await host.enterCall({ instanceId, expectedSha256: waiting.record.instance_sha256, occurrenceId: call.occurrence_id,
       eventId: 'call_review', write: true });
+    if (stopBeforePremerge) return;
     const premerge = await preview();
     assert.equal(premerge.input.triage_operation_id, triage);
     assert.equal((await run(premerge)).results[0].output.observations.reason_code, 'STANDARD_PR_PREMERGE_OPEN');
@@ -433,7 +445,7 @@ function arrange(prefix, behavior) {
   const pr = { repository_id: 'R_fixture', node_id: 'PR_fixture', number: 7, head_oid, base_oid: 'b'.repeat(40),
     head_branch, base_branch: 'dev', state: 'OPEN', draft: false, url: 'https://github.com/fixture/repository/pull/7' };
   let fetchFixture;
-  if (behavior === 'post-merge-fetch') {
+  if (behavior === 'post-merge-fetch' || behavior.startsWith('external-')) {
     const baseOid = git('rev-parse', 'refs/heads/dev'), tree = git('rev-parse', 'HEAD^{tree}');
     pr.base_oid = baseOid;
     pr.head_oid = git('commit-tree', tree, '-p', baseOid, '-m', 'fixture session commit');
@@ -449,9 +461,9 @@ function arrange(prefix, behavior) {
     repository: { host: 'github.com', owner: 'fixture', name: 'repository', node_id: pr.repository_id },
     actor: { login: 'fixture-actor', node_id: 'U_actor' }, reviewer: { login: 'fixture-reviewer', node_id: 'U_reviewer', type: 'User' },
     git: pin(gitPath), gh: pin(fs.realpathSync(process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32', 'where.exe') : '/usr/bin/env')) };
-  if (behavior.includes('consent') || behavior === 'merge-refusals') binding.required_checks = { contract_version: 'standard-github-required-checks.v1',
+  if (behavior.includes('consent') || behavior === 'merge-refusals' || behavior === 'external-checks') binding.required_checks = { contract_version: 'standard-github-required-checks.v1',
     base_ref: pr.base_branch, entries: [{ name: 'Required CI', kind: 'check_run', producer_id: 'A_ci' }] };
-  if (['merge-consent-session', 'merge-consent-correction', 'merge-refusals', 'exception-merge-consent-correction'].includes(behavior)) binding.merge_method = 'MERGE';
+  if (['merge-consent-session', 'merge-consent-correction', 'merge-refusals', 'exception-merge-consent-correction', 'external-checks'].includes(behavior)) binding.merge_method = 'MERGE';
   const key = shadowHash({ target: process.platform === 'win32' ? targetRoot.toLowerCase() : targetRoot, instance: configuration.instance_id });
   fs.mkdirSync(path.join(dirs.host, key + '.github'));
   save(path.join(dirs.host, key + '.github.json'), binding);
@@ -871,7 +883,7 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFil
   assert.equal(merge.provider.pull_request.observed_base_tip_oid, baseTip);
   assert.deepEqual(merge.provider.pull_request.merge_parent_oids, [question.subject.base_oid, question.subject.head_oid]);
   assert.throws(() => assertStandardOperationOutput({ ...result, effect_status: 'unknown' }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
-  assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_post_merge_fetch');
+  assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_merge_basis');
   assert.equal(resumed.calls(), 0);
   replay(resumed);
   assert.equal(resumed.state.mergeSends.length, 1);
@@ -881,10 +893,11 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFil
 
 function qualifyPostMergeDecision({ base, home, measurement, fetch, localBefore, merged, git, bare, tip, continuity }) {
   const authority_id = 'fixture-human-r09', { publicKey, privateKey } = generateKeyPairSync('ed25519');
-  const authorityInbox = path.join(home, 'inbox');
-  fs.mkdirSync(authorityInbox);
-  save(path.join(home, 'principals.json'), { contract_version: 'standard-host-principals.v1',
-    principals: [{ authority_id, kinds: ['human'], public_key: publicKey.export({ type: 'spki', format: 'pem' }) }] });
+  const authorityInbox = path.join(home, 'inbox'), principalFile = path.join(home, 'principals.json');
+  fs.mkdirSync(authorityInbox, { recursive: true });
+  save(principalFile, { contract_version: 'standard-host-principals.v1',
+    principals: [...(fs.existsSync(principalFile) ? json(principalFile).principals : []),
+      { authority_id, kinds: ['human'], public_key: publicKey.export({ type: 'spki', format: 'pem' }) }] });
   return {
     async answer(choice, { negatives = false, cold = false } = {}) {
       const f = open(base), preview = await f.preview();
@@ -1141,6 +1154,29 @@ async function qualifyQuestionRecovery({ base, scenario, git, bare, tip, merged,
   return advanced;
 }
 
+function seedPrOpening(f, pr, targetRoot) {
+  const link = { ...pr, contract_version: 'github-pr-link.v1', title_sha256: shadowHash('fixture title'), body_sha256: shadowHash('fixture body') };
+  const openId = f.seed('session_pr_open', { facts: { session_pr_open_confirmed: true },
+    observations: { session_id: 'S001', pull_request: link }, evidence_refs: [{ ref: 'github:pr/fixture', sha256: shadowHash(link) }] });
+  const audit = path.join(targetRoot, 'docs/audit'), sessionPath = 'sessions/S001.md', sessionFile = path.join(audit, sessionPath);
+  const fields = { state: 'CLOSED', session_id: 'S001', session_closure_status: 'completed', mode: 'COMMITTING',
+    updated_at: new Date().toISOString(), session_branch: pr.head_branch, pr_status: 'none', pr_url: 'none',
+    pr_number: 'none', pr_base_branch: 'none', pr_head_branch: 'none', pr_review_status: 'unknown',
+    post_merge_sync_status: 'not_needed', post_merge_sync_basis: 'none' };
+  const session = '# Session S001\n\n' + Object.entries(fields).map(([key, value]) => key + ': ' + value).join('\n')
+    + '\n\n### Session close gate satisfied?\n- [x] Yes\n';
+  const current = fs.readFileSync(path.join(audit, 'CURRENT-STATE.md'), 'utf8')
+    .replace(/^active_session:.*$/m, 'active_session: S001').replace(/^mode:.*$/m, 'mode: COMMITTING')
+    .replace(/^branch_kind:.*$/m, 'branch_kind: source');
+  const documents = [[sessionPath, session], ['CURRENT-STATE.md', current],
+    ['snapshots/context-snapshot.md', fs.readFileSync(path.join(audit, 'snapshots/context-snapshot.md'), 'utf8')]]
+    .map(([path, content]) => ({ path, content, sha256: artifactContentHash(content) }));
+  for (const document of renderStandardSessionPrRecord({ source: { session_id: 'S001', session_path: sessionPath,
+    open_operation_id: openId, pull_request: link }, documents, preparedAt: Date.now() }))
+    fs.writeFileSync(path.join(audit, document.path), document.text_chunks.join(''));
+  return { openId, audit, sessionFile };
+}
+
 async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   const base = arrange(prefix, 'post-merge-fetch');
   const configurationFile = path.join(base, 'configuration.json');
@@ -1166,25 +1202,7 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   const bare = '--git-dir=' + fetchFixture.remote;
   const initial = f.host.initialize({ instanceId });
   f.host.initialize({ instanceId, write: true, expectedResultSha256: initial.record.instance_sha256 });
-  const link = { ...pr, contract_version: 'github-pr-link.v1', title_sha256: shadowHash('fixture title'), body_sha256: shadowHash('fixture body') };
-  const openId = f.seed('session_pr_open', { facts: { session_pr_open_confirmed: true },
-    observations: { session_id: 'S001', pull_request: link }, evidence_refs: [{ ref: 'github:pr/fixture', sha256: shadowHash(link) }] });
-  const audit = path.join(targetRoot, 'docs/audit'), sessionPath = 'sessions/S001.md', sessionFile = path.join(audit, sessionPath);
-  const fields = { state: 'CLOSED', session_id: 'S001', session_closure_status: 'completed', mode: 'COMMITTING',
-    updated_at: new Date().toISOString(), session_branch: pr.head_branch, pr_status: 'none', pr_url: 'none',
-    pr_number: 'none', pr_base_branch: 'none', pr_head_branch: 'none', pr_review_status: 'unknown',
-    post_merge_sync_status: 'not_needed', post_merge_sync_basis: 'none' };
-  const session = '# Session S001\n\n' + Object.entries(fields).map(([key, value]) => key + ': ' + value).join('\n')
-    + '\n\n### Session close gate satisfied?\n- [x] Yes\n';
-  const current = fs.readFileSync(path.join(audit, 'CURRENT-STATE.md'), 'utf8')
-    .replace(/^active_session:.*$/m, 'active_session: S001').replace(/^mode:.*$/m, 'mode: COMMITTING')
-    .replace(/^branch_kind:.*$/m, 'branch_kind: source');
-  const documents = [[sessionPath, session], ['CURRENT-STATE.md', current],
-    ['snapshots/context-snapshot.md', fs.readFileSync(path.join(audit, 'snapshots/context-snapshot.md'), 'utf8')]]
-    .map(([path, content]) => ({ path, content, sha256: artifactContentHash(content) }));
-  for (const document of renderStandardSessionPrRecord({ source: { session_id: 'S001', session_path: sessionPath,
-    open_operation_id: openId, pull_request: link }, documents, preparedAt: Date.now() }))
-    fs.writeFileSync(path.join(audit, document.path), document.text_chunks.join(''));
+  const { openId, audit, sessionFile } = seedPrOpening(f, pr, targetRoot);
   const fastForward = scenario === 'fast-forward';
   if (fastForward) {
     fs.writeFileSync(path.join(targetRoot, 'fixture-update.txt'), 'before\n');
@@ -1250,6 +1268,7 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
     return { facts: {}, observations: { merge }, evidence_refs: [{ ref: 'github:pr-merge/' + pr.node_id, sha256: shadowHash(merge) }] };
   });
   const mergeReceipt = f.host.readJournal(mergeId).results[0].receipt;
+  await f.run(); // Select the exact accepted merge basis in the shared call.
   const preview = await f.preview();
   assert.deepEqual(preview.input, { contract_version: 'standard-pr-post-merge-fetch-input.v1', merge_operation_id: mergeId });
   assert.equal(preview.prepared.plan.merge_receipt_sha256, shadowHash(mergeReceipt));
@@ -1520,6 +1539,181 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
 
 }
 
+async function qualifyExternalMerge(scenario) {
+  const checks = scenario === 'checks', prefix = checks ? 'session' : 'correction';
+  const base = arrange(prefix, checks ? 'external-checks' : 'external-premerge');
+  const configFile = path.join(base, 'configuration.json'), data = json(configFile);
+  const { home, configuration: { target_root: targetRoot, instance_id: instanceId }, binding, pr, fetchFixture } = data;
+  const git = (...args) => execFileSync(binding.git.path, ['-C', targetRoot, ...args],
+    { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  const authority_id = 'fixture-human-external', { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  fs.mkdirSync(path.join(home, 'inbox'));
+  save(path.join(home, 'principals.json'), { contract_version: 'standard-host-principals.v1',
+    principals: [{ authority_id, kinds: ['human'], public_key: publicKey.export({ type: 'spki', format: 'pem' }) }] });
+  let f = open(base, { initializeKey: true });
+  const initial = f.host.initialize({ instanceId });
+  f.host.initialize({ instanceId, write: true, expectedResultSha256: initial.record.instance_sha256 });
+  const { audit, sessionFile } = seedPrOpening(f, pr, targetRoot);
+  git('add', '--', 'docs/audit');
+  git('commit', '-m', 'fixture PR opening marker');
+  pr.base_oid = git('rev-parse', 'HEAD');
+  const merged = git('commit-tree', 'HEAD^{tree}', '-p', pr.base_oid, '-p', pr.head_oid, '-m', 'fixture external merge');
+  const bare = '--git-dir=' + fetchFixture.remote;
+  git(bare, 'fetch', '--no-write-fetch-head', '--', targetRoot, merged);
+  git(bare, 'update-ref', 'refs/heads/dev', pr.base_oid, fetchFixture.merged);
+  git('update-ref', 'refs/remotes/origin/dev', pr.base_oid);
+  git('config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*');
+  git('branch', '--set-upstream-to=origin/dev', 'dev');
+  fetchFixture.merged = merged;
+  save(configFile, data);
+  process.env.AIDN_STANDARD_HOST_HOME = home;
+  const continuity = () => readStandardPostMergeContinuity({ targetRoot, sessionId: 'S001', content: fs.readFileSync(sessionFile, 'utf8') });
+  const start = () => runStartSessionAdmitUseCase({ targetRoot });
+  const cycle = () => runCycleCreateAdmitUseCase({ targetRoot, mode: 'COMMITTING' });
+  const assertLocked = async () => {
+    assert.equal(continuity().completion, null);
+    assert.notEqual((await start()).action, 'create_session_allowed');
+    assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+  };
+  git('update-ref', 'refs/heads/' + pr.head_branch, pr.head_oid);
+  git('switch', pr.head_branch);
+  f = open(base);
+  await f.seedPrefix({ initialized: true, stopBeforePremerge: !checks });
+  git('switch', 'dev');
+  if (checks) {
+    f.observePublishedReply();
+    f.state.resolvedThreads.push('T_C_root');
+    f.state.pendingCheck = true;
+    save(f.providerFile, f.state);
+    // The check wait and post-merge route are the runtime under test.
+    // The two preceding selections are synthetic signed prefix receipts.
+    f.seed('pr_reply_select', { facts: { session_pr_replies_observed: true }, observations: { selection: null } });
+    f.seed('pr_resolution_select', { facts: { session_pr_threads_observed_resolved: true,
+      session_pr_resolution_gate_met: true, session_pr_resolution_exception_required: false }, observations: { selection: null } });
+    await f.run(); // R08 verification.
+    const waiting = await f.run();
+    assert.equal(waiting.results[0].output.observations.reason_code, 'STANDARD_PR_CHECK_PENDING');
+    assert.equal(waiting.results[0].receipt.outcome, 'deferred');
+  } else {
+    f.state.closed = true;
+    save(f.providerFile, f.state);
+    const closed = await f.run();
+    assert.equal(closed.results[0].receipt.outcome, 'blocked');
+    assert.equal(closed.results[0].output.observations.reason_code, 'STANDARD_PR_MERGE_CLOSED_UNMERGED');
+    f.state.closed = false;
+  }
+  const update = changes => { Object.assign(f.state, changes); save(f.providerFile, f.state); };
+  const prior = f.inspect().record.events.filter(e => e.kind === 'operation_result').map(e => e.receipt);
+  git(bare, 'update-ref', 'refs/heads/dev', merged, pr.base_oid);
+  if (scenario === 'premerge') {
+    for (const changes of [{ wrongHead: 'a'.repeat(40) }, { wrongBase: 'a'.repeat(40) }, { wrongRepo: 'R_other' },
+      { mergedAt: new Date(0).toISOString() }, { advancedTip: baseTip }, { squashed: true }]) {
+      const observed = { mergeVisible: true, mergedAt: new Date().toISOString(), ...changes };
+      update(observed);
+      const rejected = (await f.run()).results[0].output;
+      assert.equal(rejected.outcome, 'blocked', JSON.stringify(rejected));
+      assert.deepEqual(rejected.facts, {});
+      for (const key of Object.keys(changes)) delete f.state[key];
+    }
+  }
+  update({ mergeVisible: true, mergedAt: new Date().toISOString() });
+  const observed = await f.run();
+  assert.equal(observed.results[0].output.contract_version, 'standard-pr-external-merge-observation-output.v1',
+    JSON.stringify(observed.results));
+  assert.equal(observed.results[0].receipt.effect_status, 'no_effect');
+  const preview = await f.preview();
+  assert.equal(preview.binding.id, 'session_pr_external_merge_disposition');
+  f.allow(shadowHash(preview));
+  const { operation_id: id } = await f.stage(preview);
+  const { status, question } = await f.host.dispatch(id, { write: true });
+  assert.equal(status, 'waiting_for_human');
+  assert.equal(question.subject.observation_operation_id, observed.operation_id);
+  assert.equal(question.subject.merge_observation.provider.pull_request.merge_oid, merged);
+  assert.equal(question.subject.incident, 'R08_PREMERGE_CONTROLS_UNESTABLISHED');
+  const choice = ['refused', 'cancelled'].includes(scenario) ? scenario : 'acknowledge_external_merge_for_r09';
+  const sourceRef = 'external_disposition';
+  assert.equal((await f.host.receiveDecision(id, { sourceRef, write: true })).status, 'waiting_for_human');
+  await assertLocked();
+  const claim = { contract_version: 'human-pr-external-merge-disposition.v1', source_kind: 'human', authority_id,
+    source_event_id: sourceRef, question_sha256: shadowHash(question), subject_sha256: shadowHash(question.subject), choice,
+    severity: 'L2_MEDIUM', rationale: 'I reviewed the incident and its exact external postimage.',
+    evidence_refs: observed.results[0].output.evidence_refs };
+  const body = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id, source_ref: sourceRef,
+    subject_sha256: shadowHash(question), payload: claim, issued_at_ms: Date.now(), expires_at_ms: question.expires_at_ms };
+  const sourceFile = path.join(home, 'inbox', sourceRef + '.json');
+  const signature = sign(null, Buffer.from(shadowHash(body)), privateKey).toString('base64');
+  save(sourceFile, { ...body, signature: 'A'.repeat(86) + '==' });
+  await assert.rejects(f.host.receiveDecision(id, { sourceRef, write: true }), { code: 'STANDARD_HOST_SOURCE_NOT_AUTHENTICATED' });
+  save(sourceFile, { ...body, signature });
+  f.interruptCapture();
+  await assert.rejects(f.host.receiveDecision(id, { sourceRef, write: true }), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
+  assert.equal(f.host.readJournal(id).phase, 'dispatching');
+  const reserved = f.inbox.read(decisionInboxId(claim));
+  assert.equal(reserved.record.phase, 'reserved');
+  if (scenario.startsWith('premerge')) {
+    const alternateRef = 'alternate_disposition', journal = f.journal.read(id);
+    const alternate = { ...body, source_ref: alternateRef, payload: { ...claim, source_event_id: alternateRef } };
+    save(path.join(home, 'inbox', alternateRef + '.json'), { ...alternate,
+      signature: sign(null, Buffer.from(shadowHash(alternate)), privateKey).toString('base64') });
+    await assert.rejects(f.host.receiveDecision(id, { sourceRef: alternateRef, write: true }),
+      { code: 'STANDARD_PR_EXTERNAL_MERGE_CAPTURE_RECONCILIATION_REQUIRED' });
+    assert.equal(f.journal.read(id).content_sha256, journal.content_sha256);
+    assert.equal(f.inbox.read(decisionInboxId(claim)).content_sha256, reserved.content_sha256);
+    assert.equal(f.inbox.read(decisionInboxId(alternate.payload)).record, null);
+  }
+  const cold = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--receive-exception', base, id, sourceRef],
+    { encoding: 'utf8', timeout: 180000, windowsHide: true }));
+  assert.equal(cold.outcome, choice === 'refused' ? 'rejected' : choice === 'cancelled' ? 'cancelled' : 'completed');
+  f = open(base);
+  const disposition = f.host.readJournal(id), receipt = disposition.results[0].receipt;
+  assert.equal(disposition.results.length, 1);
+  assert.deepEqual(receipt.facts, {});
+  await assertLocked();
+  if (choice === 'acknowledge_external_merge_for_r09') {
+    assert.equal((await f.run()).results[0].output.observations.merge_operation_id, id);
+    if (scenario === 'premerge-boundary') {
+      const next = await f.preview();
+      assert.equal(next.binding.id, 'session_pr_post_merge_fetch');
+      assert.equal(next.input.merge_operation_id, id);
+      assert.equal(next.prepared.plan.merge_receipt_sha256, shadowHash(receipt));
+      assert.equal(next.prepared.plan.git.plan.merge_oid, merged);
+      assert.equal(f.state.fetchSends ?? 0, 0);
+    } else {
+      const fetch = (await f.run()).results[0].output.observations.fetch;
+      assert.equal(fetch.merge_receipt_sha256, shadowHash(receipt));
+      assert.equal(fetch.merge_oid, merged);
+      const measurement = await f.run();
+      assert.equal(measurement.results[0].output.facts.session_pr_post_merge_diverged, true);
+      await assertLocked();
+      const decision = qualifyPostMergeDecision({ base, home, measurement, fetch, localBefore: pr.base_oid,
+        merged, git, bare, tip: 'refs/heads/dev', continuity });
+      await decision.answer('reconcile_manually');
+      git('merge', '--ff-only', merged);
+      f = open(base);
+      await f.run(); // Fresh zero/zero alignment.
+      await assertLocked();
+      const completePlan = await f.preview();
+      f.allow(shadowHash(completePlan));
+      const { operation_id: completionId } = await f.stage(completePlan);
+      assert.equal((await f.host.dispatch(completionId, { write: true })).receipt.outcome, 'completed');
+      await assertLocked();
+      await f.host.accept(completionId, { write: true });
+      assert.equal(continuity().completion?.plan.merge_receipt_sha256, shadowHash(receipt));
+      assert.equal((await start()).action, 'create_session_allowed');
+      assert.notEqual((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+      assert.equal(f.state.fetchSends, 1);
+    }
+  }
+  const record = f.inspect().record;
+  assert.deepEqual(record.events.filter(e => e.kind === 'operation_result').slice(0, prior.length).map(e => e.receipt), prior);
+  assert.ok(!record.events.some(event => ['session_pr_merge_consent', 'session_pr_merge_execute'].includes(event.intent?.binding_ref)));
+  assert.deepEqual(f.state.mergeSends, []);
+  assert.deepEqual(f.state.sent, []);
+  assert.deepEqual(f.state.resolutionSends, []);
+  replay(f);
+  console.log(JSON.stringify({ verdict: 'PASS', scenario, instance_sha256: record.instance_sha256, revision: record.revision, audit }));
+}
+
 async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session') {
   const base = arrange(prefix, behavior), f = open(base, { initializeKey: true });
   const { home } = json(path.join(base, 'configuration.json'));
@@ -1537,7 +1731,20 @@ async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session
   await qualifyConsent(base, privateKey, authority_id, { choice });
 }
 
-if (/^--case=post-merge-recover-(expired|moved|aligned)$/.test(process.argv[2])) {
+if (/^--case=external-(checks|premerge|premerge-boundary|refused|cancelled)$/.test(process.argv[2])) {
+  await qualifyExternalMerge(process.argv[2].slice('--case=external-'.length));
+} else if (process.argv[2] === '--finish-external-call') {
+  const f = open(process.argv[3]), before = f.inspect();
+  const call = before.cursor.occurrences.find(row => row.node_id === f.graph.call && row.wait_reason === 'call_return');
+  assert.ok(call, 'Expected a finished R09 child awaiting its call return');
+  const completed = await f.host.returnCall({ instanceId: before.record.instance_id, expectedSha256: before.record.instance_sha256,
+    occurrenceId: call.occurrence_id, eventId: 'return_external_r09', write: true });
+  assert.equal(completed.cursor.status, 'COMPLETED');
+  replay(f);
+  assert.equal(f.calls(), 0);
+  console.log(JSON.stringify({ verdict: 'PASS', result: completed.cursor.status, revision: completed.record.revision,
+    instance_sha256: completed.record.instance_sha256, provider_reads: 0 }));
+} else if (/^--case=post-merge-recover-(expired|moved|aligned)$/.test(process.argv[2])) {
   const mode = process.argv[2].slice('--case=post-merge-'.length);
   await qualifyPostMergeFetch(mode === 'recover-moved' ? 'correction' : 'session', mode);
 } else if (process.argv[2] === '--apply-question-recovery') {
@@ -1566,7 +1773,11 @@ if (/^--case=post-merge-recover-(expired|moved|aligned)$/.test(process.argv[2]))
   await qualifyException(process.argv[2].slice('--case='.length));
 } else if (process.argv[2] === '--receive-exception') {
   const [, , , base, id, sourceRef] = process.argv, f = open(base);
-  assert.equal((await f.host.dispatch(id, { write: true })).status, 'waiting_for_human');
+  const before = f.host.readJournal(id);
+  if (before.intent.binding_ref === 'session_pr_external_merge_disposition') {
+    assert.equal(before.phase, 'dispatching');
+    assert.match(before.decision_claim_sha256, /^[a-f0-9]{64}$/);
+  } else assert.equal((await f.host.dispatch(id, { write: true })).status, 'waiting_for_human');
   const { status, receipt } = await f.host.receiveDecision(id, { sourceRef, write: true });
   assert.equal(status, 'receipted');
   await f.host.accept(id, { write: true });

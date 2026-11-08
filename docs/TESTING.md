@@ -4378,6 +4378,22 @@ and reopens the journal in a new Node process. The final gate measures alignment
 records canonical completion, checks admissions and replays the events.
 These selectors run separately from the required family.
 
+### R08 external merge during pre-merge or check waits
+
+Run `node tools/perf/verify-standard-pr-review-reply-fixtures.mjs` with
+`--case=external-checks` or `--case=external-premerge`. The FILES fixtures use
+real operation and decision journals, the protected provider host with a
+doubled transport, a disposable Git checkout and remote, and signed synthetic
+upstream receipts on reduced graphs. They retain the two published call sites
+and exercise the published incident and R09 bindings.
+`--case=external-premerge-boundary` stops at the corrective fetch preview,
+after recovering the incident decision and checking capture contention.
+Additional selectors `--case=external-refused` and `--case=external-cancelled` exercise the two
+terminal disposition outcomes. A cold retry consumes the exact reserved
+decision. The fixtures check zero GitHub merge sends, one local fetch,
+continuity before and after accepted completion, and reducer replay/SIM.
+These bounded cases are separate from the required family.
+
 ### Canonical process-prefix replay
 
 `verify-process-operation-fixtures.mjs` also runs

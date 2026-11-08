@@ -1,3 +1,5 @@
+import { externalMergeDisposition } from '../../core/workflow/standard-pr-external-merge.mjs';
+import { readExternalMergeForFetch } from './standard-session-pr-external-merge.mjs';
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { assertMergeExecuteOutput, mergeExecuteOperation } from '../../core/workflow/standard-pr-merge-execute.mjs';
 import { alignedReason, assertPostMergeAlignmentOutput, assertPostMergeFetchOutput, divergentReason, pendingAlignmentReasons, assertPostMergeMeasureOutput,
@@ -8,6 +10,10 @@ const fail = (code, effect_status = 'no_effect') => { throw Object.assign(Error(
 export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurrent, reviewPort }) {
   const port = reviewPort?.postMergeFetch;
   function source(instance, input) {
+    const intent = instance.events.find(event => event.kind === 'operation_intent'
+      && event.intent.operation_id === input.merge_operation_id)?.intent;
+    if (intent?.binding_ref === externalMergeDisposition)
+      return readExternalMergeForFetch(instance, input.merge_operation_id, readAccepted);
     const { record, output } = readAccepted(instance, input.merge_operation_id, mergeExecuteOperation,
       'STANDARD_PR_POST_MERGE_FETCH_MERGE_REQUIRED');
     const merge = assertMergeExecuteOutput(output).observations.merge;
@@ -18,7 +24,9 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
   function assertGit(git, merge, id) {
     const plan = git?.plan, pull = merge.provider.pull_request;
     if (git?.can_apply !== true || git.plan_sha256 !== shadowHash(plan) || plan.operation_id !== id
-      || plan.merge_oid !== pull.merge_oid || plan.branch !== pull.base_ref || plan.source_ref !== 'refs/heads/' + pull.base_ref)
+      || plan.merge_oid !== pull.merge_oid
+      || merge.pre_merge_base_oid && plan.remote_head !== pull.observed_base_tip_oid
+      || plan.branch !== pull.base_ref || plan.source_ref !== 'refs/heads/' + pull.base_ref)
       fail('STANDARD_PR_POST_MERGE_FETCH_PLAN_CHANGED');
   }
   function checked(instance, input, prepared, id) {

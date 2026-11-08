@@ -36,7 +36,14 @@ in `process-decision-inbox.v14`. The no-effect receipt carries the decision
 and question deadline. Earlier inbox versions retain their readers.
 `standard-pr-premerge-observe-output.v1` preserves the provider fact of an
 already merged PR on a deferred receipt with empty routing facts. Historical
-merge observation retains its v1 contract.
+merge observation retains its v1 contract. The published pre-merge and checks
+inputs v2 admit a separate `standard-pr-external-merge-observation-output.v1`
+result for an exact external merge. The result opens an R08 incident and
+carries only an observation routing fact. The incident question and decision
+have private contracts, with a signed `human-pr-external-merge-disposition.v1`
+source in `process-decision-inbox.v16`. The disposition receipt carries no
+merge consent or effect. The common merge-basis result selects the accepted
+operation ID within the same call scope.
 
 ## R08 merge execution contracts
 
@@ -53,7 +60,8 @@ readers.
 ## R09 fetch contracts
 
 Private `standard-pr-post-merge-fetch-{input,output}.v1` bind the accepted
-merge receipt to the host's Git plan and exact fetched commit. The result
+merge or external-incident disposition receipt to the host's Git plan and
+exact fetched commit. The result
 records ahead/behind and the local proof ref, with separate executed and
 observed recovery results. Refusal and UNKNOWN carry diagnostics without
 a success fact. These contracts use the existing operation journal.

@@ -140,8 +140,11 @@ op("session_pr_correction_reopen", "session_pr_correction_reopen", operation("se
 // pinned continuation. A deferred child operation keeps its call open.
 const firstPrNode = nodes.length, firstPrInput = inputs.length;
 const triageId = { triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] } };
-seq("pr_review_completion", ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route"]);
+seq("pr_review_completion", ["pr_premerge_observe", "pr_review_route", "pr_merge_basis",
+  "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route"]);
 op("pr_premerge_observe", "session_pr_premerge_observe", triageId);
+xor("pr_review_route", [["incident", "pr_premerge_external_delivery", "session_pr_external_merge_observed"], ["review", "pr_remaining_review", null]]);
+seq("pr_remaining_review", ["pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_route"]);
 node("pr_reply_loop", "loop", { child: "pr_reply_iteration", until: "session_pr_replies_observed", max_iterations: 32 });
 seq("pr_reply_iteration", ["pr_reply_select", "pr_reply_route"]);
 op("pr_reply_select", "session_pr_review_reply_select", triageId);
@@ -160,10 +163,18 @@ op("pr_resolution_exception", "session_pr_review_resolution_exception", { ...tri
   ...operation(null, "selection_operation_id", "pr_resolution_select") });
 op("pr_review_effects_verify", "session_pr_review_effects_verify", triageId);
 op("pr_checks_accept", "session_pr_checks_accept", triageId);
+xor("pr_merge_route", [["external", "pr_external_delivery", "session_pr_external_merge_observed"], ["authorized", "pr_authorized_delivery", null]]);
+for (const prefix of ["pr_external", "pr_premerge_external"]) {
+  op(prefix + "_delivery", "session_pr_external_merge_disposition", triageId);
+}
+seq("pr_authorized_delivery", ["pr_merge_consent", "pr_merge_execute"]);
 op("pr_merge_consent", "session_pr_merge_consent", { ...triageId, ...operation(null, "checks_operation_id", "pr_checks_accept") });
 op("pr_merge_execute", "session_pr_merge_execute", { ...triageId, ...operation(null, "checks_operation_id", "pr_checks_accept"),
   ...operation(null, "consent_operation_id", "pr_merge_consent") });
-op("pr_post_merge_fetch", "session_pr_post_merge_fetch", operation(null, "merge_operation_id", "pr_merge_execute"));
+op("pr_merge_basis", "session_pr_merge_basis", triageId);
+op("pr_post_merge_fetch", "session_pr_post_merge_fetch", {
+  merge_operation_id: { source: "operation_output", node_id: "pr_merge_basis", path: ["observations", "merge_operation_id"] },
+});
 op("pr_post_merge_measure", "session_pr_post_merge_measure", operation(null, "fetch_operation_id", "pr_post_merge_fetch"));
 xor("pr_post_merge_route", [["diverged", "pr_post_merge_reconcile", "session_pr_post_merge_diverged"],
   ["aligned", "pr_post_merge_complete", null]]);

@@ -20,6 +20,8 @@ import { createStandardPrReviewResolution } from "./standard-session-pr-review-r
 import { resolutionExceptionOperation } from "../../core/workflow/standard-pr-resolution-exception.mjs";
 import { createStandardPrReviewReply } from "./standard-session-pr-review-reply.mjs";
 import { createStandardPrReviewEffectsVerification } from "./standard-session-pr-review-effects.mjs";
+import { createStandardExternalMergeDisposition } from "./standard-session-pr-external-merge.mjs";
+import { externalMergeDisposition, externalMergeObservationVersion } from "../../core/workflow/standard-pr-external-merge.mjs";
 import { createStandardSessionPrMergeObservation } from "./standard-session-pr-merge-observe.mjs";
 import { createStandardSessionPrReviewAuthority } from "./standard-session-pr-review-authority.mjs";
 import { createStandardPrTriageSource } from "./standard-pr-triage-source.mjs";
@@ -568,6 +570,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     readAcceptedReplies: (instance, triageId) => acceptedReviewEffects(instance, triageId, "session_pr_review_reply_publish", "reply") };
   const sessionPrMerge = createStandardSessionPrMergeObservation(acceptedReviewPorts);
   const sessionPrPremerge = createStandardSessionPrMergeObservation(acceptedReviewPorts, { preflight: true });
+  const externalDisposition = createStandardExternalMergeDisposition({ ...acceptedReviewPorts, observeMerge: sessionPrPremerge });
+  const assertExternalDispositionFresh = (instance, record, signal) => externalDisposition.assertFresh(instance, record, signal);
+  const checksMayObserveMerge = input => input.contract_version === "standard-pr-checks-accept-input.v2";
+  const mergeObservationInput = input => ({ contract_version: "standard-session-pr-merge-observe-input.v2",
+    triage_operation_id: input.triage_operation_id });
   const sessionPrEffects = createStandardPrReviewEffectsVerification(acceptedReviewPorts);
   const sessionPrReply = createStandardPrReviewReply(acceptedReviewPorts);
   const sessionPrResolution = createStandardPrReviewResolution({ ...acceptedReviewPorts,
@@ -1261,7 +1268,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : [postMergeAlignmentOperation, postMergeMeasureOperation].includes(binding.id) ? postMerge.prepareAlignment(state.record, input)
         : binding.id === postMergeDecisionOperation ? await postMergeDecision.prepare(state.record, input, predecessorFor(occurrence))
         : binding.id === postMergeWaitOperation ? { can_apply: true }
-        : binding.id === checksOperation ? { can_apply: true }
+        : binding.id === "session_pr_merge_basis" ? externalDisposition.prepareBasis(state, input, occurrenceId)
+        : binding.id === externalMergeDisposition ? externalDisposition.prepare(state.record, input, occurrenceId)
+        : binding.id === checksOperation ? (checksMayObserveMerge(input)
+          ? sessionPrPremerge.prepare(state.record, mergeObservationInput(input)) : { can_apply: true })
         : binding.id === mergeConsentOperation ? await sessionPrConsent.prepare(state.record, input)
         : binding.id === "session_pr_merge_observe" ? sessionPrMerge.prepare(state.record, input)
         : binding.id === "session_pr_review_receive" ? await sessionPrReviewReceiver?.prepare(state.record, input) ?? fail("STANDARD_PR_RECEIVE_AUTHORITY_REQUIRED")
@@ -1436,9 +1446,29 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           } });
         else if (record.intent.binding_ref === "session_pr_review_effects_verify") output = await sessionPrEffects.observe(state.record, record.preview.input,
           { signal, sourceSha256: record.preview.prepared.source_sha256 });
+        else if (record.intent.binding_ref === "session_pr_merge_basis") {
+          const selected = externalDisposition.prepareBasis(state, record.preview.input, record.intent.occurrence_id);
+          if (shadowHash(selected) !== shadowHash(record.preview.prepared)) fail("STANDARD_PR_MERGE_BASIS_CHANGED");
+          output = { contract_version: "standard-pr-merge-basis-output.v1", operation_ref: "session_pr_merge_basis",
+            outcome: "completed", effect_status: "no_effect", facts: {}, evidence_refs: [],
+            observations: { merge_operation_id: selected.merge_operation_id } };
+        }
         else if (record.intent.binding_ref === "session_pr_premerge_observe") output = await sessionPrPremerge.observe(state.record, record.preview.input,
-          { signal, sourceSha256: record.preview.prepared.source_sha256 });
-        else if (record.intent.binding_ref === checksOperation) output = await sessionPrConsent.acceptChecks(state.record, record.preview.input, signal);
+          { signal, sourceSha256: record.preview.prepared.source_sha256,
+            externalOperation: record.preview.input.contract_version === "standard-session-pr-merge-observe-input.v2"
+              ? record.intent.binding_ref : undefined });
+        else if (record.intent.binding_ref === checksOperation) {
+          const input = record.preview.input;
+          const observed = checksMayObserveMerge(input) ? await sessionPrPremerge.observe(state.record, mergeObservationInput(input),
+            { signal, sourceSha256: record.preview.prepared.source_sha256, externalOperation: checksOperation }) : null;
+          if (observed?.contract_version === externalMergeObservationVersion) output = observed;
+          else if (observed && observed.outcome !== "completed") output = assertStandardOperationOutput({
+            contract_version: "standard-pr-checks-accept-output.v1", operation_ref: checksOperation,
+            outcome: observed.outcome, effect_status: "no_effect", facts: {}, evidence_refs: [],
+            observations: { reason_code: observed.observations.reason_code },
+          });
+          else output = await sessionPrConsent.acceptChecks(state.record, input, signal);
+        }
         else if ([postMergeAlignmentOperation, postMergeMeasureOperation].includes(record.intent.binding_ref)) output = await postMerge.observeAlignment(
           state.record, record.preview.input, record.preview.prepared, { signal, operation: record.intent.binding_ref });
         else if (record.intent.binding_ref === postMergeWaitOperation) output = sessionPrMergeEffect.waitForSync(state.record, record.preview.input);
@@ -1602,9 +1632,10 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async receiveDecision(id, { sourceRef, write = false, signal } = {}) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
-      if (record.preview.binding.executor_kind !== "human" || ![postMergeDecisionOperation, mergeConsentOperation, resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (record.preview.binding.executor_kind !== "human" || ![externalMergeDisposition, postMergeDecisionOperation, mergeConsentOperation, resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
       if (postMergeRecoveryResult(record)) fail("STANDARD_PR_POST_MERGE_QUESTION_DISPOSED");
       const r09 = record.intent.binding_ref === postMergeDecisionOperation;
+      const external = record.intent.binding_ref === externalMergeDisposition;
       if (r09 && alignedPostMergeSubject(record.preview.prepared.subject)) fail("STANDARD_PR_POST_MERGE_QUESTION_UNAVAILABLE");
       if (record.phase === "receipted") {
         const capture = human.captured(record);
@@ -1623,31 +1654,33 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "session_branch_integration_decision") await sessionBranchIntegration.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "session_pr_correction_decision") await prCorrectionReview.assertFresh(state.record, record.preview.prepared.plan, { signal });
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
-      const assertFreshDecision = record.intent.binding_ref === mergeConsentOperation ? assertMergeConsentFresh
+      const assertFreshDecision = external ? assertExternalDispositionFresh
+        : record.intent.binding_ref === mergeConsentOperation ? assertMergeConsentFresh
         : record.intent.binding_ref === resolutionExceptionOperation ? assertResolutionExceptionFresh
         : record.intent.binding_ref === postMergeDecisionOperation ? assertPostMergeDecisionFresh : null;
       let reservedOwner;
       const capture = await human.reserve(record, sourceRef, { signal,
         ...(assertFreshDecision ? { assertCurrent: () => assertFreshDecision(state.record, record, signal) } : {}),
-        ...(r09 ? { claimDecision(claim) {
+        ...(r09 || external ? { claimDecision(claim) {
           if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256
             || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
           if (signal?.aborted) fail("PROCESS_HUMAN_AUTHORITY_ABORTED");
-          postMergeDecision.assertAge(record.preview.prepared);
+          (external ? externalDisposition : postMergeDecision).assertAge(record.preview.prepared);
           if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
           const latest = retained(id), claimSha = shadowHash({ source_ref: sourceRef, source: claim });
           if (latest.record.phase === "dispatching" && latest.record.decision_claim_sha256 === claimSha) {
             reservedOwner = latest.record;
           } else {
             if (latest.content_sha256 !== before.content_sha256 || record.phase !== "staged")
-              fail("STANDARD_PR_POST_MERGE_CAPTURE_RECONCILIATION_REQUIRED");
+              fail(external ? "STANDARD_PR_EXTERNAL_MERGE_CAPTURE_RECONCILIATION_REQUIRED"
+                : "STANDARD_PR_POST_MERGE_CAPTURE_RECONCILIATION_REQUIRED");
             const { authentication, key_id, ...body } = record;
             reservedOwner = persist({ ...body, phase: "dispatching", revision: record.revision + 1,
               owner: { generation, pid: process.pid }, decision_claim_sha256: claimSha }, before.content_sha256);
           }
         } } : {}) });
       if (!capture) return { status: "waiting_for_human", question: human.question(record) };
-      if (r09) await dispatchCheckpoint?.("post_merge_decision_reserved");
+      if (r09 || external) await dispatchCheckpoint?.(external ? "external_merge_disposition_reserved" : "post_merge_decision_reserved");
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref)) await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
@@ -1659,7 +1692,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (record.intent.binding_ref === "baseline_promotion_decision") await promotionReview.assertFresh(state.record, record.preview.prepared.plan);
       if (assertFreshDecision) {
         await human.verifyReserved(record, capture, signal);
-        if (record.intent.binding_ref === postMergeDecisionOperation) postMergeDecision.assertAge(record.preview.prepared);
+        if (r09 || external) (external ? externalDisposition : postMergeDecision).assertAge(record.preview.prepared);
         if (record.intent.binding_ref === mergeConsentOperation && now() >= record.preview.prepared.expires_at_ms)
           fail("STANDARD_PR_MERGE_CONSENT_EXPIRED");
         if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256
@@ -1694,6 +1727,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         // callback. Its acceptance still fences this exact instance and receipt.
         await assertMergeConsentFresh(state.record, record, signal);
         if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      }
+      if (record.intent.binding_ref === externalMergeDisposition) {
+        await assertExternalDispositionFresh(state.record, record, signal);
+        await human.verifyCaptured(record, signal, { acknowledged: true });
+        externalDisposition.assertAge(record.preview.prepared);
+        if (shadowHash(retained(id).record) !== shadowHash(record)
+          || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }
       if (record.intent.binding_ref === postMergeDecisionOperation && !postMergeRecoveryResult(record)) {
         await human.verifyCaptured(record, signal, { acknowledged: true });

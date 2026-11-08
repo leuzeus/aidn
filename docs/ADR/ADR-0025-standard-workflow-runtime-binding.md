@@ -3406,9 +3406,45 @@ appends under the retained plan. An interrupted or ambiguous postimage keeps
 the operation in reconciliation, with any owned incomplete index lock
 retained. A confirmed local postimage leads to fresh alignment and canonical
 completion before admission. Historical R09 readers retain their contracts.
-External merge during an earlier R08 wait remains a separate observation and
-incident path.
-The fixtures distinguish a real disposable Git remote and FILES application
+#### External merge during R08
+
+The initial and corrective deliveries share the same two eligible operations.
+The pre-merge observer can report the external merge after authenticated triage.
+The checks operation can report it on a retry before accepting required checks.
+Both reuse the protected observer and reauthenticate the exact delivered review.
+The route requires two matching fresh reads of the repository, PR, refs, HEAD
+and merge. This revision accepts a two-parent merge with the exact delivered
+base and HEAD as ordered parents and the merge commit at the observed base tip.
+An advanced or ambiguous tip, a one-parent result, closure without a merge,
+a stale event, or a changed subject leaves the operation blocked.
+
+A distinct no-effect observation routes to an R08 incident disposition under
+SPEC-R10. The question retains the triage, observation receipt, external
+postimage and incident reason. A signed severity assessment, rationale and
+evidence are required to acknowledge that exact incident for R09. L1/L2 may
+acknowledge it. L3/L4 require separate incident handling. An absent response waits.
+Defer permits another question, refusal fails the route and cancellation stops
+it. The protected host repeats the observation at capture and before acceptance.
+Journal CAS claims the exact decision source before inbox reservation. A cold
+retry uses that same source. An expired or conflicting reservation retains its
+original owner and evidence for reconciliation.
+
+The common selector binds the accepted disposition or the accepted nominal
+merge receipt in the current call. The existing R09 fetch, measurement,
+divergence decision, alignment and completion consume that selected basis. On
+the external path the fetch plan must still target the observed base tip and
+Git must prove merge ancestry. Admissions remain locked until the canonical
+completion is accepted. The external path records the missing pre-merge
+assurance in the incident and creates no checks, merge-consent or merge-effect
+receipt. The disposition supplies no permission to edit a workflow rule or
+resolve an incident requiring further remediation.
+
+The pre-triage review event wait, reply/resolution and correction waits,
+pending exception or consent, and an owned dispatch or UNKNOWN keep their
+current routes. A separate observation may inform reconciliation there, but
+the published model has no adoption transition at those states. Historical
+pre-merge, checks, consent, merge and decision inbox readers retain their
+contracts. The fixtures distinguish a real disposable Git remote and FILES application
 execution from the doubled GitHub transport and signed upstream inputs.
 
 STANDARD completion prepares an exact plan from the accepted opening, merge,

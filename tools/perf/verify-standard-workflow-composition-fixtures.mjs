@@ -85,7 +85,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 170); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 173); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -234,7 +234,7 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
   const { model: child, ...identity } = target;
   assert.deepEqual(identity, processModelIdentity(child));
   assert.deepEqual(child.call_interface, { parameters: { triage_operation_id: "string" }, returns: {} });
-  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route"]);
+  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_review_route", "pr_merge_basis", "pr_post_merge_fetch", "pr_post_merge_measure", "pr_post_merge_route"]);
   assert.deepEqual(child.nodes.find(row => row.id === "pr_post_merge_route").branches, [
     { flow_id: "diverged", node_id: "pr_post_merge_reconcile", condition: "session_pr_post_merge_diverged" },
     { flow_id: "aligned", node_id: "pr_post_merge_complete", condition: null },
@@ -261,7 +261,7 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
       consent_operation_id: { source: "operation_id", node_id: "pr_merge_consent" },
     }],
     ["pr_post_merge_fetch", "executor", ["SPEC-R09", "SPEC-R11"], {
-      merge_operation_id: { source: "operation_id", node_id: "pr_merge_execute" },
+      merge_operation_id: { source: "operation_output", node_id: "pr_merge_basis", path: ["observations", "merge_operation_id"] },
     }],
     ["pr_post_merge_measure", "read-only", ["SPEC-R09"], {
       fetch_operation_id: { source: "operation_id", node_id: "pr_post_merge_fetch" },
@@ -339,8 +339,8 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
     ["pr_resolution_select", "session_pr_review_resolution_select", "standard-pr-review-resolution-select-input.v1", ["SPEC-R08", "SPEC-R11"]],
     ["pr_reply_select", "session_pr_review_reply_select", "standard-pr-review-reply-select-input.v1", ["SPEC-R08", "SPEC-R11"]],
     ["pr_review_effects_verify", "session_pr_review_effects_verify", "standard-session-pr-review-effects-input.v1", ["SPEC-R08", "SPEC-R11"]],
-    ["pr_premerge_observe", "session_pr_premerge_observe", "standard-session-pr-merge-observe-input.v1", ["SPEC-R08", "SPEC-R09"]],
-    ["pr_checks_accept", "session_pr_checks_accept", "standard-pr-checks-accept-input.v1", ["SPEC-R08", "SPEC-R11"]],
+    ["pr_premerge_observe", "session_pr_premerge_observe", "standard-session-pr-merge-observe-input.v2", ["SPEC-R08", "SPEC-R09"]],
+    ["pr_checks_accept", "session_pr_checks_accept", "standard-pr-checks-accept-input.v2", ["SPEC-R08", "SPEC-R11"]],
   ]) {
     const row = assets.catalog.bindings.find(row => row.node_id === node_id);
     assert.deepEqual(row.model_ref, identity);
@@ -353,6 +353,13 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
       contract_version: { source: "literal", value: contract },
       triage_operation_id: { source: "parameter", key: "triage_operation_id", path: [] },
     });
+  }
+  for (const id of ["pr_premerge_external_delivery", "pr_external_delivery"]) {
+    const disposition = assets.catalog.bindings.find(row => row.node_id === id);
+    assert.equal(disposition.binding.id, "session_pr_external_merge_disposition");
+    assert.equal(disposition.binding.executor_kind, "human");
+    assert.equal(disposition.binding.effect_class, "read-only");
+    assert.deepEqual(disposition.binding.rule_refs, ["SPEC-R08", "SPEC-R09", "SPEC-R10"]);
   }
   const consent = assets.catalog.bindings.find(row => row.node_id === "pr_merge_consent");
   assert.equal(consent.binding.id, "session_pr_merge_consent");
@@ -531,7 +538,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 252);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 19);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 22);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 2);
   assert.equal(child.model_id, "aidn-standard-final-verification");

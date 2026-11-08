@@ -115,8 +115,8 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
     instance = advanceAgenticProcess(instance, event);
     // This verifier fixture starts from synthetic accepted selections. The
     // R08 FILES fixtures exercise selection, dispatch and recovery.
-    accept('session_pr_premerge_observe', { contract_version: 'standard-session-pr-merge-observe-input.v1', triage_operation_id: triage },
-      {}, { reason_code: 'STANDARD_PR_PREMERGE_OPEN' });
+    accept('session_pr_premerge_observe', { contract_version: 'standard-session-pr-merge-observe-input.v2', triage_operation_id: triage },
+      { session_pr_external_merge_observed: false }, { reason_code: 'STANDARD_PR_PREMERGE_OPEN' });
     accept('session_pr_review_reply_select', { contract_version: 'standard-pr-review-reply-select-input.v1', triage_operation_id: triage },
       { session_pr_replies_observed: true }, { selection: null });
     accept('session_pr_review_resolution_select', { contract_version: 'standard-pr-review-resolution-select-input.v1', triage_operation_id: triage },
@@ -162,7 +162,7 @@ function fixture(prefix = 'session', correctionsRequired = false, effects = null
       assert.equal(merge.node_id, 'pr_checks_accept');
       assert.equal(merge.call_scope_id, callOccurrence);
       assert.deepEqual(resolveProcessFrameInput({ instance, cursor: next, occurrenceId: merge.occurrence_id }).input,
-        { contract_version: 'standard-pr-checks-accept-input.v1', triage_operation_id: triage });
+        { contract_version: 'standard-pr-checks-accept-input.v2', triage_operation_id: triage });
       assert.deepEqual(instance.events.at(-1).receipt.facts, { session_pr_review_effects_verified: true });
     } else {
       assert.equal(next.status, 'WAITING');

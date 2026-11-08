@@ -19,6 +19,13 @@ const files = ["src/application/runtime/standard-reconciliation-inventory.mjs",
   ...["input", "plan", "output"].map(kind =>
     `src/core/contracts/workflow-definition/standard-pr-post-merge-fast-forward-${kind}.v1.schema.json`),
   "src/adapters/runtime/local-git-adapter.mjs",
+  "src/application/runtime/standard-session-pr-external-merge.mjs",
+  "src/core/workflow/standard-pr-external-merge.mjs",
+  ...["standard-session-pr-merge-observe-input.v2", "standard-pr-checks-accept-input.v2",
+    "standard-pr-premerge-observe-output.v2", "standard-pr-external-merge-observation-output.v1", "standard-pr-external-merge-disposition-input.v1",
+    "standard-pr-external-merge-disposition-question.v1", "standard-pr-external-merge-disposition-output.v1",
+    "standard-pr-merge-basis-output.v1", "human-pr-external-merge-disposition.v1", "process-decision-inbox.v16"]
+    .map(name => `src/core/contracts/workflow-definition/${name}.schema.json`),
   "src/application/runtime/standard-session-pr-post-merge-fetch.mjs",
   "src/core/workflow/standard-pr-post-merge-fetch.mjs",
   "src/application/runtime/standard-session-pr-post-merge-completion.mjs",

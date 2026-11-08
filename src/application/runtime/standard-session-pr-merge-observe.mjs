@@ -4,6 +4,8 @@ import { assertStandardOperationInput, assertStandardOperationOutput } from '../
 import { createStandardPrAcceptedReviewSource } from './standard-session-pr-review-source.mjs';
 import { assertGithubPrMergeObservation } from '../../adapters/git-provider/github-workflow-adapter.mjs';
 
+import { assertExternalMergeObservation, externalMergeObservationVersion } from '../../core/workflow/standard-pr-external-merge.mjs';
+
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
 const reviewPending = 'STANDARD_PR_MERGE_REVIEW_EFFECTS_REQUIRED';
 
@@ -26,14 +28,14 @@ export function createStandardSessionPrMergeObservation({ readAccepted, readAcce
     prepare(instance, input) {
       return { can_apply: true, input, source_sha256: source(instance, input).sha256 };
     },
-    async observe(instance, input, { signal, sourceSha256 } = {}) {
+    async observe(instance, input, { signal, sourceSha256, externalOperation } = {}) {
       try {
         if (signal !== undefined && !(signal instanceof AbortSignal)) fail('STANDARD_PR_MERGE_SIGNAL_INVALID');
         active(signal);
         const before = source(instance, input), p = before.pullRequest, start = now();
         if (!Number.isSafeInteger(start) || start < before.preMergeObservedUntil) fail('STANDARD_PR_MERGE_STALE_OBSERVATION');
         if (sourceSha256 !== before.sha256) fail('STANDARD_PR_MERGE_SOURCE_CHANGED');
-        if (before.correctionsRequired) return emit('deferred', reviewPending);
+        if (before.correctionsRequired && !externalOperation) return emit('deferred', reviewPending);
         if (typeof reviewPort?.observePrMerge !== 'function') return emit('deferred', 'STANDARD_PR_MERGE_PROVIDER_REQUIRED');
         await verifyEvent(before.capture, { signal });
         const request = { contract_version: 'github-pr-observation-request.v2', pull_request_number: p.number,
@@ -66,13 +68,24 @@ export function createStandardSessionPrMergeObservation({ readAccepted, readAcce
         const end = now();
         if (!unchanged || !Number.isSafeInteger(end) || end < Date.parse(provider.observed_until) || end - start > 300000) fail('STANDARD_PR_MERGE_CONTEXT_CHANGED');
         if (provider.pull_request.state === 'CLOSED') fail('STANDARD_PR_MERGE_CLOSED_UNMERGED');
-        if (provider.pull_request.state === 'OPEN') return preflight
-          ? emit('completed', 'STANDARD_PR_PREMERGE_OPEN') : emit('deferred', 'STANDARD_PR_MERGE_AWAITING_PROVIDER');
+        if (provider.pull_request.state === 'OPEN') {
+          if (before.correctionsRequired) return emit('deferred', reviewPending);
+          if (externalOperation) return assertStandardOperationOutput({
+            contract_version: 'standard-pr-premerge-observe-output.v2', operation_ref: operation,
+            outcome: 'completed', effect_status: 'no_effect', facts: { session_pr_external_merge_observed: false },
+            observations: { reason_code: 'STANDARD_PR_PREMERGE_OPEN' }, evidence_refs: [],
+          });
+          return preflight ? emit('completed', 'STANDARD_PR_PREMERGE_OPEN') : emit('deferred', 'STANDARD_PR_MERGE_AWAITING_PROVIDER');
+        }
 
-        // The authentic fact is retained on a deferred receipt, with no
-        // routing facts. R08 effects and their verification still gate progress.
-        return emit('deferred', reviewPending, { triage_operation_id: input.triage_operation_id, update_operation_id: before.updateId,
-          pre_merge_base_oid: p.base_oid, source_sha256: before.sha256, provider });
+        const proof = { triage_operation_id: input.triage_operation_id, update_operation_id: before.updateId,
+          pre_merge_base_oid: p.base_oid, source_sha256: before.sha256, provider };
+        if (!externalOperation) return emit('deferred', reviewPending, proof);
+        return assertExternalMergeObservation({ contract_version: externalMergeObservationVersion,
+          operation_ref: externalOperation, outcome: 'completed', effect_status: 'no_effect',
+          facts: { session_pr_external_merge_observed: true },
+          observations: { reason_code: 'STANDARD_PR_EXTERNAL_MERGE_R08_INCIDENT', merge_observation: proof },
+          evidence_refs: [{ ref: 'github:pr-merge/' + provider.pull_request.node_id, sha256: shadowHash(proof) }] });
       } catch (cause) {
         return emit('blocked', typeof cause?.code === 'string' && /^[A-Z][A-Z0-9_]{0,127}$/.test(cause.code)
           ? cause.code : 'STANDARD_PR_MERGE_UNAVAILABLE');

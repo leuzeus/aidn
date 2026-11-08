@@ -862,7 +862,8 @@ catalog still declares complete_standard_workflow=false.
 The initial and corrective delivery paths pass their own accepted triage
 operation ID to the same pinned aidn-standard-pr-review-completion target.
 The preflight merge observer checks the provider before the reply loop. A
-premature merge remains a deferred provider observation. Once the exact PR
+supported external merge routes to an incident question. The checks operation
+can also observe an external merge while checks are pending. Once the exact PR
 is observed open, session_pr_review_reply_select authenticates the current
 delivery, review event and accepted triage chain. Fresh review and thread
 evidence selects one missing invalid root reply. The IR supplies the triage
@@ -896,8 +897,11 @@ resolve triage, check and consent operation IDs into `session_pr_merge_execute`.
 The executor requires a distinct exact-action grant and the protected
 `MERGE` capability. It verifies GitHub's exact postimage after the claimed
 dispatch and uses read-only recovery at the same occurrence for UNKNOWN.
-`session_pr_post_merge_fetch` consumes the accepted merge operation from
-each call and binds a separate grant to the exact local Git plan. For
+The incident question requires an explicit signed disposition for the
+authenticated external merge. That receipt preserves the absent R08
+assurance. The common merge-basis selector reads one accepted source in the
+current call. `session_pr_post_merge_fetch` consumes that source and binds a
+separate grant to the exact local Git plan. For
 SPEC-R09 the protected host transfers the remote commit and measures
 divergence against that OID. Recovery reads the durable Git witness.
 `session_pr_post_merge_alignment` consumes the accepted fetch receipt and
