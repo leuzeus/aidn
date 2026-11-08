@@ -10,25 +10,45 @@ const inside = (root, file) => { const r = path.relative(root, file); return r =
 const exact = (value, fields) => value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).sort().join(",") === [...fields].sort().join(",");
 const bytes = file => readAgentRunFile(file, { json: false, maxBytes: 262144 }).value;
 
-// Host wiring, never a JSON-selected plugin/module. The private home is supplied
-// by the embedding process and must be outside every native writable root.
-// MAC keys authenticate journals; only independent Ed25519 principals can supply
-// human/control/renewal claims. Possessing a journal key grants no human role.
-export function createStandardHostAuthority({ configuration, environment = process.env }, { providerTransport, useProvider = true } = {}) {
+function standardHostHome(environment) {
   const configured = environment.AIDN_STANDARD_HOST_HOME;
   if (!path.isAbsolute(configured ?? "")) fail("STANDARD_HOST_HOME_REQUIRED");
-  const home = agentRunPhysicalPath(configured, { directory: true });
-  for (const root of [configuration.target_root, configuration.control_root, configuration.review_root, configuration.native.home, ...configuration.native.tool_roots])
-    if (inside(root, home) || inside(home, root)) fail("STANDARD_HOST_HOME_OVERLAP");
-  if (!(configuration.native.protected_roots ?? []).includes(home)) fail("STANDARD_HOST_HOME_PROTECTION_REQUIRED");
-  const identity = shadowHash({ target: process.platform === "win32" ? configuration.target_root.toLowerCase() : configuration.target_root, instance: configuration.instance_id });
-  const githubProvider = useProvider ? createStandardGithubProviderHost({ configuration, environment, home, identity }, providerTransport) : null;
+  return agentRunPhysicalPath(configured, { directory: true });
+}
+
+function standardHostInstance(home, target, instance) {
+  const identity = shadowHash({ target: process.platform === "win32" ? target.toLowerCase() : target, instance });
   const keyFile = path.join(home, `${identity}.key`);
   const readKey = () => {
     const key = bytes(keyFile);
     if (key.length !== 32) fail("STANDARD_HOST_KEY_INVALID");
     return key;
   };
+  return { identity, keyFile, readKey };
+}
+
+// A continuity reader may verify an origin instance without composing it or
+// allocating its key. The protected host home is selected by the embedding
+// process, and the journal can supply only the instance identifier.
+export function readStandardHostInstance({ targetRoot, instanceId, environment = process.env }) {
+  const home = standardHostHome(environment);
+  const target = agentRunPhysicalPath(targetRoot, { directory: true });
+  if (inside(target, home) || inside(home, target)) fail("STANDARD_HOST_HOME_OVERLAP");
+  const { identity, readKey } = standardHostInstance(home, target, instanceId);
+  return { home, identity, readKey };
+}
+
+// Host wiring, never a JSON-selected plugin/module. The private home is supplied
+// by the embedding process and must be outside every native writable root.
+// MAC keys authenticate journals; only independent Ed25519 principals can supply
+// human/control/renewal claims. Possessing a journal key grants no human role.
+export function createStandardHostAuthority({ configuration, environment = process.env }, { providerTransport, useProvider = true } = {}) {
+  const home = standardHostHome(environment);
+  for (const root of [configuration.target_root, configuration.control_root, configuration.review_root, configuration.native.home, ...configuration.native.tool_roots])
+    if (inside(root, home) || inside(home, root)) fail("STANDARD_HOST_HOME_OVERLAP");
+  if (!(configuration.native.protected_roots ?? []).includes(home)) fail("STANDARD_HOST_HOME_PROTECTION_REQUIRED");
+  const { identity, keyFile, readKey } = standardHostInstance(home, configuration.target_root, configuration.instance_id);
+  const githubProvider = useProvider ? createStandardGithubProviderHost({ configuration, environment, home, identity }, providerTransport) : null;
   function keyId() { return fs.existsSync(keyFile) ? createHash("sha256").update(readKey()).digest("hex") : null; }
   function ensureKey() {
     if (fs.existsSync(keyFile)) return readKey();

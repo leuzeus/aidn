@@ -846,3 +846,9 @@ and promotion does not re-enter implementation DoR. Runtime freshness, repair,
 activation and source-of-truth gates remain. Missing or ambiguous targets still
 block; the internal host selection argument adds no CLI flag and changes no
 focus. The public output keeps its extensible v1 contract and read-only effect.
+
+For `runtime pre-write-admit --skill cycle-create` on the configured source
+branch, a STANDARD PR opening record requires the origin instance's accepted
+R09 completion. The check verifies the source HEAD against the protected
+remote and can use that measurement when the origin tracking ref is stale.
+It uses the existing upstream diagnostic and performs no fetch or ref update.

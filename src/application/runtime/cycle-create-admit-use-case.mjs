@@ -3,6 +3,7 @@ import { createLocalGitAdapter } from "../../adapters/runtime/local-git-adapter.
 import { resolvePromotedSharedPlanningContext } from "./shared-planning-resolution-service.mjs";
 import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
+import { readStandardPostMergeContinuity } from "./standard-post-merge-continuity.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveBranchMapping } from "../../lib/workflow/branch-mapping-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
@@ -370,9 +371,15 @@ export async function runCycleCreateAdmitUseCase({
     });
   }
 
-  const prior = (branchKind === AIDN_BRANCH_KIND.SOURCE ? sessions.at(-1) : targetSession)?.metadata;
-  const awaitingMerge = prior?.pr_status === "open" && prior.close_gate_satisfied === true;
-  const awaitingSync = prior?.pr_status === "merged" && prior.post_merge_sync_status !== "done";
+  const priorSession = branchKind === AIDN_BRANCH_KIND.SOURCE ? sessions.at(-1) : targetSession;
+  const prior = priorSession?.metadata;
+  const reconciliation = priorSession && readStandardPostMergeContinuity({
+    targetRoot: absoluteTargetRoot, sessionId: priorSession.session_id, content: priorSession.text, sourceBranch,
+    sessionPath: path.relative(auditRoot, priorSession.file_path).replaceAll("\\", "/"),
+  });
+  const awaitingMerge = prior?.pr_status === "open" && prior.close_gate_satisfied === true && !reconciliation?.completion;
+  const awaitingSync = prior?.pr_status === "merged" && !reconciliation?.completion
+    && (reconciliation?.managed || prior.post_merge_sync_status !== "done");
   if (awaitingMerge || awaitingSync) {
     return makeResult(base, {
       action: "stop_pr_continuity",

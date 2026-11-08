@@ -3346,20 +3346,34 @@ operation consumes the accepted fetch receipt and verifies the original
 witness. It samples the protected remote twice, checks that the remote
 commit contains the merge and measures exact ahead/behind against a stable
 local source checkout. A remote commit missing from the local object store
-requires an explicit fetch. Divergence retains a resumable wait with the
-observed OIDs and counts. Zero divergence reaches the separate reconciliation
-wait and carries no canonical completion fact. The current binding covers
-merges accepted by the R08 executor. Routing an externally observed merge,
-obtaining a decision on ambiguous divergence, and recording canonical
-reconciliation with a fresh final fence remain separate.
+requires an explicit fetch. Divergence retains a resumable wait with the observed OIDs and counts. Zero
+divergence reaches the separate STANDARD completion operation. The same
+operation and model binding serve both PR paths. The historical R09 wait
+retains its reader and original semantics.
 The fixtures distinguish a real disposable Git remote and FILES application
 execution from the doubled GitHub transport and signed upstream inputs.
 
-Session and cycle admission both require a recorded sync status for a
-merged session. PR admission can report zero divergence against a local
-tracking ref while reconciliation is still required. Only the existing
-recorded `done` state reaches historical completion. The STANDARD
-alignment receipt awaits a canonical completion binding.
+STANDARD completion prepares an exact plan from the accepted opening, merge,
+fetch and alignment journals. The plan binds the session, project scope,
+source ref and exact OIDs. The protected Git port rechecks the clean source
+checkout, original fetch witness, merge ancestry and live remote tip before
+the signed result and again before acceptance. The explicit grant authorizes
+recording the completion in the existing journal and accepted process
+history. A cold retry can reuse a retained receipt or reobserve Git after an
+interrupted claim. Replay uses the accepted events without a Git or provider
+call.
+
+Session and cycle admission use the canonical session's Process PR opening
+block to locate the origin instance. They authenticate its journals with
+the protected origin key and require the exact completion in the accepted
+history of that instance. They also check the local witness and source
+ancestry. The session document can retain its open PR metadata while the
+accepted proof supplies continuity. Existing sessions without this marker
+still use their recorded lifecycle. For cycle creation on the source branch,
+pre-write rechecks the protected remote and the current HEAD. That check
+supersedes the cached origin tracking ref, while the clean-worktree and
+other admission controls still apply. Routing an externally observed merge
+and deciding an ambiguous divergence remain separate.
 
 [GitHub GraphQL pull requests](https://docs.github.com/en/graphql/reference/pulls)
 and [GitHub GraphQL commits](https://docs.github.com/en/graphql/reference/commits).

@@ -358,6 +358,11 @@ export function createStandardGithubProviderHost({ configuration, home, identity
           guard();
           return result;
         },
+        verifyCompletedSource(prepared, input) {
+          revalidate();
+          postMergeFetch().verifyCompletedSource(prepared, input);
+          revalidate();
+        },
         async observeAlignment(prepared, input) {
           const guard = transportGuard();
           guard();

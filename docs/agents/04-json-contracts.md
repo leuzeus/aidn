@@ -65,6 +65,13 @@ aligned, divergent and unavailable observations. A divergent measurement
 retains exact local and remote OIDs, ahead/behind and the original witness.
 The aligned result supplies evidence for a later canonical reconciliation.
 
+Private `standard-pr-post-merge-complete-{input,plan,output}.v1` contracts bind
+the accepted alignment to the opening, merge and fetch receipts, the project
+scope, the source ref and the exact reconciled OIDs. The closed output records
+the confirmed plan hash and time. It has empty routing facts and no Git
+effect. Canonical acceptance in the existing operation journal and process
+history is required for continuity. There is no new public JSON contract.
+
 ## Original dispatch and disposition records
 
 Private `process-dispatch-record.v1`, `process-operation-disposition-plan.v1`,

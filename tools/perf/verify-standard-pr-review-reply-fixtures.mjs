@@ -27,6 +27,12 @@ import { controlDelivery } from '../../src/core/workflow/process-control-inbox.m
 import { decisionInboxId } from '../../src/core/workflow/process-decision-inbox.mjs';
 import { createOperationJournalSigner, operationJournalId, operationOutputRef } from '../../src/core/workflow/process-operation-journal.mjs';
 import { shadowHash } from '../../src/core/workflow/shadow-json.mjs';
+import { artifactContentHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
+import { renderStandardSessionPrRecord } from '../../src/core/workflow/standard-session-pr-record.mjs';
+import { runStartSessionAdmitUseCase } from '../../src/application/runtime/start-session-admit-use-case.mjs';
+import { runCycleCreateAdmitUseCase } from '../../src/application/runtime/cycle-create-admit-use-case.mjs';
+import { readStandardPostMergeContinuity } from '../../src/application/runtime/standard-post-merge-continuity.mjs';
+import { preWriteAdmit } from '../runtime/pre-write-admit.mjs';
 
 const { model: published } = loadStandardWorkflowAssets();
 const bindings = new Map(standardWorkflowOperationBindings().map(binding => [binding.id, binding]));
@@ -49,7 +55,7 @@ function fixtureModel(prefix, fetchOnly) {
   const input = (id, fields) => ({ node_id: id, fields: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, literal(value)])) });
   const fields = id => published.data_bindings.inputs.find(row => row.node_id === id);
   if (fetchOnly) {
-    const children = ['pr_merge_execute', 'pr_post_merge_fetch', 'pr_post_merge_alignment', 'pr_post_merge_wait'];
+    const children = ['pr_merge_execute', 'pr_post_merge_fetch', 'pr_post_merge_alignment', 'pr_post_merge_complete'];
     const exact = target.model.nodes.filter(row => children.includes(row.id));
     const child = { ...target.model, model_id: 'fixture-post-merge-target', nodes: [
       { ...target.model.nodes.find(row => row.id === target.model.entry), children }, ...exact,
@@ -62,11 +68,12 @@ function fixtureModel(prefix, fetchOnly) {
     const identity = processModelIdentity(child);
     const model = { contract_version: published.contract_version, model_id: 'fixture-r09', revision: 1, participants: published.participants,
       policies: [], roles: [], entry: 'fixture', nodes: [
-        { id: 'fixture', kind: 'sequence', participant_ref: 'project', children: [triage, call] },
-        node(triage), { ...node(call), target: identity },
-      ], operation_pins: { [node(triage).binding_ref]: published.operation_pins[node(triage).binding_ref] },
+        { id: 'fixture', kind: 'sequence', participant_ref: 'project', children: ['session_pr_open', triage, call] },
+        node('session_pr_open'), node(triage), { ...node(call), target: identity },
+      ], operation_pins: { session_pr_open: published.operation_pins.session_pr_open, [node(triage).binding_ref]: published.operation_pins[node(triage).binding_ref] },
       call_targets: [{ ...identity, model: child }],
       data_bindings: { contract_version: 'process-data-bindings.v4', parameter_keys: [], inputs: [
+        input('session_pr_open', { contract_version: bindings.get('session_pr_open').input_contract, push_operation_id: dummy }),
         input(triage, { contract_version: bindings.get(node(triage).binding_ref).input_contract, report_occurrence_id: 'fixture_report' }),
         fields(call),
       ] } };
@@ -377,7 +384,7 @@ function open(base, { initializeKey = false } = {}) {
     save(providerFile, state);
   }
   return { host, preview, stage, run, inspect, seedPrefix, seed, graph, observePublishedReply, state, providerFile, calls: () => calls, allow: sha => { permitted = sha; },
-    signer, inbox: createProcessDecisionInboxStore(options),
+    signer, inbox: createProcessDecisionInboxStore(options), providerTransport,
     deny: value => { denied = value; }, revokeAt: value => { revokeAt = grants + value; }, interrupt: () => { crash = true; } };
 }
 
@@ -407,7 +414,8 @@ function arrange(prefix, behavior) {
     const merged = git('commit-tree', tree, '-p', baseOid, '-p', pr.head_oid, '-m', 'fixture merge');
     const remote = path.join(base, 'remote.git');
     git('init', '--bare', remote);
-    git('push', pathToFileURL(remote).href, merged + ':refs/heads/dev');
+    git('--git-dir=' + remote, 'fetch', '--no-write-fetch-head', '--', pathToFileURL(targetRoot).href, merged);
+    git('--git-dir=' + remote, 'update-ref', 'refs/heads/dev', merged);
     git('switch', 'dev');
     fetchFixture = { remote, merged };
   }
@@ -847,9 +855,52 @@ async function qualifyMerge(f, { base, id, checks, question, behavior, sourceFil
 
 async function qualifyPostMergeFetch(prefix) {
   const base = arrange(prefix, 'post-merge-fetch'), f = open(base, { initializeKey: true });
-  const { configuration: { instance_id: instanceId, target_root: targetRoot }, binding, pr, fetchFixture } = json(path.join(base, 'configuration.json'));
+  const configurationFile = path.join(base, 'configuration.json');
+  const data = json(configurationFile), { configuration: { instance_id: instanceId, target_root: targetRoot }, binding, pr, fetchFixture } = data;
+  const git = (...args) => execFileSync(binding.git.path, ['-C', targetRoot, ...args], { encoding: 'utf8', windowsHide: true }).trim();
+  const bare = '--git-dir=' + fetchFixture.remote;
   const initial = f.host.initialize({ instanceId });
   f.host.initialize({ instanceId, write: true, expectedResultSha256: initial.record.instance_sha256 });
+  const link = { ...pr, contract_version: 'github-pr-link.v1', title_sha256: shadowHash('fixture title'), body_sha256: shadowHash('fixture body') };
+  const openId = f.seed('session_pr_open', { facts: { session_pr_open_confirmed: true },
+    observations: { session_id: 'S001', pull_request: link }, evidence_refs: [{ ref: 'github:pr/fixture', sha256: shadowHash(link) }] });
+  const audit = path.join(targetRoot, 'docs/audit'), sessionPath = 'sessions/S001.md', sessionFile = path.join(audit, sessionPath);
+  const fields = { state: 'CLOSED', session_id: 'S001', session_closure_status: 'completed', mode: 'COMMITTING',
+    updated_at: new Date().toISOString(), session_branch: pr.head_branch, pr_status: 'none', pr_url: 'none',
+    pr_number: 'none', pr_base_branch: 'none', pr_head_branch: 'none', pr_review_status: 'unknown',
+    post_merge_sync_status: 'not_needed', post_merge_sync_basis: 'none' };
+  const session = '# Session S001\n\n' + Object.entries(fields).map(([key, value]) => key + ': ' + value).join('\n')
+    + '\n\n### Session close gate satisfied?\n- [x] Yes\n';
+  const current = fs.readFileSync(path.join(audit, 'CURRENT-STATE.md'), 'utf8')
+    .replace(/^active_session:.*$/m, 'active_session: S001').replace(/^mode:.*$/m, 'mode: COMMITTING')
+    .replace(/^branch_kind:.*$/m, 'branch_kind: source');
+  const documents = [[sessionPath, session], ['CURRENT-STATE.md', current],
+    ['snapshots/context-snapshot.md', fs.readFileSync(path.join(audit, 'snapshots/context-snapshot.md'), 'utf8')]]
+    .map(([path, content]) => ({ path, content, sha256: artifactContentHash(content) }));
+  for (const document of renderStandardSessionPrRecord({ source: { session_id: 'S001', session_path: sessionPath,
+    open_operation_id: openId, pull_request: link }, documents, preparedAt: Date.now() }))
+    fs.writeFileSync(path.join(audit, document.path), document.text_chunks.join(''));
+  git('add', '--', 'docs/audit');
+  git('commit', '-m', 'fixture PR opening marker');
+  const sourceHead = git('rev-parse', 'HEAD'), sourceTree = git('rev-parse', 'HEAD^{tree}');
+  const merged = git('commit-tree', sourceTree, '-p', sourceHead, '-p', pr.head_oid, '-m', 'fixture accepted merge');
+  git(bare, 'fetch', '--no-write-fetch-head', '--', targetRoot, merged);
+  git(bare, 'update-ref', 'refs/heads/dev', merged, fetchFixture.merged);
+  fetchFixture.merged = merged;
+  save(configurationFile, data);
+  git('update-ref', 'refs/remotes/origin/dev', sourceHead);
+  git('config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*');
+  git('branch', '--set-upstream-to=origin/dev', 'dev');
+  process.env.AIDN_STANDARD_HOST_HOME = data.home;
+  const start = () => runStartSessionAdmitUseCase({ targetRoot });
+  const cycle = () => runCycleCreateAdmitUseCase({ targetRoot, mode: 'COMMITTING' });
+  const prewrite = () => preWriteAdmit({ targetRoot, skill: 'cycle-create' }, { providerTransport: f.providerTransport });
+  const continuity = (sessionId = 'S001', content = fs.readFileSync(sessionFile, 'utf8')) =>
+    readStandardPostMergeContinuity({ targetRoot, sessionId, content });
+  assert.equal(continuity().completion, null);
+  assert.notEqual((await start()).action, 'create_session_allowed');
+  assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+  assert.equal((await prewrite()).checks.git_cycle_create_upstream_sync.pass, false);
   f.seed(f.graph.triage, { facts: {}, observations: {} });
   const beforeCall = f.inspect(), call = beforeCall.cursor.occurrences.find(row => row.node_id === f.graph.call);
   await f.host.enterCall({ instanceId, expectedSha256: beforeCall.record.instance_sha256, occurrenceId: call.occurrence_id,
@@ -861,7 +912,7 @@ async function qualifyPostMergeFetch(prefix) {
       pull_request: { node_id: pr.node_id, number: pr.number, head_repository_id: pr.repository_id,
         head_ref: pr.head_branch, head_oid: pr.head_oid, base_ref: pr.base_branch, observed_base_tip_oid: fetchFixture.merged,
         state: 'MERGED', is_draft: false, merged: true, merged_at: stamp, merge_oid: fetchFixture.merged,
-        merge_parent_oids: [pr.base_oid, pr.head_oid], merged_by: binding.actor, commit_body_sha256: shadowHash('fixture marker') } };
+        merge_parent_oids: [sourceHead, pr.head_oid], merged_by: binding.actor, commit_body_sha256: shadowHash('fixture marker') } };
     const merge = { operation_id: id, plan_sha256: shadowHash('merge plan'), consent_receipt_sha256: shadowHash('consent'),
       checks_receipt_sha256: shadowHash('checks'), method: 'MERGE', confirmation: 'observed', provider };
     return { facts: {}, observations: { merge }, evidence_refs: [{ ref: 'github:pr-merge/' + pr.node_id, sha256: shadowHash(merge) }] };
@@ -918,24 +969,19 @@ async function qualifyPostMergeFetch(prefix) {
   assert.throws(() => assertStandardOperationOutput({ ...first, outcome: 'completed' }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
   assert.equal(resumed.inspect().cursor.occurrences.find(row => row.node_id === 'pr_post_merge_alignment').status, 'WAITING');
   replay(resumed);
-  if (prefix === 'correction') {
+  let advanced = fetchFixture.merged;
+  if (prefix === 'session') {
+    const tree = git(bare, 'rev-parse', fetchFixture.merged + '^{tree}');
+    advanced = git(bare, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+      'commit-tree', tree, '-p', fetchFixture.merged, '-m', 'fixture target advances');
+    git(bare, 'update-ref', 'refs/heads/dev', advanced, fetchFixture.merged);
+    const missing = (await resumed.run()).results[0].output;
+    assert.equal(missing.outcome, 'deferred');
+    assert.equal(missing.observations.reason_code, 'WORKFLOW_POST_MERGE_FRESH_FETCH_REQUIRED');
     assert.equal(resumed.state.fetchSends, 1);
-    console.log('PASS R09 correction call, cold fetch recovery, real Git divergence, durable wait and replay, one transfer');
-    return;
+    git('fetch', '--no-write-fetch-head', '--refmap=', '--', pathToFileURL(fetchFixture.remote).href, advanced);
   }
-
-  const git = (...args) => execFileSync(binding.git.path, ['-C', targetRoot, ...args], { encoding: 'utf8', windowsHide: true }).trim();
-  const bare = '--git-dir=' + fetchFixture.remote;
-  const tree = git(bare, 'rev-parse', fetchFixture.merged + '^{tree}');
-  const advanced = git(bare, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
-    'commit-tree', tree, '-p', fetchFixture.merged, '-m', 'fixture target advances');
-  git(bare, 'update-ref', 'refs/heads/dev', advanced, fetchFixture.merged);
-  const missing = (await resumed.run()).results[0].output;
-  assert.equal(missing.outcome, 'deferred');
-  assert.equal(missing.observations.reason_code, 'WORKFLOW_POST_MERGE_FRESH_FETCH_REQUIRED');
-  assert.equal(resumed.state.fetchSends, 1);
   // Exercise the observation after a separate manual fixture reconciliation.
-  git('fetch', '--no-write-fetch-head', '--refmap=', '--', pathToFileURL(fetchFixture.remote).href, advanced);
   git('merge', '--ff-only', advanced);
   resumed = open(base);
   const confirmed = (await resumed.run()).results[0].output;
@@ -947,20 +993,89 @@ async function qualifyPostMergeFetch(prefix) {
   assert.equal(confirmed.observations.alignment.remote_head, advanced);
   assert.equal(confirmed.observations.alignment.fetched_head, fetchFixture.merged);
   assert.deepEqual(confirmed.facts, {});
-  const beforeBarrier = resumed.calls();
-  const barrier = (await resumed.run()).results[0].output;
-  assert.equal(barrier.outcome, 'deferred');
-  assert.deepEqual(barrier.facts, {});
-  assert.equal(barrier.observations.reason_code, 'STANDARD_PR_POST_MERGE_SYNC_REQUIRED');
-  assert.equal(barrier.observations.merge_receipt_sha256, shadowHash(mergeReceipt));
-  const { cursor } = resumed.inspect();
-  assert.equal(cursor.status, 'WAITING');
-  assert.equal(cursor.occurrences.find(row => row.node_id === 'pr_post_merge_wait').status, 'WAITING');
-  assert.ok(['RUNNING', 'WAITING'].includes(cursor.occurrences.find(row => row.node_id.endsWith('_pr_effects_pending')).status));
-  assert.equal(resumed.calls(), beforeBarrier);
+  const completionPreview = await resumed.preview();
+  assert.equal(completionPreview.prepared.plan.opening_operation_id, openId);
+  assert.equal(completionPreview.prepared.plan.merge_receipt_sha256, shadowHash(mergeReceipt));
+  assert.equal(completionPreview.prepared.plan.aligned_head, advanced);
+  assert.equal(continuity().completion, null);
+  await assert.rejects(resumed.stage(completionPreview), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
+  resumed.allow(shadowHash(completionPreview));
+  const { operation_id: completionId } = await resumed.stage(completionPreview);
+  if (prefix === 'correction') {
+    resumed.interrupt();
+    await assert.rejects(resumed.host.dispatch(completionId, { write: true }), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
+  } else {
+    assert.equal((await resumed.host.dispatch(completionId, { write: true })).receipt.outcome, 'completed');
+    assert.equal(continuity().completion, null, 'a signed but unaccepted completion cannot admit');
+    assert.notEqual((await start()).action, 'create_session_allowed');
+    assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+    const original = fs.readFileSync(sessionFile, 'utf8');
+    fs.writeFileSync(sessionFile, original.replace(/^pr_status: open$/m, 'pr_status: merged')
+      .replace(/^post_merge_sync_status: not_needed$/m, 'post_merge_sync_status: done'));
+    try {
+      assert.notEqual((await start()).action, 'create_session_allowed');
+      assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_POST_MERGE_SYNC_REQUIRED');
+    } finally { fs.writeFileSync(sessionFile, original); }
+    git(bare, 'update-ref', 'refs/heads/dev', merged, advanced);
+    await assert.rejects(resumed.host.accept(completionId, { write: true }), { code: 'STANDARD_PR_POST_MERGE_COMPLETION_ALIGNMENT_CHANGED' });
+    git(bare, 'update-ref', 'refs/heads/dev', advanced, merged);
+  }
+  const cold = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--recover-post-merge-completion', base, completionId],
+    { encoding: 'utf8', timeout: 240000, windowsHide: true }));
+  assert.deepEqual(cold, { outcome: 'completed', result: 'COMPLETED', sends: 1 });
+  resumed = open(base);
+  // A later workflow's key is distinct. Admission still locates the accepted
+  // result and its key from the opening journal of the origin instance.
+  const successor = createStandardHostAuthority({ configuration: { ...data.configuration, instance_id: 'fixture-successor' },
+    environment: process.env }, { useProvider: false });
+  successor.ensureKey();
+  assert.notEqual(successor.keyId(), resumed.signer.keyId);
+  const proof = continuity().completion;
+  assert.equal(proof?.instanceId, instanceId);
+  assert.equal(proof?.plan.aligned_head, advanced);
+  assert.equal((await start()).action, 'create_session_allowed');
+  assert.notEqual((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+  assert.equal(git('rev-parse', 'refs/remotes/origin/dev'), sourceHead);
+  assert.equal((await prewrite()).checks.git_cycle_create_upstream_sync.pass, true);
+  assert.equal(git('rev-parse', 'refs/remotes/origin/dev'), sourceHead);
+  assert.equal(git('status', '--porcelain'), '');
+  git('update-ref', 'refs/heads/' + pr.head_branch, advanced);
+  git('switch', pr.head_branch);
+  assert.equal((await cycle()).action, 'proceed_r2_session_base_with_import');
+  git('switch', 'dev');
+
+  if (prefix === 'session') {
+    const journalFile = path.join(audit, 'workflows/operation-records', completionId + '.json');
+    const saved = fs.readFileSync(journalFile), completionRecord = JSON.parse(saved);
+    const rejects = async altered => {
+      save(journalFile, altered);
+      try {
+        assert.equal(continuity().completion, null);
+        assert.notEqual((await start()).action, 'create_session_allowed');
+        assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+      } finally { fs.writeFileSync(journalFile, saved); }
+    };
+    await rejects({ ...completionRecord, authentication: 'f'.repeat(64) });
+    await rejects(resumed.signer.seal({ ...completionRecord, preview: resumed.signer.seal({ ...completionRecord.preview, instance_id: 'other-instance' }) }));
+    const retainedSession = fs.readFileSync(sessionFile, 'utf8');
+    for (const text of [retainedSession.replace(pr.node_id, 'PR_other'), retainedSession.replace(openId, dummy)]) {
+      fs.writeFileSync(sessionFile, text);
+      try { assert.equal(continuity().completion, null); } finally { fs.writeFileSync(sessionFile, retainedSession); }
+    }
+    assert.equal(continuity('S002', retainedSession).completion, null);
+    const witness = git('rev-parse', '--path-format=absolute', '--git-path', 'logs/' + fetch.proof_ref);
+    const witnessBytes = fs.readFileSync(witness);
+    fs.writeFileSync(witness, 'invalid fixture witness\n');
+    try { assert.equal(continuity().completion, null); } finally { fs.writeFileSync(witness, witnessBytes); }
+    git(bare, 'update-ref', 'refs/heads/dev', merged, advanced);
+    assert.equal((await prewrite()).checks.git_cycle_create_upstream_sync.pass, false);
+    git(bare, 'update-ref', 'refs/heads/dev', advanced, merged);
+  }
   replay(resumed);
   assert.equal(resumed.state.fetchSends, 1);
-  console.log('PASS R09 session call, divergence, missing object, fresh aligned observation, final wait and exact replay');
+  assert.equal(git('status', '--porcelain'), '');
+  console.log('PASS R09 ' + prefix + ' call, accepted canonical proof, admissions, stale tracking, refusals, cold recovery and replay');
+
 }
 
 async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session') {
@@ -1002,6 +1117,23 @@ if (['--case=post-merge-fetch-session', '--case=post-merge-fetch-correction'].in
   await qualifyResolution(process.argv[2].slice('--case='.length));
 } else if (process.argv[2] === '--verify-retained') {
   verifyRetained(process.argv[3]);
+} else if (process.argv[2] === '--recover-post-merge-completion') {
+  const f = open(process.argv[3]), id = process.argv[4], before = f.host.readJournal(id);
+  f.allow(shadowHash(before.preview));
+  const dispatched = await f.host.dispatch(id, { write: true });
+  assert.ok(['retained_result', 'receipted'].includes(dispatched.status));
+  const result = await f.host.accept(id, { write: true });
+  const after = f.host.readJournal(id);
+  assert.deepEqual(after.grant, before.grant);
+  assert.deepEqual(after.owner, before.owner);
+  assert.deepEqual(after.intent, before.intent);
+  assert.deepEqual(after.results.slice(0, before.results.length), before.results);
+  const call = result.cursor.occurrences.find(row => row.wait_reason === 'call_return');
+  assert.equal(call?.node_id, f.graph.call);
+  const returned = await f.host.returnCall({ instanceId: result.record.instance_id, expectedSha256: result.record.instance_sha256,
+    occurrenceId: call.occurrence_id, eventId: 'return_review', write: true });
+  replay(f);
+  console.log(JSON.stringify({ outcome: dispatched.receipt.outcome, result: returned.cursor.status, sends: f.state.fetchSends }));
 } else if (['--recover-merge', '--recover-post-merge-fetch'].includes(process.argv[2])) {
   const f = open(process.argv[3]), id = process.argv[4], before = f.host.readJournal(id);
   f.allow(shadowHash(before.preview));

@@ -166,6 +166,15 @@ export function createLocalWorkflowPostMergeFetch({ targetRoot, remote, environm
       const plan = checked(prepared, expectPlan);
       return postimage(plan, expectPlan);
     },
+    verifyCompletedSource(prepared, { expectPlan, alignedHead, expectedHead } = {}) {
+      const plan = checked(prepared, expectPlan);
+      if (!oid(alignedHead)) fail('WORKFLOW_POST_MERGE_COMPLETION_HEAD_INVALID');
+      requireWitness(plan, expectPlan);
+      const current = readRef(plan.source_ref);
+      if (!oid(current) || expectedHead && current !== expectedHead) fail('WORKFLOW_POST_MERGE_LOCAL_CHANGED');
+      proveHistory(alignedHead, current);
+      if (readRef(plan.source_ref) !== current || repository() !== repoIdentity) fail('WORKFLOW_POST_MERGE_LOCAL_CHANGED');
+    },
     async observeAlignment(prepared, { expectPlan, signal } = {}) {
       active(signal);
       const plan = checked(prepared, expectPlan), before = localView(plan.branch);

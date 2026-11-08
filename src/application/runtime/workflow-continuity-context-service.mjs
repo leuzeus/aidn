@@ -273,6 +273,7 @@ function buildCanonicalSessions(payload, auditRoot) {
     return {
       session_id: sessionId,
       file_path: path.resolve(auditRoot, normalizeArtifactPath(session?.source_artifact_path || `sessions/${sessionId}.md`)),
+      text: session.artifact_text ?? "",
       metadata: {
         mode: normalizeScalar(session?.state).toUpperCase() || null,
         session_branch: normalizeScalar(session?.branch_name) || null,

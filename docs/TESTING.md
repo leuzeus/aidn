@@ -1441,13 +1441,16 @@ transport doubled and Git still real. This gate qualifies the adapter.
 Use `--case=post-merge-fetch-session` and
 `--case=post-merge-fetch-correction` with
 `verify-standard-pr-review-reply-fixtures.mjs` for the two R09 call sites.
-The tests use the published fetch and wait bindings with a synthetic signed
-merge prefix, real FILES application ports and disposable Git. They check
-the exact grant, cold recovery after transfer, read-only divergence, a
-remote tip missing from the local object store and retry after explicit
-fixture reconciliation. The same reducer retains the divergence wait or the
-final reconciliation wait and replays without effects. Canonical IR
-reconciliation, real GitHub, Native and installed proof remain separate.
+The tests use the published R09 bindings in a reduced graph with a synthetic
+signed opening and merge prefix, real FILES application ports, disposable
+Git and a doubled GitHub transport. They check the exact grant, cold recovery
+after transfer, divergence, a remote tip missing from the local object store,
+and retry after explicit fixture reconciliation. The same reducer accepts
+the canonical completion and replays without effects. Session and cycle
+admission, the fresh pre-write check with stale tracking, and receipt and
+witness substitution are verified separately. DUAL and DB-only completion,
+real GitHub, Native and installed archive qualification require their own
+evidence.
 
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as

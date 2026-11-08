@@ -186,7 +186,7 @@ function summarizePorcelain(lines, limit = 3) {
   return lines.slice(0, limit).map((line) => normalizeScalar(line));
 }
 
-export function evaluateCycleCreateGitGate({ git, targetRoot }) {
+export function evaluateCycleCreateGitGate({ git, targetRoot, r09 = null }) {
   const currentBranch = normalizeScalar(git.getCurrentBranch(targetRoot) ?? "unknown") || "unknown";
   const repoRoot = normalizeScalar(typeof git.getRepoRoot === "function" ? git.getRepoRoot(targetRoot) : "") || "none";
   const repoScoped = repoRoot !== "none" && path.resolve(repoRoot) === path.resolve(targetRoot);
@@ -232,6 +232,15 @@ export function evaluateCycleCreateGitGate({ git, targetRoot }) {
 
   const upstreamBranch = normalizeScalar(git.getUpstreamBranch(targetRoot) ?? "") || "none";
   output.upstream_branch = upstreamBranch;
+  if (r09) {
+    if (r09.branch !== currentBranch || !r09.head || git.getHeadCommit(targetRoot) !== r09.head) {
+      output.upstream_proof = false;
+      output.blocking_reasons.push("Fresh STANDARD R09 source-branch reconciliation is required before creating a new cycle.");
+    } else if (git.getUpstreamBranch(targetRoot, "HEAD", { fullName: true }) === "refs/remotes/origin/" + currentBranch) {
+      output.upstream_proof = true;
+      return output;
+    }
+  }
   if (upstreamBranch === "none" || currentBranch === "unknown") {
     output.warnings.push("no upstream tracking branch is configured; push/merge reconciliation cannot be verified automatically");
     return output;
@@ -658,7 +667,9 @@ export function evaluatePreWriteCycleCreateGates({
     addCheck(checks, "git_cycle_create_clean", cycleCreateGitGate.dirty_entries.length === 0, cycleCreateGitGate.dirty_entries.length === 0
       ? "git working tree is clean for cycle creation"
       : `pending files detected before cycle creation: ${summarizePorcelain(cycleCreateGitGate.dirty_entries).join(", ")}`);
-    addCheck(checks, "git_cycle_create_upstream_sync", cycleCreateGitGate.upstream_ahead === 0 && cycleCreateGitGate.upstream_behind === 0, cycleCreateGitGate.upstream_branch === "none"
+    addCheck(checks, "git_cycle_create_upstream_sync", cycleCreateGitGate.upstream_proof !== false && cycleCreateGitGate.upstream_ahead === 0 && cycleCreateGitGate.upstream_behind === 0, cycleCreateGitGate.upstream_proof === true
+      ? "upstream sync verified against the protected R09 source remote"
+      : cycleCreateGitGate.upstream_branch === "none"
       ? "upstream sync not configured"
       : `upstream=${cycleCreateGitGate.upstream_branch}; ahead=${cycleCreateGitGate.upstream_ahead}; behind=${cycleCreateGitGate.upstream_behind}`);
     blockingReasons.push(...cycleCreateGitGate.blocking_reasons);

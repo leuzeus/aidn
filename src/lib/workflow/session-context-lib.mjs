@@ -157,6 +157,7 @@ function listSessionArtifactsFromSqlite(auditRoot, sqlitePayload) {
       return {
         session_id: sessionIdMatch ? String(sessionIdMatch[1]).toUpperCase() : path.basename(relativePath, ".md").toUpperCase(),
         file_path: path.resolve(auditRoot, relativePath),
+        text,
         metadata,
       };
     })
@@ -458,6 +459,7 @@ export function listSessionArtifacts(auditRoot) {
         return {
           session_id: sessionIdMatch ? String(sessionIdMatch[1]).toUpperCase() : path.basename(entry.name, ".md").toUpperCase(),
           file_path: filePath,
+          text,
           metadata,
         };
       })

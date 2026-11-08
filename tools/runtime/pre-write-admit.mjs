@@ -8,6 +8,8 @@ import { projectAdmissionAgentView, projectAgentDecisionError } from "../../src/
 import { resolveSkillId } from "../../src/core/skills/skill-policy.mjs";
 import { resolveRuntimeHeadArtifact, findUniqueAuditArtifact } from "../../src/application/runtime/runtime-head-resolution-service.mjs";
 import { createLocalGitAdapter } from "../../src/adapters/runtime/local-git-adapter.mjs";
+import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
+import { readStandardPostMergeContinuity, verifyStandardPostMergePreWrite } from "../../src/application/runtime/standard-post-merge-continuity.mjs";
 import {
   buildPreWriteAdmissionResult,
   admitSpecificNativeWrite,
@@ -29,7 +31,7 @@ import { resolveWorkspaceContext } from "../../src/application/runtime/workspace
 import { WORKFLOW_REPAIR_HINT } from "../../src/application/runtime/workflow-transition-constants.mjs";
 import { evaluateRepairRouting } from "../../src/application/runtime/workflow-transition-lib.mjs";
 import { readAidnProjectConfig, normalizeStateMode, resolveConfigStateMode, resolveConfigRuntimePersistence } from "../../src/lib/config/aidn-config-lib.mjs";
-import { parseSessionMetadata } from "../../src/lib/workflow/session-context-lib.mjs";
+import { parseSessionMetadata, readSourceBranch } from "../../src/lib/workflow/session-context-lib.mjs";
 import { evaluateCurrentStateConsistency } from "../perf/verify-current-state-consistency.mjs";
 import { workflowObservationActive } from "../../src/application/runtime/workflow-observation-service.mjs";
 import {
@@ -657,6 +659,25 @@ function addCheck(checks, key, pass, details, extra = {}) {
   };
 }
 
+async function readCycleSourceReconciliation(targetRoot, git, { providerTransport } = {}) {
+  const branch = readSourceBranch(targetRoot);
+  if (git.getCurrentBranch(targetRoot) !== branch) return null;
+  let prior;
+  try { prior = createStandardWorkflowArtifacts({ targetRoot }).sessions().at(-1); }
+  catch { return null; } // Canonical backend availability is checked separately.
+  if (!prior) return null;
+  const { managed, completion } = readStandardPostMergeContinuity({
+    targetRoot, sessionId: prior.session_id, sessionPath: prior.path, sourceBranch: branch, content: prior.content,
+  });
+  if (!managed) return null;
+  let head = null;
+  if (completion) {
+    try { head = await verifyStandardPostMergePreWrite({ completion }, { providerTransport }); }
+    catch { /* Keep the source gate blocked when the fresh proof is unavailable. */ }
+  }
+  return { branch, head };
+}
+
 export async function preWriteAdmit({
   targetRoot,
   skill = "",
@@ -667,7 +688,7 @@ export async function preWriteAdmit({
   sharedCoordinationOptions = {},
   nativeRequest = undefined,
   promotionCycleId = null,
-} = {}) {
+} = {}, { providerTransport } = {}) {
   const activationState = readActivation({ targetRoot: path.resolve(process.cwd(), targetRoot ?? ".") });
   const activation = {
     state: activationState.state, active: activationState.active,
@@ -924,6 +945,7 @@ export async function preWriteAdmit({
     ? evaluateCycleCreateGitGate({
       git,
       targetRoot: absoluteTargetRoot,
+      r09: skill === "cycle-create" ? await readCycleSourceReconciliation(absoluteTargetRoot, git, { providerTransport }) : null,
     })
     : null;
   const sessionIntegrationGate = ["cycle-create", "convert-to-spike"].includes(skill)

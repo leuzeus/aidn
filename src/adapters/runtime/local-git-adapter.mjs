@@ -77,13 +77,13 @@ export function createLocalGitAdapter() {
         return false;
       }
     },
-    getUpstreamBranch(targetRoot, ref = "HEAD") {
+    getUpstreamBranch(targetRoot, ref = "HEAD", { fullName = false } = {}) {
       try {
         return execFileSync("git", [
           "-C",
           targetRoot,
           "rev-parse",
-          "--abbrev-ref",
+          ...(fullName ? [] : ["--abbrev-ref"]),
           "--symbolic-full-name",
           `${ref}@{upstream}`,
         ], {

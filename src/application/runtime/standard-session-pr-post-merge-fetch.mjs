@@ -26,7 +26,7 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
     if (prepared?.can_apply !== true || prepared.plan_sha256 !== shadowHash(plan) || plan.merge_operation_id !== input.merge_operation_id
       || plan.merge_receipt_sha256 !== receiptSha) fail('STANDARD_PR_POST_MERGE_FETCH_PLAN_CHANGED');
     assertGit(plan.git, merge, id);
-    return plan;
+    return { plan, merge };
   }
   function result(plan, observation, confirmation) {
     const git = plan.git.plan;
@@ -44,10 +44,10 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
     const { record, output } = readAccepted(instance, input.fetch_operation_id, postMergeFetchOperation,
       'STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_REQUIRED');
     const { observations: { fetch } } = assertPostMergeFetchOutput(output);
-    const plan = checked(instance, record.preview.input, record.preview.prepared, input.fetch_operation_id);
+    const { plan, merge } = checked(instance, record.preview.input, record.preview.prepared, input.fetch_operation_id);
     if (!fetch || shadowHash(result(plan, fetch, fetch.confirmation)) !== shadowHash(output))
       fail('STANDARD_PR_POST_MERGE_ALIGNMENT_FETCH_CHANGED');
-    return { git: plan.git, fetch, receiptSha: shadowHash(record.results.at(-1).receipt) };
+    return { git: plan.git, fetch, merge, receiptSha: shadowHash(record.results.at(-1).receipt) };
   }
   function alignmentOutput(outcome, reason, alignment = null) {
     return assertPostMergeAlignmentOutput({ contract_version: 'standard-pr-post-merge-alignment-output.v1',
@@ -56,6 +56,7 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
       evidence_refs: alignment ? [{ ref: 'git:' + alignment.proof_ref, sha256: shadowHash(alignment) }] : [] });
   }
   return Object.freeze({
+    alignmentSource,
     async prepare(instance, input, id) {
       const { merge, receiptSha } = source(instance, input);
       if (!['prepare', 'apply', 'recover'].every(method => typeof port?.[method] === 'function'))
@@ -69,13 +70,13 @@ export function createStandardSessionPrPostMergeFetch({ readAccepted, readCurren
       return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
     },
     async apply(instance, input, prepared, { signal, assertAuthorized, operationId }) {
-      const plan = checked(instance, input, prepared, operationId);
+      const { plan } = checked(instance, input, prepared, operationId);
       const value = await port.apply(plan.git, { write: true, expectPlan: plan.git.plan_sha256, signal, assertAuthorized });
       return result(plan, value, 'executed');
     },
     async recover(instance, input, prepared, { signal, operationId }) {
       try {
-        const plan = checked(instance, input, prepared, operationId);
+        const { plan } = checked(instance, input, prepared, operationId);
         const value = await port.recover(plan.git, { expectPlan: plan.git.plan_sha256, signal });
         return result(plan, value, 'observed');
       } catch {

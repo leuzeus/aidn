@@ -5,6 +5,8 @@ import { createStandardPrCorrectionReview } from "./standard-pr-correction-revie
 import { createStandardPrCorrectionCheckpoint } from "./standard-pr-correction-checkpoint.mjs";
 import { createStandardPrMergeExecute } from "./standard-session-pr-merge-execute.mjs";
 import { createStandardSessionPrPostMergeFetch } from "./standard-session-pr-post-merge-fetch.mjs";
+import { createStandardPostMergeCompletion, postMergeProjectScope } from "./standard-session-pr-post-merge-completion.mjs";
+import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post-merge-complete.mjs";
 import { postMergeAlignmentOperation, postMergeFetchOperation } from "../../core/workflow/standard-pr-post-merge-fetch.mjs";
 import { mergeExecuteOperation, postMergeWaitOperation } from "../../core/workflow/standard-pr-merge-execute.mjs";
 import { createStandardPrMergeConsent } from "./standard-session-pr-merge-consent.mjs";
@@ -574,9 +576,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const sessionPrMergeEffect = createStandardPrMergeExecute({ ...acceptedReviewPorts, assertConsentFresh: assertMergeConsentFresh,
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const postMerge = createStandardSessionPrPostMergeFetch(acceptedReviewPorts);
+  const postMergeCompletion = createStandardPostMergeCompletion({ ...acceptedReviewPorts, artifacts,
+    readAlignmentSource: postMerge.alignmentSource,
+    scopeSha: () => postMergeProjectScope(targetRoot) });
   const reviewEffects = new Map([
     [mergeExecuteOperation, sessionPrMergeEffect],
     [postMergeFetchOperation, postMerge],
+    [postMergeCompleteOperation, postMergeCompletion],
     ["session_pr_review_reply_publish", sessionPrReply],
     ["session_pr_review_thread_resolve", sessionPrResolution],
   ]);
@@ -1438,10 +1444,12 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const binding = record.intent.binding_ref, effect = reviewEffects.get(binding);
       if (!effect) fail("STANDARD_PR_REVIEW_EFFECT_DISPATCH_REQUIRED");
       const reply = binding === "session_pr_review_reply_publish";
-      const kind = reply ? "REPLY" : binding === mergeExecuteOperation ? "MERGE" : binding === postMergeFetchOperation ? "POST_MERGE_FETCH" : "RESOLUTION";
+      const kind = reply ? "REPLY" : binding === mergeExecuteOperation ? "MERGE"
+        : binding === postMergeFetchOperation ? "POST_MERGE_FETCH" : binding === postMergeCompleteOperation ? "POST_MERGE_COMPLETION" : "RESOLUTION";
       readDispatchedOperation(state.record, id, binding, "STANDARD_PR_" + kind + "_DISPATCH_REQUIRED");
       if (record.results.length >= 32) fail("PROCESS_JOURNAL_RESULTS_LIMIT");
-      const output = await effect.recover(state.record, record.preview.input, record.preview.prepared, { signal, operationId: id });
+      const output = await effect.recover(state.record, record.preview.input, record.preview.prepared, { signal, operationId: id,
+        ...(binding === postMergeCompleteOperation ? { assertAuthorized: () => verifyGrant(record, signal) } : {}) });
       if (!output?.contract_version) return { status: "reconciliation_required", operation_id: id, effect_status: "unknown",
         reason_code: output?.reason_code ?? ("STANDARD_PR_" + kind + "_POSTIMAGE_UNAVAILABLE") };
       await verifyGrant(record, signal);
@@ -1543,6 +1551,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         // Keep network observations outside the reducer's bounded authority
         // callback. Its acceptance still fences this exact instance and receipt.
         await assertMergeConsentFresh(state.record, record, signal);
+        if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      }
+      if (record.intent.binding_ref === postMergeCompleteOperation && receipt.outcome === "completed") {
+        await postMergeCompletion.confirm(state.record, record.preview.input, record.preview.prepared,
+          { signal, assertAuthorized: () => verifyGrant(record, signal) });
         if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       }
       return disposition.withReceiptAcceptance(id, () => service.acceptOperation({ instanceId: state.record.instance_id, expectedSha256: state.record.instance_sha256, occurrenceId: record.intent.occurrence_id,

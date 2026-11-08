@@ -1244,6 +1244,14 @@ R08 au HEAD courant. Les réponses et résolutions ou exceptions documentées,
 le consentement et les effets de fusion AIDN, puis le fetch, la divergence et
 la réconciliation R09 restent des étapes distinctes. Les traces antérieures
 gardent leur modèle et leur périmètre.
+La tranche nominale A9 poursuit un alignement accepté par une clôture
+explicitement autorisée. Les deux appels au modèle commun relient la preuve
+finale à la session et au journal de l’instance d’origine. La lecture par les
+admissions de session et de cycle exige ce résultat accepté. Le contrôle
+pré-écriture de cycle sur la branche source mesure le distant protégé
+lorsqu’une preuve STANDARD est présente. Une divergence ambiguë et le
+routage d’une fusion observée à l’extérieur restent à traiter.
+
 | A10 — Stockage et histoires | files/dual/db-only sur SQLite réel ; PostgreSQL configuré via adaptateur réel et transport simulé hors ligne, puis preuve PostgreSQL réel avant affirmation de ce backend. Projection en panne conservée comme telle. Lecteurs workflow-instance.v1 et agentic-process-instance.v1 préservés, historique non converti. |
 
 Pour chaque exécution : conserver empreintes modèle/bindings/politiques, états

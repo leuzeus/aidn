@@ -4,6 +4,7 @@ import { resolveWorkspaceContext } from "./workspace-resolution-service.mjs";
 import { AIDN_BRANCH_KIND, classifyAidnBranch } from "../../lib/workflow/branch-kind-lib.mjs";
 import { resolveDbBackedMode } from "../../../tools/runtime/db-first-runtime-view-lib.mjs";
 import { resolveWorkflowContinuityContext } from "./workflow-continuity-context-service.mjs";
+import { readStandardPostMergeContinuity } from "./standard-post-merge-continuity.mjs";
 import { resolveEffectiveRuntimePersistence } from "./runtime-persistence-service.mjs";
 import {
   resolveBranchMapping,
@@ -160,9 +161,14 @@ export async function runStartSessionAdmitUseCase({ targetRoot, mode = "UNKNOWN"
   }
 
   if (branchKind === AIDN_BRANCH_KIND.SOURCE) {
+    const reconciliation = latestSession && readStandardPostMergeContinuity({
+      targetRoot: absoluteTargetRoot, sessionId: latestSession.session_id, content: latestSession.text, sourceBranch,
+      sessionPath: path.relative(auditRoot, latestSession.file_path).replaceAll("\\", "/"),
+    });
     return makeResult(base, evaluateSourceBranchTransition({
-      activeSessionArtifact,
+      activeSessionArtifact: reconciliation?.completion && activeSessionArtifact === latestSession ? null : activeSessionArtifact,
       latestSession,
+      reconciliation,
       openCycleTopology,
       openCycles,
       resumableOpenCycles,

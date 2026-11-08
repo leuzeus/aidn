@@ -229,7 +229,7 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
   const { model: child, ...identity } = target;
   assert.deepEqual(identity, processModelIdentity(child));
   assert.deepEqual(child.call_interface, { parameters: { triage_operation_id: "string" }, returns: {} });
-  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_fetch", "pr_post_merge_alignment", "pr_post_merge_wait"]);
+  assert.deepEqual(child.nodes.find(row => row.id === child.entry).children, ["pr_premerge_observe", "pr_reply_loop", "pr_resolution_loop", "pr_checks_accept", "pr_merge_consent", "pr_merge_execute", "pr_post_merge_fetch", "pr_post_merge_alignment", "pr_post_merge_complete"]);
   for (const prefix of ["session", "correction"]) {
     const id = prefix + "_pr_effects_pending";
     const call = assets.model.nodes.find(row => row.id === id);
@@ -251,8 +251,8 @@ test("both PR effects boundaries pass their own accepted triage to the same pinn
     ["pr_post_merge_alignment", "read-only", ["SPEC-R09"], {
       fetch_operation_id: { source: "operation_id", node_id: "pr_post_merge_fetch" },
     }],
-    ["pr_post_merge_wait", "read-only", ["SPEC-R09"], {
-      merge_operation_id: { source: "operation_id", node_id: "pr_merge_execute" },
+    ["pr_post_merge_complete", "mutating", ["SPEC-R09"], {
+      alignment_operation_id: { source: "operation_id", node_id: "pr_post_merge_alignment" },
     }],
   ]) {
     const row = assets.catalog.bindings.find(row => row.node_id === id), { binding } = row;
