@@ -15,6 +15,7 @@ import { createProcessControlInboxStore } from "../../adapters/runtime/process-c
 import { createProcessDecisionInboxStore } from "../../adapters/runtime/process-decision-inbox-store.mjs";
 import { createNativeAllocationJournalStore } from "../../adapters/runtime/native-allocation-journal-store.mjs";
 import { createAgenticProcessStore } from "../../adapters/runtime/agentic-process-store.mjs";
+import { postMergeRecoveryResult } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
 import { createStandardHumanDecisions } from "./standard-workflow-human-decisions.mjs";
 import { nativeJournalId } from "../../core/workflow/native-allocation-journal.mjs";
 import { readNativeAllocationCheckpoint, nativeEvidenceFile, nativeAllocationOutputId } from "./native-allocation-evidence.mjs";
@@ -155,7 +156,11 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
             || record.intent.preconditions_sha256 !== shadowHash({ snapshot: record.preview.snapshot, prepared: record.preview.prepared })) fail("STANDARD_PROCESS_OPERATION_NOT_AUTHENTICATED");
           if (diagnostic) assertHistoricalPreviewInput(record.preview, component);
           else { assertStandardOperationInput(record.intent.binding_ref, record.preview.input); assertStandardResolvedPreview(record.preview, model); }
-          if (record.preview.binding.executor_kind === "human" && record.results.length) human.captured(record);
+          if (record.preview.binding.executor_kind === "human" && record.results.length) {
+            const recovery = postMergeRecoveryResult(record);
+            if (recovery) signer.verify(recovery.output.observations.plan);
+            else human.captured(record);
+          }
           seen.set(id, record);
         }
         const record = seen.get(id);

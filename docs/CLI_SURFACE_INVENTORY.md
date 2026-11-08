@@ -347,6 +347,12 @@ finalization; `--verify` retains its read-only verification behavior.
     identity. `AIDN_STANDARD_HOST_HOME` is an existing external protected host
     directory, never a request-selected authority. Decisions use
     `--decision-source <ref>`; control delivery uses `--control-source <ref>`.
+    With no source selector, a recoverable R09 question previews a
+    `question_recovery` action. Apply the saved action with the same exact
+    `--action-file --execute --expect-plan` boundary. The action records the
+    disposition of the previous intent. The next preview either prepares a
+    new question or continues through the verified alignment and completion
+    operations.
     `--replay` and `--simulate` observe retained model/events without writes or
     Native allocation. The console run action forwards these same selectors.
     Custom native-only v1/v2 graphs keep their owned runner; raw v2 control facts

@@ -1460,6 +1460,18 @@ and both call sites. Run the historical readers separately. DUAL and DB-only
 completion, real GitHub, Native and installed archive qualification require
 their own evidence.
 
+Run `verify-standard-pr-review-reply-fixtures.mjs` with
+`--case=post-merge-recover-expired`, `--case=post-merge-recover-moved` and
+`--case=post-merge-recover-aligned` separately. They exercise the ordinary
+action dispatcher and mixed host over the reduced published R09 call sites,
+with the same disposable Git and FILES ports, signed synthetic upstream
+receipts and doubled GitHub transport. The expired case controls the host clock
+at the five-minute boundary. The moved case interrupts an inbox reservation
+and resumes the same source. The aligned case reaches admission only through
+the accepted canonical completion. Reopening after a recorded disposition
+exercises the retained receipt and exact action in another Node process. Replay
+and simulation exercise the same accepted history without provider dispatch.
+
 `verify-github-observation-async-fixtures.mjs` exercises the explicit async
 interfaces of both GitHub readers through the same observation protocol as
 their historical synchronous interfaces. It compares complete typed outputs,

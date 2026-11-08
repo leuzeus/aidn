@@ -1,6 +1,6 @@
 import { shadowHash } from '../../core/workflow/shadow-json.mjs';
 import { assertPostMergeMeasureOutput, divergentReason, postMergeMeasureOperation } from '../../core/workflow/standard-pr-post-merge-fetch.mjs';
-import { postMergeDecisionMaxAgeMs } from '../../core/workflow/standard-pr-post-merge-decision.mjs';
+import { alignedPostMergeSubject, postMergeDecisionMaxAgeMs } from '../../core/workflow/standard-pr-post-merge-decision.mjs';
 import { assertPostMergeSessionLink, postMergeSessionSource } from './standard-session-pr-post-merge-completion.mjs';
 
 const fail = code => { throw Object.assign(Error(code), { code, effect_status: 'no_effect' }); };
@@ -39,12 +39,20 @@ export function createStandardPostMergeDecision({ postMerge, readAccepted, artif
   }
 
   return Object.freeze({
-    async prepare(instance, input, signal) {
+    async prepare(instance, input, replaces = null, signal) {
       const { subject, observedAt } = await observe(instance, input, signal);
-      if (!subject.alignment.ahead && !subject.alignment.behind) fail(required);
-      return { can_apply: true, subject, prepared_at_ms: observedAt, expires_at_ms: observedAt + postMergeDecisionMaxAgeMs };
+      return { can_apply: true, subject, prepared_at_ms: observedAt, expires_at_ms: observedAt + postMergeDecisionMaxAgeMs,
+        ...(replaces ? { replaces } : {}) };
     },
     assertAge,
+    async observeRecovery(instance, input, prepared, signal) {
+      const { subject, observedAt } = await observe(instance, input, signal);
+      if (observedAt < prepared.prepared_at_ms) fail('STANDARD_PR_POST_MERGE_RECOVERY_CLOCK_CHANGED');
+      const reason = alignedPostMergeSubject(prepared.subject) ? 'aligned_without_question'
+        : shadowHash(subject) !== shadowHash(prepared.subject) ? 'subject_changed'
+        : observedAt >= prepared.expires_at_ms ? 'expired' : null;
+      return { subject, observedAt, reason };
+    },
     async assertFresh(instance, input, prepared, signal) {
       assertAge(prepared);
       const { subject } = await observe(instance, input, signal);

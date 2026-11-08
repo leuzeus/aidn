@@ -8,7 +8,8 @@ import { createStandardSessionPrPostMergeFetch } from "./standard-session-pr-pos
 import { createStandardPostMergeCompletion, postMergeProjectScope } from "./standard-session-pr-post-merge-completion.mjs";
 import { postMergeCompleteOperation } from "../../core/workflow/standard-pr-post-merge-complete.mjs";
 import { createStandardPostMergeDecision } from "./standard-session-pr-post-merge-decision.mjs";
-import { postMergeDecisionOperation } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
+import { alignedPostMergeSubject, assertPostMergeRecoveryPlan, postMergeDecisionMaxAgeMs, postMergeDecisionOperation,
+  postMergeRecoveryOutput, postMergeRecoveryPlanVersion, postMergeRecoveryResult } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
 import { postMergeAlignmentOperation, postMergeFetchOperation, postMergeMeasureOperation } from "../../core/workflow/standard-pr-post-merge-fetch.mjs";
 import { mergeExecuteOperation, postMergeWaitOperation } from "../../core/workflow/standard-pr-merge-execute.mjs";
 import { createStandardPrMergeConsent } from "./standard-session-pr-merge-consent.mjs";
@@ -579,7 +580,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     verifyFreshDecision: (record, signal) => human.verifyCaptured(record, signal, { acknowledged: true }) });
   const postMerge = createStandardSessionPrPostMergeFetch(acceptedReviewPorts);
   const postMergeScope = () => postMergeProjectScope(targetRoot);
-  const postMergeDecision = createStandardPostMergeDecision({ ...acceptedReviewPorts, artifacts, postMerge, scopeSha: postMergeScope });
+  const postMergeDecision = createStandardPostMergeDecision({ ...acceptedReviewPorts, artifacts, postMerge, scopeSha: postMergeScope, now });
   const assertPostMergeDecisionFresh = (instance, record, signal) => postMergeDecision.assertFresh(
     instance, record.preview.input, record.preview.prepared, signal);
   const postMergeCompletion = createStandardPostMergeCompletion({ ...acceptedReviewPorts, artifacts,
@@ -788,7 +789,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     const value = journal.read(id);
     if (!value.record) fail("PROCESS_JOURNAL_NOT_FOUND");
     signer.verify(value.record); validatePreview(value.record.preview);
-    if (value.record.preview.binding.executor_kind === "human" && value.record.results.length) human.captured(value.record);
+    if (value.record.preview.binding.executor_kind === "human" && value.record.results.length) {
+      const recovery = postMergeRecoveryResult(value.record);
+      if (recovery) signer.verify(recovery.output.observations.plan);
+      else human.captured(value.record);
+    }
     return value;
   }
   function readDispatchedCheckpoint(instance, id) {
@@ -815,11 +820,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     }
     return record;
   }
-  async function grantFor(preview, signal) {
+  async function grantFor(preview, signal, exactSha = shadowHash(preview)) {
     if (["read-only", "preview"].includes(preview.binding.effect_class)) return null;
     const controller = new AbortController(); let timer;
     const pending = Promise.resolve().then(() => authorize({ binding: structuredClone(preview.binding), input: structuredClone(preview.input),
-      preview_sha256: shadowHash(preview), prepared: structuredClone(preview.prepared), scope_id: preview.scope_id, signal: signal ?? controller.signal }));
+      preview_sha256: exactSha, prepared: structuredClone(preview.prepared), scope_id: preview.scope_id, signal: signal ?? controller.signal }));
     const timeout = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Object.assign(new Error("STANDARD_HOST_AUTHORIZATION_TIMEOUT"), { code: "STANDARD_HOST_AUTHORIZATION_TIMEOUT" })); }, 5000); });
     let grant;
     try { grant = await Promise.race([pending, timeout]); } finally { clearTimeout(timer); controller.abort(); }
@@ -829,6 +834,14 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   }
   async function verifyGrant(record, signal) {
     if (shadowHash(await grantFor(record.preview, signal)) !== shadowHash(record.grant)) fail("STANDARD_HOST_AUTHORIZATION_CHANGED");
+  }
+  function recoveryGrant(record, plan, signal) {
+    return grantFor({ ...record.preview, binding: { ...record.preview.binding, effect_class: "mutating" },
+      prepared: { action: "question_recovery", plan } }, signal, shadowHash(plan));
+  }
+  async function verifyRecoveryGrant(record, result, signal) {
+    const { plan, grant } = result.output.observations;
+    if (shadowHash(await recoveryGrant(record, plan, signal)) !== shadowHash(grant)) fail("STANDARD_HOST_AUTHORIZATION_CHANGED");
   }
   let service, disposition;
   const authority = {
@@ -855,6 +868,13 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       scope(instance); const record = retained(intent.operation_id).record;
       if (await disposition.verifyReceipt(record, receipt, signal)) {
         if (!record.results.some(row => shadowHash(row.receipt) === shadowHash(receipt)) || shadowHash(record.intent) !== shadowHash(intent)) fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
+        return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
+      }
+      const recovery = postMergeRecoveryResult(record);
+      if (recovery) {
+        if (shadowHash(recovery.receipt) !== shadowHash(receipt) || shadowHash(record.intent) !== shadowHash(intent))
+          fail("PROCESS_OPERATION_RESULT_NOT_AUTHENTICATED");
+        await verifyRecoveryGrant(record, recovery, signal);
         return { outcome: "verified", authority_id: receipt.authority_id, receipt_sha256: shadowHash(receipt), intent_sha256: shadowHash(intent) };
       }
       await verifyGrant(record, signal);
@@ -1058,6 +1078,36 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       persist({ ...body, phase: "receipted", revision: record.revision + 1, results: [...record.results, { output, receipt }] }, before.content_sha256);
       return receipt;
     }, makeReceipt: resultReceipt });
+  function recoveryTarget(id, expectedSha256) {
+    const before = retained(id), { record } = before, state = current(record.intent.instance_id);
+    if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
+    const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
+    if (record.intent.binding_ref !== postMergeDecisionOperation || frame?.status !== "WAITING" || !frame.operation
+      || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent))
+      fail("STANDARD_PR_POST_MERGE_RECOVERY_WAIT_REQUIRED");
+    const result = postMergeRecoveryResult(record);
+    if (!result && (record.phase !== "staged" || record.owner !== null || record.results.length))
+      fail("STANDARD_PR_POST_MERGE_CAPTURE_RECONCILIATION_REQUIRED");
+    if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+    return { before, record, state, result };
+  }
+  async function observeQuestionRecovery(target, signal) {
+    const { before, state, record } = target;
+    const observation = await postMergeDecision.observeRecovery(state.record, record.preview.input, record.preview.prepared, signal);
+    const latest = recoveryTarget(record.operation_id, state.record.instance_sha256);
+    if (latest.before.content_sha256 !== before.content_sha256) fail("PROCESS_JOURNAL_OWNER_CHANGED");
+    return observation;
+  }
+  function predecessorFor(occurrence) {
+    const previous = occurrence.operation;
+    if (!previous?.receipt) return null;
+    const { record } = retained(previous.intent.operation_id);
+    const result = postMergeRecoveryResult(record);
+    if (!result) return null;
+    if (shadowHash(result.receipt) !== shadowHash(previous.receipt)) fail("STANDARD_PR_POST_MERGE_RECOVERY_RESULT_CHANGED");
+    return { operation_id: record.operation_id, intent_sha256: shadowHash(record.intent),
+      disposition_receipt_sha256: shadowHash(result.receipt) };
+  }
   const operationHost = {
     initialize(input) {
       if (input.facts && Object.keys(input.facts).length) fail("STANDARD_HOST_AUTHENTICATED_FACTS_REQUIRED");
@@ -1076,7 +1126,50 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       // scope/model/history. Current operation admission still uses scope().
       return { ...value, native: processAuthority.inspectDiagnostic(value.record) };
     },
-    prepareDecision: id => structuredClone(human.question(retained(id).record)),
+    prepareDecision(id) {
+      const { record } = retained(id);
+      if (postMergeRecoveryResult(record)) fail("STANDARD_PR_POST_MERGE_QUESTION_DISPOSED");
+      return structuredClone(human.question(record));
+    },
+    async prepareQuestionRecovery(id, { expectedSha256, signal } = {}) {
+      const target = recoveryTarget(id, expectedSha256);
+      if (target.result) return structuredClone(target.result.output.observations.plan);
+      const { subject, observedAt, reason } = await observeQuestionRecovery(target, signal);
+      if (!reason) return null;
+      return assertPostMergeRecoveryPlan(signer.seal({ contract_version: postMergeRecoveryPlanVersion,
+        operation_id: id, intent_sha256: shadowHash(target.record.intent), journal_sha256: shadowHash(target.record),
+        instance_sha256: expectedSha256, reason, next_subject: subject, observed_at_ms: observedAt }));
+    },
+    async applyQuestionRecovery(plan, { write = false, expectedPlanSha256, signal } = {}) {
+      plan = structuredClone(plan);
+      assertPostMergeRecoveryPlan(plan);
+      requireWrite(write, expectedPlanSha256, shadowHash(plan));
+      signer.verify(plan);
+      const target = recoveryTarget(plan.operation_id, plan.instance_sha256), { before, record, result } = target;
+      if (result) {
+        if (shadowHash(result.output.observations.plan) !== expectedPlanSha256) fail("STANDARD_PR_POST_MERGE_RECOVERY_PLAN_CHANGED");
+        await verifyRecoveryGrant(record, result, signal);
+        return { status: "retained_result", receipt: result.receipt };
+      }
+      if (shadowHash(record) !== plan.journal_sha256 || shadowHash(record.intent) !== plan.intent_sha256)
+        fail("STANDARD_PR_POST_MERGE_RECOVERY_PLAN_CHANGED");
+      const grant = await recoveryGrant(record, plan, signal);
+      const { subject, observedAt, reason } = await observeQuestionRecovery(target, signal);
+      if (observedAt < plan.observed_at_ms || observedAt - plan.observed_at_ms >= postMergeDecisionMaxAgeMs)
+        fail("STANDARD_PR_POST_MERGE_RECOVERY_PLAN_EXPIRED");
+      if (reason !== plan.reason || shadowHash(subject) !== shadowHash(plan.next_subject))
+        fail("STANDARD_PR_POST_MERGE_RECOVERY_PLAN_CHANGED");
+      if (shadowHash(await recoveryGrant(record, plan, signal)) !== shadowHash(grant))
+        fail("STANDARD_HOST_AUTHORIZATION_CHANGED");
+      if (signal?.aborted || recoveryTarget(plan.operation_id, plan.instance_sha256).before.content_sha256 !== before.content_sha256)
+        fail("PROCESS_JOURNAL_OWNER_CHANGED");
+      if (now() - plan.observed_at_ms >= postMergeDecisionMaxAgeMs) fail("STANDARD_PR_POST_MERGE_RECOVERY_PLAN_EXPIRED");
+      const output = postMergeRecoveryOutput(plan, grant), receipt = resultReceipt(record, output);
+      const { authentication, key_id, ...body } = record;
+      persist({ ...body, phase: "receipted", revision: record.revision + 1, owner: { generation, pid: process.pid },
+        results: [{ output, receipt }] }, before.content_sha256);
+      return { status: "receipted", receipt };
+    },
     prepareControl: input => structuredClone(controlRequest(input)),
     async captureControl({ instanceId, expectedSha256, occurrenceId, sourceRef, signal, captureKind = null, write = false }) {
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
@@ -1161,7 +1254,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "session_pr_review_effects_verify" ? sessionPrEffects.prepare(state.record, input)
         : binding.id === "session_pr_premerge_observe" ? sessionPrPremerge.prepare(state.record, input)
         : [postMergeAlignmentOperation, postMergeMeasureOperation].includes(binding.id) ? postMerge.prepareAlignment(state.record, input)
-        : binding.id === postMergeDecisionOperation ? await postMergeDecision.prepare(state.record, input)
+        : binding.id === postMergeDecisionOperation ? await postMergeDecision.prepare(state.record, input, predecessorFor(occurrence))
         : binding.id === postMergeWaitOperation ? { can_apply: true }
         : binding.id === checksOperation ? { can_apply: true }
         : binding.id === mergeConsentOperation ? await sessionPrConsent.prepare(state.record, input)
@@ -1277,6 +1370,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const frame = state.cursor.occurrences.find(row => row.occurrence_id === record.intent.occurrence_id);
       if (frame?.status !== "WAITING" || !frame.operation || frame.operation.receipt || shadowHash(frame.operation.intent) !== shadowHash(record.intent)) fail("STANDARD_HOST_CANONICAL_INTENT_REQUIRED");
       if (record.preview.binding.executor_kind === "human") {
+        if (record.intent.binding_ref === postMergeDecisionOperation && alignedPostMergeSubject(record.preview.prepared.subject))
+          return { status: "question_recovery_required" };
         if (["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref)) await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "spike_conversion_decision") await spike.assertFresh(state.record, record.preview.input, record.preview.prepared);
@@ -1496,6 +1591,9 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       if (write !== true) fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       const before = retained(id), record = before.record, state = current(record.intent.instance_id);
       if (record.preview.binding.executor_kind !== "human" || ![postMergeDecisionOperation, mergeConsentOperation, resolutionExceptionOperation, "spike_conversion_decision", "mode_work_continue_decision", "session_pr_correction_decision", "session_branch_integration_decision", "session_closure_decision", "mode_decision", "drift_recovery_decision", "drift_completion_decision", "cycle_closure_decision", "baseline_promotion_decision"].includes(record.intent.binding_ref)) fail("PROCESS_HUMAN_OPERATION_REQUIRED");
+      if (postMergeRecoveryResult(record)) fail("STANDARD_PR_POST_MERGE_QUESTION_DISPOSED");
+      const r09 = record.intent.binding_ref === postMergeDecisionOperation;
+      if (r09 && alignedPostMergeSubject(record.preview.prepared.subject)) fail("STANDARD_PR_POST_MERGE_QUESTION_UNAVAILABLE");
       if (record.phase === "receipted") {
         const capture = human.captured(record);
         if (capture.source_ref !== sourceRef) fail("PROCESS_HUMAN_DECISION_ALREADY_CAPTURED");
@@ -1516,9 +1614,28 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       const assertFreshDecision = record.intent.binding_ref === mergeConsentOperation ? assertMergeConsentFresh
         : record.intent.binding_ref === resolutionExceptionOperation ? assertResolutionExceptionFresh
         : record.intent.binding_ref === postMergeDecisionOperation ? assertPostMergeDecisionFresh : null;
+      let reservedOwner;
       const capture = await human.reserve(record, sourceRef, { signal,
-        ...(assertFreshDecision ? { assertCurrent: () => assertFreshDecision(state.record, record, signal) } : {}) });
+        ...(assertFreshDecision ? { assertCurrent: () => assertFreshDecision(state.record, record, signal) } : {}),
+        ...(r09 ? { claimDecision(claim) {
+          if (current(record.intent.instance_id).record.instance_sha256 !== state.record.instance_sha256
+            || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
+          if (signal?.aborted) fail("PROCESS_HUMAN_AUTHORITY_ABORTED");
+          postMergeDecision.assertAge(record.preview.prepared);
+          if (artifacts.ownerPending()) fail("STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED");
+          const latest = retained(id), claimSha = shadowHash({ source_ref: sourceRef, source: claim });
+          if (latest.record.phase === "dispatching" && latest.record.decision_claim_sha256 === claimSha) {
+            reservedOwner = latest.record;
+          } else {
+            if (latest.content_sha256 !== before.content_sha256 || record.phase !== "staged")
+              fail("STANDARD_PR_POST_MERGE_CAPTURE_RECONCILIATION_REQUIRED");
+            const { authentication, key_id, ...body } = record;
+            reservedOwner = persist({ ...body, phase: "dispatching", revision: record.revision + 1,
+              owner: { generation, pid: process.pid }, decision_claim_sha256: claimSha }, before.content_sha256);
+          }
+        } } : {}) });
       if (!capture) return { status: "waiting_for_human", question: human.question(record) };
+      if (r09) await dispatchCheckpoint?.("post_merge_decision_reserved");
       if (shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       if (["drift_recovery_decision", "drift_completion_decision"].includes(record.intent.binding_ref)) await recovery.assertFresh(state.record, record.preview.prepared.plan);
       if (record.intent.binding_ref === "cycle_closure_decision") await closureReview.assertFresh(state.record, record.preview.prepared.plan);
@@ -1544,7 +1661,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
           || shadowHash(snapshot()) !== shadowHash(record.preview.snapshot)) fail("STANDARD_HOST_PRECONDITIONS_CHANGED");
       }
       const { authentication, key_id, ...body } = record;
-      const claimed = record.phase === "staged" ? persist({ ...body, phase: "dispatching", revision: record.revision + 1, owner: { generation, pid: process.pid } }, before.content_sha256) : record;
+      const claimed = reservedOwner ?? (record.phase === "staged" ? persist({ ...body, phase: "dispatching", revision: record.revision + 1,
+        owner: { generation, pid: process.pid } }, before.content_sha256) : record);
       const output = human.output(claimed, capture), receipt = resultReceipt(claimed, output), latest = retained(id);
       if (shadowHash(latest.record) !== shadowHash(claimed)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       const { authentication: oldMac, key_id: oldKey, ...claimedBody } = claimed;
@@ -1565,7 +1683,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         await assertMergeConsentFresh(state.record, record, signal);
         if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");
       }
-      if (record.intent.binding_ref === postMergeDecisionOperation) {
+      if (record.intent.binding_ref === postMergeDecisionOperation && !postMergeRecoveryResult(record)) {
         await human.verifyCaptured(record, signal, { acknowledged: true });
         await assertPostMergeDecisionFresh(state.record, record, signal);
         if (shadowHash(retained(id).record) !== shadowHash(record)) fail("PROCESS_JOURNAL_OWNER_CHANGED");

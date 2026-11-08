@@ -74,6 +74,15 @@ The host authenticates `human-pr-post-merge-decision.v1` in
 `process-decision-inbox.v15`. The decision receipt carries no Git effect or
 continuity fact. Historical inbox readers retain their versioned contracts.
 
+R09 question recovery adds a signed plan and an operation output that describe
+the previous intent and the current Git subject. The ordinary STANDARD action
+and result support the additive `question_recovery` kind. Its receipt has empty
+facts. The optional `replaces` field binds a successor question to the prior
+intent and accepted disposition receipt. Historical questions omit that field
+and retain their original hashes. R09 claims may add an authenticated source
+digest to the operation journal before inbox reservation. Inbox v15 and the
+human source contract keep their existing shapes.
+
 Private `standard-pr-post-merge-complete-{input,plan,output}.v1` contracts bind
 the accepted alignment to the opening, merge and fetch receipts, the project
 scope, the source ref and the exact reconciled OIDs. The closed output records

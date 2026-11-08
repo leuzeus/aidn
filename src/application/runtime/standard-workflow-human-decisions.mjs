@@ -109,6 +109,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
     const retained = read(observation.inbox_id).record;
     if (retained.operation_id !== record.operation_id || retained.source.question_sha256 !== shadowHash(question(record))
       || observation.source_ref !== retained.source_ref || observation.source_sha256 !== shadowHash(retained.source) || observation.choice !== retained.source.choice
+      || record.decision_claim_sha256 !== undefined && record.decision_claim_sha256 !== shadowHash({ source_ref: retained.source_ref, source: retained.source })
       || retained.phase === "receipted" && retained.receipt_sha256 !== shadowHash(result.receipt)) fail("PROCESS_HUMAN_CAPTURE_CHANGED");
     return retained;
   }
@@ -119,7 +120,7 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       if (!match) fail("PROCESS_HUMAN_SOURCE_REF_INVALID");
       return structuredClone(read(match[1]).record.source);
     },
-    async reserve(record, sourceRef, { signal, assertCurrent } = {}) {
+    async reserve(record, sourceRef, { signal, assertCurrent, claimDecision } = {}) {
       if (typeof sourceRef !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/.test(sourceRef)) fail("PROCESS_HUMAN_SOURCE_REF_INVALID");
       const request = question(record), claim = await bounded("read", { sourceRef, question: request }, signal);
       if (claim === null) return null;
@@ -129,11 +130,13 @@ export function createStandardHumanDecisions({ inbox, signer, source, projection
       if (before.record) {
         signer.verify(before.record);
         if (before.record.operation_id !== record.operation_id || shadowHash(before.record.source) !== shadowHash(claim)) fail("PROCESS_HUMAN_SOURCE_ALREADY_USED");
+        claimDecision?.(claim);
         if (projectionRequired) inbox.materialize(id, { write: true });
         return before.record;
       }
       const version = record.intent.binding_ref === postMergeDecisionOperation ? "process-decision-inbox.v15"
         : record.intent.binding_ref === mergeConsentOperation ? "process-decision-inbox.v14" : resolutionException(record) ? "process-decision-inbox.v13" : spike(record) ? "process-decision-inbox.v11" : modeWork(record) ? "process-decision-inbox.v10" : correction(record) ? (claim.contract_version === "human-pr-correction-decision.v3" ? "process-decision-inbox.v9" : claim.contract_version === "human-pr-correction-decision.v2" ? "process-decision-inbox.v8" : "process-decision-inbox.v7") : integration(record) ? "process-decision-inbox.v6" : sessionClosure(record) ? "process-decision-inbox.v5" : promotion(record) ? "process-decision-inbox.v4" : closure(record) ? "process-decision-inbox.v3" : recovery(record) ? (claim.contract_version === "human-drift-recovery-decision.v2" ? "process-decision-inbox.v12" : "process-decision-inbox.v2") : "process-decision-inbox.v1";
+      claimDecision?.(claim);
       return write({ contract_version: version, inbox_id: id, operation_id: record.operation_id, source_ref: sourceRef,
         source: claim, phase: "reserved", receipt_sha256: null }, null);
     },

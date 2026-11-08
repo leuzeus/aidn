@@ -40,7 +40,8 @@ const files = [new URL("standard-session-pr-post-merge-decision.mjs", import.met
   new URL("../../core/workflow/standard-pr-post-merge-decision.mjs", import.meta.url),
   ...["standard-pr-post-merge-measure-output.v1", "standard-pr-post-merge-decision-input.v1",
     "standard-pr-post-merge-decision-question.v1", "standard-pr-post-merge-decision-output.v1",
-    "human-pr-post-merge-decision.v1", "process-decision-inbox.v15"]
+    "human-pr-post-merge-decision.v1", "process-decision-inbox.v15",
+    "standard-pr-post-merge-question-recovery-plan.v1", "standard-pr-post-merge-question-recovery-output.v1"]
     .map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
   new URL("../../core/workflow/standard-pr-resolution-exception.mjs", import.meta.url),
   new URL("../../core/workflow/standard-pr-merge-consent.mjs", import.meta.url),
@@ -88,7 +89,7 @@ const files = [new URL("standard-session-pr-post-merge-decision.mjs", import.met
   "standard-workflow-operation-host.mjs", "standard-workflow-entry.mjs", new URL("../../adapters/runtime/standard-host-authority.mjs", import.meta.url),
   new URL("../../adapters/runtime/standard-github-provider-host.mjs", import.meta.url),
   ...["standard-workflow-execution.v1", "standard-workflow-action.v1", "standard-workflow-entry-result.v1", "standard-workflow-call-action.v1", "standard-workflow-call-result.v1"].map(name => new URL(`../../core/contracts/workflow-definition/${name}.schema.json`, import.meta.url)),
-  "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
+  "standard-workflow-mixed-composition.mjs", "standard-process-authority.mjs", "standard-process-inputs.mjs", "standard-drift-report.mjs", "standard-drift-git.mjs", "standard-drift-finalization.mjs",
   "standard-session-mode-operations.mjs", "skill-hook-use-case.mjs", "gating-evaluate-use-case.mjs", "workflow-hook-use-case.mjs", "checkpoint-use-case.mjs",
   "standard-session-pr-merge-observe.mjs", "standard-session-pr-review-source.mjs", "standard-session-pr-review-effects.mjs", "standard-workflow-human-decisions.mjs", "standard-workflow-control-inbox.mjs", "standard-session-pr-review-control-source.mjs",
   "workflow-transition-lib.mjs", "workflow-transition-constants.mjs", "workflow-continuity-context-service.mjs", "pre-write-admit-use-case.mjs"];

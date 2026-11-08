@@ -1256,10 +1256,15 @@ acceptée qui ouvre une question R09. Le sujet signé lie la session, la PR, la
 fusion, le reçu de fetch et les pointes relues. Le choix de rapprochement manuel
 laisse à l’opérateur l’exécution Git. Une nouvelle mesure 0/0 avec preuve
 d’ascendance, suivie du reçu canonique accepté, ouvre les admissions. Le report
-permet une nouvelle question. Le refus et l’annulation arrêtent l’instance. Une
-réponse expirée ou liée à une autre mesure laisse l’occurrence bloquée. La
-qualification du fast-forward automatique et la fusion externe pendant une
-autre attente R08 restent ouvertes.
+permet une nouvelle question. Le refus et l’annulation arrêtent l’instance.
+Une question expirée ou obsolète peut recevoir une disposition explicite depuis
+l’entrée STANDARD, après une mesure Git fraîche et sous plan, grant et CAS
+exacts. Une nouvelle question lie l’intention et le reçu de disposition
+précédents au sujet courant. Une capture commencée reste liée à sa source
+authentifiée et à son entrée inbox. Une convergence externe passe par
+l’alignement et la clôture canonique avant toute admission. Le fast-forward
+autorisé et la fusion externe pendant une autre attente R08 restent des
+tranches séparées.
 
 | A10 — Stockage et histoires | files/dual/db-only sur SQLite réel ; PostgreSQL configuré via adaptateur réel et transport simulé hors ligne, puis preuve PostgreSQL réel avant affirmation de ce backend. Projection en panne conservée comme telle. Lecteurs workflow-instance.v1 et agentic-process-instance.v1 préservés, historique non converti. |
 

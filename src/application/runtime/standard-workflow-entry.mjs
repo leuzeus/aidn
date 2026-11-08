@@ -87,13 +87,14 @@ export async function runStandardWorkflowAction({ request, configuration, parame
       return { kind: "control", payload: { request: host.prepareControl({ expectedSha256: state.record.instance_sha256,
         occurrenceId: standardWorkflowControlOccurrence(state) }), source_ref: controlSource } };
     }
-    const next = await host.step({ write: false, expectedInstanceSha256: state.record.instance_sha256 });
+    const next = await host.step({ write: false, expectedInstanceSha256: state.record.instance_sha256, decisionSelected: decisionSource !== null, signal });
     if (decisionSource) {
       if (next.kind !== "human_wait") fail("STANDARD_ENTRY_HUMAN_WAIT_REQUIRED");
       return { kind: "decision", payload: { operation_id: next.operation_id, question: host.prepareDecision(next.operation_id), source_ref: decisionSource } };
     }
     if (next.kind === "call") return { kind: "call", payload: { ...next.transition, instance_id: state.record.instance_id,
       model_sha256: state.record.model_sha256 } };
+    if (next.kind === "question_recovery") return { kind: "question_recovery", payload: { recovery_plan: next.plan } };
     if (next.kind === "operation_preview") return { kind: "operation", payload: { preview: next.preview } };
     if (["human_wait", "operation_wait"].includes(next.kind)) return { kind: "dispatch", payload: { operation_id: next.operation_id,
       journal_sha256: shadowHash(host.readOperation(next.operation_id)), ...(next.kind === "human_wait" ? { question: host.prepareDecision(next.operation_id) } : {}) } };
@@ -106,9 +107,10 @@ export async function runStandardWorkflowAction({ request, configuration, parame
     action = supplied;
     // Stage revalidates the original exact prepared plan, age, bindings, CAS,
     // live snapshot and resolved data. Do not regenerate its timestamps.
-    if (action.kind !== "operation" && shadowHash(await currentKind()) !== shadowHash({ kind: action.kind, payload: action.payload })) fail("STANDARD_ENTRY_ACTION_CHANGED");
-    if (action.kind === "operation" && (decisionSource || controlSource || observation || !state
-      || action.payload.preview.instance_sha256 !== state.record.instance_sha256)) fail("STANDARD_ENTRY_ACTION_CHANGED");
+    if (!["operation", "question_recovery"].includes(action.kind) && shadowHash(await currentKind()) !== shadowHash({ kind: action.kind, payload: action.payload })) fail("STANDARD_ENTRY_ACTION_CHANGED");
+    if (["operation", "question_recovery"].includes(action.kind) && (decisionSource || controlSource || observation || !state
+      || (action.payload.preview ?? action.payload.recovery_plan)?.instance_sha256 !== state.record.instance_sha256))
+      fail("STANDARD_ENTRY_ACTION_CHANGED");
   } else {
     const next = await currentKind();
     action = { contract_version: next.kind === "call" ? callActionSchema["x-aidn-contract-version"] : "standard-workflow-action.v1", context, ...next };
@@ -116,7 +118,7 @@ export async function runStandardWorkflowAction({ request, configuration, parame
       fail("STANDARD_ENTRY_ACTION_INVALID");
   }
   const payloadKeys = { prepare_host: [], initialize: ["instance_sha256"], operation: ["preview"], decision: ["operation_id", "question", "source_ref"],
-    control: ["request", "source_ref"], native: ["authorization_sha256"], observe: ["status", "reason"], replay: [], simulate: [],
+    question_recovery: ["recovery_plan"], control: ["request", "source_ref"], native: ["authorization_sha256"], observe: ["status", "reason"], replay: [], simulate: [],
     call: ["transition", "occurrence_id", "event_id", "result_sha256", "instance_id", "model_sha256"] };
   if (action.kind === "dispatch") payloadKeys.dispatch = Object.hasOwn(action.payload, "question") ? ["operation_id", "journal_sha256", "question"] : ["operation_id", "journal_sha256"];
   if (Object.keys(action.payload).sort().join(",") !== payloadKeys[action.kind].sort().join(",")) fail("STANDARD_ENTRY_ACTION_INVALID");
@@ -158,6 +160,12 @@ export async function runStandardWorkflowAction({ request, configuration, parame
       : await host.dispatchOperation(id, { write: true, signal });
     output.result = ["receipted", "retained_result"].includes(result.status) ? { ...result, accepted: await host.acceptOperation(id, { write: true, signal }) } : result;
     output.written = beforeJournal !== shadowHash(host.readOperation(id)) || host.inspect().record.instance_sha256 !== state.record.instance_sha256;
+  } else if (action.kind === "question_recovery") {
+    const plan = action.payload.recovery_plan;
+    permittedOperation = shadowHash(plan);
+    const result = await host.applyQuestionRecovery(plan, { write: true, expectedPlanSha256: permittedOperation, signal });
+    output.result = { ...result, accepted: await host.acceptOperation(plan.operation_id, { write: true, signal }) };
+    output.written = true;
   } else if (action.kind === "control") {
     const result = await host.captureControl({ expectedSha256: state.record.instance_sha256, occurrenceId: action.payload.request.occurrence_id,
       sourceRef: action.payload.source_ref, write: true, signal });

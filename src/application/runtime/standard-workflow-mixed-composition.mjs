@@ -5,6 +5,7 @@ import { createJournaledNativeAllocation } from "./journaled-native-allocation.m
 import { standardWorkflowOperationBindings } from "./standard-workflow-operations.mjs";
 import { shadowHash, freezeShadow, checkShadowJson } from "../../core/workflow/shadow-json.mjs";
 
+import { postMergeDecisionOperation, postMergeRecoveryResult } from "../../core/workflow/standard-pr-post-merge-decision.mjs";
 import { processModels, processFrameNode } from "../../core/workflow/process-call-model.mjs";
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
@@ -32,7 +33,7 @@ export function standardWorkflowCallPort(operations, instanceId) {
 // The common reducer owns control flow. This adapter selects a port for the
 // cursor's ready leaf; it contains no standard-workflow routing decisions.
 export function createStandardWorkflowMixedHost({ configuration: suppliedConfiguration, modelSource = null, readSigningKey, authorize, humanSource, controlSource,
-  environment = process.env, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, dispositionSource = null, nativeAuthorizationSource }, { controllerFactory, validationBoundaryFactory } = {}) {
+  environment = process.env, now = Date.now, validationProfile = null, sessionPushPort = null, sessionPullRequestPort = null, sessionReviewPort = null, sessionReviewEventPort = null, dispositionSource = null, nativeAuthorizationSource }, { controllerFactory, validationBoundaryFactory } = {}) {
   if (checkShadowJson(suppliedConfiguration)) fail("STANDARD_PROCESS_CONFIGURATION_INVALID");
   const configuration = freezeShadow(structuredClone(suppliedConfiguration));
   const model = readAgentRunFile(configuration.model.path, { sha256: configuration.model.sha256 }).value;
@@ -49,7 +50,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
   if (processModels(model).every(component => component.nodes.filter(node => node.kind === "operation").every(node => bindings.has(node.binding_ref)
     && component.operation_pins[node.binding_ref] === shadowHash(bindings.get(node.binding_ref))))) nativeHost();
   const operations = createStandardWorkflowOperationHost({ targetRoot: configuration.target_root, model, modelSource, readSigningKey,
-    authorize, humanSource, controlSource, processAuthority, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
+    authorize, humanSource, controlSource, processAuthority, now, validationProfile, sessionPushPort, sessionPullRequestPort, sessionReviewPort, sessionReviewEventPort,
     reconciliationConfiguration: configuration, dispositionSource }, { validationBoundaryFactory });
   const inspect = () => operations.inspect(configuration.instance_id);
   const callTransition = standardWorkflowCallPort(operations, configuration.instance_id);
@@ -80,13 +81,14 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     acceptOperation: (id, input) => operations.accept(id, input),
     readOperation: id => operations.readJournal(id),
     prepareDecision: id => operations.prepareDecision(id),
+    applyQuestionRecovery: (plan, input) => operations.applyQuestionRecovery(plan, input),
     receiveDecision: (id, input) => operations.receiveDecision(id, input),
     prepareControl: input => operations.prepareControl({ ...input, instanceId: configuration.instance_id }),
     captureControl: input => operations.captureControl({ ...input, instanceId: configuration.instance_id }),
     deliverControl: (id, input) => operations.deliverControl(id, input),
     readControl: id => operations.readControl(id),
     applyCall: callTransition.apply,
-    async step({ write = false, input = {}, authorization, signal, expectedInstanceSha256 = null } = {}) {
+    async step({ write = false, input = {}, authorization, signal, expectedInstanceSha256 = null, decisionSelected = false } = {}) {
       if (typeof write !== "boolean") fail("STANDARD_HOST_EXPLICIT_WRITE_REQUIRED");
       if (model.data_bindings && (checkShadowJson(input) || !input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).length)) fail("PROCESS_INPUT_OVERRIDE_FORBIDDEN");
       const state = inspect(), cursor = state.cursor;
@@ -132,8 +134,16 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
         return { kind: "native", ...await nativeHost().run({ execute: true, authorization, signal, resume: (nativeHost().inspect()?.allocations.length ?? 0) > 0 }) };
       }
       if (pending.length) {
-        if (!write) return { kind: "human_wait", written: false, status: "WAITING", operation_id: pending[0].operation.intent.operation_id };
-        return finishOperation(pending[0].operation.intent.operation_id, signal);
+        const id = pending[0].operation.intent.operation_id;
+        if (!decisionSelected && pending[0].operation.intent.binding_ref === postMergeDecisionOperation) {
+          const record = operations.readJournal(id);
+          if (record.phase === "staged" || postMergeRecoveryResult(record)) {
+            const plan = await operations.prepareQuestionRecovery(id, { expectedSha256: state.record.instance_sha256, signal });
+            if (plan) return { kind: "question_recovery", written: false, status: "WAITING", plan };
+          }
+        }
+        if (!write) return { kind: "human_wait", written: false, status: "WAITING", operation_id: id };
+        return finishOperation(id, signal);
       }
       return { kind: "wait", status: cursor.status, written: false, record: state.record, cursor };
     },

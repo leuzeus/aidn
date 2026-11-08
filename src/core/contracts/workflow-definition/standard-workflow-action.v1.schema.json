@@ -17,11 +17,11 @@
         "native": { "type": "object" }
       }
     },
-    "kind": { "enum": ["prepare_host", "initialize", "operation", "dispatch", "decision", "control", "native", "observe", "replay", "simulate"] },
+    "kind": { "enum": ["prepare_host", "initialize", "operation", "dispatch", "decision", "question_recovery", "control", "native", "observe", "replay", "simulate"] },
     "payload": {
       "type": "object", "additionalProperties": false,
       "properties": {
-        "instance_sha256": { "type": "string" }, "preview": { "type": "object" },
+        "instance_sha256": { "type": "string" }, "preview": { "type": "object" }, "recovery_plan": { "type": "object" },
         "operation_id": { "type": "string", "pattern": "^op_[a-f0-9]{40}$" },
         "journal_sha256": { "type": "string" }, "question": { "type": "object" }, "request": { "type": "object" },
         "source_ref": { "type": "string" }, "authorization_sha256": { "type": ["string", "null"] },

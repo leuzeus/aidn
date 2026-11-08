@@ -18,6 +18,10 @@ import { resolveStandardProcessInput } from '../../src/application/runtime/stand
 import { createStandardPrReviewControlSource } from '../../src/application/runtime/standard-session-pr-review-control-source.mjs';
 import { createStandardSessionPrReviewContentObservation } from '../../src/application/runtime/standard-session-pr-review-observe.mjs';
 import { loadStandardWorkflowAssets } from '../../src/application/runtime/standard-workflow-composition.mjs';
+import { createStandardWorkflowMixedHost } from '../../src/application/runtime/standard-workflow-mixed-composition.mjs';
+import { runStandardWorkflowAction } from '../../src/application/runtime/standard-workflow-entry.mjs';
+import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
+import { CODEX_STARTUP_ENVIRONMENT_PROFILES } from '../../src/core/agents/codex-startup-arguments.mjs';
 import { createStandardWorkflowOperationHost } from '../../src/application/runtime/standard-workflow-operation-host.mjs';
 import { standardWorkflowOperationBindings } from '../../src/application/runtime/standard-workflow-operations.mjs';
 import { advanceAgenticProcess, inspectAgenticProcess } from '../../src/core/workflow/agentic-process.mjs';
@@ -101,7 +105,8 @@ function fixtureModel(prefix, fetchOnly) {
 }
 
 function open(base, { initializeKey = false } = {}) {
-  const data = json(path.join(base, 'configuration.json'));
+  const configurationFile = path.join(base, 'configuration.json');
+  const data = json(configurationFile);
   const { configuration, binding, pr, prefix, behavior, submittedAt, fetchFixture } = data;
   const exception = behavior.startsWith('exception-');
   const instanceId = configuration.instance_id, targetRoot = configuration.target_root;
@@ -119,7 +124,7 @@ function open(base, { initializeKey = false } = {}) {
     ? [rootComment, { ...rootComment, id: 'C_other' }] : [rootComment];
   const connection = nodes => ({ nodes, totalCount: nodes.length, pageInfo: { hasNextPage: false, endCursor: null } });
   const ok = value => ({ status: 0, stdout: typeof value === 'string' ? value : JSON.stringify(value) });
-  let permitted, denied = false, revokeAt = null, grants = 0, calls = 0, crash = false;
+  let permitted, denied = false, revokeAt = null, grants = 0, calls = 0, crash = false, interruptCapture = false;
   const providerTransport = {
     runGithub() { assert.fail('Unexpected GitHub effect'); },
     runRemoteGit(executable, args) {
@@ -274,16 +279,30 @@ function open(base, { initializeKey = false } = {}) {
   const { githubProvider: provider, readKey } = authority;
   if (initializeKey) authority.ensureKey();
   const signer = createOperationJournalSigner(readKey), graph = fixtureModel(prefix, Boolean(fetchFixture)), { model } = graph;
+  const wallClock = Date.now, now = () => json(configurationFile).clock_ms ?? wallClock();
+  // The protected reader is synchronous. Use the same fixture time for
+  // envelope authentication and the H host, while leaving process deadlines
+  // and real Git/transport timing on the wall clock.
+  const humanSource = data.recovery ? Object.fromEntries(['read', 'verify'].map(method => [method, input => {
+    const clock = Date.now;
+    try { Date.now = now; return authority.humanSource[method](input); }
+    finally { Date.now = clock; }
+  }])) : authority.humanSource;
+  const mixed = authorize => createStandardWorkflowMixedHost({ configuration, environment, now, readSigningKey: readKey, authorize,
+    humanSource, sessionReviewPort: provider.sessionReviewPort });
   const processAuthority = createStandardProcessAuthority({ configuration, model, readSigningKey: readKey,
-    readProductSha256: () => pin(path.join(targetRoot, 'AGENTS.md')).sha256 });
-  const host = createStandardWorkflowOperationHost({ targetRoot, model, processAuthority, readSigningKey: readKey,
-    humanSource: authority.humanSource,
+    readProductSha256: () => data.recovery ? shadowHash([{ path: 'fixture.mjs', present: false }]) : pin(path.join(targetRoot, 'AGENTS.md')).sha256 });
+  const entry = options => runStandardWorkflowAction({ request: { fixture: 'R09' }, configuration, modelSource: null, parameters: {}, ...options },
+    { authority, compose: mixed });
+  const host = createStandardWorkflowOperationHost({ targetRoot, model, processAuthority, now, readSigningKey: readKey,
+    humanSource,
     sessionPushPort: provider.sessionPushPort, sessionPullRequestPort: provider.sessionPullRequestPort,
     sessionReviewPort: provider.sessionReviewPort, sessionReviewEventPort: fetchFixture ? null : provider.sessionReviewEventPort,
     authorize(input) {
       grants++;
       return authority.authorizeOperation(input, denied || grants === revokeAt ? null : permitted);
     } }, { dispatchCheckpoint(point) {
+      if (interruptCapture && point === 'post_merge_decision_reserved') throw Object.assign(Error('Fixture interrupted capture'), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
       if (crash && point === 'effect_returned') throw Object.assign(Error('Fixture interrupted owner'), { code: 'FIXTURE_DISPATCH_INTERRUPTED' });
     } });
   const instances = createAgenticProcessStore(options), journal = createProcessOperationJournalStore(options);
@@ -390,7 +409,8 @@ function open(base, { initializeKey = false } = {}) {
     save(providerFile, state);
   }
   return { host, preview, stage, run, inspect, seedPrefix, seed, graph, observePublishedReply, state, providerFile, calls: () => calls, allow: sha => { permitted = sha; },
-    signer, inbox: createProcessDecisionInboxStore(options), providerTransport,
+    signer, journal, inbox: createProcessDecisionInboxStore(options), providerTransport, entry, mixed,
+    now, interruptCapture: () => { interruptCapture = true; },
     deny: value => { denied = value; }, revokeAt: value => { revokeAt = grants + value; }, interrupt: () => { crash = true; } };
 }
 
@@ -965,9 +985,179 @@ function qualifyPostMergeDecision({ base, home, measurement, fetch, localBefore,
   };
 }
 
+async function qualifyQuestionRecovery({ base, scenario, git, bare, tip, merged, localBefore, continuity }) {
+  const config = path.join(base, 'configuration.json');
+  const setClock = clock_ms => save(config, { ...json(config), clock_ms });
+  setClock(Date.now());
+  const f = open(base), preview = await f.preview(), { operation_id: id } = await f.stage(preview);
+  const question = f.host.prepareDecision(id), staged = f.journal.read(id);
+  assert.equal(question.expires_at_ms - question.issued_at_ms, 300000);
+  const expectedSha256 = f.inspect().record.instance_sha256;
+  const args = { expectedSha256 };
+  const prepare = () => f.host.prepareQuestionRecovery(id, args);
+  const inventory = () => [git('show-ref'), git(bare, 'show-ref'), git('status', '--porcelain=v1')];
+  const assertClosed = () => assert.equal(continuity().completion, null);
+  const apply = (plan, host = f) => host.host.applyQuestionRecovery(plan, { write: true, expectedPlanSha256: shadowHash(plan) });
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519'), authority_id = 'fixture-human-r09-recovery';
+  const home = json(config).home, inbox = path.join(home, 'inbox');
+  fs.mkdirSync(inbox);
+  save(path.join(home, 'principals.json'), { contract_version: 'standard-host-principals.v1',
+    principals: [{ authority_id, kinds: ['human'], public_key: publicKey.export({ type: 'spki', format: 'pem' }) }] });
+  function publish(sourceRef, subject, { invalid = false, old = false } = {}) {
+    const payload = { contract_version: 'human-pr-post-merge-decision.v1', source_kind: 'human', authority_id,
+      source_event_id: sourceRef, question_sha256: shadowHash(subject), subject_sha256: invalid ? '0'.repeat(64) : shadowHash(subject.subject),
+      choice: 'reconcile_manually', rationale: 'The operator will control any subsequent Git operation.',
+      evidence_refs: [{ ref: 'git:' + subject.subject.alignment.proof_ref, sha256: shadowHash(subject.subject.alignment) }] };
+    const body = { contract_version: 'standard-host-source.v1', kind: 'human', authority_id, source_ref: sourceRef,
+      subject_sha256: shadowHash(subject), payload, issued_at_ms: old ? subject.issued_at_ms : f.now(), expires_at_ms: subject.expires_at_ms };
+    save(path.join(inbox, sourceRef + '.json'), { ...body,
+      signature: sign(null, Buffer.from(shadowHash(body)), privateKey).toString('base64') });
+    return payload;
+  }
+  publish('old-r09', question, { old: true });
+  setClock(question.expires_at_ms - 1);
+  const live = await f.entry();
+  assert.equal(live.preview.kind, 'dispatch');
+  assert.equal(live.can_apply, false);
+  assert.deepEqual(live.preview.payload.question, question);
+  if (scenario === 'recover-expired') assert.equal(await prepare(), null);
+  assert.equal(f.journal.read(id).content_sha256, staged.content_sha256);
+  assertClosed();
+  let advanced = merged;
+  if (scenario === 'recover-expired') setClock(question.expires_at_ms);
+  else if (scenario === 'recover-aligned') git('merge', '--ff-only', merged);
+  else {
+    advanced = git('commit-tree', merged + '^{tree}', '-p', merged, '-m', 'fresh remote subject');
+    git(bare, 'fetch', '--no-write-fetch-head', '--', git('rev-parse', '--show-toplevel'), advanced);
+    git(bare, 'update-ref', tip, advanced, merged);
+  }
+  const exactGit = inventory();
+  const ordinary = await f.entry();
+  assert.equal(ordinary.preview.kind, 'question_recovery');
+  assert.equal(ordinary.written, false);
+  const plan = ordinary.preview.payload.recovery_plan;
+  assert.equal(plan.reason, scenario === 'recover-expired' ? 'expired' : 'subject_changed');
+  assert.equal(plan.observed_at_ms, question.expires_at_ms - (scenario === 'recover-expired' ? 0 : 1));
+  assert.equal(plan.next_subject.alignment.remote_head, advanced);
+  assert.equal(plan.journal_sha256, shadowHash(staged.record));
+  assert.equal(f.inspect().record.instance_sha256, expectedSha256);
+  assert.equal(f.journal.read(id).content_sha256, staged.content_sha256);
+  await assert.rejects(f.entry({ preparedAction: ordinary.preview, execute: true, expectPlan: 'a'.repeat(64) }),
+    { code: 'STANDARD_ENTRY_EXACT_ACTION_REQUIRED' });
+  await assert.rejects(apply({ ...plan, reason: 'aligned_without_question' }), { code: 'PROCESS_JOURNAL_NOT_AUTHENTICATED' });
+  await assert.rejects(apply(plan), { code: 'STANDARD_HOST_EXACT_OPERATION_REQUIRED' });
+  await assert.rejects(f.host.prepareQuestionRecovery(id, { expectedSha256: 'a'.repeat(64) }), { code: 'PROCESS_REVISION_CONFLICT' });
+  if (scenario === 'recover-moved') {
+    git(bare, 'update-ref', tip, merged, advanced);
+    f.allow(shadowHash(plan));
+    await assert.rejects(apply(plan), { code: 'STANDARD_PR_POST_MERGE_RECOVERY_PLAN_CHANGED' });
+    git(bare, 'update-ref', tip, advanced, merged);
+  }
+  assert.equal(f.journal.read(id).content_sha256, staged.content_sha256);
+  assert.deepEqual(inventory(), exactGit);
+
+  // Persist the disposition, then simulate a lost acknowledgement before
+  // reducer acceptance. The ordinary action in a new process adopts that receipt.
+  f.allow(shadowHash(plan));
+  const persisted = await apply(plan);
+  const disposed = f.host.readJournal(id);
+  assert.deepEqual(disposed.preview, staged.record.preview);
+  assert.deepEqual(disposed.intent, staged.record.intent);
+  assert.deepEqual(disposed.grant, staged.record.grant);
+  assert.equal(disposed.results.length, 1);
+  assert.deepEqual(disposed.results[0].receipt.facts, {});
+  assert.equal(disposed.results[0].output.observations.choice, undefined);
+  assertClosed();
+  assert.equal(f.inspect().record.instance_sha256, expectedSha256);
+  const actionFile = path.join(base, 'recovery-action.json');
+  save(actionFile, ordinary.preview);
+  const cold = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--apply-question-recovery', base, actionFile, ordinary.action_sha256],
+    { encoding: 'utf8', timeout: 240000, windowsHide: true }));
+  assert.equal(cold.status, 'retained_result');
+  assert.equal(cold.receiptId, persisted.receipt.receipt_id);
+  assert.equal(cold.outcome, scenario === 'recover-aligned' ? 'completed' : 'deferred');
+  assert.deepEqual(f.host.readJournal(id), disposed);
+  assertClosed();
+  assert.deepEqual(inventory(), exactGit);
+  await assert.rejects(apply(plan), { code: 'PROCESS_REVISION_CONFLICT' });
+  await assert.rejects(f.host.receiveDecision(id, { sourceRef: 'old-r09', write: true }), { code: 'STANDARD_PR_POST_MERGE_QUESTION_DISPOSED' });
+  if (scenario !== 'recover-aligned') {
+    setClock(question.expires_at_ms + 1);
+    const next = await f.entry(), { preview: action } = next;
+    assert.equal(action.kind, 'operation');
+    const successor = await f.entry({ preparedAction: action, expectPlan: next.action_sha256, execute: true });
+    const nextQuestion = successor.result.details.question, nextId = nextQuestion.operation_id;
+    assert.notEqual(nextId, id);
+    assert.deepEqual(nextQuestion.replaces, { operation_id: id, intent_sha256: shadowHash(disposed.intent),
+      disposition_receipt_sha256: shadowHash(persisted.receipt) });
+    assert.equal(nextQuestion.subject.alignment.remote_head, advanced);
+    assert.equal(nextQuestion.subject.alignment.local_head, localBefore);
+    const submit = async sourceRef => {
+      const next = await f.entry({ decisionSource: sourceRef });
+      return f.entry({ decisionSource: sourceRef, preparedAction: next.preview, expectPlan: next.action_sha256, execute: true });
+    };
+    await assert.rejects(submit('old-r09'), { code: 'STANDARD_HOST_SOURCE_INVALID' });
+    publish('bad-subject', nextQuestion, { invalid: true });
+    await assert.rejects(submit('bad-subject'), { code: 'PROCESS_HUMAN_QUESTION_CHANGED' });
+    const fresh = publish('fresh-r09', nextQuestion);
+    const freshId = decisionInboxId(fresh);
+    if (scenario === 'recover-moved') {
+      const before = f.inspect().record.instance_sha256;
+      f.interruptCapture();
+      await assert.rejects(f.host.receiveDecision(nextId, { sourceRef: 'fresh-r09', write: true }), { code: 'FIXTURE_CAPTURE_INTERRUPTED' });
+      assert.equal(f.inbox.read(freshId).record.phase, 'reserved');
+      assert.equal(f.host.readJournal(nextId).phase, 'dispatching');
+      assert.equal(f.host.readJournal(nextId).results.length, 0);
+      await assert.rejects(f.host.prepareQuestionRecovery(nextId, { expectedSha256: before }),
+        { code: 'STANDARD_PR_POST_MERGE_CAPTURE_RECONCILIATION_REQUIRED' });
+      const competing = publish('competing-r09', nextQuestion);
+      await assert.rejects(submit('competing-r09'), { code: 'STANDARD_PR_POST_MERGE_CAPTURE_RECONCILIATION_REQUIRED' });
+      assert.equal(f.inbox.read(decisionInboxId(competing)).record, null);
+    }
+    const answer = await submit('fresh-r09');
+    assert.equal(answer.result.operation_outcome, 'completed');
+    assert.equal(f.inbox.read(freshId).record.phase, 'receipted');
+    assert.deepEqual(f.inbox.read(freshId).record.source, fresh);
+    await assert.rejects(f.host.prepareQuestionRecovery(nextId, { expectedSha256: f.inspect().record.instance_sha256 }),
+      { code: 'STANDARD_PR_POST_MERGE_RECOVERY_WAIT_REQUIRED' });
+  }
+  setClock(null);
+  assert.deepEqual(inventory(), exactGit);
+  assertClosed();
+  const calls = f.calls();
+  for (const observation of ['replay', 'simulate']) {
+    const observed = await f.entry({ observation });
+    assert.equal(observed.result.instance_sha256, f.inspect().record.instance_sha256);
+    assert.equal(observed.written, false);
+  }
+  assert.equal(f.calls(), calls);
+  assert.equal(open(base).state.fetchSends, 1);
+  console.log(JSON.stringify({ recovery: scenario, operation_id: id, receipt_id: persisted.receipt.receipt_id,
+    intent_sha256: shadowHash(disposed.intent), plan_sha256: shadowHash(plan), before_instance_sha256: expectedSha256,
+    after_instance_sha256: f.inspect().record.instance_sha256, git_unchanged: true, continuity_before_proof: 'blocked' }));
+  return advanced;
+}
+
 async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
-  const base = arrange(prefix, 'post-merge-fetch'), f = open(base, { initializeKey: true });
+  const base = arrange(prefix, 'post-merge-fetch');
   const configurationFile = path.join(base, 'configuration.json');
+  if (scenario.startsWith('recover-')) {
+    const data = json(configurationFile), { configuration } = data;
+    const model = path.join(base, 'r09-model.json'), criteria = path.join(base, 'criteria.md');
+    save(model, fixtureModel(prefix, true).model);
+    fs.writeFileSync(criteria, 'R09 question recovery fixture.\n');
+    const product = path.join(configuration.target_root, 'product');
+    fs.mkdirSync(product);
+    Object.assign(configuration, { contract_version: 'agentic-process-execution.v1', model: pin(model), criteria: pin(criteria),
+      implementation_sha256: agenticProcessImplementationPins().sha256, product_root: product, product_files: ['fixture.mjs'],
+      authorities: { project: pin(path.join(configuration.target_root, 'AGENTS.md')) }, skills: {}, instructions: {}, controller: {} });
+    Object.assign(configuration.native, { executable: process.execPath, sha256: pin(process.execPath).sha256,
+      model: 'fixture-no-native', effort: 'medium', hook_hashes: { work: ['sha256:' + 'a'.repeat(64), 'sha256:' + 'b'.repeat(64)], review: [] },
+      startup: { mcp_server_ids: [], plugin_ids: [], app_ids: [], environment_override_names: [],
+        environment_names: [...CODEX_STARTUP_ENVIRONMENT_PROFILES.worker], log_dir: configuration.control_root, sqlite_home: configuration.control_root } });
+    save(configurationFile, { ...data, recovery: true });
+  }
+  const f = open(base, { initializeKey: true });
   const data = json(configurationFile), { configuration: { instance_id: instanceId, target_root: targetRoot }, binding, pr, fetchFixture } = data;
   const git = (...args) => execFileSync(binding.git.path, ['-C', targetRoot, ...args], { encoding: 'utf8', windowsHide: true }).trim();
   const bare = '--git-dir=' + fetchFixture.remote;
@@ -1095,49 +1285,67 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
       operation_ref: 'session_pr_post_merge_alignment', outcome: 'deferred', facts: {} };
     assert.deepEqual(assertStandardOperationOutput(historical), historical);
     assert.throws(() => assertStandardOperationOutput({ ...historical, outcome: 'completed' }), { code: 'STANDARD_OPERATION_OUTPUT_INVALID' });
-    const human = qualifyPostMergeDecision({ base, home: data.home, measurement, fetch, localBefore, merged, git, bare, tip, continuity });
-    const outcome = await human.answer(scenario === 'reconcile' ? (ambiguous ? 'reconcile_manually' : 'deferred') : scenario,
-      { negatives: scenario === 'reconcile' && !ambiguous });
-    if (scenario === 'refused' || scenario === 'cancelled') {
-      assert.equal(outcome, scenario === 'refused' ? 'rejected' : 'cancelled');
+    if (scenario.startsWith('recover-')) {
+      advanced = await qualifyQuestionRecovery({ base, scenario, git, bare, tip, merged, localBefore, continuity });
+      resumed = open(base);
+      assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_post_merge_alignment');
+      assert.notEqual((await start()).action, 'create_session_allowed');
       assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
-      console.log('PASS R09 signed ' + scenario + ', FILES, continuity blocked');
-      return;
-    }
-    if (outcome === 'deferred') await human.answer('reconcile_manually', { cold: true });
-    resumed = open(base);
-    assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_post_merge_alignment');
-    assert.equal(continuity().completion, null);
-    assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
-    assert.equal(git('rev-parse', 'HEAD'), localBefore);
-
-    if (!ambiguous) {
-      // A deleted ref and a newly advertised OID absent locally cannot prove sync.
-      git(bare, 'update-ref', '-d', tip, merged);
-      const absent = (await resumed.run()).results[0].output;
-      assert.equal(absent.outcome, 'blocked');
-      assert.equal(absent.observations.reason_code, 'WORKFLOW_POST_MERGE_REMOTE_REF_REQUIRED');
-      advanced = git(bare, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
-        'commit-tree', sourceTree, '-p', merged, '-m', 'fixture target advances');
-      git(bare, 'update-ref', tip, advanced);
-      const missing = (await resumed.run()).results[0].output;
-      assert.equal(missing.outcome, 'deferred');
-      assert.equal(missing.observations.reason_code, 'WORKFLOW_POST_MERGE_FRESH_FETCH_REQUIRED');
-      git('fetch', '--no-write-fetch-head', '--refmap=', '--', pathToFileURL(fetchFixture.remote).href, advanced);
-      git('merge', '--ff-only', advanced);
+      if (scenario !== 'recover-aligned') {
+        assert.equal((await resumed.run()).results[0].output.outcome, 'deferred');
+        if (ambiguous) {
+          git('merge', '--no-ff', '--no-edit', advanced);
+          const converged = git('rev-parse', 'HEAD');
+          git(bare, 'fetch', '--no-write-fetch-head', '--', targetRoot, converged);
+          git(bare, 'update-ref', tip, converged, advanced);
+          advanced = converged;
+        } else git('merge', '--ff-only', advanced);
+      }
     } else {
-      const stillDiverged = (await resumed.run()).results[0].output;
-      assert.equal(stillDiverged.outcome, 'deferred');
-      assert.equal(stillDiverged.observations.alignment.ahead, 1);
-      assert.equal(stillDiverged.observations.alignment.behind, 2);
-      // The operator merges the two tips. An independent remote fixture actor
-      // then adopts the resulting history, with no push or provider mutation.
-      git('merge', '--no-ff', '--no-edit', merged);
-      advanced = git('rev-parse', 'HEAD');
-      assert.equal(git('rev-parse', 'HEAD^1'), localBefore);
-      assert.equal(git('rev-parse', 'HEAD^2'), merged);
-      git(bare, 'fetch', '--no-write-fetch-head', '--', targetRoot, advanced);
-      git(bare, 'update-ref', tip, advanced, merged);
+      const human = qualifyPostMergeDecision({ base, home: data.home, measurement, fetch, localBefore, merged, git, bare, tip, continuity });
+      const outcome = await human.answer(scenario === 'reconcile' ? (ambiguous ? 'reconcile_manually' : 'deferred') : scenario,
+        { negatives: scenario === 'reconcile' && !ambiguous });
+      if (scenario === 'refused' || scenario === 'cancelled') {
+        assert.equal(outcome, scenario === 'refused' ? 'rejected' : 'cancelled');
+        assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+        console.log('PASS R09 signed ' + scenario + ', FILES, continuity blocked');
+        return;
+      }
+      if (outcome === 'deferred') await human.answer('reconcile_manually', { cold: true });
+      resumed = open(base);
+      assert.equal(resumed.inspect().cursor.occurrences.find(row => row.status === 'READY').node_id, 'pr_post_merge_alignment');
+      assert.equal(continuity().completion, null);
+      assert.equal((await cycle()).reason_code, 'CYCLE_CREATE_SESSION_PR_OPEN');
+      assert.equal(git('rev-parse', 'HEAD'), localBefore);
+
+      if (!ambiguous) {
+        // A deleted ref and a newly advertised OID absent locally cannot prove sync.
+        git(bare, 'update-ref', '-d', tip, merged);
+        const absent = (await resumed.run()).results[0].output;
+        assert.equal(absent.outcome, 'blocked');
+        assert.equal(absent.observations.reason_code, 'WORKFLOW_POST_MERGE_REMOTE_REF_REQUIRED');
+        advanced = git(bare, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+          'commit-tree', sourceTree, '-p', merged, '-m', 'fixture target advances');
+        git(bare, 'update-ref', tip, advanced);
+        const missing = (await resumed.run()).results[0].output;
+        assert.equal(missing.outcome, 'deferred');
+        assert.equal(missing.observations.reason_code, 'WORKFLOW_POST_MERGE_FRESH_FETCH_REQUIRED');
+        git('fetch', '--no-write-fetch-head', '--refmap=', '--', pathToFileURL(fetchFixture.remote).href, advanced);
+        git('merge', '--ff-only', advanced);
+      } else {
+        const stillDiverged = (await resumed.run()).results[0].output;
+        assert.equal(stillDiverged.outcome, 'deferred');
+        assert.equal(stillDiverged.observations.alignment.ahead, 1);
+        assert.equal(stillDiverged.observations.alignment.behind, 2);
+        // The operator merges the two tips. An independent remote fixture actor
+        // then adopts the resulting history, with no push or provider mutation.
+        git('merge', '--no-ff', '--no-edit', merged);
+        advanced = git('rev-parse', 'HEAD');
+        assert.equal(git('rev-parse', 'HEAD^1'), localBefore);
+        assert.equal(git('rev-parse', 'HEAD^2'), merged);
+        git(bare, 'fetch', '--no-write-fetch-head', '--', targetRoot, advanced);
+        git(bare, 'update-ref', tip, advanced, merged);
+      }
     }
     resumed = open(base);
     const confirmed = (await resumed.run()).results[0].output;
@@ -1203,7 +1411,7 @@ async function qualifyPostMergeFetch(prefix, scenario = 'reconcile') {
   assert.equal((await cycle()).action, 'proceed_r2_session_base_with_import');
   git('switch', 'dev');
 
-  if (prefix === 'session' && scenario !== 'nominal') {
+  if (prefix === 'session' && scenario === 'reconcile') {
     const journalFile = path.join(audit, 'workflows/operation-records', completionId + '.json');
     const saved = fs.readFileSync(journalFile), completionRecord = JSON.parse(saved);
     const rejects = async altered => {
@@ -1256,7 +1464,19 @@ async function qualifyNominalConsent(prefix, choice, behavior = 'consent-session
   await qualifyConsent(base, privateKey, authority_id, { choice });
 }
 
-if (/^--case=post-merge-fetch-(session|correction|nominal|refused|cancelled)$/.test(process.argv[2])) {
+if (/^--case=post-merge-recover-(expired|moved|aligned)$/.test(process.argv[2])) {
+  const mode = process.argv[2].slice('--case=post-merge-'.length);
+  await qualifyPostMergeFetch(mode === 'recover-moved' ? 'correction' : 'session', mode);
+} else if (process.argv[2] === '--apply-question-recovery') {
+  const [, , , base, actionFile, expectPlan] = process.argv;
+  const result = await open(base).entry({ actionFile, expectPlan, execute: true });
+  assert.equal(result.result.action_kind, 'question_recovery');
+  assert.equal(result.result.effect_status, 'no_effect');
+  assert.equal(result.result.native_started, false);
+  assert.equal(result.result.workflow_completed, false);
+  console.log(JSON.stringify({ status: result.result.details.status, outcome: result.result.operation_outcome,
+    receiptId: result.result.details.receipt.receipt_id }));
+} else if (/^--case=post-merge-fetch-(session|correction|nominal|refused|cancelled)$/.test(process.argv[2])) {
   const mode = process.argv[2].slice('--case=post-merge-fetch-'.length);
   await qualifyPostMergeFetch(mode === 'correction' ? 'correction' : 'session',
     ['session', 'correction'].includes(mode) ? 'reconcile' : mode);

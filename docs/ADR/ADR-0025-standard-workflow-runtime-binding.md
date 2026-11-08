@@ -3361,6 +3361,26 @@ keeps the question pending. Report permits another question through the
 ordinary deferred-operation retry. Refusal and cancellation stop the process.
 A changed or expired subject cannot be accepted.
 
+An ordinary STANDARD preview may offer an explicit R09 question recovery when
+the protected Git port proves a changed subject or the five-minute question
+expires. Preview retains the exact instance, intent, journal digest and current
+subject. Application requires the saved plan, a separate grant and a fresh Git
+sample. A journal CAS records the system disposition with empty facts. It
+preserves the original intent and grant. A fresh divergent question identifies
+its predecessor and accepted disposition receipt. Its response still uses the
+v15 inbox and an independently authenticated source. A current 0/0 proceeds
+through the existing alignment and canonical completion operations. If 0/0
+already exists when the host prepares a question, the same explicit action
+records that observation without issuing a human question.
+
+R09 receipt capture claims the operation journal for one exact source before
+the inbox reservation. This uses the same journal CAS as question recovery.
+An interrupted capture can resume from the same authenticated source while it
+remains fresh. An unresolved claim or a captured result stays on its original
+intent, including when freshness prevents acceptance. The journal retains the
+claim and any inbox record for reconciliation. Previously accepted receipts and
+historical v1 question hashes remain valid for inspection.
+
 The manual strategy is a decision with no effect. The operator controls the
 separate Git action, then the process retries the read-only alignment gate.
 Git movement after acceptance is evaluated from a new sample. Alignment
