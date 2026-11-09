@@ -27,6 +27,31 @@ export function observeComposedHost(host, file) {
   }])));
 }
 
+// The corrective drift call carries its own evaluation and human reviews.
+export function verifyCorrectiveDriftCall({ call, cursor, prefix, event, accepted, evaluationNode = "correction_cycle_drift_evaluate" }) {
+  const entering = event.kind === "call_enter";
+  const entry = entering ? event : prefix.find(row => row.kind === "call_enter" && row.occurrence_id === call.occurrence_id);
+  const { evaluation_operation_id: evaluationId } = entry.resolution.input;
+  const evaluation = accepted(evaluationId, "drift_report_evaluate");
+  assert.equal(cursor.occurrences.find(row => row.occurrence_id === evaluation.intent.occurrence_id)?.node_id, evaluationNode);
+  assert.deepEqual(entry.resolution.input, { evaluation_operation_id: evaluationId });
+  if (entering) return;
+
+  const leaves = cursor.occurrences.filter(row => row.call_scope_id === call.occurrence_id && row.operation?.intent);
+  const bindings = { select: "drift_followup_select", decide: "drift_recovery_decision",
+    finalize: "drift_check_finalize", checkpoint_review: "drift_completion_decision" };
+  assert.equal(leaves.length, Object.keys(bindings).length);
+  const operations = Object.fromEntries(Object.entries(bindings).map(([node, binding]) => {
+    const leaf = leaves.find(row => row.node_id === node);
+    assert.equal(leaf?.status, "COMPLETED", node);
+    return [node, accepted(leaf.operation.intent.operation_id, binding)];
+  }));
+  for (const node of ["select", "decide", "finalize"]) assert.deepEqual(operations[node].preview.input, entry.resolution.input);
+  assert.equal(operations.finalize.results.at(-1).receipt.facts.drift_check_completed, true);
+  assert.equal(operations.checkpoint_review.preview.prepared.plan.previous_completion.operation_id, operations.finalize.intent.operation_id);
+  assert.deepEqual(event.resolution.input, {});
+}
+
 // Interrupt only the atomic rename of a *completed* correction checkpoint's
 // receipt. This leaves its actual signed dispatch and completed Git effect;
 // unlike authoring a stopped journal, no historical record is rewritten.

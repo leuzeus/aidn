@@ -6,7 +6,7 @@ import { verifyModeAnalysisExecution } from "./standard-mode-analysis-execution-
 import { arrangeStandardReviewScenario, assertCapturedStandardReviewScenario, standardReviewScenarioAnswer } from "./standard-pr-review-scenario-fixture-lib.mjs";
 import { preflightStandardComposedFixture } from "./standard-composed-preflight-fixture-lib.mjs";
 import { composedCyclePlan, composedCycleValidationProfile, composedCorrectionChoice, prepareComposedNativeAnswer, composedTriageAnswer } from "./standard-composed-cycle-fixture-lib.mjs";
-import { observeComposedHost, loseCheckpointReceipt, loseCheckpointOwnerReleaseAck } from "./standard-composed-observation-fixture-lib.mjs";
+import { observeComposedHost, loseCheckpointReceipt, loseCheckpointOwnerReleaseAck, verifyCorrectiveDriftCall } from "./standard-composed-observation-fixture-lib.mjs";
 import { preWriteAdmit } from "../runtime/pre-write-admit.mjs";
 import { attachCycleCloseHookModel } from "./cycle-close-hook-fixture-lib.mjs";
 import { attachCycleCloseRecordModel } from "./cycle-close-record-fixture-lib.mjs";
@@ -1172,6 +1172,9 @@ if (process.argv[2] === "--mixed-continue") {
             accepted(completion.operation.intent.operation_id, "session_pr_post_merge_complete");
             assert.deepEqual(event.resolution.input, {});
           }
+        } else if (call.node_id === "correction_cycle_drift_finalize") {
+          assert.equal(fullCorrection, true);
+          verifyCorrectiveDriftCall({ call, cursor: state.cursor, prefix, event, accepted });
         } else if (entering) {
           const { validation_operation_id, progress_operation_id } = event.resolution.input;
           accepted(validation_operation_id, "cycle_validation_execute");
@@ -2166,6 +2169,18 @@ if (process.argv[2] === "--mixed-continue") {
       assert.equal(output.facts.drift_context_complete, true);
       assert.equal(output.facts.drift_recovery_required, false);
       const before = f.open().inspect().record.instance_sha256;
+      function verifyPublishedCall(state, result) {
+        const call = state.cursor.occurrences.find(row => row.node_id === "record");
+        const prefix = state.record.events;
+        verifyCorrectiveDriftCall({ call, cursor: state.cursor, prefix, event: result.record.events.at(-1), evaluationNode: "evaluate",
+          accepted(id, binding) {
+            const journal = f.open().readOperation(id), receipt = journal.results.at(-1)?.receipt;
+            assert.equal(journal.intent.binding_ref, binding);
+            assert.equal(receipt?.outcome, "completed");
+            assert.ok(prefix.some(row => row.kind === "operation_result" && shadowHash(row.receipt) === shadowHash(receipt)));
+            return journal;
+          } });
+      }
       if (route === "finalize") {
         const preview = await f.open().step({ write: false, input: { evaluation_operation_id: evaluated.operation_id } });
         assert.equal(preview.preview.prepared.can_apply, false);
@@ -2173,8 +2188,10 @@ if (process.argv[2] === "--mixed-continue") {
         assert.ok(preview.preview.prepared.gate.levels.level2.active_signals.includes("objective_delta"));
       } else {
         if (published) {
+          const state = f.open().inspect();
           const entered = await f.open().step({ write: true });
           assert.equal(entered.kind, "call");
+          verifyPublishedCall(state, entered);
           const selection = await f.open().step({ write: true });
           const chosen = f.open().readOperation(selection.operation_id).results.at(-1).output;
           assert.equal(chosen.observations.evaluation_operation_id, evaluated.operation_id);
@@ -2238,7 +2255,10 @@ if (process.argv[2] === "--mixed-continue") {
               assert.equal(renewal.effect_status, "no_effect");
               assert.equal(renewal.observations.signal_discharged, false);
               assert.deepEqual(f.open().readOperation(closed.operation_id), record);
-              assert.equal((await f.open().step({ write: true })).kind, "call");
+              const state = f.open().inspect();
+              const returned = await f.open().step({ write: true });
+              assert.equal(returned.kind, "call");
+              verifyPublishedCall(state, returned);
               const transitions = f.open().inspect().record.events.filter(row => ["call_enter", "call_return"].includes(row.kind));
               assert.deepEqual(transitions.map(row => row.kind), ["call_enter", "call_return"]);
               assert.equal(transitions[0].occurrence_id, transitions[1].occurrence_id);
