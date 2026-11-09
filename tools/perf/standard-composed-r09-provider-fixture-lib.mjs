@@ -44,8 +44,12 @@ export function createComposedGithubR09ProviderFixture({ targetRoot, controlRoot
   if (initialize) {
     const locate = process.platform === 'win32' ? 'where.exe' : 'which';
     const gitPath = execFileSync(locate, ['git'], { encoding: 'utf8', windowsHide: true }).trim().split(/\r?\n/)[0];
+    // Every GitHub command uses the injected transport. Keep the pin checks
+    // against a small fixture file so the Node binary size is outside the test.
+    const ghPin = path.join(home, identity + '.github-fixture-command');
+    fs.writeFileSync(ghPin, 'GitHub transport fixture\n', { flag: 'wx' });
     const binding = { contract_version: 'standard-host-github.v1', instance_id: instanceId, target_root: targetRoot,
-      repository, actor, reviewer, git: pin(gitPath), gh: pin(process.execPath), merge_method: 'MERGE',
+      repository, actor, reviewer, git: pin(gitPath), gh: pin(ghPin), merge_method: 'MERGE',
       required_checks: { contract_version: 'standard-github-required-checks.v1', base_ref: 'dev', entries: [ci] } };
     fs.mkdirSync(path.join(home, identity + '.github'));
     fs.writeFileSync(manifest, JSON.stringify(binding), { flag: 'wx' });
@@ -57,7 +61,6 @@ export function createComposedGithubR09ProviderFixture({ targetRoot, controlRoot
     { encoding: 'utf8', stdio: 'pipe', windowsHide: true, timeout: 10000 });
   const bare = (...args) => git(['--git-dir=' + remoteRoot, ...args]).trimEnd();
   const ref = branch => 'refs/heads/' + branch;
-  const tip = branch => bare('rev-parse', '--verify', ref(branch));
   const merge = () => fs.existsSync(mergeFile) ? readJson(mergeFile) : null;
   const send = kind => fs.appendFileSync(sendsFile, kind + '\n');
 
@@ -66,7 +69,15 @@ export function createComposedGithubR09ProviderFixture({ targetRoot, controlRoot
     assert.equal(rows.length, 1);
     const [row] = rows;
     const merged = merge();
-    const head = tip(row.head.ref), baseTip = tip(row.base.ref);
+    const names = [ref(row.head.ref), ref(row.base.ref)];
+    const tips = new Map(bare('show-ref', '--verify', '--', ...names).split(/\r?\n/).map(line => {
+      const [oid, name] = line.split(' ');
+      assert.match(oid, /^[a-f0-9]{40}$/);
+      return [name, oid];
+    }));
+    assert.equal(tips.size, names.length);
+    const [head, baseTip] = names.map(name => tips.get(name));
+    assert.ok(head && baseTip);
     const parents = merged ? bare('show', '-s', '--format=%P', merged.oid).split(' ') : [];
     const pull = { repository_id: repository.node_id, node_id: row.node_id, number: row.number,
       head_oid: head, head_branch: row.head.ref, base_oid: merged ? parents[0] : baseTip, base_branch: row.base.ref,
