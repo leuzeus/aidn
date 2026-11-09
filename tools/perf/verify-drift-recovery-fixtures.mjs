@@ -172,6 +172,22 @@ for (const [name, mutate, reason] of [
   const absent = { ...f.instance, events: [] }; assert.equal(await f.reader.read(absent, { evaluation_operation_id: id }, f.verified), null);
   pass("diagnosis request and absent opinion cannot become alignment confirmation or a Native allocation");
 }
+{
+  const anchor = { operation_id: "op_" + "e".repeat(40), receipt_sha256: H, plan_sha256: H, output_sha256: H,
+    alignment_sha256: H, report_sha256: H, event_sha256: H, event_offset: 17 };
+  const review = { ...objectivePlan, contract_version: "standard-drift-recovery-plan.v3", previous_completion: anchor, choices: ["request_diagnosis"] };
+  const f = humanFixture("op_" + "f".repeat(40), false, review, "drift_completion_decision");
+  assert.deepEqual(f.question.choices, ["request_diagnosis", "refused", "deferred", "cancelled"]);
+  const claim = choice => ({ ...f.claim(choice), contract_version: "human-drift-recovery-decision.v2",
+    subject_sha256: shadowHash(f.question.review), rationale: "Fixture request for a current diagnostic" });
+  f.sources.set("unavailable", claim("confirm_alignment"));
+  await assert.rejects(f.human.reserve(f.record, "unavailable"), /CHOICE_NOT_OFFERED/);
+  f.sources.set("diagnose", claim("request_diagnosis"));
+  const capture = await f.human.reserve(f.record, "diagnose"), output = f.human.output(f.record, capture);
+  assert.deepEqual(output.facts, { drift_completion_reviewed: false });
+  assert.equal(output.effect_status, "no_effect");
+  pass("diagnosis-only renewal refuses alignment and retains an authenticated no-effect diagnosis request");
+}
 // Current H authentication must follow the last awaited historical/context read.
 for (const fault of ["none", "context-revocation", "context-expiry", "wrong-link", "request_diagnosis", "refused", "deferred", "cancelled", "waiting"]) {
   const anchor = { operation_id: "op_" + "e".repeat(40), receipt_sha256: H, plan_sha256: H, output_sha256: H,
@@ -469,7 +485,18 @@ async function verifyPartialChangeRequest(mode = "files", admissionOnly = false)
   assert.equal(partialCr.effect_status, "unknown"); assert.equal(partialCr.outcome, "reconciliation_required"); assert.deepEqual(partialCr.facts, {});
   assert.deepEqual(partialCr.observations.committed, [faultPath]); assert.notEqual(faultArtifacts.read(faultPath).sha256, faultBefore.sha256);
   assert.equal(faultArtifacts.read("CURRENT-STATE.md").sha256, faultCurrent.sha256); assert.equal(faultArtifacts.ownerPending(), true);
-  await assert.rejects(faultPort.apply(instance, faultPlan, { write: true, expectPlan: faultPlan.plan_sha256, assertAuthorized() {} }), /STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED/);
+  const fence = faultArtifacts.resourceFence().read(), ownerPath = path.join(faultRoot, ".aidn/runtime/standard-workflow/effects.lock");
+  assert.equal(fence.record.state, "held");
+  const owner = fs.readFileSync(ownerPath), partialSha = faultArtifacts.read(faultPath).sha256;
+  let grantChecks = 0;
+  await assert.rejects(faultPort.apply(instance, faultPlan, {
+    write: true, expectPlan: faultPlan.plan_sha256, assertAuthorized() { grantChecks++; },
+  }), { code: "STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED", effect_status: "no_effect" });
+  assert.equal(grantChecks, 0);
+  assert.deepEqual(faultArtifacts.resourceFence().read(), fence);
+  assert.deepEqual(fs.readFileSync(ownerPath), owner);
+  assert.equal(faultArtifacts.read(faultPath).sha256, partialSha);
+  assert.equal(faultArtifacts.read("CURRENT-STATE.md").sha256, faultCurrent.sha256);
   pass("a real partial CR write retains an unknown receipt and owner, publishes no success and blocks another effect");
 
 }

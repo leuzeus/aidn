@@ -52,6 +52,7 @@ import { assertStandardOperationInput } from "../../src/core/workflow/standard-o
 import { standardWorkflowOperationBindings, createStandardWorkflowOperations } from "../../src/application/runtime/standard-workflow-operations.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { createFreshStandardWorkflowFixture } from "./standard-workflow-fixture-lib.mjs";
+import { completeDriftCheckFixture } from "./test-activation-fixture-lib.mjs";
 import { createNativeAllocationWorkerAuthority } from "../../src/application/runtime/native-allocation-worker-authority.mjs";
 import { transport } from "./agentic-native-rpc-fixture-lib.mjs";
 import { runIndependentDriftWorker } from "./independent-drift-worker-fixture-lib.mjs";
@@ -88,6 +89,8 @@ import { republishBrokerProductFile } from "../../src/adapters/runtime/broker-pr
 import { createProjectWorkflowInstanceService } from "../../src/application/runtime/workflow-instance-composition.mjs";
 
 const selectedRecoveryMode = process.argv.find(value => value.startsWith("--drift-recovery-mode="))?.slice("--drift-recovery-mode=".length);
+const publishedRollbackRediagnosis = process.argv.includes("--drift-published-rollback-rediagnosis");
+const publishedRollbackCase = publishedRollbackRediagnosis || process.argv.includes("--drift-published-rollback");
 if (selectedRecoveryMode !== undefined && !["files", "dual", "db-only"].includes(selectedRecoveryMode)) throw Error("RECOVERY_FIXTURE_MODE_INVALID");
 const selectedChangeRequestMode = process.argv.find(value => value.startsWith("--drift-cr-mode="))?.slice("--drift-cr-mode=".length);
 if (selectedChangeRequestMode !== undefined && !["files", "dual", "db-only"].includes(selectedChangeRequestMode)) throw Error("CHANGE_REQUEST_FIXTURE_MODE_INVALID");
@@ -220,6 +223,7 @@ async function check(name, callback) { if (process.argv.includes("--drift-object
   if (process.argv.includes("--native-human-port-only") && !name.startsWith("native human port:")) return;
   if (process.argv.includes("--historical-diagnostic-only") && !name.startsWith("historical diagnostic:")) return;
   if (process.argv.includes("--native-human-turn-only") && !name.startsWith("worker private before-turn")) return;
+  if (publishedRollbackCase && !name.startsWith("drift published rollback:")) return;
   if (driftWorkerMode && !name.startsWith("drift worker current human:")) return;
   const epochMode = process.argv.find(value => value.startsWith("--native-epoch-mode="))?.slice("--native-epoch-mode=".length);
   if (epochMode && !["files", "dual", "db-only"].includes(epochMode)) throw Error("NATIVE_EPOCH_FIXTURE_MODE_INVALID");
@@ -532,6 +536,36 @@ function mixedFixture(stateMode = "files", options = {}) {
         delete model.operation_pins.drift_recovery_record;
         model.call_targets = [target];
         model.data_bindings.contract_version = "process-data-bindings.v4";
+        if (options.publishedRollback) {
+          const checkpoint = op("checkpoint", "cycle_checkpoint_finalize");
+          checkpoint.participant_ref = recoveryModel.participants[0].id;
+          model.nodes.push(checkpoint);
+          model.nodes[0].children.splice(3, 0, checkpoint.id);
+          model.operation_pins.cycle_checkpoint_finalize = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "cycle_checkpoint_finalize"));
+          model.data_bindings.inputs.push({ node_id: checkpoint.id, fields: {
+            session_id: { source: "operation_input", node_id: "initialize", path: ["session_id"] },
+            cycle_id: { source: "literal", value: "C001" },
+          } });
+          if (options.rollbackRediagnosis) {
+            const participant_ref = checkpoint.participant_ref;
+            model.nodes.find(row => row.id === "analyze").id = "closure_drift_report";
+            model.nodes[0].children = ["reload", "admit", "initialize", "checkpoint", "closure_drift_loop", "recovery_action_pending"];
+            model.nodes.push(
+              { id: "closure_drift_loop", kind: "loop", participant_ref, child: "closure_drift_iteration", until: "drift_check_completed", max_iterations: 2 },
+              { id: "closure_drift_iteration", kind: "sequence", participant_ref, children: ["closure_drift_report", "evaluate", "rollback_result_route"] },
+              { id: "rollback_result_route", kind: "xor", participant_ref, branches: [
+                { flow_id: "recover", node_id: "rollback_recovery", condition: "drift_present" },
+                { flow_id: "finish", node_id: "rediagnosis_finalize", condition: null },
+              ] },
+              { id: "rollback_recovery", kind: "sequence", participant_ref, children: ["decide", "record"] },
+              { ...op("rediagnosis_finalize", "drift_check_finalize"), participant_ref },
+            );
+            model.operation_pins.drift_check_finalize = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "drift_check_finalize"));
+            model.data_bindings.inputs.find(row => row.node_id === "evaluate").fields.report_occurrence_id.node_id = "closure_drift_report";
+            model.data_bindings.inputs.push({ node_id: "rediagnosis_finalize", fields: { evaluation_operation_id: { source: "operation_id", node_id: "evaluate" } } });
+            f.configuration.activity_outputs = { closure_drift_report: "standard-drift-report.v1" };
+          }
+        }
       } else if (options.changeRequest) {
         model.operation_pins.drift_change_request_record = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "drift_change_request_record"));
         model.nodes[0].children.splice(-1, 0, "change_request"); model.nodes.push(op("change_request", "drift_change_request_record"));
@@ -630,6 +664,7 @@ function mixedFixture(stateMode = "files", options = {}) {
     : options.drift ? { analyze: "Diagnose drift without writing recovery artifacts or acknowledging completion." }
     : { analyze: "Analyze without writing.", review: "Review without correcting." };
   if (options.audit) f.configuration.instructions.audit_review = "Audit the final product and supplied checklist read-only; report uncertainty and leave all decisions and writes to the host.";
+  if (options.rollbackRediagnosis) f.configuration.instructions = { closure_drift_report: f.configuration.instructions.analyze };
   if (options.objectiveCompletion) f.configuration.instructions.objective_drift = "Diagnose the exact terminal context read-only; the host retains decisions and completion effects.";
   if (options.rediagnosis) {
     const report = { ...model.nodes.find(row => row.id === "analyze"), id: "closure_drift_report" };
@@ -1912,6 +1947,114 @@ if (process.argv[2] === "--mixed-continue") {
     const simulated = simulateAgenticProcess({ instanceId: reopened.record.instance_id, model: reopened.record.model, parameters: reopened.record.initial_parameters,
       scopeId: reopened.record.scope_id, policyPins: reopened.record.policy_pins, events: reopened.record.events });
     assert.equal(simulated.trace.at(-1).instance_sha256, reopened.record.instance_sha256); assert.equal(f.t.sessions.length, 1); assert.ok(f.t.sessions.every(row => row.closed));
+  });
+  if (publishedRollbackCase) await check("drift published rollback: accepts a signed checkpoint and only restores authorized product bytes", async () => {
+    let claim, permit = true, restoredContext = null;
+    const humanSource = {
+      read: ({ sourceRef }) => sourceRef === "rollback" ? claim : null,
+      verify: ({ source, question }) => source.question_sha256 === shadowHash(question) && shadowHash(source) === shadowHash(claim)
+        ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" },
+    };
+    const f = mixedFixture("files", { drift: true, recovery: true, publishedRecoveryCall: true, publishedRollback: true,
+      rollbackRediagnosis: publishedRollbackRediagnosis, humanSource,
+      authorize: async ({ binding }) => ({ authorized: binding.id !== "drift_recovery_rollback_apply" || permit, authority_id: "fixture_operator",
+        principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }),
+      answer({ params }) {
+        const context = JSON.parse(params.input[0].text.split("\n").at(-1));
+        if (restoredContext) {
+          assert.equal(context.context_sha256, restoredContext);
+          const report = assertStandardDriftReport({ contract_version: "standard-drift-report.v1", context_sha256: context.context_sha256,
+            original_objective: context.context.original_objective, current_objective: context.context.original_objective, drift_level: "none",
+            objective_changed: false, changes: [], keep: ["Original scope"], discard: [],
+            split_recommendation: { new_cycle: false, new_branch: false, change_request_required: false, impact: "none" },
+            recommendation: "continue", rationale: "Fixture report bound to the restored product.", evidence_refs: context.evidence_refs });
+          return { outcome: "completed", summary: "Restored scope diagnosis.", report };
+        }
+        const report = assertStandardDriftReport({ contract_version: "standard-drift-report.v1",
+          context_sha256: context.context_sha256, original_objective: context.context.original_objective,
+          current_objective: context.context.original_objective + " with changed scope", drift_level: "severe", objective_changed: true,
+          changes: ["Committed product drift."], keep: ["Original scope"], discard: ["Product drift"],
+          split_recommendation: { new_cycle: true, new_branch: true, change_request_required: true, impact: "high" },
+          recommendation: "human_arbitration", rationale: "Fixture native transport.", evidence_refs: context.evidence_refs });
+        return { outcome: "completed", summary: "Committed product drift fixture.", report };
+      } });
+    f.cycleObjective = "Execute real mixed bootstrap";
+    const auth = await bootstrapMixed(f), cycle = await prepareCompletionCycle(f, "OPEN");
+    const product = path.join(f.configuration.product_root, "app.mjs"), original = fs.readFileSync(product);
+    completeDriftCheckFixture(f.configuration.target_root);
+    const checkpoint = await f.open().step({ write: true });
+    const anchor = f.open().readOperation(checkpoint.operation_id);
+    assert.equal(anchor.results.at(-1).output.effect_status, "confirmed", JSON.stringify(anchor.results.at(-1).output));
+    assert.equal(anchor.results.at(-1).output.facts.cycle_checkpoint_completed, true);
+    console.log("STEP drift published rollback: accepted checkpoint");
+    const drift = "export const value = 3;\n";
+    fs.writeFileSync(product, drift);
+    cycle.git("add", "--", "product/app.mjs"); cycle.git("commit", "-m", "fixture product drift");
+    const head = cycle.git("rev-parse", "HEAD"), index = cycle.git("write-tree");
+    const native = await f.open().step({ write: true, authorization: auth });
+    assert.equal(native.journal_phase, "closed", JSON.stringify(native));
+    console.log("STEP drift published rollback: diagnostic closed");
+    await f.open().step({ write: true });
+    const waiting = await f.open().step({ write: true });
+    assert.equal(waiting.status, "waiting_for_human");
+    assert.ok(waiting.question.choices.includes("rollback"));
+    claim = { contract_version: "human-drift-recovery-decision.v1", source_kind: "human", authority_id: "fixture_operator",
+      source_event_id: "fixture-published-rollback", subject_sha256: "a".repeat(64), question_sha256: shadowHash(waiting.question), choice: "rollback",
+      evidence_refs: [{ ref: "fixture:operator/rollback", sha256: "a".repeat(64) }] };
+    await f.open().receiveDecision(waiting.question.operation_id, { sourceRef: "rollback", write: true });
+    await f.open().acceptOperation(waiting.question.operation_id, { write: true }); claim = null;
+    const entering = await f.open().step({ write: true });
+    assert.equal(entering.transition.transition, "call_entry");
+    const recorded = await f.open().step({ write: true });
+    const findings = f.open().readOperation(recorded.operation_id).results.at(-1).output;
+    assert.equal(findings.facts.drift_recovery_rollback, true);
+    const preview = await f.open().step({ write: false });
+    assert.equal(preview.preview.prepared.plan.checkpoint.receipt_sha256, shadowHash(anchor.results.at(-1).receipt));
+    assert.equal(preview.preview.prepared.plan.input.recovery_record_operation_id, recorded.operation_id);
+    permit = false;
+    await assert.rejects(f.open().step({ write: true }), /STANDARD_HOST_AUTHORIZATION_REQUIRED/);
+    assert.equal(fs.readFileSync(product, "utf8"), drift);
+    assert.equal(cycle.artifacts.ownerPending(), false);
+    permit = true;
+    const applied = await f.reopen().step({ write: true });
+    const output = f.open().readOperation(applied.operation_id).results.at(-1).output;
+    assert.equal(output.effect_status, "confirmed", JSON.stringify(output));
+    assert.equal(output.facts.drift_check_completed, false);
+    assert.equal(output.observations.before_context_sha256, findings.observations.causal_transition.after_context_sha256);
+    assert.deepEqual(fs.readFileSync(product), original);
+    assert.equal(cycle.git("rev-parse", "HEAD"), head);
+    assert.equal(cycle.git("write-tree"), index);
+    assert.equal((await f.open().dispatchOperation(applied.operation_id, { write: true })).status, "retained_result");
+    const returning = await f.open().step({ write: true });
+    assert.equal(returning.transition.transition, "call_return");
+    if (publishedRollbackRediagnosis) {
+      restoredContext = output.observations.after_context_sha256;
+      const cursor = f.open().inspect().cursor;
+      const reports = cursor.occurrences.filter(row => row.node_id === "closure_drift_report");
+      assert.deepEqual(reports.map(row => row.status), ["COMPLETED", "READY"]);
+      try {
+        fs.writeFileSync(product, drift);
+        await assert.rejects(f.open().step({ write: true, authorization: auth }), { code: "STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE" });
+        assert.equal(f.t.sessions.length, 1);
+      } finally { fs.writeFileSync(product, original); }
+      const next = await f.open().step({ write: true, authorization: auth });
+      assert.equal(next.journal_phase, "closed", JSON.stringify(next));
+      const evaluated = await f.open().step({ write: true });
+      const fresh = f.open().readOperation(evaluated.operation_id).results.at(-1).output;
+      assert.equal(fresh.facts.drift_present, false);
+      assert.equal(fresh.facts.drift_context_complete, true);
+      assert.equal(fresh.facts.drift_check_completed, false);
+      console.log("STEP drift published rollback: fresh diagnostic accepted");
+      const finalized = await f.open().step({ write: true });
+      const completion = f.open().readOperation(finalized.operation_id).results.at(-1).output;
+      assert.equal(completion.effect_status, "confirmed", JSON.stringify(completion));
+      assert.equal(completion.facts.drift_check_completed, true);
+    }
+    const { record } = f.open().inspect();
+    const simulation = simulateAgenticProcess({ instanceId: record.instance_id, model: record.model, parameters: record.initial_parameters,
+      scopeId: record.scope_id, policyPins: record.policy_pins, events: record.events });
+    assert.equal(simulation.trace.at(-1).instance_sha256, record.instance_sha256);
+    assert.equal(f.t.sessions.length, publishedRollbackRediagnosis ? 2 : 1);
   });
   for (const mode of ["files", "dual", "db-only"]) await check(`drift recovery ${mode}: authenticated human review records actual findings without completing recovery`, async () => {
     const claims = new Map(), humanSource = {

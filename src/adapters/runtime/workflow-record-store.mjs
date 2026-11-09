@@ -31,11 +31,16 @@ export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, e
       text = readAgentRunFile(filename(id), { json: false, optional: true })?.value.toString("utf8") ?? null;
     } else {
       const store = artifactStore({ readOnly: true });
-      try { const row = store.getArtifact(pathForId(id));
-        if (row && (row.content_format !== "utf8" || typeof row.content !== "string")) fail("WORKFLOW_INSTANCE_ARTIFACT_INVALID");
-        text = row?.content ?? null;
-      } finally { store.close(); }
+      try { text = artifactText(store.getArtifact(pathForId(id))); }
+      finally { store.close(); }
     }
+    return parseRecord(id, text, inspected);
+  }
+  function artifactText(row) {
+    if (row && (row.content_format !== "utf8" || typeof row.content !== "string")) fail("WORKFLOW_INSTANCE_ARTIFACT_INVALID");
+    return row?.content ?? null;
+  }
+  function parseRecord(id, text, inspected = false) {
     const instance = text === null ? null : JSON.parse(text);
     let cursor;
     if (instance) {
@@ -48,6 +53,14 @@ export function createWorkflowRecordStore({ targetRoot, stateMode, descriptor, e
   }
   return Object.freeze({
     read,
+    ...(selected.backend === "postgres" ? { readMany(ids) {
+      const store = artifactStore({ readOnly: true });
+      try {
+        const paths = ids.map(pathForId);
+        const rows = typeof store.getArtifacts === "function" ? store.getArtifacts(paths) : paths.map(name => store.getArtifact(name));
+        return ids.map((id, index) => parseRecord(id, artifactText(rows[index])));
+      } finally { store.close(); }
+    } } : {}),
     ...(typeof inspect === "function" ? { readInspected: id => read(id, true) } : {}),
     compareAndSwap(instance, expectedContentHash) {
       assertBinding();

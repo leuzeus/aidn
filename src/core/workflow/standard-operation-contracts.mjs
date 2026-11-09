@@ -156,6 +156,8 @@ import driftOutput from "../contracts/workflow-definition/standard-drift-output.
 import recoveryInput from "../contracts/workflow-definition/standard-drift-recovery-record-input.v1.schema.json" with { type: "json" };
 import recoveryOutput from "../contracts/workflow-definition/standard-drift-recovery-output.v1.schema.json" with { type: "json" };
 import changeRequestInput from "../contracts/workflow-definition/standard-drift-change-request-input.v1.schema.json" with { type: "json" };
+import rollbackInput from "../contracts/workflow-definition/standard-drift-rollback-input.v1.schema.json" with { type: "json" };
+import rollbackOutput from "../contracts/workflow-definition/standard-drift-rollback-output.v1.schema.json" with { type: "json" };
 import changeRequestOutput from "../contracts/workflow-definition/standard-drift-change-request-output.v1.schema.json" with { type: "json" };
 import driftCycleContext from "../contracts/workflow-definition/standard-drift-cycle-context-input.v1.schema.json" with { type: "json" };
 import driftCycleCheckpoint from "../contracts/workflow-definition/standard-drift-cycle-checkpoint-input.v1.schema.json" with { type: "json" };
@@ -267,7 +269,8 @@ export function assertStandardOperationInput(operation, value) {
     : operation === "cycle_initialize" ? cycleInput : operation === "branch_cycle_audit" ? cycleRef
     : operation === "cycle_checkpoint_finalize" ? cycleCheckpointInput : operation === "drift_report_evaluate" ? driftInput
     : ["drift_check_finalize", "drift_recovery_decision", "drift_followup_select"].includes(operation) ? driftFollowup : operation === "drift_recovery_record" ? recoveryInput
-    : operation === "drift_change_request_record" ? changeRequestInput : operation === "drift_recovery_context_refresh" ? driftCycleContext
+    : operation === "drift_change_request_record" ? changeRequestInput : operation === "drift_recovery_rollback_apply" ? rollbackInput
+    : operation === "drift_recovery_context_refresh" ? driftCycleContext
     : operation === "drift_recovery_cycle_initialize" ? driftCycleInput : operation === "drift_recovery_checkpoint_observe" ? driftCycleCheckpoint
     : operation === "cycle_plan_evaluate" ? cyclePlanInput : operation === "cycle_plan_record" ? cyclePlanRecordInput
     : operation === "cycle_readiness_evaluate" ? readinessInput : operation === "cycle_implementation_enter" ? implementationInput : operation === "cycle_work_evaluate" ? workInput : operation === "cycle_validation_execute" ? validationInput
@@ -611,6 +614,19 @@ export function assertStandardOperationOutput(value) {
       || value.outcome !== "completed" && Object.keys(value.facts).length
       || (value.outcome === "reconciliation_required") !== (value.effect_status === "unknown")
       || ["blocked", "deferred"].includes(value.outcome) && value.effect_status !== "no_effect") fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    return value;
+  }
+  if (value?.contract_version === "standard-drift-rollback-output.v1") {
+    if (validateJsonSchema(value, rollbackOutput, "$", { contractKind: "workflow-definition" }).length) fail("STANDARD_OPERATION_OUTPUT_INVALID");
+    const { outcome, effect_status, facts, observations, evidence_refs } = value;
+    const { changed_paths = [], reason_code } = observations;
+    const confirmed = outcome === "completed";
+    if (new Set(changed_paths).size !== changed_paths.length
+      || confirmed && (effect_status !== "confirmed" || changed_paths.length === 0 || evidence_refs.length !== 1
+        || facts.drift_recovery_rollback_applied !== true || facts.drift_check_completed !== false
+        || !observations.recovery_record_operation_id || !observations.before_context_sha256 || !observations.after_context_sha256 || reason_code)
+      || !confirmed && (effect_status !== (outcome === "blocked" ? "no_effect" : "unknown") || Object.keys(facts).length !== 0
+        || evidence_refs.length !== 0 || !reason_code || outcome === "blocked" && changed_paths.length > 0)) fail("STANDARD_OPERATION_OUTPUT_INVALID");
     return value;
   }
   const schema = value?.contract_version === "standard-drift-route-output.v1" ? driftRouteOutput : value?.contract_version === "standard-cycle-planning-output.v1" ? cyclePlanningOutput : value?.contract_version === "standard-cycle-checkpoint-output.v1" ? cycleCheckpointOutput : value?.contract_version === "standard-drift-cycle-output.v1" ? driftCycleOutput : value?.contract_version === "standard-drift-change-request-output.v1" ? changeRequestOutput : value?.contract_version === "standard-drift-recovery-output.v1" ? recoveryOutput : value?.contract_version === "standard-drift-output.v1" ? driftOutput : value?.contract_version === "standard-cycle-output.v1" ? cycleOutput : value?.contract_version === "standard-operation-output.v2" ? outputV2 : output;

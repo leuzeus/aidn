@@ -32,11 +32,22 @@ export function validateArtifactPath(value, auditRoot = 'docs/audit') {
   return name;
 }
 
+export const POSTGRES_ARTIFACT_READ_BATCH_LIMIT = 16;
+
+function artifactPaths(values, auditRoot) {
+  if (!Array.isArray(values) || !values.length || values.length > POSTGRES_ARTIFACT_READ_BATCH_LIMIT
+      || values.some(value => typeof value !== 'string')) throw new Error('ARTIFACT_READ_BATCH_INVALID');
+  const paths = values.map(value => validateArtifactPath(value, auditRoot));
+  if (new Set(paths).size !== paths.length) throw new Error('ARTIFACT_READ_BATCH_INVALID');
+  return paths;
+}
+
 // Uses an existing schema and scope only. No adoption, DDL or projection rebuild.
 export async function executePostgresArtifactCommand(client, scopes, action, options = {}) {
   const writing = ['upsert', 'compare-and-swap', 'replace'].includes(action);
-  if (!['upsert', 'compare-and-swap', 'replace', 'get', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
-  const artifactPath = action === 'list' ? null
+  if (!['upsert', 'compare-and-swap', 'replace', 'get', 'get-many', 'list'].includes(action)) throw new Error('ARTIFACT_COMMAND_UNSUPPORTED');
+  const paths = action === 'get-many' ? artifactPaths(options.paths, options.auditRoot) : null;
+  const artifactPath = action === 'list' || paths ? null
     : validateArtifactPath(writing && action !== 'replace' ? options.artifact?.path : options.path, options.auditRoot);
   await client.query(writing ? 'BEGIN' : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   try {
@@ -66,6 +77,10 @@ export async function executePostgresArtifactCommand(client, scopes, action, opt
       result = (await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 ORDER BY updated_at DESC, path LIMIT $2', [scope, limit])).rows.map(mapped);
     } else if (action === 'get') {
       result = mapped((await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=$2', [scope, artifactPath])).rows[0]);
+    } else if (paths) {
+      const { rows } = await client.query('SELECT * FROM aidn_runtime.v_materializable_artifacts WHERE scope_key=$1 AND path=ANY($2::text[])', [scope, paths]);
+      const found = new Map(rows.map(row => [row.path, mapped(row)]));
+      result = paths.map(name => found.get(name) ?? null);
     } else {
       let replacement;
       if (action === 'replace') {

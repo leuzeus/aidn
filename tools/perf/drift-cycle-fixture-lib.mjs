@@ -100,7 +100,18 @@ export async function verifyDriftCyclePort({ mode, owned, pass }) {
   if (["partial", "projection"].includes(mode)) {
     assert.equal(result.outcome, "reconciliation_required", JSON.stringify(result)); assert.equal(result.effect_status, "unknown"); assert.deepEqual(result.facts, {});
     assert.equal(artifacts.ownerPending(), true); assert.equal(git(["branch", "--show-current"]).trim(), "spike/C001-scoped-recovery");
-    await assert.rejects(port.apply(instance, cyclePlan, { write: true, expectPlan: cyclePlan.plan_sha256, assertAuthorized() {} }), /STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED/);
+    const fence = artifacts.resourceFence().read(), ownerPath = path.join(targetRoot, ".aidn/runtime/standard-workflow/effects.lock");
+    assert.equal(fence.record.state, "held");
+    const owner = fs.readFileSync(ownerPath), head = git(["rev-parse", "HEAD"]);
+    let grantChecks = 0;
+    await assert.rejects(port.apply(instance, cyclePlan, {
+      write: true, expectPlan: cyclePlan.plan_sha256, assertAuthorized() { grantChecks++; },
+    }), { code: "STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED", effect_status: "no_effect" });
+    assert.equal(grantChecks, 0);
+    assert.deepEqual(artifacts.resourceFence().read(), fence);
+    assert.deepEqual(fs.readFileSync(ownerPath), owner);
+    assert.deepEqual(git(["rev-parse", "HEAD"]), head);
+    assert.equal(git(["branch", "--show-current"]).trim(), "spike/C001-scoped-recovery");
     pass(`cycle recovery ${mode}: unconfirmed post-effects retain ownership and cannot publish success or repeat effects`); return;
   }
   assert.equal(result.outcome, "completed", JSON.stringify(result)); assert.equal(result.effect_status, "confirmed");

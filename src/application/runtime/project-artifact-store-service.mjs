@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createArtifactStore } from '../../adapters/runtime/artifact-store.mjs';
 import { resolveEffectiveRuntimePersistence, resolveRuntimeSqliteFile } from './runtime-persistence-service.mjs';
-import { validateArtifactPath } from '../../adapters/runtime/postgres-artifact-command-lib.mjs';
+import { POSTGRES_ARTIFACT_READ_BATCH_LIMIT, validateArtifactPath } from '../../adapters/runtime/postgres-artifact-command-lib.mjs';
 import { assertProjectArtifactStore } from '../../core/ports/project-artifact-store-port.mjs';
 
 // Keep synchronous workflow callers synchronous; the isolated PG worker resolves
@@ -24,17 +24,40 @@ export function createProjectArtifactStore(options = {}) {
       encoding: 'utf8', shell: false, windowsHide: true, timeout: remaining,
       maxBuffer: 32 * 1024 * 1024, env: options.env ?? process.env,
     });
+    if (action === 'get-many' && child.error?.code === 'ENOBUFS') throw new Error('ARTIFACT_POSTGRES_WORKER_OUTPUT_LIMIT');
     let response;
     try { response = JSON.parse(child.stdout); } catch { throw new Error('ARTIFACT_POSTGRES_WORKER_UNAVAILABLE'); }
     if (child.status !== 0 || !response.ok) throw new Error(/^ARTIFACT_[A-Z_]+$/.test(response.code ?? '') ? response.code : 'ARTIFACT_POSTGRES_COMMAND_FAILED');
     return response.result;
   };
+  function readBatch(paths) {
+    if (paths.length === 1) return [call('get', { path: paths[0], auditRoot: options.auditRoot })];
+    try {
+      const rows = call('get-many', { paths, auditRoot: options.auditRoot });
+      if (!Array.isArray(rows) || rows.length !== paths.length
+          || paths.some((name, index) => rows[index] !== null && rows[index]?.path !== name))
+        throw new Error('ARTIFACT_READ_BATCH_INVALID');
+      return rows;
+    } catch (cause) {
+      // Preserve the per-artifact worker limit for histories with large journals.
+      if (cause.message !== 'ARTIFACT_POSTGRES_WORKER_OUTPUT_LIMIT') throw cause;
+      const middle = Math.floor(paths.length / 2);
+      return [...readBatch(paths.slice(0, middle)), ...readBatch(paths.slice(middle))];
+    }
+  }
   return assertProjectArtifactStore({
     backend: 'postgres', sqlite_file: '', read_only: options.readOnly === true,
     upsertArtifact: artifact => call('upsert', { artifact, auditRoot: options.auditRoot }),
     compareAndSwapArtifact: request => call('compare-and-swap', { ...request, auditRoot: options.auditRoot }),
     replaceArtifact: request => call('replace', { ...request, auditRoot: options.auditRoot }),
     getArtifact: artifactPath => call('get', { path: artifactPath, auditRoot: options.auditRoot }),
+    getArtifacts(paths) {
+      const names = paths.map(name => validateArtifactPath(name, options.auditRoot));
+      const rows = [];
+      for (let start = 0; start < names.length; start += POSTGRES_ARTIFACT_READ_BATCH_LIMIT)
+        rows.push(...readBatch(names.slice(start, start + POSTGRES_ARTIFACT_READ_BATCH_LIMIT)));
+      return rows;
+    },
     listArtifacts: limit => call('list', { limit }),
     materializeArtifacts(materialize = {}) {
       const dryRun = materialize.dryRun === true;

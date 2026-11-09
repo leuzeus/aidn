@@ -147,13 +147,17 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
       }
     } else if (reservation) fail("STANDARD_PROCESS_NATIVE_ALLOCATION_CHANGED");
     const seen = new Map(), frames = new Map(cursor.occurrences.map(row => [row.occurrence_id, row]));
+    const journalIds = operationStore.readMany && [...new Set(instance.events.flatMap(event =>
+      event.kind === "operation_intent" ? [event.intent.operation_id] : event.kind === "operation_result" ? [event.receipt.operation_id] : []))];
+    const observedRecords = journalIds && new Map(operationStore.readMany(journalIds).map(({ record }, index) => [journalIds[index], record]));
     for (const [index, event] of instance.events.entries()) {
       if (["assign", "result", "refusal"].includes(event.kind)) {
         if (!native || index >= covered || shadowHash(event) !== shadowHash(native.instance.events[index])) fail("STANDARD_PROCESS_NATIVE_HISTORY_NOT_AUTHENTICATED");
       } else if (["operation_intent", "operation_result"].includes(event.kind)) {
         const id = event.intent?.operation_id ?? event.receipt.operation_id;
         if (!seen.has(id)) {
-          const record = operationStore.read(id).record; signer.verify(record); signer.verify(record.preview);
+          const record = observedRecords ? observedRecords.get(id) : operationStore.read(id).record;
+          signer.verify(record); signer.verify(record.preview);
           const frame = frames.get(event.occurrence_id);
           if (!frame) fail("PROCESS_OCCURRENCE_UNKNOWN");
           const component = frame.model_sha256 === undefined ? model : modelsByHash.get(frame.model_sha256);
@@ -222,7 +226,24 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     const binding = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === id).intent.binding_ref;
     const selected = acceptedOperation(instance, id, binding, auth);
     const review = selected.record.preview.prepared.plan, capture = human.captured(selected.record);
-    if (review.contract_version === "standard-drift-recovery-plan.v1") fail("STANDARD_DRIFT_RECOVERY_EXECUTION_REQUIRED");
+    if (review.contract_version === "standard-drift-recovery-plan.v1") {
+      if (capture.source.choice !== "rollback") fail("STANDARD_DRIFT_RECOVERY_EXECUTION_REQUIRED");
+      const appliedIntent = instance.events.findLast(row => row.intent?.binding_ref === "drift_recovery_rollback_apply")?.intent;
+      if (!appliedIntent) fail("STANDARD_DRIFT_RECOVERY_EXECUTION_REQUIRED");
+      const applied = acceptedOperation(instance, appliedIntent.operation_id, "drift_recovery_rollback_apply", auth);
+      const recorded = acceptedOperation(instance, applied.record.preview.input.recovery_record_operation_id, "drift_recovery_record", auth);
+      const evaluation = acceptedOperation(instance, review.evaluation_operation_id, "drift_report_evaluate", auth);
+      if (applied.output.effect_status !== "confirmed" || applied.output.facts.drift_recovery_rollback_applied !== true
+        || recorded.record.preview.input.decision_operation_id !== id
+        || applied.output.observations.recovery_record_operation_id !== recorded.record.operation_id
+        || applied.output.observations.before_context_sha256 !== recorded.output.observations.causal_transition?.after_context_sha256
+        || evaluation.record.preview.input.report_occurrence_id !== previous.at(-1).occurrence_id)
+        fail("STANDARD_DRIFT_RECOVERY_EXECUTION_REQUIRED");
+      const current = await observeDriftContext();
+      if (current.context_sha256 !== applied.output.observations.after_context_sha256) fail("STANDARD_DRIFT_DIAGNOSIS_REQUEST_STALE");
+      authenticate(instance, auth);
+      return;
+    }
     const evaluation = acceptedOperation(instance, review.evaluation_operation_id, "drift_report_evaluate", auth);
     if (!["standard-drift-recovery-plan.v2", "standard-drift-recovery-plan.v3"].includes(review.contract_version) || capture.source.choice !== "request_diagnosis"
       || !previous.some(row => row.occurrence_id === evaluation.record.preview.input.report_occurrence_id)
@@ -771,6 +792,10 @@ export function createStandardProcessAuthority({ configuration: suppliedConfigur
     deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], bridge, validation });
   const observeCycleCloseContext = () => readStandardCycleCloseContext({ targetRoot: configuration.target_root, productSha256: readProductSha256?.(), productRoot: configuration.product_root,
     productFiles: configuration.product_files, deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home], environment });
-  return Object.freeze({ profile: "standard-mixed.v1", observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
+  const rollbackProductScope = () => ({
+    productPaths: configuration.product_files.map(name => path.relative(configuration.target_root, path.resolve(configuration.product_root, name)).replaceAll("\\", "/")),
+    deniedRoots: [...(configuration.native.protected_roots ?? []), configuration.control_root, configuration.review_root, configuration.native.home],
+  });
+  return Object.freeze({ profile: "standard-mixed.v1", rollbackProductScope, observeProduct: () => { const value = readProductSha256?.(); if (!/^[a-f0-9]{64}$/.test(value ?? "")) fail("STANDARD_PROMOTION_PRODUCT_AUTHORITY_REQUIRED"); return value; }, read, readExecutionAuthority, snapshot, authenticate, authenticateOperationHost, inspectDiagnostic, withNativeOwner, prepareActivityOutput, preflightModeWork, evaluateModeWork, observeModeWork, prepareModeWorkContinuation, assertModeWorkContinuationFresh, readPrTriageActivity, evaluateDriftReport, readDriftEvaluation, admitReadyDriftDiagnosis,
     verifyNativeHumanSource, admitNativeActivity, evaluateCyclePlan, readCyclePlanEvaluation, observeCyclePlanContext, evaluateCycleReadiness, readCycleReadinessEvaluation, observeCycleReadinessContext, evaluateCycleWork, readCycleWorkEvaluation, readCycleValidationExecution, readCycleVerificationExecution, observeCycleAuditContext, observeCycleCloseContext, readCycleAuditActivity, readCycleCloseValidation, evaluateCycleTaskSelection, evaluateCycleTaskWork: (instance, input) => evaluateCycleWork(instance, input, CYCLE_TASK_WORK_CONTRACT), observeCycleVerificationContext, observeDriftContext, modelSource: source });
 }

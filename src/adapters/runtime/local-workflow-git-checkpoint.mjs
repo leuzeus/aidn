@@ -56,13 +56,18 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
       windowsHide: true, timeout: 60000, maxBuffer: 4 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"] }); }
     catch (cause) { if (acceptable.includes(cause.status)) return null; throw Object.assign(new Error("WORKFLOW_GIT_COMMAND_FAILED"), { code: "WORKFLOW_GIT_COMMAND_FAILED", command: args[0], exit_code: cause.status }); }
   };
-  function repositoryBinding() {
-    const rows = run(["rev-parse", "--show-toplevel", "--absolute-git-dir", "--git-path", "index"]).trimEnd().split(/\r?\n/);
-    if (rows.length !== 3 || path.resolve(rows[0]).toLowerCase() !== root.toLowerCase()) fail("WORKFLOW_GIT_TOPLEVEL_REQUIRED");
-    return { gitDir: agentRunPhysicalPath(rows[1], { directory: true }),
-      indexPath: agentRunPhysicalPath(path.resolve(root, rows[2]), { missing: true }) };
+  function repositoryObservation({ includeHead = false } = {}) {
+    const args = ["rev-parse", "--show-toplevel", "--absolute-git-dir", "--git-path", "index"];
+    if (includeHead) args.push("--verify", "HEAD");
+    const output = run(args, { acceptable: includeHead ? [128] : [] });
+    if (output === null) return null;
+    const rows = output.trimEnd().split(/\r?\n/);
+    if (rows.length !== (includeHead ? 4 : 3) || path.resolve(rows[0]).toLowerCase() !== root.toLowerCase()) fail("WORKFLOW_GIT_TOPLEVEL_REQUIRED");
+    return { binding: { gitDir: agentRunPhysicalPath(rows[1], { directory: true }),
+      indexPath: agentRunPhysicalPath(path.resolve(root, rows[2]), { missing: true }) },
+      head: includeHead ? rows[3] : null };
   }
-  const binding = repositoryBinding(), { gitDir, indexPath } = binding;
+  const { binding } = repositoryObservation(), { gitDir, indexPath } = binding;
   const lockPath = indexPath + ".lock";
   function file(name) {
     if (!scopePath(name)) fail("WORKFLOW_GIT_PATH_SCOPE_INVALID");
@@ -78,10 +83,14 @@ export function createLocalWorkflowGitCheckpoint({ targetRoot, environment = pro
   function inspect() {
     // A gitfile can be redirected while this capability is retained. Never
     // combine Git observations from its new repository with the old index.
-    if (exact(repositoryBinding()) !== exact(binding)) fail("WORKFLOW_GIT_REPOSITORY_BINDING_CHANGED");
+    // Resolve the physical binding and HEAD together on each inspection. An
+    // unresolved HEAD takes the original diagnostic path, including binding
+    // and filter checks before Git reports the missing commit.
+    const observed = repositoryObservation({ includeHead: true }) ?? repositoryObservation();
+    if (exact(observed.binding) !== exact(binding)) fail("WORKFLOW_GIT_REPOSITORY_BINDING_CHANGED");
     if (hash(filters()) !== filterContextSha256) fail("WORKFLOW_GIT_FILTER_CONTEXT_CHANGED");
     const ref = run(["symbolic-ref", "--quiet", "HEAD"], { acceptable: [1] })?.trim() ?? null;
-    const head = run(["rev-parse", "--verify", "HEAD"]).trim();
+    const head = observed.head ?? run(["rev-parse", "--verify", "HEAD"]).trim();
     if (!sha(head) || !ref?.startsWith("refs/heads/")) fail("WORKFLOW_GIT_NAMED_HEAD_REQUIRED");
     const status = run(["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
     const changes = status.split("\0").filter(Boolean).map(entry => {

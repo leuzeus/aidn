@@ -465,6 +465,17 @@ The published model's review/diagnosis routes and full R05/cycle/session journey
 remain due. It does not qualify real Human/Native, an installed client or the
 entire L1-L8/A1-A10 objective; complete_standard_workflow remains false.
 
+### Freshness of the accepted R05 event at cycle closure
+
+The 45-minute cycle-closure gate measures the original authenticated physical
+R05 completion event. A new alignment opinion has its own freshness bound and
+leaves the event's age unchanged. Once that event expires, the linked v3
+review offers `request_diagnosis` with the existing refusal, deferral and
+cancellation choices. Fresh v3 reviews retain the original choices. The
+accepted request takes the existing diagnosis route under current human and
+Native admission. The signed old report, event and receipt remain evidence of
+their original completion.
+
 ## Review of a suspect objective signal, 2026-11-05
 
 The existing recovery decision port can prepare a separate v2 review when an
@@ -1418,6 +1429,17 @@ and confirmed drift cannot authorize its own recovery writes. Native/provider
 transport fixtures qualify this wiring only; live semantic/native and installed
 standard-workflow qualification remain required.
 
+### PostgreSQL operation journal reads during authentication
+
+An authentication of a retained STANDARD prefix selects operation journal
+paths from the validated instance. PostgreSQL reads those paths in bounded
+groups from the same canonical scope. Each group commits a fresh repeatable
+read transaction and preserves the requested order, including absent records.
+The host validates the record identity, binding, signed preview, receipts
+and any human capture as before. Separate authentication calls take fresh
+observations. The grant, context and process checks at effect boundaries
+still authenticate independently.
+
 ### Canonical diagnostic retention and real R05 finalization
 
 `drift_check_finalize` is an internal deterministic executor binding. It accepts
@@ -1538,15 +1560,34 @@ unconfirmed dual projection is an unknown effect, not a confirmed write.
 
 Every new evaluation clears the reducer's earlier R05-completed fact; historical
 events and actual earlier hook receipts are preserved. Recording still reports
-recovery required, R05 incomplete and recovery execution pending. Actual CR/
-requirements changes, cycle choice/creation, authorized rollback, fresh native
-re-evaluation and eventual checkpoint remain separately required. This tranche
-does not finish the standard graph or its ordinary entry integration.
+recovery required, R05 incomplete and recovery execution pending. The CR,
+new-cycle and rollback writers each require separate admission. Fresh native
+re-evaluation and the eventual checkpoint retain their own gates.
 
 The generic mixed step can prepare a fresh intent for a blocked/deferred
 operation when explicitly invoked with write intent; preview stays read-only.
 It never retries an unknown effect or turns the earlier non-success into a
 success. The same reducer still owns the occurrence and attempt identity.
+
+### Scoped product rollback
+
+`drift_recovery_rollback_apply` consumes the latest accepted findings for a
+rollback choice. Its source is the accepted pre-implementation checkpoint
+receipt for the same session and cycle, preceding the diagnosis. The checkpoint
+commit must be an ancestor of the current HEAD on the same branch. The preview
+binds the receipt and both committed images of each changed product path. The
+current product bytes must match HEAD exactly and the index must carry the same
+product images. Unsupported entries, external filters and a busy Git operation
+block preparation. The adapter writes only configured, physically owned product
+files. It preserves HEAD, branch, index and the observed state outside the
+reviewed paths.
+
+An explicit write and fresh grant are required at the effect boundary. Exact
+postimages and the protected boundary must be observed before confirming the
+effect. An interruption after a write attempt retains the owner for
+reconciliation. A confirmed receipt leaves R05 incomplete. The next closure
+diagnostic requires this receipt and its current after-context, then passes
+ordinary Native admission and budget checks.
 
 ### Admitted change-request continuation
 

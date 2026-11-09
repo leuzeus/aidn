@@ -425,6 +425,16 @@ The corpus excludes that document before its first explicit canonical import
 and fixture commit; no referenced artifact or history is deleted. These controls
 are not a complete DB-only workflow or installed qualification.
 
+### Expired R05 completion during cycle closure
+
+The objective-completion fixture verifies the exact 45-minute event boundary
+with the original physical report and event bytes. A current alignment review
+cannot refresh that event. Beyond the boundary, the linked renewal question
+offers a new diagnosis, refusal, deferral and cancellation. The human-port
+fixture rejects alignment on this question and records the authenticated
+diagnosis request as no-effect. Actual Native allocation and full published
+NO_GO closure remain separate gates.
+
 ## Pre-effect close expiry continuation, 2026-11-05
 
 The close-record component accepts --mode=files --final-hook
@@ -1347,6 +1357,17 @@ to exercise the published call in a focused IR. It requires a dirty-worktree
 wait, an observed external checkpoint, a signed choice of a fresh cycle and
 separately admitted initialization after a cold restart. It refuses an old
 cycle number and compares replay with simulation. The CR path stays pending.
+
+`node tools/perf/verify-standard-drift-rollback-fixtures.mjs` exercises the
+rollback adapter with actual disposable Git objects and worktree files. It
+checks a read-only preview, exact restoration, preserved Git and canonical
+boundaries, refusal before writes, and a retained owner after a partial effect.
+The focused execution fixture
+`node tools/perf/verify-agentic-process-execution-fixtures.mjs --drift-published-rollback --retain-always`
+requires the published recovery call, a signed pre-implementation checkpoint, a
+separately authorized write, a retained result, and equivalent replay and
+simulation. Its Native, human-source, and grant capabilities are fixtures.
+Fresh R05 evaluation and terminal closure remain distinct checks.
 
 ## Structured agentic process
 
@@ -3501,6 +3522,13 @@ second admission invocation.
 
 ## Artifact efficiency intent
 
+The project artifact command fixture checks bounded PostgreSQL journal reads
+with a doubled SQL transport. It covers canonical scope selection, requested
+order, missing paths, invalid requests, bounded output and a failed worker.
+Use a private PostgreSQL cluster to measure worker starts and wall time.
+Qualification of the composed DB-only workflow requires its separate terminal
+run and retained evidence.
+
 `node tools/perf/measure-artifact-query-parsing.mjs --out <new-file>` measures
 whole active-state.v2 selection on the tracked four-source corpus, after warmup,
 in five batches of forty selections. Every output must remain exactly equal.
@@ -3966,6 +3994,12 @@ repositories. It checks a metadata-only local object/ref/index checkpoint,
 read-only inspection, foreign/index/postimage/authorization refusals and
 post-ref uncertainty. `inspectCommit` distinguishes an observed commit from a
 fully reconciled index; replaying the effect is not recovery.
+
+The port samples the repository root, gitdir, index path and HEAD in one Git
+invocation per inspection. The port fixture covers the existing unborn and
+detached HEAD refusals, and `verify-retained-workflow-git-binding-fixtures.mjs`
+checks refusal after a same-content gitfile redirection. Each inspection uses
+a fresh observation across provider, authorization and effect boundaries.
 
 The same fixture proves that a configured reference-transaction hook and clean
 filter actually execute under ordinary Git, then requires the adapter's inspect,

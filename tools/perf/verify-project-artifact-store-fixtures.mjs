@@ -9,6 +9,7 @@ import { createArtifactStore } from '../../src/adapters/runtime/artifact-store.m
 import { getDatabaseSync } from '../../src/lib/sqlite/workflow-db-schema-lib.mjs';
 import { artifactContentHash } from '../../src/core/workflow/artifact-compare-swap.mjs';
 import { resolveEffectiveRuntimePersistence } from '../../src/application/runtime/runtime-persistence-service.mjs';
+import { createProjectArtifactStore } from '../../src/application/runtime/project-artifact-store-service.mjs';
 import { executePostgresArtifactCommand, validateArtifactPath } from '../../src/adapters/runtime/postgres-artifact-command-lib.mjs';
 import { createPostgresRuntimeArtifactStore } from '../../src/adapters/runtime/postgres-runtime-artifact-store.mjs';
 import { createRuntimePersistenceFakePgClientFactory } from './runtime-persistence-fake-pg-lib.mjs';
@@ -19,7 +20,7 @@ export async function verifyProjectArtifactCommands() {
   assert.equal(resolveEffectiveRuntimePersistence({ backend: 'postgres', configData: configured }).connectionRef, 'env:PROJECT_DB');
   assert.equal(resolveEffectiveRuntimePersistence({ backend: 'postgres', configData: configured, connectionRef: 'env:EXPLICIT_DB' }).connectionRef, 'env:EXPLICIT_DB');
   assert.equal(resolveEffectiveRuntimePersistence({ backend: 'sqlite', configData: configured }).connectionRef, null); count += 3;
-  function fake({ version = 3, scopes = ['scope'], failTable = '', headPath = '', executionSchema = false, reservations = [] } = {}) {
+  function fake({ version = 3, scopes = ['scope'], failTable = '', headPath = '', executionSchema = false, reservations = [], readRows = [] } = {}) {
     const queries = [];
     return { queries, async query(sql, values = []) {
       queries.push({ sql, values });
@@ -29,6 +30,7 @@ export async function verifyProjectArtifactCommands() {
       if (sql.includes("to_regclass('aidn_shared.execution_runs')")) return { rows: [{ execution_runs: executionSchema ? 'aidn_shared.execution_runs' : null }] };
       if (sql.startsWith('SELECT run_id FROM aidn_shared.execution_runs')) return { rows: reservations.filter(row => row.runtime_scope_id === values[0] && row.reservation_active).map(row => ({ run_id: row.run_id })) };
       if (sql.startsWith('SELECT DISTINCT scope_key')) return { rows: scopes.map(scope_key => ({ scope_key })) };
+      if (sql.includes('path=ANY($2::text[])')) return { rows: readRows.filter(row => row.scope_key === values[0] && values[1].includes(row.path)) };
       if (sql.includes('COALESCE(MAX(artifact_id)')) return { rows: [{ id: '8' }] };
       if (sql.startsWith('SELECT artifact_path')) return { rows: headPath ? [{ artifact_path: headPath }] : [] };
       return { rows: [] };
@@ -85,6 +87,36 @@ export async function verifyProjectArtifactCommands() {
   assert.equal(await executePostgresArtifactCommand(absent, ['scope', 'legacy'], 'get', { path: 'notes/legacy-only.md' }), null);
   assert.equal(absent.queries.filter(q => q.sql.includes('v_materializable_artifacts')).length, 1,
     'missing canonical artifact must not fall back to a legacy artifact'); count++;
+  const first = 'notes/first.md', second = 'notes/second.md', missing = 'notes/missing.md';
+  const batch = fake({ scopes: ['legacy', 'scope'], readRows: [
+    { scope_key: 'scope', path: second, content: 'second' }, { scope_key: 'legacy', path: missing, content: 'legacy' },
+    { scope_key: 'scope', path: first, content: 'first' },
+  ] });
+  const rows = await executePostgresArtifactCommand(batch, ['scope', 'legacy'], 'get-many', { paths: [first, missing, second] });
+  assert.deepEqual(rows.map(row => row?.content ?? null), ['first', null, 'second']);
+  assert.equal(batch.queries[0].sql, 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  assert.deepEqual(batch.queries.filter(q => q.sql.includes('v_materializable_artifacts')).map(q => q.values), [['scope', [first, missing, second]]]);
+  assert.equal(batch.queries.at(-1).sql, 'COMMIT'); count++;
+  for (const paths of [[], [first, first], [first, '../invalid']]) {
+    const invalid = fake();
+    await assert.rejects(executePostgresArtifactCommand(invalid, ['scope'], 'get-many', { paths }), /ARTIFACT_/);
+    assert.deepEqual(invalid.queries, []); count++;
+  }
+  const workerActions = [];
+  let workerRefusal = 'ENOBUFS';
+  const worker = createProjectArtifactStore({ backend: 'postgres', connectionRef: 'env:PROJECT_DB', readOnly: true,
+    workerRunner(_executable, _args, { input }) {
+      const request = JSON.parse(input);
+      workerActions.push(request.action);
+      if (request.action === 'get-many') return { status: null, error: { code: workerRefusal } };
+      return { status: 0, stdout: JSON.stringify({ ok: true, result: { path: request.options.path } }) };
+    } });
+  assert.deepEqual(worker.getArtifacts([first, second]).map(row => row.path), [first, second]);
+  assert.deepEqual(workerActions, ['get-many', 'get', 'get']); count++;
+  workerRefusal = 'ETIMEDOUT'; workerActions.length = 0;
+  assert.throws(() => worker.getArtifacts([first, second]), /ARTIFACT_POSTGRES_WORKER_UNAVAILABLE/);
+  assert.deepEqual(workerActions, ['get-many']); count++;
+  worker.close();
   for (const lifecycle_status of ['running', 'recovery_required']) {
     const fenced = fake({ scopes: ['legacy', 'scope'], executionSchema: true, reservations: [
       { run_id: 'run-1', runtime_scope_id: 'scope', reservation_active: true, lifecycle_status, lease_expires_at: '2000-01-01T00:00:00Z' },

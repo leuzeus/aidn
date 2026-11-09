@@ -105,8 +105,19 @@ try {
   });
   await check("closed typed operation bindings", () => {
     const bindings = standardWorkflowOperationBindings();
-    assert.deepEqual(bindings.map(row => row.id), ["session_pr_correction_checkpoint", "session_pr_review_observe", "session_pr_correction_reopen", "session_pr_triage_select", "session_pr_triage_evaluate", "session_pr_review_receive", "session_pr_review_content_observe", "session_pr_checkpoint", "session_pr_update_push", "session_pr_record", "session_pr_open", "session_push", "session_pr_admit", "session_branch_integration_decision", "session_branch_integrate", "session_delivery_checkpoint", "session_preclose_checkpoint", "session_close_finalize", "session_close_checkpoint", "session_close_record", "session_closure_decision", "session_close_admit", "baseline_promotion_checkpoint", "baseline_promotion_finalize", "baseline_promotion_decision", "baseline_promotion_record", "cycle_close_finalize", "cycle_close_record", "cycle_closure_decision", "cycle_audit_select", "cycle_audit_evaluate", "cycle_task_select", "cycle_task_work_evaluate", "cycle_task_advance", "cycle_validation_evaluate", "cycle_verification_enter", "cycle_validation_execute", "cycle_work_evaluate", "cycle_readiness_evaluate", "cycle_implementation_enter", "context_reload", "session_admit", "session_initialize", "mode_work_preflight", "mode_work_evaluate", "mode_decision", "session_mode_apply", "cycle_terminal_checkpoint", "session_git_checkpoint", "session_start_finalize",
-      "cycle_admit", "cycle_context_refresh", "cycle_initialize", "branch_cycle_audit", "cycle_checkpoint_finalize", "cycle_plan_evaluate", "cycle_plan_record", "drift_report_evaluate", "drift_check_finalize", "drift_recovery_decision", "drift_recovery_record", "drift_change_request_record", "drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"]);
+    const registered = new Map(bindings.map(binding => [binding.id, binding]));
+    assert.equal(registered.size, bindings.length);
+    const published = new Set();
+    for (const name of ["standard-workflow.v1", "standard-workflow-startup.v1", "standard-workflow-cycle-create.v1"]) {
+      const catalog = JSON.parse(fs.readFileSync(new URL(`../../package/catalogs/${name}.json`, import.meta.url), "utf8"));
+      for (const { binding } of catalog.bindings) {
+        assert.deepEqual(registered.get(binding.id), binding, name + ": " + binding.id);
+        published.add(binding.id);
+      }
+    }
+    // Standalone compatibility bindings are covered by their own fixtures.
+    assert.deepEqual([...registered.keys()].filter(id => !published.has(id)).sort(),
+      ["cycle_work_evaluate", "session_pr_merge_observe", "session_pr_post_merge_wait", "session_pr_review_observe"]);
     const closeAdmission = bindings.find(row => row.id === "session_close_admit");
     assert.equal(closeAdmission.executor_kind, "deterministic"); assert.equal(closeAdmission.effect_class, "read-only");
     assert.equal(closeAdmission.skill_id, "close-session"); assert.deepEqual(closeAdmission.allowed_modes, ["THINKING", "EXPLORING", "COMMITTING"]);
@@ -176,12 +187,17 @@ try {
     assert.equal((await bound.reconcileSession(prepared)).outcome, "reconciliation_required");
     assert.equal((await bound.admitSession()).outcome, "blocked");
     assert.equal((await bound.prepareSession({ ...input, session_id: "S002", session_branch: "S002-next" })).can_apply, false);
-    await assert.rejects(bound.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 }), { code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" });
+    const fence = artifacts.resourceFence().read();
+    assert.equal(fence.record.state, "held");
+    await assert.rejects(bound.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 }),
+      { code: "STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED", effect_status: "no_effect" });
+    assert.deepEqual(artifacts.resourceFence().read(), fence);
   });
   await check("concurrent local owners cannot duplicate session effects", async () => {
     const target = client(), first = createStandardWorkflowOperations({ targetRoot: target }), second = createStandardWorkflowOperations({ targetRoot: target });
     const prepared = await first.prepareSession(input), running = first.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 });
-    await assert.rejects(second.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 }), { code: "STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED" });
+    await assert.rejects(second.initializeSession(prepared, { write: true, expectPlan: prepared.plan_sha256 }),
+      { code: "STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED", effect_status: "no_effect" });
     assert.equal((await running).outcome, "completed");
     assert.equal((await second.reconcileSession(prepared)).outcome, "completed");
   });

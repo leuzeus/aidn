@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createStandardCycleCloseHook } from "../../src/application/runtime/standard-cycle-close-hook.mjs";
+import { LOCAL_ARTIFACT_FENCE_PATH } from "../../src/application/runtime/local-artifact-resource-fence.mjs";
 import { createStandardWorkflowArtifacts } from "../../src/application/runtime/standard-workflow-artifacts.mjs";
 import { assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
 import { shadowHash } from "../../src/core/workflow/shadow-json.mjs";
@@ -13,10 +14,15 @@ export async function verifyCycleCloseRenewalBoundary({ targetRoot, instance, in
   const hash = "a".repeat(64), anchor = { operation_id: "op_" + "c".repeat(40), receipt_sha256: hash, plan_sha256: hash,
     output_sha256: hash, alignment_sha256: hash, report_sha256: hash, event_sha256: hash, event_offset: 0 };
   const eventFile = path.join(targetRoot, ".aidn/runtime/perf/workflow-events.ndjson");
-  const beforeEvents = fs.readFileSync(eventFile), inventory = artifacts.inventory().paths.map(name => [name, artifacts.read(name).sha256]);
+  const businessInventory = () => artifacts.inventory().paths.filter(name => name !== LOCAL_ARTIFACT_FENCE_PATH)
+    .map(name => [name, artifacts.read(name).sha256]);
+  const beforeEvents = fs.readFileSync(eventFile), inventory = businessInventory();
+  const fence = artifacts.resourceFence();
+  let expectedFence = fence.read();
   const unchanged = () => {
     assert.deepEqual(fs.readFileSync(eventFile), beforeEvents);
-    assert.deepEqual(artifacts.inventory().paths.map(name => [name, artifacts.read(name).sha256]), inventory);
+    assert.deepEqual(businessInventory(), inventory);
+    assert.equal(fence.read().content_sha256, expectedFence.content_sha256);
     assert.equal(artifacts.ownerPending(), false);
   };
   let checks = 0;
@@ -35,7 +41,16 @@ export async function verifyCycleCloseRenewalBoundary({ targetRoot, instance, in
   assert.deepEqual(result.observations.previous_completion, anchor);
   pass("independently reconstructed port returns no closure success");
   const late = await open().apply(instance, prepared, { write: true, expectPlan: prepared.plan_sha256, assertAuthorized() {} });
-  assert.deepEqual(late, result); pass("expiry after successful preview releases its pre-effect owner and requests review");
+  assert.deepEqual(late, result);
+  const released = fence.read();
+  assert.equal(released.record.state, "released");
+  assert.equal(released.record.revision, (expectedFence.record?.revision ?? 0) + 2);
+  assert.equal(released.record.process_identity.pid, process.pid);
+  assert.notEqual(released.record.token, expectedFence.record?.token);
+  const projection = fs.readFileSync(path.join(targetRoot, "docs/audit", LOCAL_ARTIFACT_FENCE_PATH), "utf8");
+  assert.deepEqual(JSON.parse(projection), released.record);
+  expectedFence = released;
+  pass("expiry after successful preview releases its pre-effect owner and requests review");
   code = "STANDARD_OBJECTIVE_COMPLETION_EXPIRED";
   const completion = await open().prepare(instance, input, operationId);
   assert.equal((await open().apply(instance, completion, { write: true, expectPlan: completion.plan_sha256, assertAuthorized() {} })).facts.cycle_close_completed, false);

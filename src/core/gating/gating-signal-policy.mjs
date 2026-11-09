@@ -1,3 +1,5 @@
+export const STANDARD_DRIFT_FRESHNESS_MINUTES = 45;
+
 export function buildNoChangeFastPath(reloadResult, changedFiles) {
   return reloadResult.decision === "incremental"
     && reloadResult.fallback !== true

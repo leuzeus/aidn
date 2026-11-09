@@ -73,6 +73,7 @@ import { createStandardWorkflowArtifacts } from "./standard-workflow-artifacts.m
 import { createStandardDriftFinalization } from "./standard-drift-finalization.mjs";
 import { createStandardDriftRecovery } from "./standard-drift-recovery.mjs";
 import { createStandardDriftChangeRequest } from "./standard-drift-change-request.mjs";
+import { createStandardDriftRollback } from "./standard-drift-rollback.mjs";
 import { createStandardDriftCycle } from "./standard-drift-cycle.mjs";
 import { createStandardCyclePlanRecord } from "./standard-cycle-plan-record.mjs";
 import { createStandardCycleImplementation } from "./standard-cycle-implementation.mjs";
@@ -140,9 +141,11 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
   const recovery = processAuthority ? createStandardDriftRecovery({ targetRoot, now,
     readEvaluation: (instance, input) => processAuthority.readDriftEvaluation(instance, input),
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record,
-    readPreviousCompletion: instance => objectiveCompletion.review(instance) }) : null;
+    readPreviousCompletion: instance => objectiveCompletion.renewalSubject(instance) }) : null;
   const changeRequest = processAuthority ? createStandardDriftChangeRequest({ targetRoot, now,
     readRecovery: (instance, input) => recordedRecovery(instance, input),
+    observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
+  const rollback = processAuthority ? createStandardDriftRollback({ targetRoot, now, readSource: readRollbackSource,
     observeContext: () => processAuthority.observeDriftContext(), readCurrent: id => current(id).record }) : null;
   const source = modelSource === null ? null : freezeShadow(structuredClone(assertStandardWorkflowModelSource(modelSource, model)));
   if (model.contract_version !== "agentic-process-model.v2" || typeof authorize !== "function") fail("STANDARD_HOST_CONFIGURATION_INVALID");
@@ -1077,6 +1080,22 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
       || output.observations.causal_transition?.before_context_sha256 !== review.context_sha256) fail("STANDARD_CHANGE_REQUEST_ACCEPTED_RECOVERY_REQUIRED");
     return { record_operation_id: record.operation_id, choice, review, report: evaluation.observations.report, transition: output.observations.causal_transition };
   }
+  function readRollbackSource(instance, input) {
+    processAuthority.authenticate(instance);
+    const selected = recordedRecovery(instance, input, ["rollback"]);
+    const boundary = instance.events.findIndex(event => event.intent?.operation_id === selected.review.evaluation_operation_id);
+    const intent = instance.events.slice(0, boundary).findLast(event => event.intent?.binding_ref === "cycle_checkpoint_finalize")?.intent;
+    if (boundary < 0 || !intent) fail("STANDARD_DRIFT_ROLLBACK_CHECKPOINT_REQUIRED");
+    const record = retained(intent.operation_id).record, result = record.results.at(-1), plan = record.preview.prepared.plan;
+    if (record.phase !== "receipted" || shadowHash(record.intent) !== shadowHash(intent)
+      || result?.receipt.outcome !== "completed" || result?.receipt.effect_status !== "confirmed"
+      || result.output.facts.cycle_checkpoint_completed !== true || plan.input.cycle_id !== selected.review.cycle_id
+      || plan.input.session_id !== selected.review.session_id
+      || !instance.events.slice(0, boundary).some(event => event.kind === "operation_result" && shadowHash(event.receipt) === shadowHash(result.receipt)))
+      fail("STANDARD_DRIFT_ROLLBACK_CHECKPOINT_REQUIRED");
+    return { ...selected, ...processAuthority.rollbackProductScope(), checkpoint: { operation_id: record.operation_id,
+      receipt_sha256: shadowHash(result.receipt), branch: plan.scope.branch, head: plan.scope.head } };
+  }
   function cycleRecoverySource(instance, operation, input) {
     function accepted(id, binding, effect = "confirmed") {
       const record = retained(id).record, output = record.results.at(-1)?.output, receipt = record.results.at(-1)?.receipt;
@@ -1367,6 +1386,7 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         : binding.id === "drift_report_evaluate" ? await processAuthority?.evaluateDriftReport(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : ["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(binding.id) ? await recoveryCycle?.prepare(state.record, binding.id, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "drift_change_request_record" ? await changeRequest?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
+        : binding.id === "drift_recovery_rollback_apply" ? await rollback?.prepare(state.record, input) ?? fail("STANDARD_DRIFT_AUTHORITY_UNAVAILABLE")
         : binding.id === "session_close_finalize" ? await sessionCloseHook?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_SESSION_CLOSE_HOOK_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_checkpoint" ? await sessionPrCheckpoint?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_SUCCESSOR_AUTHORITY_REQUIRED")
         : binding.id === "session_pr_redelivery_push" ? await sessionPrRedeliveryPush?.prepare(state.record, input, operationJournalId(state.record, occurrenceId)) ?? fail("STANDARD_PR_REDELIVERY_AUTHORITY_REQUIRED")
@@ -1645,6 +1665,8 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
         else if (!record.preview.prepared?.can_apply) output = { contract_version: record.preview.binding.output_contract, operation_ref: record.intent.binding_ref,
           outcome: "blocked", effect_status: "no_effect", facts: {}, observations: record.preview.prepared ?? {}, evidence_refs: [] };
         else if (["drift_recovery_context_refresh", "drift_recovery_checkpoint_observe", "drift_recovery_cycle_initialize"].includes(record.intent.binding_ref)) output = await recoveryCycle.apply(state.record, record.preview.prepared,
+          { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
+        else if (record.intent.binding_ref === "drift_recovery_rollback_apply") output = await rollback.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });
         else if (record.intent.binding_ref === "drift_check_finalize") output = await driftFinalization.apply(state.record, record.preview.prepared,
           { write: true, expectPlan: record.preview.prepared.plan_sha256, assertAuthorized: () => verifyGrant(record) });

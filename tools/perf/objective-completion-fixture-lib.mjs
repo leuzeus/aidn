@@ -25,7 +25,7 @@ export async function verifyObjectiveCompletion(pass) {
         prepared_at_ms: 100, context_sha256: H, evaluation_sha256: H, branch: "fixture", head: "a".repeat(40), mode: "COMMITTING",
         report: { path: `workflows/drift-reports/${id}.md`, before_sha256: null, after: "# Exact retained fixture report\n", after_sha256: artifactContentHash("# Exact retained fixture report\n") },
         gate_constraints: { level1: { decision: "incremental" }, level3: { required: false }, other_signals: ["objective_delta"] }, objective_alignment: alignment };
-      const event = { run_id: "process_drift_" + id, ts: "2026-11-05T12:00:00.000Z", event: "drift_check_completed", skill: "drift-check",
+      const event = { run_id: "process_drift_" + id, ts: "1970-01-01T00:00:00.000Z", event: "drift_check_completed", skill: "drift-check",
         result: "ok", branch: "fixture", mode: "COMMITTING", objective_alignment_sha256: shadowHash(alignment) };
       const prefix = Buffer.from('{"event":"preserved"}\n');
       fs.writeFileSync(reportFile, plan.report.after); fs.writeFileSync(eventFile, Buffer.concat([prefix, Buffer.from(JSON.stringify(event) + "\n")]));
@@ -60,6 +60,25 @@ export async function verifyObjectiveCompletion(pass) {
       assert.equal(await f.reader.read({ ...f.instance, events: [] }), null);
       f.plan.contract_version = "standard-drift-finalize-plan.v2"; assert.equal(await f.reader.read(f.instance), null);
       pass("completed objective reader observes exact report/event bytes without writes; absent and historical finalizers grant no alignment");
+    }
+    {
+      const f = fixture(), at = 45 * 60000, originalEvent = fs.readFileSync(f.eventFile);
+      f.time(at);
+      const { anchor, alignment_allowed } = await f.reader.renewalSubject(f.instance);
+      assert.equal(alignment_allowed, true);
+      const disposition = { ...f.alignment, prepared_at_ms: at };
+      let expireDuringAuthentication = false;
+      f.renew({ anchor, disposition }, undefined, () => { if (expireDuringAuthentication) f.time(at + 1); });
+      assert.deepEqual(await f.reader.read(f.instance), disposition);
+      expireDuringAuthentication = true;
+      await assert.rejects(f.reader.read(f.instance), /COMPLETION_EXPIRED/);
+      assert.deepEqual(await f.reader.renewalSubject(f.instance), { anchor, alignment_allowed: false });
+      await assert.rejects(f.reader.read(f.instance), /COMPLETION_EXPIRED/);
+      assert.deepEqual(await f.reader.review(f.instance), anchor);
+      f.revoke();
+      await assert.rejects(f.reader.read(f.instance), /current source revoked/);
+      assert.deepEqual(fs.readFileSync(f.eventFile), originalEvent);
+      pass("fresh human alignment cannot renew an expired physical R05 completion");
     }
     for (const [name, mutate, reason] of [
       ["unaccepted completion", f => f.instance.events.pop(), /NOT_ACCEPTED/],

@@ -36,6 +36,14 @@ try {
     assert.equal(f.port.inspect().changes.length, 3); assert.deepEqual(fs.readFileSync(path.join(f.root, ".git/index")), before);
     assert.equal(git(f.root, "rev-parse", "HEAD"), head);
   });
+  await test("fresh inspection refuses unborn and detached HEAD without changing the index", () => {
+    const f = fixture(), indexPath = path.join(f.root, ".git/index"), index = fs.readFileSync(indexPath);
+    git(f.root, "symbolic-ref", "HEAD", "refs/heads/unborn");
+    assert.throws(() => f.port.inspect(), { code: "WORKFLOW_GIT_COMMAND_FAILED", command: "rev-parse", exit_code: 128 });
+    git(f.root, "update-ref", "--no-deref", "HEAD", f.plan.observed.head);
+    assert.throws(() => f.port.inspect(), { code: "WORKFLOW_GIT_NAMED_HEAD_REQUIRED" });
+    assert.deepEqual(fs.readFileSync(indexPath), index);
+  });
   await test("real bounded commit changes only approved metadata, observes exact parent and leaves Git clean", async () => {
     const f = fixture(); let grants = 0;
     const result = await f.port.commit(f.plan, { assertAuthorized: async () => { grants++; } });

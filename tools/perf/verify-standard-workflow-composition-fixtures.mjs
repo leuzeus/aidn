@@ -86,7 +86,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 192); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 193); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -500,10 +500,11 @@ test("corrective redelivery and review select fresh integration, cycle and updat
   assert.deepEqual(fields("correction_pr_triage").selection_operation_id, { source: "operation_id", node_id: "correction_pr_triage_select" });
   assert.deepEqual(fields("correction_pr_triage_evaluate").report_occurrence_id, { source: "occurrence_id", node_id: "correction_pr_triage" });
 });
-test("the published recovery call routes confirmed findings to the selected CR or checkpoint port", () => {
+test("the published recovery call routes confirmed findings to the selected CR, checkpoint or rollback port", () => {
   for (const contract of ["standard-drift-recovery-cycle-selection-input.v1", "standard-drift-recovery-cycle-subject.v1",
     "standard-drift-recovery-cycle-question.v1", "human-drift-recovery-cycle-decision.v1",
-    "standard-drift-recovery-cycle-selection-output.v1", "process-decision-inbox.v17"]) {
+    "standard-drift-recovery-cycle-selection-output.v1", "process-decision-inbox.v17",
+    "standard-drift-rollback-input.v1", "standard-drift-rollback-plan.v1", "standard-drift-rollback-output.v1"]) {
     const schema = JSON.parse(read(`src/core/contracts/workflow-definition/${contract}.schema.json`));
     assert.deepEqual(validateJsonSchemaDefinition(schema, "#", { contractKind: "workflow-definition" }), []);
   }
@@ -528,7 +529,7 @@ test("the published recovery call routes confirmed findings to the selected CR o
       model_sha256: instance.model_sha256, occurrence_id: recovery.occurrence_id, instance_revision: instance.revision };
     const staged = advanceAgenticProcess(instance, { event_id: "intent", kind: "operation_intent", occurrence_id: recovery.occurrence_id, intent });
     const facts = { drift_recovery_recorded: true, drift_recovery_requirements_delta: choice === "requirements_delta",
-      drift_recovery_new_cycle: choice === "new_cycle",
+      drift_recovery_new_cycle: choice === "new_cycle", drift_recovery_rollback: choice === "rollback",
       drift_recovery_required: true, drift_check_completed: false };
     const accepted = advanceAgenticProcess(staged, { event_id: "result", kind: "operation_result", occurrence_id: recovery.occurrence_id,
       receipt: { contract_version: "process-operation-receipt.v1", receipt_id: "recovery-receipt", operation_id: intent.operation_id,
@@ -556,7 +557,10 @@ test("the published recovery call routes confirmed findings to the selected CR o
         { source: "operation_output", node_id: "recovery_cycle_decide", path: ["observations", "selected_cycle", key] });
     } else {
       assert.equal(cr, undefined);
-      assert.equal(after.status, "COMPLETED");
+      const rollback = after.occurrences.find(row => row.node_id === "scope_rollback");
+      assert.equal(rollback.status, "READY");
+      assert.equal(resolveProcessFrameInput({ instance: accepted, cursor: after, occurrenceId: rollback.occurrence_id }).input.recovery_record_operation_id,
+        intent.operation_id);
     }
   }
 });
@@ -614,7 +618,7 @@ test("the ordinary loader authenticates the two final-verification operations fo
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 256);
   assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 151);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 41);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 42);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
   assert.equal(loaded.model.call_targets.length, 6);
   assert.equal(child.model_id, "aidn-standard-final-verification");

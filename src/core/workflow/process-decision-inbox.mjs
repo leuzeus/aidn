@@ -75,6 +75,7 @@ export function assertHumanRecoveryDecision(value, question) {
   if (objective && (!value.rationale.trim() || new Set(value.evidence_refs.map(row => row.ref)).size !== value.evidence_refs.length)) fail("PROCESS_HUMAN_SOURCE_INVALID");
   if (question && (objective !== (question.contract_version === "standard-drift-recovery-question.v2")
     || objective && (value.subject_sha256 !== shadowHash(question.review) || value.question_sha256 !== shadowHash(question)))) fail("PROCESS_HUMAN_QUESTION_CHANGED");
+  if (objective && question && !question.choices.includes(value.choice)) fail("PROCESS_HUMAN_CHOICE_NOT_OFFERED");
   return value;
 }
 export const decisionInboxId = source => "decision_" + shadowHash({ authority_id: source.authority_id, source_kind: source.source_kind, source_event_id: source.source_event_id }).slice(0, 40);

@@ -23,6 +23,12 @@ returns neither partial payload nor partial heads. Cleanup errors must not
 replace the original failure. This per-call observation is not a cached verdict
 and does not change scope authority or implicitly bootstrap a missing schema.
 
+STANDARD history authentication may read referenced operation journals in
+bounded batches from the selected PostgreSQL scope. Each batch uses a fresh
+read-only transaction. Journal validation and signature checks still run for
+every referenced record. No batch result carries across authentication calls
+or effect boundaries.
+
 ## Do Not Move Implicitly
 
 ADR-0013 defines an explicit migration of standard AIDN executable assets to a

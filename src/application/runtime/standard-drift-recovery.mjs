@@ -185,7 +185,9 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
   }
   async function prepareRenewal(instance, operationId, at, witnessedCompletion = null, currentReview = {}) {
     if (witnessedCompletion === null && typeof readPreviousCompletion !== "function") fail("STANDARD_OBJECTIVE_COMPLETION_AUTHORITY_REQUIRED");
-    const anchor = witnessedCompletion ?? await readPreviousCompletion(instance);
+    const subject = witnessedCompletion === null ? await readPreviousCompletion(instance)
+      : { anchor: witnessedCompletion, alignment_allowed: true };
+    const { anchor } = subject;
     const original = instance.events.find(event => event.kind === "operation_intent" && event.intent.operation_id === anchor.operation_id);
     if (!original || original.intent.binding_ref !== "drift_check_finalize") fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
     // The accepted completion reader authenticates its diagnostic and anchor.
@@ -194,8 +196,9 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
     if (!completed) fail("STANDARD_OBJECTIVE_COMPLETION_REQUIRED");
     const fresh = await prepare(instance, { evaluation_operation_id: completed.intent.operation_id }, operationId, at, currentReview);
     if (!fresh.can_apply || fresh.plan.contract_version !== "standard-drift-recovery-plan.v2") fail("STANDARD_OBJECTIVE_COMPLETION_REVIEW_REQUIRED");
-    const plan = assertObjectiveReview({ ...fresh.plan, contract_version: "standard-drift-recovery-plan.v3", previous_completion: anchor });
-    if (witnessedCompletion === null && shadowHash(await readPreviousCompletion(instance)) !== shadowHash(anchor))
+    const plan = assertObjectiveReview({ ...fresh.plan, contract_version: "standard-drift-recovery-plan.v3", previous_completion: anchor,
+      choices: subject.alignment_allowed ? fresh.plan.choices : ["request_diagnosis"] });
+    if (witnessedCompletion === null && shadowHash(await readPreviousCompletion(instance)) !== shadowHash(subject))
       fail("STANDARD_OBJECTIVE_COMPLETION_LINK_CHANGED");
     return { can_apply: true, plan, plan_sha256: shadowHash(plan) };
   }
@@ -245,6 +248,7 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
           return { contract_version: "standard-drift-recovery-output.v1", operation_ref: "drift_recovery_record", outcome: "completed", effect_status: "confirmed",
             facts: { drift_recovery_recorded: true, drift_recovery_requirements_delta: choice === "requirements_delta",
               drift_recovery_new_cycle: choice === "new_cycle",
+              drift_recovery_rollback: choice === "rollback",
               drift_recovery_required: true, drift_check_completed: false },
             observations: { decision_operation_id, choice, recovery_execution: "pending", committed,
               causal_transition: { before_context_sha256: review.context_sha256, after_context_sha256: after.context_sha256,

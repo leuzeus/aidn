@@ -237,10 +237,18 @@ try {
     assert.equal(result.outcome, 'reconciliation_required'); assert.equal(result.effect_status, 'unknown'); assert.deepEqual(result.facts, {});
     assert.notEqual(git(partial.root, 'rev-parse', 'HEAD'), partial.head); assert.equal(partial.artifacts.ownerPending(), true);
     assert.equal((await partial.checkpoint.prepare(partial.instance, input, op(3))).can_apply, false);
-    retainDispatch(partial, p); const ownerBefore = fs.readFileSync(path.join(partial.root, '.aidn/runtime/standard-workflow/effects.lock'));
+    retainDispatch(partial, p);
+    const ownerPath = path.join(partial.root, '.aidn/runtime/standard-workflow/effects.lock');
+    const ownerBefore = fs.readFileSync(ownerPath), fenceBefore = partial.artifacts.resourceFence().read();
+    assert.equal(fenceBefore.record.state, 'held');
     await assert.rejects(partial.checkpoint.reconcile(partial.instance, op(3), { assertAuthorized() {} }), { code: 'STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED' });
-    assert.deepEqual(fs.readFileSync(path.join(partial.root, '.aidn/runtime/standard-workflow/effects.lock')), ownerBefore);
-    await assert.rejects(partial.checkpoint.apply(partial.instance, p, { write: true, expectPlan: p.plan_sha256, assertAuthorized() {} }), { code: 'STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED' });
+    assert.deepEqual(fs.readFileSync(ownerPath), ownerBefore);
+    const grantChecksBeforeRetry = grants;
+    await assert.rejects(partial.checkpoint.apply(partial.instance, p, { write: true, expectPlan: p.plan_sha256, assertAuthorized() { grants++; } }),
+      { code: 'STANDARD_RESOURCE_FENCE_RECONCILIATION_REQUIRED', effect_status: 'no_effect' });
+    assert.equal(grants, grantChecksBeforeRetry);
+    assert.deepEqual(partial.artifacts.resourceFence().read(), fenceBefore);
+    assert.deepEqual(fs.readFileSync(ownerPath), ownerBefore);
   });
   if (mode === 'files') await test('an unrelated commit after the owned Git effect cannot inherit continuation', async () => {
     const foreign = await fixture('files'), p = await foreign.checkpoint.prepare(foreign.instance, input, op(4));

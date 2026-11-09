@@ -1,3 +1,4 @@
+import { STANDARD_DRIFT_FRESHNESS_MINUTES } from "../../core/gating/gating-signal-policy.mjs";
 import { verifyCycleCloseCheckpoint } from "./standard-cycle-close-checkpoint.mjs";
 import path from "node:path";
 import fs from "node:fs";
@@ -40,7 +41,7 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     readObjectiveCompletion: readObjectiveCompletion === null ? null : () => readObjectiveCompletion(instance), args: {
     cache: ".aidn/runtime/cache/reload-state.json", eventFile: eventRelative, indexSyncCheckFile: ".aidn/runtime/index/index-sync-check.json",
     stateMode: artifacts.describe().state_mode, stateModeExplicit: true, indexFile: ".aidn/runtime/index/workflow-index.sqlite", indexBackend: "auto",
-    thresholdFiles: 3, thresholdMinutes: 45, mode: "COMMITTING", runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
+    thresholdFiles: 3, thresholdMinutes: STANDARD_DRIFT_FRESHNESS_MINUTES, mode: "COMMITTING", runId: "", reloadDecision: "", reloadFallback: "", reloadReasonCodes: "", emitEvent: false, completeDriftCheck: false,
   } });
   async function source(instance, input) {
     const selected = await readRecorded(instance, input), plan = selected.plan, output = assertStandardOperationOutput(selected.output);
@@ -69,7 +70,12 @@ export function createStandardCycleCloseHook({ targetRoot, readRecorded, observe
     const { observed, selected } = await source(instance, input);
     if (readObjectiveCompletion !== null) await readObjectiveCompletion(instance);
     const gating = await gate(instance, observed.context.cycle_id);
-    if (!openGate(gating)) return { can_apply: false, reason_code: "STANDARD_CYCLE_CLOSE_HOOK_GATE_REQUIRED", gate: gating };
+    if (!openGate(gating)) {
+      // The event can expire while the gate is reading canonical state.
+      if (readObjectiveCompletion !== null && gating.levels?.level2?.active_signals?.includes("time_since_last_drift_check"))
+        await readObjectiveCompletion(instance);
+      return { can_apply: false, reason_code: "STANDARD_CYCLE_CLOSE_HOOK_GATE_REQUIRED", gate: gating };
+    }
     const before = events(), context = observed.context;
     const plan = { contract_version: "standard-cycle-close-hook-plan.v1", input, operation_id: operationId, prepared_at_ms: at, context_sha256: observed.context_sha256,
       record_plan_sha256: shadowHash(selected.plan), record_output_sha256: shadowHash(selected.output),

@@ -505,7 +505,9 @@ let driftRecoveryTarget, driftRecoveryRef;
   seq("recovery_execution", ["recovery_record", "recovery_effect_route"]);
   op("recovery_record", "drift_recovery_record", { decision_operation_id: { source: "parameter", key: "decision_operation_id", path: [] } });
   xor("recovery_effect_route", [["record", "change_request_record", "drift_recovery_requirements_delta"],
-    ["new_cycle", "cycle_recovery_checkpoint", "drift_recovery_new_cycle"], ["pending", "other_recovery_pending", null]]);
+    ["new_cycle", "cycle_recovery_checkpoint", "drift_recovery_new_cycle"],
+    ["rollback", "scope_rollback", "drift_recovery_rollback"], ["pending", "other_recovery_pending", null]]);
+  op("scope_rollback", "drift_recovery_rollback_apply", operation(null, "recovery_record_operation_id", "recovery_record"));
   op("change_request_record", "drift_change_request_record", operation(null, "recovery_record_operation_id", "recovery_record"));
   seq("cycle_recovery_checkpoint", ["recovery_context_refresh", "recovery_checkpoint_observe", "recovery_cycle_decide", "recovery_cycle_initialize"]);
   op("recovery_context_refresh", "drift_recovery_context_refresh", operation(null, "recovery_operation_id", "recovery_record"));
@@ -518,7 +520,7 @@ let driftRecoveryTarget, driftRecoveryRef;
   });
   seq("other_recovery_pending", []);
   const recoveryNodes = nodes.splice(firstNode);
-  driftRecoveryTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-drift-recovery", revision: 1,
+  driftRecoveryTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-drift-recovery", revision: 2,
     participants: [{ id: "project" }], roles: [], policies: [], entry: "recovery_execution", nodes: recoveryNodes,
     operation_pins: pinsFor(recoveryNodes), call_interface: { parameters: { decision_operation_id: "string" }, returns: {} },
     data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["decision_operation_id"], inputs: inputs.splice(firstInput) } };

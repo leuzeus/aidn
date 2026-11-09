@@ -32,6 +32,11 @@ resource-closure proof or accepted result. Both versions reuse the existing
 operation-journal canonical CAS/projection surface. This adds no public CLI JSON
 root or backend fallback; exact-source crash qualification remains required.
 
+The private v3 linked drift review and v2 human question also admit a
+diagnosis-only choice set for an expired authenticated R05 event. The existing
+source still binds the exact review and question. The previous two-choice
+review and its captures retain their readers.
+
 ## R08 thread resolution contracts
 
 Private `github-pr-review-resolution-{request,plan,result}.v1` and
