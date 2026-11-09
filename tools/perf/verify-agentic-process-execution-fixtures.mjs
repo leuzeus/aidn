@@ -1383,7 +1383,7 @@ if (process.argv[2] === "--mixed-continue") {
       const completion = last("session_pr_post_merge_complete"), merge = last("session_pr_merge_execute");
       const admission = await readAdmissions(), aligned = admission.continuity.completion?.plan.aligned_head;
       assert.equal(completion?.outcome, "completed");
-      assert.equal(aligned, merge.observations.merge.merge_oid);
+      assert.equal(aligned, merge.observations.merge.provider.pull_request.merge_oid);
       assert.equal(admission.start.action, "create_session_allowed");
       assert.notEqual(admission.cycle.reason_code, "CYCLE_CREATE_SESSION_PR_OPEN");
       assert.deepEqual(f.r09.sends(), ["merge", "fetch"]);
