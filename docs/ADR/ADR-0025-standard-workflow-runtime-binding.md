@@ -301,7 +301,7 @@ post-selector expiry recovery, cold productive published execution, general L4,
 required193, genuine actors and exact installed behavior remain unqualified.
 The entire L1-L8/A1-A10 objective remains incomplete.
 
-### Change request after confirmed primary closure drift
+### Change request and checkpoint after confirmed primary closure drift
 
 The primary cycle-closure recovery branch calls the pinned
 `aidn-standard-drift-recovery` process. Its input is the accepted human
@@ -311,9 +311,13 @@ decision. Only that route prepares `drift_change_request_record`, using the
 accepted findings operation in the same call. The CR writer retains its
 separate exact plan, live grant, canonical compare-and-swap and postimage checks.
 
-The written CR remains pending. The call exports no completion facts and does
-not release the existing diagnosis admission fence. New-cycle and rollback
-choices retain the findings for their separately governed recovery paths.
+The written CR remains pending. A direct new-cycle choice uses the accepted
+findings to refresh the canonical cycle context and uses that receipt to
+observe the exact external Git checkpoint. A dirty worktree waits for
+reconciliation, and the observer performs no Git mutation. The checkpoint does
+not supply the identity of a new cycle or authorize its creation. The call
+exports no completion facts and does not release the existing diagnosis
+admission fence. Rollback remains a separately governed recovery path.
 
 
 ## SOURCE61 reload cache effect fence candidate, 2026-11-05

@@ -1301,7 +1301,11 @@ The published primary cycle-closure recovery branch now calls the existing CR
 writer for a confirmed requirements delta. The composition fixture checks the
 pinned call, its exact accepted operation input, and the shared reducer's
 selection of the CR writer. New-cycle and rollback choices do not select it.
-This routing check and the cold CR port fixture provide separate evidence.
+The direct new-cycle choice instead refreshes canonical context and observes
+the external Git checkpoint. Its focused fixture uses the published call,
+requires a dirty-worktree wait, then records the observed checkpoint after
+external reconciliation. This proof does not initialize a cycle. The existing
+cold CR and cycle-creation fixtures provide separate port evidence.
 
 ## Structured agentic process
 
