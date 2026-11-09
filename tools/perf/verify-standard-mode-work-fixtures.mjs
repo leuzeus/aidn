@@ -49,11 +49,16 @@ test("cycle work routing uses authenticated intent without claiming a recorded p
 for (const [prefix, mode, disposition] of [["thinking", "THINKING", "thinking_complete"], ["exploring", "EXPLORING", "nonretained"]]) {
   test(`${mode} has real preflight, analysis and evaluation nodes with read-only permissions`, () => {
     const node = id => model.nodes.find(row => row.id === id);
-    assert.deepEqual(node(prefix + "_preflight").children, [prefix + "_admit"]);
+    const preflight = node("mode_preflight").branches.find(row => row.flow_id === prefix);
+    assert.equal(preflight.condition, "mode_" + prefix);
+    assert.equal(preflight.node_id, prefix + "_admit");
+    const closure = ["session_close_admit", "session_closure_drift_report", "session_closure_drift_evaluate",
+      "session_closure_drift_finalize", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"]
+      .map(id => prefix + "_" + id);
     assert.deepEqual(node(prefix + "_handoff").children, prefix === "exploring"
       ? ["exploring_context_refresh", "exploring_git_checkpoint", "exploring_analysis_loop", "exploring_after_analysis"]
-      : ["thinking_analysis_loop", "thinking_session_close"]);
-    assert.deepEqual(node(prefix + "_session_close").children, ["session_close_admit", "session_closure_drift", "session_closure_decide", "session_close_record", "session_close_checkpoint", "session_close_finalize"].map(id => prefix + "_" + id));
+      : ["thinking_analysis_loop", ...closure]);
+    if (prefix === "exploring") assert.deepEqual(node("exploring_session_close").children, closure);
     assert.equal(model.policies.find(row => row.id === node(prefix + "_session_closure_drift_report").policy_ref).mode, mode);
     assert.deepEqual(node(prefix + "_analysis_iteration").children, [prefix + "_analysis", prefix + "_observe", ...(prefix === "exploring" ? ["spike_admit"] : []), prefix + "_after_report"]);
     assert.equal(node(prefix + "_analysis_loop").until, "mode_analysis_completed");
