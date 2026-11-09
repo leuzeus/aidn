@@ -1297,6 +1297,12 @@ native allocation. Cycle setup is a real-port
 precondition, not proof of the missing complete cycle/standard graph. Native,
 provider and exact installed-archive qualification remain separate.
 
+The published primary cycle-closure recovery branch now calls the existing CR
+writer for a confirmed requirements delta. The composition fixture checks the
+pinned call, its exact accepted operation input, and the shared reducer's
+selection of the CR writer. New-cycle and rollback choices do not select it.
+This routing check and the cold CR port fixture provide separate evidence.
+
 ## Structured agentic process
 
 The separate `--standard-composed-scenario=correction-full` selects

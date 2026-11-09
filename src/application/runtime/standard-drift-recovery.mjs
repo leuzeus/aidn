@@ -234,7 +234,8 @@ export function createStandardDriftRecovery({ targetRoot, readEvaluation, observ
             || recoveryBoundary({ root: artifacts.root, context: after.context, environment }) !== before
             || readCurrent(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail("STANDARD_RECOVERY_CONTEXT_CHANGED");
           return { contract_version: "standard-drift-recovery-output.v1", operation_ref: "drift_recovery_record", outcome: "completed", effect_status: "confirmed",
-            facts: { drift_recovery_recorded: true, drift_recovery_required: true, drift_check_completed: false },
+            facts: { drift_recovery_recorded: true, drift_recovery_requirements_delta: choice === "requirements_delta",
+              drift_recovery_required: true, drift_check_completed: false },
             observations: { decision_operation_id, choice, recovery_execution: "pending", committed,
               causal_transition: { before_context_sha256: review.context_sha256, after_context_sha256: after.context_sha256,
                 boundary_sha256: before, changes: review.changes.map(({ path, before_sha256, after_sha256, before_metadata_sha256 }, i) => ({ path, before_sha256, after_sha256,

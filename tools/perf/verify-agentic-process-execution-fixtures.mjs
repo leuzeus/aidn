@@ -492,7 +492,18 @@ function mixedFixture(stateMode = "files", options = {}) {
           : { decision_operation_id: { source: "operation_id", node_id: "decide" } } },
         { node_id: "action_executed", fields: {} }, { node_id: "action_cancelled", fields: {} },
       ] };
-      if (options.changeRequest) {
+      if (options.publishedRecoveryCall) {
+        const target = loadStandardWorkflowAssets().model.call_targets.find(row => row.model_id === "aidn-standard-drift-recovery");
+        const { model: recoveryModel, ...identity } = target;
+        model.participants = recoveryModel.participants;
+        for (const node of model.nodes) node.participant_ref = recoveryModel.participants[0].id;
+        const record = model.nodes.find(row => row.id === "record");
+        delete record.binding_ref;
+        Object.assign(record, { kind: "call", target: identity });
+        delete model.operation_pins.drift_recovery_record;
+        model.call_targets = [target];
+        model.data_bindings.contract_version = "process-data-bindings.v4";
+      } else if (options.changeRequest) {
         model.operation_pins.drift_change_request_record = shadowHash(standardWorkflowOperationBindings().find(row => row.id === "drift_change_request_record"));
         model.nodes[0].children.splice(-1, 0, "change_request"); model.nodes.push(op("change_request", "drift_change_request_record"));
         model.data_bindings.inputs.push({ node_id: "change_request", fields: { recovery_record_operation_id: { source: "operation_id", node_id: "record" } } });
@@ -1754,7 +1765,8 @@ if (process.argv[2] === "--mixed-continue") {
         ? { outcome: "verified", authority_id: source.authority_id, source_sha256: shadowHash(source) } : { outcome: "unverified" },
     };
     let permit = true;
-    const f = mixedFixture(mode, { drift: true, recovery: true, changeRequest: true, humanSource,
+    const publishedRecoveryCall = mode === "files";
+    const f = mixedFixture(mode, { drift: true, recovery: true, changeRequest: true, publishedRecoveryCall, humanSource,
       authorize: async ({ binding }) => ({ authorized: binding.id !== "drift_change_request_record" || permit, authority_id: "fixture_operator", principal_sha256: "a".repeat(64), grant_sha256: "b".repeat(64) }),
       answer({ params }) {
         const context = JSON.parse(params.input[0].text.split("\n").at(-1));
@@ -1775,6 +1787,12 @@ if (process.argv[2] === "--mixed-continue") {
       evidence_refs: [{ ref: "fixture:operator/cr", sha256: "a".repeat(64) }] });
     await f.open().receiveDecision(waiting.question.operation_id, { sourceRef: "accept", write: true });
     await f.open().acceptOperation(waiting.question.operation_id, { write: true }); claims.clear();
+    if (publishedRecoveryCall) {
+      const entering = await f.open().step({ write: true });
+      assert.equal(entering.kind, "call");
+      assert.equal(entering.transition.transition, "call_entry");
+      assert.equal(entering.record.events.at(-1).resolution.input.decision_operation_id, waiting.question.operation_id);
+    }
     const recorded = await f.open().step({ write: true }), findings = f.open().readOperation(recorded.operation_id).results.at(-1).output;
     assert.equal(findings.effect_status, "confirmed");
     const crPath = cycle.statusPath.replace("status.md", "change-requests.md"), before = cycle.artifacts.read(crPath);
@@ -1798,6 +1816,12 @@ if (process.argv[2] === "--mixed-continue") {
     assert.equal(output.observations.causal_transition.before_context_sha256, findings.observations.causal_transition.after_context_sha256);
     const after = cycle.artifacts.read(crPath); assert.ok(after.content.startsWith(before.content));
     assert.match(after.content, /## CR-002/); assert.match(after.content, /- Decision: pending/); assert.match(after.content, /Confirmed CR fixture scope expansion/);
+    if (publishedRecoveryCall) {
+      const returning = await f.open().step({ write: true });
+      assert.equal(returning.kind, "call");
+      assert.equal(returning.transition.transition, "call_return");
+      assert.ok(returning.cursor.occurrences.some(row => row.node_id === "recovery_action_pending" && row.wait_reason === "event"));
+    }
     assert.equal(cycle.artifacts.ownerPending(), false); const reopened = f.open().inspect(); assert.equal(reopened.cursor.status, "WAITING");
     assert.equal((await f.open().dispatchOperation(completed.operation_id, { write: true })).status, "retained_result"); assert.equal(cycle.artifacts.read(crPath).sha256, after.sha256);
     const simulated = simulateAgenticProcess({ instanceId: reopened.record.instance_id, model: reopened.record.model, parameters: reopened.record.initial_parameters,

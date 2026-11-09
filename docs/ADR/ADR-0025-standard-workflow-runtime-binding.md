@@ -301,6 +301,20 @@ post-selector expiry recovery, cold productive published execution, general L4,
 required193, genuine actors and exact installed behavior remain unqualified.
 The entire L1-L8/A1-A10 objective remains incomplete.
 
+### Change request after confirmed primary closure drift
+
+The primary cycle-closure recovery branch calls the pinned
+`aidn-standard-drift-recovery` process. Its input is the accepted human
+recovery decision operation. The existing findings writer confirms its
+postimages and emits the scoped requirements-delta routing fact from that
+decision. Only that route prepares `drift_change_request_record`, using the
+accepted findings operation in the same call. The CR writer retains its
+separate exact plan, live grant, canonical compare-and-swap and postimage checks.
+
+The written CR remains pending. The call exports no completion facts and does
+not release the existing diagnosis admission fence. New-cycle and rollback
+choices retain the findings for their separately governed recovery paths.
+
 
 ## SOURCE61 reload cache effect fence candidate, 2026-11-05
 

@@ -9,7 +9,8 @@ import { verifyStandardWorkflowComponentAssets, assertStandardWorkflowActivityOu
 import { validateJsonSchemaDefinition } from "../../src/core/contracts/json-schema-validator.mjs";
 import catalogSchemaV3 from "../../src/core/contracts/workflow-definition/standard-workflow-catalog.v3.schema.json" with { type: "json" };
 import { processModelIdentity } from "../../src/core/workflow/process-call-model.mjs";
-import { createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { advanceAgenticProcess, createAgenticProcess, inspectAgenticProcess } from "../../src/core/workflow/agentic-process.mjs";
+import { resolveProcessFrameInput } from "../../src/core/workflow/process-frame-input.mjs";
 import { agenticPolicyPins } from "../../src/core/workflow/agentic-process-model.mjs";
 import { simulateAgenticProcess } from "../../src/core/workflow/agentic-process-simulation.mjs";
 import { assertStandardOperationInput, assertStandardOperationOutput } from "../../src/core/workflow/standard-operation-contracts.mjs";
@@ -85,7 +86,7 @@ test("the published JSON is loaded as the exact common IR with fixed real operat
   assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields.decision_operation_id, { source: "operation_id", node_id: "session_pr_correction_decide" });
   for (const key of ["cycle_id", "title", "objective"]) assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === "correction_initialize").fields[key],
     { source: "operation_output", node_id: "session_pr_correction_decide", path: ["observations", "candidate_cycle", key] });
-  assert.equal(assets.catalog.bindings.length, 184); assert.equal(assets.catalog.activities.length, 23);
+  assert.equal(assets.catalog.bindings.length, 185); assert.equal(assets.catalog.activities.length, 23);
 });
 test("correction work and closure consume the new implementation and new validation authorities", () => {
   const fields = id => assets.model.data_bindings.inputs.find(row => row.node_id === id).fields;
@@ -499,6 +500,44 @@ test("corrective redelivery and review select fresh integration, cycle and updat
   assert.deepEqual(fields("correction_pr_triage").selection_operation_id, { source: "operation_id", node_id: "correction_pr_triage_select" });
   assert.deepEqual(fields("correction_pr_triage_evaluate").report_occurrence_id, { source: "occurrence_id", node_id: "correction_pr_triage" });
 });
+test("the published recovery call routes only a confirmed requirements delta to the CR writer", () => {
+  const site = assets.model.nodes.find(node => node.id === "closure_drift_recovery_execution");
+  const { model, ...identity } = assets.model.call_targets.find(row => row.model_id === "aidn-standard-drift-recovery");
+  assert.deepEqual(site.target, identity);
+  assert.deepEqual(assets.model.nodes.find(node => node.id === "closure_drift_recovery_route").branches[0],
+    { flow_id: "recovery", node_id: site.id, condition: "drift_recovery_chosen" });
+  assert.deepEqual(assets.model.data_bindings.inputs.find(row => row.node_id === site.id).fields,
+    { decision_operation_id: { source: "operation_id", node_id: "closure_drift_review" } });
+  const H = "a".repeat(64), decision = "decision-fixture";
+  for (const choice of ["requirements_delta", "new_cycle", "rollback"]) {
+    const instance = createAgenticProcess({ instanceId: "drift-recovery-fixture", scopeId: "fixture", model,
+      policyPins: agenticPolicyPins(model), parameters: { decision_operation_id: decision } });
+    const cursor = inspectAgenticProcess(instance);
+    const recovery = cursor.occurrences.find(row => row.node_id === "recovery_record");
+    assert.equal(resolveProcessFrameInput({ instance, cursor, occurrenceId: recovery.occurrence_id }).input.decision_operation_id, decision);
+    const intent = { contract_version: "process-operation-intent.v1", operation_id: "recovery-fixture",
+      binding_ref: "drift_recovery_record", binding_sha256: model.operation_pins.drift_recovery_record,
+      input_sha256: H, preconditions_sha256: H, authorization_sha256: null, authority_id: "fixture",
+      scope_id: instance.scope_id, instance_id: instance.instance_id, instance_sha256: instance.instance_sha256,
+      model_sha256: instance.model_sha256, occurrence_id: recovery.occurrence_id, instance_revision: instance.revision };
+    const staged = advanceAgenticProcess(instance, { event_id: "intent", kind: "operation_intent", occurrence_id: recovery.occurrence_id, intent });
+    const facts = { drift_recovery_recorded: true, drift_recovery_requirements_delta: choice === "requirements_delta",
+      drift_recovery_required: true, drift_check_completed: false };
+    const accepted = advanceAgenticProcess(staged, { event_id: "result", kind: "operation_result", occurrence_id: recovery.occurrence_id,
+      receipt: { contract_version: "process-operation-receipt.v1", receipt_id: "recovery-receipt", operation_id: intent.operation_id,
+        intent_sha256: shadowHash(intent), authority_id: intent.authority_id, outcome: "completed", effect_status: "confirmed",
+        output_sha256: H, facts, evidence_refs: [{ ref: "fixture/recovery", sha256: H }] } });
+    const after = inspectAgenticProcess(accepted), cr = after.occurrences.find(row => row.node_id === "change_request_record");
+    if (choice === "requirements_delta") {
+      assert.equal(cr.status, "READY");
+      assert.equal(resolveProcessFrameInput({ instance: accepted, cursor: after, occurrenceId: cr.occurrence_id }).input.recovery_record_operation_id,
+        intent.operation_id);
+    } else {
+      assert.equal(cr, undefined);
+      assert.equal(after.status, "COMPLETED");
+    }
+  }
+});
 test("completion of this component cannot claim completion of the standard workflow", () => {
   assert.equal(assets.catalog.scope.complete_standard_workflow, false);
   for (const id of ["existing_session_resume", "thinking_session_closure", "exploring_experiments_and_spike_conversion", "cycle_choice_and_carryover",
@@ -552,10 +591,10 @@ test("the ordinary loader authenticates the two final-verification operations fo
   assert.deepEqual(validateJsonSchemaDefinition(catalogSchemaV3, "#", { contractKind: "workflow-definition" }), []);
   const input = fresh(), loaded = assets;
   assert.equal(loaded.model.nodes.length, 256);
-  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 153);
-  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 31);
+  assert.equal(loaded.catalog.bindings.filter(row => !row.model_ref).length, 152);
+  assert.equal(loaded.catalog.bindings.filter(row => row.model_ref).length, 33);
   const [target] = loaded.model.call_targets, { model: child, ...identity } = target;
-  assert.equal(loaded.model.call_targets.length, 4);
+  assert.equal(loaded.model.call_targets.length, 5);
   assert.equal(child.model_id, "aidn-standard-final-verification");
   assert.deepEqual(identity, processModelIdentity(child));
   const sites = loaded.model.nodes.filter(node => node.target?.model_id === child.model_id);

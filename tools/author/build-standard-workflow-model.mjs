@@ -450,8 +450,9 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
 
 // First published objective review route: the terminal cycle diagnostic.
 // Every retry is a new activity occurrence admitted before Native allocation.
-// A true drift can record its authenticated findings, then stops at explicit
-// recovery admission. It cannot loop into model work without recovery execution.
+// A true drift records authenticated findings before any recovery effect.
+// The CR writer has its own admission. Pending recovery cannot admit model work.
+let driftRecoveryTarget, driftRecoveryRef;
 {
   const id = "closure_drift";
   Object.assign(nodes.find(row => row.id === id), { kind: "loop", child: id + "_checkpoint_iteration", until: "drift_completion_reviewed", max_iterations: 32 });
@@ -467,12 +468,26 @@ for (const [prefix, mode] of [["thinking", "THINKING"], ["exploring", "EXPLORING
   xor(id + "_review_route", [["review", id + "_review_sequence", "drift_followup_review_required"], ["nominal", id + "_no_review", null]]);
   seq(id + "_review_sequence", [id + "_review", id + "_recovery_route"]);
   op(id + "_review", "drift_recovery_decision", operation(null, "evaluation_operation_id", id + "_evaluate"));
-  xor(id + "_recovery_route", [["recovery", id + "_recovery_record", "drift_recovery_chosen"], ["opinion", id + "_opinion_only", null]]);
+  xor(id + "_recovery_route", [["recovery", id + "_recovery_execution", "drift_recovery_chosen"], ["opinion", id + "_opinion_only", null]]);
   seq(id + "_opinion_only", []);
   seq(id + "_no_review", []);
   xor(id + "_outcome_route", [["ready", id + "_finalize", "drift_route_ready"], ["diagnose", id + "_diagnosis_requested", null]]);
-  op(id + "_recovery_record", "drift_recovery_record", operation(null, "decision_operation_id", id + "_review"));
   seq(id + "_diagnosis_requested", []);
+
+  const firstNode = nodes.length, firstInput = inputs.length;
+  seq("recovery_execution", ["recovery_record", "change_request_route"]);
+  op("recovery_record", "drift_recovery_record", { decision_operation_id: { source: "parameter", key: "decision_operation_id", path: [] } });
+  xor("change_request_route", [["record", "change_request_record", "drift_recovery_requirements_delta"], ["pending", "other_recovery_pending", null]]);
+  op("change_request_record", "drift_change_request_record", operation(null, "recovery_record_operation_id", "recovery_record"));
+  seq("other_recovery_pending", []);
+  const recoveryNodes = nodes.splice(firstNode);
+  driftRecoveryTarget = { contract_version: "agentic-process-model.v2", model_id: "aidn-standard-drift-recovery", revision: 1,
+    participants: [{ id: "project" }], roles: [], policies: [], entry: "recovery_execution", nodes: recoveryNodes,
+    operation_pins: pinsFor(recoveryNodes), call_interface: { parameters: { decision_operation_id: "string" }, returns: {} },
+    data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["decision_operation_id"], inputs: inputs.splice(firstInput) } };
+  driftRecoveryRef = pinTarget(driftRecoveryTarget);
+  node(id + "_recovery_execution", "call", { target: driftRecoveryRef });
+  inputs.push({ node_id: id + "_recovery_execution", fields: operation(null, "decision_operation_id", id + "_review") });
 }
 // Expiry before any close effect completes only this attempt. The accepted R05
 // completion remains in history and the next iteration enters its linked review.
@@ -542,6 +557,7 @@ const model = { contract_version: "agentic-process-model.v2", model_id: "aidn-st
     { ...prReviewRef, model: prReviewTarget },
     { ...pretriageRef, model: pretriageTarget },
     { ...captureRef, model: captureTarget },
+    { ...driftRecoveryRef, model: driftRecoveryTarget },
   ],
   data_bindings: { contract_version: "process-data-bindings.v4", parameter_keys: ["session", "cycle"], inputs } };
 if (existing) {
