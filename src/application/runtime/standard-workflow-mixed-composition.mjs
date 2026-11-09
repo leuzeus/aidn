@@ -78,6 +78,7 @@ export function createStandardWorkflowMixedHost({ configuration: suppliedConfigu
     stageOperation: (preview, input) => operations.stage(preview, input),
     dispatchOperation: (id, input) => operations.dispatch(id, input),
     reconcileCorrectionCheckpoint: (id, input) => operations.reconcileCorrectionCheckpoint(id, input),
+    observeInterruptedCorrectionReopen: (id, input) => operations.observeInterruptedCorrectionReopen(id, input),
     acceptOperation: (id, input) => operations.accept(id, input),
     readOperation: id => operations.readJournal(id),
     prepareDecision: id => operations.prepareDecision(id),

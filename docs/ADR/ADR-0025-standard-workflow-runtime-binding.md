@@ -2947,6 +2947,17 @@ host path; the versioned correction driver must establish signed producer and
 canonical writer composition separately. Ordinary entry remains unchanged and
 `complete_standard_workflow` stays false.
 
+### Read-only observation of an interrupted corrective reopening
+
+The internal STANDARD host can observe a returned UNKNOWN reopening after
+expiry when the signed dispatch reports all three planned postimages. The
+instance prefix, original operation, terminated process, signed owner,
+physical lock and held canonical fence must agree. The writer's existing Git,
+canonical metadata and projection checks apply to the three postimages.
+Fresh provider observations must agree with the original correction source.
+The observation preserves the UNKNOWN receipt and the resource owner. It
+provides evidence for a separate disposition under current authority.
+
 ### Missing checkpoint acknowledgement, released local owner, 2026-11-04
 
 The checkpoint component has a retrospective observation path selected by the

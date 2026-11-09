@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { createFreshStandardWorkflowFixture } from './standard-workflow-fixture-lib.mjs';
 import { createStandardWorkflowOperations } from '../../src/application/runtime/standard-workflow-operations.mjs';
@@ -16,6 +17,8 @@ import { artifactContentHash } from '../../src/core/workflow/artifact-compare-sw
 import { assertStandardOperationInput, assertStandardOperationOutput, assertStandardPrCorrectionPlan } from '../../src/core/workflow/standard-operation-contracts.mjs';
 import { agenticProcessImplementationPins } from '../../src/application/runtime/agentic-process-implementation-pins.mjs';
 import { createPrCorrectionReopenFixture } from './standard-pr-correction-fixture-lib.mjs';
+import { createStandardOperationDisposition } from '../../src/application/runtime/standard-operation-disposition.mjs';
+import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
 const fixture = selectedMode => createPrCorrectionReopenFixture(selectedMode, owned);
 const H = 'a'.repeat(64), op = 'op_' + '1'.repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
@@ -27,7 +30,33 @@ const set = (text, key, value) => {
 let checks = 0;
 const test = async (name, fn) => { await fn(); checks++; console.log('PASS ' + name); };
 
-try {
+const fixtureSigner = createOperationJournalSigner(() => Buffer.alloc(32, 68));
+function reopenDisposition(root, artifacts, readOperation) {
+  return createStandardOperationDisposition({ targetRoot: root, stateMode: 'files', signer: fixtureSigner, artifacts,
+    readAuthority: () => ({ fixture: 'reopen-observer' }), readOperation,
+    readContext: () => ({ head: git(root, 'rev-parse', 'HEAD'), documents: prCorrectionReopenPaths('S001').map(name => artifacts.read(name).sha256) }),
+  });
+}
+if (process.argv[2] === '--expired-owner-worker') {
+  const { root, plan, instance } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
+  let clock = plan.plan.prepared_at_ms, grants = 0;
+  const source = plan.plan.source, sourceHash = shadowHash(source);
+  const writer = createStandardPrCorrectionReopen({ targetRoot: root, readCurrent: () => instance, now: () => clock,
+    authority: { readSource: async () => source, verifySource: async () => ({ origin_source_sha256: sourceHash }) } });
+  const binding = 'session_pr_correction_reopen';
+  const record = fixtureSigner.seal({ operation_id: op, phase: 'dispatching', preview: fixtureSigner.seal({ prepared: plan }),
+    intent: { binding_ref: binding, instance_id: instance.instance_id, scope_id: 'fixture', model_sha256: H },
+    owner: { pid: process.pid, generation: 'fixture-cold-owner' }, results: [] });
+  const disposition = reopenDisposition(root, artifacts, () => ({ record }));
+  const result = await disposition.run(record, () => writer.apply(instance, plan, { write: true, expectPlan: plan.plan_sha256,
+    assertAuthorized() { if (++grants === 8) clock += 300001; } }));
+  assert.equal(result.effect_status, 'unknown');
+  const receipted = fixtureSigner.seal({ ...record, phase: 'receipted', results: [{ output: result, receipt: {
+    effect_status: 'unknown', outcome: 'reconciliation_required', output_sha256: shadowHash(result),
+  } }] });
+  process.stdout.write(JSON.stringify(receipted));
+} else try {
   await test('three private schemas validate with supported keywords', () => {
     for (const kind of ['input', 'plan', 'output']) assert.deepEqual(validateJsonSchemaDefinition(JSON.parse(fs.readFileSync(new URL('../../src/core/contracts/workflow-definition/standard-pr-correction-reopen-' + kind + '.v1.schema.json', import.meta.url))), '#', { contractKind: 'workflow-definition' }), []);
   });
@@ -110,9 +139,67 @@ try {
   });
   if (mode === 'files') await test('authority lost after the first CAS retains unknown state and owner without retry', async () => {
     const partial = await fixture('files'), p = await partial.port.prepare(partial.instance, partial.input); let grants = 0;
-    const result = await partial.port.apply(partial.instance, p, { write: true, expectPlan: p.plan_sha256, assertAuthorized() { if (++grants >= 3) throw Error('grant lost'); } });
+    const result = await partial.port.apply(partial.instance, p, { write: true, expectPlan: p.plan_sha256,
+      assertAuthorized() { if (++grants >= 4) throw Error('grant lost'); } });
     assert.equal(result.outcome, 'reconciliation_required'); assert.equal(result.effect_status, 'unknown'); assert.deepEqual(result.facts, {});
+    assert.deepEqual(result.observations.committed.map(row => row.path), [partial.names[0]]);
     assert.equal(partial.artifacts.ownerPending(), true); assert.equal((await partial.port.prepare(partial.instance, partial.input)).can_apply, false);
+  });
+  if (mode === 'files') await test('expired reopening with three postimages is observable without repeating writes', async () => {
+    const stopped = await fixture('files');
+    const exclusion = '/docs/audit/workflows/dispatch-records/';
+    const scaffold = fs.readFileSync(new URL('../../scaffold/root/.gitignore.append', import.meta.url), 'utf8');
+    assert.ok(scaffold.split(/\r?\n/).includes(exclusion));
+    fs.appendFileSync(path.join(stopped.root, '.git/info/exclude'), '\n' + exclusion + '\n');
+    assert.equal(git(stopped.root, 'check-ignore', '--', exclusion.slice(1) + op + '.json'), exclusion.slice(1) + op + '.json');
+    const observer = stopped.port;
+    const plan = await observer.prepare(stopped.instance, stopped.input);
+    const control = fs.mkdtempSync(path.join(temporary, 'aidn-reopen-fixture-control-'));
+    const fixtureFile = path.join(control, 'reopen-observer-fixture.json');
+    let record;
+    try {
+      fs.writeFileSync(fixtureFile, JSON.stringify({ root: stopped.root, plan, instance: stopped.instance }), { flag: 'wx' });
+      assert.equal(git(stopped.root, 'status', '--porcelain'), '');
+      record = JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--expired-owner-worker', fixtureFile],
+        { encoding: 'utf8', timeout: 180000, windowsHide: true, maxBuffer: 1048576 }));
+    } finally {
+      if (fs.existsSync(fixtureFile)) fs.unlinkSync(fixtureFile);
+      fs.rmdirSync(control);
+    }
+    const result = record.results[0].output;
+    assert.equal(result.effect_status, 'unknown');
+    assert.equal(result.observations.reason_code, 'STANDARD_PLAN_EXPIRED');
+    assert.equal(result.observations.committed.length, 3);
+    const file = name => path.join(stopped.root, 'docs/audit', name);
+    const witness = () => stopped.names.map(name => fs.readFileSync(file(name)));
+    const before = witness();
+    const disposition = reopenDisposition(stopped.root, stopped.artifacts);
+    const owner = disposition.observeInterruptedReopen(record);
+    const assertOwner = () => assert.deepEqual(disposition.observeInterruptedReopen(record), owner);
+    const observe = (output = result, options = {}) => observer.observeInterrupted(stopped.instance, plan, output, { assertOwner, ...options });
+    await assert.rejects(observe({ ...result, observations: { ...result.observations, committed: result.observations.committed.slice(0, 2) } }),
+      { code: 'STANDARD_PR_CORRECTION_POSTIMAGES_INCOMPLETE' });
+    await assert.rejects(observe(result, { assertOwner() { throw Object.assign(Error('owner differs'), { code: 'FIXTURE_OWNER_CHANGED' }); } }),
+      { code: 'FIXTURE_OWNER_CHANGED' });
+    const foreign = file(stopped.names[1]);
+    try {
+      fs.appendFileSync(foreign, '\nForeign write\n');
+      await assert.rejects(observe(), { code: 'PROCESS_INTERRUPTED_REOPEN_CONTEXT_CHANGED' });
+      await assert.rejects(observe(result, { assertOwner() {} }), { code: 'STANDARD_PR_CORRECTION_DOCUMENT_CHANGED' });
+    } finally { fs.writeFileSync(foreign, before[1]); }
+    stopped.state.externalChanged = true;
+    await assert.rejects(observe(), { code: 'STANDARD_PR_CORRECTION_PROVIDER_CHANGED' });
+    stopped.state.externalChanged = false;
+    const observed = await observe();
+    assert.deepEqual(observed.postimages, result.observations.committed);
+    assert.equal(observed.plan_sha256, plan.plan_sha256);
+    assert.deepEqual(witness(), before);
+    assert.equal(stopped.artifacts.ownerPending(), true);
+    const lock = path.join(stopped.root, '.aidn/runtime/standard-workflow/effects.lock');
+    const text = fs.readFileSync(lock);
+    fs.renameSync(lock, lock + '.fixture-original');
+    fs.writeFileSync(lock, text, { flag: 'wx' });
+    assert.throws(() => disposition.observeInterruptedReopen(record), { code: 'PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED' });
   });
   console.log(JSON.stringify({ status: 'PASS', checks, mode, canonical_cas_projection_git_admission: 'ACTUAL', accepted_triage_and_external_source: 'DOUBLED',
     source_factory: 'SEPARATE_SUITE', host_ir_binding: 'NOT_EXERCISED_BY_THIS_SUITE', native_corrections: 'NOT_RUN', full_standard: false, installed_archive: 'NOT_RUN' }));

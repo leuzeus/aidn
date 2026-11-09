@@ -1198,6 +1198,25 @@ export function createStandardWorkflowOperationHost({ targetRoot, model: supplie
     async enterCall(input) { current(input.instanceId); return service.enterCall(input); },
     async returnCall(input) { current(input.instanceId); return service.returnCall(input); },
     inspect: id => current(id),
+    async observeInterruptedCorrectionReopen(id, { expectedSha256, signal } = {}) {
+      const record = retained(id).record, state = current(record.intent.instance_id);
+      if (state.record.instance_sha256 !== expectedSha256) fail("PROCESS_REVISION_CONFLICT");
+      if (!prCorrectionReopen) fail("STANDARD_PR_CORRECTION_AUTHORITY_REQUIRED");
+      readDispatchedOperation(state.record, id, "session_pr_correction_reopen", "STANDARD_PR_CORRECTION_REOPEN_DISPATCH_REQUIRED");
+      const original = record.results.at(-1);
+      if (!original || !state.record.events.some(row => row.kind === "operation_result" && shadowHash(row.receipt) === shadowHash(original.receipt)))
+        fail("STANDARD_PR_CORRECTION_REOPEN_DISPATCH_REQUIRED");
+      const owner = disposition.observeInterruptedReopen(record);
+      const observation = await prCorrectionReopen.observeInterrupted(state.record, record.preview.prepared, original.output, {
+        signal,
+        assertOwner() {
+          if (shadowHash(retained(id).record) !== shadowHash(record) || shadowHash(disposition.observeInterruptedReopen(record)) !== shadowHash(owner))
+            fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
+        },
+      });
+      return { operation_id: id, instance_sha256: state.record.instance_sha256, receipt_sha256: shadowHash(original.receipt),
+        ...owner, observation, written: false };
+    },
     prepareReconciliationInventory: (id, input) => reconciliationInventory.prepare(id, input),
     prepareOperationDisposition: (id, input) => disposition.prepare(id, input),
     applyOperationDisposition: (plan, input) => disposition.apply(plan, input),

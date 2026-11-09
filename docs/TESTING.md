@@ -1056,6 +1056,14 @@ remain denied by ordinary native admission. Source-install fixture preparation
 is not exact installed-archive qualification. Authenticated producer-to-writer
 execution, ordinary cycle continuation and actual correction work remain open.
 
+The FILES reopening fixture also expires the plan after the three writes and
+uses the read-only observer. It refuses an incomplete result, a foreign
+owner, a changed canonical postimage and a stale provider. The retained owner
+and bytes survive the observation. The case uses an actual child dispatch,
+signed owner, local fence, process closure and physical lock. The correction
+source and provider are fixtures. Durable disposition and acceptance require
+separate evidence.
+
 `verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`
 checks the internal checkpoint component now selected after reopening by the
 candidate host and IR. This suite does not execute that host route. It derives

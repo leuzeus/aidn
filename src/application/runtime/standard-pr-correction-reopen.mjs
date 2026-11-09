@@ -49,6 +49,22 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
     for (const [index, row] of changes.entries()) if (readAgentRunFile(agentRunPhysicalPath(path.join(artifacts.root, 'docs/audit', row.path)), { json: false, maxBytes: 1048576 }).sha256
       !== (committed[index]?.sha256 ?? row.before_sha256)) fail('STANDARD_PR_CORRECTION_PROJECTION_CHANGED');
   }
+  function observeLocal(instance, plan, committed, { signal, assertOwner, readInstance = readCurrent, enforceExpiry = true }) {
+    active(signal); assertOwner();
+    if (artifacts.describe().state_mode !== plan.state_mode) fail('STANDARD_PR_CORRECTION_DOCUMENT_CHANGED');
+    if (readInstance(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
+    if (enforceExpiry) {
+      const age = now() - plan.prepared_at_ms;
+      if (!Number.isSafeInteger(age) || age < 0) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
+      if (age > 300000) fail('STANDARD_PLAN_EXPIRED');
+    }
+    assertDocuments(plan.changes, committed); projections(plan.changes, committed);
+    const view = git(plan.source).inspect();
+    const expected = plan.state_mode === 'db-only' ? [] : committed.map(row => 'docs/audit/' + row.path).sort();
+    if (identity(view) !== plan.git_identity_sha256 || shadowHash(view.changes.map(row => row.path).sort()) !== shadowHash(expected)
+      || view.changes.some(row => row.status !== ' M')) fail('STANDARD_PR_CORRECTION_GIT_CHANGED');
+    return view;
+  }
   async function prepare(instance, input, at, acquired = false, signal) {
     if (!valid(input, inputSchema)) fail('STANDARD_PR_CORRECTION_INPUT_INVALID'); active(signal);
     if (!acquired && artifacts.ownerPending()) return { can_apply: false, reason_code: 'STANDARD_EFFECT_OWNER_RECONCILIATION_REQUIRED' };
@@ -72,6 +88,31 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
     if (!valid(value, outputSchema)) fail('STANDARD_PR_CORRECTION_OUTPUT_INVALID'); return value;
   }
   return Object.freeze({ prepare: (instance, input, { signal } = {}) => prepare(instance, input, now(), false, signal),
+    async observeInterrupted(instance, prepared, output, { assertOwner, signal } = {}) {
+      const plan = prepared?.plan;
+      if (typeof assertOwner !== 'function' || !prepared?.can_apply || !valid(plan, planSchema)
+        || prepared.plan_sha256 !== shadowHash(plan) || plan.source_sha256 !== shadowHash(plan.source)
+        || !valid(output, outputSchema) || output.outcome !== 'reconciliation_required' || output.effect_status !== 'unknown'
+        || output.observations.reason_code !== 'STANDARD_PLAN_EXPIRED') fail('STANDARD_PR_CORRECTION_INTERRUPTED_RESULT_REQUIRED');
+      const committed = output.observations.committed;
+      if (!Array.isArray(committed) || committed.length !== plan.changes.length
+        || plan.changes.some((row, index) => committed[index]?.path !== row.path || committed[index]?.sha256 !== row.after_sha256))
+        fail('STANDARD_PR_CORRECTION_POSTIMAGES_INCOMPLETE');
+      const observe = (readInstance = readCurrent) => observeLocal(instance, plan, committed,
+        { signal, assertOwner, readInstance, enforceExpiry: false });
+      const before = observe();
+      let pushIdentity = null;
+      const causal = await authority.verifySource(instance, plan.source, { signal, assertLocal(view) {
+        observe(readCurrentPrefix);
+        const fresh = shadowHash({ ...view, clean: true });
+        if (pushIdentity !== null && fresh !== pushIdentity) fail('STANDARD_PR_CORRECTION_GIT_CHANGED');
+        pushIdentity = fresh;
+      } });
+      if (causal?.origin_source_sha256 !== plan.source_sha256 || shadowHash(observe()) !== shadowHash(before))
+        fail('STANDARD_PR_CORRECTION_CAUSAL_SOURCE_CHANGED');
+      return { source_sha256: plan.source_sha256, plan_sha256: prepared.plan_sha256,
+        postimages: structuredClone(committed), causal, local_sha256: shadowHash(before) };
+    },
     async apply(instance, prepared, { write = false, expectPlan, assertAuthorized, signal } = {}) {
       active(signal); const plan = prepared?.plan, age = now() - plan?.prepared_at_ms;
       if (!prepared?.can_apply || !valid(plan, planSchema) || write !== true || typeof assertAuthorized !== 'function'
@@ -87,17 +128,7 @@ export function createStandardPrCorrectionReopen({ targetRoot, authority, readCu
         } catch (cause) { cause.effect_status = 'no_effect'; throw cause; }
         const committed = []; let attempted = false, pushIdentity = null;
         function local(localView, readInstance = readCurrent) {
-          active(signal); artifacts.assertLocalEffectOwner(expectPlan);
-          if (artifacts.describe().state_mode !== plan.state_mode) fail('STANDARD_PR_CORRECTION_DOCUMENT_CHANGED');
-          if (readInstance(instance.instance_id).instance_sha256 !== instance.instance_sha256) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
-          const currentAge = now() - plan.prepared_at_ms;
-          if (!Number.isSafeInteger(currentAge) || currentAge < 0) fail('STANDARD_PR_CORRECTION_INSTANCE_CHANGED');
-          if (currentAge > 300000) fail('STANDARD_PLAN_EXPIRED');
-          assertDocuments(plan.changes, committed); projections(plan.changes, committed);
-          const view = git(plan.source).inspect();
-          const expected = plan.state_mode === 'db-only' ? [] : committed.map(row => 'docs/audit/' + row.path).sort();
-          if (identity(view) !== plan.git_identity_sha256 || shadowHash(view.changes.map(row => row.path).sort()) !== shadowHash(expected)
-            || view.changes.some(row => row.status !== ' M')) fail('STANDARD_PR_CORRECTION_GIT_CHANGED');
+          observeLocal(instance, plan, committed, { signal, readInstance, assertOwner: () => artifacts.assertLocalEffectOwner(expectPlan) });
           if (localView) {
             const value = shadowHash({ ...localView, clean: true });
             if (pushIdentity !== null && value !== pushIdentity) fail('STANDARD_PR_CORRECTION_GIT_CHANGED');

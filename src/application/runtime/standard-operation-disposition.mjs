@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
+import fs from "node:fs";
 import path from "node:path";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createWorkflowRecordStore } from "../../adapters/runtime/workflow-record-store.mjs";
@@ -18,6 +19,7 @@ import grantSchema from "../../core/contracts/workflow-definition/process-dispos
 import controlSchema from "../../core/contracts/workflow-definition/process-operation-control-intent.v1.schema.json" with { type: "json" };
 import fenceSchema from "../../core/contracts/workflow-definition/local-artifact-resource-fence.v1.schema.json" with { type: "json" };
 import { assertProcessReconciliationInventory } from "../../core/workflow/process-reconciliation-inventory.mjs";
+import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const bodyOf = ({ authentication, key_id, ...body }) => body;
@@ -44,7 +46,8 @@ function inventoryMaterial(retained, id) {
 const readOnlyProfiles = new Set(["context_reload", "session_admit", "session_close_admit"]);
 const artifactProfiles = new Set(["session_close_record"]);
 const prCheckpoint = "session_pr_checkpoint";
-const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint;
+const correctionReopen = "session_pr_correction_reopen";
+const planBoundOwner = id => artifactProfiles.has(id) || id === prCheckpoint || id === correctionReopen;
 
 export function createStandardOperationDisposition({ targetRoot, stateMode, signer, artifacts, readOperation,
   readInstance, readAuthority, readContext, observeBoundary, inventory, dispositionSource, appendResult, makeReceipt, confirmPrCheckpoint,
@@ -236,6 +239,32 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
     return proof;
   }
   return Object.freeze({
+    observeInterruptedReopen(record) {
+      signer.verify(record); signer.verify(record.preview);
+      const { record: capsule } = readDispatch(record.operation_id, record);
+      const result = record.results.at(-1);
+      if (record.intent.binding_ref !== correctionReopen || record.phase !== "receipted"
+        || result?.receipt.effect_status !== "unknown" || result?.receipt.outcome !== "reconciliation_required"
+        || capsule?.contract_version !== "process-dispatch-record.v2" || capsule.phase !== "returned"
+        || capsule.output_sha256 !== result.receipt.output_sha256 || capsule.local_owner_intentions.length !== 1 || capsule.leases.length !== 1)
+        fail("PROCESS_INTERRUPTED_REOPEN_SUBJECT_REQUIRED");
+      const [lease] = capsule.leases, [intention] = capsule.local_owner_intentions;
+      const lock = readAgentRunFile(path.join(artifacts.root, intention.lock_path), { maxBytes: 4096 });
+      const fileIdentity = exactFileIdentity(fs.lstatSync(lock.path, { bigint: true }));
+      const fence = artifacts.resourceFence().read(), processIdentity = capsule.process_identity;
+      if (lease.status !== "held" || lease.owner.pid !== record.owner?.pid || lease.owner.pid !== processIdentity.pid
+        || shadowHash(lease.owner) !== shadowHash(lock.value) || shadowHash(lease.owner) !== shadowHash(intention.owner)
+        || shadowHash(lease.physical_identity) !== shadowHash(fileIdentity)
+        || shadowHash(lease.resource_fence) !== shadowHash(intention.resource_fence.record)
+        || shadowHash(lease.resource_fence) !== shadowHash(fence.record)
+        || shadowHash(fence.record.process_identity) !== shadowHash(processIdentity)
+        || observeLocalProcessOwner(processIdentity) !== "terminated")
+        fail("PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED");
+      const observed = observeBoundary ? observeBoundary() : { authority: readAuthority(), context: readContext() };
+      if (shadowHash(observed.authority) !== capsule.authority_sha256 || shadowHash(observed.context) !== capsule.context_after_sha256)
+        fail("PROCESS_INTERRUPTED_REOPEN_CONTEXT_CHANGED");
+      return { dispatch_sha256: shadowHash(capsule), lock_sha256: lock.sha256, fence_sha256: fence.content_sha256 };
+    },
     async run(record, effect) {
       if (dispatches.read(record.operation_id).record) fail("PROCESS_DISPATCH_ALREADY_DECLARED");
       processIdentity ??= observeLocalProcess(process.pid);
