@@ -1061,8 +1061,12 @@ uses the read-only observer. It refuses an incomplete result, a foreign
 owner, a changed canonical postimage and a stale provider. The retained owner
 and bytes survive the observation. The case uses an actual child dispatch,
 signed owner, local fence, process closure and physical lock. The correction
-source and provider are fixtures. Durable disposition and acceptance require
-separate evidence.
+source and provider are fixtures. The same FILES case transfers the held
+fence through signed fixture intents across process exits before and after
+the archive operation. It retains the physical lock bytes, original
+dispatch and three business postimages, and refuses duplicate locks and
+revoked fixture consent. Ordinary host disposition, acceptance and
+redelivery still require separate evidence.
 
 `verify-standard-pr-correction-checkpoint-fixtures.mjs --mode=files|dual|db-only`
 checks the internal checkpoint component now selected after reopening by the

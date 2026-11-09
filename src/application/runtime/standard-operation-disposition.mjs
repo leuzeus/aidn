@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
-import fs from "node:fs";
 import path from "node:path";
 import { agentRunPhysicalPath, readAgentRunFile } from "./agent-run-configuration-service.mjs";
 import { createWorkflowRecordStore } from "../../adapters/runtime/workflow-record-store.mjs";
@@ -19,7 +18,7 @@ import grantSchema from "../../core/contracts/workflow-definition/process-dispos
 import controlSchema from "../../core/contracts/workflow-definition/process-operation-control-intent.v1.schema.json" with { type: "json" };
 import fenceSchema from "../../core/contracts/workflow-definition/local-artifact-resource-fence.v1.schema.json" with { type: "json" };
 import { assertProcessReconciliationInventory } from "../../core/workflow/process-reconciliation-inventory.mjs";
-import { exactFileIdentity } from "../../lib/fs/exact-file-identity.mjs";
+import { inspectInterruptedReopenLock } from "./local-artifact-owner-retirement.mjs";
 
 const fail = code => { throw Object.assign(Error(code), { code }); };
 const bodyOf = ({ authentication, key_id, ...body }) => body;
@@ -249,12 +248,9 @@ export function createStandardOperationDisposition({ targetRoot, stateMode, sign
         || capsule.output_sha256 !== result.receipt.output_sha256 || capsule.local_owner_intentions.length !== 1 || capsule.leases.length !== 1)
         fail("PROCESS_INTERRUPTED_REOPEN_SUBJECT_REQUIRED");
       const [lease] = capsule.leases, [intention] = capsule.local_owner_intentions;
-      const lock = readAgentRunFile(path.join(artifacts.root, intention.lock_path), { maxBytes: 4096 });
-      const fileIdentity = exactFileIdentity(fs.lstatSync(lock.path, { bigint: true }));
+      const lock = inspectInterruptedReopenLock(artifacts.root, record.operation_id, intention, lease);
       const fence = artifacts.resourceFence().read(), processIdentity = capsule.process_identity;
       if (lease.status !== "held" || lease.owner.pid !== record.owner?.pid || lease.owner.pid !== processIdentity.pid
-        || shadowHash(lease.owner) !== shadowHash(lock.value) || shadowHash(lease.owner) !== shadowHash(intention.owner)
-        || shadowHash(lease.physical_identity) !== shadowHash(fileIdentity)
         || shadowHash(lease.resource_fence) !== shadowHash(intention.resource_fence.record)
         || shadowHash(lease.resource_fence) !== shadowHash(fence.record)
         || shadowHash(fence.record.process_identity) !== shadowHash(processIdentity)

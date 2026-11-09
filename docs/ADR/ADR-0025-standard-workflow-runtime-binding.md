@@ -2958,6 +2958,19 @@ Fresh provider observations must agree with the original correction source.
 The observation preserves the UNKNOWN receipt and the resource owner. It
 provides evidence for a separate disposition under current authority.
 
+### Retaining a retired corrective-reopening lock
+
+The resource primitive archives the original lock by an operation-scoped name
+under the same private runtime directory. It requires the transferred local
+artifact fence and a synchronous permit from the owning disposition. The
+archived witness binds the original bytes and stable file identity. The move
+may change the filesystem's change timestamp. The original signed dispatch
+retains its exact pre-move identity, original fence and UNKNOWN outcome.
+Cold retries require a known transfer and refuse missing, foreign or duplicate
+witnesses. Fixture transfer intents exercise this primitive. The ordinary host
+still needs the signed disposition reservation, provider and grant checks,
+receipt append and acceptance to expose recovery.
+
 ### Missing checkpoint acknowledgement, released local owner, 2026-11-04
 
 The checkpoint component has a retrospective observation path selected by the

@@ -22,7 +22,7 @@ import { readStandardGitHead } from "./standard-drift-git.mjs";
 
 const correctionFiles = ["standard-reconciliation-inventory.mjs",
   "standard-operation-disposition.mjs", "standard-dispatch-context.mjs",
-  "local-artifact-resource-fence.mjs",
+  "local-artifact-resource-fence.mjs", "local-artifact-owner-retirement.mjs",
   new URL("../../core/contracts/workflow-definition/local-artifact-resource-fence.v1.schema.json", import.meta.url),
   ...["request", "grant"].map(kind => new URL(`../../core/contracts/workflow-definition/process-disposition-authorization-${kind}.v1.schema.json`, import.meta.url)),
   new URL("../../adapters/runtime/local-process-identity.mjs", import.meta.url),

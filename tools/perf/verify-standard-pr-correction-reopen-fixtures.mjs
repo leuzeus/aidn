@@ -19,6 +19,8 @@ import { agenticProcessImplementationPins } from '../../src/application/runtime/
 import { createPrCorrectionReopenFixture } from './standard-pr-correction-fixture-lib.mjs';
 import { createStandardOperationDisposition } from '../../src/application/runtime/standard-operation-disposition.mjs';
 import { createOperationJournalSigner } from '../../src/core/workflow/process-operation-journal.mjs';
+import { createProcessDispatchRecordStore } from '../../src/adapters/runtime/process-dispatch-record-store.mjs';
+import { inspectInterruptedReopenLock, retireInterruptedReopenLock } from '../../src/application/runtime/local-artifact-owner-retirement.mjs';
 const fixture = selectedMode => createPrCorrectionReopenFixture(selectedMode, owned);
 const H = 'a'.repeat(64), op = 'op_' + '1'.repeat(40), owned = [], temporary = fs.realpathSync(os.tmpdir());
 const mode = process.argv.find(x => x.startsWith('--mode='))?.slice(7) ?? 'files';
@@ -37,7 +39,42 @@ function reopenDisposition(root, artifacts, readOperation) {
     readContext: () => ({ head: git(root, 'rev-parse', 'HEAD'), documents: prCorrectionReopenPaths('S001').map(name => artifacts.read(name).sha256) }),
   });
 }
-if (process.argv[2] === '--expired-owner-worker') {
+function acquireRetirement(root, record, expectedLockSha256, file, predecessorFile = null) {
+  const artifacts = createStandardWorkflowArtifacts({ targetRoot: root }), fence = artifacts.resourceFence();
+  const { record: dispatch } = createProcessDispatchRecordStore({ targetRoot: root, stateMode: 'files' }).read(record.operation_id);
+  fixtureSigner.verify(record); fixtureSigner.verify(dispatch);
+  assert.equal(dispatch.output_sha256, record.results[0].receipt.output_sha256);
+  assert.equal(dispatch.preview_sha256, shadowHash(record.preview));
+  const [intention] = dispatch.local_owner_intentions, [originalLease] = dispatch.leases;
+  assert.equal(originalLease.status, 'held');
+  const subject = { operation_id: record.operation_id, journal_sha256: shadowHash(record),
+    dispatch_sha256: shadowHash(dispatch), lock_sha256: expectedLockSha256, root_sha256: shadowHash(artifacts.root) };
+  const prior = predecessorFile && JSON.parse(fs.readFileSync(predecessorFile, 'utf8'));
+  if (prior) { fixtureSigner.verify(prior); assert.deepEqual(prior.subject, subject); }
+  const before = fence.read(), priorLease = prior ? prior.transfer.record : originalLease.resource_fence;
+  assert.deepEqual(before.record, priorLease);
+  const transfer = fence.prepareAcquire({ expectedSha256: before.content_sha256 });
+  const reservation = fixtureSigner.seal({ fixture: 'cold-retirement-intent', subject, transfer });
+  fs.writeFileSync(file, JSON.stringify(reservation), { flag: 'wx', flush: true });
+  let allowed = true;
+  const assertPermit = () => {
+    if (!allowed) throw Object.assign(Error('fixture permit revoked'), { code: 'FIXTURE_RETIREMENT_DENIED' });
+    const retained = JSON.parse(fs.readFileSync(file, 'utf8')); fixtureSigner.verify(retained);
+    assert.deepEqual(retained, reservation);
+  };
+  assertPermit();
+  const dispositionLease = fence.acquire({ prepared: transfer, expectedSha256: transfer.previous_sha256, dispositionLease: priorLease });
+  const args = { targetRoot: artifacts.root, operationId: record.operation_id, intention, originalLease, fence, dispositionLease, expectedLockSha256, assertPermit, write: true };
+  return { fence, args, revoke: () => { allowed = false; } };
+}
+
+if (process.argv[2] === '--retirement-owner-worker') {
+  const { root, record, lockSha256, reservation, predecessor, retire } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+  const { args, fence } = acquireRetirement(root, record, lockSha256, reservation, predecessor);
+  const witness = retire ? retireInterruptedReopenLock(args) : inspectInterruptedReopenLock(args.targetRoot, args.operationId, args.intention, args.originalLease);
+  // Exit at the requested boundary with the acquired fence still held.
+  console.log(JSON.stringify({ retired: witness.retired, pid: process.pid, lock_sha256: lockSha256, fence_sha256: fence.read().content_sha256 }));
+} else if (process.argv[2] === '--expired-owner-worker') {
   const { root, plan, instance } = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
   const artifacts = createStandardWorkflowArtifacts({ targetRoot: root });
   let clock = plan.plan.prepared_at_ms, grants = 0;
@@ -61,7 +98,7 @@ if (process.argv[2] === '--expired-owner-worker') {
     for (const kind of ['input', 'plan', 'output']) assert.deepEqual(validateJsonSchemaDefinition(JSON.parse(fs.readFileSync(new URL('../../src/core/contracts/workflow-definition/standard-pr-correction-reopen-' + kind + '.v1.schema.json', import.meta.url))), '#', { contractKind: 'workflow-definition' }), []);
   });
   await test('registered input and direct byte pins include every correction authority, writer, renderer and contract', () => {
-    const paths = ['src/application/runtime/standard-pr-correction-authority.mjs', 'src/application/runtime/standard-pr-correction-reopen.mjs',
+    const paths = ['src/application/runtime/local-artifact-owner-retirement.mjs', 'src/application/runtime/standard-pr-correction-authority.mjs', 'src/application/runtime/standard-pr-correction-reopen.mjs',
       'src/core/workflow/standard-pr-correction-reopen.mjs', ...['input', 'plan', 'output'].map(kind => 'src/core/contracts/workflow-definition/standard-pr-correction-reopen-' + kind + '.v1.schema.json')];
     const pins = agenticProcessImplementationPins(), read = fs.readFileSync;
     for (const name of paths) {
@@ -196,10 +233,60 @@ if (process.argv[2] === '--expired-owner-worker') {
     assert.deepEqual(witness(), before);
     assert.equal(stopped.artifacts.ownerPending(), true);
     const lock = path.join(stopped.root, '.aidn/runtime/standard-workflow/effects.lock');
-    const text = fs.readFileSync(lock);
-    fs.renameSync(lock, lock + '.fixture-original');
-    fs.writeFileSync(lock, text, { flag: 'wx' });
-    assert.throws(() => disposition.observeInterruptedReopen(record), { code: 'PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED' });
+    const originalLock = fs.readFileSync(lock);
+    const dispatchPath = path.join(stopped.root, 'docs/audit/workflows/dispatch-records', op + '.json');
+    const originalDispatch = fs.readFileSync(dispatchPath), originalReceipt = shadowHash(record.results[0]);
+    const reservations = fs.mkdtempSync(path.join(temporary, 'aidn-reopen-retirement-'));
+    const files = ['after-transfer.json', 'after-retirement.json', 'retry.json'].map(name => path.join(reservations, name));
+    const invoke = (reservation, predecessor, retire) => {
+      const input = path.join(reservations, 'input-' + path.basename(reservation));
+      fs.writeFileSync(input, JSON.stringify({ root: stopped.root, record, lockSha256: owner.lock_sha256, reservation, predecessor, retire }), { flag: 'wx' });
+      return JSON.parse(execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--retirement-owner-worker', input],
+        { encoding: 'utf8', timeout: 30000, windowsHide: true, maxBuffer: 1048576 }));
+    };
+    const transferred = invoke(files[0], null, false);
+    assert.equal(transferred.retired, false);
+    assert.deepEqual(fs.readFileSync(lock), originalLock);
+    assert.equal(stopped.artifacts.resourceFence().read().content_sha256, transferred.fence_sha256);
+    const archived = invoke(files[1], files[0], true);
+    assert.notEqual(archived.pid, transferred.pid);
+    assert.equal(archived.retired, true);
+    assert.equal(fs.existsSync(lock), false);
+    assert.equal(stopped.artifacts.resourceFence().read().content_sha256, archived.fence_sha256);
+    assert.equal(stopped.artifacts.ownerPending(), true);
+    const retry = acquireRetirement(stopped.root, record, owner.lock_sha256, files[2], files[1]);
+    const archivedWitness = inspectInterruptedReopenLock(retry.args.targetRoot, op, retry.args.intention, retry.args.originalLease, { allowRetired: true });
+    assert.equal(archivedWitness.retired, true);
+    const relative = path.relative(stopped.root, archivedWitness.path).replaceAll('\\', '/');
+    assert.equal(git(stopped.root, 'check-ignore', '--', relative), relative);
+    assert.deepEqual(fs.readFileSync(archivedWitness.path), originalLock);
+    assert.throws(() => retireInterruptedReopenLock({ ...retry.args, write: false }), { code: 'PROCESS_INTERRUPTED_REOPEN_RETIREMENT_REQUIRED' });
+    assert.equal(retireInterruptedReopenLock(retry.args).retired, true);
+    fs.writeFileSync(lock, originalLock, { flag: 'wx' });
+    assert.throws(() => retireInterruptedReopenLock(retry.args), { code: 'PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED' });
+    fs.unlinkSync(lock);
+    assert.throws(() => inspectInterruptedReopenLock(retry.args.targetRoot, op, retry.args.intention, retry.args.originalLease),
+      { code: 'PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED' });
+    const parked = archivedWitness.path + '.fixture-parked';
+    fs.renameSync(archivedWitness.path, parked);
+    fs.writeFileSync(lock, originalLock, { flag: 'wx' });
+    try {
+      assert.throws(() => inspectInterruptedReopenLock(retry.args.targetRoot, op, retry.args.intention, retry.args.originalLease),
+        { code: 'PROCESS_INTERRUPTED_REOPEN_OWNER_CHANGED' });
+    } finally {
+      fs.unlinkSync(lock);
+      fs.renameSync(parked, archivedWitness.path);
+    }
+    retry.revoke();
+    assert.throws(() => retireInterruptedReopenLock(retry.args), { code: 'FIXTURE_RETIREMENT_DENIED' });
+    retry.fence.release(retry.args.dispositionLease);
+    assert.equal(stopped.artifacts.ownerPending(), false);
+    assert.deepEqual(witness(), before);
+    assert.deepEqual(fs.readFileSync(dispatchPath), originalDispatch);
+    assert.equal(shadowHash(record.results[0]), originalReceipt);
+    console.log(JSON.stringify({ retirement: 'PASS', transfer_worker_pid: transferred.pid, archive_worker_pid: archived.pid,
+      archive_sha256: archivedWitness.sha256, original_dispatch_preserved: true, original_result: 'unknown', application_consent: 'FIXTURE',
+      application_receipt: 'NOT_RUN', retained_fixture_intents: reservations }));
   });
   console.log(JSON.stringify({ status: 'PASS', checks, mode, canonical_cas_projection_git_admission: 'ACTUAL', accepted_triage_and_external_source: 'DOUBLED',
     source_factory: 'SEPARATE_SUITE', host_ir_binding: 'NOT_EXERCISED_BY_THIS_SUITE', native_corrections: 'NOT_RUN', full_standard: false, installed_archive: 'NOT_RUN' }));
